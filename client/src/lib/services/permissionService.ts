@@ -1,7 +1,7 @@
-import { ProjectRole } from "../../types/permissions";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase-app";
+import { ProjectRole } from "../../types/permissions";
 import type { FirestoreProject } from "../../types/project";
+import { db } from "../firebase-app";
 
 const getProject = async (projectId: string): Promise<FirestoreProject | null> => {
     const projectRef = doc(db, "projects", projectId);

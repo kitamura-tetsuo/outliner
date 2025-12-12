@@ -294,18 +294,23 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
     const userId = decodedToken.uid;
 
     if (process.env.FUNCTIONS_EMULATOR !== "true") {
-        const projectRef = db.collection("projects").doc(containerId);
-        const projectDoc = await projectRef.get();
+      const projectRef = db.collection("projects").doc(containerId);
+      const projectDoc = await projectRef.get();
 
-        if (projectDoc.exists()) {
-            const projectData = projectDoc.data();
-            const permissions = projectData.permissions || [];
-            const userPermission = permissions.find(p => p.userId === userId);
+      if (projectDoc.exists()) {
+        const projectData = projectDoc.data();
+        const permissions = projectData.permissions || [];
+        const userPermission = permissions.find(p => p.userId === userId);
 
-            if (projectData.ownerId !== userId && (!userPermission || userPermission.role < 1)) {
-                return res.status(403).json({ error: "Editor permission is required to save this project." });
-            }
+        if (
+          projectData.ownerId !== userId &&
+          (!userPermission || userPermission.role < 1)
+        ) {
+          return res.status(403).json({
+            error: "Editor permission is required to save this project.",
+          });
         }
+      }
     }
 
     try {
@@ -594,16 +599,18 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
     const userId = decodedToken.uid;
 
     if (process.env.FUNCTIONS_EMULATOR !== "true") {
-        const projectRef = db.collection("projects").doc(containerId);
-        const projectDoc = await projectRef.get();
+      const projectRef = db.collection("projects").doc(containerId);
+      const projectDoc = await projectRef.get();
 
-        if (!projectDoc.exists()) {
-            return res.status(404).json({ error: "Project not found" });
-        }
-        const projectData = projectDoc.data();
-        if (projectData.ownerId !== userId) {
-            return res.status(403).json({ error: "Owner permission is required to delete this project." });
-        }
+      if (!projectDoc.exists()) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      const projectData = projectDoc.data();
+      if (projectData.ownerId !== userId) {
+        return res.status(403).json({
+          error: "Owner permission is required to delete this project.",
+        });
+      }
     }
 
     try {
