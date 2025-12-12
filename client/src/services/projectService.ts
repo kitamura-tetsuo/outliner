@@ -1,8 +1,8 @@
 import { getAuth } from "firebase/auth";
 import { doc, getFirestore, updateDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { Project } from "../schema/app-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
+import { Project } from "../schema/app-schema";
 
 class ProjectService {
     async deleteProject(projectId: string, projectTitle: string) {

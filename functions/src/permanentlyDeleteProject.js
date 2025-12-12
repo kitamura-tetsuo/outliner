@@ -2,21 +2,14 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 
-exports.permanentlyDeleteProject = functions.https.onCall(
-  async (data, context) => {
+exports.permanentlyDeleteProject = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
-      throw new functions.https.HttpsError(
-        "unauthenticated",
-        "The function must be called while authenticated.",
-      );
+        throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
 
     const projectId = data.projectId;
     if (!projectId) {
-      throw new functions.https.HttpsError(
-        "invalid-argument",
-        'The function must be called with a "projectId" argument.',
-      );
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a \"projectId\" argument.");
     }
 
     // Delete from Yjs
@@ -25,10 +18,10 @@ exports.permanentlyDeleteProject = functions.https.onCall(
     const docName = `projects/${projectId}`;
 
     await fetch(`${yjsUrl}/docs/${docName}`, {
-      method: "DELETE",
-      headers: {
-        "x-secret-key": yjsSecretKey,
-      },
+        method: "DELETE",
+        headers: {
+            "x-secret-key": yjsSecretKey,
+        },
     });
 
     // Now, delete the firestore document
@@ -37,5 +30,4 @@ exports.permanentlyDeleteProject = functions.https.onCall(
     await projectRef.delete();
 
     return { success: true };
-  },
-);
+});
