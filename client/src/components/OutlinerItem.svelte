@@ -548,7 +548,6 @@ onMount(() => {
 let displayRef: HTMLDivElement;
 // アイテム全体のDOMエレメントのref
 let itemRef: HTMLDivElement;
-let lastHeight = 0;
 
 // グローバルテキストエリアの参照
 let hiddenTextareaRef: HTMLTextAreaElement;
@@ -1840,40 +1839,6 @@ export function setSelectionPosition(start: number, end: number = start) {
 }
 
 // 他のアイテムに移動するイベントを発火する
-
-// ResizeObserverを使用して要素の高さ変更を監視
-onMount(() => {
-    const isTest = import.meta.env.MODE === 'test';
-    if (isTest) return;
-
-    const resizeObserver = new ResizeObserver(entries => {
-        for (const entry of entries) {
-            const newHeight = entry.contentRect.height;
-            if (newHeight !== lastHeight) {
-                lastHeight = newHeight;
-                dispatch("resize", {
-                    index,
-                    height: newHeight,
-                });
-            }
-        }
-    });
-
-    if (itemRef) {
-        resizeObserver.observe(itemRef);
-        // 初期高さを通知
-        dispatch("resize", {
-            index,
-            height: itemRef.getBoundingClientRect().height,
-        });
-    }
-
-    return () => {
-        if (!isTest) {
-            resizeObserver.disconnect();
-        }
-    };
-});
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
