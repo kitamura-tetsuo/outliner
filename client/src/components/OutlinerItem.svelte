@@ -1978,6 +1978,8 @@ onMount(() => {
                         class="comment-button"
                         data-testid="comment-button-{model.id}"
                         draggable="false"
+                        aria-label={commentCountVisual > 0 ? `Comments (${commentCountVisual})` : "Add comment"}
+                        aria-expanded={openCommentItemId === model.id}
                         onclick={(e) => { e.stopPropagation(); toggleComments(); }}
                         onpointerdown={(e) => { e.stopPropagation(); }}
                         onmousedown={(e) => { e.stopPropagation(); }}
