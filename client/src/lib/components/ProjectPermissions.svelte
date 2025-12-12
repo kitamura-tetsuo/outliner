@@ -1,0 +1,149 @@
+<script lang="ts">
+  import { onMount } from "svelte";
+  import { doc, getDoc, updateDoc } from "firebase/firestore";
+  import { db }from "$lib/firebase-app";
+  import type { FirestoreProject } from "../../types/project";
+  import { ProjectRole, type ProjectPermission } from "../../types/permissions";
+  import { collection, query, where, getDocs } from "firebase/firestore";
+
+  export let projectId: string;
+
+  let project: FirestoreProject | null = null;
+  let collaborators: ProjectPermission[] = [];
+  let userSearch = "";
+  let searchResults: { id: string; email: string }[] = [];
+  let errorMessage = "";
+
+  onMount(async () => {
+    const projectRef = doc(db, "projects", projectId);
+    const projectSnap = await getDoc(projectRef);
+    if (projectSnap.exists()) {
+      project = projectSnap.data() as FirestoreProject;
+      collaborators = project.permissions || [];
+    }
+  });
+
+  const searchUsers = async () => {
+    if (userSearch.length < 3) {
+      searchResults = [];
+      return;
+    }
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", userSearch));
+    const querySnapshot = await getDocs(q);
+    searchResults = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      email: doc.data().email,
+    }));
+  };
+
+  const addCollaborator = async (userId: string, role: ProjectRole) => {
+    if (!project) return;
+    const newPermission: ProjectPermission = {
+      userId,
+      role,
+      grantedAt: Date.now(),
+      grantedBy: project.ownerId,
+    };
+    const updatedPermissions = [...collaborators, newPermission];
+    const projectRef = doc(db, "projects", projectId);
+    await updateDoc(projectRef, { permissions: updatedPermissions });
+    collaborators = updatedPermissions;
+    userSearch = "";
+    searchResults = [];
+  };
+
+  const removeCollaborator = async (userId: string) => {
+    if (!project) return;
+    const updatedPermissions = collaborators.filter(p => p.userId !== userId);
+    const projectRef = doc(db, "projects", projectId);
+    await updateDoc(projectRef, { permissions: updatedPermissions });
+    collaborators = updatedPermissions;
+  };
+
+  const updateRole = async (userId: string, role: ProjectRole) => {
+    if (!project) return;
+    const updatedPermissions = collaborators.map(p =>
+      p.userId === userId ? { ...p, role } : p
+    );
+    const projectRef = doc(db, "projects", projectId);
+    await updateDoc(projectRef, { permissions: updatedPermissions });
+    collaborators = updatedPermissions;
+  };
+</script>
+
+<div class="permissions-container">
+  <h2>Project Permissions</h2>
+  {#if project}
+    <div class="owner">
+      <strong>Owner:</strong>
+      {project.ownerId}
+    </div>
+    <div class="collaborators">
+      <h3>Collaborators</h3>
+      {#each collaborators as collaborator}
+        <div class="collaborator">
+          <span>{collaborator.userId}</span>
+          <select
+            value={collaborator.role}
+            on:change={e => updateRole(collaborator.userId, parseInt(e.currentTarget.value))}
+          >
+            <option value={ProjectRole.Viewer}>Viewer</option>
+            <option value={ProjectRole.Editor}>Editor</option>
+          </select>
+          <button on:click={() => removeCollaborator(collaborator.userId)}>
+            Remove
+          </button>
+        </div>
+      {/each}
+    </div>
+    <div class="add-collaborator">
+      <h3>Add Collaborator</h3>
+      <input
+        type="text"
+        bind:value={userSearch}
+        on:input={searchUsers}
+        placeholder="Search by email"
+      />
+      <div class="search-results">
+        {#each searchResults as user}
+          <div class="search-result">
+            <span>{user.email}</span>
+            <button on:click={() => addCollaborator(user.id, ProjectRole.Viewer)}>
+              Add as Viewer
+            </button>
+            <button on:click={() => addCollaborator(user.id, ProjectRole.Editor)}>
+              Add as Editor
+            </button>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+  {#if errorMessage}
+    <div class="error-message">{errorMessage}</div>
+  {/if}
+</div>
+
+<style>
+  .permissions-container {
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  .collaborator {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .search-result {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .error-message {
+    color: red;
+  }
+</style>

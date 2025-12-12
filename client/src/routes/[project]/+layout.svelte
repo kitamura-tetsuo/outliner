@@ -6,12 +6,16 @@ import { getYjsClientByProjectTitle, createNewYjsProject } from "../../services"
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import { store } from "../../stores/store.svelte";
 import { Project } from "../../schema/yjs-schema";
+import { hasPermission } from "../../lib/services/permissionService";
+import { ProjectRole } from "../../types/permissions";
+import { goto } from "$app/navigation";
 
 // プロジェクトレベルのレイアウト
 // このレイアウトは /[project] と /[project]/[page] の両方に適用されます
 let { data, children } = $props();
 
 let project: any = $state(null);
+import { permissionStore } from "../../stores/permissionStore.svelte";
 
 // ストアからプロジェクトを取得
 $effect(() => {
@@ -70,6 +74,23 @@ async function loadProject(projectNameFromParam?: string) {
             project = client.getProject();
             // expose project to the global store so pages become available immediately
             store.project = project;
+
+            const user = userManager.getCurrentUser();
+            if (user) {
+                const isOwner = project.ownerId === user.id;
+                if (isOwner) {
+                    permissionStore.userRole = ProjectRole.Owner;
+                } else {
+                    const permission = project.permissions.find(p => p.userId === user.id);
+                    if (permission) {
+                        permissionStore.userRole = permission.role;
+                    }
+                }
+
+                if (permissionStore.userRole < ProjectRole.Viewer) {
+                    goto("/");
+                }
+            }
         }
     } catch (err) {
         console.error("Failed to load project:", err);
