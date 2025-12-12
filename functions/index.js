@@ -149,8 +149,7 @@ async function checkContainerAccess(userId, containerId) {
     if (
       process.env.FUNCTIONS_EMULATOR === "true" ||
       process.env.NODE_ENV === "test" ||
-      process.env.NODE_ENV === "development" ||
-      userId.includes("test-") // テスト用ユーザーIDの場合
+      process.env.NODE_ENV === "development"
     ) {
       logger.info(
         `Test environment or test user detected, allowing access for user ${userId} to container ${containerId}`,
