@@ -183,9 +183,15 @@ if (typeof window !== "undefined") {
     try {
         if (!store.project) {
             const parts = window.location.pathname.split("/").filter(Boolean);
-            const title = decodeURIComponent(parts[0] || "Untitled Project");
-            (store as { project: Project; }).project = Project.createInstance(title);
-            console.log("INIT: Provisional Project set in store.svelte.ts", { title });
+            // Don't create a provisional project for settings page - it will be handled by the settings component
+            const isSettingsPage = parts[0] === "settings";
+            if (!isSettingsPage) {
+                // Check sessionStorage for test project name first
+                const testProjectName = window.sessionStorage?.getItem("TEST_CURRENT_PROJECT_NAME");
+                const title = testProjectName || decodeURIComponent(parts[0] || "Untitled Project");
+                (store as { project: Project; }).project = Project.createInstance(title);
+                console.log("INIT: Provisional Project set in store.svelte.ts", { title });
+            }
         }
     } catch {
         // Ignore errors during initial project setup
