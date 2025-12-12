@@ -2054,20 +2054,6 @@ export class TestHelpers {
 
             // グローバルなストアをリセット
             await page.evaluate(() => {
-                // generalStoreのプロジェクトとページ情報をリセット
-                if ((window as any).generalStore) {
-                    (window as any).generalStore.project = null;
-                    (window as any).generalStore.pages = null;
-                    (window as any).generalStore.currentPage = null;
-                }
-
-                // appStoreのプロジェクトとページ情報をリセット
-                if ((window as any).appStore) {
-                    (window as any).appStore.project = null;
-                    (window as any).appStore.pages = null;
-                    (window as any).appStore.currentPage = null;
-                }
-
                 // editorOverlayStoreのカーソル情報をリセット
                 if ((window as any).editorOverlayStore) {
                     (window as any).editorOverlayStore.cursors = {};

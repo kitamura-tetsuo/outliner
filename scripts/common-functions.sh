@@ -376,6 +376,29 @@ start_firebase_emulator() {
   echo "Starting Firebase emulator..."
   cd "${ROOT_DIR}"
 
+  # Hosting emulator requires the configured public directory to exist.
+  # In CI, `build/` is gitignored and usually absent, causing `firebase emulators:start`
+  # to fail and leaving the Auth/Firestore ports closed (downstream tests then see ECONNREFUSED).
+  if [ ! -d "${ROOT_DIR}/build" ]; then
+    echo "Creating missing Hosting public directory: ${ROOT_DIR}/build"
+    mkdir -p "${ROOT_DIR}/build"
+  fi
+  if [ ! -f "${ROOT_DIR}/build/index.html" ]; then
+    cat > "${ROOT_DIR}/build/index.html" <<'EOF'
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Outliner Emulator Placeholder</title>
+  </head>
+  <body>
+    <p>Firebase Hosting emulator placeholder for tests.</p>
+  </body>
+</html>
+EOF
+  fi
+
   # Create .env file for Firebase Functions (without reserved environment variables)
   echo "Creating .env file for Firebase Functions..."
   cat > "${ROOT_DIR}/functions/.env" << EOF
