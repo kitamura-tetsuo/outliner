@@ -54,9 +54,9 @@ jobs:
             exit 0
           fi
 
-          # Configure git
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          # Configure git (use --global as fallback for container environments)
+          git config user.email "action@github.com" || git config --global user.email "action@github.com"
+          git config user.name "GitHub Action" || git config --global user.name "GitHub Action"
 
           # Check if we're behind remote to avoid conflicts
           git fetch origin
