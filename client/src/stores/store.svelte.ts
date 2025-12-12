@@ -1,9 +1,8 @@
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
-import type { Item, ItemLike, Items } from "../schema/app-schema";
+import type { Item, Items } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
-import type { PlainItemData } from "../types/yjs-types";
 
 export class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
@@ -42,7 +41,7 @@ export class GeneralStore {
                     const p = items.at(i);
                     const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                     if (String(t).toLowerCase() === String(title).toLowerCase()) {
-                        next = p;
+                        next = p ?? null;
                         break;
                     }
                 }
@@ -57,7 +56,7 @@ export class GeneralStore {
                     const prevLen = prevItems?.length ?? 0;
                     const nextLen = nextItems?.length ?? 0;
                     if (prevLen > 0) {
-                        const isPlaceholderChild = (node: ItemLike | PlainItemData | null | undefined) => {
+                        const isPlaceholderChild = (node: any) => {
                             const text = node?.text?.toString?.() ?? String(node?.text ?? "");
                             if (!text) return true;
                             return text === "一行目: テスト" || text === "二行目: Yjs 反映"
@@ -80,15 +79,13 @@ export class GeneralStore {
                             }
 
                             const cloneBranch = (
-                                source: ItemLike | PlainItemData | null | undefined,
-                                target: ItemLike | null | undefined,
+                                source: any,
+                                target: any,
                             ) => {
                                 if (!source || !target) return;
-                                const length = source && "length" in source ? (source.length ?? 0) : 0;
+                                const length = typeof source?.length === "number" ? source.length : 0;
                                 for (let index = 0; index < length; index++) {
-                                    const from = source && "at" in source
-                                        ? (source.at ? source.at(index) : source[index])
-                                        : null;
+                                    const from = typeof source?.at === "function" ? source.at(index) : source[index];
                                     if (!from) continue;
                                     const text = from?.text?.toString?.() ?? String(from?.text ?? "");
                                     const created = target?.items?.addNode?.("tester");
@@ -97,7 +94,7 @@ export class GeneralStore {
                                     cloneBranch(from, created);
                                 }
                             };
-                            cloneBranch(prevItems as ItemLike | PlainItemData, nextItems as ItemLike);
+                            cloneBranch(prevItems as any, nextItems as any);
                         }
                     }
                 } catch {
@@ -142,7 +139,7 @@ export class GeneralStore {
         const project = v;
         const ymap = project?.ydoc?.getMap?.("orderedTree");
         const subscribe = createSubscriber((_update) => {
-            const handler = (_events: Array<Y.YEvent<unknown>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+            const handler = (_events: Array<Y.YEvent<any>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
                 try {
                     saveProjectSnapshot(project);
                 } catch {
@@ -183,9 +180,15 @@ if (typeof window !== "undefined") {
     try {
         if (!store.project) {
             const parts = window.location.pathname.split("/").filter(Boolean);
-            const title = decodeURIComponent(parts[0] || "Untitled Project");
-            (store as { project: Project; }).project = Project.createInstance(title);
-            console.log("INIT: Provisional Project set in store.svelte.ts", { title });
+            // Don't create a provisional project for settings page - it will be handled by the settings component
+            const isSettingsPage = parts[0] === "settings";
+            if (!isSettingsPage) {
+                // Check sessionStorage for test project name first
+                const testProjectName = window.sessionStorage?.getItem("TEST_CURRENT_PROJECT_NAME");
+                const title = testProjectName || decodeURIComponent(parts[0] || "Untitled Project");
+                (store as { project: Project; }).project = Project.createInstance(title);
+                console.log("INIT: Provisional Project set in store.svelte.ts", { title });
+            }
         }
     } catch {
         // Ignore errors during initial project setup

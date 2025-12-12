@@ -1656,6 +1656,9 @@ export class KeyEventHandler {
         }
 
         try {
+            // 現在の選択状態を保持（ペースト後に必ずクリアするため）
+            const selectionsAtStart = Object.values(store.selections);
+
             // プレーンテキストを取得
             let text = event.clipboardData?.getData("text/plain") || "";
 
@@ -1737,6 +1740,19 @@ export class KeyEventHandler {
                 sel.isBoxSelection && sel.boxSelectionRanges && sel.boxSelectionRanges.length > 0
             );
 
+            const hadBoxSelection = Boolean(boxSelection) || KeyEventHandler.boxSelectionState.active;
+
+            const finalizePaste = () => {
+                // ペースト後は選択状態を必ずクリアする（特に矩形選択はタイミング依存で残りやすい）
+                if (selectionsAtStart.length > 0) {
+                    store.clearSelections();
+                }
+                if (hadBoxSelection) {
+                    KeyEventHandler.cancelBoxSelection();
+                }
+                store.startCursorBlink();
+            };
+
             // 選択範囲がある場合は、選択範囲を削除してからペースト
             Object.values(store.selections).filter(sel =>
                 sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
@@ -1773,6 +1789,7 @@ export class KeyEventHandler {
                     const fullText = multicursorText.join("\n");
                     cursorInstances.forEach(cursor => cursor.insertText(fullText));
                 }
+                finalizePaste();
                 return;
             }
 
@@ -1877,11 +1894,7 @@ export class KeyEventHandler {
                     }
                 }
 
-                // 選択範囲をクリア
-                store.clearSelections();
-
-                // カーソル点滅を開始
-                store.startCursorBlink();
+                finalizePaste();
 
                 // グローバル変数に保存（テスト用）
                 if (typeof window !== "undefined") {
@@ -1919,6 +1932,7 @@ export class KeyEventHandler {
                         cursor.insertText(lines[lines.length - 1]);
                     }
                 });
+                finalizePaste();
                 return;
             }
 
@@ -1937,12 +1951,14 @@ export class KeyEventHandler {
                 const firstLine = lines[0] || "";
                 const cursorInstances = store.getCursorInstances();
                 cursorInstances.forEach(cursor => cursor.insertText(firstLine));
+                finalizePaste();
                 return;
             }
 
             // 単一行テキストの場合は、カーソル位置に挿入
             const cursorInstances = store.getCursorInstances();
             cursorInstances.forEach(cursor => cursor.insertText(text));
+            finalizePaste();
         } catch (error) {
             // エラーが発生した場合はログに出力し UI に通知
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {

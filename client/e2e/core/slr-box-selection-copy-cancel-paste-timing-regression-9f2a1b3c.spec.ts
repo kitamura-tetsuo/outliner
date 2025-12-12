@@ -21,111 +21,55 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 test.describe("ボックス選択のコピー・キャンセル・ペーストのタイミング回帰テスト", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "First line of text",
+            "Second line of text",
+            "Third line of text",
+        ]);
 
-        // Save original clipboard methods for proper cleanup
         await page.evaluate(() => {
-            if ((navigator as any).clipboard) {
-                if ((navigator as any).clipboard.readText) {
-                    (navigator as any).clipboard.readText.__original = (navigator as any).clipboard.readText;
-                }
-                if ((navigator as any).clipboard.writeText) {
-                    (navigator as any).clipboard.writeText.__original = (navigator as any).clipboard.writeText;
-                }
-            }
+            (window as any).DEBUG_MODE = true;
+            (window as any).lastCopiedText = undefined;
+            (window as any).lastPastedText = undefined;
+            (window as any).lastVSCodeMetadata = undefined;
+            (window as any).lastBoxSelectionPaste = undefined;
         });
     });
 
     test.afterEach(async ({ page }) => {
-        // Clean up global state to prevent test interference
-        try {
-            await page.evaluate(() => {
-                // Reset global debug mode
-                (window as any).DEBUG_MODE = false;
+        await page.evaluate(() => {
+            (window as any).DEBUG_MODE = false;
+            (window as any).lastCopiedText = undefined;
+            (window as any).lastPastedText = undefined;
+            (window as any).lastVSCodeMetadata = undefined;
+            (window as any).lastBoxSelectionPaste = undefined;
 
-                // Clear clipboard-related global variables
-                (window as any).lastCopiedText = undefined;
-                (window as any).lastPastedText = undefined;
-                (window as any).lastCopiedIsBoxSelection = undefined;
-                (window as any).lastVSCodeMetadata = undefined;
-                (window as any).lastBoxSelectionPaste = undefined;
+            const handler = (window as any).__KEY_EVENT_HANDLER__;
+            if (handler?.cancelBoxSelection) handler.cancelBoxSelection();
 
-                // Reset clipboard API mocks
-                if ((navigator as any).clipboard) {
-                    if ((navigator as any).clipboard.readText.__original) {
-                        (navigator as any).clipboard.readText = (navigator as any).clipboard.readText.__original;
-                    }
-                    if ((navigator as any).clipboard.writeText.__original) {
-                        (navigator as any).clipboard.writeText = (navigator as any).clipboard.writeText.__original;
-                    }
-                }
-
-                // Reset KeyEventHandler box selection state
-                if ((window as any).__KEY_EVENT_HANDLER__) {
-                    const handler = (window as any).__KEY_EVENT_HANDLER__;
-                    if (handler.boxSelectionState) {
-                        handler.boxSelectionState = {
-                            active: false,
-                            startItemId: null,
-                            startOffset: 0,
-                            endItemId: null,
-                            endOffset: 0,
-                            ranges: [],
-                        };
-                    }
-                }
-
-                // Clear editor overlay store selections
-                if ((window as any).editorOverlayStore) {
-                    (window as any).editorOverlayStore.clearSelections();
-                }
-            });
-        } catch (error) {
-            console.log(`Cleanup error: ${error}`);
-        }
+            const eos = (window as any).editorOverlayStore;
+            if (eos?.clearSelections) eos.clearSelections();
+        });
     });
 
     test("矩形選択でコピー → Escでキャンセル → 再度矩形選択 → ペースト", async ({ page }) => {
-        // デバッグモードを有効化とクリップボードモックの設定
-        try {
-            await page.evaluate(() => {
-                (window as any).DEBUG_MODE = true;
-
-                // モック: readText は lastCopiedText を返す
-                (navigator as any).clipboard.readText = async () => {
-                    return (window as any).lastCopiedText || "";
-                };
-
-                // モック: writeText は lastCopiedText を更新する
-                (navigator as any).clipboard.writeText = async (text: string) => {
-                    (window as any).lastCopiedText = text;
-                    console.log(`[Mock] writeText: ${text}`);
-                    return Promise.resolve();
-                };
-            });
-        } catch (error) {
-            console.log(`デバッグモード設定中にエラーが発生しました: ${error}`);
-        }
-
-        // 最初のアイテムが表示されるまで待機
         await page.waitForSelector(".outliner-item", { timeout: 5000 });
+        await page.waitForFunction(
+            () => document.querySelectorAll(".outliner-item").length >= 3,
+            { timeout: 5000 },
+        );
 
-        // 1. テストデータを作成
         await page.locator(".outliner-item").first().click();
-        await page.keyboard.type("First line of text");
-
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("Second line of text");
-
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("Third line of text");
-
-        // 最初のアイテムをクリック
-        await page.locator(".outliner-item").first().click();
+        await TestHelpers.focusGlobalTextarea(page);
 
         // 2. 最初の矩形選択を作成してコピー
-        const startBox = await page.locator(".outliner-item").nth(1).boundingBox();
-        const endBox = await page.locator(".outliner-item").last().boundingBox();
+        const startItem = page.locator(".outliner-item").nth(1);
+        const endItem = page.locator(".outliner-item").last();
+        await startItem.scrollIntoViewIfNeeded();
+        await endItem.scrollIntoViewIfNeeded();
+
+        const startBox = await startItem.boundingBox();
+        const endBox = await endItem.boundingBox();
 
         if (!startBox || !endBox) {
             throw new Error("Could not get bounding box");
@@ -155,6 +99,7 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         );
 
         // 3. テキストをコピー
+        await TestHelpers.focusGlobalTextarea(page);
         await page.keyboard.press("Control+c");
 
         // コピーされたテキストを確認 (waitForFunctionを使用)
@@ -171,29 +116,24 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         console.log(`コピーされたテキスト: "${copiedText}"`);
 
         // 4. Escキーでキャンセル（ペーストせずに）
+        await TestHelpers.focusGlobalTextarea(page);
         await page.keyboard.press("Escape");
 
-        // 明示的にcancelBoxSelectionを呼び出す
         await page.evaluate(() => {
-            if (
-                (window as any).KeyEventHandler
-                && typeof (window as any).KeyEventHandler.cancelBoxSelection === "function"
-            ) {
-                (window as any).KeyEventHandler.cancelBoxSelection();
-            }
-
-            // 選択範囲を強制的にクリア
-            if ((window as any).editorOverlayStore) {
-                (window as any).editorOverlayStore.clearSelections();
-            }
+            const handler = (window as any).__KEY_EVENT_HANDLER__;
+            if (handler?.cancelBoxSelection) handler.cancelBoxSelection();
         });
 
         // 矩形選択がキャンセルされたことを確認 (waitForFunctionを使用)
         await page.waitForFunction(
             () => {
-                if (!(window as any).editorOverlayStore) return true; // Storeがない場合は選択なしとみなす
-                const selections = Object.values((window as any).editorOverlayStore.selections);
-                return selections.filter((s: any) => s.isBoxSelection).length === 0;
+                const handler = (window as any).__KEY_EVENT_HANDLER__;
+                const stateOk = handler?.boxSelectionState?.active ? false : true;
+                const eos = (window as any).editorOverlayStore;
+                if (!eos) return stateOk;
+                const selections = Object.values(eos.selections);
+                const storeOk = selections.filter((s: any) => s.isBoxSelection).length === 0;
+                return stateOk && storeOk;
             },
             undefined,
             { timeout: 5000 },
@@ -224,7 +164,14 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
 
         // 6. ペースト
         await TestHelpers.focusGlobalTextarea(page);
-        await page.keyboard.press("Control+v");
+        await page.evaluate((text) => {
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement | null;
+            if (!textarea) throw new Error("global textarea not found");
+            const dt = new DataTransfer();
+            dt.setData("text/plain", text);
+            const ev = new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true });
+            textarea.dispatchEvent(ev);
+        }, copiedText);
 
         // ペーストが成功したことを確認 (waitForFunctionを使用)
         await page.waitForFunction(
@@ -244,9 +191,13 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         // ペースト後は選択範囲がクリアされるべき (waitForFunctionを使用)
         await page.waitForFunction(
             () => {
-                if (!(window as any).editorOverlayStore) return true;
-                const selections = Object.values((window as any).editorOverlayStore.selections);
-                return selections.filter((s: any) => s.isBoxSelection).length === 0;
+                const handler = (window as any).__KEY_EVENT_HANDLER__;
+                const stateOk = handler?.boxSelectionState?.active ? false : true;
+                const eos = (window as any).editorOverlayStore;
+                if (!eos) return stateOk;
+                const selections = Object.values(eos.selections);
+                const storeOk = selections.filter((s: any) => s.isBoxSelection).length === 0;
+                return stateOk && storeOk;
             },
             undefined,
             { timeout: 5000 },

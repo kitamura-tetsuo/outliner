@@ -99,7 +99,7 @@ class PollingMonitor {
         };
 
         // setTimeoutをインターセプト
-        window.setTimeout = (callback: any, delay?: number, ...args: any[]): any => {
+        window.setTimeout = ((callback: any, delay?: number, ...args: any[]): any => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -131,7 +131,7 @@ class PollingMonitor {
             (call as any).timerId = timerId;
 
             return timerId;
-        };
+        }) as unknown as typeof window.setTimeout;
 
         // requestAnimationFrameをインターセプト
         window.requestAnimationFrame = (callback: FrameRequestCallback): number => {

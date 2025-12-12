@@ -1,79 +1,71 @@
 <script lang="ts">
-import { onMount } from "svelte";
-import * as yjsService from "../../../lib/yjsService.svelte";
-import { containerStore, type ContainerInfo } from "../../../stores/containerStore.svelte";
+    import { onMount } from "svelte";
+    import { collection, query, where, getDocs, getFirestore } from "firebase/firestore";
+    import { projectService } from "../../../services/projectService";
+    import { containerStore, type ContainerInfo } from "../../../stores/containerStore.svelte";
+    import DeleteProjectDialog from "../../../components/DeleteProjectDialog.svelte";
 
-let selectedProjects = $state(new Set<string>());
+    let projects = $state<Array<ContainerInfo>>([]);
+    let projectToDelete: ContainerInfo | null = $state(null);
+    let deletedProjectIds = $state<Set<string>>(new Set());
 
-let loading = $state(false);
-let error: string | undefined = $state(undefined);
-let success: string | undefined = $state(undefined);
-
-// Mirror container store data locally so the table reacts to store updates
-let containers = $state<Array<ContainerInfo>>([]);
-
-function syncContainers(): void {
-    const next = containerStore.containers;
-    containers = next.length > 0 ? [...next] : [];
-}
-
-onMount(() => {
-    syncContainers();
-
-    if (typeof window === "undefined") {
-        return () => {};
-    }
-
-    const onContainerStoreUpdated = () => syncContainers();
-    const onFirestoreUcChanged = () => syncContainers(); // test-only fallback event
-
-    window.addEventListener("container-store-updated", onContainerStoreUpdated);
-    window.addEventListener("firestore-uc-changed", onFirestoreUcChanged);
-
-    return () => {
-        window.removeEventListener("container-store-updated", onContainerStoreUpdated);
-        window.removeEventListener("firestore-uc-changed", onFirestoreUcChanged);
-    };
-});
-
-
-
-async function deleteSelected() {
-    const targets = containers.filter(p => selectedProjects.has(p.id));
-    if (targets.length === 0) return;
-    loading = true;
-    error = undefined;
-    success = undefined;
-
-    let deletedCount = 0;
-    for (const p of targets) {
+    async function loadDeletedProjectIds(): Promise<void> {
         try {
-            const ok = await yjsService.deleteContainer(p.id);
-            if (ok) {
-                selectedProjects.delete(p.id);
-                deletedCount++;
-            } else {
-                error = `削除に失敗しました: ${p.name}`;
-                break;
-            }
-        } catch (err) {
-            error = `削除エラー: ${p.name} - ${err instanceof Error ? err.message : String(err)}`;
-            break;
+            const db = getFirestore();
+            const q = query(collection(db, "projects"), where("deletedAt", "!=", null));
+            const querySnapshot = await getDocs(q);
+            deletedProjectIds = new Set(querySnapshot.docs.map(doc => doc.id));
+        } catch {
+            // If query fails, assume no deleted projects
+            deletedProjectIds = new Set();
         }
     }
 
-    if (!error && deletedCount > 0) {
-        success = "選択したプロジェクトを削除しました";
-        // 削除後にプロジェクトリストを更新するため、少し待ってからページをリロード
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
+    function syncContainers(): void {
+        const next = containerStore.containers;
+        // Filter out deleted projects
+        projects = next.filter(p => !deletedProjectIds.has(p.id));
     }
 
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Reassignment to trigger Svelte reactivity, not creating new reactive state
-    selectedProjects = new Set(selectedProjects);
-    loading = false;
-}
+    onMount(async () => {
+        await loadDeletedProjectIds();
+        syncContainers();
+
+        if (typeof window === "undefined") {
+            return () => {};
+        }
+
+        const onContainerStoreUpdated = async () => {
+            await loadDeletedProjectIds();
+            syncContainers();
+        };
+        const onFirestoreUcChanged = async () => {
+            await loadDeletedProjectIds();
+            syncContainers();
+        }; // test-only fallback event
+
+        window.addEventListener("container-store-updated", onContainerStoreUpdated);
+        window.addEventListener("firestore-uc-changed", onFirestoreUcChanged);
+
+        return () => {
+            window.removeEventListener("container-store-updated", onContainerStoreUpdated);
+            window.removeEventListener("firestore-uc-changed", onFirestoreUcChanged);
+        };
+    });
+
+    function openDeleteDialog(project: ContainerInfo) {
+        projectToDelete = project;
+    }
+
+    async function handleDelete() {
+        if (projectToDelete) {
+            await projectService.deleteProject(projectToDelete.id, projectToDelete.name);
+            projectToDelete = null;
+            // Reload deleted project IDs and sync containers
+            await loadDeletedProjectIds();
+            syncContainers();
+        }
+    }
 </script>
 
 <svelte:head>
@@ -83,55 +75,43 @@ async function deleteSelected() {
 <main class="p-4">
     <h1 class="text-2xl font-bold mb-4">Delete Projects</h1>
 
-
-
-
-    {#if error}
-        <div class="mb-2 text-red-600">{error}</div>
+    {#if projectToDelete}
+        <DeleteProjectDialog
+            projectTitle={projectToDelete.name}
+            message="This will move the project to the trash. It will be permanently deleted after 30 days."
+            confirmText="Delete"
+            onDelete={handleDelete}
+            onCancel={() => (projectToDelete = null)}
+        />
     {/if}
-    {#if success}
-        <div class="mb-2 text-green-600">{success}</div>
-    {/if}
-    {#if loading}
-        <p>Loading...</p>
-    {/if}
-    {#if containers.length > 0}
+
+    {#if projects.length > 0}
         <table class="min-w-full border mb-4">
             <thead>
                 <tr>
-                    <th class="px-2">Select</th>
-                    <th class="px-2">Title</th>
-                    <th class="px-2">ID</th>
+                    <th>Title</th>
+                    <th>ID</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {#each containers as project (project.id)}
+                {#each projects as project (project.id)}
                     <tr>
-                        <td class="px-2 text-center">
-                            <input type="checkbox" checked={selectedProjects.has(project.id)} onchange={(e) => {
-                                const target = e.target as HTMLInputElement;
-                                if (target.checked) {
-                                    selectedProjects.add(project.id);
-                                } else {
-                                    selectedProjects.delete(project.id);
-                                }
-                                // Svelteのリアクティビティのために再代入
-                                selectedProjects = new Set(selectedProjects);
-                            }} />
+                        <td>{project.name || "(loading...)"}</td>
+                        <td>{project.id}</td>
+                        <td>
+                            <button
+                                class="bg-red-500 text-white px-4 py-2 rounded"
+                                onclick={() => openDeleteDialog(project)}
+                            >
+                                Delete
+                            </button>
                         </td>
-                        <td class="px-2">{project.name || "(loading...)"}</td>
-                        <td class="px-2">{project.id}</td>
                     </tr>
                 {/each}
             </tbody>
         </table>
-        <button onclick={deleteSelected} disabled={loading || selectedProjects.size === 0} class="bg-red-500 text-white px-4 py-2 rounded">Delete</button>
     {:else}
         <p>No projects found.</p>
     {/if}
 </main>
-
-<style>
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 4px; }
-</style>

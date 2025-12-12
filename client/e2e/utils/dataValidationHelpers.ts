@@ -31,7 +31,7 @@ export class DataValidationHelpers {
                     const logs = await page.evaluate(() => {
                         const w: any = window as any;
                         return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
-                    }, { timeout: 2000 });
+                    });
                     if (Array.isArray(logs) && logs.length) {
                         console.log("[afterEach] E2E_LOGS (last 200):", logs);
                     }
@@ -142,7 +142,7 @@ export class DataValidationHelpers {
                 } catch (e) {
                     console.warn("[afterEach] cleanup warning:", e);
                 }
-            }, { timeout: 5000 }).catch((e) => {
+            }).catch((e) => {
                 // Ignore errors during cleanup evaluation
                 console.log("[afterEach] cleanup evaluation skipped:", e?.message ?? e);
             });
@@ -161,10 +161,14 @@ export class DataValidationHelpers {
 
         // Wait for the project to be available in the store
         try {
-            await page.waitForFunction(() => {
-                const store = (window as any).generalStore || (window as any).appStore;
-                return !!(store && store.project);
-            }, { timeout: 30000 });
+            await page.waitForFunction(
+                () => {
+                    const store = (window as any).generalStore || (window as any).appStore;
+                    return !!(store && store.project);
+                },
+                undefined,
+                { timeout: 5000 },
+            );
         } catch (e) {
             console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", e?.message ?? e);
             return; // Skip snapshot if project is not available
@@ -218,7 +222,7 @@ export class DataValidationHelpers {
                     mode: "yjs",
                     yjsJson: JSON.stringify({ projectTitle: String(project.title ?? ""), pages }, null, 2),
                 };
-            }, { timeout: 30000 });
+            });
         } catch (e) {
             console.warn("[saveSnapshotsAndCompare] evaluate failed:", e?.message ?? e);
             return; // Skip snapshot if evaluation fails

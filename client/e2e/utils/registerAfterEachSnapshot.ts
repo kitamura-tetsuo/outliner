@@ -15,38 +15,18 @@ if (process.env.E2E_DISABLE_AUTO_SNAPSHOT !== "1") {
             return;
         }
 
-        // Execute with a timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("afterEach hook timeout")), 30000); // 30 second timeout
-        });
+        // Best-effort only: keep teardown short and never fail the test.
+        // Do not use Promise.race timeouts here; it doesn't cancel the losing promise and can leak work into the next test.
+        try {
+            await DataValidationHelpers.trySaveAfterEach(page, testInfo);
+        } catch (e: any) {
+            console.warn("[afterEach] snapshot skipped:", e?.message ?? e);
+        }
 
-        const mainPromise = (async () => {
-            // Run save and cleanup with individual timeouts to prevent hanging
-            const savePromise = DataValidationHelpers.trySaveAfterEach(page, testInfo);
-            const saveTimeout = new Promise(resolve =>
-                setTimeout(() => {
-                    console.log("[afterEach] Save operation timeout");
-                    resolve(undefined);
-                }, 20000)
-            );
-
-            // Race save operation with a 20 second timeout
-            await Promise.race([savePromise, saveTimeout]);
-
-            // Add cleanup to ensure test isolation
-            const cleanupPromise = DataValidationHelpers.tryCleanupAfterEach(page);
-            const cleanupTimeout = new Promise(resolve =>
-                setTimeout(() => {
-                    console.log("[afterEach] Cleanup operation timeout");
-                    resolve(undefined);
-                }, 5000)
-            );
-
-            // Race cleanup operation with a 5 second timeout
-            await Promise.race([cleanupPromise, cleanupTimeout]);
-        })();
-
-        // Race the main operation with the timeout
-        await Promise.race([mainPromise, timeoutPromise]);
+        try {
+            await DataValidationHelpers.tryCleanupAfterEach(page);
+        } catch (e: any) {
+            console.warn("[afterEach] cleanup skipped:", e?.message ?? e);
+        }
     });
 }

@@ -95,7 +95,7 @@ export class OutlinerViewModel {
                 "OutlinerViewModel: visibleOrder length after recalculate:",
                 this.visibleOrder.length,
             );
-            logger.info("View models updated, count:", this.visibleOrder.length);
+            logger.info({ count: this.visibleOrder.length }, "View models updated");
         } finally {
             this._isUpdating = false;
         }
@@ -255,13 +255,8 @@ export class OutlinerViewModel {
 
         // モデルから表示情報を再計算（アイテムインスタンスは維持）
         const rootItem = this.findRootItem(itemId);
-        if (
-            ((it: any) => (it && typeof it.length === "number" && typeof it.at === "function"))(
-                (rootItem as any)?.items,
-            )
-        ) {
-            this.recalculateOrderAndDepth(rootItem.items);
-        }
+        if (!rootItem) return;
+        this.recalculateOrderAndDepth(rootItem.items);
     }
 
     /**
@@ -290,7 +285,7 @@ export class OutlinerViewModel {
             .map(id => {
                 const model = this.viewModels.get(id);
                 if (!model) {
-                    logger.error("View model not found for ID:", id);
+                    logger.error({ id }, "View model not found for ID");
                     return null;
                 }
 

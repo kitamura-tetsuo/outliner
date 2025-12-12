@@ -55,26 +55,33 @@ const getGraphNodesFromChart = (currentChart: echarts.ECharts): GraphNodeWithLay
 function saveLayout() {
     if (!chart) return;
     try {
-        const nodes = getGraphNodesFromChart(chart);
+        const optionNodes = getGraphNodesFromChart(chart);
 
-        // EChartsの内部状態から実際の位置を取得
-        const layoutData = {
-            nodes: nodes.map((node) => {
-                // EChartsの内部状態から位置を取得
-                const actualPosition = chart?.convertFromPixel(
-                    { seriesIndex: 0 },
-                    [node.x ?? 0, node.y ?? 0],
-                );
-                const [convertedX, convertedY] = Array.isArray(actualPosition) ? actualPosition : [undefined, undefined];
-                return {
-                    id: node.id,
-                    x: node.x ?? convertedX,
-                    y: node.y ?? convertedY,
-                    fixed: node.fixed || false,
-                };
-            }).filter((node): node is GraphLayout["nodes"][number] => typeof node.x === "number" && typeof node.y === "number"), // 位置が定義されているノードのみ保存
-        };
+        const seriesModel: unknown = chart.getModel()?.getSeriesByIndex(0);
+        const seriesData: { getItemLayout?: (idx: number) => unknown; } | undefined =
+            typeof (seriesModel as { getData?: unknown; })?.getData === "function"
+                ? ((seriesModel as { getData: () => unknown; }).getData() as any)
+                : undefined;
 
+        const nodes = optionNodes.flatMap((node, i) => {
+            const layout = seriesData?.getItemLayout?.(i) as { x?: unknown; y?: unknown; } | undefined;
+            const x = typeof layout?.x === "number" ? layout.x : node.x;
+            const y = typeof layout?.y === "number" ? layout.y : node.y;
+            if (typeof x !== "number" || typeof y !== "number") return [];
+            return [{
+                id: node.id,
+                x,
+                y,
+                fixed: node.fixed || false,
+            }];
+        });
+
+        if (nodes.length === 0) {
+            // Avoid clobbering an existing saved layout with empty/undefined data.
+            return;
+        }
+
+        const layoutData: GraphLayout = { nodes };
         console.log("Saving layout data:", layoutData);
         localStorage.setItem("graph-layout", JSON.stringify(layoutData));
     }
@@ -125,6 +132,9 @@ function update() {
 
     // 保存されたレイアウトを適用
     const nodesWithLayout = loadLayout(nodes as GraphNodeWithLayout[]);
+    const hasRestoredLayout = nodesWithLayout.some((node) =>
+        node.fixed === true || (typeof node.x === "number" && typeof node.y === "number")
+    );
 
     chart.setOption({
         tooltip: {},
@@ -137,11 +147,11 @@ function update() {
             label: { position: "right" },
             force: {
                 // 固定ノードの位置を尊重する設定
-                initLayout: "circular",
+                initLayout: hasRestoredLayout ? "none" : "circular",
                 repulsion: 100,
                 gravity: 0.1,
                 edgeLength: 200,
-                layoutAnimation: true,
+                layoutAnimation: !hasRestoredLayout,
             },
         }],
     });

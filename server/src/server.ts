@@ -61,6 +61,33 @@ export function startServer(config: Config, logger = defaultLogger) {
             res.end(JSON.stringify(getMetrics(wss)));
             return;
         }
+
+        if (req.method === "DELETE" && req.url?.startsWith("/docs/")) {
+            const docName = req.url.split("/")[2];
+            const secret = req.headers["x-secret-key"];
+
+            if (secret !== config.YJS_SECRET_KEY) {
+                res.writeHead(401, { "Content-Type": "text/plain" });
+                res.end("Unauthorized");
+                return;
+            }
+
+            if (persistence && docName) {
+                persistence.clearDocument(docName).then(() => {
+                    logger.info({ event: "doc_deleted", docName });
+                    res.writeHead(200, { "Content-Type": "text/plain" });
+                    res.end("ok");
+                }).catch((err) => {
+                    logger.error({ event: "doc_delete_error", docName, err });
+                    res.writeHead(500, { "Content-Type": "text/plain" });
+                    res.end("Internal Server Error");
+                });
+            } else {
+                res.writeHead(400, { "Content-Type": "text/plain" });
+                res.end("Bad Request");
+            }
+            return;
+        }
         res.writeHead(200, { "Content-Type": "text/plain" });
         res.end("ok");
     });

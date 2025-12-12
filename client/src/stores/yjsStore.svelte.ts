@@ -1,3 +1,4 @@
+import type * as Y from "yjs";
 import type { YjsClient } from "../yjs/YjsClient";
 import { store as globalStore } from "./store.svelte";
 
@@ -169,6 +170,13 @@ class YjsStore {
     }
     getCurrentUser() {
         return this.currentUser;
+    }
+
+    async getYDoc(projectId: string): Promise<Y.Doc> {
+        const client = this._client;
+        const doc = (client?.project as any)?.ydoc as Y.Doc | undefined;
+        if (client?.containerId === projectId && doc) return doc;
+        throw new Error(`YjsStore: Y.Doc not available for projectId=${projectId}`);
     }
 }
 

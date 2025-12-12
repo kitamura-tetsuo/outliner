@@ -172,19 +172,16 @@ export async function renameProject(newTitle: string): Promise<void> {
         throw new Error("No active Yjs client.");
     }
 
-    const project = Project.fromDoc(client.ydoc);
-    if (!project) {
-        throw new Error("No active project.");
-    }
+    const project = client.project;
 
     project.setTitle(newTitle);
-    setContainerTitleInMetaDoc(client.roomName, newTitle);
+    setContainerTitleInMetaDoc(client.containerId, newTitle);
 
     // Update the project in the registry
-    for (const [key, value] of registry.entries()) {
+    for (const [, value] of registry.entries()) {
         const [registeredClient] = value;
         if (registeredClient === client) {
-            registry.set({ type: "container", id: client.roomName }, [client, project]);
+            registry.set({ type: "container", id: client.containerId }, [client, project]);
             break;
         }
     }

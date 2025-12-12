@@ -367,6 +367,19 @@ install_all_dependencies() {
 
 # Start Firebase emulator
 start_firebase_emulator() {
+  if ! command -v java >/dev/null 2>&1; then
+    echo "❌ Java is required to run Firebase emulators. Install JDK 21+ and retry." >&2
+    return 1
+  fi
+
+  local java_version
+  java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
+  if [ "${java_version:-0}" -lt 21 ] 2>/dev/null; then
+    echo "❌ Firebase emulators now require Java 21+ (detected Java ${java_version})." >&2
+    echo "   In CI this is provided via actions/setup-java; locally install JDK 21+ and retry." >&2
+    return 1
+  fi
+
   if port_is_open ${FIREBASE_AUTH_PORT}; then
     echo "Firebase emulator already running, stopping it first..."
     kill_ports
@@ -375,6 +388,29 @@ start_firebase_emulator() {
 
   echo "Starting Firebase emulator..."
   cd "${ROOT_DIR}"
+
+  # Hosting emulator requires the configured public directory to exist.
+  # In CI, `build/` is gitignored and usually absent, causing `firebase emulators:start`
+  # to fail and leaving the Auth/Firestore ports closed (downstream tests then see ECONNREFUSED).
+  if [ ! -d "${ROOT_DIR}/build" ]; then
+    echo "Creating missing Hosting public directory: ${ROOT_DIR}/build"
+    mkdir -p "${ROOT_DIR}/build"
+  fi
+  if [ ! -f "${ROOT_DIR}/build/index.html" ]; then
+    cat > "${ROOT_DIR}/build/index.html" <<'EOF'
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Outliner Emulator Placeholder</title>
+  </head>
+  <body>
+    <p>Firebase Hosting emulator placeholder for tests.</p>
+  </body>
+</html>
+EOF
+  fi
 
   # Create .env file for Firebase Functions (without reserved environment variables)
   echo "Creating .env file for Firebase Functions..."
@@ -397,6 +433,13 @@ EOF
   FIREBASE_PID=$!
   echo "Firebase emulator started with PID: ${FIREBASE_PID}"
   echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
+  sleep 2
+  if ! kill -0 "${FIREBASE_PID}" >/dev/null 2>&1; then
+    echo "❌ Firebase emulator process exited immediately (PID: ${FIREBASE_PID})"
+    echo "Last 80 lines of Firebase emulator log:"
+    tail -80 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
+    return 1
+  fi
 
   cd "${ROOT_DIR}"
 

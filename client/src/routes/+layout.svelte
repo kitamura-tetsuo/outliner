@@ -54,38 +54,48 @@ if (browser) {
         (window as Window & typeof globalThis & { generalStore?: GeneralStore; appStore?: GeneralStore }).appStore || appStore;
 }
 // URL からプロジェクト/ページを初期化して window.generalStore.project と currentPage を満たす
-if (browser) {
-    try {
-        const parts = window.location.pathname.split("/").filter(Boolean);
-        const projectTitle = decodeURIComponent(parts[0] || "Untitled Project");
-        const pageTitle = decodeURIComponent(parts[1] || "");
+try {
+    if (typeof window === "undefined") {
+        throw new Error("Server-side render");
+    }
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    const projectTitle = decodeURIComponent(parts[0] || "Untitled Project");
+    const pageTitle = decodeURIComponent(parts[1] || "");
 
-        if (!appStore.project) {
-            appStore.project = Project.createInstance(projectTitle);
-            console.log("INIT: Provisional Project set in +layout.svelte", { projectTitle, pageTitle });
-        }
+    // Don't create a provisional project for settings page - preserve existing project
+    const isSettingsPage = parts[0] === "settings";
+    if (!appStore.project && !isSettingsPage) {
+        // Check sessionStorage for test project name
+        const testProjectName = window.sessionStorage?.getItem('TEST_CURRENT_PROJECT_NAME');
+        const nameToUse = testProjectName || projectTitle;
+        appStore.project = Project.createInstance(nameToUse);
+    }
+    // Update window globals for test compatibility
+    if (typeof window !== "undefined" && appStore.project) {
+        (window as any).__CURRENT_PROJECT__ = appStore.project;
+        (window as any).__CURRENT_PROJECT_TITLE__ = appStore.project.title;
+    }
 
-        // currentPage が未設定で、URL に pageTitle がある場合は準備
-        if (pageTitle && !appStore.currentPage && appStore.project) {
-            try {
-                const items = appStore.project.items;
-                // 既存ページにタイトル一致があるかチェック
-                let found: Item | null = null;
-                const len = items?.length ?? 0;
-                for (let i = 0; i < len; i++) {
-                    const p = items.at ? items.at(i) : items[i];
-                    const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-                    if (String(t).toLowerCase() === String(pageTitle).toLowerCase()) { found = p; break; }
-                }
-                if (!found) {
-                    found = items?.addNode?.("tester");
-                    found?.updateText?.(pageTitle);
-                }
-                if (found) appStore.currentPage = found;
-            } catch {}
-        }
-    } catch {}
-}
+    // currentPage が未設定で、URL に pageTitle がある場合は準備
+    if (pageTitle && !appStore.currentPage && appStore.project) {
+        try {
+            const items = appStore.project.items;
+            // 既存ページにタイトル一致があるかチェック
+            let found: Item | null = null;
+            const len = items?.length ?? 0;
+            for (let i = 0; i < len; i++) {
+                const p = items.at ? items.at(i) : items[i];
+                const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                if (String(t).toLowerCase() === String(pageTitle).toLowerCase()) { found = p; break; }
+            }
+            if (!found) {
+                found = items?.addNode?.("tester");
+                found?.updateText?.(pageTitle);
+            }
+            if (found) appStore.currentPage = found;
+        } catch {}
+    }
+} catch {}
 
 // ルート変化を購読して currentPage を補完（runes準拠）
 function ensureCurrentPageByRoute(pj: string, pg: string) {

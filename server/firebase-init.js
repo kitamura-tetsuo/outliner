@@ -92,7 +92,7 @@ if (!serviceAccount.project_id && !isEmulatorEnvironment) {
     process.exit(1);
 }
 
-async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
+async function waitForFirebaseEmulator(maxRetries, initialDelay, maxDelay) {
     const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST
         || process.env.FIRESTORE_EMULATOR_HOST
         || process.env.FIREBASE_EMULATOR_HOST;
@@ -100,7 +100,22 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
         logger.info("Firebase emulator not configured, skipping connection wait");
         return;
     }
-    logger.info(`Firebase emulator detected, waiting for connection... (max retries: ${maxRetries})`);
+    const isCiOrTest = process.env.CI === "true"
+        || Boolean(process.env.GITHUB_ACTIONS)
+        || process.env.NODE_ENV === "test";
+    const resolvedMaxRetries = Number.isFinite(Number(maxRetries))
+        ? Number(maxRetries)
+        : Number(process.env.FIREBASE_EMULATOR_WAIT_MAX_RETRIES)
+            || (isCiOrTest ? 120 : 30);
+    const resolvedInitialDelay = Number.isFinite(Number(initialDelay))
+        ? Number(initialDelay)
+        : Number(process.env.FIREBASE_EMULATOR_WAIT_INITIAL_DELAY_MS) || 1000;
+    const resolvedMaxDelay = Number.isFinite(Number(maxDelay))
+        ? Number(maxDelay)
+        : Number(process.env.FIREBASE_EMULATOR_WAIT_MAX_DELAY_MS) || 10000;
+
+    const maxRetriesForLog = resolvedMaxRetries;
+    logger.info(`Firebase emulator detected, waiting for connection... (max retries: ${maxRetriesForLog})`);
     logger.info(
         `Emulator hosts: AUTH=${process.env.FIREBASE_AUTH_EMULATOR_HOST || "(unset)"}, `
             + `FIRESTORE=${process.env.FIRESTORE_EMULATOR_HOST || "(unset)"}, FUNCTIONS=${
@@ -108,10 +123,10 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
             }`,
     );
     let retryCount = 0;
-    let delay = initialDelay;
-    while (retryCount < maxRetries) {
+    let delay = resolvedInitialDelay;
+    while (retryCount < resolvedMaxRetries) {
         try {
-            logger.info(`Firebase connection attempt ${retryCount + 1}/${maxRetries}...`);
+            logger.info(`Firebase connection attempt ${retryCount + 1}/${maxRetriesForLog}...`);
             const listUsersResult = await admin.auth().listUsers(1);
             logger.info(`Firebase emulator connection successful. Found users: ${listUsersResult.users.length}`);
             if (listUsersResult.users.length > 0) {
@@ -129,11 +144,13 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
         } catch (error) {
             retryCount++;
             if (error.code === "ECONNREFUSED" || error.message.includes("ECONNREFUSED")) {
-                logger.warn(`Firebase emulator not ready yet (attempt ${retryCount}/${maxRetries}): ${error.message}`);
-                if (retryCount < maxRetries) {
+                logger.warn(
+                    `Firebase emulator not ready yet (attempt ${retryCount}/${maxRetriesForLog}): ${error.message}`,
+                );
+                if (retryCount < resolvedMaxRetries) {
                     logger.info(`Waiting ${delay}ms before next retry...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
-                    delay = Math.min(delay * 1.5, maxDelay);
+                    delay = Math.min(delay * 1.5, resolvedMaxDelay);
                 }
             } else {
                 logger.error(`Firebase emulator connection failed with non-connection error: ${error.message}`);
@@ -141,7 +158,7 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
             }
         }
     }
-    throw new Error(`Firebase emulator connection failed after ${maxRetries} attempts`);
+    throw new Error(`Firebase emulator connection failed after ${resolvedMaxRetries} attempts`);
 }
 
 async function clearFirestoreEmulatorData() {
@@ -229,6 +246,9 @@ async function initializeFirebase() {
                 logger.info("Firebase emulator connection established successfully");
             } catch (error) {
                 logger.error(`Firebase emulator connection failed after retries: ${error.message}`);
+                if (process.env.CI === "true" || process.env.NODE_ENV === "test") {
+                    throw error;
+                }
             }
         }
         if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {

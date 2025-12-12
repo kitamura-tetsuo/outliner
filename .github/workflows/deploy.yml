@@ -27,6 +27,12 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Setup Java for Firebase CLI
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: Install Firebase CLI
         run: npm install -g firebase-tools@latest
 
@@ -106,4 +112,3 @@ jobs:
       - name: Deploy to Firebase
         if: github.actor != 'dependabot[bot]'
         run: firebase deploy --only hosting,functions,firestore:rules,storage --project outliner-d57b0 --non-interactive --force
-
