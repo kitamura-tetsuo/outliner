@@ -420,6 +420,13 @@ EOF
   FIREBASE_PID=$!
   echo "Firebase emulator started with PID: ${FIREBASE_PID}"
   echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
+  sleep 2
+  if ! kill -0 "${FIREBASE_PID}" >/dev/null 2>&1; then
+    echo "❌ Firebase emulator process exited immediately (PID: ${FIREBASE_PID})"
+    echo "Last 80 lines of Firebase emulator log:"
+    tail -80 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
+    return 1
+  fi
 
   cd "${ROOT_DIR}"
 
