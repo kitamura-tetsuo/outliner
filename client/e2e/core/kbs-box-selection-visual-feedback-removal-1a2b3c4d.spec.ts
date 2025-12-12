@@ -28,6 +28,28 @@ test.describe("Box selection feedback", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
+    test.afterEach(async ({ page }) => {
+        // Clean up box selection state to prevent interference with subsequent tests
+        try {
+            await page.evaluate(() => {
+                // Reset debug mode
+                (window as any).DEBUG_MODE = false;
+
+                // Cancel box selection via KeyEventHandler
+                if ((window as any).KeyEventHandler?.cancelBoxSelection) {
+                    (window as any).KeyEventHandler.cancelBoxSelection();
+                }
+
+                // Clear editor overlay store selections
+                if ((window as any).editorOverlayStore?.clearSelections) {
+                    (window as any).editorOverlayStore.clearSelections();
+                }
+            });
+        } catch (error) {
+            console.log(`Cleanup error: ${error}`);
+        }
+    });
+
     test("selection-box-updating class removed after timeout", async ({ page }) => {
         // Create content first like other working tests do
         await page.locator(".outliner-item").first().click();

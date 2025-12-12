@@ -4,6 +4,17 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Project Renaming", () => {
+    test.afterEach(async ({ page }) => {
+        // Clean up sessionStorage to prevent test isolation issues
+        try {
+            await page.evaluate(() => {
+                window.sessionStorage?.removeItem("TEST_CURRENT_PROJECT_NAME");
+            });
+        } catch {
+            // Page may be closed, ignore error
+        }
+    });
+
     test("should allow a user to rename a project", async ({ page }) => {
         const { projectName } = await TestHelpers.prepareTestEnvironment(page);
 

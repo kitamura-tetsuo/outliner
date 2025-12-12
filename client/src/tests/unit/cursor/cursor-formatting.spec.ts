@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Cursor } from "../../../lib/Cursor";
-import type { Item } from "../../../schema/yjs-schema";
+import type { Item } from "../../../schema/app-schema";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import type { EditorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
@@ -50,14 +50,14 @@ vi.mock("../../../utils/ScrapboxFormatter", () => {
 });
 
 describe("Cursor Formatting", () => {
-    let mockItem: Item;
+    let mockItem: any;
 
     beforeEach(() => {
         // Reset mocks
         vi.clearAllMocks();
 
         // Create mock item
-        mockItem = {
+        const item: any = {
             id: "test-item-1",
             text: "This is a test text for formatting",
             parent: null,
@@ -68,17 +68,18 @@ describe("Cursor Formatting", () => {
             },
             updateText: vi.fn(),
             delete: vi.fn(),
-        } as unknown as Item;
+        };
+        mockItem = item as Item;
 
         // Mock the general store
         (generalStore as GeneralStore).currentPage = {
             id: "page-1",
             items: {
                 [Symbol.iterator]: function*() {
-                    yield mockItem;
+                    yield item;
                 },
             },
-        };
+        } as any;
 
         // Setup editor overlay store mocks
         // setCursor is already configured in the mock to return "new-cursor-id"

@@ -1,4 +1,4 @@
-import initSqlJs, { type Database } from "sql.js";
+import initSqlJs from "sql.js";
 import { writable } from "svelte/store";
 import type { EditInfo } from "./editMapper";
 import { type Op, SyncWorker } from "./syncWorker";
@@ -15,9 +15,14 @@ interface QueryResult {
     columnsMeta: ColumnMeta[];
 }
 
-type SqlJsModule = typeof import("sql.js");
-let SQL: SqlJsModule | null = null;
-let db: Database | null = null;
+type SqlJsStatic = Awaited<ReturnType<typeof initSqlJs>>;
+let SQL: SqlJsStatic | null = null;
+type SqlJsDatabase = {
+    exec: (sql: string) => Array<{ columns: string[]; values: unknown[][]; }>;
+    prepare: (sql: string) => SqlJsStatement;
+};
+type SqlJsStatement = { run: (params?: unknown[]) => SqlJsStatement; free: () => void; };
+let db: SqlJsDatabase | null = null;
 let currentSelect = "";
 let worker: SyncWorker | null = null;
 
@@ -39,12 +44,21 @@ export async function initDb() {
 
     console.log("Initializing SQL.js database...");
 
-    // テスト環境または本番環境では適切なパスでWASMを読み込み
-    if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
+    const isVitest = typeof process !== "undefined" && !!process.env.VITEST;
+    const isTestEnv = typeof process !== "undefined"
+        && (process.env.NODE_ENV === "test" || isVitest || (import.meta as any).env?.MODE === "test");
+
+    // Node(テスト/SSR)環境ではFSからWASMを読み込み
+    if (isTestEnv || typeof window === "undefined") {
         const fs = await import("fs");
         const path = await import("path");
+        const { createRequire } = await import("module");
+        const require = createRequire(import.meta.url);
+        const resolvedWasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
+
         // Try multiple possible paths for the WASM file
         const possiblePaths = [
+            resolvedWasmPath,
             path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm"),
             path.resolve(__dirname, "../node_modules/sql.js/dist/sql-wasm.wasm"),
             "./node_modules/sql.js/dist/sql-wasm.wasm",
@@ -72,19 +86,22 @@ export async function initDb() {
             wasmBinary: wasmBinary,
         });
     } else {
-        // 開発環境ではViteのpublicディレクトリからWASMを読み込み
+        // ブラウザ開発環境ではpublicディレクトリからWASMを読み込み
         SQL = await initSqlJs({
             locateFile: (file: string) => {
                 if (file.endsWith(".wasm")) {
-                    // 開発環境ではpublicディレクトリにあるWASMファイルを使用
-                    return `/node_modules/sql.js/dist/sql-wasm.wasm`;
+                    // public/sql-wasm.wasm を使用
+                    return "/sql-wasm.wasm";
                 }
                 return file;
             },
         });
     }
 
-    db = new SQL.Database();
+    if (!SQL) {
+        throw new Error("Failed to initialize SQL.js");
+    }
+    db = new (SQL as any).Database() as SqlJsDatabase;
     worker = new SyncWorker(db);
     console.log("SQL.js database initialized successfully");
 }
@@ -134,6 +151,7 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
         return { sql, aliases: [], tableMap };
     }
 
+    const aliases = Object.keys(tableMap);
     const selectMatch = selectPart.match(/select\s+([\s\S]+?)\s+from/i);
     console.log("selectMatch:", selectMatch);
     if (!selectMatch) {
@@ -150,11 +168,8 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
     console.log("additions:", additions);
     if (additions.length === 0) {
         console.log("No additions needed, returning original");
-        return { sql, aliases: aliasesInSelect, tableMap };
+        return { sql, aliases, tableMap };
     }
-
-    // Extract aliases from the tableMap keys
-    const aliases = Object.keys(tableMap);
 
     const newSelect = `${selectClause}, ${additions.join(", ")}`;
     const modifiedSelectPart = selectPart.replace(selectMatch[0], `SELECT ${newSelect} FROM`);

@@ -1,26 +1,48 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { collection, query, where, getDocs, getFirestore } from "firebase/firestore";
     import { projectService } from "../../../services/projectService";
     import { containerStore, type ContainerInfo } from "../../../stores/containerStore.svelte";
     import DeleteProjectDialog from "../../../components/DeleteProjectDialog.svelte";
 
     let projects = $state<Array<ContainerInfo>>([]);
     let projectToDelete: ContainerInfo | null = $state(null);
+    let deletedProjectIds = $state<Set<string>>(new Set());
+
+    async function loadDeletedProjectIds(): Promise<void> {
+        try {
+            const db = getFirestore();
+            const q = query(collection(db, "projects"), where("deletedAt", "!=", null));
+            const querySnapshot = await getDocs(q);
+            deletedProjectIds = new Set(querySnapshot.docs.map(doc => doc.id));
+        } catch {
+            // If query fails, assume no deleted projects
+            deletedProjectIds = new Set();
+        }
+    }
 
     function syncContainers(): void {
         const next = containerStore.containers;
-        projects = next.length > 0 ? [...next] : [];
+        // Filter out deleted projects
+        projects = next.filter(p => !deletedProjectIds.has(p.id));
     }
 
-    onMount(() => {
+    onMount(async () => {
+        await loadDeletedProjectIds();
         syncContainers();
 
         if (typeof window === "undefined") {
             return () => {};
         }
 
-        const onContainerStoreUpdated = () => syncContainers();
-        const onFirestoreUcChanged = () => syncContainers(); // test-only fallback event
+        const onContainerStoreUpdated = async () => {
+            await loadDeletedProjectIds();
+            syncContainers();
+        };
+        const onFirestoreUcChanged = async () => {
+            await loadDeletedProjectIds();
+            syncContainers();
+        }; // test-only fallback event
 
         window.addEventListener("container-store-updated", onContainerStoreUpdated);
         window.addEventListener("firestore-uc-changed", onFirestoreUcChanged);
@@ -39,6 +61,8 @@
         if (projectToDelete) {
             await projectService.deleteProject(projectToDelete.id, projectToDelete.name);
             projectToDelete = null;
+            // Reload deleted project IDs and sync containers
+            await loadDeletedProjectIds();
             syncContainers();
         }
     }

@@ -21,7 +21,7 @@
 	}
 </script>
 
-<div>
+<div data-testid="delete-project-dialog">
 	<h2>Delete Project</h2>
 	<p>
 		{message}

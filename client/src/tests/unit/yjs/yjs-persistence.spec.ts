@@ -68,14 +68,13 @@ describe("yjsPersistence", () => {
                 destroy: vi.fn(),
             };
 
-            vi.mocked(IndexeddbPersistence).mockImplementationOnce(() => mockPersistenceImpl);
+            (IndexeddbPersistence as any).mockImplementationOnce(() => mockPersistenceImpl);
 
             createPersistence(containerId, doc);
 
             // Trigger the sync callback
-            if (syncCallback) {
-                syncCallback();
-            }
+            const cb: unknown = syncCallback;
+            if (typeof cb === "function") (cb as () => void)();
 
             expect(consoleSpy).toHaveBeenCalledWith(
                 "[yjsPersistence] Local cache loaded for container: test-container-789",
@@ -93,7 +92,7 @@ describe("yjsPersistence", () => {
                 destroy: vi.fn(),
             };
 
-            await expect(waitForSync(persistence)).resolves.toBeUndefined();
+            await expect(waitForSync(persistence as any)).resolves.toBeUndefined();
             expect(persistence.once).not.toHaveBeenCalled();
         });
 
@@ -107,7 +106,7 @@ describe("yjsPersistence", () => {
                 destroy: vi.fn(),
             };
 
-            await expect(waitForSync(persistence)).resolves.toBeUndefined();
+            await expect(waitForSync(persistence as any)).resolves.toBeUndefined();
             expect(persistence.once).toHaveBeenCalledWith("synced", expect.any(Function));
         });
 
@@ -121,8 +120,8 @@ describe("yjsPersistence", () => {
                 destroy: vi.fn(),
             };
 
-            const waitPromise1 = waitForSync(persistence);
-            const waitPromise2 = waitForSync(persistence);
+            const waitPromise1 = waitForSync(persistence as any);
+            const waitPromise2 = waitForSync(persistence as any);
 
             // Both should be pending
             expect(persistence.once).toHaveBeenCalledTimes(2);

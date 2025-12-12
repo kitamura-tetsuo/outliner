@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Cursor } from "../../../lib/Cursor";
-import type { Item } from "../../../schema/yjs-schema";
+import type { Item } from "../../../schema/app-schema";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
 import type { GeneralStore } from "../../../stores/store.svelte";
@@ -37,15 +37,15 @@ vi.mock("../../../stores/store.svelte", () => {
 });
 
 describe("Cursor", () => {
-    let mockItem: Item;
-    let mockParentItem: Item;
+    let mockItem: any;
+    let mockParentItem: any;
 
     beforeEach(() => {
         // Reset mocks
         vi.clearAllMocks();
 
         // Create mock items
-        mockItem = {
+        const item: any = {
             id: "test-item-1",
             text: "Test text content",
             parent: null,
@@ -56,25 +56,27 @@ describe("Cursor", () => {
             },
             updateText: vi.fn(),
             delete: vi.fn(),
-        } as unknown as Item;
+        };
 
-        mockParentItem = {
+        const parent: any = {
             id: "parent-item-1",
             text: "Parent text content",
             parent: null,
             items: {
                 [Symbol.iterator]: function*() {
-                    yield mockItem;
+                    yield item;
                 },
-                addNode: vi.fn().mockReturnValue(mockItem),
+                addNode: vi.fn().mockReturnValue(item),
                 indexOf: vi.fn().mockReturnValue(0),
             },
             updateText: vi.fn(),
             delete: vi.fn(),
-        } as unknown as Item;
+        };
 
         // Set up parent relationship
-        mockItem.parent = mockParentItem;
+        item.parent = parent;
+        mockItem = item as Item;
+        mockParentItem = parent as Item;
 
         // Mock the general store
         (generalStore as GeneralStore).currentPage = mockParentItem;

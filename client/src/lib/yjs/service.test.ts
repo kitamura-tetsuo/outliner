@@ -60,7 +60,7 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         // Provide a minimal global overlay store
         const editorOverlayStore = {
-            cursors: {} as Record<string, unknown>,
+            cursors: {} as Record<string, { itemId: string; offset: number; userId: string; }>,
             selections: {} as Record<string, unknown>,
             setCursor({ itemId, offset, userId }: { itemId: string; offset: number; userId: string; }) {
                 this.cursors[userId] = { itemId, offset, userId };

@@ -1,44 +1,57 @@
 import { getAuth } from "firebase/auth";
-import { doc, getFirestore, updateDoc } from "firebase/firestore";
+import { deleteField, doc, getFirestore, setDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { Project } from "../schema/app-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
 
 class ProjectService {
     async deleteProject(projectId: string, projectTitle: string) {
-        const ydoc = await yjsStore.getYDoc(projectId);
-        const project = Project.fromDoc(ydoc);
         const auth = getAuth();
         const user = auth.currentUser;
 
         if (user) {
-            project.deletedAt = Date.now();
-            project.deletedBy = user.uid;
+            const deletedAt = Date.now();
+            const deletedBy = user.uid;
 
-            // Also update in firestore
+            // Try to update YDoc if connected (best effort, don't fail if not connected)
+            try {
+                const ydoc = await yjsStore.getYDoc(projectId);
+                const project = Project.fromDoc(ydoc);
+                project.deletedAt = deletedAt;
+                project.deletedBy = deletedBy;
+            } catch {
+                // YDoc not available, continue with Firestore-only update
+            }
+
+            // Always update Firestore (use setDoc with merge to create if doesn't exist)
             const db = getFirestore();
             const projectRef = doc(db, "projects", projectId);
-            await updateDoc(projectRef, {
-                deletedAt: project.deletedAt,
-                deletedBy: project.deletedBy,
+            await setDoc(projectRef, {
+                deletedAt,
+                deletedBy,
                 title: projectTitle,
-            });
+            }, { merge: true });
         }
     }
 
     async restoreProject(projectId: string) {
-        const ydoc = await yjsStore.getYDoc(projectId);
-        const project = Project.fromDoc(ydoc);
-        project.deletedAt = null;
-        project.deletedBy = null;
+        // Try to update YDoc if connected (best effort)
+        try {
+            const ydoc = await yjsStore.getYDoc(projectId);
+            const project = Project.fromDoc(ydoc);
+            project.deletedAt = null;
+            project.deletedBy = null;
+        } catch {
+            // YDoc not available, continue with Firestore-only update
+        }
 
-        // Also update in firestore
+        // Always update Firestore
         const db = getFirestore();
         const projectRef = doc(db, "projects", projectId);
-        await updateDoc(projectRef, {
-            deletedAt: null,
-            deletedBy: null,
-        });
+        await setDoc(projectRef, {
+            deletedAt: deleteField(),
+            deletedBy: deleteField(),
+        }, { merge: true });
     }
 
     async permanentlyDeleteProject(projectId: string) {

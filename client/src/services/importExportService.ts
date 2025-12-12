@@ -143,9 +143,13 @@ export function importMarkdownIntoProject(md: string, project: Project) {
 
     console.log(`importMarkdownIntoProject: Import completed. Project has ${project.items.length} root items`);
     if (project.items.length > 0) {
-        const firstItem = project.items[0];
-        console.log(
-            `importMarkdownIntoProject: First item "${firstItem.text}" has ${firstItem.items?.length || 0} children`,
-        );
+        const firstItem = project.items.at(0);
+        if (firstItem) {
+            console.log(
+                `importMarkdownIntoProject: First item "${firstItem.text}" has ${
+                    firstItem.items?.length || 0
+                } children`,
+            );
+        }
     }
 }
