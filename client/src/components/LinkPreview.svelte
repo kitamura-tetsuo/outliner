@@ -158,13 +158,11 @@ onDestroy(() => {
                 <div class="preview-content">
                     <h3 class="preview-title">{previewContent.text}</h3>
                     <div class="preview-items">
-                        {#if previewContent && previewContent.items && (previewContent.items as any).length > 0}
+                        {#if previewContent.items.length > 0}
                             <ul>
-                                {#each Array.from({ length: Math.min(5, (previewContent.items as any).length) }, (_, i) => (previewContent.items as any)[i]) as item (item.id)}
-                                    <li>{item.text}</li>
-                                {/each}
+                                {#each Array.from(previewContent.items).slice(0, 5) as item (item.id)}<li>{item.text}</li>{/each}
 
-                                {#if (previewContent.items as any).length > 5}
+                                {#if previewContent.items.length > 5}
                                     <li class="more-items">...</li>
                                 {/if}
                             </ul>

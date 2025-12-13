@@ -67,14 +67,6 @@ ensure_python_env() {
   fi
 }
 
-# Bypass heavy setup steps if sentinel file exists
-if [ -f "$SETUP_SENTINEL" ]; then
-  echo "Setup already completed, skipping installation steps"
-  SKIP_INSTALL=1
-else
-  SKIP_INSTALL=0
-fi
-
 echo "=== Outliner Test Environment Setup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
 
@@ -82,6 +74,18 @@ echo "ROOT_DIR: ${ROOT_DIR}"
 if [ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
   echo "CI environment detected, removing setup sentinel to ensure full setup..."
   rm -f "$SETUP_SENTINEL"
+fi
+
+# Determine whether to bypass heavy setup steps.
+# NOTE: This must run *after* the CI sentinel removal above; otherwise CI would
+# incorrectly skip installs on a fresh GitHub Actions runner.
+if [ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
+  SKIP_INSTALL=0
+elif [ -f "$SETUP_SENTINEL" ]; then
+  echo "Setup already completed, skipping installation steps"
+  SKIP_INSTALL=1
+else
+  SKIP_INSTALL=0
 fi
 
 # Note for env tests: keep tokens for discovery

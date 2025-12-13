@@ -7,4 +7,5 @@ export interface FirestoreProject {
     deletedBy: string;
     ownerId: string;
     permissions: ProjectPermission[];
+    permissionsMap?: Record<string, number>;
 }

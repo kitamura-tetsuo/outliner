@@ -8,6 +8,12 @@ test.describe("Project Deletion", () => {
         // Create project and get its name
         const { projectName } = await TestHelpers.prepareTestEnvironment(page);
 
+        // Wait for the Yjs client to be available so we can retrieve a stable container ID
+        await page.waitForFunction(() => {
+            const yjsStore = (window as any).__YJS_STORE__;
+            return !!(yjsStore?.yjsClient?.containerId);
+        }, { timeout: 30000 });
+
         // Get the container ID and store the project title in metaDoc before navigating away
         const containerId = await page.evaluate((projectName) => {
             const yjsStore = (window as any).__YJS_STORE__;
@@ -67,11 +73,17 @@ test.describe("Project Deletion", () => {
             }
         }, { containerId, projectName });
 
-        // Wait for the projects list to populate in the DOM
-        await page.waitForFunction(() => {
-            const table = document.querySelector("table");
-            return table && table.querySelectorAll("tbody tr").length > 0;
-        }, { timeout: 10000 });
+        expect(containerId).toBeTruthy();
+        // Wait for the container to appear in the container store and UI
+        await page.waitForFunction(
+            (cid) => {
+                const containerStore = (window as any).__CONTAINER_STORE__;
+                return !!containerStore?.containers?.some((c: any) => c?.id === cid);
+            },
+            containerId,
+            { timeout: 15000 },
+        );
+        await expect(page.locator(`text=${containerId}`)).toBeVisible({ timeout: 15000 });
 
         // Wait for the Delete button to be visible
         await expect(page.locator("button:has-text('Delete')").first()).toBeVisible({ timeout: 10000 });
@@ -90,7 +102,10 @@ test.describe("Project Deletion", () => {
         await page.getByTestId("delete-project-dialog").locator("button:has-text('Delete')").click();
 
         // Wait for the dialog to close and the delete operation to complete
-        await page.waitForTimeout(1000);
+        await expect(page.getByTestId("delete-project-dialog")).not.toBeVisible({ timeout: 10000 });
+
+        // Give Firestore time to persist the changes
+        await page.waitForTimeout(2000);
 
         // Verify the project is no longer in the main list (on the delete page which lists active projects)
         await page.goto("/projects/delete");
@@ -107,6 +122,12 @@ test.describe("Project Deletion", () => {
 
         // Verify the project is in the trash
         await page.goto("/projects/trash");
-        await expect(page.locator(`text=${dialogTitle || projectName}`)).toBeVisible();
+
+        // Wait for loading to finish (element is removed after load)
+        await expect(page.getByTestId("trash-loading")).toHaveCount(0, { timeout: 30000 });
+
+        // Verify the deleted project is visible in the trash
+        const projectTitle = dialogTitle || projectName;
+        await expect(page.locator(`text=${projectTitle}`)).toBeVisible({ timeout: 30000 });
     });
 });

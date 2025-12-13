@@ -22,7 +22,7 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
 
     test("プロジェクトページ表示時にグローバルテキストエリアにフォーカスが設定される", async ({ page }) => {
         // OutlinerItem が表示されるのを待つ
-        await page.waitForSelector(".outliner-item", { timeout: 30000 });
+        await page.waitForSelector(".outliner-item:not(.page-title)", { timeout: 30000 });
         console.log("Found outliner items");
 
         // ページ内の要素を確認
@@ -40,9 +40,9 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         expect(elements.globalTextarea).toBe(true);
 
         // 最初のアイテムをクリックしてフォーカスを設定
-        const firstItem = page.locator(".outliner-item").first();
-        await firstItem.locator(".item-content").click();
-        await TestHelpers.waitForCursorVisible(page);
+        const firstItem = page.locator(".outliner-item:not(.page-title)").first();
+        await firstItem.locator(".item-content").click({ position: { x: 10, y: 10 }, force: true });
+        await TestHelpers.focusGlobalTextarea(page);
 
         // フォーカス状態を確認
         const focusState = await page.evaluate(() => {
@@ -59,87 +59,20 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         // フォーカスが設定されていることを確認
         expect(focusState.focused).toBe(true);
 
-        // カーソルの状態を確認し、必要に応じて作成
-        const cursorState = await page.evaluate(() => {
-            const editorStore = (window as {
-                editorOverlayStore?: {
-                    getActiveItem: () => string | null;
-                    getCursorInstances: () => { id: string; }[];
-                };
-            }).editorOverlayStore;
-            if (!editorStore) return { error: "editorOverlayStore not found" };
+        // テキスト入力が可能であることを確認（カーソルAPIを使用）
+        const itemId = await firstItem.getAttribute("data-item-id");
+        expect(itemId).toBeTruthy();
+        await TestHelpers.setCursor(page, itemId!, 0);
+        await TestHelpers.waitForCursorVisible(page);
 
-            const activeItem = editorStore.getActiveItem();
-            const cursorInstances = editorStore.getCursorInstances();
-
-            return {
-                activeItem,
-                cursorInstancesCount: cursorInstances.length,
-            };
-        });
-        console.log("Cursor state:", cursorState);
-
-        // カーソルインスタンスが存在しない場合、作成する
-        if (cursorState.cursorInstancesCount === 0) {
-            console.log("No cursor instances found, creating cursor");
-            await page.evaluate(() => {
-                const editorStore = (window as {
-                    editorOverlayStore?: {
-                        getActiveItem: () => string | null;
-                        setCursor: (
-                            cursor: { itemId: string; offset: number; isActive: boolean; userId: string; },
-                        ) => void;
-                    };
-                }).editorOverlayStore;
-                if (editorStore) {
-                    const activeItemId = editorStore.getActiveItem();
-                    if (activeItemId) {
-                        editorStore.setCursor({
-                            itemId: activeItemId,
-                            offset: 0,
-                            isActive: true,
-                            userId: "local",
-                        });
-                        console.log("Created cursor for active item");
-                    }
-                }
-            });
-        }
-
-        // テキスト入力が可能であることを確認（cursor.insertText()を使用）
         const testText = "テスト用テキスト";
-        await page.evaluate(text => {
-            const editorStore = (window as {
-                editorOverlayStore?: {
-                    getCursorInstances: () => {
-                        findTarget: () => { updateText: (text: string) => void; } | null;
-                        offset: number;
-                        insertText: (text: string) => void;
-                    }[];
-                };
-            }).editorOverlayStore;
-            if (editorStore) {
-                const cursorInstances = editorStore.getCursorInstances();
-                if (cursorInstances.length > 0) {
-                    const cursor = cursorInstances[0];
-                    // 既存のテキストをクリア
-                    const target = cursor.findTarget();
-                    if (target) {
-                        target.updateText("");
-                        cursor.offset = 0;
-                    }
-                    // 新しいテキストを挿入
-                    cursor.insertText(text);
-                    console.log("Text inserted via cursor.insertText");
-                }
-            }
-        }, testText);
+        await TestHelpers.insertText(page, itemId!, testText);
 
         // 少し待機してからテキストが入力されていることを確認
         await page.waitForTimeout(500);
 
         // アイテムのテキストを確認
-        const itemText = await firstItem.textContent();
+        const itemText = await firstItem.locator(".item-text").innerText();
         console.log("Item text after input:", itemText);
         expect(itemText).toContain(testText);
     });

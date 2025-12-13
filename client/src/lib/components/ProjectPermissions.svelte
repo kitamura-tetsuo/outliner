@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { doc, getDoc, updateDoc, getFirestore } from "firebase/firestore";
+  import { getFirebaseApp } from "../firebase-app";
   import type { FirestoreProject } from "../../types/project";
   import { ProjectRole, type ProjectPermission } from "../../types/permissions";
   import { collection, query, where, getDocs } from "firebase/firestore";
 
   export let projectId: string;
 
-  const db = getFirestore();
+  const db = getFirestore(getFirebaseApp());
   let project: FirestoreProject | null = null;
   let collaborators: ProjectPermission[] = [];
   let userSearch = "";
@@ -46,8 +47,9 @@
       grantedBy: project.ownerId,
     };
     const updatedPermissions = [...collaborators, newPermission];
+    const permissionsMap = Object.fromEntries(updatedPermissions.map(p => [p.userId, p.role]));
     const projectRef = doc(db, "projects", projectId);
-    await updateDoc(projectRef, { permissions: updatedPermissions });
+    await updateDoc(projectRef, { permissions: updatedPermissions, permissionsMap });
     collaborators = updatedPermissions;
     userSearch = "";
     searchResults = [];
@@ -56,8 +58,9 @@
   const removeCollaborator = async (userId: string) => {
     if (!project) return;
     const updatedPermissions = collaborators.filter(p => p.userId !== userId);
+    const permissionsMap = Object.fromEntries(updatedPermissions.map(p => [p.userId, p.role]));
     const projectRef = doc(db, "projects", projectId);
-    await updateDoc(projectRef, { permissions: updatedPermissions });
+    await updateDoc(projectRef, { permissions: updatedPermissions, permissionsMap });
     collaborators = updatedPermissions;
   };
 
@@ -66,8 +69,9 @@
     const updatedPermissions = collaborators.map(p =>
       p.userId === userId ? { ...p, role } : p
     );
+    const permissionsMap = Object.fromEntries(updatedPermissions.map(p => [p.userId, p.role]));
     const projectRef = doc(db, "projects", projectId);
-    await updateDoc(projectRef, { permissions: updatedPermissions });
+    await updateDoc(projectRef, { permissions: updatedPermissions, permissionsMap });
     collaborators = updatedPermissions;
   };
 </script>

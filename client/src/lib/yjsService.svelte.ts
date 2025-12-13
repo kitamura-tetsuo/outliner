@@ -73,6 +73,7 @@ async function ensureProjectFirestoreDocExists(projectId: string, title: string)
             title,
             ownerId: uid,
             permissions: [],
+            permissionsMap: {},
         }, { merge: true });
     } catch (e) {
         // Best-effort: project metadata should exist for permission checks, but Yjs can still function without it.

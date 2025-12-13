@@ -22,6 +22,7 @@ type GraphLayout = { nodes: Array<{ id: string; x: number; y: number; fixed?: bo
 type GraphSeriesWithData = GraphSeriesOption & { data?: GraphNodeWithLayout[]; };
 
 type YMapLike = { observeDeep?: (fn: () => void) => void; unobserveDeep?: (fn: () => void) => void; };
+type SeriesDataLike = { getItemLayout?: (idx: number) => unknown; };
 
 const toArray = <T>(value: unknown): T[] => {
     if (Array.isArray(value)) return value as T[];
@@ -58,9 +59,12 @@ function saveLayout() {
         const optionNodes = getGraphNodesFromChart(chart);
 
         const seriesModel: unknown = chart.getModel()?.getSeriesByIndex(0);
-        const seriesData: { getItemLayout?: (idx: number) => unknown; } | undefined =
+        const seriesData: SeriesDataLike | undefined =
             typeof (seriesModel as { getData?: unknown; })?.getData === "function"
-                ? ((seriesModel as { getData: () => unknown; }).getData() as any)
+                ? (() => {
+                    const data = (seriesModel as { getData: () => unknown; }).getData();
+                    return (data && typeof data === "object") ? (data as SeriesDataLike) : undefined;
+                })()
                 : undefined;
 
         const nodes = optionNodes.flatMap((node, i) => {

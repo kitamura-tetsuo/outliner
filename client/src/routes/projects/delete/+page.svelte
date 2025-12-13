@@ -4,6 +4,9 @@
     import { projectService } from "../../../services/projectService";
     import { containerStore, type ContainerInfo } from "../../../stores/containerStore.svelte";
     import DeleteProjectDialog from "../../../components/DeleteProjectDialog.svelte";
+    import { getFirebaseApp } from "../../../lib/firebase-app";
+    import "../../../stores/firestoreStore.svelte";
+    import { userManager } from "../../../auth/UserManager";
 
     let projects = $state<Array<ContainerInfo>>([]);
     let projectToDelete: ContainerInfo | null = $state(null);
@@ -11,8 +14,21 @@
 
     async function loadDeletedProjectIds(): Promise<void> {
         try {
-            const db = getFirestore();
-            const q = query(collection(db, "projects"), where("deletedAt", "!=", null));
+            const uid = userManager.auth.currentUser?.uid;
+            if (!uid) {
+                deletedProjectIds = new Set();
+                return;
+            }
+
+            // Use the centralized Firebase app to ensure emulator connection
+            const app = getFirebaseApp();
+            const db = getFirestore(app);
+            // Use > 0 instead of != null for better emulator compatibility
+            const q = query(
+                collection(db, "projects"),
+                where("ownerId", "==", uid),
+                where("deletedAt", ">", 0),
+            );
             const querySnapshot = await getDocs(q);
             deletedProjectIds = new Set(querySnapshot.docs.map(doc => doc.id));
         } catch {
@@ -59,7 +75,12 @@
 
     async function handleDelete() {
         if (projectToDelete) {
-            await projectService.deleteProject(projectToDelete.id, projectToDelete.name);
+            try {
+                await projectService.deleteProject(projectToDelete.id, projectToDelete.name);
+            } catch (e) {
+                console.error("Failed to delete project:", e);
+            }
+            // Always close the dialog, even if delete failed
             projectToDelete = null;
             // Reload deleted project IDs and sync containers
             await loadDeletedProjectIds();

@@ -46,7 +46,7 @@ export async function initDb() {
 
     const isVitest = typeof process !== "undefined" && !!process.env.VITEST;
     const isTestEnv = typeof process !== "undefined"
-        && (process.env.NODE_ENV === "test" || isVitest || (import.meta as any).env?.MODE === "test");
+        && (process.env.NODE_ENV === "test" || isVitest || import.meta.env?.MODE === "test");
 
     // Node(テスト/SSR)環境ではFSからWASMを読み込み
     if (isTestEnv || typeof window === "undefined") {
@@ -101,7 +101,7 @@ export async function initDb() {
     if (!SQL) {
         throw new Error("Failed to initialize SQL.js");
     }
-    db = new (SQL as any).Database() as SqlJsDatabase;
+    db = new SQL.Database() as unknown as SqlJsDatabase;
     worker = new SyncWorker(db);
     console.log("SQL.js database initialized successfully");
 }
