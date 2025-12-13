@@ -2047,14 +2047,14 @@ export class TestHelpers {
      */
     public static async createProject(page: Page, projectName: string): Promise<void> {
         await page.evaluate(async (name) => {
-            const yjsService = (window as any).__YJS_SERVICE__;
-            if (yjsService) {
-                await yjsService.createNewProject(name);
-            } else {
-                // If the service is not available, fallback to creating a project via the UI for robustness.
-                console.warn("__YJS_SERVICE__ not available, falling back to UI creation.");
-                await (window as any).TestHelpers.createProjectViaUI(name);
-            }
+        const yjsService = (window as any).__YJS_SERVICE__;
+        if (yjsService) {
+            await yjsService.createNewProject(name);
+        } else {
+            // If the service is not available, fallback to creating a project via the UI for robustness.
+            console.warn('__YJS_SERVICE__ not available, falling back to UI creation.');
+            await (window as any).TestHelpers.createProjectViaUI(name);
+        }
         }, projectName);
     }
 
