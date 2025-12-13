@@ -2,9 +2,8 @@
 	import ProjectCard from '$lib/components/ProjectCard.svelte';
 	import { firestoreStore } from '../../stores/firestoreStore.svelte';
 	import { getFirebaseApp } from '$lib/firebase-app';
-	import { getFirestore, doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+	import { getFirestore, doc, getDoc } from 'firebase/firestore';
 	import { userManager } from '../../auth/UserManager';
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
 	let projects = $state([]);
@@ -95,7 +94,7 @@
 <main class="container mx-auto px-4 py-8">
 	<div class="flex justify-between items-center mb-6">
 		<h1 class="text-3xl font-bold">Projects</h1>
-		<button on:click={() => goto('/projects/new')} class="btn-primary">New Project</button>
+		<button onclick={() => goto('/projects/new')} class="btn-primary">New Project</button>
 	</div>
 
 	<!-- Search, Sort, Filter UI -->
@@ -126,7 +125,7 @@
 		<p>No projects found.</p>
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-			{#each filteredAndSortedProjects as project}
+			{#each filteredAndSortedProjects as project (project.id)}
 				<a href="/projects/{project.id}/settings">
 					<ProjectCard {project} />
 				</a>

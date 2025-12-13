@@ -1,13 +1,10 @@
 <script lang="ts">
-    import { containerStore } from "../stores/containerStore.svelte";
     import { store } from "../stores/store.svelte";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
 
     let { isOpen = $bindable(true) } = $props();
 
-    // Collapsible state for Projects section
-    let isProjectsCollapsed = $state(false);
     // Collapsible state for Pages section
     let isPagesCollapsed = $state(false);
 
@@ -26,12 +23,12 @@
 
         <!-- Projects section -->
         <div class="sidebar-section">
-            <a href="/projects" class="section-header" aria-label="Go to projects page">
+            <a href={resolve('/projects')} class="section-header" aria-label="Go to projects page">
                 <h3 class="sidebar-section-title">Projects</h3>
             </a>
             <div class="nav-list">
-                <a href="/projects?filter=shared" class="nav-item">Shared with me</a>
-                <a href="/projects/trash" class="nav-item">Trash</a>
+                <a href={resolve('/projects?filter=shared')} class="nav-item">Shared with me</a>
+                <a href={resolve('/projects/trash')} class="nav-item">Trash</a>
             </div>
         </div>
 

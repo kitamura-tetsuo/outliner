@@ -1,8 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { getFirebaseApp } from '$lib/firebase-app';
-  import { getFirestore, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-  import { goto } from '$app/navigation';
+  import { getFirestore, doc, getDoc } from 'firebase/firestore';
 
   let project = $state(null);
   let isLoading = $state(true);
@@ -72,7 +71,7 @@
             <label for="project-title" class="block text-sm font-medium text-gray-700">Project Title</label>
             <input type="text" id="project-title" bind:value={newTitle} class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
           </div>
-          <button on:click={renameProject} class="btn-primary">Save Changes</button>
+          <button onclick={renameProject} class="btn-primary">Save Changes</button>
         </div>
       </section>
 
@@ -95,7 +94,7 @@
         <h2 class="text-xl font-semibold mb-4 text-red-600">Danger Zone</h2>
         <div class="flex justify-between items-center">
           <p>Delete this project and all its data.</p>
-          <button on:click={deleteProject} class="btn-danger">Delete Project</button>
+          <button onclick={deleteProject} class="btn-danger">Delete Project</button>
         </div>
       </section>
     </div>

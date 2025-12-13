@@ -1,11 +1,13 @@
 <script lang="ts">
-  export let project: {
-    id: string;
-    title: string;
-    lastModified: Date;
-    owner: string;
-    isPublic: boolean;
-  };
+  let { project }: {
+    project: {
+      id: string;
+      title: string;
+      lastModified: Date;
+      owner: string;
+      isPublic: boolean;
+    }
+  } = $props();
 
   function renameProject() {
     // Placeholder for rename action
@@ -39,9 +41,9 @@
     </div>
   </div>
   <div class="mt-4 flex justify-end space-x-2">
-    <button on:click={renameProject} class="btn-secondary">Rename</button>
-    <button on:click={shareProject} class="btn-secondary">Share</button>
-    <button on:click={deleteProject} class="btn-danger">Delete</button>
+    <button onclick={renameProject} class="btn-secondary">Rename</button>
+    <button onclick={shareProject} class="btn-secondary">Share</button>
+    <button onclick={deleteProject} class="btn-danger">Delete</button>
   </div>
 </div>
 
