@@ -19,6 +19,8 @@ export interface PollingCall {
     executionCount: number;
     lastExecutedAt?: number;
     disabled: boolean;
+    timerId?: number;
+    frameId?: number;
 }
 
 export interface PollingStats {
@@ -61,7 +63,7 @@ class PollingMonitor {
         this.enabled = true;
 
         // setIntervalをインターセプト
-        window.setInterval = (callback: any, delay?: number, ...args: any[]): any => {
+        window.setInterval = (callback: TimerHandler, delay?: number, ...args: unknown[]): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -83,23 +85,27 @@ class PollingMonitor {
                 return id;
             }
 
+            const callbackFn: (...cbArgs: unknown[]) => unknown = typeof callback === "function"
+                ? (...cbArgs: unknown[]) => (callback as (...args: unknown[]) => unknown)(...cbArgs)
+                : () => {};
+
             // ラップされたコールバック
-            const wrappedCallback = (...callbackArgs: any[]) => {
+            const wrappedCallback = (...callbackArgs: unknown[]) => {
                 call.executionCount++;
                 call.lastExecutedAt = Date.now();
-                return callback(...callbackArgs);
+                return callbackFn(...callbackArgs);
             };
 
             const timerId = this.originalSetInterval(wrappedCallback, delay, ...args);
 
             // タイマーIDをマッピング
-            (call as any).timerId = timerId;
+            call.timerId = timerId;
 
             return timerId;
         };
 
         // setTimeoutをインターセプト
-        window.setTimeout = (callback: any, delay?: number, ...args: any[]): any => {
+        const wrappedSetTimeout = ((callback: TimerHandler, delay?: number, ...args: unknown[]) => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
 
@@ -120,18 +126,27 @@ class PollingMonitor {
                 return id;
             }
 
-            const wrappedCallback = (...callbackArgs: any[]) => {
+            const callbackFn: (...cbArgs: unknown[]) => unknown = typeof callback === "function"
+                ? (...cbArgs: unknown[]) => (callback as (...args: unknown[]) => unknown)(...cbArgs)
+                : () => {};
+            const wrappedCallback = (...callbackArgs: unknown[]) => {
                 call.executionCount++;
                 call.lastExecutedAt = Date.now();
                 this.calls.delete(id); // setTimeoutは一度だけ実行
-                return callback(...callbackArgs);
+                return callbackFn(...callbackArgs);
             };
 
-            const timerId = this.originalSetTimeout(wrappedCallback, delay, ...args);
-            (call as any).timerId = timerId;
+            const timerId = this.originalSetTimeout(wrappedCallback, delay, ...(args as unknown[]));
+            call.timerId = timerId;
 
             return timerId;
-        };
+        }) as typeof window.setTimeout;
+
+        // Node's `setTimeout` has an extra `__promisify__` property; keep it when swapping the function.
+        (wrappedSetTimeout as unknown as { __promisify__?: unknown; }).__promisify__ =
+            (this.originalSetTimeout as unknown as { __promisify__?: unknown; }).__promisify__;
+
+        window.setTimeout = wrappedSetTimeout;
 
         // requestAnimationFrameをインターセプト
         window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
@@ -162,7 +177,7 @@ class PollingMonitor {
             };
 
             const frameId = this.originalRequestAnimationFrame(wrappedCallback);
-            (call as any).frameId = frameId;
+            call.frameId = frameId;
 
             return frameId;
         };
@@ -272,5 +287,5 @@ export const pollingMonitor = new PollingMonitor();
 
 // グローバルに公開（デバッグ用）
 if (typeof window !== "undefined") {
-    (window as any).__pollingMonitor = pollingMonitor;
+    (window as unknown as { __pollingMonitor: PollingMonitor; }).__pollingMonitor = pollingMonitor;
 }
