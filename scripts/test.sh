@@ -78,6 +78,7 @@ if [ $# -eq 0 ]; then
   fi
   echo "✅ ESLint check passed!"
 
+  ensure_codex_services
   npm run test:unit
   npm run test:integration
   cleanup_e2e_coverage
