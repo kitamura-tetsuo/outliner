@@ -17,7 +17,9 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         const nonExistentPageName = `unknown-page-${Math.random().toString(16).slice(2, 8)}`;
 
         // `prepareTestEnvironment` now returns the created project name
-        const { projectName } = await TestHelpers.prepareTestEnvironment(page, test.info(), [`This is a link to [${nonExistentPageName}]`]);
+        const { projectName } = await TestHelpers.prepareTestEnvironment(page, test.info(), [
+            `This is a link to [${nonExistentPageName}]`,
+        ]);
 
         // 内部リンクが生成されていることを確認
         const linkElement = page.locator(`a.internal-link`).filter({ hasText: nonExistentPageName });
