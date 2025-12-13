@@ -37,15 +37,19 @@ test.describe("FMT-0008: multiple internal links", () => {
             `.outliner-item[data-item-id="${firstId}"] .item-text`,
         );
 
+        const currentUrl = page.url();
+        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
+        const projectNameEncoded = urlParts[0];
+
         const html = await itemLocator.innerHTML();
         expect(html).toMatch(
-            /<a href="\/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page<\/a>/,
+            new RegExp(`<a href="/${projectNameEncoded}/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page</a>`),
         );
         expect(html).toMatch(
             /<a href="\/project\/other-page"[^>]*class="[^"]*internal-link[^"]*project-link[^"]*"[^>]*>project\/other-page<\/a>/,
         );
 
-        const firstLink = itemLocator.locator('a[href="/test-page"]');
+        const firstLink = itemLocator.locator(`a[href="/${projectNameEncoded}/test-page"]`);
         const secondLink = itemLocator.locator('a[href="/project/other-page"]');
         await expect(firstLink).toHaveClass(/page-not-exists/);
         await expect(secondLink).toHaveClass(/page-not-exists/);
