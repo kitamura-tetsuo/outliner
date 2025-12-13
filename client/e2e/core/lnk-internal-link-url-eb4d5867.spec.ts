@@ -26,7 +26,7 @@ test.describe("LNK-0002: 内部リンクURL生成", () => {
         }
 
         const currentUrl = page.url();
-        const urlParts = new URL(currentUrl).pathname.split("/").filter(Boolean);
+        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
         const projectNameEncoded = urlParts[0];
 
         expect(hrefs).toContain(`/${projectNameEncoded}/simple-page`);
