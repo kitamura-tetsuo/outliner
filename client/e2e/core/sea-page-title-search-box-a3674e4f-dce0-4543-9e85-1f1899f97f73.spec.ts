@@ -33,7 +33,6 @@ test.describe("SEA-0001: page title search box", () => {
         // navigate back to first page to ensure SearchBox appears
         await page.goto(`/${encodeURIComponent(ids.projectName)}/${encodeURIComponent(ids.pageName)}`);
         // Wait for the page to be fully loaded and search box to be ready
-        await page.waitForLoadState("networkidle");
         await page.waitForSelector(".page-search-box input", { state: "visible" });
     });
 
