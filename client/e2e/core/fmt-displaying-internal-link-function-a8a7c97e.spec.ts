@@ -143,7 +143,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 内部リンクが適用されていることを確認
         const currentUrl = page.url();
-        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
+        const urlParts = new URL(currentUrl).pathname.split("/").filter(Boolean);
         const projectNameEncoded = urlParts[0];
 
         expect(firstItemText).toContain("internal-link");
@@ -233,7 +233,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 内部リンクが適用されていることを確認
         const currentUrl = page.url();
-        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
+        const urlParts = new URL(currentUrl).pathname.split("/").filter(Boolean);
         const projectNameEncoded = urlParts[0];
 
         expect(firstItemTextWithoutCursor).toContain("internal-link");
