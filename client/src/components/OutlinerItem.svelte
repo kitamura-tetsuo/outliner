@@ -188,6 +188,14 @@ let ensuredComments = $derived.by(() => item.comments);
 let openCommentItemId = $derived.by(() => (generalStore as any).openCommentItemId);
 let openCommentItemIndex = $derived.by(() => (generalStore as any).openCommentItemIndex);
 
+let isCommentsVisible = $derived(
+    !isPageTitle && (
+        (openCommentItemId === model.id)
+        || ((openCommentItemId == null) && (openCommentItemIndex === index))
+        || ((openCommentItemId == null) && (openCommentItemIndex == null) && index === 1)
+    )
+);
+
 
 // コメント数のローカル状態（確実にUIへ反映するため）
 let commentCountLocal = $state(0);
@@ -1947,6 +1955,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                         onpointerdown={(e) => { e.stopPropagation(); }}
                         onmousedown={(e) => { e.stopPropagation(); }}
                         onmouseup={(e) => { e.stopPropagation(); }}
+                        aria-label={isCommentsVisible ? "Close comments" : `Open comments (${commentCountVisual})`}
+                        aria-expanded={isCommentsVisible}
                     >
                         <span class="comment-icon">💬</span>
                         <span class="comment-count">{commentCountVisual}</span>
@@ -2005,11 +2015,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     <!-- Comment Thread (visible only for active item; default to first non-title item when none selected) -->
 
 
-    {#if !isPageTitle && (
-            (openCommentItemId === model.id)
-            || ((openCommentItemId == null) && (openCommentItemIndex === index))
-            || ((openCommentItemId == null) && (openCommentItemIndex == null) && index === 1)
-        )}
+    {#if isCommentsVisible}
         <!-- XSS-safe: This only returns an empty string, used to trigger reactivity on item.comments -->
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html (() => { try { void item.comments; } catch {} return ''; })() }
