@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createProjectConnection } from "../../../lib/yjs/connection";
+import { createProjectConnection, type PageConnection } from "../../../lib/yjs/connection";
 import { Project } from "../../../schema/app-schema";
 
-// TODO: Re-enable this test once YJS mocking is properly implemented
 describe("yjs presence", () => {
     it("propagates cursor between clients", async () => {
         const projectId = `p-${Date.now()}`;
@@ -71,24 +70,10 @@ describe("yjs presence", () => {
             check();
         });
 
-        // If synchronization didn't happen, let's try to manually add the page to the second project
-        // This is a workaround for the test environment's synchronization issues
-        const pagesMap2 = c2.doc.getMap("pages");
-        if (!pagesMap2.has(page.id)) {
-            console.log("Manually adding page to second client due to sync issues");
-            const pagesMap1 = c1.doc.getMap("pages");
-            const pageDoc = pagesMap1.get(page.id);
-            if (pageDoc) {
-                pagesMap2.set(page.id, pageDoc);
-            }
-        }
-
-        // Wait a bit longer for the page connection to be established
-        await new Promise(r => setTimeout(r, 1000));
 
         // Wait for page connections to be established on both clients
         // Since adding a page creates subdocs asynchronously, we need to wait for the connection to be established
-        const p1c1 = await new Promise(resolve => {
+        const p1c1 = await new Promise<PageConnection | null>(resolve => {
             let resolved = false;
             const check = () => {
                 const conn = c1.getPageConnection(page.id);
@@ -109,7 +94,7 @@ describe("yjs presence", () => {
             }, 10000);
         });
 
-        const p1c2 = await new Promise(resolve => {
+        const p1c2 = await new Promise<PageConnection | null>(resolve => {
             let resolved = false;
             const check = () => {
                 const conn = c2.getPageConnection(page.id);
@@ -151,28 +136,10 @@ describe("yjs presence", () => {
         });
         await new Promise(r => setTimeout(r, 500));
 
-        // Manual workaround for awareness synchronization in test environment
-        // In a real environment, this would happen through WebSockets
-        const states1 = p1c1.awareness.getStates();
-        const states2 = p1c2.awareness.getStates();
-        if (states2.size <= 1 && Array.from(states2.values()).every(s => !s.presence?.cursor?.itemId)) {
-            // Find the presence state from first awareness and copy it to second if not synchronized
-            for (const [, state] of states1.entries()) {
-                if (state.presence?.cursor?.itemId === "root") {
-                    // Manually set the presence state on the second client
-                    p1c2.awareness.setLocalState(state);
-                    break;
-                }
-            }
-        }
-
-        // Wait for the manual sync to take effect
-        await new Promise(r => setTimeout(r, 100));
-
         const states = p1c2.awareness.getStates();
         console.log("States size:", states.size);
         console.log("States values:", Array.from(states.values()));
-        const received = Array.from(states.values()).some(s => s.presence?.cursor?.itemId === "root");
+        const received = Array.from(states.values()).some(s => (s as any).presence?.cursor?.itemId === "root");
         console.log("Received:", received);
         expect(received).toBe(true);
         p1c1.dispose();
