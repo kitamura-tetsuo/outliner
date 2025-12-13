@@ -70,7 +70,6 @@ describe("yjs presence", () => {
             check();
         });
 
-
         // Wait for page connections to be established on both clients
         // Since adding a page creates subdocs asynchronously, we need to wait for the connection to be established
         const p1c1 = await new Promise<PageConnection | null>(resolve => {
