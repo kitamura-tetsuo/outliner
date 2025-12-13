@@ -1,15 +1,15 @@
 <script lang="ts">
-    import { containerStore } from "../stores/containerStore.svelte";
     import { store } from "../stores/store.svelte";
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
 
-    let { isOpen = $bindable(true) } = $props();
+	    let { isOpen = $bindable(true) } = $props();
 
-    // Collapsible state for Projects section
-    let isProjectsCollapsed = $state(false);
-    // Collapsible state for Pages section
-    let isPagesCollapsed = $state(false);
+	    // Collapsible state for Projects section
+	    let isProjectsCollapsed = $state(false);
+
+	    // Collapsible state for Pages section
+	    let isPagesCollapsed = $state(false);
 
     async function handlePageClick(pageId: string, pageName: string) {
         // Navigate to the page with proper project context
@@ -24,51 +24,44 @@
         <h2 class="sidebar-title">Sidebar</h2>
         <p class="sidebar-description">This is a placeholder sidebar component.</p>
 
-        <!-- Projects section -->
-        <div class="sidebar-section">
-            <button
-                class="section-header"
-                onclick={() => isProjectsCollapsed = !isProjectsCollapsed}
-                aria-expanded={!isProjectsCollapsed}
-                aria-label="Toggle projects section"
-            >
-                <h3 class="sidebar-section-title">Projects</h3>
-                <svg
-                    class="chevron-icon"
-                    class:rotated={isProjectsCollapsed}
-                    width="16"
-                    height="16"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M4 6L8 10L12 6"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    />
-                </svg>
-            </button>
+	        <!-- Projects section -->
+	        <div class="sidebar-section">
+	            <button
+	                class="section-header"
+	                onclick={() => isProjectsCollapsed = !isProjectsCollapsed}
+	                aria-expanded={!isProjectsCollapsed}
+	                aria-label="Toggle projects section"
+	            >
+	                <h3 class="sidebar-section-title">Projects</h3>
+	                <svg
+	                    class="chevron-icon"
+	                    class:rotated={isProjectsCollapsed}
+	                    width="16"
+	                    height="16"
+	                    viewBox="0 0 16 16"
+	                    fill="none"
+	                    xmlns="http://www.w3.org/2000/svg"
+	                >
+	                    <path
+	                        d="M4 6L8 10L12 6"
+	                        stroke="currentColor"
+	                        stroke-width="1.5"
+	                        stroke-linecap="round"
+	                        stroke-linejoin="round"
+	                    />
+	                </svg>
+	            </button>
 
-            {#if !isProjectsCollapsed}
-                <div class="project-list">
-                    {#if containerStore.containers.length === 0}
-                        <p class="sidebar-placeholder">No projects available</p>
-                    {:else}
-                        {#each containerStore.containers as container (container.id)}
-                            <div class="project-item">
-                                <span class="project-name">{container.name}</span>
-                                {#if container.isDefault}
-                                    <span class="default-badge">Default</span>
-                                {/if}
-                            </div>
-                        {/each}
-                    {/if}
-                </div>
-            {/if}
-        </div>
+	            {#if !isProjectsCollapsed}
+	                <div class="project-list">
+	                    <div class="nav-list">
+	                        <a href={resolve("/projects")} class="nav-item" aria-label="Go to projects page">All projects</a>
+	                        <a href={resolve("/projects?filter=shared")} class="nav-item">Shared with me</a>
+	                        <a href={resolve("/projects/trash")} class="nav-item">Trash</a>
+	                    </div>
+	                </div>
+	            {/if}
+	        </div>
 
         <!-- Pages section -->
         <div class="sidebar-section">
@@ -399,5 +392,33 @@
 
     :global(html.dark) .settings-text {
         color: #e5e7eb;
+    }
+
+    .nav-list {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .nav-item {
+        padding: 0.5rem;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #374151;
+        font-size: 0.875rem;
+        transition: background-color 0.2s ease;
+    }
+
+    .nav-item:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    :global(html.dark) .nav-item {
+        color: #e5e7eb;
+    }
+
+    :global(html.dark) .nav-item:hover {
+        background-color: rgba(255, 255, 255, 0.1);
     }
 </style>

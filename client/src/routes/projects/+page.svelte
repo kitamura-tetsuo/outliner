@@ -1,197 +1,146 @@
 <script lang="ts">
-import { goto } from "$app/navigation";
-import {
-    onDestroy,
-    onMount,
-} from "svelte";
-import {
-    userManager,
-} from "../../auth/UserManager";
-import AuthComponent from "../../components/AuthComponent.svelte";
-import * as yjsHighService from "../../lib/yjsService.svelte";
-import { getLogger } from "../../lib/logger";
-import { saveContainerId } from "../../stores/firestoreStore.svelte";
-import { yjsStore } from "../../stores/yjsStore.svelte";
-const logger = getLogger();
+	import ProjectCard from '$lib/components/ProjectCard.svelte';
+	import { firestoreStore } from '../../stores/firestoreStore.svelte';
+	import { getFirebaseApp } from '$lib/firebase-app';
+	import { getFirestore, doc, getDoc } from 'firebase/firestore';
+	import { userManager } from '../../auth/UserManager';
+	import { goto } from '$app/navigation';
 
-let isLoading = $state(false);
-let error: string | undefined = $state(undefined);
-let success: string | undefined = $state(undefined);
-let containerName = $state("");
-let isAuthenticated = $state(false);
-let createdContainerId: string | undefined = $state(undefined);
+	let projects = $state([]);
+	let isLoading = $state(true);
+	let error = $state(null);
+	let searchTerm = $state('');
+	let sortBy = $state('lastModified');
+	let filterBy = $state('all');
 
-// 認証成功時の処理
-async function handleAuthSuccess(authResult: any) {
-    logger.info({ authResult }, "認証成功:");
-    isAuthenticated = true;
-}
+	async function fetchProjectDetails(projectId) {
+		const app = getFirebaseApp();
+		const db = getFirestore(app);
+		const projectRef = doc(db, 'projects', projectId);
+		const docSnap = await getDoc(projectRef);
 
-// 認証ログアウト時の処理
-function handleAuthLogout() {
-    logger.info("ログアウトしました");
-    isAuthenticated = false;
-}
+		if (docSnap.exists()) {
+			const data = docSnap.data();
+			return {
+				id: projectId,
+				title: data.title || 'Untitled Project',
+				owner: data.ownerId || 'Unknown',
+				lastModified: data.updatedAt?.toDate() || new Date(),
+				isPublic: data.isPublic || false
+			};
+		} else {
+			return {
+				id: projectId,
+				title: 'Untitled Project (metadata not found)',
+				owner: 'Unknown',
+				lastModified: new Date(),
+				isPublic: false
+			};
+		}
+	}
 
-// 新規コンテナを作成する
-async function createNewContainer() {
-    if (!containerName.trim()) {
-        error = "アウトライナー名を入力してください";
-        return;
-    }
+	$effect(() => {
+		const containerIds = firestoreStore.userContainer?.accessibleContainerIds;
+		if (containerIds && containerIds.length > 0) {
+			isLoading = true;
+			Promise.all(containerIds.map(fetchProjectDetails))
+				.then((projectDetails) => {
+					projects = projectDetails;
+					isLoading = false;
+				})
+				.catch((err) => {
+					error = err;
+					isLoading = false;
+				});
+		} else {
+			projects = [];
+			isLoading = false;
+		}
+	});
 
-    isLoading = true;
-    error = undefined;
-    success = undefined;
+	const filteredAndSortedProjects = $derived(() => {
+		let result = projects;
 
-    try {
-        // 現在のクライアントを破棄してリセット
-        const client = yjsStore.yjsClient as any;
-        if (client) {
-            client.dispose?.();
-            yjsStore.yjsClient = undefined;
-        }
+		// Filter
+		if (filterBy !== 'all') {
+			const userId = userManager.getCurrentUser()?.id;
+			if (filterBy === 'my') {
+				result = result.filter((p) => p.owner === userId);
+			} else if (filterBy === 'shared') {
+				result = result.filter((p) => p.owner !== userId);
+			}
+		}
 
-        // 新規プロジェクトを作成
-        const newClient = await yjsHighService.createNewProject(containerName);
+		// Search
+		if (searchTerm) {
+			result = result.filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
+		}
 
-        // 作成されたIDを取得
-        createdContainerId = newClient.containerId;
+		// Sort
+		result.sort((a, b) => {
+			if (sortBy === 'title') {
+				return a.title.localeCompare(b.title);
+			} else if (sortBy === 'owner') {
+				return a.owner.localeCompare(b.owner);
+			}
+			// Default to lastModified
+			return b.lastModified - a.lastModified;
+		});
 
-        // ストアを更新
-        yjsStore.yjsClient = newClient as any;
-
-        // サーバーに保存（デフォルトコンテナとして設定）
-        await saveContainerId(createdContainerId);
-
-        success = `新しいアウトライナーが作成されました！ (ID: ${createdContainerId})`;
-
-        // 1.5秒後にメインページに移動
-        setTimeout(() => {
-            goto("/");
-        }, 1500);
-    }
-    catch (err: any) {
-        logger.error("新規アウトライナー作成エラー:", err);
-        error = err instanceof Error
-            ? err.message
-            : "新規アウトライナーの作成中にエラーが発生しました。";
-    }
-    finally {
-        isLoading = false;
-    }
-}
-
-onMount(() => {
-    // UserManagerの認証状態を確認
-
-    isAuthenticated = userManager.getCurrentUser() !== null;
-});
-
-onDestroy(() => {
-    // 必要に応じてクリーンアップコード
-});
+		return result;
+	});
 </script>
 
-<svelte:head>
-    <title>新規アウトライナー作成 - Outliner</title>
-</svelte:head>
-
 <main class="container mx-auto px-4 py-8">
-    <h1 class="mb-6 text-center text-3xl font-bold">
-        新規アウトライナーの作成
-    </h1>
+	<div class="flex justify-between items-center mb-6">
+		<h1 class="text-3xl font-bold">Projects</h1>
+		<button onclick={() => goto('/projects/new')} class="btn-primary">New Project</button>
+	</div>
 
-    <div class="auth-section mb-8">
-        <AuthComponent
-            onAuthSuccess={handleAuthSuccess}
-            onAuthLogout={handleAuthLogout}
-        />
-    </div>
+	<!-- Search, Sort, Filter UI -->
+	<div class="mb-6 flex flex-wrap gap-4">
+		<input
+			type="text"
+			bind:value={searchTerm}
+			placeholder="Search projects..."
+			class="flex-grow rounded-md border border-gray-300 px-3 py-2"
+		/>
+		<select bind:value={sortBy} class="rounded-md border border-gray-300 px-3 py-2">
+			<option value="lastModified">Sort by Date</option>
+			<option value="title">Sort by Name</option>
+			<option value="owner">Sort by Owner</option>
+		</select>
+		<select bind:value={filterBy} class="rounded-md border border-gray-300 px-3 py-2">
+			<option value="all">All Projects</option>
+			<option value="my">My Projects</option>
+			<option value="shared">Shared with me</option>
+		</select>
+	</div>
 
-    {#if isAuthenticated}
-        <div class="mx-auto max-w-md rounded-lg bg-white p-6 shadow-md">
-            <h2 class="mb-4 text-xl font-semibold">
-                新しいアウトライナーを作成
-            </h2>
-
-            <div class="mb-4">
-                <label
-                    for="containerName"
-                    class="mb-1 block text-sm font-medium text-gray-700"
-                >
-                    アウトライナー名
-                </label>
-                <input
-                    type="text"
-                    id="containerName"
-                    bind:value={containerName}
-                    placeholder="マイアウトライナー"
-                    class="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-            </div>
-
-            {#if error}
-                <div
-                    class="mb-4 rounded-md bg-red-100 p-3 text-red-700"
-                    role="alert"
-                >
-                    {error}
-                </div>
-            {/if}
-
-            {#if success}
-                <div
-                    class="mb-4 rounded-md bg-green-100 p-3 text-green-700"
-                    role="alert"
-                >
-                    {success}
-                </div>
-            {/if}
-
-            <button
-                onclick={createNewContainer}
-                disabled={isLoading}
-                class="
-                    w-full rounded-md bg-blue-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {isLoading
-                    ? 'cursor-not-allowed opacity-70'
-                    : ''}
-                "
-            >
-                {#if isLoading}
-                    <span class="mr-2 inline-block animate-spin">⏳</span> 作成中...
-                {:else}
-                    作成する
-                {/if}
-            </button>
-
-            {#if createdContainerId}
-                <div class="mt-4 rounded-md bg-gray-100 p-3">
-                    <p class="text-sm text-gray-700">
-                        作成されたコンテナID: <code class="rounded bg-gray-200 px-1 py-0.5">{createdContainerId}</code>
-                    </p>
-                </div>
-            {/if}
-        </div>
-    {:else}
-        <div class="mx-auto max-w-md rounded-lg bg-yellow-50 p-6 shadow-md">
-            <h2 class="mb-2 text-xl font-semibold">認証が必要です</h2>
-            <p class="mb-4 text-gray-700">
-                新しいアウトライナーを作成するには、まず上部のログインボタンからログインしてください。
-            </p>
-        </div>
-    {/if}
-
-    <div class="mt-6 text-center">
-        <a
-            href="/"
-            class="rounded-md px-2 py-1 text-blue-600 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-            ホームに戻る
-        </a>
-    </div>
+	{#if isLoading}
+		<p>Loading projects...</p>
+	{:else if error}
+		<p class="text-red-500">Error loading projects: {error.message}</p>
+	{:else if filteredAndSortedProjects.length === 0}
+		<p>No projects found.</p>
+	{:else}
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			{#each filteredAndSortedProjects as project (project.id)}
+				<a href="/projects/{project.id}/settings">
+					<ProjectCard {project} />
+				</a>
+			{/each}
+		</div>
+	{/if}
 </main>
 
 <style>
-/* スタイリングが必要な場合は追加 */
+	.btn-primary {
+		background-color: #007bff;
+		color: white;
+		padding: 0.5rem 1rem;
+		border-radius: 0.25rem;
+		cursor: pointer;
+		border: none;
+	}
 </style>

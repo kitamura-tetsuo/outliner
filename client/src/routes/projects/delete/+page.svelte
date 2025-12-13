@@ -43,8 +43,8 @@
         projects = next.filter(p => !deletedProjectIds.has(p.id));
     }
 
-    onMount(async () => {
-        await loadDeletedProjectIds();
+    onMount(() => {
+        // Sync immediately from whatever the containerStore currently has.
         syncContainers();
 
         if (typeof window === "undefined") {
@@ -62,6 +62,12 @@
 
         window.addEventListener("container-store-updated", onContainerStoreUpdated);
         window.addEventListener("firestore-uc-changed", onFirestoreUcChanged);
+
+        // Load deleted IDs after listeners are attached so no updates are missed.
+        void (async () => {
+            await loadDeletedProjectIds();
+            syncContainers();
+        })();
 
         return () => {
             window.removeEventListener("container-store-updated", onContainerStoreUpdated);

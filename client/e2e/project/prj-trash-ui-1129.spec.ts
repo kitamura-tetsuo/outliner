@@ -8,6 +8,12 @@ test.describe("Trash UI", () => {
         // Create project and get its name
         const { projectName } = await TestHelpers.prepareTestEnvironment(page);
 
+        // Wait for the Yjs client to be available so we can retrieve a stable container ID
+        await page.waitForFunction(() => {
+            const yjsStore = (window as any).__YJS_STORE__;
+            return !!(yjsStore?.yjsClient?.containerId);
+        }, { timeout: 30000 });
+
         // Get the container ID and store the project title in metaDoc before navigating away
         const containerId = await page.evaluate((projectName) => {
             const yjsStore = (window as any).__YJS_STORE__;
@@ -67,17 +73,28 @@ test.describe("Trash UI", () => {
             }
         }, { containerId, projectName });
 
-        // Wait for the projects list to populate in the DOM
-        await page.waitForFunction(() => {
-            const table = document.querySelector("table");
-            return table && table.querySelectorAll("tbody tr").length > 0;
-        }, { timeout: 10000 });
+        expect(containerId).toBeTruthy();
+        // Wait for the container to appear in the container store and UI
+        await page.waitForFunction(
+            (cid) => {
+                const containerStore = (window as any).__CONTAINER_STORE__;
+                return !!containerStore?.containers?.some((c: any) => c?.id === cid);
+            },
+            containerId,
+            { timeout: 15000 },
+        );
+        const deletePageRow = page.locator("table tbody tr").filter({
+            has: page.getByRole("cell", { name: containerId!, exact: true }),
+        });
+        await expect(deletePageRow).toHaveCount(1, { timeout: 15000 });
+        await expect(deletePageRow).toBeVisible({ timeout: 15000 });
 
         // Wait for the Delete button to be visible
-        await expect(page.locator("button:has-text('Delete')").first()).toBeVisible({ timeout: 10000 });
+        const deleteButton = deletePageRow.getByRole("button", { name: "Delete", exact: true });
+        await expect(deleteButton).toBeVisible({ timeout: 10000 });
 
         // Get the actual project title from the dialog prompt
-        await page.click("button:has-text('Delete')");
+        await deleteButton.click();
 
         // Wait for the delete dialog to appear
         await expect(page.getByTestId("delete-project-dialog")).toBeVisible();

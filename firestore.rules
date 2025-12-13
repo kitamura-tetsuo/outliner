@@ -10,28 +10,26 @@ service cloud.firestore {
         return request.auth != null;
       }
 
-      function hasResource() {
-        return resource != null;
-      }
-
       function isOwner() {
-        return hasResource() && signedIn() && request.auth.uid == resource.data.ownerId;
+        return signedIn()
+          && resource != null
+          && request.auth.uid == resource.data.ownerId;
       }
 
       function roleFromPermissionsMap(uid) {
-        return hasResource()
+        return resource != null
           && (resource.data.permissionsMap is map)
-          && (uid in resource.data.permissionsMap)
+          && (resource.data.permissionsMap[uid] is int)
           ? resource.data.permissionsMap[uid]
           : 0;
       }
 
       function hasRoleAtLeast(minRole) {
-        return hasResource() && signedIn() && roleFromPermissionsMap(request.auth.uid) >= minRole;
+        return signedIn() && roleFromPermissionsMap(request.auth.uid) >= minRole;
       }
 
       // Viewer+ can read; Owner always can read.
-      allow read: if hasResource() && (isOwner() || hasRoleAtLeast(1));
+      allow read: if isOwner() || hasRoleAtLeast(1);
 
       // Project metadata is created client-side on first project creation.
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;

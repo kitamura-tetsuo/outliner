@@ -40,6 +40,35 @@ export class TestHelpers {
     }
 
     /**
+     * Log out the current user in the test environment.
+     */
+    public static async logout(page: Page): Promise<void> {
+        try {
+            await page.evaluate(async () => {
+                try {
+                    await (window as any).__USER_MANAGER__?.logout?.();
+                } catch {
+                    // Ignore logout errors in tests; storage cleanup below is the fallback.
+                }
+                try {
+                    sessionStorage.clear();
+                } catch {}
+                try {
+                    localStorage.clear();
+                } catch {}
+            });
+        } catch {
+            // Ignore evaluate errors (e.g. navigation already in progress)
+        }
+
+        try {
+            await page.context().clearCookies();
+        } catch {}
+
+        await page.goto("/");
+    }
+
+    /**
      * テスト環境を準備する
      * 各テストの前に呼び出すことで、テスト環境を一貫した状態にする
      * @param page Playwrightのページオブジェクト
@@ -2045,6 +2074,19 @@ export class TestHelpers {
      * テスト後のクリーンアップ処理
      * @param page Playwrightのページオブジェクト
      */
+    public static async createProject(page: Page, projectName: string): Promise<void> {
+        await page.evaluate(async (name) => {
+            const yjsService = (window as any).__YJS_SERVICE__;
+            if (yjsService) {
+                await yjsService.createNewProject(name);
+            } else {
+                // If the service is not available, fallback to creating a project via the UI for robustness.
+                console.warn("__YJS_SERVICE__ not available, falling back to UI creation.");
+                await (window as any).TestHelpers.createProjectViaUI(name);
+            }
+        }, projectName);
+    }
+
     public static async cleanup(page: Page): Promise<void> {
         try {
             // ページがまだ利用可能か確認

@@ -8,6 +8,12 @@ test.describe("Project Restoration", () => {
         // Create project and get its name
         const { projectName } = await TestHelpers.prepareTestEnvironment(page);
 
+        // Wait for the Yjs client to be available so we can retrieve a stable container ID
+        await page.waitForFunction(() => {
+            const yjsStore = (window as any).__YJS_STORE__;
+            return !!(yjsStore?.yjsClient?.containerId);
+        }, { timeout: 30000 });
+
         // Get the container ID and store the project title in metaDoc before navigating away
         const containerId = await page.evaluate((projectName) => {
             const yjsStore = (window as any).__YJS_STORE__;
@@ -67,17 +73,28 @@ test.describe("Project Restoration", () => {
             }
         }, { containerId, projectName });
 
-        // Wait for the projects list to populate in the DOM
-        await page.waitForFunction(() => {
-            const table = document.querySelector("table");
-            return table && table.querySelectorAll("tbody tr").length > 0;
-        }, { timeout: 10000 });
+        expect(containerId).toBeTruthy();
+        // Wait for the container to appear in the container store and UI
+        await page.waitForFunction(
+            (cid) => {
+                const containerStore = (window as any).__CONTAINER_STORE__;
+                return !!containerStore?.containers?.some((c: any) => c?.id === cid);
+            },
+            containerId,
+            { timeout: 15000 },
+        );
+        const deletePageRow = page.locator("table tbody tr").filter({
+            has: page.getByRole("cell", { name: containerId!, exact: true }),
+        });
+        await expect(deletePageRow).toHaveCount(1, { timeout: 15000 });
+        await expect(deletePageRow).toBeVisible({ timeout: 15000 });
 
         // Wait for the Delete button to be visible
-        await expect(page.locator("button:has-text('Delete')").first()).toBeVisible({ timeout: 10000 });
+        const deleteButton = deletePageRow.getByRole("button", { name: "Delete", exact: true });
+        await expect(deleteButton).toBeVisible({ timeout: 10000 });
 
         // Get the actual project title from the dialog prompt
-        await page.click("button:has-text('Delete')");
+        await deleteButton.click();
 
         // Wait for the delete dialog to appear
         await expect(page.getByTestId("delete-project-dialog")).toBeVisible();
@@ -94,8 +111,12 @@ test.describe("Project Restoration", () => {
 
         // Go to trash and restore it
         await page.goto("/projects/trash");
-        await expect(page.locator("button:has-text('Restore')").first()).toBeVisible({ timeout: 10000 });
-        await page.click("button:has-text('Restore')");
+        const projectTitle = dialogTitle || projectName;
+        const trashRow = page.locator("tbody tr", {
+            has: page.getByRole("cell", { name: projectTitle, exact: true }),
+        });
+        await expect(trashRow).toBeVisible({ timeout: 10000 });
+        await trashRow.getByRole("button", { name: "Restore", exact: true }).click();
 
         // Wait for the restore operation to complete
         await page.waitForTimeout(1000);
@@ -145,10 +166,15 @@ test.describe("Project Restoration", () => {
         // Wait for the page to update and the project to appear
         await page.waitForTimeout(500);
 
-        await expect(page.locator(`text=${dialogTitle || projectName}`)).toBeVisible({ timeout: 10000 });
+        expect(containerId).toBeTruthy();
+        const restoredRow = page.locator("table tbody tr").filter({
+            has: page.getByRole("cell", { name: containerId!, exact: true }),
+        });
+        await expect(restoredRow).toHaveCount(1, { timeout: 10000 });
+        await expect(restoredRow).toBeVisible({ timeout: 10000 });
 
         // Verify the project is no longer in the trash
         await page.goto("/projects/trash");
-        await expect(page.locator(`text=${dialogTitle || projectName}`)).not.toBeVisible();
+        await expect(trashRow).not.toBeVisible();
     });
 });
