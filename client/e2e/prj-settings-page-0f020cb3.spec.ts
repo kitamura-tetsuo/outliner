@@ -1,3 +1,5 @@
+import { registerCoverageHooks } from "./utils/registerCoverageHooks";
+registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "./utils/testHelpers";
 
@@ -18,10 +20,10 @@ test.describe("Project Settings Page", () => {
     });
 
     test("should display the project settings page", async ({ page }) => {
-        await expect(page.locator("h1").withText("Settings for Settings Test Project")).toBeVisible();
-        await expect(page.locator("h2").withText("General")).toBeVisible();
-        await expect(page.locator("h2").withText("Sharing")).toBeVisible();
-        await expect(page.locator("h2").withText("Permissions")).toBeVisible();
-        await expect(page.locator("h2").withText("Danger Zone")).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: "Settings for Settings Test Project" })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 2, name: "General" })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 2, name: "Sharing" })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 2, name: "Permissions" })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 2, name: "Danger Zone" })).toBeVisible();
     });
 });

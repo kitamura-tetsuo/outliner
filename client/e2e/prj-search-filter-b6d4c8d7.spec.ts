@@ -1,3 +1,5 @@
+import { registerCoverageHooks } from "./utils/registerCoverageHooks";
+registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "./utils/testHelpers";
 
@@ -14,7 +16,7 @@ test.describe("Project Search and Filter", () => {
     test("should filter projects by search term", async ({ page }) => {
         await page.locator('input[placeholder="Search projects..."]').fill("Alpha");
         await expect(page.locator(".project-card")).toHaveCount(1);
-        await expect(page.locator("h3").withText("Alpha Project")).toBeVisible();
+        await expect(page.getByRole("heading", { level: 3, name: "Alpha Project" })).toBeVisible();
 
         await page.locator('input[placeholder="Search projects..."]').fill("Project");
         await expect(page.locator(".project-card")).toHaveCount(3);

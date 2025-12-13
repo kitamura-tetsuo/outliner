@@ -8,12 +8,12 @@ vi.mock("$app/navigation", () => ({
 }));
 
 vi.mock("$app/paths", () => ({
-    resolve: (path) => path,
+    resolve: (path: string) => path,
 }));
 
 // Mock the store
-let mockStoreContent = {};
-vi.mock("../../stores/store.svelte", () => ({
+const mockStoreContent = {};
+vi.mock("../stores/store.svelte", () => ({
     get store() {
         return mockStoreContent;
     },

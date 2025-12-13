@@ -3,10 +3,13 @@
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
 
-    let { isOpen = $bindable(true) } = $props();
+	    let { isOpen = $bindable(true) } = $props();
 
-    // Collapsible state for Pages section
-    let isPagesCollapsed = $state(false);
+	    // Collapsible state for Projects section
+	    let isProjectsCollapsed = $state(false);
+
+	    // Collapsible state for Pages section
+	    let isPagesCollapsed = $state(false);
 
     async function handlePageClick(pageId: string, pageName: string) {
         // Navigate to the page with proper project context
@@ -21,16 +24,44 @@
         <h2 class="sidebar-title">Sidebar</h2>
         <p class="sidebar-description">This is a placeholder sidebar component.</p>
 
-        <!-- Projects section -->
-        <div class="sidebar-section">
-            <a href={resolve('/projects')} class="section-header" aria-label="Go to projects page">
-                <h3 class="sidebar-section-title">Projects</h3>
-            </a>
-            <div class="nav-list">
-                <a href={resolve('/projects?filter=shared')} class="nav-item">Shared with me</a>
-                <a href={resolve('/projects/trash')} class="nav-item">Trash</a>
-            </div>
-        </div>
+	        <!-- Projects section -->
+	        <div class="sidebar-section">
+	            <button
+	                class="section-header"
+	                onclick={() => isProjectsCollapsed = !isProjectsCollapsed}
+	                aria-expanded={!isProjectsCollapsed}
+	                aria-label="Toggle projects section"
+	            >
+	                <h3 class="sidebar-section-title">Projects</h3>
+	                <svg
+	                    class="chevron-icon"
+	                    class:rotated={isProjectsCollapsed}
+	                    width="16"
+	                    height="16"
+	                    viewBox="0 0 16 16"
+	                    fill="none"
+	                    xmlns="http://www.w3.org/2000/svg"
+	                >
+	                    <path
+	                        d="M4 6L8 10L12 6"
+	                        stroke="currentColor"
+	                        stroke-width="1.5"
+	                        stroke-linecap="round"
+	                        stroke-linejoin="round"
+	                    />
+	                </svg>
+	            </button>
+
+	            {#if !isProjectsCollapsed}
+	                <div class="project-list">
+	                    <div class="nav-list">
+	                        <a href={resolve("/projects")} class="nav-item" aria-label="Go to projects page">All projects</a>
+	                        <a href={resolve("/projects?filter=shared")} class="nav-item">Shared with me</a>
+	                        <a href={resolve("/projects/trash")} class="nav-item">Trash</a>
+	                    </div>
+	                </div>
+	            {/if}
+	        </div>
 
         <!-- Pages section -->
         <div class="sidebar-section">

@@ -40,6 +40,35 @@ export class TestHelpers {
     }
 
     /**
+     * Log out the current user in the test environment.
+     */
+    public static async logout(page: Page): Promise<void> {
+        try {
+            await page.evaluate(async () => {
+                try {
+                    await (window as any).__USER_MANAGER__?.logout?.();
+                } catch {
+                    // Ignore logout errors in tests; storage cleanup below is the fallback.
+                }
+                try {
+                    sessionStorage.clear();
+                } catch {}
+                try {
+                    localStorage.clear();
+                } catch {}
+            });
+        } catch {
+            // Ignore evaluate errors (e.g. navigation already in progress)
+        }
+
+        try {
+            await page.context().clearCookies();
+        } catch {}
+
+        await page.goto("/");
+    }
+
+    /**
      * テスト環境を準備する
      * 各テストの前に呼び出すことで、テスト環境を一貫した状態にする
      * @param page Playwrightのページオブジェクト

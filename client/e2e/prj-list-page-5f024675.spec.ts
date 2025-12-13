@@ -1,3 +1,5 @@
+import { registerCoverageHooks } from "./utils/registerCoverageHooks";
+registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "./utils/testHelpers";
 
@@ -8,8 +10,8 @@ test.describe("Project List Page", () => {
     });
 
     test("should display the project list page", async ({ page }) => {
-        await expect(page.locator("h1").withText("Projects")).toBeVisible();
-        await expect(page.locator("button").withText("New Project")).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "New Project" })).toBeVisible();
     });
 
     test("should display a list of projects", async ({ page }) => {
@@ -18,6 +20,6 @@ test.describe("Project List Page", () => {
         await page.goto("/projects");
 
         await expect(page.locator(".project-card")).toHaveCount(1);
-        await expect(page.locator("h3").withText("Test Project 1")).toBeVisible();
+        await expect(page.getByRole("heading", { level: 3, name: "Test Project 1" })).toBeVisible();
     });
 });

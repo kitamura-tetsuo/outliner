@@ -83,13 +83,18 @@ test.describe("Project Deletion", () => {
             containerId,
             { timeout: 15000 },
         );
-        await expect(page.locator(`text=${containerId}`)).toBeVisible({ timeout: 15000 });
+        const projectRow = page.locator("table tbody tr").filter({
+            has: page.getByRole("cell", { name: containerId, exact: true }),
+        });
+        await expect(projectRow).toHaveCount(1, { timeout: 15000 });
+        await expect(projectRow).toBeVisible({ timeout: 15000 });
 
         // Wait for the Delete button to be visible
-        await expect(page.locator("button:has-text('Delete')").first()).toBeVisible({ timeout: 10000 });
+        const deleteButton = projectRow.getByRole("button", { name: "Delete", exact: true });
+        await expect(deleteButton).toBeVisible({ timeout: 10000 });
 
         // Get the actual project title from the dialog prompt
-        await page.click("button:has-text('Delete')");
+        await deleteButton.click();
 
         // Wait for the delete dialog to appear
         await expect(page.getByTestId("delete-project-dialog")).toBeVisible();
