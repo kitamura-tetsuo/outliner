@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { createProjectConnection, type PageConnection } from "../../../lib/yjs/connection";
 import { Project } from "../../../schema/app-schema";
 
-// TODO: Re-enable this test once YJS mocking is properly implemented
 describe("yjs presence", () => {
     it("propagates cursor between clients", async () => {
         const projectId = `p-${Date.now()}`;
@@ -70,21 +69,6 @@ describe("yjs presence", () => {
             };
             check();
         });
-
-        // If synchronization didn't happen, let's try to manually add the page to the second project
-        // This is a workaround for the test environment's synchronization issues
-        const pagesMap2 = c2.doc.getMap("pages");
-        if (!pagesMap2.has(page.id)) {
-            console.log("Manually adding page to second client due to sync issues");
-            const pagesMap1 = c1.doc.getMap("pages");
-            const pageDoc = pagesMap1.get(page.id);
-            if (pageDoc) {
-                pagesMap2.set(page.id, pageDoc);
-            }
-        }
-
-        // Wait a bit longer for the page connection to be established
-        await new Promise(r => setTimeout(r, 1000));
 
         // Wait for page connections to be established on both clients
         // Since adding a page creates subdocs asynchronously, we need to wait for the connection to be established
@@ -175,7 +159,7 @@ describe("yjs presence", () => {
         const states = p1c2.awareness.getStates() as Map<number, AwarenessState>;
         console.log("States size:", states.size);
         console.log("States values:", Array.from(states.values()));
-        const received = Array.from(states.values()).some(s => s.presence?.cursor?.itemId === "root");
+        const received = Array.from(states.values()).some(s => (s as any).presence?.cursor?.itemId === "root");
         console.log("Received:", received);
         expect(received).toBe(true);
         p1c1.dispose();

@@ -55,6 +55,9 @@ function setCorsHeaders(req, res) {
 
   res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  // Security headers
+  res.set("X-Content-Type-Options", "nosniff");
+  res.set("X-Frame-Options", "DENY");
 }
 
 // Firebase Admin SDKの初期化
@@ -1418,6 +1421,14 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
       `uploadAttachment invalid request: idToken=${!!idToken}, containerId=${!!containerId}, itemId=${!!itemId}, fileName=${!!fileName}, fileData=${!!fileData}`,
     );
     return res.status(400).json({ error: "Invalid request" });
+  }
+
+  // Sanitize fileName to prevent path traversal and ensure flat structure within the item folder
+  if (
+    fileName.includes("..") || fileName.includes("/") || fileName.includes("\\")
+  ) {
+    logger.warn(`uploadAttachment invalid fileName detected: ${fileName}`);
+    return res.status(400).json({ error: "Invalid file name" });
   }
 
   try {
