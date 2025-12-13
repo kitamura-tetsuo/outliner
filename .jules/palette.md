@@ -6,5 +6,6 @@
 **Action:** Future accessibility improvements should focus on properly exposing the item's interactive nature to AT, possibly by adding `role="treeitem"` or similar, since it's an outliner.
 
 ## 2025-12-13 - [Simplifying Conditional ARIA with $derived]
+
 **Learning:** Complex visibility logic used in templates (like `{#if ...}`) should be extracted to `$derived` variables. This not only cleans up the template but makes it trivial to reuse the logic for ARIA attributes like `aria-expanded` and `aria-label`.
 **Action:** Extract conditional logic into `$derived` state before adding ARIA attributes.
