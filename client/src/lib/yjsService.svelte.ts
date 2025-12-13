@@ -1,8 +1,12 @@
 // High-level Yjs service providing shared document utilities
+import { getAuth } from "firebase/auth";
+import { doc, getFirestore, setDoc } from "firebase/firestore";
 import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
-import { Project } from "../schema/yjs-schema";
+import { Project } from "../schema/app-schema";
+import { getFirebaseApp } from "./firebase-app";
+import "../stores/firestoreStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { log } from "./logger";
@@ -55,6 +59,37 @@ function keyFor(userId?: string, containerId?: string): ClientKey {
     return containerId ? { type: "container", id: containerId } : { type: "user", id: userId || "anonymous" };
 }
 
+async function ensureProjectFirestoreDocExists(projectId: string, title: string): Promise<void> {
+    try {
+        const app = getFirebaseApp();
+        const auth = getAuth(app);
+        const currentUser = auth.currentUser;
+        const uid = currentUser?.uid;
+        if (!uid || !currentUser) {
+            return;
+        }
+
+        // Force token refresh to ensure Firestore has the latest auth token
+        try {
+            await currentUser.getIdToken(true);
+        } catch {
+            // Token refresh failed, continue anyway
+        }
+
+        const db = getFirestore(app);
+        const projectRef = doc(db, "projects", projectId);
+        await setDoc(projectRef, {
+            id: projectId,
+            title,
+            ownerId: uid,
+            permissions: [],
+            permissionsMap: {},
+        }, { merge: true });
+    } catch {
+        // Best-effort: project metadata should exist for permission checks, but Yjs can still function without it.
+    }
+}
+
 export async function createNewProject(containerName: string): Promise<YjsClient> {
     const user = userManager.getCurrentUser();
     let userId = user?.id;
@@ -88,6 +123,9 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     // Save title to metadata Y.Doc for dropdown display
     // Save container title to metadata Y.Doc for persistence across page reloads
     setContainerTitleInMetaDoc(projectId, containerName);
+
+    // Initialize Firestore project metadata for permission checks and trash features.
+    await ensureProjectFirestoreDocExists(projectId, containerName);
 
     // update store
     yjsStore.yjsClient = client;

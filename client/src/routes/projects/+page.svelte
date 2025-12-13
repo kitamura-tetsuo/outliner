@@ -22,8 +22,8 @@ let isAuthenticated = $state(false);
 let createdContainerId: string | undefined = $state(undefined);
 
 // 認証成功時の処理
-async function handleAuthSuccess(authResult) {
-    logger.info("認証成功:", authResult);
+async function handleAuthSuccess(authResult: any) {
+    logger.info({ authResult }, "認証成功:");
     isAuthenticated = true;
 }
 
@@ -71,7 +71,7 @@ async function createNewContainer() {
             goto("/");
         }, 1500);
     }
-    catch (err) {
+    catch (err: any) {
         logger.error("新規アウトライナー作成エラー:", err);
         error = err instanceof Error
             ? err.message

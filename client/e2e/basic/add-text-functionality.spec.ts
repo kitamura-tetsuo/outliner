@@ -41,7 +41,7 @@ test.describe("テキスト追加機能テスト", () => {
 
         // 新しく追加されたアイテムを取得（initialCount番目のアイテム、0-indexed）
         const newItem = items.nth(initialCount);
-        await newItem.locator(".item-content").click();
+        await newItem.locator(".item-content").click({ position: { x: 10, y: 10 } });
         await page.waitForTimeout(500);
 
         // カーソルが表示されるまで待機
@@ -69,22 +69,15 @@ test.describe("テキスト追加機能テスト", () => {
         const itemCount = await items.count();
         expect(itemCount).toBeGreaterThan(0);
 
-        // 最初のアイテムをクリックして編集モードに入る
+        // 最初のアイテムを取得
         const firstItem = items.first();
-        await firstItem.locator(".item-content").click();
-        await page.waitForTimeout(500);
-
-        // カーソルが表示されるまで待機
-        await TestHelpers.waitForCursorVisible(page);
-
-        // 既存のテキストをクリア
-        await page.keyboard.press("Control+A");
-        await page.keyboard.press("Backspace");
-        await page.waitForTimeout(300);
+        const itemId = await firstItem.getAttribute("data-item-id");
+        expect(itemId).toBeTruthy();
 
         // 新しいテキストを入力
         const testText = "既存アイテムの新しいテキスト";
-        await page.keyboard.type(testText);
+        await TestHelpers.setCursor(page, itemId!, 0);
+        await TestHelpers.insertText(page, itemId!, testText);
         await page.waitForTimeout(500);
 
         // 入力したテキストが表示されていることを確認

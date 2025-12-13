@@ -25,6 +25,8 @@ import { yjsStore } from "../../../stores/yjsStore.svelte";
 import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
 import { store } from "../../../stores/store.svelte";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
+import { permissionStore } from "../../../stores/permissionStore.svelte";
+import { ProjectRole } from "../../../types/permissions";
 
 
 
@@ -1165,7 +1167,7 @@ onDestroy(() => {
         pageItem={store.currentPage}
         projectName={projectName || ""}
         pageName={pageName || ""}
-        isReadOnly={false}
+        isReadOnly={permissionStore.userRole < ProjectRole.Editor}
         isTemporary={store.currentPage ? store.currentPage.id.startsWith('temp-') : false}
         onEdit={undefined}
     />

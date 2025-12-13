@@ -57,6 +57,7 @@ export class TestHelpers {
         browser?: Browser,
         options?: { ws?: "force" | "disable" | "default"; },
     ): Promise<{ projectName: string; pageName: string; }> {
+        console.log("Preparing test environment...");
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
             // Avoid duplicating console output when using fixtures/console-forward.

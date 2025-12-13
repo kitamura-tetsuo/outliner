@@ -1,5 +1,5 @@
 import type { Awareness } from "y-protocols/awareness";
-import { Item, Items, Project } from "../../schema/yjs-schema";
+import { Item, Items, Project } from "../../schema/app-schema";
 import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";

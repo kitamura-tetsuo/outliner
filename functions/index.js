@@ -293,6 +293,26 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
+    if (process.env.FUNCTIONS_EMULATOR !== "true") {
+      const projectRef = db.collection("projects").doc(containerId);
+      const projectDoc = await projectRef.get();
+
+      if (projectDoc.exists()) {
+        const projectData = projectDoc.data();
+        const permissions = projectData.permissions || [];
+        const userPermission = permissions.find(p => p.userId === userId);
+
+        if (
+          projectData.ownerId !== userId &&
+          (!userPermission || userPermission.role < 1)
+        ) {
+          return res.status(403).json({
+            error: "Editor permission is required to save this project.",
+          });
+        }
+      }
+    }
+
     try {
       // Firestoreトランザクションを使用して両方のコレクションを更新
       await db.runTransaction(async transaction => {
@@ -578,6 +598,21 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
+    if (process.env.FUNCTIONS_EMULATOR !== "true") {
+      const projectRef = db.collection("projects").doc(containerId);
+      const projectDoc = await projectRef.get();
+
+      if (!projectDoc.exists()) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      const projectData = projectDoc.data();
+      if (projectData.ownerId !== userId) {
+        return res.status(403).json({
+          error: "Owner permission is required to delete this project.",
+        });
+      }
+    }
+
     try {
       // Firestoreトランザクションを使用してコンテナ関連データを削除
       await db.runTransaction(async transaction => {
@@ -593,11 +628,6 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
 
         const containerData = containerDoc.data();
         const accessibleUserIds = containerData.accessibleUserIds || [];
-
-        // ユーザーがこのコンテナにアクセスできるか確認
-        if (!accessibleUserIds.includes(userId)) {
-          throw new Error("Access to the container is denied");
-        }
 
         // コンテナにアクセスできる各ユーザーから、コンテナIDを削除
         for (const accessUserId of accessibleUserIds) {

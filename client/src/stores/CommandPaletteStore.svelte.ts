@@ -1,3 +1,4 @@
+import type { Item } from "../schema/app-schema";
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
 
@@ -7,6 +8,25 @@ interface Position {
     top: number;
     left: number;
 }
+
+type WindowWithTestStores = Window & {
+    generalStore?: unknown;
+    __KEYSTREAM__?: unknown;
+    commandPaletteStore?: unknown;
+};
+
+type GeneralStoreLike = {
+    __lastInputStream?: unknown;
+    textareaRef?: unknown;
+    currentPage?: unknown;
+};
+
+const getGeneralStoreMaybe = (): GeneralStoreLike | undefined => {
+    if (typeof window === "undefined") return undefined;
+    const w = window as WindowWithTestStores;
+    const gs = w.generalStore;
+    return (gs && typeof gs === "object") ? (gs as GeneralStoreLike) : undefined;
+};
 
 class CommandPaletteStore {
     isVisible = false;
@@ -44,8 +64,7 @@ class CommandPaletteStore {
 
     private deriveQueryFromDoc(): string {
         try {
-            const w: any = typeof window !== "undefined" ? (window as any) : null;
-            const gs: any = w?.generalStore ?? null;
+            const gs = getGeneralStoreMaybe();
 
             // 1) 直近の入力ストリームから推測
             const stream: string = typeof gs?.__lastInputStream === "string" ? gs.__lastInputStream : "";
@@ -61,8 +80,8 @@ class CommandPaletteStore {
             }
 
             // 2) テキストエリアの内容から直接取得
-            const ta: HTMLTextAreaElement | null | undefined = gs?.textareaRef ?? null;
-            if (ta && typeof ta.value === "string") {
+            const ta = gs?.textareaRef;
+            if (ta && ta instanceof HTMLTextAreaElement && typeof ta.value === "string") {
                 const caret = typeof ta.selectionStart === "number" ? ta.selectionStart : ta.value.length;
                 const before = ta.value.slice(0, caret);
                 const lastSlash = before.lastIndexOf("/");
@@ -75,8 +94,8 @@ class CommandPaletteStore {
 
             // 3) window のキーストリームからのフォールバック
             try {
-                const wAny: any = typeof window !== "undefined" ? (window as any) : null;
-                const ks: string = typeof wAny?.__KEYSTREAM__ === "string" ? wAny.__KEYSTREAM__ : "";
+                const w = typeof window !== "undefined" ? (window as WindowWithTestStores) : undefined;
+                const ks: string = typeof w?.__KEYSTREAM__ === "string" ? w.__KEYSTREAM__ : "";
                 if (ks) {
                     const lastSlash = ks.lastIndexOf("/");
                     if (lastSlash >= 0) {
@@ -96,19 +115,15 @@ class CommandPaletteStore {
                 return "";
             }
             const cursor = cursors[0];
-            const node = cursor.findTarget();
+            const node = cursor.findTarget() as Item | undefined;
             if (!node) {
                 console.log("[deriveQueryFromDoc] No node found");
                 return "";
             }
-            const text = (node as any).text ?? "";
+            const text = node.text;
             const s = Math.max(0, this.commandStartOffset + 1);
-            const e = Math.max(
-                s,
-                Math.min(cursor.offset ?? s, typeof text === "string" ? text.length : (text?.toString?.().length ?? s)),
-            );
-            const src = typeof text === "string" ? text : (text?.toString?.() ?? "");
-            const result = src.slice(s, e);
+            const e = Math.max(s, Math.min(cursor.offset ?? s, text.length));
+            const result = text.slice(s, e);
             console.log("[deriveQueryFromDoc] Using node text:", result);
             return result;
         } catch (error) {
@@ -345,10 +360,9 @@ class CommandPaletteStore {
 
         // コマンド文字列全体（スラッシュ含む）を削除
         if (this.commandCursorItemId) {
-            const node = cursor.findTarget();
+            const node = cursor.findTarget() as Item | undefined;
             if (node) {
-                const raw = (node as any).text ?? "";
-                const text = typeof raw === "string" ? raw : (raw?.toString?.() ?? "");
+                const text = node.text;
                 const beforeSlash = text.slice(0, this.commandStartOffset);
                 const afterCursor = text.slice(cursor.offset);
 
@@ -363,12 +377,13 @@ class CommandPaletteStore {
         }
 
         // 常にページ内容のアイテムリストに追加する
-        const generalStore = (window as any).generalStore;
-        if (!generalStore?.currentPage?.items) {
-            return;
-        }
-
-        const items = generalStore.currentPage.items;
+        const generalStore = getGeneralStoreMaybe();
+        const currentPage = generalStore?.currentPage;
+        const itemsMaybe = (currentPage && typeof currentPage === "object")
+            ? (currentPage as { items?: unknown; }).items
+            : undefined;
+        if (!itemsMaybe || typeof itemsMaybe !== "object") return;
+        const items = itemsMaybe as { length: number; addNode: (userId: string, insertIndex?: number) => Item; };
         const insertIndex = items.length;
         const newItem = items.addNode(cursor.userId, insertIndex);
         if (!newItem) {
@@ -376,37 +391,16 @@ class CommandPaletteStore {
         }
 
         // テキストは空にして、コンポーネントタイプを設定
-        // yjs-schema / app-schema の両方で動作するように updateText を使用
-        if (typeof (newItem as any).updateText === "function") (newItem as any).updateText("");
-        else (newItem as any).text = "";
-
-        const setMapField = (it: any, key: string, value: any) => {
-            try {
-                const tree = it?.tree;
-                const nodeKey = it?.key;
-                const m = tree?.getNodeValueFromKey?.(nodeKey);
-                if (m && typeof m.set === "function") {
-                    m.set(key, value);
-                    if (key !== "lastChanged") m.set("lastChanged", Date.now());
-                    return true;
-                }
-            } catch {}
-            return false;
-        };
+        newItem.updateText("");
 
         if (type === "alias") {
-            if (!setMapField(newItem, "aliasTargetId", undefined)) {
-                (newItem as any).aliasTargetId = undefined;
-            }
+            newItem.aliasTargetId = undefined;
             try {
                 console.log("[CommandPaletteStore.insert] showing AliasPicker for new item:", newItem.id);
             } catch {}
             aliasPickerStore.show(newItem.id);
         } else {
-            // componentType を安全に設定
-            if (!setMapField(newItem, "componentType", type)) {
-                (newItem as any).componentType = type;
-            }
+            newItem.componentType = type;
         }
         editorOverlayStore.clearCursorAndSelection(cursor.userId);
         cursor.itemId = newItem.id;
@@ -439,5 +433,5 @@ export const commandPaletteStore = $state(new CommandPaletteStore());
 
 // expose for debugging and test access without importing .svelte.ts
 if (typeof window !== "undefined") {
-    (window as any).commandPaletteStore = commandPaletteStore;
+    (window as WindowWithTestStores).commandPaletteStore = commandPaletteStore;
 }

@@ -24,6 +24,12 @@ test.describe("CMT-0001: comment threads", () => {
 
             await page.evaluate(() => {
                 try {
+                    // Reset permission store to ensure consistent state for this test
+                    const permissionStore: any = (window as any).__PERMISSION_STORE__;
+                    if (permissionStore && typeof permissionStore.reset === "function") {
+                        permissionStore.reset();
+                    }
+
                     // Clear comment data from the current page items if possible
                     const gs: any = (window as any).generalStore;
                     if (gs?.currentPage?.items) {
@@ -186,8 +192,25 @@ test.describe("CMT-0001: comment threads", () => {
         await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).toBeVisible();
 
         // 編集入力フィールドをクリアしてから新しいテキストを入力
-        await page.fill(`[data-testid="edit-input-${commentId}"]`, "");
-        await page.fill(`[data-testid="edit-input-${commentId}"]`, "edited");
+        const editInput = page.locator(`[data-testid="edit-input-${commentId}"]`);
+
+        // Focus and wait
+        await editInput.focus();
+        await page.waitForTimeout(100);
+
+        // Use evaluate to directly set value and dispatch input event
+        // This ensures Svelte's reactivity is triggered properly
+        await editInput.evaluate((el: HTMLInputElement) => {
+            el.value = "edited";
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+        await page.waitForTimeout(50);
+
+        // Wait for the input value to be properly set
+        await expect(editInput).toHaveValue("edited", { timeout: 5000 });
+
+        // Short wait to ensure Svelte has processed the input event
+        await page.waitForTimeout(200);
 
         // 保存ボタンをクリック
         await page.click(`[data-testid="save-edit-${commentId}"]`);
@@ -223,6 +246,12 @@ test.describe("CMT-0001: comment threads", () => {
 
             await page.evaluate(() => {
                 try {
+                    // Reset permission store to prevent state leakage to next test
+                    const permissionStore: any = (window as any).__PERMISSION_STORE__;
+                    if (permissionStore && typeof permissionStore.reset === "function") {
+                        permissionStore.reset();
+                    }
+
                     // Clear comment data from the current page items if possible
                     const gs: any = (window as any).generalStore;
                     if (gs?.currentPage?.items) {

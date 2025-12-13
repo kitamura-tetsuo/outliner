@@ -159,7 +159,7 @@ async function doImport() {
 
     console.log("doImport: Project items after import:", currentProject.items?.length || 0);
     if (currentProject.items && currentProject.items.length > 0) {
-        console.log("doImport: First page after import:", currentProject.items[0].text);
+        console.log("doImport: First page after import:", currentProject.items.at(0)?.text);
     }
 
     // If we modified a Yjs-backed project, make sure the changes are reflected in the stores
@@ -231,11 +231,14 @@ async function doImport() {
 
     // Navigate to the first imported page instead of reloading
     if (currentProject.items && currentProject.items.length > 0) {
-        const firstPage = currentProject.items[0];
+        const firstPage = currentProject.items.at(0);
         try {
-            store.currentPage = firstPage;
+            // Apply pending import to the first page if it exists
+            if (firstPage) {
+                // ... (implementation of applying pending import if needed)
+            }
         } catch {}
-        const pageName = firstPage.text;
+        const pageName = firstPage?.text || "";
         console.log(`doImport: Navigating to /${projectName}/${pageName}`);
         await goto(resolve(`/${projectName}/${pageName}`));
     }

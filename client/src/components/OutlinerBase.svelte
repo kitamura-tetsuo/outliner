@@ -106,7 +106,7 @@ onMount(() => {
                             if (!arr) {
                                 const fallback = new Y.Array();
                                 try { (this as any)?.value?.set?.("comments", fallback); } catch {}
-                                return new Comments(fallback);
+                                return new Comments(fallback as any);
                             }
                             return new Comments(arr);
                         },
@@ -174,7 +174,7 @@ onMount(() => {
                                     if (!arr) {
                                         const fallbackArr = new Y.Array();
                                         try { (this as any)?.value?.set?.("comments", fallbackArr); } catch {}
-                                        return new Comments(fallbackArr);
+                                        return new Comments(fallbackArr as any);
                                     }
                                     return new Comments(arr);
                                 },

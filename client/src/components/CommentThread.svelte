@@ -3,6 +3,7 @@ import { Comments } from "../schema/app-schema";
 import * as Y from "yjs";
 import type { Comment } from "../schema/app-schema";
 import type { ItemLike } from "../types/yjs-types";
+import type { CommentValueType } from "../types/yjs-types";
 import { getLogger } from "../lib/logger";
 import { createEventDispatcher, onMount } from "svelte";
 const logger = getLogger("CommentThread");
@@ -67,7 +68,7 @@ onMount(() => {
     let unobserve: (() => void) | undefined;
     try {
         // 1) Comments ラッパがあれば内部の yArray を取得（private だが JS では参照可能）
-        let yarr: Y.Array<Y.Map<unknown>> | undefined = (comments as Comments | undefined)?.yArray;
+        let yarr: Y.Array<Y.Map<CommentValueType>> | undefined = (comments as Comments | undefined)?.getYArray?.();
         // 2) なければ item 経由で Y.Map -> "comments" を確保
         if (!yarr && props.item) {
             const item = props.item as ItemLike;
@@ -75,9 +76,9 @@ onMount(() => {
             const key = item?.key;
             const value = tree?.getNodeValueFromKey?.(key) as Y.Map<unknown> | undefined;
             if (value) {
-                yarr = value.get?.("comments") as Y.Array<Y.Map<unknown>> | undefined;
+                yarr = value.get?.("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
                 if (!yarr) {
-                    yarr = new Y.Array<Y.Map<unknown>>();
+                    yarr = new Y.Array<Y.Map<CommentValueType>>();
                     value.set?.("comments", yarr);
                 }
             }
@@ -87,7 +88,7 @@ onMount(() => {
             const handler = () => {
                 try {
                     // Convert the Y.Array directly to plain objects
-                    const plainComments = yarr.toArray().map((yMap: Y.Map<unknown>) => ({
+                    const plainComments = yarr!.toArray().map((yMap: Y.Map<unknown>) => ({
                         id: yMap.get("id") as string,
                         author: yMap.get("author") as string,
                         text: yMap.get("text") as string,
@@ -106,7 +107,7 @@ onMount(() => {
                     if (needsUpdate) {
                         renderCommentsState = plainComments;
                     }
-                } catch (e) {
+                } catch (e: unknown) {
                     logger.error("Error in observe handler", e);
                 }
             };
@@ -229,13 +230,13 @@ function add() {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
                 let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!arr) {
-                    arr = new Y.Array<Y.Map<unknown>>();
+                    arr = new Y.Array<Y.Map<CommentValueType>>();
                     value.set("comments", arr);
                 }
                 commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] initialized comments via tree/key fallback');
             }
-        } catch (e) {
+        } catch (e: any) {
             logger.warn('[CommentThread] failed to ensure comments via fallback', e);
         }
     }
@@ -312,7 +313,7 @@ function add() {
                 badge.textContent = String(countNow); 
             }
         } catch {}
-    } catch (e) {
+    } catch (e: unknown) {
         logger.error('[CommentThread] failed to sync after add', e);
     }
 
@@ -341,16 +342,16 @@ function remove(id: string) {
             if (tree && key) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
                 let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
-                if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
+                if (!arr) { arr = new Y.Array<Y.Map<CommentValueType>>(); value.set("comments", arr); }
                 commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] ensured comments for remove via tree/key');
             }
-        } catch (e) {
+        } catch (e: any) {
             logger.warn('[CommentThread] failed to ensure comments for remove', e);
         }
     }
-    try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error('[CommentThread] deleteComment error', e); }
-    try { /* Yjs  derived updates; no direct assignment to commentsList */ } catch (e) { logger.error('[CommentThread] toPlain after delete error', e); }
+    try { commentsObj?.deleteComment?.(id); } catch (e: any) { logger.error('[CommentThread] deleteComment error', e); }
+    try { /* Yjs  derived updates; no direct assignment to commentsList */ } catch (e: any) { logger.error('[CommentThread] toPlain after delete error', e); }
     localComments = localComments.filter(c => c.id !== id);
 
     const countNow = renderCommentsState.length;
@@ -385,11 +386,11 @@ function saveEdit(id: string) {
             if (tree && key) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
                 let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
-                if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
+                if (!arr) { arr = new Y.Array<Y.Map<CommentValueType>>(); value.set("comments", arr); }
                 commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] ensured comments for saveEdit via tree/key');
             }
-        } catch (e) {
+        } catch (e: unknown) {
             logger.warn('[CommentThread] failed to ensure comments for saveEdit', e);
         }
     }
@@ -398,11 +399,11 @@ function saveEdit(id: string) {
     try {
         commentsObj?.updateComment?.(id, editText);
         logger.debug('[CommentThread] updateComment called');
-    } catch (e) {
+    } catch (e: unknown) {
         logger.error('[CommentThread] updateComment error', e);
     }
 
-    try { /* Yjs derived updates; no direct assignment to commentsList */ logger.debug('[CommentThread] updateComment applied'); } catch (e) { logger.error('[CommentThread] toPlain after update error', e); }
+    try { /* Yjs derived updates; no direct assignment to commentsList */ logger.debug('[CommentThread] updateComment applied'); } catch (e: unknown) { logger.error('[CommentThread] toPlain after update error', e); }
 
     // Update local state to immediately reflect the change while we wait for Yjs observer
     localComments = localComments.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } : c);
@@ -416,7 +417,7 @@ function saveEdit(id: string) {
     // Dispatch an event to notify that a comment was edited
     try { 
         threadRef?.dispatchEvent(new CustomEvent('comment-edited', { bubbles: true, detail: { id, text: editText } })); 
-    } catch (e) { 
+    } catch (e: unknown) { 
         logger.error('[CommentThread] failed to dispatch comment-edited event', e); 
     }
 }
@@ -448,7 +449,7 @@ onMount(() => {
             {/if}
         </div>
     {/each}
-    <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error('[CommentThread] submit add error', err); } }} data-testid="comment-form">
+    <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err: unknown) { logger.error('[CommentThread] submit add error', err); } }} data-testid="comment-form">
         <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" oninput={(e) => { try { e2eLog({ tag: 'input', value: (e.target as HTMLInputElement).value }); } catch {} }} />
         <button type="submit" data-testid="add-comment-btn">Add</button>
     </form>

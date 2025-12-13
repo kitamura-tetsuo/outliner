@@ -240,7 +240,7 @@ function syncCommentCountFromItem() {
                 commentCountLocal = 0;
             }
         }
-    } catch (err) {
+    } catch (err: any) {
         logger.error("[OutlinerItem][syncCommentCountFromItem] Error:", err);
     }
 }
@@ -1443,7 +1443,7 @@ function handleDragLeave() {
 async function handleDrop(event: DragEvent | CustomEvent) {
     const maybeCustom = event as CustomEvent;
     if (maybeCustom?.detail && typeof maybeCustom.detail === "object" && "targetItemId" in maybeCustom.detail) {
-        logger.debug("OutlinerItem handleDrop: custom event detail", maybeCustom.detail);
+        logger.debug({ detail: maybeCustom.detail }, "OutlinerItem handleDrop: custom event detail");
         event.preventDefault?.();
         try { event.stopPropagation?.(); (event as any).stopImmediatePropagation?.(); } catch {}
 
@@ -1469,7 +1469,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         return;
     }
 
-    logger.debug("OutlinerItem handleDrop: event received", event);
+    logger.debug({ event }, "OutlinerItem handleDrop: event received");
     // デフォルト動作を防止
     event.preventDefault();
     try { event.stopPropagation(); (event as any).stopImmediatePropagation?.(); } catch {}
@@ -1480,7 +1480,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
 
     // ドロップデータを取得（Playwright の isolated world では event.dataTransfer が欠落するケースに備えてフォールバックを用意）
-    const dt = event.dataTransfer as DataTransfer | null;
+    const dt = (event as any).dataTransfer as DataTransfer | null;
 
     // ファイルドロップ（DataTransfer.files または DataTransfer.items(kind=file) の両対応、もしくは E2E フォールバック）
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
