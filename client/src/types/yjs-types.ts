@@ -47,6 +47,7 @@ export interface ItemLike extends TreeNode {
     ydoc: Y.Doc;
     id: string;
     text: string;
+    comments?: any;
 }
 
 /**

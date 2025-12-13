@@ -66,7 +66,7 @@ async function handleClipboardCopy() {
 
             log(`ClipboardEvent 'copy' をディスパッチしました`);
         }
-        catch (clipboardEventError) {
+        catch (clipboardEventError: any) {
             log(`ClipboardEvent 'copy' ディスパッチ失敗: ${clipboardEventError.message}`);
         }
 
@@ -87,7 +87,7 @@ async function handleClipboardCopy() {
             }
         }, 100);
     }
-    catch (err) {
+    catch (err: any) {
         showResult("clipboard", `コピー失敗: ${err.message}`, false);
         log(`navigator.clipboard.writeText 失敗: ${err.message}`);
 
@@ -180,7 +180,7 @@ function handleExecCommandCopy() {
             log('document.execCommand("copy") 失敗');
         }
     }
-    catch (err) {
+    catch (err: any) {
         showResult("execCommand", `コピー失敗: ${err.message}`, false);
         log(`document.execCommand("copy") 失敗: ${err.message}`);
     }
@@ -201,7 +201,7 @@ function handleExecCommandPaste() {
             log('document.execCommand("paste") 失敗');
         }
     }
-    catch (err) {
+    catch (err: any) {
         showResult("execCommand", `ペースト失敗: ${err.message}`, false);
         log(`document.execCommand("paste") 失敗: ${err.message}`);
     }
@@ -222,7 +222,7 @@ async function checkPermissions() {
         showResult("permission", `clipboard-read: ${clipboardRead.state}, clipboard-write: ${clipboardWrite.state}`);
         log(`clipboard-read: ${clipboardRead.state}, clipboard-write: ${clipboardWrite.state}`);
     }
-    catch (err) {
+    catch (err: any) {
         showResult("permission", `権限確認失敗: ${err.message}`, false);
         log(`権限確認失敗: ${err.message}`);
     }
@@ -237,7 +237,7 @@ async function handlePlaywrightCopy() {
         // グローバル変数に保存（テスト用）
         (window as any).lastCopiedText = playwrightText;
     }
-    catch (err) {
+    catch (err: any) {
         showResult("playwright", `コピー失敗: ${err.message}`, false);
         log(`Playwright用コピー失敗: ${err.message}`);
     }
@@ -252,7 +252,7 @@ async function handlePlaywrightPaste() {
         // グローバル変数に保存（テスト用）
         (window as any).lastPastedText = text;
     }
-    catch (err) {
+    catch (err: any) {
         showResult("playwright", `ペースト失敗: ${err.message}`, false);
         log(`Playwright用ペースト失敗: ${err.message}`);
     }

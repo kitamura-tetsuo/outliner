@@ -4,6 +4,8 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { userManager } from "../auth/UserManager";
 import { getFirebaseApp } from "../lib/firebase-app";
 import { Project } from "../schema/app-schema";
+// Import firestoreStore to ensure Firestore emulator connection is established before any operations
+import "../stores/firestoreStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 
 class ProjectService {

@@ -6,14 +6,14 @@
   import { ProjectRole, type ProjectPermission } from "../../types/permissions";
   import { collection, query, where, getDocs } from "firebase/firestore";
 
-  export let projectId: string;
+  let { projectId }: { projectId: string } = $props();
 
   const db = getFirestore(getFirebaseApp());
-  let project: FirestoreProject | null = null;
-  let collaborators: ProjectPermission[] = [];
-  let userSearch = "";
-  let searchResults: { id: string; email: string }[] = [];
-  let errorMessage = "";
+  let project = $state<FirestoreProject | null>(null);
+  let collaborators = $state<ProjectPermission[]>([]);
+  let userSearch = $state("");
+  let searchResults = $state<{ id: string; email: string }[]>([]);
+  let errorMessage = $state("");
 
   onMount(async () => {
     const projectRef = doc(db, "projects", projectId);
@@ -90,12 +90,12 @@
           <span>{collaborator.userId}</span>
           <select
             value={collaborator.role}
-            on:change={e => updateRole(collaborator.userId, parseInt(e.currentTarget.value))}
+            onchange={e => updateRole(collaborator.userId, parseInt(e.currentTarget.value))}
           >
             <option value={ProjectRole.Viewer}>Viewer</option>
             <option value={ProjectRole.Editor}>Editor</option>
           </select>
-          <button on:click={() => removeCollaborator(collaborator.userId)}>
+          <button onclick={() => removeCollaborator(collaborator.userId)}>
             Remove
           </button>
         </div>
@@ -106,17 +106,17 @@
       <input
         type="text"
         bind:value={userSearch}
-        on:input={searchUsers}
+        oninput={searchUsers}
         placeholder="Search by email"
       />
       <div class="search-results">
         {#each searchResults as user (user.id)}
           <div class="search-result">
             <span>{user.email}</span>
-            <button on:click={() => addCollaborator(user.id, ProjectRole.Viewer)}>
+            <button onclick={() => addCollaborator(user.id, ProjectRole.Viewer)}>
               Add as Viewer
             </button>
-            <button on:click={() => addCollaborator(user.id, ProjectRole.Editor)}>
+            <button onclick={() => addCollaborator(user.id, ProjectRole.Editor)}>
               Add as Editor
             </button>
           </div>

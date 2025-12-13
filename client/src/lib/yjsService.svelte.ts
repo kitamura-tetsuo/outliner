@@ -63,8 +63,18 @@ async function ensureProjectFirestoreDocExists(projectId: string, title: string)
     try {
         const app = getFirebaseApp();
         const auth = getAuth(app);
-        const uid = auth.currentUser?.uid;
-        if (!uid) return;
+        const currentUser = auth.currentUser;
+        const uid = currentUser?.uid;
+        if (!uid || !currentUser) {
+            return;
+        }
+
+        // Force token refresh to ensure Firestore has the latest auth token
+        try {
+            await currentUser.getIdToken(true);
+        } catch {
+            // Token refresh failed, continue anyway
+        }
 
         const db = getFirestore(app);
         const projectRef = doc(db, "projects", projectId);
@@ -75,9 +85,8 @@ async function ensureProjectFirestoreDocExists(projectId: string, title: string)
             permissions: [],
             permissionsMap: {},
         }, { merge: true });
-    } catch (e) {
+    } catch {
         // Best-effort: project metadata should exist for permission checks, but Yjs can still function without it.
-        console.warn("[yjsService] Failed to create Firestore project doc (continuing)", e);
     }
 }
 

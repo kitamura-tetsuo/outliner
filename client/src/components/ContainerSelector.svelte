@@ -109,7 +109,7 @@ onMount(() => {
         for (const clean of cleanupTasks) {
             try {
                 clean();
-            } catch (err) {
+            } catch (err: any) {
                 logger.warn("ContainerSelector cleanup failed", err);
             }
         }
@@ -128,8 +128,8 @@ async function ensureUserLoggedIn() {
     const currentUser = userManagerInstance.getCurrentUser();
     const authUser = userManagerInstance.auth?.currentUser;
 
-    logger.info("ContainerSelector - Current user:", currentUser);
-    logger.info("ContainerSelector - Auth user:", authUser);
+    logger.info({ currentUser }, "ContainerSelector - Current user:");
+    logger.info({ authUser }, "ContainerSelector - Auth user:");
 
     if (!currentUser && !authUser) {
         logger.info("ContainerSelector - No user found, attempting login...");
@@ -140,9 +140,9 @@ async function ensureUserLoggedIn() {
             // ログイン成功後、少し待ってからFirestoreの同期を確認
             setTimeout(() => {
                 const cnt = containersFromUserContainer(firestoreStore.userContainer).length;
-                logger.info("ContainerSelector - Checking containers after login:", cnt);
+                logger.info({ cnt }, "ContainerSelector - Checking containers after login:");
             }, 1000);
-        } catch (err) {
+        } catch (err: any) {
             logger.error("ContainerSelector - Login failed:", err);
         }
     }
@@ -167,7 +167,7 @@ async function handleContainerChange() {
         // 選択したコンテナIDとコンテナ名をイベントとして発行
         onContainerSelected(selectedContainerId, selectedContainer.name);
     }
-    catch (err) {
+    catch (err: any) {
         logger.error("コンテナ選択エラー:", err);
         error = err instanceof Error
             ? err.message
@@ -190,7 +190,7 @@ async function reloadCurrentContainer() {
         const client = await createYjsClient(currentContainerId);
         yjsStore.yjsClient = client as YjsClient;
     }
-    catch (err) {
+    catch (err: any) {
         logger.error("コンテナ再ロードエラー:", err);
         error = err instanceof Error
             ? err.message

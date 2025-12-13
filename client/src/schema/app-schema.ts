@@ -18,6 +18,10 @@ export type Comment = {
 export class Comments {
     constructor(private readonly yArray: Y.Array<Y.Map<CommentValueType>>) {}
 
+    getYArray(): Y.Array<Y.Map<CommentValueType>> {
+        return this.yArray;
+    }
+
     addComment(author: string, text: string) {
         const time = Date.now();
         const c = new Y.Map<CommentValueType>();
