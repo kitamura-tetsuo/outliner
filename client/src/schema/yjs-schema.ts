@@ -10,8 +10,8 @@ export class Item {
         public readonly key: string,
     ) {}
 
-    private get value(): Y.Map<any> {
-        return this.tree.getNodeValueFromKey(this.key) as Y.Map<any>;
+    private get value(): Y.Map<unknown> {
+        return this.tree.getNodeValueFromKey(this.key) as Y.Map<unknown>;
     }
 
     get id(): string {
@@ -85,6 +85,7 @@ export class Item {
     }
 
     get parent(): Items | null {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const parentKey = (this.tree as any).getNodeParentFromKey(this.key);
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree, parentKey);
@@ -116,7 +117,7 @@ export class Items {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
 
-        const value = new Y.Map<any>();
+        const value = new Y.Map<unknown>();
         value.set("id", nodeKey);
         value.set("author", author);
         value.set("created", now);
@@ -126,7 +127,7 @@ export class Items {
         value.set("text", new Y.Text());
         value.set("votes", new Y.Array<string>());
         value.set("attachments", new Y.Array<string>());
-        value.set("comments", new Y.Array<Y.Map<any>>());
+        value.set("comments", new Y.Array<Y.Map<unknown>>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 
@@ -194,7 +195,7 @@ export class Project {
 
     get title(): string {
         try {
-            const meta = this.ydoc.getMap("metadata") as Y.Map<any>;
+            const meta = this.ydoc.getMap("metadata") as Y.Map<unknown>;
             return String(meta.get("title") ?? "");
         } catch {
             return "";
@@ -206,6 +207,30 @@ export class Project {
         meta.set("title", newTitle);
     }
 
+    get deletedAt(): number | null {
+        return (this.ydoc.getMap("metadata").get("deletedAt") as number) ?? null;
+    }
+
+    set deletedAt(v: number | null) {
+        if (v === null) {
+            this.ydoc.getMap("metadata").delete("deletedAt");
+        } else {
+            this.ydoc.getMap("metadata").set("deletedAt", v);
+        }
+    }
+
+    get deletedBy(): string | null {
+        return (this.ydoc.getMap("metadata").get("deletedBy") as string) ?? null;
+    }
+
+    set deletedBy(v: string | null) {
+        if (v === null) {
+            this.ydoc.getMap("metadata").delete("deletedBy");
+        } else {
+            this.ydoc.getMap("metadata").set("deletedBy", v);
+        }
+    }
+
     get items(): Items {
         return new Items(this.ydoc, this.tree, "root");
     }
@@ -215,6 +240,7 @@ export class Project {
         const page = this.items.addNode(author ?? "user");
         page.updateText(title ?? "");
         const pages = this.ydoc.getMap<Y.Doc>("pages");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as any);
         pages.set(page.id, subdoc);
         subdoc.load();

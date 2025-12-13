@@ -3,7 +3,7 @@
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import * as yjsService from "../../lib/yjsService.svelte";
-    import { Project } from "../../schema/yjs-schema";
+    import { Project } from "../../schema/app-schema";
     import { onMount } from "svelte";
 
     let newProjectName = $state("");

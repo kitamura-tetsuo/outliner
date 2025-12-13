@@ -527,6 +527,10 @@ export class Project {
         this.ydoc.getMap("metadata").set("title", v);
     }
 
+    setTitle(v: string) {
+        this.title = v;
+    }
+
     get deletedAt(): number | null {
         return (this.ydoc.getMap("metadata").get("deletedAt") as number) ?? null;
     }

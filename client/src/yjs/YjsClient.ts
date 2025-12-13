@@ -4,7 +4,7 @@ import * as Y from "yjs";
 
 import { createProjectConnection, type PageConnection } from "../lib/yjs/connection";
 import { yjsService } from "../lib/yjs/service";
-import { Items, Project } from "../schema/yjs-schema";
+import { Items, Project } from "../schema/app-schema";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
 export interface YjsClientParams {
