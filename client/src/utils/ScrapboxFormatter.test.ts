@@ -85,7 +85,10 @@ describe("ScrapboxFormatter", () => {
                 const result = ScrapboxFormatter.formatToHtml(input);
 
                 // 内部リンクのHTMLが正しく生成されることを確認
-                expect(result).toMatch(/<a href="\/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page<\/a>/);
+                // Test environment initializes project title as "Untitled Project" via store.svelte.ts
+                expect(result).toMatch(
+                    /<a href="\/Untitled%20Project\/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page<\/a>/,
+                );
                 expect(result).toContain('data-page="test-page"');
                 expect(result).toContain('class="link-preview-wrapper"');
             });
@@ -95,7 +98,7 @@ describe("ScrapboxFormatter", () => {
                 const result = ScrapboxFormatter.formatToHtml(input);
 
                 expect(result).toMatch(
-                    /<a href="\/test-page-name"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page-name<\/a>/,
+                    /<a href="\/Untitled%20Project\/test-page-name"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page-name<\/a>/,
                 );
                 expect(result).toContain('data-page="test-page-name"');
             });
@@ -129,7 +132,9 @@ describe("ScrapboxFormatter", () => {
                 const result = ScrapboxFormatter.formatToHtml(input);
 
                 // 両方のリンクが正しく生成されることを確認
-                expect(result).toMatch(/<a href="\/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page<\/a>/);
+                expect(result).toMatch(
+                    /<a href="\/Untitled%20Project\/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page<\/a>/,
+                );
                 expect(result).toMatch(
                     /<a href="\/project\/other-page"[^>]*class="[^"]*internal-link[^"]*project-link[^"]*"[^>]*>project\/other-page<\/a>/,
                 );
@@ -187,7 +192,7 @@ describe("ScrapboxFormatter", () => {
                 expect(result).toContain("<strong>");
                 // 太字の中に内部リンクがある場合、HTMLの構造が複雑になるため、
                 // より柔軟なマッチングを使用
-                expect(result).toContain('href="/internal-link');
+                expect(result).toContain('href="/Untitled%20Project/internal-link');
                 expect(result).toContain('class="internal-link');
                 expect(result).toContain(">internal-link");
             });

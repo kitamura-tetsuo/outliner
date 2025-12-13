@@ -333,8 +333,9 @@ export class ScrapboxFormatter {
                         }
                     } else {
                         const existsClass = this.checkPageExists(rawContent) ? "page-exists" : "page-not-exists";
+                        const projectPrefix = this.getProjectPrefix();
                         html += `<span class="link-preview-wrapper">
-                            <a href="/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a>
+                            <a href="${projectPrefix}/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a>
                         </span>`;
                     }
                     break;
@@ -615,9 +616,11 @@ export class ScrapboxFormatter {
                 // ページの存在確認用のクラスを追加
                 const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
 
+                const projectPrefix = this.getProjectPrefix();
+
                 // LinkPreviewコンポーネントを使用
                 const html = `<span class="link-preview-wrapper">
-                    <a href="/${escapeHtml(text)}" class="internal-link ${existsClass}" data-page="${
+                    <a href="${projectPrefix}/${escapeHtml(text)}" class="internal-link ${existsClass}" data-page="${
                     escapeHtml(text)
                 }">${escapeHtml(text)}</a>
                 </span>`;
@@ -857,6 +860,19 @@ export class ScrapboxFormatter {
             || internalLinkPattern.test(text)
             || projectLinkPattern.test(text)
             || quotePattern.test(text);
+    }
+
+    /**
+     * 現在のプロジェクトURLプレフィックスを取得する
+     */
+    private static getProjectPrefix(): string {
+        if (typeof window !== "undefined") {
+            const store = (window as any).appStore || (window as any).generalStore;
+            if (store?.project?.title) {
+                return "/" + encodeURIComponent(store.project.title);
+            }
+        }
+        return "";
     }
 
     /**
