@@ -9,17 +9,21 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-0002: 内部リンクの基本機能", () => {
+    let projectName: string;
+
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        const result = await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "[test-page]",
             "別のアイテム",
             "3つ目のアイテム",
         ]);
+        projectName = result.projectName;
     });
 
     test("内部リンクが正しく機能する", async ({ page }) => {
         await page.waitForTimeout(500);
-        const internalLink = page.locator('a.internal-link[href="/test-page"]');
+        const encodedProject = encodeURIComponent(projectName);
+        const internalLink = page.locator(`a.internal-link[href="/${encodedProject}/test-page"]`);
         await expect(internalLink).toHaveCount(1);
 
         const target = await internalLink.getAttribute("target");

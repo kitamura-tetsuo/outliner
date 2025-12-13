@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 import { beforeEach } from "vitest";
 import AliasPicker from "../../components/AliasPicker.svelte";
+import { Project } from "../../schema/app-schema";
 import { aliasPickerStore } from "../../stores/AliasPickerStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 beforeEach(() => aliasPickerStore.reset());
@@ -10,15 +11,20 @@ beforeEach(() => aliasPickerStore.reset());
 
 describe("ALS alias self reference", () => {
     it("prevents selecting self", async () => {
-        const items = [{ id: "alias", text: "alias", items: [] }];
-        generalStore.currentPage = { id: "root", text: "root", items } as any;
+        const project = Project.createInstance("Test Project");
+        const rootPage = project.addPage("root", "tester");
+        const aliasItem = rootPage.items.addNode("tester");
+        aliasItem.updateText("alias");
+
+        generalStore.project = project;
+        generalStore.currentPage = rootPage;
         render(AliasPicker);
 
-        aliasPickerStore.show("alias");
+        aliasPickerStore.show(aliasItem.id);
         const option = screen.queryByRole("button", { name: "root/alias" });
         expect(option).toBeNull();
         aliasPickerStore.hide();
-        expect((items[0] as any).aliasTargetId).toBeUndefined();
+        expect(aliasItem.aliasTargetId).toBeUndefined();
         expect(aliasPickerStore.isVisible).toBe(false);
     });
 });
