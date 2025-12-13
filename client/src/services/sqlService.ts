@@ -1,7 +1,7 @@
 import initSqlJs, { type Database } from "sql.js";
 import { writable } from "svelte/store";
 import type { EditInfo } from "./editMapper";
-import { type Op, SyncWorker } from "./syncWorker";
+import { type Op, type SqlJsDatabase, SyncWorker } from "./syncWorker";
 
 interface ColumnMeta {
     name: string;
@@ -15,8 +15,8 @@ interface QueryResult {
     columnsMeta: ColumnMeta[];
 }
 
-type SqlJsModule = typeof import("sql.js");
-let SQL: SqlJsModule | null = null;
+type SqlJsStatic = Awaited<ReturnType<typeof initSqlJs>>;
+let SQL: SqlJsStatic | null = null;
 let db: Database | null = null;
 let currentSelect = "";
 let worker: SyncWorker | null = null;
@@ -84,8 +84,12 @@ export async function initDb() {
         });
     }
 
+    if (!SQL) {
+        throw new Error("Failed to initialize SQL.js");
+    }
+
     db = new SQL.Database();
-    worker = new SyncWorker(db);
+    worker = new SyncWorker(db as unknown as SqlJsDatabase);
     console.log("SQL.js database initialized successfully");
 }
 
@@ -138,6 +142,7 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
     console.log("selectMatch:", selectMatch);
     if (!selectMatch) {
         console.log("No select match found, returning original");
+        const aliases = Object.keys(tableMap);
         return { sql, aliases, tableMap };
     }
 

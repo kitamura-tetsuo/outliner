@@ -1,9 +1,9 @@
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
-import type { Item, ItemLike, Items } from "../schema/app-schema";
+import type { Item, Items } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
-import type { PlainItemData } from "../types/yjs-types";
+import type { ItemLike, PlainItemData } from "../types/yjs-types";
 
 export class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
@@ -36,10 +36,11 @@ export class GeneralStore {
             if (proj?.ydoc && page?.ydoc && proj.ydoc !== page.ydoc) {
                 const title = page?.text?.toString?.() ?? String(page?.text ?? "");
                 const items = proj.items;
-                let next: Item | null = null;
+                let next: Item | undefined;
                 const len = items?.length ?? 0;
                 for (let i = 0; i < len; i++) {
                     const p = items.at(i);
+                    if (!p) continue;
                     const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                     if (String(t).toLowerCase() === String(title).toLowerCase()) {
                         next = p;
@@ -66,7 +67,7 @@ export class GeneralStore {
                         const shouldReplaceChildren = nextLen === 0
                             || (nextLen <= 3 && (() => {
                                 for (let idx = 0; idx < nextLen; idx++) {
-                                    const candidate = nextItems.at ? nextItems.at(idx) : nextItems[idx];
+                                    const candidate = nextItems?.at ? nextItems.at(idx) : undefined;
                                     if (!isPlaceholderChild(candidate)) {
                                         return false;
                                     }
@@ -79,25 +80,20 @@ export class GeneralStore {
                                 nextItems.removeAt(nextItems.length - 1);
                             }
 
-                            const cloneBranch = (
-                                source: ItemLike | PlainItemData | null | undefined,
-                                target: ItemLike | null | undefined,
-                            ) => {
+                            const cloneBranch = (source: Items | undefined, target: Items | undefined) => {
                                 if (!source || !target) return;
-                                const length = source && "length" in source ? (source.length ?? 0) : 0;
+                                const length = source.length ?? 0;
                                 for (let index = 0; index < length; index++) {
-                                    const from = source && "at" in source
-                                        ? (source.at ? source.at(index) : source[index])
-                                        : null;
+                                    const from = source.at(index);
                                     if (!from) continue;
                                     const text = from?.text?.toString?.() ?? String(from?.text ?? "");
-                                    const created = target?.items?.addNode?.("tester");
+                                    const created = target.addNode?.("tester");
                                     if (!created) continue;
-                                    created?.updateText?.(text);
-                                    cloneBranch(from, created);
+                                    created.updateText?.(text);
+                                    cloneBranch(from.items, created.items);
                                 }
                             };
-                            cloneBranch(prevItems as ItemLike | PlainItemData, nextItems as ItemLike);
+                            cloneBranch(prevItems, nextItems);
                         }
                     }
                 } catch {
@@ -142,7 +138,7 @@ export class GeneralStore {
         const project = v;
         const ymap = project?.ydoc?.getMap?.("orderedTree");
         const subscribe = createSubscriber((_update) => {
-            const handler = (_events: Array<Y.YEvent<unknown>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+            const handler = (_events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
                 try {
                     saveProjectSnapshot(project);
                 } catch {

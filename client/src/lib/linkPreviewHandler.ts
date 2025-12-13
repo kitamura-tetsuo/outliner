@@ -341,7 +341,8 @@ export function setupLinkPreviewHandlers(): void {
 
         logger.info(`Link preview handlers set up for ${internalLinks.length} links`);
     } catch (error) {
-        logger.error("Error setting up link preview handlers", ...(error instanceof Error ? [error] : [String(error)]));
+        const err = error instanceof Error ? error : new Error(String(error));
+        logger.error({ err }, "Error setting up link preview handlers");
     }
 }
 
@@ -415,7 +416,8 @@ function setupMutationObserver(): void {
 
         logger.info("MutationObserver for link preview handlers set up");
     } catch (error) {
-        logger.error("Error setting up MutationObserver", ...(error instanceof Error ? [error] : [String(error)]));
+        const err = error instanceof Error ? error : new Error(String(error));
+        logger.error({ err }, "Error setting up MutationObserver");
     }
 }
 

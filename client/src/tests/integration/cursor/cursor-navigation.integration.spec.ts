@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Cursor } from "../../../lib/Cursor";
-import type { Item } from "../../../schema/yjs-schema";
+import type { Item } from "../../../schema/app-schema";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
 
@@ -73,13 +73,13 @@ describe("Cursor Integration", () => {
         } as unknown as Item;
 
         // Set up parent relationship
-        mockItem.parent = mockParentItem;
+        (mockItem as unknown as { parent: Item | null; }).parent = mockParentItem;
 
         // Mock the general store
         (generalStore as any).currentPage = mockParentItem;
 
         // Setup editor overlay store mocks
-        editorOverlayStore.setCursor.mockReturnValue("new-cursor-id");
+        (editorOverlayStore.setCursor as unknown as ReturnType<typeof vi.fn>).mockReturnValue("new-cursor-id");
     });
 
     afterEach(() => {
@@ -121,7 +121,7 @@ describe("Cursor Integration", () => {
             } as unknown as Item;
 
             // Update parent to include second item
-            mockParentItem.items = {
+            (mockParentItem as unknown as { items: unknown; }).items = {
                 [Symbol.iterator]: function*() {
                     yield mockItem;
                     yield secondItem;
@@ -132,7 +132,7 @@ describe("Cursor Integration", () => {
                     if (item === secondItem) return 1;
                     return -1;
                 },
-            } as any;
+            };
 
             const cursor = new Cursor("cursor-1", {
                 itemId: "test-item-1",

@@ -15,8 +15,8 @@ let toolbarEl: HTMLDivElement | null = null;
 // Fallback to global store.project when prop is not provided
 let effectiveProject: Project | null = $derived(project ?? store.project ?? null);
 
-// Helper: resolve accessible name for inputs
-function getAccessibleName(el: HTMLElement): string {
+	// Helper: resolve accessible name for inputs
+	function getAccessibleName(el: HTMLElement): string {
     try {
         const aria = el.getAttribute("aria-label");
         if (aria) return aria.trim();
@@ -40,21 +40,55 @@ function getAccessibleName(el: HTMLElement): string {
         const ph = (el as HTMLInputElement).placeholder;
         if (ph) return ph.trim();
     } catch {}
-    return "";
-}
+	    return "";
+	}
 
-function styles(el: Element | null) {
-    if (!el) return null as any;
-    const cs = getComputedStyle(el as Element);
-    return {
-        display: cs.display,
-        visibility: cs.visibility,
-        opacity: cs.opacity,
-        transform: cs.transform,
-        clipPath: (cs as any).clipPath ?? (cs as any)["clip-path"],
-        pointerEvents: cs.pointerEvents,
-    };
-}
+	type ToolbarNodeStyles = {
+	    display: string;
+	    visibility: string;
+	    opacity: string;
+	    transform: string;
+	    clipPath?: string;
+	    pointerEvents: string;
+	};
+
+	function styles(el: Element | null): ToolbarNodeStyles | null {
+	    if (!el) return null;
+	    const cs = getComputedStyle(el);
+	    const clipPath = cs.clipPath || cs.getPropertyValue("clip-path") || undefined;
+	    return {
+	        display: cs.display,
+	        visibility: cs.visibility,
+	        opacity: cs.opacity,
+	        transform: cs.transform,
+	        clipPath,
+	        pointerEvents: cs.pointerEvents,
+	    };
+	}
+
+	type FluidClientLike = { getProject: () => Project };
+	type FluidServiceLike = {
+	    getClientByProjectTitle?: (title: string) => Promise<FluidClientLike | undefined> | FluidClientLike | undefined;
+	    getFluidClientByProjectTitle?: (title: string) => Promise<FluidClientLike | undefined> | FluidClientLike | undefined;
+	};
+
+	type ClientRegistryLike = {
+	    getAllKeys?: () => string[];
+	    get?: (key: string) => unknown;
+	};
+
+	type ToolbarDebugGlobals = {
+	    __CURRENT_PROJECT__?: Project;
+	    __FLUID_CLIENT_REGISTRY__?: ClientRegistryLike;
+	    __FLUID_SERVICE__?: FluidServiceLike;
+	};
+
+	function isProject(value: unknown): value is Project {
+	    return !!value
+	        && typeof value === "object"
+	        && "ydoc" in value
+	        && "tree" in value;
+	}
 
 function dumpToolbarState(tag: string) {
     try {
@@ -103,43 +137,41 @@ function dedupeToolbars() {
     } catch {}
 }
 
-// As a last resort, resolve from service by URL param to support tests
-onMount(async () => {
-    try {
-        if (!effectiveProject && typeof window !== "undefined") {
-            // First, use direct global current project if available
-            const cur = (window as any).__CURRENT_PROJECT__ as Project | undefined;
-            if (cur) {
-                project = cur;
-            } else {
-                // Fallback: pick latest project from client registry
-                const reg = (window as any).__FLUID_CLIENT_REGISTRY__;
-                if (reg && typeof reg.getAllKeys === 'function') {
-                    const keys = reg.getAllKeys();
-                    if (keys.length > 0) {
-                        const last = keys[keys.length - 1];
-                        const inst = reg.get(last);
-                        const proj = inst?.[4];
-                        if (proj) {
-                            project = proj;
-                        }
-                    }
-                }
-                if (!project) {
-                    const pathParts = window.location.pathname.split("/").filter(Boolean);
-                    const projectTitle = pathParts[0] ? decodeURIComponent(pathParts[0]) : "";
-                    const service = (window as any).__FLUID_SERVICE__;
-                    if (service && projectTitle) {
-                        const client = await (service.getClientByProjectTitle?.(projectTitle) ?? service.getFluidClientByProjectTitle?.(projectTitle));
-                        if (client) {
-                            project = client.getProject();
-                        }
-                    }
-                }
-            }
-        }
-    } catch (e) {
-        console.warn("Toolbar: failed to resolve project by title", e);
+	// As a last resort, resolve from service by URL param to support tests
+	onMount(async () => {
+	    try {
+	        if (!effectiveProject && typeof window !== "undefined") {
+	            const globals = window as unknown as ToolbarDebugGlobals;
+	            // First, use direct global current project if available
+	            const cur = globals.__CURRENT_PROJECT__;
+	            if (cur) {
+	                project = cur;
+	            } else {
+	                // Fallback: pick latest project from client registry
+	                const reg = globals.__FLUID_CLIENT_REGISTRY__;
+	                if (typeof reg?.getAllKeys === "function") {
+	                    const keys = reg.getAllKeys();
+	                    if (keys.length > 0) {
+	                        const last = keys[keys.length - 1];
+	                        const inst = last && reg.get ? reg.get(last) : undefined;
+	                        const projCandidate = Array.isArray(inst) ? inst[4] : undefined;
+	                        if (isProject(projCandidate)) project = projCandidate;
+	                    }
+	                }
+	                if (!project) {
+	                    const pathParts = window.location.pathname.split("/").filter(Boolean);
+	                    const projectTitle = pathParts[0] ? decodeURIComponent(pathParts[0]) : "";
+	                    const service = globals.__FLUID_SERVICE__;
+	                    if (service && projectTitle) {
+	                        const getClient = service.getClientByProjectTitle ?? service.getFluidClientByProjectTitle;
+	                        const client = getClient ? await Promise.resolve(getClient(projectTitle)) : undefined;
+	                        if (client) project = client.getProject();
+	                    }
+	                }
+	            }
+	        }
+	    } catch (e) {
+	        console.warn("Toolbar: failed to resolve project by title", e);
     }
 });
 

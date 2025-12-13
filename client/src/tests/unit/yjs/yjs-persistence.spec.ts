@@ -57,7 +57,9 @@ describe("yjsPersistence", () => {
             const containerId = "test-container-789";
 
             // Track the callback that was passed to once
-            let syncCallback: (() => void) | null = null;
+            let syncCallback: () => void = () => {
+                throw new Error("sync callback not set");
+            };
             const mockPersistenceImpl: MockPersistence = {
                 once: vi.fn((event: string, callback: () => void) => {
                     if (event === "synced") {
@@ -68,14 +70,14 @@ describe("yjsPersistence", () => {
                 destroy: vi.fn(),
             };
 
-            vi.mocked(IndexeddbPersistence).mockImplementationOnce(() => mockPersistenceImpl);
+            vi.mocked(IndexeddbPersistence).mockImplementationOnce(
+                () => mockPersistenceImpl as unknown as IndexeddbPersistence,
+            );
 
             createPersistence(containerId, doc);
 
             // Trigger the sync callback
-            if (syncCallback) {
-                syncCallback();
-            }
+            syncCallback();
 
             expect(consoleSpy).toHaveBeenCalledWith(
                 "[yjsPersistence] Local cache loaded for container: test-container-789",

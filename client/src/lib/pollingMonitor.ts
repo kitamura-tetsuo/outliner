@@ -63,84 +63,86 @@ class PollingMonitor {
         this.enabled = true;
 
         // setIntervalをインターセプト
-        window.setInterval = (callback: TimerHandler, delay?: number, ...args: unknown[]): number => {
-            const stack = new Error().stack || "";
-            const id = this.nextId++;
+        window.setInterval =
+            ((callback: ((...args: unknown[]) => void) | string, delay?: number, ...args: unknown[]): number => {
+                const stack = new Error().stack || "";
+                const id = this.nextId++;
 
-            const call: PollingCall = {
-                id,
-                type: "setInterval",
-                delay,
-                stack,
-                createdAt: Date.now(),
-                executionCount: 0,
-                disabled: this.shouldDisable(stack),
-            };
+                const call: PollingCall = {
+                    id,
+                    type: "setInterval",
+                    delay,
+                    stack,
+                    createdAt: Date.now(),
+                    executionCount: 0,
+                    disabled: this.shouldDisable(stack),
+                };
 
-            this.calls.set(id, call);
+                this.calls.set(id, call);
 
-            if (call.disabled) {
-                console.log(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);
-                // ダミーのIDを返す
-                return id;
-            }
+                if (call.disabled) {
+                    console.log(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);
+                    // ダミーのIDを返す
+                    return id;
+                }
 
-            const callbackFn: (...cbArgs: unknown[]) => unknown = typeof callback === "function"
-                ? (...cbArgs: unknown[]) => (callback as (...args: unknown[]) => unknown)(...cbArgs)
-                : () => {};
+                const callbackFn: (...cbArgs: unknown[]) => unknown = typeof callback === "function"
+                    ? (...cbArgs: unknown[]) => (callback as (...args: unknown[]) => unknown)(...cbArgs)
+                    : () => {};
 
-            // ラップされたコールバック
-            const wrappedCallback = (...callbackArgs: unknown[]) => {
-                call.executionCount++;
-                call.lastExecutedAt = Date.now();
-                return callbackFn(...callbackArgs);
-            };
+                // ラップされたコールバック
+                const wrappedCallback = (...callbackArgs: unknown[]) => {
+                    call.executionCount++;
+                    call.lastExecutedAt = Date.now();
+                    return callbackFn(...callbackArgs);
+                };
 
-            const timerId = this.originalSetInterval(wrappedCallback, delay, ...args);
+                const timerId = this.originalSetInterval(wrappedCallback, delay, ...args);
 
-            // タイマーIDをマッピング
-            call.timerId = timerId;
+                // タイマーIDをマッピング
+                call.timerId = timerId;
 
-            return timerId;
-        };
+                return timerId;
+            }) as typeof window.setInterval;
 
         // setTimeoutをインターセプト
-        const wrappedSetTimeout = ((callback: TimerHandler, delay?: number, ...args: unknown[]) => {
-            const stack = new Error().stack || "";
-            const id = this.nextId++;
+        const wrappedSetTimeout =
+            ((callback: ((...args: unknown[]) => void) | string, delay?: number, ...args: unknown[]) => {
+                const stack = new Error().stack || "";
+                const id = this.nextId++;
 
-            const call: PollingCall = {
-                id,
-                type: "setTimeout",
-                delay,
-                stack,
-                createdAt: Date.now(),
-                executionCount: 0,
-                disabled: this.shouldDisable(stack),
-            };
+                const call: PollingCall = {
+                    id,
+                    type: "setTimeout",
+                    delay,
+                    stack,
+                    createdAt: Date.now(),
+                    executionCount: 0,
+                    disabled: this.shouldDisable(stack),
+                };
 
-            this.calls.set(id, call);
+                this.calls.set(id, call);
 
-            if (call.disabled) {
-                console.log(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);
-                return id;
-            }
+                if (call.disabled) {
+                    console.log(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);
+                    return id;
+                }
 
-            const callbackFn: (...cbArgs: unknown[]) => unknown = typeof callback === "function"
-                ? (...cbArgs: unknown[]) => (callback as (...args: unknown[]) => unknown)(...cbArgs)
-                : () => {};
-            const wrappedCallback = (...callbackArgs: unknown[]) => {
-                call.executionCount++;
-                call.lastExecutedAt = Date.now();
-                this.calls.delete(id); // setTimeoutは一度だけ実行
-                return callbackFn(...callbackArgs);
-            };
+                const callbackFn: (...cbArgs: unknown[]) => unknown = typeof callback === "function"
+                    ? (...cbArgs: unknown[]) => (callback as (...args: unknown[]) => unknown)(...cbArgs)
+                    : () => {};
+                const wrappedCallback = (...callbackArgs: unknown[]) => {
+                    call.executionCount++;
+                    call.lastExecutedAt = Date.now();
+                    this.calls.delete(id); // setTimeoutは一度だけ実行
+                    return callbackFn(...callbackArgs);
+                };
 
-            const timerId = this.originalSetTimeout(wrappedCallback, delay, ...(args as unknown[]));
-            call.timerId = timerId;
+                const timerId = this.originalSetTimeout(wrappedCallback, delay, ...(args as unknown[]));
+                call.timerId = timerId;
 
-            return timerId;
-        }) as typeof window.setTimeout;
+                return timerId;
+            }) as typeof window.setTimeout;
 
         // Node's `setTimeout` has an extra `__promisify__` property; keep it when swapping the function.
         (wrappedSetTimeout as unknown as { __promisify__?: unknown; }).__promisify__ =

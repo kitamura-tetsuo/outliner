@@ -1,6 +1,11 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import type * as Y from "yjs";
 
+export type PersistenceLike = {
+    synced: boolean;
+    once: (eventName: "synced", callback: () => void) => void;
+};
+
 /**
  * Create an IndexedDB persistence provider for the given Y.Doc
  * @param containerId - Unique container identifier
@@ -27,7 +32,7 @@ export function createPersistence(
  * @param persistence - The persistence instance
  * @returns Promise that resolves when synced
  */
-export function waitForSync(persistence: IndexeddbPersistence): Promise<void> {
+export function waitForSync(persistence: PersistenceLike): Promise<void> {
     return new Promise((resolve) => {
         if (persistence.synced) {
             resolve();

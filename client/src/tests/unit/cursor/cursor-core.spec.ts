@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Cursor } from "../../../lib/Cursor";
-import type { Item } from "../../../schema/yjs-schema";
+import type { Item } from "../../../schema/app-schema";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
 import type { GeneralStore } from "../../../stores/store.svelte";
@@ -74,7 +74,7 @@ describe("Cursor", () => {
         } as unknown as Item;
 
         // Set up parent relationship
-        mockItem.parent = mockParentItem;
+        (mockItem as unknown as { parent: Item | null; }).parent = mockParentItem;
 
         // Mock the general store
         (generalStore as GeneralStore).currentPage = mockParentItem;
