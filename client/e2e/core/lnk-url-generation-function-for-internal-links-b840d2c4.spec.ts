@@ -231,12 +231,16 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         console.log("Link check results:", JSON.stringify(linkCheckResult, null, 2));
 
         // 内部リンクが正しく生成されているアイテムを確認
+        const currentUrl = page.url();
+        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
+        const projectNameEncoded = urlParts[0];
+
         const linkItemResult = linkCheckResult.find(r => r.hasTestPageText && r.hasInternalLink);
         if (linkItemResult) {
             console.log("Found item with internal link:", linkItemResult);
             expect(linkItemResult.itemTextHTML).toContain("internal-link");
             expect(linkItemResult.itemTextHTML).toContain(actualPageName);
-            expect(linkItemResult.itemTextHTML).toContain(`href="/${actualPageName}"`);
+            expect(linkItemResult.itemTextHTML).toContain(`href="/${projectNameEncoded}/${actualPageName}"`);
         } else {
             // 内部リンクが見つからない場合、詳細情報を表示
             const itemsWithTestPage = linkCheckResult.filter(r => r.hasTestPageText);
@@ -296,7 +300,12 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
 
         const internalLink = page.locator(".item-text a.internal-link").filter({ hasText: pageName }).first();
         await expect(internalLink).toBeVisible({ timeout: 5000 });
-        await expect(internalLink).toHaveAttribute("href", `/${pageName}`);
+
+        const currentUrl = page.url();
+        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
+        const projectNameEncoded = urlParts[0];
+
+        await expect(internalLink).toHaveAttribute("href", `/${projectNameEncoded}/${pageName}`);
 
         const internalLinkParentClass = await internalLink.evaluate(node => node.parentElement?.className ?? "");
         expect(internalLinkParentClass).toContain("link-preview-wrapper");

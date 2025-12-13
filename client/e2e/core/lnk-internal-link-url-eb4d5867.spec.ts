@@ -25,7 +25,11 @@ test.describe("LNK-0002: 内部リンクURL生成", () => {
             hrefs.push(href || "");
         }
 
-        expect(hrefs).toContain("/simple-page");
+        const currentUrl = page.url();
+        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
+        const projectNameEncoded = urlParts[0];
+
+        expect(hrefs).toContain(`/${projectNameEncoded}/simple-page`);
         expect(hrefs).toContain("/project/page");
         expect(hrefs).toContain("/multi/level/path/page");
     });
