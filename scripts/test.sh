@@ -25,7 +25,7 @@ socket.once("error", () => process.exit(1));
 setTimeout(() => {
   socket.destroy();
   process.exit(1);
-}, 500).unref();' "$port" >/dev/null 2>&1
+}, 3000).unref();' "$port" >/dev/null 2>&1
 }
 
 ensure_codex_services() {
