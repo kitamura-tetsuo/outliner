@@ -1,7 +1,7 @@
 export enum ProjectRole {
-    Viewer = 0,
-    Editor = 1,
-    Owner = 2,
+    Viewer = 1,
+    Editor = 2,
+    Owner = 3,
 }
 
 export interface ProjectPermission {

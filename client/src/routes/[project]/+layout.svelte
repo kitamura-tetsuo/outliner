@@ -6,7 +6,6 @@ import { getYjsClientByProjectTitle, createNewYjsProject } from "../../services"
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import { store } from "../../stores/store.svelte";
 import { Project } from "../../schema/yjs-schema";
-import { hasPermission } from "../../lib/services/permissionService";
 import { ProjectRole } from "../../types/permissions";
 import { goto } from "$app/navigation";
 
@@ -77,18 +76,25 @@ async function loadProject(projectNameFromParam?: string) {
 
             const user = userManager.getCurrentUser();
             if (user) {
-                const isOwner = project.ownerId === user.id;
-                if (isOwner) {
-                    permissionStore.userRole = ProjectRole.Owner;
-                } else {
-                    const permission = project.permissions.find(p => p.userId === user.id);
-                    if (permission) {
-                        permissionStore.userRole = permission.role;
-                    }
-                }
+                // Check permissions only if the project has permission data
+                // (Yjs Project objects may not have ownerId/permissions properties)
+                const ownerId = (project as any).ownerId;
+                const permissions = (project as any).permissions;
 
-                if (permissionStore.userRole < ProjectRole.Viewer) {
-                    goto("/");
+                if (ownerId !== undefined) {
+                    const isOwner = ownerId === user.id;
+                    if (isOwner) {
+                        permissionStore.userRole = ProjectRole.Owner;
+                    } else if (permissions && Array.isArray(permissions)) {
+                        const permission = permissions.find((p: any) => p.userId === user.id);
+                        if (permission) {
+                            permissionStore.userRole = permission.role;
+                        }
+                    }
+
+                    if (permissionStore.userRole < ProjectRole.Viewer) {
+                        goto("/");
+                    }
                 }
             }
         }

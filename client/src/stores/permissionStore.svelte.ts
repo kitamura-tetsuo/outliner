@@ -1,4 +1,4 @@
-import { ProjectRole } from "../../types/permissions";
+import { ProjectRole } from "../types/permissions";
 
 interface PermissionStore {
     userRole: ProjectRole;

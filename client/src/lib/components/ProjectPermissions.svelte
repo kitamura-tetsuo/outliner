@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { doc, getDoc, updateDoc } from "firebase/firestore";
-  import { db }from "$lib/firebase-app";
+  import { doc, getDoc, updateDoc, getFirestore } from "firebase/firestore";
   import type { FirestoreProject } from "../../types/project";
   import { ProjectRole, type ProjectPermission } from "../../types/permissions";
   import { collection, query, where, getDocs } from "firebase/firestore";
 
   export let projectId: string;
 
+  const db = getFirestore();
   let project: FirestoreProject | null = null;
   let collaborators: ProjectPermission[] = [];
   let userSearch = "";
@@ -81,7 +81,7 @@
     </div>
     <div class="collaborators">
       <h3>Collaborators</h3>
-      {#each collaborators as collaborator}
+      {#each collaborators as collaborator (collaborator.userId)}
         <div class="collaborator">
           <span>{collaborator.userId}</span>
           <select
@@ -106,7 +106,7 @@
         placeholder="Search by email"
       />
       <div class="search-results">
-        {#each searchResults as user}
+        {#each searchResults as user (user.id)}
           <div class="search-result">
             <span>{user.email}</span>
             <button on:click={() => addCollaborator(user.id, ProjectRole.Viewer)}>

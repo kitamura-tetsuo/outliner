@@ -1,9 +1,9 @@
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, getFirestore } from "firebase/firestore";
 import { ProjectRole } from "../../types/permissions";
 import type { FirestoreProject } from "../../types/project";
-import { db } from "../firebase-app";
 
 const getProject = async (projectId: string): Promise<FirestoreProject | null> => {
+    const db = getFirestore();
     const projectRef = doc(db, "projects", projectId);
     const projectSnap = await getDoc(projectRef);
     if (projectSnap.exists()) {

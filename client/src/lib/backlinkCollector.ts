@@ -46,7 +46,7 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             return backlinks;
         }
         for (const page of pages) {
-            const pageItem = page as any as Item;
+            const pageItem = page;
             const pageText = String(pageItem.text);
             // 対象ページ自身は除外
             if (pageText.toLowerCase() === normalizedTargetName) {
