@@ -64,12 +64,10 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         console.log("Project link generation test completed successfully");
 
-        // TODO: 内部リンクのナビゲーション機能が実装されたら、以下のテストを有効化
-        // await linkElement.click();
-        // await page.waitForTimeout(1000);
-        // await expect(page).toHaveURL(new RegExp(`${targetProjectName}/${targetPageName}`));
-        // const pageTitle = page.locator(".page-title-content .item-text");
-        // await expect(pageTitle).toBeVisible({ timeout: 5000 });
-        // await expect(pageTitle).toContainText(targetPageName);
+        await linkElement.click();
+        await expect(page).toHaveURL(new RegExp(`${targetProjectName}/${targetPageName}`));
+        const pageTitle = page.locator(".page-title-content .item-text");
+        await expect(pageTitle).toBeVisible({ timeout: 5000 });
+        await expect(pageTitle).toContainText(targetPageName);
     });
 });
