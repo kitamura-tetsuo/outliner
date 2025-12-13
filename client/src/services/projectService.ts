@@ -129,7 +129,7 @@ class ProjectService {
         }, { merge: true });
     }
 
-    async permanentlyDeleteProject(projectId:string) {
+    async permanentlyDeleteProject(projectId: string) {
         const app = getFirebaseApp();
         const functions = getFunctions(app);
         const permanentlyDeleteProject = httpsCallable(functions, "permanentlyDeleteProject");
