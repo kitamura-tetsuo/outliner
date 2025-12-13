@@ -168,20 +168,41 @@ install_global_packages() {
 
 # Install OS utilities if needed
 install_os_utilities() {
-  # Check if Java is installed and compatible with Firebase
+  # Check if Java is installed and compatible with Firebase (requires Java 21+)
+  local need_java21=false
   if ! command -v java >/dev/null 2>&1; then
-    echo "Java not found. Installing OpenJDK 17 for Firebase compatibility..."
-    retry_apt_get update
-    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends openjdk-17-jre-headless
+    echo "Java not found. Installing OpenJDK 21 for Firebase compatibility..."
+    need_java21=true
   else
-    # Check Java version (Firebase requires Java 11+)
+    # Check Java version (Firebase requires Java 21+)
     java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
-    if [ "$java_version" -lt 11 ] 2>/dev/null; then
-      echo "Java version $java_version is too old for Firebase. Installing OpenJDK 17..."
-      retry_apt_get update
-      DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends openjdk-17-jre-headless
+    if [ "$java_version" -lt 21 ] 2>/dev/null; then
+      echo "Java version $java_version is too old for Firebase. Installing OpenJDK 21..."
+      need_java21=true
     else
       echo "Java version $java_version is compatible with Firebase"
+    fi
+  fi
+
+  if [ "$need_java21" = true ]; then
+    # Install Eclipse Temurin (Adoptium) JDK 21 from official repository
+    echo "Setting up Eclipse Temurin repository for OpenJDK 21..."
+    retry_apt_get update
+    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends wget apt-transport-https gnupg
+
+    # Add Adoptium GPG key and repository
+    wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor | sudo tee /usr/share/keyrings/adoptium.gpg > /dev/null
+    echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(. /etc/os-release && echo "$VERSION_CODENAME") main" | sudo tee /etc/apt/sources.list.d/adoptium.list > /dev/null
+
+    retry_apt_get update
+    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends temurin-21-jre
+
+    # Verify installation
+    if command -v java >/dev/null 2>&1; then
+      java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
+      echo "Installed Java version: $java_version"
+    else
+      echo "Warning: Java installation may have failed"
     fi
   fi
 
