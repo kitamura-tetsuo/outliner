@@ -121,6 +121,7 @@ onMount(() => {
 
 
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
+import { calculateGlobalOffset } from "../utils/domCursorUtils";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
@@ -577,8 +578,9 @@ function getClickPosition(event: MouseEvent, content: string): number {
     // テキスト要素を特定
     const textEl = displayRef.querySelector(".item-text") as HTMLElement;
 
-    // Caret APIを試す
-    if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
+    // Caret APIを試す (Fast Path)
+    // Only use if rendered text length matches raw content length (avoids issues with hidden formatting/links)
+    if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint) && textEl.textContent?.length === content.length) {
         let range: Range | null = null;
         if (document.caretRangeFromPoint) {
             range = document.caretRangeFromPoint(x, y);
@@ -591,9 +593,10 @@ function getClickPosition(event: MouseEvent, content: string): number {
                 range.collapse(true);
             }
         }
-        if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
-            // テキストノード内オフセットを返す
-            return Math.min(Math.max(0, range.startOffset), content.length);
+
+        if (range && textEl.contains(range.startContainer)) {
+            // Calculate global offset avoiding O(N) layout thrashing
+            return calculateGlobalOffset(textEl, range.startContainer, range.startOffset);
         }
     }
 
