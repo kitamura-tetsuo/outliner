@@ -1838,6 +1838,43 @@ exports.debugUserContainers = onRequest(
   },
 );
 
+// Public project access endpoint
+exports.verifyPublicAccessToken = onRequest({ cors: true }, async (req, res) => {
+    setCorsHeaders(req, res);
+    if (req.method === "OPTIONS") {
+        return res.status(204).end();
+    }
+    if (req.method !== "POST") {
+        return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
+    const { projectId, token } = req.body;
+    if (!projectId || !token) {
+        return res.status(400).json({ error: "Project ID and token are required" });
+    }
+
+    try {
+        const projectRef = db.collection("projects").doc(projectId);
+        const projectDoc = await projectRef.get();
+
+        if (!projectDoc.exists) {
+            return res.status(404).json({ error: "Project not found" });
+        }
+
+        const projectData = projectDoc.data();
+        if (projectData.isPublic && projectData.publicAccessToken === token) {
+            // Return a subset of project data to the client
+            const { id, title, isPublic } = projectData;
+            return res.status(200).json({ id, title, isPublic });
+        } else {
+            return res.status(403).json({ error: "Invalid access token" });
+        }
+    } catch (error) {
+        logger.error(`Error verifying public access token: ${error.message}`, { error });
+        return res.status(500).json({ error: "Failed to verify public access token" });
+    }
+});
+
 // 本番環境データ全削除エンドポイント（管理者専用）
 exports.deleteAllProductionData = onRequest(
   { cors: true },

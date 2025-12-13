@@ -124,6 +124,8 @@ import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
+import { permissionStore } from "../stores/permissionStore.svelte";
+import { ProjectRole } from "../types/permissions";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import ChartPanel from "./ChartPanel.svelte";
 import ChartQueryEditor from "./ChartQueryEditor.svelte";
@@ -163,6 +165,8 @@ let {
 }: Props = $props();
 
 const dispatch = createEventDispatcher();
+
+let isViewer = $derived.by(() => permissionStore.userRole === ProjectRole.Viewer);
 
 // Stateの管理
 
@@ -1881,9 +1885,10 @@ onMount(() => {
 <div
     class="outliner-item"
     class:page-title={isPageTitle}
+    class:read-only={isViewer}
     style={"margin-left: " + (depth <= 1 ? 0 : (depth - 1) * 20) + "px"}
-    onclick={handleClick}
-    onmousedown={handleMouseDown}
+    onclick={isViewer ? undefined : handleClick}
+    onmousedown={isViewer ? undefined : handleMouseDown}
     onmousemove={handleMouseMove}
     onmouseup={handleMouseUp}
     oncomment-count-changed={handleCommentCountChanged}
@@ -1921,7 +1926,7 @@ onMount(() => {
                 class:drop-target-top={isDropTarget && dropTargetPosition === "top"}
                 class:drop-target-bottom={isDropTarget && dropTargetPosition === "bottom"}
                 class:drop-target-middle={isDropTarget && dropTargetPosition === "middle"}
-                draggable={!isReadOnly}
+                draggable={!isReadOnly && !isViewer}
                 ondragstart={handleDragStart}
                 ondragover={handleDragOver}
                 ondragenter={handleDragEnter}
@@ -1988,7 +1993,7 @@ onMount(() => {
                 <OutlinerItemAttachments modelId={model.id} item={item} />
 
                 <!-- コンポーネントタイプセレクター -->
-                {#if !isPageTitle}
+                {#if !isPageTitle && !isViewer}
                     <div class="component-selector">
                         <select
                             value={(componentType ?? compTypeValue) || "none"}
@@ -1999,6 +2004,10 @@ onMount(() => {
                             <option value="chart">チャート</option>
                         </select>
                     </div>
+                {/if}
+
+                {#if isViewer}
+                    <span class="view-only-badge">View only</span>
                 {/if}
 
                 <!-- コンポーネント表示（テキストは非表示） -->
@@ -2013,7 +2022,7 @@ onMount(() => {
             </div>
         </div>
 
-        {#if !isPageTitle}
+        {#if !isPageTitle && !isViewer}
             <div class="item-actions">
                 <button onclick={addNewItem} title="新しいアイテムを追加">+</button>
                 <button onclick={handleDelete} title="削除">×</button>
@@ -2050,6 +2059,11 @@ onMount(() => {
 </div>
 
 <style>
+.outliner-item.read-only {
+    background-color: #f9f9f9;
+    color: #777;
+}
+
 .outliner-item {
     position: relative;
     margin: 0;
@@ -2309,6 +2323,15 @@ onMount(() => {
 
 .comment-button:hover {
     background-color: #f0f0f0;
+}
+
+.view-only-badge {
+    background-color: #eee;
+    color: #555;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-left: 8px;
 }
 
 
