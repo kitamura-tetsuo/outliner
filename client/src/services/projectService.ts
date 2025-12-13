@@ -135,6 +135,40 @@ class ProjectService {
         const permanentlyDeleteProject = httpsCallable(functions, "permanentlyDeleteProject");
         await permanentlyDeleteProject({ projectId });
     }
+
+    async togglePublic(projectId: string, isPublic: boolean): Promise<string | null> {
+        const db = this.getDb();
+        const projectRef = doc(db, "projects", projectId);
+
+        if (isPublic) {
+            const token = this.generateSecureToken();
+            await setDoc(
+                projectRef,
+                {
+                    isPublic: true,
+                    publicAccessToken: token,
+                },
+                { merge: true },
+            );
+            return token;
+        } else {
+            await setDoc(
+                projectRef,
+                {
+                    isPublic: false,
+                    publicAccessToken: deleteField(),
+                },
+                { merge: true },
+            );
+            return null;
+        }
+    }
+
+    private generateSecureToken(length = 32): string {
+        const array = new Uint8Array(length);
+        window.crypto.getRandomValues(array);
+        return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    }
 }
 
 export const projectService = new ProjectService();

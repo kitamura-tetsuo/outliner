@@ -8,4 +8,6 @@ export interface FirestoreProject {
     ownerId: string;
     permissions: ProjectPermission[];
     permissionsMap?: Record<string, number>;
+    isPublic?: boolean;
+    publicAccessToken?: string;
 }

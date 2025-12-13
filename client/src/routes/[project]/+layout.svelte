@@ -3,6 +3,7 @@
 	import { page as pageStore } from "$app/stores";
 	import { userManager } from "../../auth/UserManager";
 	import { doc, getDoc, getFirestore } from "firebase/firestore";
+    import { getFunctions, httpsCallable } from "firebase/functions";
 	import { getYjsClientByProjectTitle, createNewYjsProject } from "../../services";
 	import { getFirebaseApp } from "../../lib/firebase-app";
 	import { yjsStore } from "../../stores/yjsStore.svelte";
@@ -79,48 +80,61 @@ async function loadProject(projectNameFromParam?: string) {
             store.project = project;
 
             const user = userManager.getCurrentUser();
-            // Determine permissions from Firestore metadata.
-            // Yjs Project objects do not carry ownerId/permissions in this app.
+            const token = pageStore?.url?.searchParams?.get("token");
+
             try {
                 const isTestEnv = (
                     import.meta.env.MODE === "test"
                     || import.meta.env.VITE_IS_TEST === "true"
                     || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
                 );
-                if (isTestEnv) {
-                    // Avoid transient read-only state while metadata loads.
-                    permissionStore.userRole = ProjectRole.Owner;
-                }
                 const projectId = (client as { containerId?: string; }).containerId;
                 const userId = user?.id;
-                if (projectId && userId) {
+
+                if (userId) { // Authenticated user
                     const app = getFirebaseApp();
                     const db = getFirestore(app);
                     const snap = await getDoc(doc(db, "projects", projectId));
+
                     if (snap.exists()) {
-                        const data = snap.data() as {
+                        const projectData = snap.data() as {
                             ownerId?: string;
                             permissions?: Array<{ userId?: string; role?: number; }>;
                         };
-                        if (data.ownerId && data.ownerId === userId) {
+                        if (projectData.ownerId === userId) {
                             permissionStore.userRole = ProjectRole.Owner;
                         } else {
-                            const role = data.permissions?.find(p => p.userId === userId)?.role;
-                            permissionStore.userRole = (role ?? ProjectRole.None) as ProjectRole;
+                            const role = projectData.permissions?.find(p => p.userId === userId)?.role;
+                            permissionStore.userRole = role ?? ProjectRole.None;
                         }
                     } else if (isTestEnv) {
-                        // Test environment: allow editing even if Firestore doc hasn't been created yet.
                         permissionStore.userRole = ProjectRole.Owner;
                     }
-                } else if (isTestEnv) {
-                    // Test environment: keep UX functional while auth/bootstrap is still in progress.
-                    permissionStore.userRole = ProjectRole.Owner;
+                } else if (token && projectId) { // Anonymous user with a token
+                    const functions = getFunctions(getFirebaseApp());
+                    const verifyPublicAccessToken = httpsCallable(functions, "verifyPublicAccessToken");
+                    try {
+                        const result = await verifyPublicAccessToken({ projectId, token });
+                        if (result.data) {
+                            permissionStore.userRole = ProjectRole.Viewer;
+                        } else {
+                            permissionStore.userRole = ProjectRole.None;
+                        }
+                    } catch (error) {
+                        console.error("Error verifying public access token:", error);
+                        permissionStore.userRole = ProjectRole.None;
+                    }
+                } else { // Anonymous user without a token
+                    permissionStore.userRole = ProjectRole.None;
                 }
+
                 if (permissionStore.userRole < ProjectRole.Viewer) {
                     goto("/");
                 }
             } catch (e) {
-                console.warn("Failed to resolve project permissions (continuing)", e);
+                console.warn("Failed to resolve project permissions (continuing with restricted access)", e);
+                permissionStore.userRole = ProjectRole.None;
+                goto("/");
             }
         }
     } catch (err) {
