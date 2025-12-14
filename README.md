@@ -6,6 +6,16 @@ Outliner is a real-time collaborative application built on Yjs.
 
 See [docs/fluid_to_yjs.md](docs/fluid_to_yjs.md) for the mapping between legacy data structures and Yjs and current migration status.
 
+## Project Management Features
+
+This application provides a comprehensive suite of project management tools, enabling users to organize and control their work effectively. Key features include:
+
+- **Rename Project:** Easily rename projects to keep them organized and identifiable.
+- **Delete and Restore:** Delete projects that are no longer needed and restore them from a trash folder if you make a mistake.
+- **Access Control:** Manage permissions for collaborators, assigning roles like "Editor" or "Viewer" to control who can see and modify your projects.
+- **Public Sharing:** Share a read-only version of your project with a public audience via a shareable link, with optional password protection.
+- **Centralized Management UI:** A dedicated interface to manage all project settings in one place.
+
 ## AI統合機能
 
 ### 自動PR-Issue連携機能

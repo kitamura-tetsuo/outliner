@@ -1,5 +1,8 @@
 {
     "dependencies": {
         "@dotenvx/dotenvx": "^1.51.2"
+    },
+    "devDependencies": {
+        "dprint": "^0.50.2"
     }
 }

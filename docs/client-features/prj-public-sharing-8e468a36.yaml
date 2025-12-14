@@ -1,0 +1,12 @@
+id: PRJ-8e468a36
+title: 'Project Management: Public Sharing'
+title-ja: プロジェクト管理：公開共有
+description: Users can make a project public, allowing anyone with the link to view it. Public projects can be password-protected.
+category: project-management
+status: implemented
+user-story: As a user, I want to be able to share a read-only version of my project with a public audience.
+acceptance-criteria:
+- The user can generate a public, shareable link for a project.
+- Publicly shared projects are read-only.
+- The user can set a password for a public project to restrict access.
+- The user can disable the public link at any time.

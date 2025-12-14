@@ -1,0 +1,13 @@
+id: PRJ-ce4ca2a1
+title: 'Project Management: Access Control'
+title-ja: プロジェクト管理：アクセス制御
+description: Project owners can manage access permissions for other users, granting them roles such as "Editor" or "Viewer."
+category: project-management
+status: implemented
+user-story: As a project owner, I want to control who can view and edit my projects so that I can collaborate securely.
+acceptance-criteria:
+- The project owner can invite other users to a project by email.
+- The owner can assign roles (e.g., "Editor", "Viewer") to each user.
+- Users with "Editor" access can modify the project content.
+- Users with "Viewer" access can only view the project content and cannot make changes.
+- The project owner can revoke access for any user at any time.

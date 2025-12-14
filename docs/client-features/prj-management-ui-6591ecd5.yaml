@@ -1,0 +1,11 @@
+id: PRJ-6591ecd5
+title: 'Project Management: Management UI'
+title-ja: プロジェクト管理：管理UI
+description: A centralized UI for managing all project-related settings, including renaming, access control, and sharing.
+category: project-management
+status: implemented
+user-story: As a user, I want a single, clear interface where I can manage all the settings for my projects.
+acceptance-criteria:
+- There is a "Project Settings" or "Manage Project" area accessible from the project view.
+- This UI provides access to all project management features, including renaming, deleting, access control, and public sharing.
+- The UI is intuitive and easy to navigate.
