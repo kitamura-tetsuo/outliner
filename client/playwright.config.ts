@@ -86,7 +86,7 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     retries: (process.env.CI || !isSingleSpecRun) ? 2 : 0,
     workers: process.env.CI ? 4 : 4,
-    maxFailures: process.env.CI ? 1 : 1,
+    maxFailures: process.env.DISABLE_MAX_FAILURES ? undefined : process.env.CI ? 1 : 1,
 
     reporter: [
         ["html", { open: "never" }],
@@ -149,6 +149,11 @@ export default defineConfig({
             // Yjsテスト: Yjs同期機能のテスト
             name: "yjs",
             testDir: "./e2e/yjs",
+        },
+        {
+            // Debugging tests
+            name: "debug",
+            testDir: "./e2e/debug",
         },
     ],
 });
