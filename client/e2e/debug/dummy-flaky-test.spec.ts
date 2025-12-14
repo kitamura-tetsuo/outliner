@@ -1,9 +1,10 @@
-import { expect, test } from "@playwright/test";
+
+import { test, expect } from "@playwright/test";
 import fs from "fs";
 
 const stateFile = "/tmp/flaky-test-state.txt";
 
-test("dummy flaky test", async ({ page }) => {
+test("dummy flaky test", async () => {
     const mode = process.env.FLAKY_TEST_MODE || "pass";
 
     if (mode === "flaky") {
