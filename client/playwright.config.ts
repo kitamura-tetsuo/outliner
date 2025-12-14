@@ -79,10 +79,47 @@ const debugArgs = isSingleSpecRun
 // console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
 // console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
 // console.log(`Environment file: ${ENV_FILE}`);
+const projects = [
+    {
+        name: "basic",
+        testDir: "./e2e/basic",
+    },
+    {
+        name: "core",
+        testDir: "./e2e/core",
+    },
+    {
+        name: "new",
+        testDir: "./e2e/new",
+    },
+    {
+        name: "auth",
+        testDir: "./e2e/auth",
+    },
+    {
+        name: "utils",
+        testDir: "./e2e/utils",
+    },
+    {
+        name: "server",
+        testDir: "./e2e/server",
+    },
+    {
+        name: "yjs",
+        testDir: "./e2e/yjs",
+    },
+];
+
+if (!process.env.CI) {
+    projects.push({
+        name: "debug",
+        testDir: "./e2e/debug",
+    });
+}
+
 export default defineConfig({
     testDir: "./e2e",
     testMatch: "**/*.spec.ts",
-    testIgnore: process.env.CI ? "e2e/debug/**" : undefined,
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: (process.env.CI || !isSingleSpecRun) ? 2 : 0,
@@ -115,39 +152,5 @@ export default defineConfig({
         permissions: ["clipboard-read", "clipboard-write"],
     },
 
-    projects: [
-        {
-            name: "basic",
-            testDir: "./e2e/basic",
-        },
-        {
-            name: "core",
-            testDir: "./e2e/core",
-        },
-        {
-            name: "new",
-            testDir: "./e2e/new",
-        },
-        {
-            name: "auth",
-            testDir: "./e2e/auth",
-        },
-        {
-            name: "utils",
-            testDir: "./e2e/utils",
-        },
-        {
-            name: "server",
-            testDir: "./e2e/server",
-        },
-        {
-            name: "yjs",
-            testDir: "./e2e/yjs",
-        },
-        {
-            // Debugging tests
-            name: "debug",
-            testDir: "./e2e/debug",
-        },
-    ],
+    projects,
 });
