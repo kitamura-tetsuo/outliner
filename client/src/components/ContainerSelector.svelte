@@ -249,7 +249,7 @@ async function reloadCurrentContainer() {
                 現在のコンテナを再読み込み
             </button>
 
-            <a href={resolve("/containers")} class="new-container-link"> 新規作成 </a>
+            <a href={resolve("/projects")} class="new-container-link"> 新規作成 </a>
         </div>
     </div>
 </div>
