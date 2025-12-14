@@ -38,12 +38,14 @@ test.describe("FMT-0008: multiple internal links", () => {
         );
 
         const currentUrl = page.url();
-        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
+        const urlParts = new URL(currentUrl).pathname.split("/").filter(Boolean);
         const projectNameEncoded = urlParts[0];
 
         const html = await itemLocator.innerHTML();
         expect(html).toMatch(
-            new RegExp(`<a href="/${projectNameEncoded}/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page</a>`),
+            new RegExp(
+                `<a href="/${projectNameEncoded}/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page</a>`,
+            ),
         );
         expect(html).toMatch(
             /<a href="\/project\/other-page"[^>]*class="[^"]*internal-link[^"]*project-link[^"]*"[^>]*>project\/other-page<\/a>/,

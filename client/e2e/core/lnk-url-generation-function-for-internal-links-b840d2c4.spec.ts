@@ -232,7 +232,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
 
         // 内部リンクが正しく生成されているアイテムを確認
         const currentUrl = page.url();
-        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
+        const urlParts = new URL(currentUrl).pathname.split("/").filter(Boolean);
         const projectNameEncoded = urlParts[0];
 
         const linkItemResult = linkCheckResult.find(r => r.hasTestPageText && r.hasInternalLink);
@@ -302,7 +302,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         await expect(internalLink).toBeVisible({ timeout: 5000 });
 
         const currentUrl = page.url();
-        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
+        const urlParts = new URL(currentUrl).pathname.split("/").filter(Boolean);
         const projectNameEncoded = urlParts[0];
 
         await expect(internalLink).toHaveAttribute("href", `/${projectNameEncoded}/${pageName}`);
