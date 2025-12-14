@@ -79,44 +79,6 @@ const debugArgs = isSingleSpecRun
 // console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
 // console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
 // console.log(`Environment file: ${ENV_FILE}`);
-const projects = [
-    {
-        name: "basic",
-        testDir: "./e2e/basic",
-    },
-    {
-        name: "core",
-        testDir: "./e2e/core",
-    },
-    {
-        name: "new",
-        testDir: "./e2e/new",
-    },
-    {
-        name: "auth",
-        testDir: "./e2e/auth",
-    },
-    {
-        name: "utils",
-        testDir: "./e2e/utils",
-    },
-    {
-        name: "server",
-        testDir: "./e2e/server",
-    },
-    {
-        name: "yjs",
-        testDir: "./e2e/yjs",
-    },
-];
-
-if (!process.env.CI) {
-    projects.push({
-        name: "debug",
-        testDir: "./e2e/debug",
-    });
-}
-
 export default defineConfig({
     testDir: "./e2e",
     testMatch: "**/*.spec.ts",
@@ -124,7 +86,7 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     retries: (process.env.CI || !isSingleSpecRun) ? 2 : 0,
     workers: process.env.CI ? 4 : 4,
-    maxFailures: process.env.DISABLE_MAX_FAILURES ? undefined : process.env.CI ? 1 : 1,
+    maxFailures: process.env.CI ? 1 : 1,
 
     reporter: [
         ["html", { open: "never" }],
@@ -152,5 +114,46 @@ export default defineConfig({
         permissions: ["clipboard-read", "clipboard-write"],
     },
 
-    projects,
+    projects: [
+        {
+            // 基本テスト: 環境確認や最小構成の検証用
+            name: "basic",
+            testDir: "./e2e/basic",
+        },
+        {
+            // コアテスト: 認証不要の基本機能テスト
+            name: "core",
+            testDir: "./e2e/core",
+        },
+        {
+            // 新機能テスト
+            name: "new",
+            testDir: "./e2e/new",
+        },
+        {
+            // 認証テスト: 本番環境でのみ実行
+            name: "auth",
+            testDir: "./e2e/auth",
+        },
+        {
+            // ユーティリティテスト: 共通機能のテスト
+            name: "utils",
+            testDir: "./e2e/utils",
+        },
+        {
+            // サーバーテスト: バックエンド接続の検証用
+            name: "server",
+            testDir: "./e2e/server",
+        },
+        {
+            // Yjsテスト: Yjs同期機能のテスト
+            name: "yjs",
+            testDir: "./e2e/yjs",
+        },
+        {
+            // デバッグ用テスト
+            name: "debug",
+            testDir: "./e2e/debug",
+        },
+    ],
 });

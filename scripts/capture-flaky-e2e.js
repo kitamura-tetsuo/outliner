@@ -11,9 +11,11 @@ const projectRoot = path.resolve(__dirname, "..");
 
 const testPath = process.argv[2];
 if (!testPath) {
-    console.error("Usage: ./scripts/capture-flaky-e2e.js <path_to_test_file>");
+    console.error("Usage: ./scripts/capture-flaky-e2e.js <path_to_test_file> [playwright_args...]");
     process.exit(1);
 }
+
+const additionalArgs = process.argv.slice(3).join(" ");
 
 const maxAttempts = 10;
 let attempts = 0;
@@ -34,7 +36,6 @@ async function run() {
     console.log(`Max attempts: ${maxAttempts}`);
     console.log("Stop condition: at least 1 success and 1 failure, or max attempts reached.");
 
-    // Clear previous temporary artifacts
     await fse.emptyDir(tempSuccessDir);
     await fse.emptyDir(tempFailureDir);
 
@@ -43,7 +44,6 @@ async function run() {
         console.log(`\n--- Attempt ${attempts}/${maxAttempts} ---`);
 
         try {
-            // Clean up artifacts from previous run
             await fse.remove(playwrightReportDir);
             await fse.remove(testResultsDir);
 
@@ -52,7 +52,7 @@ async function run() {
                 : testPath;
 
             const command =
-                `npx dotenvx run --overload --env-file=.env.test -- npx playwright test --reporter=list --retries=0 ${relativeTestPath}`;
+                `npx dotenvx run --overload --env-file=.env.test -- npx playwright test --reporter=list --retries=0 ${relativeTestPath} ${additionalArgs}`;
             console.log(`Executing command in ${clientDir}:\n${command}`);
             execSync(command, {
                 stdio: "inherit",
@@ -100,7 +100,6 @@ async function run() {
     console.log(`Successes: ${successCount}`);
     console.log(`Failures: ${failureCount}`);
 
-    // Consolidate artifacts
     if (successCount > 0) {
         console.log(`Saving success artifacts to: ${finalSuccessDir}`);
         await fse.emptyDir(finalSuccessDir);
@@ -112,7 +111,6 @@ async function run() {
         await fse.copy(tempFailureDir, finalFailureDir);
     }
 
-    // Clean up temp directories
     await fse.remove("/tmp/e2e-flaky-capture");
 
     if (successCount > 0 && failureCount > 0) {
