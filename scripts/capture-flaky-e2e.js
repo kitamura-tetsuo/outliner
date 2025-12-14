@@ -11,8 +11,8 @@ const projectRoot = path.resolve(__dirname, "..");
 
 const testPath = process.argv[2];
 if (!testPath) {
-  console.error("Usage: ./scripts/capture-flaky-e2e.js <path_to_test_file>");
-  process.exit(1);
+    console.error("Usage: ./scripts/capture-flaky-e2e.js <path_to_test_file>");
+    process.exit(1);
 }
 
 const maxAttempts = 10;
@@ -30,85 +30,85 @@ const playwrightReportDir = path.join(clientDir, "playwright-report");
 const testResultsDir = path.join(clientDir, "test-results");
 
 async function run() {
-  console.log(`Starting flaky test capture for: ${testPath}`);
-  console.log(`Max attempts: ${maxAttempts}`);
-  console.log("Stop condition: at least 1 success and 1 failure, or max attempts reached.");
+    console.log(`Starting flaky test capture for: ${testPath}`);
+    console.log(`Max attempts: ${maxAttempts}`);
+    console.log("Stop condition: at least 1 success and 1 failure, or max attempts reached.");
 
-  // Clear previous temporary artifacts
-  await fse.emptyDir(tempSuccessDir);
-  await fse.emptyDir(tempFailureDir);
+    // Clear previous temporary artifacts
+    await fse.emptyDir(tempSuccessDir);
+    await fse.emptyDir(tempFailureDir);
 
-  while (attempts < maxAttempts && !(successCount > 0 && failureCount > 0)) {
-    attempts++;
-    console.log(`\n--- Attempt ${attempts}/${maxAttempts} ---`);
+    while (attempts < maxAttempts && !(successCount > 0 && failureCount > 0)) {
+        attempts++;
+        console.log(`\n--- Attempt ${attempts}/${maxAttempts} ---`);
 
-    try {
-      // Clean up artifacts from previous run
-      await fse.remove(playwrightReportDir);
-      await fse.remove(testResultsDir);
+        try {
+            // Clean up artifacts from previous run
+            await fse.remove(playwrightReportDir);
+            await fse.remove(testResultsDir);
 
-      const command = `scripts/test.sh ${testPath}`;
-      console.log(`Executing: ${command}`);
-      execSync(command, { stdio: "inherit", cwd: projectRoot });
+            const command = `scripts/test.sh ${testPath}`;
+            console.log(`Executing: ${command}`);
+            execSync(command, { stdio: "inherit", cwd: projectRoot });
 
-      console.log("✅ Test PASSED");
-      successCount++;
+            console.log("✅ Test PASSED");
+            successCount++;
 
-      if (successCount === 1) {
-        console.log("Capturing success artifacts...");
-        await fse.ensureDir(tempSuccessDir);
-        if (await fse.pathExists(playwrightReportDir)) {
-          await fse.move(playwrightReportDir, path.join(tempSuccessDir, "playwright-report"));
+            if (successCount === 1) {
+                console.log("Capturing success artifacts...");
+                await fse.ensureDir(tempSuccessDir);
+                if (await fse.pathExists(playwrightReportDir)) {
+                    await fse.move(playwrightReportDir, path.join(tempSuccessDir, "playwright-report"));
+                }
+                if (await fse.pathExists(testResultsDir)) {
+                    await fse.move(testResultsDir, path.join(tempSuccessDir, "test-results"));
+                }
+            }
+        } catch (error) {
+            console.error("❌ Test FAILED");
+            failureCount++;
+
+            if (failureCount === 1) {
+                console.log("Capturing failure artifacts...");
+                await fse.ensureDir(tempFailureDir);
+                if (await fse.pathExists(playwrightReportDir)) {
+                    await fse.move(playwrightReportDir, path.join(tempFailureDir, "playwright-report"));
+                }
+                if (await fse.pathExists(testResultsDir)) {
+                    await fse.move(testResultsDir, path.join(tempFailureDir, "test-results"));
+                }
+            }
         }
-        if (await fse.pathExists(testResultsDir)) {
-          await fse.move(testResultsDir, path.join(tempSuccessDir, "test-results"));
-        }
-      }
-    } catch (error) {
-      console.error("❌ Test FAILED");
-      failureCount++;
-
-      if (failureCount === 1) {
-        console.log("Capturing failure artifacts...");
-        await fse.ensureDir(tempFailureDir);
-        if (await fse.pathExists(playwrightReportDir)) {
-          await fse.move(playwrightReportDir, path.join(tempFailureDir, "playwright-report"));
-        }
-        if (await fse.pathExists(testResultsDir)) {
-          await fse.move(testResultsDir, path.join(tempFailureDir, "test-results"));
-        }
-      }
     }
-  }
 
-  console.log("\n--- Summary ---");
-  console.log(`Total attempts: ${attempts}`);
-  console.log(`Successes: ${successCount}`);
-  console.log(`Failures: ${failureCount}`);
+    console.log("\n--- Summary ---");
+    console.log(`Total attempts: ${attempts}`);
+    console.log(`Successes: ${successCount}`);
+    console.log(`Failures: ${failureCount}`);
 
-  // Consolidate artifacts
-  if (successCount > 0) {
-    console.log(`Saving success artifacts to: ${finalSuccessDir}`);
-    await fse.emptyDir(finalSuccessDir);
-    await fse.copy(tempSuccessDir, finalSuccessDir);
-  }
-  if (failureCount > 0) {
-    console.log(`Saving failure artifacts to: ${finalFailureDir}`);
-    await fse.emptyDir(finalFailureDir);
-    await fse.copy(tempFailureDir, finalFailureDir);
-  }
+    // Consolidate artifacts
+    if (successCount > 0) {
+        console.log(`Saving success artifacts to: ${finalSuccessDir}`);
+        await fse.emptyDir(finalSuccessDir);
+        await fse.copy(tempSuccessDir, finalSuccessDir);
+    }
+    if (failureCount > 0) {
+        console.log(`Saving failure artifacts to: ${finalFailureDir}`);
+        await fse.emptyDir(finalFailureDir);
+        await fse.copy(tempFailureDir, finalFailureDir);
+    }
 
-  // Clean up temp directories
-  await fse.remove("/tmp/e2e-flaky-capture");
+    // Clean up temp directories
+    await fse.remove("/tmp/e2e-flaky-capture");
 
-  if (successCount > 0 && failureCount > 0) {
-    console.log("\nFlaky test detected and logs captured.");
-  } else {
-    console.log("\nCould not capture both a success and a failure run.");
-  }
+    if (successCount > 0 && failureCount > 0) {
+        console.log("\nFlaky test detected and logs captured.");
+    } else {
+        console.log("\nCould not capture both a success and a failure run.");
+    }
 }
 
 run().catch((err) => {
-  console.error("An unexpected error occurred:", err);
-  process.exit(1);
+    console.error("An unexpected error occurred:", err);
+    process.exit(1);
 });
