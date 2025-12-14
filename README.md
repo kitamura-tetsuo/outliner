@@ -279,6 +279,33 @@ scripts/run-e2e-progress.sh 1
 
 手元で手動テストを行うときは `scripts/setup.sh` を実行します。SvelteKit、Yjs WebSocket、Firebase エミュレータが起動し、以降のテストが実行可能になります。
 
+### Flaky な E2E テストのログをキャプチャする
+
+Flaky な E2E テストのデバッグを支援するため、`scripts/capture-flaky-e2e.js` スクリプトが用意されています。このスクリプトは指定されたテストを複数回実行し、初回成功時と初回失敗時の両方の Playwright の成果物（レポート、トレース、スクリーンショット）をキャプチャします。
+
+**使用方法**
+
+```bash
+./scripts/capture-flaky-e2e.js <test_file_path>
+```
+
+例えば:
+
+```bash
+./scripts/capture-flaky-e2e.js client/e2e/foo-bar-baz-00000000.spec.ts
+```
+
+スクリプトは最大10回、または成功と失敗の両方が少なくとも1回ずつキャプチャされるまでテストを実行します。
+
+**出力**
+
+キャプチャされた成果物はリポジトリルートの `e2e-logs` ディレクトリに保存されます。
+
+- `e2e-logs/success`: 初回成功時の Playwright レポートとテスト結果が含まれます。
+- `e2e-logs/failure`: 初回失敗時の Playwright レポートとテスト結果が含まれます。
+
+これらのディレクトリの内容を比較することで、Flaky なテストの原因を特定するのに役立ちます。
+
 ## 機能ドキュメントの集約
 
 `docs/client-features.yaml` と `docs/dev-features.yaml` は、`docs/client-features/` と `docs/dev-features/` 以下の YAML を集約して生成します。新しい YAML ファイルを追加したら次のコマンドを実行してください。
