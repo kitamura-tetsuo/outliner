@@ -150,5 +150,10 @@ export default defineConfig({
             name: "yjs",
             testDir: "./e2e/yjs",
         },
+        {
+            // デバッグ用テスト
+            name: "debug",
+            testDir: "./e2e/debug",
+        },
     ],
 });
