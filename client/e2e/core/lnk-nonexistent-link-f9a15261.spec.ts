@@ -41,7 +41,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         console.log(`Non-existent page link href: ${linkHref}`);
 
         const currentUrl = page.url();
-        const urlParts = new URL(currentUrl).pathname.split("/").filter(Boolean);
+        const urlParts = new URL(currentUrl).pathname.split('/').filter(Boolean);
         const projectNameEncoded = urlParts[0];
 
         expect(linkHref).toBe(`/${projectNameEncoded}/${nonExistentPageName}`);

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Cursor } from "../../../lib/Cursor";
-import type { Item } from "../../../schema/app-schema";
+import type { Item } from "../../../schema/yjs-schema";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import type { EditorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
@@ -73,16 +73,12 @@ describe("Cursor Formatting", () => {
         // Mock the general store
         (generalStore as GeneralStore).currentPage = {
             id: "page-1",
-            text: "page",
-            parent: null,
             items: {
                 [Symbol.iterator]: function*() {
                     yield mockItem;
                 },
             },
-            updateText: vi.fn(),
-            delete: vi.fn(),
-        } as unknown as Item;
+        };
 
         // Setup editor overlay store mocks
         // setCursor is already configured in the mock to return "new-cursor-id"

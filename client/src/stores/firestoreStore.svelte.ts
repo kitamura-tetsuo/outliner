@@ -90,8 +90,7 @@ class GeneralStore {
                             // Proxy 経由で確実に reactivity を発火させるため、公開プロキシに代入
                             (firestoreStore as any).setUserContainer(next); // API 経由で ucVersion++ を確実に反映
                         } catch (e) {
-                            const err = e instanceof Error ? e : new Error(String(e));
-                            logger.warn({ err }, "Failed to trigger userContainer update after array mutation");
+                            logger.warn("Failed to trigger userContainer update after array mutation", e);
                         }
                         return res;
                     };
@@ -179,16 +178,14 @@ try {
             connectFirestoreEmulator(db, emulatorHost, emulatorPort);
             logger.info("Successfully connected to Firestore emulator");
         } catch (err) {
-            const error = err instanceof Error ? err : new Error(String(err));
-            logger.error({ err: error }, "Failed to connect to Firestore emulator");
+            logger.error("Failed to connect to Firestore emulator:", err);
 
             // 接続できない場合はオフラインモードで続行することを通知
             logger.warn("Continuing in offline mode. Data operations will be cached until connection is restored.");
         }
     }
 } catch (error) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    logger.error({ err }, "Critical error initializing Firestore");
+    logger.error("Critical error initializing Firestore:", error);
     // データベース接続に失敗した場合でもアプリが動作し続けられるように
     // 最低限の初期化だけを行う
     if (!db) {
@@ -263,8 +260,7 @@ function initFirestoreSync(): () => void {
                 }
             },
             error => {
-                const err = error instanceof Error ? error : new Error(String(error));
-                logger.error({ err }, "Firestoreのリスニングエラー");
+                logger.error("Firestoreのリスニングエラー:", error);
             },
         );
 
@@ -276,8 +272,7 @@ function initFirestoreSync(): () => void {
             }
         };
     } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Firestore監視設定エラー");
+        logger.error("Firestore監視設定エラー:", error);
         return () => {}; // 空のクリーンアップ関数を返す
     }
 }
@@ -320,8 +315,7 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
         const result = await response.json();
         return result.success === true;
     } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "コンテナID保存エラー");
+        logger.error("コンテナID保存エラー:", error);
         return false;
     }
 }
@@ -365,16 +359,14 @@ export async function getDefaultContainerId(): Promise<string | undefined> {
                 }
             }
         } catch (firestoreError) {
-            const err = firestoreError instanceof Error ? firestoreError : new Error(String(firestoreError));
-            logger.error({ err }, "Firestore access error");
+            logger.error("Firestore access error:", firestoreError);
             // Firestoreエラーは致命的ではないので、続行
         }
 
         logger.info("No default container ID found");
         return undefined;
     } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "デフォルトコンテナID取得エラー");
+        logger.error("デフォルトコンテナID取得エラー:", error);
         return undefined;
     }
 }
@@ -419,7 +411,7 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
 
             // ストアを更新
             firestoreStore.setUserContainer(updatedData);
-            logger.info({ updatedData }, "Container ID saved to mock store");
+            logger.info("Container ID saved to mock store:", updatedData);
 
             // ローカルストレージにも現在のコンテナIDを保存
             window.localStorage.setItem("currentContainerId", containerId);
@@ -467,8 +459,7 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         logger.info(`Successfully saved container ID to server for user ${currentUser.id}`);
         return result.success === true;
     } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Error saving container ID to server");
+        logger.error("Error saving container ID to server:", error);
         return false;
     }
 }

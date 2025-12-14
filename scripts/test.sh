@@ -25,7 +25,7 @@ socket.once("error", () => process.exit(1));
 setTimeout(() => {
   socket.destroy();
   process.exit(1);
-}, 3000).unref();' "$port" >/dev/null 2>&1
+}, 500).unref();' "$port" >/dev/null 2>&1
 }
 
 ensure_codex_services() {
@@ -78,7 +78,6 @@ if [ $# -eq 0 ]; then
   fi
   echo "✅ ESLint check passed!"
 
-  ensure_codex_services
   npm run test:unit
   npm run test:integration
   cleanup_e2e_coverage

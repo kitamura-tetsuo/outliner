@@ -56,24 +56,10 @@ function saveLayout() {
     if (!chart) return;
     try {
         const nodes = getGraphNodesFromChart(chart);
-        if (nodes.length === 0) return;
-
-        // Load existing layout to preserve missing nodes
-        let existingNodes: GraphLayout["nodes"] = [];
-        try {
-            const saved = localStorage.getItem("graph-layout");
-            if (saved) {
-                const parsed = JSON.parse(saved) as { nodes?: GraphLayout["nodes"]; };
-                if (parsed.nodes && Array.isArray(parsed.nodes)) {
-                    existingNodes = parsed.nodes;
-                }
-            }
-        } catch (e) {
-            console.warn("Failed to parse existing layout:", e);
-        }
 
         // EChartsの内部状態から実際の位置を取得
-        const currentNodes = nodes.map((node) => {
+        const layoutData = {
+            nodes: nodes.map((node) => {
                 // EChartsの内部状態から位置を取得
                 const actualPosition = chart?.convertFromPixel(
                     { seriesIndex: 0 },
@@ -86,14 +72,8 @@ function saveLayout() {
                     y: node.y ?? convertedY,
                     fixed: node.fixed || false,
                 };
-            }).filter((node): node is GraphLayout["nodes"][number] => typeof node.x === "number" && typeof node.y === "number"); // 位置が定義されているノードのみ保存
-
-        const currentNodesMap = new Map(currentNodes.map(n => [n.id, n]));
-        
-        // Merge: Start with existing nodes that are NOT in current, then add current
-        const mergedNodes = existingNodes.filter(n => !currentNodesMap.has(n.id)).concat(currentNodes);
-        
-        const layoutData = { nodes: mergedNodes };
+            }).filter((node): node is GraphLayout["nodes"][number] => typeof node.x === "number" && typeof node.y === "number"), // 位置が定義されているノードのみ保存
+        };
 
         console.log("Saving layout data:", layoutData);
         localStorage.setItem("graph-layout", JSON.stringify(layoutData));

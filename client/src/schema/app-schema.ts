@@ -93,23 +93,23 @@ export class Comments {
 
 // 1ノード（アイテム）ラッパ
 export class Item {
-    public readonly ydoc: Y.Doc;
-    public readonly tree: YTree;
-    public readonly key: string;
-
-    constructor(plain: PlainItemData);
-    constructor(ydoc: Y.Doc, tree: YTree, key: string);
-    constructor(docOrPlain: Y.Doc | PlainItemData, tree?: YTree, key?: string) {
+    constructor(
+        public readonly ydoc: Y.Doc | PlainItemData,
+        public readonly tree?: YTree,
+        public readonly key?: string,
+    ) {
         // Backward-compatible constructor: allow `new Item({ id, text, ... })` in tests
-        if (!(docOrPlain instanceof Y.Doc)) {
-            const plain = docOrPlain;
+        if (arguments.length === 1 && this.tree === undefined && this.key === undefined) {
+            const plain = this.ydoc as PlainItemData;
+            // Initialize a fresh Y.Doc + YTree
             const doc = new Y.Doc();
             const ymap = doc.getMap("orderedTree");
-            const nextTree = new YTree(ymap);
+            const tree = new YTree(ymap);
 
-            const nodeKey = nextTree.generateNodeKey();
+            const nodeKey = tree.generateNodeKey();
             const value = new Y.Map<ItemValueType>();
 
+            // Map basic fields; prefer provided values with safe defaults
             value.set("id", plain?.id ?? nodeKey);
             value.set("author", plain?.author ?? "");
             value.set("created", plain?.created ?? 0);
@@ -125,6 +125,7 @@ export class Item {
 
             const votes = new Y.Array<string>();
             if (Array.isArray(plain?.votes) && plain.votes.length > 0) {
+                // push expects an array of items
                 votes.push(plain.votes as string[]);
             }
             value.set("votes", votes);
@@ -132,44 +133,42 @@ export class Item {
             value.set("attachments", new Y.Array<string>());
             value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
 
-            nextTree.createNode("root", nodeKey, value);
+            // Create the node under root and finalize fields on `this`
+            tree.createNode("root", nodeKey, value);
 
-            this.ydoc = doc;
-            this.tree = nextTree;
-            this.key = nodeKey;
-            return;
+            // Reassign instance fields to the initialized structures
+            (this as { ydoc: Y.Doc; }).ydoc = doc;
+            (this as { tree: YTree; }).tree = tree;
+            (this as { key: string; }).key = nodeKey;
+        } else {
+            // Ensure required fields exist in normal constructor usage
+            if (!(this.ydoc instanceof Y.Doc) || !(this.tree instanceof YTree) || typeof this.key !== "string") {
+                throw new Error("Invalid Item constructor arguments");
+            }
         }
-
-        if (!(tree instanceof YTree) || typeof key !== "string") {
-            throw new Error("Invalid Item constructor arguments");
-        }
-
-        this.ydoc = docOrPlain;
-        this.tree = tree;
-        this.key = key;
     }
 
     private get value(): Y.Map<ItemValueType> {
-        return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
+        return this.tree!.getNodeValueFromKey(this.key!) as Y.Map<ItemValueType>;
     }
 
     get id(): string {
-        return (this.value.get("id") as string) ?? "";
+        return this.value.get("id");
     }
     set id(v: string) {
         this.value.set("id", v ?? "");
     }
 
     get author(): string {
-        return (this.value.get("author") as string) ?? "";
+        return this.value.get("author") ?? "";
     }
 
     get created(): number {
-        return (this.value.get("created") as number) ?? 0;
+        return this.value.get("created") ?? 0;
     }
 
     get lastChanged(): number {
-        return (this.value.get("lastChanged") as number) ?? 0;
+        return this.value.get("lastChanged") ?? 0;
     }
 
     get text(): string {
@@ -183,7 +182,7 @@ export class Item {
 
     // componentType stored in Y.Map ("table" | "chart" | undefined)
     get componentType(): string | undefined {
-        return this.value.get("componentType") as string | undefined;
+        return this.value.get("componentType");
     }
     set componentType(v: string | undefined) {
         this.value.set("componentType", v);
@@ -192,7 +191,7 @@ export class Item {
 
     // chart query stored in Y.Map
     get chartQuery(): string | undefined {
-        return this.value.get("chartQuery") as string | undefined;
+        return this.value.get("chartQuery");
     }
     set chartQuery(v: string | undefined) {
         this.value.set("chartQuery", v);
@@ -201,7 +200,7 @@ export class Item {
 
     // alias target id stored in Y.Map
     get aliasTargetId(): string | undefined {
-        return this.value.get("aliasTargetId") as string | undefined;
+        return this.value.get("aliasTargetId");
     }
     set aliasTargetId(v: string | undefined) {
         this.value.set("aliasTargetId", v);
@@ -216,12 +215,7 @@ export class Item {
     }
 
     get votes(): Y.Array<string> {
-        let arr = this.value.get("votes") as Y.Array<string> | undefined;
-        if (!arr) {
-            arr = new Y.Array<string>();
-            this.value.set("votes", arr);
-        }
-        return arr;
+        return this.value.get("votes");
     }
 
     toggleVote(user: string) {
@@ -384,14 +378,14 @@ export class Item {
     }
 
     get items(): Items {
-        return wrapArrayLike(new Items(this.ydoc, this.tree, this.key));
+        return wrapArrayLike(new Items(this.ydoc, this.tree!, this.key!));
     }
 
     // 親の子集合（Items）。ルート直下は null
     get parent(): Items | null {
-        const parentKey = this.tree.getNodeParentFromKey(this.key);
+        const parentKey = this.tree!.getNodeParentFromKey(this.key!);
         if (!parentKey) return null;
-        return new Items(this.ydoc, this.tree, parentKey);
+        return new Items(this.ydoc, this.tree!, parentKey);
     }
 
     // 親内でのインデックス（親がない場合は -1）
@@ -402,7 +396,7 @@ export class Item {
     }
 
     delete() {
-        this.tree.deleteNodeAndDescendants(this.key);
+        this.tree!.deleteNodeAndDescendants(this.key!);
     }
 }
 
