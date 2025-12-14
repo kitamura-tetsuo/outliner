@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+
+import { test, expect } from "@playwright/test";
 import fs from "fs";
 
 const stateFile = "/tmp/flaky-test-state.txt";

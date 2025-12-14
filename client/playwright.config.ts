@@ -82,6 +82,7 @@ const debugArgs = isSingleSpecRun
 export default defineConfig({
     testDir: "./e2e",
     testMatch: "**/*.spec.ts",
+    testIgnore: process.env.CI ? "e2e/debug/**" : undefined,
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: (process.env.CI || !isSingleSpecRun) ? 2 : 0,
@@ -114,15 +115,7 @@ export default defineConfig({
         permissions: ["clipboard-read", "clipboard-write"],
     },
 
-    projects: ((baseProjects) => {
-        if (!process.env.CI) {
-            baseProjects.push({
-                name: "debug",
-                testDir: "./e2e/debug",
-            });
-        }
-        return baseProjects;
-    })([
+    projects: [
         {
             name: "basic",
             testDir: "./e2e/basic",
@@ -151,5 +144,10 @@ export default defineConfig({
             name: "yjs",
             testDir: "./e2e/yjs",
         },
-    ]),
+        {
+            // Debugging tests
+            name: "debug",
+            testDir: "./e2e/debug",
+        },
+    ],
 });

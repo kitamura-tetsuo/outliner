@@ -1,7 +1,8 @@
-import assert from "assert";
+
 import { exec, execSync } from "child_process";
 import fse from "fs-extra";
 import path from "path";
+import assert from "assert";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,16 +36,8 @@ async function runTest(mode, expectSuccess, expectFailure) {
     const successExists = await fse.pathExists(successDir);
     const failureExists = await fse.pathExists(failureDir);
 
-    assert.strictEqual(
-        successExists,
-        expectSuccess,
-        `Expected success directory to ${expectSuccess ? "exist" : "not exist"} in ${mode} mode`,
-    );
-    assert.strictEqual(
-        failureExists,
-        expectFailure,
-        `Expected failure directory to ${expectFailure ? "exist" : "not exist"} in ${mode} mode`,
-    );
+    assert.strictEqual(successExists, expectSuccess, `Expected success directory to ${expectSuccess ? 'exist' : 'not exist'} in ${mode} mode`);
+    assert.strictEqual(failureExists, expectFailure, `Expected failure directory to ${expectFailure ? 'exist' : 'not exist'} in ${mode} mode`);
 
     console.log(`--- Test PASSED in mode: ${mode} ---`);
 }
