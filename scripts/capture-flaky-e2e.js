@@ -47,9 +47,23 @@ async function run() {
             await fse.remove(playwrightReportDir);
             await fse.remove(testResultsDir);
 
-            const command = `scripts/test.sh ${testPath}`;
-            console.log(`Executing: ${command}`);
-            execSync(command, { stdio: "inherit", cwd: projectRoot });
+            const relativeTestPath = testPath.startsWith("client/")
+                ? testPath.substring("client/".length)
+                : testPath;
+
+            const command =
+                `npx dotenvx run --overload --env-file=.env.test -- npx playwright test --reporter=list --retries=0 ${relativeTestPath}`;
+            console.log(`Executing command in ${clientDir}:\n${command}`);
+            execSync(command, {
+                stdio: "inherit",
+                cwd: clientDir,
+                env: {
+                    ...process.env,
+                    NODE_ENV: "test",
+                    TEST_ENV: "localhost",
+                    DISABLE_MAX_FAILURES: "true",
+                },
+            });
 
             console.log("✅ Test PASSED");
             successCount++;
