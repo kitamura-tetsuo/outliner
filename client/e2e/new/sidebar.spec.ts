@@ -239,15 +239,17 @@ test.describe("Sidebar Navigation", () => {
         await expect(pagesHeader).toHaveAttribute("aria-expanded");
         await expect(pagesHeader).toHaveAttribute("aria-label");
 
-        // Page items should have role="button" (if they exist)
+        // Page items should be links (if they exist)
         const pageItems = page.locator(".page-item");
         if (await pageItems.count() > 0) {
-            await expect(pageItems.first()).toHaveAttribute("role", "button");
+            // Check for href attribute instead of role="button"
+            await expect(pageItems.first()).toHaveAttribute("href", /.+/);
         }
 
-        // Settings link should have role="button"
+        // Settings link should be a link
         const settingsLink = page.locator(".settings-link");
-        await expect(settingsLink).toHaveAttribute("role", "button");
+        // Check for href attribute instead of role="button"
+        await expect(settingsLink).toHaveAttribute("href", /\/settings/);
     });
 
     test("should handle keyboard navigation on page items", async ({ page }) => {
