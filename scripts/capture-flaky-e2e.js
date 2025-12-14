@@ -51,8 +51,7 @@ async function run() {
                 ? testPath.substring("client/".length)
                 : testPath;
 
-            const command =
-                `npx dotenvx run --overload --env-file=.env.test -- npx playwright test --reporter=list --retries=0 ${relativeTestPath}`;
+            const command = `npx dotenvx run --overload --env-file=.env.test -- npx playwright test --reporter=list --retries=0 ${relativeTestPath}`;
             console.log(`Executing command in ${clientDir}:\n${command}`);
             execSync(command, {
                 stdio: "inherit",
