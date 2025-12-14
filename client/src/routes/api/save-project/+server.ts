@@ -3,22 +3,22 @@ import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async ({ request }) => {
     try {
-        const { idToken, containerId } = await request.json();
+        const { idToken, projectId } = await request.json();
 
-        if (!idToken || !containerId) {
+        if (!idToken || !projectId) {
             return json({ error: "Missing required parameters" }, { status: 400 });
         }
 
         // Firebase Functionsのエンドポイントにプロキシ
         const apiBaseUrl = process.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
-        const response = await fetch(`${apiBaseUrl}/api/save-container`, {
+        const response = await fetch(`${apiBaseUrl}/api/save-project`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
                 idToken,
-                containerId,
+                projectId,
             }),
         });
 

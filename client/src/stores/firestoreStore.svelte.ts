@@ -8,31 +8,31 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger();
 
 // ユーザーコンテナの型定義
-export interface UserContainer {
+export interface UserProject {
     userId: string;
-    defaultContainerId?: string;
-    accessibleContainerIds?: string[];
+    defaultProjectId: string | null;
+    accessibleProjectIds: Array<string>;
     createdAt: Date;
     updatedAt: Date;
 }
 
 class GeneralStore {
     // 直接公開フィールド（$state が追跡可能なプロパティ）
-    public userContainer: UserContainer | null = null;
+    public userProject: UserProject | null = null;
 
     // $state 再計算トリガ（CustomEvent 不要のためのトップレベル依存）
     public ucVersion = 0;
 
     // 明示 API で wrap + 新参照を適用
-    setUserContainer(value: UserContainer | null) {
+    setUserProject(value: UserProject | null) {
         // $state が追跡する公開プロパティに直接代入
         const self = firestoreStore as any;
         const prevVersion = self.ucVersion ?? 0;
-        const prevLength = self.userContainer?.accessibleContainerIds?.length ?? 0;
-        const prevDefault = self.userContainer?.defaultContainerId;
+        const prevLength = self.userProject?.accessibleProjectIds?.length ?? 0;
+        const prevDefault = self.userProject?.defaultProjectId;
 
-        const nextContainer = value ? self.wrapUserContainer(value) : null;
-        self.userContainer = nextContainer;
+        const nextProject = value ? self.wrapUserProject(value) : null;
+        self.userProject = nextProject;
 
         // $state 依存を更新（CustomEvent に頼らない）
         self.ucVersion = prevVersion + 1;
@@ -46,32 +46,32 @@ class GeneralStore {
             }
         } catch {}
 
-        const nextLength = self.userContainer?.accessibleContainerIds?.length ?? 0;
-        const nextDefault = self.userContainer?.defaultContainerId;
+        const nextLength = self.userProject?.accessibleProjectIds?.length ?? 0;
+        const nextDefault = self.userProject?.defaultProjectId;
 
         if (typeof console !== "undefined" && typeof console.info === "function") {
             try {
                 const payload = {
                     prev: {
                         ucVersion: prevVersion,
-                        accessibleContainerIdsLength: prevLength,
-                        defaultContainerId: prevDefault,
+                        accessibleProjectIdsLength: prevLength,
+                        defaultProjectId: prevDefault,
                     },
                     next: {
                         ucVersion: self.ucVersion,
-                        accessibleContainerIdsLength: nextLength,
-                        defaultContainerId: nextDefault,
+                        accessibleProjectIdsLength: nextLength,
+                        defaultProjectId: nextDefault,
                     },
                 };
                 console.info(
-                    `[firestoreStore.setUserContainer] prev.ucVersion=${payload.prev.ucVersion} prev.len=${payload.prev.accessibleContainerIdsLength} prev.default=${payload.prev.defaultContainerId} -> next.ucVersion=${payload.next.ucVersion} next.len=${payload.next.accessibleContainerIdsLength} next.default=${payload.next.defaultContainerId}`,
+                    `[firestoreStore.setUserProject] prev.ucVersion=${payload.prev.ucVersion} prev.len=${payload.prev.accessibleProjectIdsLength} prev.default=${payload.prev.defaultProjectId} -> next.ucVersion=${payload.next.ucVersion} next.len=${payload.next.accessibleProjectIdsLength} next.default=${payload.next.defaultProjectId}`,
                 );
             } catch {}
         }
     }
 
     // Array 変更（push/spliceなど）でも UI を更新させるための Proxy ラッパー
-    public wrapUserContainer(value: UserContainer): UserContainer {
+    public wrapUserProject(value: UserProject): UserProject {
         const arrayHandler: ProxyHandler<string[]> = {
             get: (target, prop, receiver) => {
                 const v = Reflect.get(target, prop, receiver);
@@ -86,12 +86,12 @@ class GeneralStore {
                         try {
                             // 新しい配列を作って差し替える
                             const nextArr = Array.from(target);
-                            const next: UserContainer = { ...value, accessibleContainerIds: nextArr };
+                            const next: UserProject = { ...value, accessibleProjectIds: nextArr };
                             // Proxy 経由で確実に reactivity を発火させるため、公開プロキシに代入
-                            (firestoreStore as any).setUserContainer(next); // API 経由で ucVersion++ を確実に反映
+                            (firestoreStore as any).setUserProject(next); // API 経由で ucVersion++ を確実に反映
                         } catch (e) {
                             const err = e instanceof Error ? e : new Error(String(e));
-                            logger.warn({ err }, "Failed to trigger userContainer update after array mutation");
+                            logger.warn({ err }, "Failed to trigger userProject update after array mutation");
                         }
                         return res;
                     };
@@ -99,13 +99,13 @@ class GeneralStore {
                 return v;
             },
         };
-        const proxiedIds = new Proxy(value.accessibleContainerIds ?? [], arrayHandler);
-        return { ...value, accessibleContainerIds: proxiedIds } as UserContainer;
+        const proxiedIds = new Proxy(value.accessibleProjectIds ?? [], arrayHandler);
+        return { ...value, accessibleProjectIds: proxiedIds } as UserProject;
     }
 
     reset() {
         const self = firestoreStore as any;
-        self.userContainer = null;
+        self.userProject = null;
         self.ucVersion = 0;
     }
 
@@ -221,42 +221,42 @@ function initFirestoreSync(): () => void {
     }
 
     const userId = currentUser.id;
-    logger.info(`ユーザー ${userId} の userContainers ドキュメントを監視します`);
+    logger.info(`ユーザー ${userId} の userProjects ドキュメントを監視します`);
 
     try {
-        // ドキュメントへの参照を取得 (/userContainers/{userId})
-        const userContainerRef = doc(db!, "userContainers", userId);
+        // ドキュメントへの参照を取得 (/userProjects/{userId})
+        const userProjectRef = doc(db!, "userProjects", userId);
 
         // エラーハンドリングを強化したリアルタイム更新リスナー
         unsubscribe = onSnapshot(
-            userContainerRef,
+            userProjectRef,
             snapshot => {
                 if (snapshot.exists()) {
                     const data = snapshot.data();
 
-                    const containerData: UserContainer = {
+                    const projectData: UserProject = {
                         userId: data.userId,
-                        defaultContainerId: data.defaultContainerId,
-                        accessibleContainerIds: data.accessibleContainerIds || [],
+                        defaultProjectId: data.defaultProjectId,
+                        accessibleProjectIds: data.accessibleProjectIds || [],
                         createdAt: data.createdAt?.toDate() || new Date(),
                         updatedAt: data.updatedAt?.toDate() || new Date(),
                     };
 
-                    // E2E テストの安定化: すでにテストヘルパーにより userContainer が投入されていて
+                    // E2E テストの安定化: すでにテストヘルパーにより userProject が投入されていて
                     // incoming が空配列の場合は上書きを抑止する（初期同期で空→即時消去されるのを避ける）
                     const isTestEnv = import.meta.env.MODE === "test"
                         || process.env.NODE_ENV === "test"
                         || import.meta.env.VITE_IS_TEST === "true";
-                    const hasSeeded = !!(firestoreStore.userContainer?.accessibleContainerIds?.length);
-                    const incomingEmpty = !(containerData.accessibleContainerIds?.length);
+                    const hasSeeded = !!(firestoreStore.userProject?.accessibleProjectIds?.length);
+                    const incomingEmpty = !(projectData.accessibleProjectIds?.length);
                     if (isTestEnv && hasSeeded && incomingEmpty) {
                         logger.info(
-                            "FirestoreStore: keeping seeded userContainer; ignoring empty snapshot in test env",
+                            "FirestoreStore: keeping seeded userProject; ignoring empty snapshot in test env",
                         );
                     } else {
-                        firestoreStore.setUserContainer(containerData);
+                        firestoreStore.setUserProject(projectData);
                         logger.info(`ユーザー ${userId} のコンテナ情報を読み込みました`);
-                        logger.info(`デフォルトコンテナID: ${containerData.defaultContainerId || "なし"}`);
+                        logger.info(`デフォルトコンテナID: ${projectData.defaultProjectId || "なし"}`);
                     }
                 } else {
                     logger.info(`ユーザー ${userId} のコンテナ情報は存在しません`);
@@ -283,7 +283,7 @@ function initFirestoreSync(): () => void {
 }
 
 // サーバーAPIを使ってコンテナIDを保存（更新はサーバーサイドでのみ行う）
-export async function saveContainerId(containerId: string): Promise<boolean> {
+export async function saveProjectId(projectId: string): Promise<boolean> {
     try {
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
@@ -297,18 +297,18 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
         }
 
         // /api/プレフィックスを付加してhost経由で呼び出し
-        logger.info(`Saving container ID via /api/saveContainer`);
+        logger.info(`Saving project ID via /api/saveProject`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
         const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
-        const response = await fetch(`${apiBaseUrl}/api/save-container`, {
+        const response = await fetch(`${apiBaseUrl}/api/save-project`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
                 idToken,
-                containerId,
+                projectId,
             }),
         });
 
@@ -327,24 +327,24 @@ export async function saveContainerId(containerId: string): Promise<boolean> {
 }
 
 // デフォルトコンテナIDを取得
-export async function getDefaultContainerId(): Promise<string | undefined> {
+export async function getDefaultProjectId(): Promise<string | undefined> {
     try {
         // ユーザーがログインしていることを確認
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            logger.info("Cannot get default container ID: User not logged in. Waiting for login...");
+            logger.info("Cannot get default project ID: User not logged in. Waiting for login...");
             return undefined;
         }
 
         // 1. まずストアから直接取得を試みる（リアルタイム更新されている場合）
-        if (firestoreStore.userContainer?.defaultContainerId) {
-            logger.info(`Found default container ID in store: ${firestoreStore.userContainer.defaultContainerId}`);
-            return firestoreStore.userContainer.defaultContainerId;
+        if (firestoreStore.userProject?.defaultProjectId) {
+            logger.info(`Found default project ID in store: ${firestoreStore.userProject.defaultProjectId}`);
+            return firestoreStore.userProject.defaultProjectId;
         }
 
         // 2. ストアに値がない場合は直接Firestoreから取得
         try {
-            logger.info("No default container found in store, fetching from server...");
+            logger.info("No default project found in store, fetching from server...");
             const userId = currentUser.id;
 
             // Firestoreのimport確認
@@ -353,15 +353,15 @@ export async function getDefaultContainerId(): Promise<string | undefined> {
                 return undefined;
             }
 
-            const userContainerRef = doc(db, "userContainers", userId);
-            const snapshot = await getDoc(userContainerRef);
+            const userProjectRef = doc(db, "userProjects", userId);
+            const snapshot = await getDoc(userProjectRef);
 
             if (snapshot.exists()) {
                 const data = snapshot.data();
-                const containerId = data.defaultContainerId;
-                if (containerId) {
-                    logger.info(`Found default container ID from Firestore: ${containerId}`);
-                    return containerId;
+                const projectId = data.defaultProjectId;
+                if (projectId) {
+                    logger.info(`Found default project ID from Firestore: ${projectId}`);
+                    return projectId;
                 }
             }
         } catch (firestoreError) {
@@ -370,7 +370,7 @@ export async function getDefaultContainerId(): Promise<string | undefined> {
             // Firestoreエラーは致命的ではないので、続行
         }
 
-        logger.info("No default container ID found");
+        logger.info("No default project ID found");
         return undefined;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
@@ -381,36 +381,36 @@ export async function getDefaultContainerId(): Promise<string | undefined> {
 
 /**
  * コンテナIDをサーバー側に保存する
- * @param containerId 保存するコンテナID
+ * @param projectId 保存するコンテナID
  * @returns 保存に成功したかどうか
  */
-export async function saveContainerIdToServer(containerId: string): Promise<boolean> {
+export async function saveProjectIdToServer(projectId: string): Promise<boolean> {
     try {
-        // テスト環境の場合は、直接 userContainer ストアに追加
+        // テスト環境の場合は、直接 userProject ストアに追加
         if (
             typeof window !== "undefined"
             && (window.mockFluidClient === false
                 || import.meta.env.VITE_IS_TEST === "true"
                 || window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")
         ) {
-            logger.info("Test environment detected, saving container ID to mock store");
+            logger.info("Test environment detected, saving project ID to mock store");
 
             // 新しいコンテナデータを作成または更新
-            const updatedData = firestoreStore.userContainer
+            const updatedData = firestoreStore.userProject
                 ? {
-                    ...firestoreStore.userContainer,
-                    defaultContainerId: containerId,
-                    accessibleContainerIds: firestoreStore.userContainer.accessibleContainerIds
+                    ...firestoreStore.userProject,
+                    defaultProjectId: projectId,
+                    accessibleProjectIds: firestoreStore.userProject.accessibleProjectIds
                         // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
-                        ? [...new Set([...firestoreStore.userContainer.accessibleContainerIds, containerId])]
-                        : [containerId],
+                        ? [...new Set([...firestoreStore.userProject.accessibleProjectIds, projectId])]
+                        : [projectId],
                     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
                     updatedAt: new Date(),
                 }
                 : {
                     userId: "test-user-id",
-                    defaultContainerId: containerId,
-                    accessibleContainerIds: [containerId],
+                    defaultProjectId: projectId,
+                    accessibleProjectIds: [projectId],
                     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
                     createdAt: new Date(),
                     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
@@ -418,11 +418,11 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
                 };
 
             // ストアを更新
-            firestoreStore.setUserContainer(updatedData);
-            logger.info({ updatedData }, "Container ID saved to mock store");
+            firestoreStore.setUserProject(updatedData);
+            logger.info({ updatedData }, "Project ID saved to mock store");
 
             // ローカルストレージにも現在のコンテナIDを保存
-            window.localStorage.setItem("currentContainerId", containerId);
+            window.localStorage.setItem("currentProjectId", projectId);
 
             return true;
         }
@@ -431,30 +431,30 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         // ユーザーがログインしていることを確認
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            logger.warn("Cannot save container ID to server: User not logged in");
+            logger.warn("Cannot save project ID to server: User not logged in");
             return false;
         }
 
         // Firebase IDトークンを取得
         const idToken = await userManager.auth.currentUser?.getIdToken();
         if (!idToken) {
-            logger.warn("Cannot save container ID to server: Firebase user not available");
+            logger.warn("Cannot save project ID to server: Firebase user not available");
             return false;
         }
 
         // Firebase Functionsのエンドポイントを取得
         const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
-        logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
+        logger.info(`Saving project ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
-        const response = await fetch(getFirebaseFunctionUrl("saveContainer"), {
+        const response = await fetch(getFirebaseFunctionUrl("saveProject"), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
                 idToken,
-                containerId,
+                projectId,
             }),
         });
 
@@ -464,11 +464,11 @@ export async function saveContainerIdToServer(containerId: string): Promise<bool
         }
 
         const result = await response.json();
-        logger.info(`Successfully saved container ID to server for user ${currentUser.id}`);
+        logger.info(`Successfully saved project ID to server for user ${currentUser.id}`);
         return result.success === true;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Error saving container ID to server");
+        logger.error({ err }, "Error saving project ID to server");
         return false;
     }
 }
@@ -494,7 +494,7 @@ if (typeof window !== "undefined") {
             if (authResult) {
                 cleanup = initFirestoreSync();
             } else {
-                firestoreStore.setUserContainer(null);
+                firestoreStore.setUserProject(null);
             }
         });
 

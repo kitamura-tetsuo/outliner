@@ -3,7 +3,7 @@ import { onMount } from "svelte";
 import { resolve } from "$app/paths";
 import { createYjsClient } from "../services";
 import { getLogger } from "../lib/logger";
-import { containersFromUserContainer } from "../stores/containerStore.svelte";
+import { projectsFromUserProject } from "../stores/projectStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { firestoreStore } from "../stores/firestoreStore.svelte";
 import type { UserManager } from "../auth/UserManager";

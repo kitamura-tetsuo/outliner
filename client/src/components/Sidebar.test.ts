@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Project } from "../schema/app-schema";
-import { containerStore } from "../stores/containerStore.svelte";
+import { projectStore } from "../stores/projectStore.svelte";
 import { store } from "../stores/store.svelte";
 import Sidebar from "./Sidebar.svelte";
 

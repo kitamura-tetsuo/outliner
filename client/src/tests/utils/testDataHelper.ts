@@ -5,10 +5,10 @@ import { firestoreStore } from "../../stores/firestoreStore.svelte";
  * These functions should never be used in production code
  */
 
-export interface TestUserContainer {
+export interface TestUserProject {
     userId: string;
-    defaultContainerId: string;
-    accessibleContainerIds: string[];
+    defaultProjectId: string;
+    accessibleProjectIds: string[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -17,19 +17,19 @@ export interface TestUserContainer {
  * Creates test user data for testing purposes
  * Only available in test environments
  */
-export function createTestUserData(): TestUserContainer {
-    const testUserContainer: TestUserContainer = {
+export function createTestUserData(): TestUserProject {
+    const testUserProject: TestUserProject = {
         userId: "test-user-id",
-        defaultContainerId: "test-container-1",
-        accessibleContainerIds: ["test-container-1", "test-container-2"],
+        defaultProjectId: "test-project-1",
+        accessibleProjectIds: ["test-project-1", "test-project-2"],
         createdAt: new Date(),
         updatedAt: new Date(),
     };
 
     // Set test data in firestoreStore using public API to ensure reactivity wrapping
-    (firestoreStore as any).setUserContainer(testUserContainer as any);
+    (firestoreStore as any).setUserProject(testUserProject as any);
 
-    return testUserContainer;
+    return testUserProject;
 }
 
 /**
@@ -37,14 +37,14 @@ export function createTestUserData(): TestUserContainer {
  * Only available in test environments
  */
 export function clearTestData(): void {
-    firestoreStore.userContainer = null;
+    firestoreStore.userProject = null;
 }
 
 /**
  * Sets up test environment with default test data
  * Only available in test environments
  */
-export function setupTestEnvironment(): TestUserContainer {
+export function setupTestEnvironment(): TestUserProject {
     // Clear any existing data first
     clearTestData();
 

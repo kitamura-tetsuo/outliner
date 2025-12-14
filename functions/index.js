@@ -136,16 +136,16 @@ if (process.env.NODE_ENV === "development" || process.env.FUNCTIONS_EMULATOR) {
 
 // Firestoreの参照を取得
 const db = admin.firestore();
-const userContainersCollection = db.collection("userContainers");
-const containerUsersCollection = db.collection("containerUsers");
+const userProjectsCollection = db.collection("userProjects");
+const projectUsersCollection = db.collection("projectUsers");
 
 // Determine if the decoded Firebase token represents an admin user
 function isAdmin(decodedToken) {
   return decodedToken && decodedToken.role === "admin";
 }
 
-// Check if user has access to a specific container
-async function checkContainerAccess(userId, containerId) {
+// Check if user has access to a specific project
+async function checkProjectAccess(userId, projectId) {
   try {
     // In test environment, allow access for test users
     // Production Cloud Backend環境でもテスト用ユーザーには常にアクセスを許可
@@ -155,65 +155,65 @@ async function checkContainerAccess(userId, containerId) {
       process.env.NODE_ENV === "development"
     ) {
       logger.info(
-        `Test environment or test user detected, allowing access for user ${userId} to container ${containerId}`,
+        `Test environment or test user detected, allowing access for user ${userId} to project ${projectId}`,
       );
       return true;
     }
 
     // デバッグログを追加
     logger.info(
-      `Checking container access for user: ${userId}, container: ${containerId}`,
+      `Checking project access for user: ${userId}, project: ${projectId}`,
     );
 
-    // Check if user is in containerUsers collection
-    const containerUserDoc = await db.collection("containerUsers").doc(
-      `${containerId}_${userId}`,
+    // Check if user is in projectUsers collection
+    const projectUserDoc = await db.collection("projectUsers").doc(
+      `${projectId}_${userId}`,
     ).get();
-    logger.info(`containerUsers doc exists: ${containerUserDoc.exists}`);
-    if (containerUserDoc.exists) {
-      logger.info(`Access granted via containerUsers collection`);
+    logger.info(`projectUsers doc exists: ${projectUserDoc.exists}`);
+    if (projectUserDoc.exists) {
+      logger.info(`Access granted via projectUsers collection`);
       return true;
     }
 
-    // Check if container is in user's containers list
-    const userContainerDoc = await db.collection("userContainers").doc(userId)
+    // Check if project is in user's projects list
+    const userProjectDoc = await db.collection("userProjects").doc(userId)
       .get();
-    logger.info(`userContainers doc exists: ${userContainerDoc.exists}`);
-    if (userContainerDoc.exists) {
-      const userData = userContainerDoc.data();
+    logger.info(`userProjects doc exists: ${userProjectDoc.exists}`);
+    if (userProjectDoc.exists) {
+      const userData = userProjectDoc.data();
       logger.info(`User data:`, JSON.stringify(userData));
 
-      // Check both old format (containers object) and new format (accessibleContainerIds array)
+      // Check both old format (projects object) and new format (accessibleProjectIds array)
       let hasAccess = false;
 
-      // Check new format first (accessibleContainerIds array)
+      // Check new format first (accessibleProjectIds array)
       if (
-        userData.accessibleContainerIds &&
-        Array.isArray(userData.accessibleContainerIds)
+        userData.accessibleProjectIds &&
+        Array.isArray(userData.accessibleProjectIds)
       ) {
-        hasAccess = userData.accessibleContainerIds.includes(containerId);
-        logger.info(`Access via accessibleContainerIds: ${hasAccess}`);
+        hasAccess = userData.accessibleProjectIds.includes(projectId);
+        logger.info(`Access via accessibleProjectIds: ${hasAccess}`);
       }
 
-      // Fallback to old format (containers object) if not found in new format
+      // Fallback to old format (projects object) if not found in new format
       if (
-        !hasAccess && userData.containers &&
-        userData.containers[containerId] != null
+        !hasAccess && userData.projects &&
+        userData.projects[projectId] != null
       ) {
         hasAccess = true;
-        logger.info(`Access via containers object: ${hasAccess}`);
+        logger.info(`Access via projects object: ${hasAccess}`);
       }
 
-      logger.info(`Final access decision via userContainers: ${hasAccess}`);
+      logger.info(`Final access decision via userProjects: ${hasAccess}`);
       if (hasAccess) {
         return true;
       }
     }
 
-    logger.warn(`Access denied for user ${userId} to container ${containerId}`);
+    logger.warn(`Access denied for user ${userId} to project ${projectId}`);
     return false;
   } catch (error) {
-    logger.error(`Error checking container access: ${error.message}`);
+    logger.error(`Error checking project access: ${error.message}`);
     return false;
   }
 }
@@ -269,8 +269,8 @@ try {
   logger.error("Azure設定の取得に失敗しました:", error.message);
 }
 
-// ユーザーのコンテナIDを保存するエンドポイント
-exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
+// ユーザーのプロジェクトIDを保存するエンドポイント
+exports.saveProject = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
   setCorsHeaders(req, res);
 
@@ -285,10 +285,10 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
   }
 
   try {
-    const { idToken, containerId } = req.body;
+    const { idToken, projectId } = req.body;
 
-    if (!containerId) {
-      return res.status(400).json({ error: "Container ID is required" });
+    if (!projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
     }
 
     // Firebaseトークンを検証
@@ -298,56 +298,56 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
     try {
       // Firestoreトランザクションを使用して両方のコレクションを更新
       await db.runTransaction(async transaction => {
-        const userDocRef = userContainersCollection.doc(userId);
-        const containerDocRef = db.collection("containerUsers").doc(
-          containerId,
+        const userDocRef = userProjectsCollection.doc(userId);
+        const projectDocRef = db.collection("projectUsers").doc(
+          projectId,
         );
 
         // すべての読み取り操作を先に実行
         const userDoc = await transaction.get(userDocRef);
-        const containerDoc = await transaction.get(containerDocRef);
+        const projectDoc = await transaction.get(projectDocRef);
 
         // 読み取り完了後に書き込み操作を開始
-        // ユーザーのデフォルトコンテナIDとアクセス可能なコンテナIDを更新
+        // ユーザーのデフォルトプロジェクトIDとアクセス可能なプロジェクトIDを更新
         if (userDoc.exists) {
           const userData = userDoc.data();
-          const accessibleContainerIds = userData.accessibleContainerIds || [];
+          const accessibleProjectIds = userData.accessibleProjectIds || [];
 
-          if (!accessibleContainerIds.includes(containerId)) {
-            accessibleContainerIds.push(containerId);
+          if (!accessibleProjectIds.includes(projectId)) {
+            accessibleProjectIds.push(projectId);
           }
 
           transaction.update(userDocRef, {
-            defaultContainerId: containerId,
-            accessibleContainerIds,
+            defaultProjectId: projectId,
+            accessibleProjectIds,
             updatedAt: FieldValue.serverTimestamp(),
           });
         } else {
           transaction.set(userDocRef, {
             userId,
-            defaultContainerId: containerId,
-            accessibleContainerIds: [containerId],
+            defaultProjectId: projectId,
+            accessibleProjectIds: [projectId],
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
           });
         }
 
-        // コンテナのアクセス可能なユーザーIDを更新
-        if (containerDoc.exists) {
-          const containerData = containerDoc.data();
-          const accessibleUserIds = containerData.accessibleUserIds || [];
+        // プロジェクトのアクセス可能なユーザーIDを更新
+        if (projectDoc.exists) {
+          const projectData = projectDoc.data();
+          const accessibleUserIds = projectData.accessibleUserIds || [];
 
           if (!accessibleUserIds.includes(userId)) {
             accessibleUserIds.push(userId);
           }
 
-          transaction.update(containerDocRef, {
+          transaction.update(projectDocRef, {
             accessibleUserIds,
             updatedAt: FieldValue.serverTimestamp(),
           });
         } else {
-          transaction.set(containerDocRef, {
-            containerId,
+          transaction.set(projectDocRef, {
+            projectId,
             accessibleUserIds: [userId],
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
@@ -355,26 +355,26 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
         }
       });
 
-      logger.info(`Saved container ID ${containerId} for user ${userId}`);
+      logger.info(`Saved project ID ${projectId} for user ${userId}`);
       return res.status(200).json({ success: true });
     } catch (firestoreError) {
       logger.error(
-        `Firestore error while saving container ID: ` +
+        `Firestore error while saving project ID: ` +
           `${firestoreError.message}`,
         { error: firestoreError },
       );
       return res.status(500).json({
-        error: "Database error while saving container ID",
+        error: "Database error while saving project ID",
       });
     }
   } catch (error) {
-    logger.error(`Error saving container ID: ${error.message}`, { error });
-    return res.status(500).json({ error: "Failed to save container ID" });
+    logger.error(`Error saving project ID: ${error.message}`, { error });
+    return res.status(500).json({ error: "Failed to save project ID" });
   }
 });
 
-// ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
-exports.getUserContainers = onRequest({ cors: true }, async (req, res) => {
+// ユーザーがアクセス可能なプロジェクトIDのリストを取得するエンドポイント
+exports.getUserProjects = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
   setCorsHeaders(req, res);
 
@@ -395,21 +395,21 @@ exports.getUserContainers = onRequest({ cors: true }, async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
-    const userDoc = await userContainersCollection.doc(userId).get();
+    const userDoc = await userProjectsCollection.doc(userId).get();
 
     if (!userDoc.exists) {
-      return res.status(200).json({ containers: [], defaultContainerId: null });
+      return res.status(200).json({ projects: [], defaultProjectId: null });
     }
 
     const userData = userDoc.data();
 
     return res.status(200).json({
-      containers: userData.accessibleContainerIds || [],
-      defaultContainerId: userData.defaultContainerId || null,
+      projects: userData.accessibleProjectIds || [],
+      defaultProjectId: userData.defaultProjectId || null,
     });
   } catch (error) {
-    logger.error(`Error getting user containers: ${error.message}`, { error });
-    return res.status(500).json({ error: "Failed to get user containers" });
+    logger.error(`Error getting user projects: ${error.message}`, { error });
+    return res.status(500).json({ error: "Failed to get user projects" });
   }
 });
 
@@ -550,8 +550,8 @@ exports.deleteUser = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
-// コンテナを削除するエンドポイント
-exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
+// プロジェクトを削除するエンドポイント
+exports.deleteProject = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
   setCorsHeaders(req, res);
 
@@ -566,14 +566,14 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
   }
 
   try {
-    const { idToken, containerId } = req.body;
+    const { idToken, projectId } = req.body;
 
     if (!idToken) {
       return res.status(400).json({ error: "ID token is required" });
     }
 
-    if (!containerId) {
-      return res.status(400).json({ error: "Container ID is required" });
+    if (!projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
     }
 
     // Firebaseトークンを検証
@@ -581,84 +581,84 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
     const userId = decodedToken.uid;
 
     try {
-      // Firestoreトランザクションを使用してコンテナ関連データを削除
+      // Firestoreトランザクションを使用してプロジェクト関連データを削除
       await db.runTransaction(async transaction => {
-        // コンテナ情報を取得
-        const containerDocRef = db.collection("containerUsers").doc(
-          containerId,
+        // プロジェクト情報を取得
+        const projectDocRef = db.collection("projectUsers").doc(
+          projectId,
         );
-        const containerDoc = await transaction.get(containerDocRef);
+        const projectDoc = await transaction.get(projectDocRef);
 
-        if (!containerDoc.exists) {
-          throw new Error("Container not found");
+        if (!projectDoc.exists) {
+          throw new Error("Project not found");
         }
 
-        const containerData = containerDoc.data();
-        const accessibleUserIds = containerData.accessibleUserIds || [];
+        const projectData = projectDoc.data();
+        const accessibleUserIds = projectData.accessibleUserIds || [];
 
-        // ユーザーがこのコンテナにアクセスできるか確認
+        // ユーザーがこのプロジェクトにアクセスできるか確認
         if (!accessibleUserIds.includes(userId)) {
-          throw new Error("Access to the container is denied");
+          throw new Error("Access to the project is denied");
         }
 
-        // コンテナにアクセスできる各ユーザーから、コンテナIDを削除
+        // プロジェクトにアクセスできる各ユーザーから、プロジェクトIDを削除
         for (const accessUserId of accessibleUserIds) {
-          const userDocRef = userContainersCollection.doc(accessUserId);
+          const userDocRef = userProjectsCollection.doc(accessUserId);
           const userDoc = await transaction.get(userDocRef);
 
           if (userDoc.exists) {
             const userData = userDoc.data();
-            const accessibleContainerIds = userData.accessibleContainerIds ||
+            const accessibleProjectIds = userData.accessibleProjectIds ||
               [];
 
-            // コンテナIDを削除
-            const updatedContainerIds = accessibleContainerIds.filter(id =>
-              id !== containerId
+            // プロジェクトIDを削除
+            const updatedProjectIds = accessibleProjectIds.filter(id =>
+              id !== projectId
             );
 
-            // デフォルトコンテナの更新
-            let defaultContainerId = userData.defaultContainerId;
-            if (defaultContainerId === containerId) {
-              defaultContainerId = updatedContainerIds.length > 0 ?
-                updatedContainerIds[0] : null;
+            // デフォルトプロジェクトの更新
+            let defaultProjectId = userData.defaultProjectId;
+            if (defaultProjectId === projectId) {
+              defaultProjectId = updatedProjectIds.length > 0 ?
+                updatedProjectIds[0] : null;
             }
 
             transaction.update(userDocRef, {
-              accessibleContainerIds: updatedContainerIds,
-              defaultContainerId: defaultContainerId,
+              accessibleProjectIds: updatedProjectIds,
+              defaultProjectId: defaultProjectId,
               updatedAt: FieldValue.serverTimestamp(),
             });
           }
         }
 
-        // コンテナドキュメントを削除
-        transaction.delete(containerDocRef);
+        // プロジェクトドキュメントを削除
+        transaction.delete(projectDocRef);
       });
 
-      logger.info(`Container ${containerId} deleted successfully`);
+      logger.info(`Project ${projectId} deleted successfully`);
       return res.status(200).json({ success: true });
     } catch (firestoreError) {
       logger.error(
-        `Firestore error while deleting container: ${firestoreError.message}`,
+        `Firestore error while deleting project: ${firestoreError.message}`,
         { error: firestoreError },
       );
 
-      if (firestoreError.message === "Container not found") {
-        return res.status(404).json({ error: "Container not found" });
+      if (firestoreError.message === "Project not found") {
+        return res.status(404).json({ error: "Project not found" });
       }
 
-      if (firestoreError.message === "Access to the container is denied") {
+      if (firestoreError.message === "Access to the project is denied") {
         return res.status(403).json({
-          error: "Access to the container is denied",
+          error: "Access to the project is denied",
         });
       }
 
       return res.status(500).json({
-        error: "Database error while deleting container",
+        error: "Database error while deleting project",
       });
     }
   } catch (error) {
-    logger.error(`Error deleting container: ${error.message}`, { error });
+    logger.error(`Error deleting project: ${error.message}`, { error });
     if (
       error.code === "auth/id-token-expired" ||
       error.code === "auth/invalid-id-token" ||
@@ -666,7 +666,7 @@ exports.deleteContainer = onRequest({ cors: true }, async (req, res) => {
     ) {
       return res.status(401).json({ error: "Authentication failed" });
     }
-    return res.status(500).json({ error: "Failed to delete container" });
+    return res.status(500).json({ error: "Failed to delete project" });
   }
 });
 
@@ -679,8 +679,8 @@ exports.fluidToken404 = onRequest({ cors: true }, async (req, res) => {
   return res.status(404).json({ error: "Not Found" });
 });
 
-// コンテナにアクセス可能なユーザーのリストを取得するエンドポイント（管理者用）
-exports.getContainerUsers = onRequest({ cors: true }, async (req, res) => {
+// プロジェクトにアクセス可能なユーザーのリストを取得するエンドポイント（管理者用）
+exports.getProjectUsers = onRequest({ cors: true }, async (req, res) => {
   // CORS設定
   setCorsHeaders(req, res);
 
@@ -695,10 +695,10 @@ exports.getContainerUsers = onRequest({ cors: true }, async (req, res) => {
   }
 
   try {
-    const { idToken, containerId } = req.body;
+    const { idToken, projectId } = req.body;
 
-    if (!containerId) {
-      return res.status(400).json({ error: "Container ID is required" });
+    if (!projectId) {
+      return res.status(400).json({ error: "Project ID is required" });
     }
 
     if (!idToken) {
@@ -755,24 +755,24 @@ exports.getContainerUsers = onRequest({ cors: true }, async (req, res) => {
       return res.status(401).json({ error: "Authentication failed" });
     }
 
-    // Check admin role before returning container info
+    // Check admin role before returning project info
     if (!isAdmin(decodedToken)) {
       return res.status(403).json({ error: "Admin privileges required" });
     }
 
-    const containerDoc = await containerUsersCollection.doc(containerId).get();
+    const projectDoc = await projectUsersCollection.doc(projectId).get();
 
-    if (!containerDoc.exists) {
-      return res.status(404).json({ error: "Container not found" });
+    if (!projectDoc.exists) {
+      return res.status(404).json({ error: "Project not found" });
     }
 
-    const containerData = containerDoc.data();
+    const projectData = projectDoc.data();
 
     return res.status(200).json({
-      users: containerData.accessibleUserIds || [],
+      users: projectData.accessibleUserIds || [],
     });
   } catch (error) {
-    logger.error(`Error getting container users: ${error.message}`, { error });
+    logger.error(`Error getting project users: ${error.message}`, { error });
     // Firebase認証エラーの場合は401を返す
     if (
       error.code === "auth/id-token-expired" ||
@@ -781,7 +781,7 @@ exports.getContainerUsers = onRequest({ cors: true }, async (req, res) => {
     ) {
       return res.status(401).json({ error: "Authentication failed" });
     }
-    return res.status(500).json({ error: "Failed to get container users" });
+    return res.status(500).json({ error: "Failed to get project users" });
   }
 });
 
@@ -1614,9 +1614,9 @@ exports.deleteAttachment = onRequest({ cors: true }, async (req, res) => {
 });
 
 // 管理者チェック API
-exports.adminCheckForContainerUserListing = onRequest(
+exports.adminCheckForProjectUserListing = onRequest(
   async (req, res) => {
-    logger.info("adminCheckForContainerUserListing called");
+    logger.info("adminCheckForProjectUserListing called");
     setCorsHeaders(req, res);
 
     if (req.method === "OPTIONS") {
@@ -1641,10 +1641,10 @@ exports.adminCheckForContainerUserListing = onRequest(
         return res.status(400).json({ error: "ID token required" });
       }
 
-      // containerId パラメータの検証
-      const { containerId } = req.body;
-      if (!containerId) {
-        return res.status(400).json({ error: "Container ID is required" });
+      // projectId パラメータの検証
+      const { projectId } = req.body;
+      if (!projectId) {
+        return res.status(400).json({ error: "Project ID is required" });
       }
 
       // Firebase Admin SDKでIDトークンを検証
@@ -1659,21 +1659,21 @@ exports.adminCheckForContainerUserListing = onRequest(
         return res.status(403).json({ error: "Admin access required" });
       }
 
-      // コンテナのユーザーリストを取得（実際の実装では Firestore から取得）
+      // プロジェクトのユーザーリストを取得（実際の実装では Firestore から取得）
       const db = admin.firestore();
-      const containerDoc = await db.collection("containers").doc(containerId)
+      const projectDoc = await db.collection("projects").doc(projectId)
         .get();
 
-      if (!containerDoc.exists) {
-        return res.status(404).json({ error: "Container not found" });
+      if (!projectDoc.exists) {
+        return res.status(404).json({ error: "Project not found" });
       }
 
-      const containerData = containerDoc.data();
-      const users = containerData.users || [];
+      const projectData = projectDoc.data();
+      const users = projectData.users || [];
 
       return res.status(200).json({
         success: true,
-        containerId: containerId,
+        projectId: projectId,
         users: users,
         userCount: users.length,
       });
@@ -1752,8 +1752,8 @@ exports.adminUserList = onRequest(
   },
 );
 
-// デバッグ用: ユーザーのコンテナアクセス権限を確認するAPI
-exports.debugUserContainers = onRequest(
+// デバッグ用: ユーザーのプロジェクトアクセス権限を確認するAPI
+exports.debugUserProjects = onRequest(
   { cors: true },
   async (req, res) => {
     setCorsHeaders(req, res);
@@ -1773,22 +1773,22 @@ exports.debugUserContainers = onRequest(
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
-      logger.info(`Debug: Checking containers for user: ${userId}`);
+      logger.info(`Debug: Checking projects for user: ${userId}`);
 
-      // userContainers コレクションを確認
-      const userContainerDoc = await db.collection("userContainers").doc(userId)
+      // userProjects コレクションを確認
+      const userProjectDoc = await db.collection("userProjects").doc(userId)
         .get();
-      const userContainerData = userContainerDoc.exists ?
-        userContainerDoc.data() : null;
+      const userProjectData = userProjectDoc.exists ?
+        userProjectDoc.data() : null;
 
-      // containerUsers コレクションで該当するドキュメントを検索
-      const containerUsersQuery = await db.collection("containerUsers")
+      // projectUsers コレクションで該当するドキュメントを検索
+      const projectUsersQuery = await db.collection("projectUsers")
         .where("accessibleUserIds", "array-contains", userId)
         .get();
 
-      const containerUsersData = [];
-      containerUsersQuery.forEach(doc => {
-        containerUsersData.push({
+      const projectUsersData = [];
+      projectUsersQuery.forEach(doc => {
+        projectUsersData.push({
           id: doc.id,
           data: doc.data(),
         });
@@ -1798,19 +1798,19 @@ exports.debugUserContainers = onRequest(
         success: true,
         userId: userId,
         userEmail: decodedToken.email,
-        userContainers: {
-          exists: userContainerDoc.exists,
-          data: userContainerData,
+        userProjects: {
+          exists: userProjectDoc.exists,
+          data: userProjectData,
         },
-        containerUsers: containerUsersData,
+        projectUsers: projectUsersData,
         environment: {
           NODE_ENV: process.env.NODE_ENV,
           FUNCTIONS_EMULATOR: process.env.FUNCTIONS_EMULATOR,
         },
       });
     } catch (error) {
-      logger.error(`Debug user containers error: ${error.message}`, { error });
-      return res.status(500).json({ error: "Failed to debug user containers" });
+      logger.error(`Debug user projects error: ${error.message}`, { error });
+      return res.status(500).json({ error: "Failed to debug user projects" });
     }
   },
 );
@@ -1881,10 +1881,9 @@ exports.deleteAllProductionData = onRequest(
         // 主要なコレクションを削除
         const collections = [
           "users",
-          "containers",
           "projects",
           "schedules",
-          "user-containers",
+          "user-projects",
         ];
 
         for (const collectionName of collections) {

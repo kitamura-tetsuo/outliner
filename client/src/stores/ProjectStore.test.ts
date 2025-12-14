@@ -1,38 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { containerStore } from "./containerStore.svelte";
-import { firestoreStore, type UserContainer } from "./firestoreStore.svelte";
+import { firestoreStore, type UserProject } from "./firestoreStore.svelte";
+import { projectStore } from "./projectStore.svelte";
 
 // Neutral title provider mock
 vi.mock("../lib/projectTitleProvider", () => ({
     getProjectTitle: vi.fn((id: string) => {
         const titles: Record<string, string> = {
-            "c1": "テストプロジェクト1",
-            "c2": "テストプロジェクト2",
+            "p1": "テストプロジェクト1",
+            "p2": "テストプロジェクト2",
         };
         return titles[id] || "デフォルトプロジェクト";
     }),
 }));
 
-describe("ContainerStore", () => {
+describe("ProjectStore", () => {
     beforeEach(() => {
-        firestoreStore.userContainer = {
+        firestoreStore.userProject = {
             userId: "test",
-            accessibleContainerIds: ["c1", "c2"],
-            defaultContainerId: "c1",
+            accessibleProjectIds: ["p1", "p2"],
+            defaultProjectId: "p1",
             createdAt: new Date(),
             updatedAt: new Date(),
-        } as UserContainer;
-        // Trigger sync to update containerStore
-        containerStore.syncFromFirestore();
+        } as UserProject;
+        // Trigger sync to update projectStore
+        projectStore.syncFromFirestore();
     });
 
-    it("maps firestore containers to info objects", () => {
-        const list = containerStore.containers;
+    it("maps firestore projects to info objects", () => {
+        const list = projectStore.projects;
         expect(list.length).toBe(2);
-        expect(list[0].id).toBe("c1");
+        expect(list[0].id).toBe("p1");
         expect(list[0].name).toBe("テストプロジェクト1");
         expect(list[0].isDefault).toBe(true);
-        expect(list[1].id).toBe("c2");
+        expect(list[1].id).toBe("p2");
         expect(list[1].name).toBe("テストプロジェクト2");
         expect(list[1].isDefault).toBe(false);
     });
