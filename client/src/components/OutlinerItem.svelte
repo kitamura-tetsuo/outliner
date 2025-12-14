@@ -141,6 +141,50 @@ let attachmentsMirror: string[] = []; // eslint-disable-line @typescript-eslint/
 let e2eTimer: ReturnType<typeof setInterval> | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
 const addNewItem = () => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
 
+/**
+ * Binary search to find the character offset corresponding to a relative X coordinate.
+ * Uses the provided span element (which must be already styled and appended to DOM) to measure widths.
+ */
+function findBestOffsetBinary(content: string, relX: number, span: HTMLElement): number {
+    // Fast path: check total width
+    span.textContent = content;
+    const totalWidth = span.getBoundingClientRect().width;
+
+    if (relX > totalWidth) return content.length;
+    if (relX <= 0) return 0;
+
+    let low = 0;
+    let high = content.length;
+
+    while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        span.textContent = content.slice(0, mid);
+        const w = span.getBoundingClientRect().width;
+
+        if (w < relX) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+
+    // low is the first index where width >= relX
+    let best = low;
+    span.textContent = content.slice(0, low);
+    const dist1 = Math.abs(span.getBoundingClientRect().width - relX);
+
+    if (low > 0) {
+        const prev = low - 1;
+        span.textContent = content.slice(0, prev);
+        const dist2 = Math.abs(span.getBoundingClientRect().width - relX);
+        if (dist2 < dist1) {
+            best = prev;
+        }
+    }
+
+    return best;
+}
+
 interface Props {
     model: OutlinerItemViewModel;
     depth?: number;
@@ -630,31 +674,9 @@ function getClickPosition(event: MouseEvent, content: string): number {
     span.style.position = "absolute";
     document.body.appendChild(span);
 
-    let best = 0;
-    let minDist = Infinity;
-    let totalWidth = 0;
-
-    // 各文字位置での幅を測定
-    for (let i = 0; i <= content.length; i++) {
-        span.textContent = content.slice(0, i);
-        const w = span.getBoundingClientRect().width;
-        const d = Math.abs(w - relX);
-        if (d < minDist) {
-            minDist = d;
-            best = i;
-        }
-        // 最後の文字位置での幅を記録
-        if (i === content.length) {
-            totalWidth = w;
-        }
-    }
+    const best = findBestOffsetBinary(content, relX, span);
 
     document.body.removeChild(span);
-
-    // テキストの右側をクリックした場合は末尾に配置
-    if (relX > totalWidth) {
-        return content.length;
-    }
 
     return best;
 }
@@ -1213,30 +1235,10 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         document.body.appendChild(span);
 
         // 開始位置（オフセット）を計算
-        let startPos = 0;
-        let minStartDist = Infinity;
-        for (let i = 0; i <= textContent.length; i++) {
-            span.textContent = textContent.slice(0, i);
-            const w = span.getBoundingClientRect().width;
-            const d = Math.abs(w - relStartX);
-            if (d < minStartDist) {
-                minStartDist = d;
-                startPos = i;
-            }
-        }
+        const startPos = findBestOffsetBinary(textContent, relStartX, span);
 
         // 終了位置（オフセット）を計算
-        let endPos = 0;
-        let minEndDist = Infinity;
-        for (let i = 0; i <= textContent.length; i++) {
-            span.textContent = textContent.slice(0, i);
-            const w = span.getBoundingClientRect().width;
-            const d = Math.abs(w - relEndX);
-            if (d < minEndDist) {
-                minEndDist = d;
-                endPos = i;
-            }
-        }
+        const endPos = findBestOffsetBinary(textContent, relEndX, span);
 
         document.body.removeChild(span);
 
