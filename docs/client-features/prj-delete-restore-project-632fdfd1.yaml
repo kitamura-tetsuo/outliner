@@ -1,0 +1,13 @@
+id: PRJ-632fdfd1
+title: 'Project Management: Delete and Restore Project'
+title-ja: プロジェクト管理：プロジェクトの削除と復元
+description: Users can delete a project, which moves it to a "Trash" or "Archived" state. They can then restore the project from this state.
+category: project-management
+status: implemented
+user-story: As a user, I want to be able to delete projects I no longer need and restore them if I make a mistake.
+acceptance-criteria:
+- The user can find a "Delete" option in the project settings.
+- Deleted projects are moved to a "Trash" or "Archived" section.
+- The user can view a list of deleted projects.
+- The user can restore a deleted project, which moves it back to the active project list.
+- There is a mechanism for permanently deleting projects from the trash.

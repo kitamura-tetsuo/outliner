@@ -1,0 +1,11 @@
+id: PRJ-eb7ee8f3
+title: 'Project Management: Rename Project'
+title-ja: プロジェクト管理：プロジェクト名の変更
+description: Users can rename a project, which updates its title in the project list and all related views.
+category: project-management
+status: implemented
+user-story: As a user, I want to be able to rename my projects so that I can keep them organized and easily identifiable.
+acceptance-criteria:
+- The user can find a "Rename" option in the project settings.
+- After renaming, the new project title is reflected in the project list, project view, and breadcrumbs.
+- The URL of the project does not change when renaming.
