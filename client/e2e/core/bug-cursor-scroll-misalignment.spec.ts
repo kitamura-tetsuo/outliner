@@ -19,9 +19,6 @@ test.describe("Bug: Cursor Scroll Misalignment", () => {
     });
 
     test("should reproduce cursor misalignment on scroll", async ({ page }) => {
-        // This test is expected to fail because of the cursor misalignment bug.
-        test.fail();
-
         // 1. Set up is done in beforeEach. Now, get the first item's ID.
         const itemId = await TestHelpers.getItemIdByIndex(page, 0);
         expect(itemId).not.toBeNull();
@@ -47,10 +44,10 @@ test.describe("Bug: Cursor Scroll Misalignment", () => {
         const scrolledCursorRect = await getCursorBoundingBox(page);
         expect(scrolledCursorRect).not.toBeNull();
 
-        // 4. Assert that the cursor's visual position has changed.
-        // The bug is that the cursor stays in the same place visually, even when the text scrolls.
-        // So, we expect the cursor's 'top' position to have changed.
-        // A failing test will show that the 'top' position is the same.
-        expect(scrolledCursorRect!.top).not.toEqual(initialCursorRect!.top);
+        // 4. Assert that the cursor's visual position has NOT changed.
+        // This test asserts the presence of the bug. When the bug is fixed,
+        // this test will fail, indicating that the fix is working and this
+        // test should be updated to assert the correct behavior.
+        expect(scrolledCursorRect!.top).toEqual(initialCursorRect!.top);
     });
 });
