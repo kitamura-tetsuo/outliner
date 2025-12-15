@@ -155,10 +155,24 @@ export function cleanupClient() {
 
 // Compatibility stubs for UI that previously used Fluid Functions
 export async function deleteContainer(containerId: string): Promise<boolean> {
-    // No-op in Yjs-only mode; containers are client-local concepts here.
-    // Using containerId to satisfy function signature
     console.log(`[yjsService] deleteContainer called for: ${containerId}`);
-    return true;
+    try {
+        const key = keyFor(undefined, containerId);
+        const instances = registry.get(key);
+        if (instances) {
+            const [client] = instances;
+            client?.dispose();
+            registry.map.delete(registry.key(key));
+        }
+
+        if (yjsStore.currentContainerId === containerId) {
+            yjsStore.reset();
+        }
+        return true;
+    } catch (error) {
+        console.error(`Failed to delete container ${containerId}:`, error);
+        return false;
+    }
 }
 
 export async function getUserContainers(): Promise<{ containers: string[]; defaultContainerId: string | null; }> {
