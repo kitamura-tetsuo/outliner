@@ -10,6 +10,7 @@ import {
     onDestroy,
     onMount,
 } from "svelte";
+import { highlightLinkInContext } from "../utils/linkHighlighter";
 
 const logger = getLogger("BacklinkPanel");
 
@@ -84,34 +85,6 @@ onDestroy(() => {
     // クリーンアップ処理
 });
 
-// コンテキスト内のリンクをハイライトする
-function highlightLinkInContext(context: string, pageName: string): string {
-    if (!context || !pageName) return context;
-
-    // HTMLエスケープ
-    const escapeHtml = (text: string): string => {
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    };
-
-    // 内部リンクの正規表現パターン
-    const escapedPageName = escapeHtml(pageName);
-    const internalLinkPattern = new RegExp(`\\\\[(${escapedPageName})\\\\]`, "gi");
-
-    // プロジェクト内部リンクの正規表現パターン
-    const projectLinkPattern = new RegExp(`\\\\[\\\\/[^/]+\\\\/(${escapedPageName})\\\\]`, "gi");
-
-    // リンクをハイライト
-    let result = context
-        .replace(internalLinkPattern, '<span class="highlight">[$1]</span>')
-        .replace(projectLinkPattern, '<span class="highlight">[/project/$1]</span>');
-
-    return result;
-}
 </script>
 
 <div class="backlink-panel">
