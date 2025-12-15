@@ -54,8 +54,7 @@ export class UserManager {
     private unsubscribeAuth: (() => void) | null = null;
 
     // 開発環境かどうかの判定
-    private isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development"
-        || process.env.NODE_ENV === "development";
+    private isDevelopment = import.meta.env.DEV;
 
     /**
      * Firebaseアプリインスタンスを遅延初期化で取得
@@ -102,14 +101,19 @@ export class UserManager {
             || import.meta.env.VITE_IS_TEST === "true";
 
         // プロダクション環境では絶対にエミュレータを使用しない
-        const isProduction = process.env.NODE_ENV === "production"
-            || import.meta.env.MODE === "production";
+        const isProduction = !import.meta.env.DEV && import.meta.env.MODE === "production";
+        const useEmulatorInLocalStorage = typeof window !== "undefined"
+            && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true";
 
-        const useEmulator = !isProduction && (
-            isTestEnv
-            || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
-            || (typeof window !== "undefined" && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true")
-        );
+        // isTestEnv のいずれかが true の場合は useEmulator を true にする
+        const useEmulator = isTestEnv || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
+            || useEmulatorInLocalStorage;
+
+        if (isProduction && useEmulator) {
+            const error = new Error("Firebase Emulator is enabled in production. Please check your configuration.");
+            logger.error({ error }, error.message);
+            throw error;
+        }
 
         // サーバーサイドレンダリング環境かどうかを判定
         const isSSR = typeof window === "undefined";
@@ -168,16 +172,12 @@ export class UserManager {
 
     // テスト環境用のユーザーをセットアップ
     private async _setupMockUser() {
-        // テスト環境の検出条件を拡張
-        const isTestEnvironment = typeof window !== "undefined" && (
-            window.location.href.includes("e2e-test")
-            || import.meta.env.VITE_IS_TEST === "true"
-            || localStorage.getItem("VITE_IS_TEST") === "true"
-            || process.env.NODE_ENV === "test"
-        );
+        const isTestEnv = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test"
+            || import.meta.env.VITE_IS_TEST === "true";
+        const isProduction = !import.meta.env.DEV && import.meta.env.MODE === "production";
 
         // E2Eテスト用にFirebaseメール/パスワード認証を使う
-        if (isTestEnvironment) {
+        if (isTestEnv && !isProduction) {
             logger.info("[UserManager] E2E test environment detected, using Firebase auth emulator with test account");
             logger.info("[UserManager] Attempting E2E test login with test@example.com");
 
@@ -197,11 +197,9 @@ export class UserManager {
                     logger.error({ error: createError }, "[UserManager] Failed to create test user");
                 }
             }
-            return;
+        } else if (isProduction) {
+            logger.warn("[UserManager] _setupMockUser called in production. This should not happen.");
         }
-
-        // エミュレータを使用して認証
-        logger.info("[UserManager] Using Firebase auth emulator for testing");
     }
 
     // Firebase認証状態の監視（非同期初期化）
