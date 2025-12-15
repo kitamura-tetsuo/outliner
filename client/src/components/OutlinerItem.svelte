@@ -583,12 +583,10 @@ onMount(() => {
 });
 
 // Reactively resubscribe to editor overlay store changes to update focus state
-let overlayPulse = $state(0);
 let isItemActive = $state(false);
 
 onMount(() => {
     const updateActive = () => {
-        overlayPulse++;
         const detail = editorOverlayStore.getItemCursorsAndSelections(model.id);
         isItemActive = detail.isActive || detail.cursors.some(cursor => cursor.isActive && (!cursor.userId || cursor.userId === "local"));
     };
@@ -596,6 +594,10 @@ onMount(() => {
     const unsubscribe = editorOverlayStore.subscribe(updateActive);
     return () => { try { unsubscribe(); } catch {} };
 });
+
+// Memoize formatting operations to avoid unnecessary recalculations during render
+let hasFormatting = $derived(ScrapboxFormatter.hasFormatting(textString));
+let formattedHtml = $derived(isItemActive ? ScrapboxFormatter.formatWithControlChars(textString) : ScrapboxFormatter.formatToHtml(textString));
 
 // 表示エリアのref
 let displayRef: HTMLDivElement;
@@ -1915,35 +1917,19 @@ export function setSelectionPosition(start: number, end: number = start) {
             >
                 <!-- テキスト表示（コンポーネントが表示されている時は非表示） -->
                 <!-- 一時的にコンポーネントタイプの条件分岐を無効化 -->
-                {#key `${model.id}-${isItemActive}-${overlayPulse}`}
-                    {#if isItemActive}
-                        <!-- フォーカスがある場合：フォーマットを適用した上で制御文字を表示 -->
-                        <span
-                            class="item-text"
-                            class:title-text={isPageTitle}
-                            class:formatted={ScrapboxFormatter.hasFormatting(textString)}
-                            oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
-                            onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
-                        >
-                            <!-- XSS-safe: ScrapboxFormatter.formatWithControlChars() escapes HTML before applying formatting -->
-                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                            {@html ScrapboxFormatter.formatWithControlChars(textString)}
-                        </span>
-                    {:else}
-                        <!-- フォーカスがない場合：制御文字は非表示、フォーマットは適用 -->
-                        <span
-                            class="item-text"
-                            class:title-text={isPageTitle}
-                            class:formatted={ScrapboxFormatter.hasFormatting(textString)}
-                            oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
-                            onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
-                        >
-                            <!-- XSS-safe: ScrapboxFormatter.formatToHtml() escapes HTML before applying formatting -->
-                            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                            {@html ScrapboxFormatter.formatToHtml(textString)}
-                        </span>
-                    {/if}
-                {/key}
+                <!-- フォーカスがある場合：フォーマットを適用した上で制御文字を表示 -->
+                <!-- フォーカスがない場合：制御文字は非表示、フォーマットは適用 -->
+                <span
+                    class="item-text"
+                    class:title-text={isPageTitle}
+                    class:formatted={hasFormatting}
+                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
+                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
+                >
+                    <!-- XSS-safe: formattedHtml is derived from ScrapboxFormatter methods which escape HTML -->
+                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                    {@html formattedHtml}
+                </span>
                 {#if !isPageTitle && model.votes.length > 0}
                     <span class="vote-count">{model.votes.length}</span>
                 {/if}
