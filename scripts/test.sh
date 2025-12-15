@@ -4,6 +4,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(realpath "${SCRIPT_DIR}/..")"
 CLIENT_DIR="${PROJECT_ROOT}/client"
+LOGS_DIR="${PROJECT_ROOT}/logs/tests"
+mkdir -p "$LOGS_DIR"
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+
 
 # Ensure shared configuration (ports, environment) is available for auxiliary helpers.
 # The scripts/common-config.sh file expects ROOT_DIR to be defined.
@@ -71,7 +75,17 @@ if [ $# -eq 0 ]; then
   cd "$CLIENT_DIR"
 
   # Run ESLint check
+  # Run ESLint check
   echo "Running ESLint check..."
+  
+  # Run for JSON output (ignore failure here to allow standard run to proceed/fail naturally, 
+  # but we want to capture logs if possible. If it fails, we still want the standard run to show output)
+  # Actually, if we want to fail if lint fails, we should capture the exit code of the standard run.
+  # But we also want the JSON report.
+  
+  echo "Generating ESLint JSON report..."
+  npm run lint -- --format json --output-file "${LOGS_DIR}/lint-${TIMESTAMP}.json" || true
+
   if ! npm run lint; then
     echo "❌ ESLint check failed!"
     exit 1
@@ -209,19 +223,22 @@ cd "$CLIENT_DIR"
 
 case "$detected_type" in
   unit)
-    npm run test:unit -- "${normalized_paths[@]}" "${pass_through[@]}"
+    npm run test:unit -- "${normalized_paths[@]}" "${pass_through[@]}" --reporter=default --reporter=json --outputFile="${LOGS_DIR}/unit-${TIMESTAMP}.json"
     ;;
   integration)
-    npm run test:integration -- "${normalized_paths[@]}" "${pass_through[@]}"
+    npm run test:integration -- "${normalized_paths[@]}" "${pass_through[@]}" --reporter=default --reporter=json --outputFile="${LOGS_DIR}/integration-${TIMESTAMP}.json"
     ;;
   production)
-    npm run test:production -- "${normalized_paths[@]}" "${pass_through[@]}"
+    npm run test:production -- "${normalized_paths[@]}" "${pass_through[@]}" --reporter=default --reporter=json --outputFile="${LOGS_DIR}/production-${TIMESTAMP}.json"
     ;;
   e2e)
     ensure_codex_services
     cleanup_e2e_coverage
     for spec in "${normalized_paths[@]}"; do
-      npm run test:e2e -- "$spec" "${pass_through[@]}"
+      # Sanitize spec path for filename
+      SAFE_SPEC_NAME=$(echo "$spec" | sed 's/[^a-zA-Z0-9]/_/g')
+      export PLAYWRIGHT_JSON_OUTPUT_NAME="${LOGS_DIR}/e2e-${SAFE_SPEC_NAME}-${TIMESTAMP}.json"
+      npm run test:e2e -- "$spec" "${pass_through[@]}" --reporter=list,json
     done
     ;;
   *)
