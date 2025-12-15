@@ -1,7 +1,6 @@
 <script lang="ts">
     import { projectStore } from "../stores/projectStore.svelte";
     import { store } from "../stores/store.svelte";
-    import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
 
     let { isOpen = $bindable(true) } = $props();
@@ -10,13 +9,6 @@
     let isProjectsCollapsed = $state(false);
     // Collapsible state for Pages section
     let isPagesCollapsed = $state(false);
-
-    async function handlePageClick(pageId: string, pageName: string) {
-        // Navigate to the page with proper project context
-        // Use current project from store for consistent navigation
-        const currentProjectTitle = store.project?.title || "Untitled Project";
-        await goto(resolve(`/${encodeURIComponent(currentProjectTitle)}/${encodeURIComponent(pageName)}`));
-    }
 </script>
 
 <aside class="sidebar" class:open={isOpen}>
@@ -104,21 +96,13 @@
                         <p class="sidebar-placeholder">No pages available</p>
                     {:else}
                         {#each store.project.items as page (page.id)}
-                            <div
+                            <a
                                 class="page-item"
-                                onclick={() => handlePageClick(page.id, page.text)}
-                                role="button"
-                                tabindex="0"
-                                onkeydown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                        e.preventDefault();
-                                        handlePageClick(page.id, page.text);
-                                    }
-                                }}
+                                href={resolve(`/${encodeURIComponent(store.project?.title || "Untitled Project")}/${encodeURIComponent(page.text)}`)}
                             >
                                 <span class="page-title">{page.text || "Untitled page"}</span>
                                 <span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
-                            </div>
+                            </a>
                         {/each}
                     {/if}
                 </div>
@@ -127,20 +111,12 @@
 
         <div class="sidebar-section">
             <h3 class="sidebar-section-title">Settings</h3>
-            <div
+            <a
                 class="settings-link"
-                onclick={async () => await goto(resolve("/settings"))}
-                role="button"
-                tabindex="0"
-                onkeydown={async (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        await goto(resolve("/settings"));
-                    }
-                }}
+                href={resolve("/settings")}
             >
                 <span class="settings-text">Settings</span>
-            </div>
+            </a>
         </div>
     </div>
 </aside>
@@ -282,6 +258,8 @@
         margin-bottom: 0.25rem;
         cursor: pointer;
         transition: background-color 0.2s ease;
+        text-decoration: none; /* Added */
+        color: inherit; /* Added */
     }
 
     .page-item:hover {
@@ -328,6 +306,8 @@
         margin-top: 0.5rem;
         cursor: pointer;
         transition: background-color 0.2s ease;
+        text-decoration: none; /* Added */
+        color: inherit; /* Added */
     }
 
     .settings-link:hover {

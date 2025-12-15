@@ -428,6 +428,18 @@ exports.createTestUser = onRequest({ cors: true }, async (req, res) => {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
+  // 本番環境チェック
+  const isProduction = !process.env.FUNCTIONS_EMULATOR &&
+    !process.env.FIRESTORE_EMULATOR_HOST &&
+    process.env.NODE_ENV === "production";
+
+  if (isProduction) {
+    logger.warn("Attempted to create test user in production environment");
+    return res.status(403).json({
+      error: "Test user creation is disabled in production",
+    });
+  }
+
   try {
     const { email, password, displayName } = req.body;
     if (!email || !password) {

@@ -4,7 +4,7 @@ description: Ensure scripts/setup.sh has execute permission and is referenced co
 category: environment
 status: implemented
 components:
-- .github/workflows/test.yml
+- .github/workflows/pr-test.yml
 - scripts/setup.sh
 tests:
 - scripts/tests/env-codex-setup-script-executable-90408b00.spec.ts

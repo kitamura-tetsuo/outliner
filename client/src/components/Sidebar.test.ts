@@ -246,71 +246,29 @@ describe("Sidebar", () => {
             const testPage1Again = screen.getByText("Test Page 1");
             expect(testPage1Again).toBeVisible();
         });
-
-        it("should handle keyboard navigation on page items", async () => {
-            const user = userEvent.setup();
-            render(Sidebar, { isOpen: true });
-
-            const pageItem = screen.getByText("Test Page 1").closest("[role='button']");
-            expect(pageItem).toBeInTheDocument();
-
-            if (pageItem) {
-                await user.tab();
-                await user.keyboard("{Enter}");
-                // Navigation would happen here
-            }
-        });
-
-        it("should handle keyboard navigation on settings link", async () => {
-            const user = userEvent.setup();
-            render(Sidebar, { isOpen: true });
-
-            // Get all settings elements and find the one in settings-link
-            const settingsElements = screen.getAllByText("Settings");
-            const settingsLink = settingsElements.find(
-                (el) => el.closest(".settings-link") !== null,
-            )?.closest("[role='button']");
-
-            expect(settingsLink).toBeInTheDocument();
-
-            if (settingsLink) {
-                await user.tab();
-                await user.keyboard("{Enter}");
-                // Navigation would happen here
-            }
-        });
     });
 
     describe("Navigation", () => {
-        it("should call goto when a page item is clicked", async () => {
-            const user = userEvent.setup();
-            const { goto } = await import("$app/navigation");
-
+        it("should have correct href for page items", () => {
             render(Sidebar, { isOpen: true });
 
-            const pageItem = screen.getByText("Test Page 1").closest("[role='button']");
-            if (pageItem) {
-                await user.click(pageItem);
-                expect(goto).toHaveBeenCalledWith("/Test%20Project/Test%20Page%201");
-            }
+            const pageItem = screen.getByText("Test Page 1").closest("a");
+            expect(pageItem).toBeInTheDocument();
+            // Assuming resolve returns the path directly in test env (standard SvelteKit mock behavior or actual implementation)
+            expect(pageItem).toHaveAttribute("href", "/Test%20Project/Test%20Page%201");
         });
 
-        it("should call goto when settings link is clicked", async () => {
-            const user = userEvent.setup();
-            const { goto } = await import("$app/navigation");
-
+        it("should have correct href for settings link", () => {
             render(Sidebar, { isOpen: true });
 
             // Get all settings elements and find the one in settings-link
             const settingsElements = screen.getAllByText("Settings");
             const settingsLink = settingsElements.find(
                 (el) => el.closest(".settings-link") !== null,
-            )?.closest("[role='button']");
+            )?.closest("a");
 
-            if (settingsLink) {
-                await user.click(settingsLink);
-                expect(goto).toHaveBeenCalledWith("/settings");
-            }
+            expect(settingsLink).toBeInTheDocument();
+            expect(settingsLink).toHaveAttribute("href", "/settings");
         });
     });
 });
