@@ -80,6 +80,7 @@ export class TestHelpers {
         await page.addInitScript((wsMode) => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_IS_TEST_MODE_FORCE_E2E", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
 
@@ -133,6 +134,7 @@ export class TestHelpers {
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_IS_TEST_MODE_FORCE_E2E", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
                 // 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
