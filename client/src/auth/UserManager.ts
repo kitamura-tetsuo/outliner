@@ -169,6 +169,12 @@ export class UserManager {
 
     // テスト環境用のユーザーをセットアップ
     private async _setupMockUser() {
+        // Production環境では絶対に実行しない
+        if (this.isProduction()) {
+            logger.warn("Attempted to set up mock user in production. This is not allowed.");
+            return;
+        }
+
         // テスト環境の検出条件を拡張
         const isTestEnvironment = typeof window !== "undefined" && (
             window.location.href.includes("e2e-test")
