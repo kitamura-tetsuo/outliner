@@ -12,4 +12,3 @@ acceptance:
 tests:
     - client/e2e/core/nav-project-selection-and-page-navigation-bf35d422.spec.ts
 title-ja: プロジェクト選択とページナビゲーション
-# Rerunning CI
