@@ -41,7 +41,7 @@
         "rewrites": [
             {
                 "source": "/api/save-container",
-                "function": "saveProject"
+                "function": "saveContainer"
             },
             {
                 "source": "/api/get-user-containers",
@@ -50,10 +50,6 @@
             {
                 "source": "/api/delete-user",
                 "function": "deleteUser"
-            },
-            {
-                "source": "/api/get-user-containers",
-                "function": "getUserContainers"
             },
             {
                 "source": "/api/list-users",

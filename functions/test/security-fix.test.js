@@ -1,4 +1,4 @@
-const { describe, it, expect, beforeAll, afterAll } = require("@jest/globals");
+const { describe, it, expect, afterAll } = require("@jest/globals");
 const functions = require("firebase-functions-test")();
 const myFunctions = require("../index");
 
