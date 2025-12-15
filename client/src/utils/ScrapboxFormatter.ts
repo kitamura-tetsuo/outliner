@@ -16,6 +16,18 @@ interface FormatToken {
  */
 export class ScrapboxFormatter {
     /**
+     * Helper to escape HTML characters
+     */
+    private static escapeHtml(str: string): string {
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    /**
      * テキストを太字にフォーマットする
      * @param text フォーマットするテキスト
      * @returns 太字にフォーマットされたテキスト
@@ -267,21 +279,11 @@ export class ScrapboxFormatter {
      * @returns HTML文字列
      */
     static tokensToHtml(tokens: FormatToken[]): string {
-        // HTMLエスケープ
-        const escapeHtml = (str: string): string => {
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        };
-
         let html = "";
 
         for (const token of tokens) {
             const rawContent = token.content ?? "";
-            const content = escapeHtml(rawContent);
+            const content = this.escapeHtml(rawContent);
 
             switch (token.type) {
                 case "bold":
@@ -306,7 +308,7 @@ export class ScrapboxFormatter {
                     const isProjectLink = token.isProjectLink === true || rawContent.startsWith("/");
                     if (isProjectLink) {
                         const normalizedRaw = rawContent.startsWith("/") ? rawContent.slice(1) : rawContent;
-                        const escapedNormalized = escapeHtml(normalizedRaw);
+                        const escapedNormalized = this.escapeHtml(normalizedRaw);
                         const parts = normalizedRaw.split("/").filter(p => p);
 
                         if (parts.length >= 2) {
@@ -322,8 +324,8 @@ export class ScrapboxFormatter {
                                 existsClassTokens = "page-not-exists";
                             }
 
-                            const escapedProjectName = escapeHtml(projectName);
-                            const escapedPageName = escapeHtml(pageName);
+                            const escapedProjectName = this.escapeHtml(projectName);
+                            const escapedPageName = this.escapeHtml(pageName);
                             html += `<span class="link-preview-wrapper">
                                 <a href="/${escapedNormalized}" class="internal-link project-link ${existsClassTokens}" data-project="${escapedProjectName}" data-page="${escapedPageName}">${escapedNormalized}</a>
                             </span>`;
@@ -361,6 +363,10 @@ export class ScrapboxFormatter {
     static formatToHtml(text: string): string {
         if (!text) return "";
 
+        if (!this.hasFormatting(text)) {
+            return this.escapeHtml(text);
+        }
+
         // 入れ子のフォーマットに対応した実装を使用
         return this.formatToHtmlAdvanced(text);
     }
@@ -372,16 +378,6 @@ export class ScrapboxFormatter {
      */
     static formatToHtmlAdvanced(text: string): string {
         if (!text) return "";
-
-        // HTMLエスケープ
-        const escapeHtml = (str: string): string => {
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        };
 
         // 下線タグを一時的にプレースホルダーに置換
         const underlinePlaceholders: string[] = [];
@@ -567,18 +563,18 @@ export class ScrapboxFormatter {
                     // LinkPreviewコンポーネントを使用
                     html = `<span class="link-preview-wrapper">
                         <a href="/${
-                        escapeHtml(path)
+                        this.escapeHtml(path)
                     }" class="internal-link project-link ${existsClass}" data-project="${
-                        escapeHtml(projectName)
-                    }" data-page="${escapeHtml(pageName)}">${escapeHtml(path)}</a>
+                        this.escapeHtml(projectName)
+                    }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(path)}</a>
                     </span>`;
                 } else {
                     // 単一のページ名の場合（プロジェクト内部リンク）
                     const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
                     html = `<span class="link-preview-wrapper">
-                        <a href="/${escapeHtml(path)}" class="internal-link ${existsClass}" data-page="${
-                        escapeHtml(path)
-                    }">${escapeHtml(path)}</a>
+                        <a href="/${this.escapeHtml(path)}" class="internal-link ${existsClass}" data-page="${
+                        this.escapeHtml(path)
+                    }">${this.escapeHtml(path)}</a>
                     </span>`;
                 }
                 return createPlaceholder(html);
@@ -594,7 +590,7 @@ export class ScrapboxFormatter {
             // コード (コード内部は再帰処理しない)
             const codeRegex = /`(.*?)`/g;
             input = input.replace(codeRegex, (match, content) => {
-                const html = `<code>${escapeHtml(content)}</code>`;
+                const html = `<code>${this.escapeHtml(content)}</code>`;
                 return createPlaceholder(html);
             });
 
@@ -602,8 +598,8 @@ export class ScrapboxFormatter {
             const linkRegex = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
             input = input.replace(linkRegex, (match, url, label) => {
                 const trimmedLabel = label?.trim();
-                const text = trimmedLabel ? processFormat(trimmedLabel) : escapeHtml(url);
-                const html = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
+                const html = `<a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
                 return createPlaceholder(html);
             });
 
@@ -620,20 +616,20 @@ export class ScrapboxFormatter {
 
                 // LinkPreviewコンポーネントを使用
                 const html = `<span class="link-preview-wrapper">
-                    <a href="${projectPrefix}/${escapeHtml(text)}" class="internal-link ${existsClass}" data-page="${
-                    escapeHtml(text)
-                }">${escapeHtml(text)}</a>
+                    <a href="${projectPrefix}/${this.escapeHtml(text)}" class="internal-link ${existsClass}" data-page="${
+                    this.escapeHtml(text)
+                }">${this.escapeHtml(text)}</a>
                 </span>`;
                 return createPlaceholder(html);
             });
 
             // プレーンテキスト部分をエスケープ
-            input = escapeHtml(input);
+            input = this.escapeHtml(input);
 
             // プレースホルダーをHTMLタグに復元
             globalPlaceholders.forEach((html, placeholder) => {
                 // 制御文字がエスケープされている可能性があるため、両方を試す
-                const escapedPlaceholder = escapeHtml(placeholder);
+                const escapedPlaceholder = this.escapeHtml(placeholder);
                 input = input.replaceAll(escapedPlaceholder, html);
                 input = input.replaceAll(placeholder, html);
             });
@@ -674,7 +670,7 @@ export class ScrapboxFormatter {
         // プレースホルダーを実際の下線タグに復元
         underlinePlaceholders.forEach((content, index) => {
             const placeholder = `__UNDERLINE_${index}__`;
-            result = result.replace(placeholder, `<u>${escapeHtml(processFormat(content))}</u>`);
+            result = result.replace(placeholder, `<u>${this.escapeHtml(processFormat(content))}</u>`);
         });
 
         return result;
@@ -688,17 +684,7 @@ export class ScrapboxFormatter {
     static formatWithControlChars(text: string): string {
         if (!text) return "";
 
-        // HTMLエスケープ
-        const escapeHtml = (str: string): string => {
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        };
-
-        let html = escapeHtml(text);
+        let html = this.escapeHtml(text);
 
         // 太字 - バランスを考慮してマッチ
         const boldMatches = this.matchBalancedBold(html);
@@ -841,7 +827,7 @@ export class ScrapboxFormatter {
         if (!text) return false;
 
         // 基本フォーマットの正規表現パターン
-        const basicFormatPattern = /\[\[(.*?)\]\]|\[\/(.*?)\]|\[-(.*?)\]|`(.*?)`/;
+        const basicFormatPattern = /\[\[(.*?)\]\]|\[\/(.*?)\]|\[-(.*?)\]|`(.*?)`|<u>(.*?)<\/u>/;
 
         // 外部リンクの正規表現パターン
         const linkPattern = /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/;
