@@ -480,6 +480,23 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
 // Alias for backwards compatibility during containers -> projects migration
 export const saveContainerIdToServer = saveProjectIdToServer;
 
+// UserContainer type alias for backward compatibility
+export type UserContainer = UserProject;
+
+// Getter alias to access userProject as userContainer
+Object.defineProperty(firestoreStore, "userContainer", {
+    get() {
+        return (firestoreStore as any).userProject;
+    },
+    enumerable: true,
+    configurable: true,
+});
+
+// Method alias for setUserContainer -> setUserProject
+(firestoreStore as any).setUserContainer = function(value: UserProject | null) {
+    return (firestoreStore as any).setUserProject(value);
+};
+
 // アプリ起動時に自動的に初期化
 if (typeof window !== "undefined") {
     const __isTestEnv = import.meta.env.MODE === "test"
