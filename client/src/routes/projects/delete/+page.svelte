@@ -24,14 +24,17 @@ onMount(() => {
         return () => {};
     }
 
-    const onContainerStoreUpdated = () => syncContainers();
+    const onProjectStoreUpdated = () => syncContainers();
     const onFirestoreUcChanged = () => syncContainers(); // test-only fallback event
 
-    window.addEventListener("container-store-updated", onContainerStoreUpdated);
+    // Listen to both old event name (for backward compatibility) and new event name
+    window.addEventListener("project-store-updated", onProjectStoreUpdated);
+    window.addEventListener("container-store-updated", onProjectStoreUpdated); // legacy event name
     window.addEventListener("firestore-uc-changed", onFirestoreUcChanged);
 
     return () => {
-        window.removeEventListener("container-store-updated", onContainerStoreUpdated);
+        window.removeEventListener("project-store-updated", onProjectStoreUpdated);
+        window.removeEventListener("container-store-updated", onProjectStoreUpdated);
         window.removeEventListener("firestore-uc-changed", onFirestoreUcChanged);
     };
 });

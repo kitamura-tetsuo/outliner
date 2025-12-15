@@ -52,10 +52,6 @@
                 "function": "deleteUser"
             },
             {
-                "source": "/api/get-user-containers",
-                "function": "getUserContainers"
-            },
-            {
                 "source": "/api/list-users",
                 "function": "listUsers"
             },
@@ -65,7 +61,7 @@
             },
             {
                 "source": "/api/delete-container",
-                "function": "deleteContainer"
+                "function": "deleteProject"
             },
             {
                 "source": "/api/update-schedule",
@@ -105,11 +101,19 @@
             },
             {
                 "source": "/api/adminCheckForContainerUserListing",
-                "function": "adminCheckForContainerUserListing"
+                "function": "adminCheckForProjectUserListing"
+            },
+            {
+                "source": "/api/adminCheckForProjectUserListing",
+                "function": "adminCheckForProjectUserListing"
             },
             {
                 "source": "/api/get-container-users",
-                "function": "adminCheckForContainerUserListing"
+                "function": "adminCheckForProjectUserListing"
+            },
+            {
+                "source": "/api/get-project-users",
+                "function": "getProjectUsers"
             },
             {
                 "source": "/api/adminUserList",

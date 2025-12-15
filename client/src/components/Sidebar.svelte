@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { containerStore } from "../stores/containerStore.svelte";
+    import { projectStore } from "../stores/projectStore.svelte";
     import { store } from "../stores/store.svelte";
     import { resolve } from "$app/paths";
 
@@ -46,13 +46,13 @@
 
             {#if !isProjectsCollapsed}
                 <div class="project-list">
-                    {#if containerStore.containers.length === 0}
+                    {#if projectStore.projects.length === 0}
                         <p class="sidebar-placeholder">No projects available</p>
                     {:else}
-                        {#each containerStore.containers as container (container.id)}
+                        {#each projectStore.projects as project (project.id)}
                             <div class="project-item">
-                                <span class="project-name">{container.name}</span>
-                                {#if container.isDefault}
+                                <span class="project-name">{project.name}</span>
+                                {#if project.isDefault}
                                     <span class="default-badge">Default</span>
                                 {/if}
                             </div>

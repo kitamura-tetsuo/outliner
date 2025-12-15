@@ -102,6 +102,11 @@ jobs:
             echo "format_fixed=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Install Java 21
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-21-jre-headless
+
       - name: Restore dependencies from cache
         run: |
           # Copy pre-installed node_modules from cache
@@ -325,22 +330,21 @@ jobs:
           if [ -f "server/logs/test-log-service-tee.log" ]; then
             echo "=== API Server Log ==="
             cat server/logs/test-log-service-tee.log
-          else
-            echo "⚠️ Log file server/logs/test-log-service-tee.log not found"
-            echo "This may indicate that the setup script (scripts/setup.sh) failed to start the API server"
-            echo "Checking for other log files..."
-            if [ -f "server/logs/firebase-emulator.log" ]; then
-              echo "=== Firebase Emulator Log ==="
-              cat server/logs/firebase-emulator.log
-            fi
-            if [ -f "server/logs/yjs-websocket.log" ]; then
-              echo "=== Yjs WebSocket Log ==="
-              cat server/logs/yjs-websocket.log
-            fi
-            if [ -f "server/logs/test-svelte-kit.log" ]; then
-              echo "=== SvelteKit Log ==="
-              cat server/logs/test-svelte-kit.log
-            fi
+          fi
+
+          if [ -f "server/logs/firebase-emulator.log" ]; then
+            echo "=== Firebase Emulator Log ==="
+            cat server/logs/firebase-emulator.log
+          fi
+
+          if [ -f "server/logs/yjs-websocket.log" ]; then
+            echo "=== Yjs WebSocket Log ==="
+            cat server/logs/yjs-websocket.log
+          fi
+
+          if [ -f "server/logs/test-svelte-kit.log" ]; then
+            echo "=== SvelteKit Log ==="
+            cat server/logs/test-svelte-kit.log
           fi
 
       - name: Upload test results

@@ -35,10 +35,10 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
             if (!fs) throw new Error("__FIRESTORE_STORE__ is not available");
             const apply = () => {
                 const now = new Date();
-                fs.setUserContainer({
+                fs.setUserProject({
                     userId: "test-user-id",
-                    defaultContainerId: containerId,
-                    accessibleContainerIds: [containerId],
+                    defaultProjectId: containerId,
+                    accessibleProjectIds: [containerId],
                     createdAt: now,
                     updatedAt: now,
                 });
@@ -67,16 +67,16 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
             return client.containerId as string;
         });
 
-        // 2) Replace userContainer via store API (setUserContainer) with baseline + new container
-        await page.evaluate(async ([existingId, containerId]) => {
+        // 2) Replace userProject via store API (setUserProject) with baseline + new project
+        await page.evaluate(async ([existingId, projectId]) => {
             const fs: any = (window as any).__FIRESTORE_STORE__;
             if (!fs) throw new Error("__FIRESTORE_STORE__ is not available");
             const apply = () => {
                 const now = new Date();
-                fs.setUserContainer({
+                fs.setUserProject({
                     userId: "test-user-id",
-                    defaultContainerId: containerId,
-                    accessibleContainerIds: [existingId, containerId],
+                    defaultProjectId: projectId,
+                    accessibleProjectIds: [existingId, projectId],
                     createdAt: now,
                     updatedAt: now,
                 });

@@ -8,31 +8,31 @@ describe("firestoreStore", () => {
         clearTestData();
     });
 
-    it("initial userContainer is null", () => {
-        // In production, userContainer should start as null
-        expect(firestoreStore.userContainer).toBeNull();
+    it("initial userProject is null", () => {
+        // In production, userProject should start as null
+        expect(firestoreStore.userProject).toBeNull();
     });
 
-    it("can set userContainer with test data", () => {
+    it("can set userProject with test data", () => {
         // Use test helper to create test data
         const testData = setupTestEnvironment();
 
-        expect(firestoreStore.userContainer).not.toBeNull();
-        expect(firestoreStore.userContainer).toMatchObject({
+        expect(firestoreStore.userProject).not.toBeNull();
+        expect(firestoreStore.userProject).toMatchObject({
             userId: "test-user-id",
-            defaultContainerId: "test-container-1",
-            accessibleContainerIds: ["test-container-1", "test-container-2"],
+            defaultProjectId: "test-project-1",
+            accessibleProjectIds: ["test-project-1", "test-project-2"],
         });
-        expect(firestoreStore.userContainer).toEqual(testData);
+        expect(firestoreStore.userProject).toEqual(testData);
     });
 
-    it("can clear userContainer", () => {
+    it("can clear userProject", () => {
         // Set test data first
         setupTestEnvironment();
-        expect(firestoreStore.userContainer).not.toBeNull();
+        expect(firestoreStore.userProject).not.toBeNull();
 
         // Clear test data
         clearTestData();
-        expect(firestoreStore.userContainer).toBeNull();
+        expect(firestoreStore.userProject).toBeNull();
     });
 });

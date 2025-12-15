@@ -7,29 +7,29 @@ import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 // Mirrors e2e/new/cnt-shared-container-store-12ee98aa.spec.ts
 
 describe("CNT shared container store", () => {
-    it("reflects user container updates", async () => {
+    it("reflects user project updates", async () => {
         render(UserContainerDisplay);
         const storeGlobal: any = (globalThis as any).window?.__FIRESTORE_STORE__ ?? firestoreStore;
-        storeGlobal.setUserContainer({
+        storeGlobal.setUserProject({
             userId: "u",
-            accessibleContainerIds: ["a"],
-            defaultContainerId: "a",
+            accessibleProjectIds: ["a"],
+            defaultProjectId: "a",
             createdAt: new Date(),
             updatedAt: new Date(),
         } as any);
         await tick();
         await tick();
         // store 自体は更新されているか（デバッグ用アサーション）
-        expect(storeGlobal.userContainer?.defaultContainerId).toBe("a");
+        expect(storeGlobal.userProject?.defaultProjectId).toBe("a");
         // まずリスト表示を確認（リアクティブ更新の完了を待つ）
         expect(screen.getAllByRole("listitem").map(li => li.textContent)).toEqual(["a"]);
-        // その後、defaultContainerId の可視化を検証
+        // その後、defaultProjectId の可視化を検証
         expect(screen.getByTestId("default").textContent).toBe("a");
 
-        storeGlobal.setUserContainer({
+        storeGlobal.setUserProject({
             userId: "u",
-            accessibleContainerIds: ["a", "b"],
-            defaultContainerId: "b",
+            accessibleProjectIds: ["a", "b"],
+            defaultProjectId: "b",
             createdAt: new Date(),
             updatedAt: new Date(),
         } as any);

@@ -74,10 +74,6 @@ cd "$PROJECT_ROOT"
 if [ $# -eq 0 ]; then
   cd "$CLIENT_DIR"
 
-  # Run ESLint check
-  # Run ESLint check
-  echo "Running ESLint check..."
-  
   # Run for JSON output (ignore failure here to allow standard run to proceed/fail naturally, 
   # but we want to capture logs if possible. If it fails, we still want the standard run to show output)
   # Actually, if we want to fail if lint fails, we should capture the exit code of the standard run.
@@ -86,7 +82,7 @@ if [ $# -eq 0 ]; then
   echo "Generating ESLint JSON report..."
   npm run lint -- --format json --output-file "${LOGS_DIR}/lint-${TIMESTAMP}.json" || true
 
-  if ! npm run lint; then
+  if ! npm run lint -- --quiet; then
     echo "❌ ESLint check failed!"
     exit 1
   fi
