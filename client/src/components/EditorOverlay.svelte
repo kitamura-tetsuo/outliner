@@ -348,7 +348,8 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
             const contentRect = contentContainer?.getBoundingClientRect() || textRect;
             // Calculate position relative to the tree container
             const relativeLeft = contentRect.left - treeContainerRect.left;
-            const relativeTop = contentRect.top - treeContainerRect.top + 3;
+            // Subtract 4px to compensate for the .outliner-item's padding-top
+            const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
             return { left: relativeLeft, top: relativeTop };
         }
 
@@ -395,7 +396,8 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
             const caretRect = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
             // Calculate position relative to the tree container (not viewport)
             const relativeLeft = caretRect.left - treeContainerRect.left;
-            const relativeTop = caretRect.top - treeContainerRect.top;
+            // Subtract 4px to compensate for the .outliner-item's padding-top
+            const relativeTop = caretRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
             return { left: relativeLeft, top: relativeTop };
         }
 
@@ -406,7 +408,8 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         const contentRect = contentContainer?.getBoundingClientRect() || textRect;
         // Calculate position relative to the tree container
         const relativeLeft = (contentRect.left - treeContainerRect.left) + cursorWidth;
-        const relativeTop = contentRect.top - treeContainerRect.top + 3;
+        // Subtract 4px to compensate for the .outliner-item's padding-top
+        const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
         if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
             console.log(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
         }
@@ -484,7 +487,8 @@ function calculateSelectionPixelRange(
 
         // 最終位置計算
         const relativeLeft = contentLeft + startX;
-        const relativeTop = textRect.top - treeContainerRect.top + 3;
+        // Subtract 4px to compensate for the .outliner-item's padding-top
+        const relativeTop = textRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
 
         // 高さは行の高さを使用
         const height = lineHeight || textRect.height || 20;
@@ -635,7 +639,11 @@ onMount(() => {
 
     // リサイズやスクロール時に位置マップを更新
     window.addEventListener('resize', debouncedUpdatePositionMap);
-    window.addEventListener('scroll', debouncedUpdatePositionMap);
+    const treeContainer = resolveTreeContainer();
+    if (treeContainer) {
+        treeContainer.addEventListener('scroll', debouncedUpdatePositionMap);
+    }
+
 
     // 初期状態でアクティブカーソルがある場合は、少し遅延してから点滅を開始
     setTimeout(() => {
@@ -698,7 +706,10 @@ onDestroy(() => {
 
     // イベントリスナーの削除
     window.removeEventListener('resize', debouncedUpdatePositionMap);
-    window.removeEventListener('scroll', debouncedUpdatePositionMap);
+    const treeContainer = resolveTreeContainer();
+    if (treeContainer) {
+        treeContainer.removeEventListener('scroll', debouncedUpdatePositionMap);
+    }
 
     // タイマーのクリア
     clearTimeout(updatePositionMapTimer);
