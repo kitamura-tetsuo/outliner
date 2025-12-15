@@ -45,8 +45,8 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
 
         const options = page.locator("select.container-select option");
         await expect(options).toHaveCount(2);
-        await expect(options.nth(0)).toHaveText(/test-container-1/);
-        await expect(options.nth(1)).toHaveText(/test-container-2/);
+        await expect(options.nth(0)).toHaveText(/test-project-1/);
+        await expect(options.nth(1)).toHaveText(/test-project-2/);
     });
 
     test("deletion page shows projects from store", async ({ page }) => {
@@ -84,9 +84,9 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         await page.waitForFunction(() => {
             const fs = (window as any).__FIRESTORE_STORE__;
             return fs
-                && fs.userContainer
-                && fs.userContainer.accessibleContainerIds
-                && fs.userContainer.accessibleContainerIds.length >= 2;
+                && fs.userProject
+                && fs.userProject.accessibleProjectIds
+                && fs.userProject.accessibleProjectIds.length >= 2;
         }, { timeout: 10000 });
 
         // Now wait for the container store to reflect the changes
@@ -98,8 +98,8 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         // Wait for table rows to appear using Playwright's auto-waiting
         const rows = page.locator("tbody tr");
         await expect(rows).toHaveCount(2, { timeout: 15000 });
-        await expect(rows.nth(0).locator("td").nth(1)).toContainText("test-container-1");
-        await expect(rows.nth(1).locator("td").nth(1)).toContainText("test-container-2");
+        await expect(rows.nth(0).locator("td").nth(1)).toContainText("test-project-1");
+        await expect(rows.nth(1).locator("td").nth(1)).toContainText("test-project-2");
     });
 
     test("dropdown list shows containers after initialization", async ({ page }) => {
