@@ -4,10 +4,11 @@ description: ルートページでプロジェクトを選択した場合にプ�
 category: navigation
 status: implemented
 acceptance:
-- プロジェクトページ(/[project_name])のページリストから、対応するページ(/[project_name]/[page_name])へ遷移するリンクが機能する
-- プロジェクト選択後、プロジェクト内のページ一覧が表示される
-- ページリストの各ページ名をクリックすると、そのページの内容が表示される
-- ルートページ(/)でプロジェクトを選択すると、対応するプロジェクトページ(/[project_name])へ遷移する
+    - プロジェクトページ(/[project_name])のページリストから、対応するページ(/[project_name]/[page_name])へ遷移するリンクが機能する
+    - プロジェクト選択後、プロジェクト内のページ一覧が表示される
+    - ページリストの各ページ名をクリックすると、そのページの内容が表示される
+    - ルートページ(/)でプロジェクトを選択すると、対応するプロジェクトページ(/[project_name])へ遷移する
+    - サイドバーからプロジェクトやページを選択し、対応するページへ遷移できる
 tests:
-- client/e2e/core/nav-project-selection-and-page-navigation-bf35d422.spec.ts
+    - client/e2e/core/nav-project-selection-and-page-navigation-bf35d422.spec.ts
 title-ja: プロジェクト選択とページナビゲーション
