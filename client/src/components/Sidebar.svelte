@@ -50,12 +50,15 @@
                         <p class="sidebar-placeholder">No projects available</p>
                     {:else}
                         {#each projectStore.projects as project (project.id)}
-                            <div class="project-item">
+                            <a
+                                class="project-item"
+                                href={resolve(`/${encodeURIComponent(project.name)}`)}
+                            >
                                 <span class="project-name">{project.name}</span>
                                 {#if project.isDefault}
                                     <span class="default-badge">Default</span>
                                 {/if}
-                            </div>
+                            </a>
                         {/each}
                     {/if}
                 </div>
@@ -230,6 +233,14 @@
         border-radius: 4px;
         background-color: rgba(0, 0, 0, 0.02);
         margin-bottom: 0.25rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .project-item:hover {
+        background-color: rgba(0, 0, 0, 0.05);
     }
 
     .project-item:last-child {
