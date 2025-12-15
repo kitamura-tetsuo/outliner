@@ -2,24 +2,26 @@ import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Project } from "../schema/app-schema";
-import { projectStore } from "../stores/projectStore.svelte";
 import { store } from "../stores/store.svelte";
 import Sidebar from "./Sidebar.svelte";
 
 // Mock the stores
-vi.mock("../stores/containerStore.svelte", () => {
-    const mockContainerStore = {
-        containers: [
-            { id: "container-1", name: "Test Project 1", isDefault: true },
-            { id: "container-2", name: "Test Project 2", isDefault: false },
+vi.mock("../stores/projectStore.svelte", () => {
+    const mockProjectStore = {
+        projects: [
+            { id: "project-1", name: "Test Project 1", isDefault: true },
+            { id: "project-2", name: "Test Project 2", isDefault: false },
         ],
         syncFromFirestore: vi.fn(),
         reset: vi.fn(),
     };
     return {
-        containerStore: mockContainerStore,
+        projectStore: mockProjectStore,
     };
 });
+
+// Import the mocked projectStore for test manipulation
+import { projectStore } from "../stores/projectStore.svelte";
 
 vi.mock("../stores/store.svelte", () => {
     const mockProject = {
@@ -134,17 +136,17 @@ describe("Sidebar", () => {
             expect(screen.getByText("Test Project 2")).toBeInTheDocument();
         });
 
-        it("should render 'No projects available' when no containers", () => {
+        it("should render 'No projects available' when no projects", () => {
             // Temporarily override the mock
-            const originalContainers = containerStore.containers;
-            containerStore.containers = [];
+            const originalProjects = projectStore.projects;
+            projectStore.projects = [];
 
             const { rerender } = render(Sidebar, { isOpen: true });
 
             expect(screen.getByText("No projects available")).toBeInTheDocument();
 
             // Restore
-            containerStore.containers = originalContainers;
+            projectStore.projects = originalProjects;
             rerender({ isOpen: true });
         });
 

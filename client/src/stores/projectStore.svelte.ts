@@ -13,7 +13,7 @@ export function projectsFromUserProject(
     _ucVersion?: number,
 ): Array<ProjectInfo> {
     void _ucVersion; // reactivity anchor: ensures callers can pass ucVersion without unused warnings
-    if (!data || !data.accessibleContainerIds) {
+    if (!data || !data.accessibleProjectIds) {
         return [];
     }
 

@@ -3,7 +3,10 @@ import { onMount } from "svelte";
 import { resolve } from "$app/paths";
 import { createYjsClient } from "../services";
 import { getLogger } from "../lib/logger";
-import { projectsFromUserProject } from "../stores/projectStore.svelte";
+import { projectsFromUserProject as projectsFromUserProject_ } from "../stores/projectStore.svelte";
+// Alias for legacy naming in this component
+const containersFromUserContainer = (data: Parameters<typeof projectsFromUserProject_>[0]) =>
+    projectsFromUserProject_(data);
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { firestoreStore } from "../stores/firestoreStore.svelte";
 import type { UserManager } from "../auth/UserManager";
@@ -33,7 +36,7 @@ let redraw = $state(0);
 let containers = $derived.by(() => {
     void firestoreStore.ucVersion; // 依存のみ
     void redraw; // 暫定依存（イベント駆動の互換）
-    return containersFromUserContainer(firestoreStore.userContainer);
+    return containersFromUserContainer(firestoreStore.userProject);
 });
 $effect(() => {
     logger.info("ContainerSelector - containers len", { len: containers.length, ucv: firestoreStore.ucVersion });
@@ -139,7 +142,7 @@ async function ensureUserLoggedIn() {
 
             // ログイン成功後、少し待ってからFirestoreの同期を確認
             setTimeout(() => {
-                const cnt = containersFromUserContainer(firestoreStore.userContainer).length;
+                const cnt = containersFromUserContainer(firestoreStore.userProject).length;
                 logger.info("ContainerSelector - Checking containers after login:", cnt);
             }, 1000);
         } catch (err) {
@@ -157,7 +160,7 @@ async function handleContainerChange() {
         error = null;
 
         // 選択したコンテナの情報を取得
-        const selectedContainer = containersFromUserContainer(firestoreStore.userContainer).find(
+        const selectedContainer = containersFromUserContainer(firestoreStore.userProject).find(
             c => c.id === selectedContainerId,
         );
         if (!selectedContainer) {

@@ -2,7 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { firestoreStore, type UserProject } from "./firestoreStore.svelte";
 import { projectStore } from "./projectStore.svelte";
 
-// Neutral title provider mock
+// Mock metaDoc module for project titles
+vi.mock("../lib/metaDoc.svelte", () => ({
+    getProjectTitleFromMetaDoc: vi.fn((id: string) => {
+        const titles: Record<string, string> = {
+            "p1": "テストプロジェクト1",
+            "p2": "テストプロジェクト2",
+        };
+        return titles[id] || "";
+    }),
+}));
+
+// Neutral title provider mock (fallback)
 vi.mock("../lib/projectTitleProvider", () => ({
     getProjectTitle: vi.fn((id: string) => {
         const titles: Record<string, string> = {

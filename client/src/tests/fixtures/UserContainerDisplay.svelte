@@ -18,9 +18,9 @@ function computeDisplayed(ids: string[], def?: string) {
 onMount(() => {
     const apply = () => {
         try {
-            const u = (storeRef as any).userContainer;
-            idsLocal = Array.from(u?.accessibleContainerIds ?? []);
-            defaultIdLocal = u?.defaultContainerId;
+            const u = (storeRef as any).userProject;
+            idsLocal = Array.from(u?.accessibleProjectIds ?? []);
+            defaultIdLocal = u?.defaultProjectId;
         } catch {}
     };
     // 初期適用 + 追加通知での更新

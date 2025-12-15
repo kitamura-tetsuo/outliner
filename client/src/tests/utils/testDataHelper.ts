@@ -79,7 +79,7 @@ export function logDebugInfo(): void {
     console.log("=== Test Debug Info ===");
     console.log("Current user:", (window as any).__USER_MANAGER__?.getCurrentUser());
     console.log("Auth state:", (window as any).__USER_MANAGER__?.auth?.currentUser);
-    console.log("Firestore userContainer:", firestoreStore.userContainer);
+    console.log("Firestore userProject:", firestoreStore.userProject);
     console.log("======================");
 }
 

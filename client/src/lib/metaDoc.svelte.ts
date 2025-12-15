@@ -29,6 +29,13 @@ export function getContainerTitleFromMetaDoc(containerId: string): string {
 }
 
 /**
+ * Alias for getContainerTitleFromMetaDoc (used after migration from containers to projects)
+ * @param projectId - The project ID to look up
+ * @returns The project title or empty string if not found
+ */
+export const getProjectTitleFromMetaDoc = getContainerTitleFromMetaDoc;
+
+/**
  * Set container title in metadata Y.Doc
  * @param containerId - The container ID to update
  * @param title - The title to set

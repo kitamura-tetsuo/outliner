@@ -72,7 +72,7 @@ if [ $# -eq 0 ]; then
 
   # Run ESLint check
   echo "Running ESLint check..."
-  if ! npm run lint; then
+  if ! npm run lint -- --quiet; then
     echo "❌ ESLint check failed!"
     exit 1
   fi

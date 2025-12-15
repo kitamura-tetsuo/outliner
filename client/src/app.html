@@ -112,21 +112,21 @@
 
                 const placeholder = {
                     __isRealFirestoreStore: false,
-                    setUserContainer: (...args) => ensureStore().then(store => store && store.setUserContainer?.(...args)),
+                    setUserProject: (...args) => ensureStore().then(store => store && store.setUserProject?.(...args)),
                     reset: (...args) => ensureStore().then(store => store && store.reset?.(...args)),
                     saveContainerId: (...args) => ensureStore().then(store => store && store.saveContainerId?.(...args)),
                     saveContainerIdToServer: (...args) => ensureStore().then(store => store && store.saveContainerIdToServer?.(...args)),
                     getDefaultContainerId: (...args) => ensureStore().then(store => store && store.getDefaultContainerId?.(...args)),
                 };
 
-                Object.defineProperty(placeholder, "userContainer", {
+                Object.defineProperty(placeholder, "userProject", {
                     get() {
-                        return realStore ? realStore.userContainer : null;
+                        return realStore ? realStore.userProject : null;
                     },
                     set(value) {
                         ensureStore().then(store => {
                             if (store) {
-                                store.userContainer = value;
+                                store.userProject = value;
                             }
                         });
                     },
