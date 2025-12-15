@@ -105,11 +105,6 @@ export class UserManager {
 
         // プロダクション環境では絶対にエミュレータを使用しない
         const isProduction = this.isProduction();
-        if (isProduction) {
-            logger.info("Production environment detected. Test user auto-login is disabled.");
-        } else {
-            logger.info("Non-production environment detected. Test user auto-login may be enabled if using emulator.");
-        }
 
         const useEmulator = !isProduction && (
             isTestEnv
