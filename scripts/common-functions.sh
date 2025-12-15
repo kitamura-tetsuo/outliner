@@ -423,8 +423,24 @@ EOF
 
   # Additional wait for Firebase Functions to fully initialize
   # In CI environments, emulators may need more time to be fully ready
-  echo "Waiting additional 30 seconds for Firebase Functions to fully initialize..."
-  sleep 30
+  echo "Waiting additional 45 seconds for Firebase Functions to fully initialize..."
+  sleep 45
+
+  # Verify Firebase Auth emulator is actually responding before initializing
+  echo "Verifying Firebase Auth emulator is responding..."
+  local auth_ready=false
+  for i in {1..30}; do
+    if curl -s -f "http://localhost:${FIREBASE_AUTH_PORT}/" >/dev/null 2>&1; then
+      auth_ready=true
+      echo "Firebase Auth emulator is responding"
+      break
+    fi
+    echo "Waiting for Firebase Auth emulator to respond (attempt $i/30)..."
+    sleep 2
+  done
+  if [ "$auth_ready" = false ]; then
+    echo "WARNING: Firebase Auth emulator may not be fully ready, but continuing..."
+  fi
 
   # Now that emulators are listening, initialize admin and test user
   echo "Launching Firebase emulator initializer (admin + test user) ..."
