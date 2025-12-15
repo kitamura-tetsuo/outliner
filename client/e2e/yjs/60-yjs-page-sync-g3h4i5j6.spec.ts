@@ -26,6 +26,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Enable WebSocket and test flags for page1
         await page1.addInitScript(() => {
             localStorage.setItem("VITE_IS_TEST", "true");
+            localStorage.setItem("VITE_IS_TEST_MODE_FORCE_E2E", "true");
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
             localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
             localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
@@ -143,6 +144,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Enable WebSocket and test flags for page2
         await page2.addInitScript(() => {
             localStorage.setItem("VITE_IS_TEST", "true");
+            localStorage.setItem("VITE_IS_TEST_MODE_FORCE_E2E", "true");
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
             localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
             localStorage.setItem("VITE_YJS_ENABLE_WS", "true");

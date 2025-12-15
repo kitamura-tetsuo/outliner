@@ -20,6 +20,7 @@ test.describe("Page Route Debug", () => {
         // テスト環境フラグを設定
         await page.evaluate(() => {
             localStorage.setItem("VITE_IS_TEST", "true");
+            localStorage.setItem("VITE_IS_TEST_MODE_FORCE_E2E", "true");
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
         });
 

@@ -73,6 +73,7 @@ test.describe("Chromium Debug Test", () => {
             await page.addInitScript(() => {
                 try {
                     localStorage.setItem("VITE_IS_TEST", "true");
+                    localStorage.setItem("VITE_IS_TEST_MODE_FORCE_E2E", "true");
                     localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                     localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
                     (window as any).__E2E__ = true;

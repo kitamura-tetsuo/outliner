@@ -36,6 +36,7 @@ export const test = base.extend({
         await page.addInitScript(() => {
             // テスト環境フラグをセット
             window.localStorage.setItem("VITE_IS_TEST", "true");
+            window.localStorage.setItem("VITE_IS_TEST_MODE_FORCE_E2E", "true");
 
             // Firebase エミュレーターを有効化
             window.localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");

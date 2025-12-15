@@ -178,9 +178,8 @@ export class UserManager {
         // テスト環境の検出条件を拡張
         const isTestEnvironment = typeof window !== "undefined" && (
             window.location.href.includes("e2e-test")
-            || import.meta.env.VITE_IS_TEST === "true"
-            || localStorage.getItem("VITE_IS_TEST") === "true"
-            || process.env.NODE_ENV === "test"
+            || import.meta.env.VITE_IS_TEST_MODE_FORCE_E2E === "true"
+            || localStorage.getItem("VITE_IS_TEST_MODE_FORCE_E2E") === "true"
         );
 
         // E2Eテスト用にFirebaseメール/パスワード認証を使う
