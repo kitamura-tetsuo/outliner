@@ -268,3 +268,20 @@ function exportOpml() {
     <textarea bind:value={importText} data-testid="import-input"></textarea>
     <button onclick={doImport}>Import</button>
 </div>
+
+<div class="danger-zone">
+    <h2>Danger Zone</h2>
+    <a href="./delete" class="delete-link">Delete Project</a>
+    <p>Once you delete a project, there is no going back. Please be certain.</p>
+</div>
+
+<style>
+    .danger-zone {
+        border: 1px solid red;
+        padding: 1rem;
+        margin-top: 2rem;
+    }
+    .delete-link {
+        color: red;
+    }
+</style>
