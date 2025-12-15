@@ -84,17 +84,17 @@ onMount(() => {
     <h2>ページ一覧</h2>
 
     <div class="page-create">
-        <input type="text" bind:value={pageTitle} placeholder="新しいページ名" />
-        <button onclick={handleCreatePage}>作成</button>
+        <input type="text" bind:value={pageTitle} placeholder="新しいページ名" aria-label="新しいページ名" />
+        <button type="button" onclick={handleCreatePage}>作成</button>
     </div>
 
     <ul>
         {#each rootItems as page (page.id)}
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-            <li onclick={() => selectPage(page)}>
-                <span class="page-title">{page.text || "無題のページ"}</span>
-                <span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
+            <li>
+                <button type="button" class="page-item-button" onclick={() => selectPage(page)}>
+                    <span class="page-title">{page.text || "無題のページ"}</span>
+                    <span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
+                </button>
             </li>
         {/each}
 
@@ -132,7 +132,7 @@ input {
     border-radius: 4px;
 }
 
-button {
+.page-create button {
     background: #4285f4;
     color: white;
     border: none;
@@ -148,18 +148,25 @@ ul {
 }
 
 li {
-    padding: 8px 10px;
     border-bottom: 1px solid #eee;
+}
+
+.page-item-button {
+    width: 100%;
+    padding: 8px 10px;
+    background: none;
+    border: none;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
+    text-align: left;
+    font: inherit;
+    color: inherit;
 }
 
-li:hover {
+.page-item-button:hover {
     background: #f5f5f5;
 }
-
-
 
 .page-title {
     font-weight: 500;
@@ -171,6 +178,7 @@ li:hover {
 }
 
 .empty {
+    padding: 8px 10px;
     color: #888;
     text-align: center;
     cursor: default;
