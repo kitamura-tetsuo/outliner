@@ -379,6 +379,10 @@ export async function getDefaultProjectId(): Promise<string | undefined> {
     }
 }
 
+// Aliases for backwards compatibility during containers -> projects migration
+export const getDefaultContainerId = getDefaultProjectId;
+export const saveContainerId = saveProjectId;
+
 /**
  * コンテナIDをサーバー側に保存する
  * @param projectId 保存するコンテナID
@@ -472,6 +476,9 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
         return false;
     }
 }
+
+// Alias for backwards compatibility during containers -> projects migration
+export const saveContainerIdToServer = saveProjectIdToServer;
 
 // アプリ起動時に自動的に初期化
 if (typeof window !== "undefined") {
