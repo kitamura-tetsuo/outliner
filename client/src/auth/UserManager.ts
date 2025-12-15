@@ -54,8 +54,10 @@ export class UserManager {
     private unsubscribeAuth: (() => void) | null = null;
 
     // 開発環境かどうかの判定
-    private isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development"
-        || process.env.NODE_ENV === "development";
+    private isDevelopment(): boolean {
+        return import.meta.env.DEV || import.meta.env.MODE === "development"
+            || process.env.NODE_ENV === "development";
+    }
 
     /**
      * Firebaseアプリインスタンスを遅延初期化で取得
@@ -102,8 +104,12 @@ export class UserManager {
             || import.meta.env.VITE_IS_TEST === "true";
 
         // プロダクション環境では絶対にエミュレータを使用しない
-        const isProduction = process.env.NODE_ENV === "production"
-            || import.meta.env.MODE === "production";
+        const isProduction = this.isProduction();
+        if (isProduction) {
+            logger.info("Production environment detected. Test user auto-login is disabled.");
+        } else {
+            logger.info("Non-production environment detected. Test user auto-login may be enabled if using emulator.");
+        }
 
         const useEmulator = !isProduction && (
             isTestEnv
@@ -318,6 +324,10 @@ export class UserManager {
         }
     }
 
+    private isProduction(): boolean {
+        return process.env.NODE_ENV === "production" || import.meta.env.MODE === "production";
+    }
+
     // メールアドレスとパスワードでログイン（開発環境用）
     public async loginWithEmailPassword(email: string, password: string): Promise<void> {
         try {
@@ -327,7 +337,7 @@ export class UserManager {
             );
 
             // 開発環境の場合
-            if (this.isDevelopment) {
+            if (this.isDevelopment()) {
                 try {
                     // まず通常のFirebase認証を試みる
                     logger.debug("[UserManager] Calling signInWithEmailAndPassword");
