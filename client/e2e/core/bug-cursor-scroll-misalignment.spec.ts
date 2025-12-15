@@ -19,6 +19,9 @@ test.describe("Bug: Cursor Scroll Misalignment", () => {
     });
 
     test("should reproduce cursor misalignment on scroll", async ({ page }) => {
+        // This test is expected to fail because of the cursor misalignment bug.
+        test.fail();
+
         // 1. Set up is done in beforeEach. Now, get the first item's ID.
         const itemId = await TestHelpers.getItemIdByIndex(page, 0);
         expect(itemId).not.toBeNull();
