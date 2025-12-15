@@ -52,7 +52,7 @@
                         {#each projectStore.projects as project (project.id)}
                             <a
                                 class="project-item"
-                                href={resolve(`/${encodeURIComponent(project.name)}`)}
+                                href={resolve(`/${encodeURIComponent(project.id)}`)}
                             >
                                 <span class="project-name">{project.name}</span>
                                 {#if project.isDefault}
