@@ -48,6 +48,7 @@ let overlayCursorVisible = $derived.by(() => {
 let overlayRef: HTMLDivElement;
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureCtx: CanvasRenderingContext2D | null = null;
+let scrollableContainer: HTMLElement | null = null;
 
 // テスト環境（jsdom）用の代替テキスト測定方法
 function measureTextWidthFallback(itemId: string, text: string): number {
@@ -348,7 +349,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
             const contentRect = contentContainer?.getBoundingClientRect() || textRect;
             // Calculate position relative to the tree container
             const relativeLeft = contentRect.left - treeContainerRect.left;
-            const relativeTop = contentRect.top - treeContainerRect.top + 3;
+            const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop + 3;
             return { left: relativeLeft, top: relativeTop };
         }
 
@@ -395,7 +396,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
             const caretRect = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
             // Calculate position relative to the tree container (not viewport)
             const relativeLeft = caretRect.left - treeContainerRect.left;
-            const relativeTop = caretRect.top - treeContainerRect.top;
+            const relativeTop = caretRect.top - treeContainerRect.top + treeContainer.scrollTop;
             return { left: relativeLeft, top: relativeTop };
         }
 
@@ -406,7 +407,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         const contentRect = contentContainer?.getBoundingClientRect() || textRect;
         // Calculate position relative to the tree container
         const relativeLeft = (contentRect.left - treeContainerRect.left) + cursorWidth;
-        const relativeTop = contentRect.top - treeContainerRect.top + 3;
+        const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop + 3;
         if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
             console.log(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
         }
@@ -484,7 +485,7 @@ function calculateSelectionPixelRange(
 
         // 最終位置計算
         const relativeLeft = contentLeft + startX;
-        const relativeTop = textRect.top - treeContainerRect.top + 3;
+        const relativeTop = textRect.top - treeContainerRect.top + treeContainer.scrollTop + 3;
 
         // 高さは行の高さを使用
         const height = lineHeight || textRect.height || 20;
@@ -634,8 +635,9 @@ onMount(() => {
     });
 
     // リサイズやスクロール時に位置マップを更新
+    scrollableContainer = resolveTreeContainer();
     window.addEventListener('resize', debouncedUpdatePositionMap);
-    window.addEventListener('scroll', debouncedUpdatePositionMap);
+    (scrollableContainer || window).addEventListener('scroll', debouncedUpdatePositionMap);
 
     // 初期状態でアクティブカーソルがある場合は、少し遅延してから点滅を開始
     setTimeout(() => {
@@ -698,7 +700,7 @@ onDestroy(() => {
 
     // イベントリスナーの削除
     window.removeEventListener('resize', debouncedUpdatePositionMap);
-    window.removeEventListener('scroll', debouncedUpdatePositionMap);
+    (scrollableContainer || window).removeEventListener('scroll', debouncedUpdatePositionMap);
 
     // タイマーのクリア
     clearTimeout(updatePositionMapTimer);
