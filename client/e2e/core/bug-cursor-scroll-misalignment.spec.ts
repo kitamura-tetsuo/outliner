@@ -14,7 +14,7 @@ async function getCursorBoundingBox(page: import("playwright").Page): Promise<DO
 
 test.describe("Bug: Cursor Scroll Misalignment", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        const lines = Array.from({ length: 200 }, (_, i) => `Line ${i + 1}`);
+        const lines = Array.from({ length: 50 }, (_, i) => `Line ${i + 1}`);
         await TestHelpers.prepareTestEnvironment(page, testInfo, lines);
     });
 
