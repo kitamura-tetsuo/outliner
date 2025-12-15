@@ -616,9 +616,11 @@ export class ScrapboxFormatter {
 
                 // LinkPreviewコンポーネントを使用
                 const html = `<span class="link-preview-wrapper">
-                    <a href="${projectPrefix}/${this.escapeHtml(text)}" class="internal-link ${existsClass}" data-page="${
+                    <a href="${projectPrefix}/${
                     this.escapeHtml(text)
-                }">${this.escapeHtml(text)}</a>
+                }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(text)}">${
+                    this.escapeHtml(text)
+                }</a>
                 </span>`;
                 return createPlaceholder(html);
             });
