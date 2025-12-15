@@ -258,6 +258,18 @@ describe("Sidebar", () => {
             expect(pageItem).toHaveAttribute("href", "/Test%20Project/Test%20Page%201");
         });
 
+        it("should have correct href for project items", () => {
+            render(Sidebar, { isOpen: true });
+
+            const projectItem1 = screen.getByText("Test Project 1").closest("a");
+            expect(projectItem1).toBeInTheDocument();
+            expect(projectItem1).toHaveAttribute("href", "/project-1");
+
+            const projectItem2 = screen.getByText("Test Project 2").closest("a");
+            expect(projectItem2).toBeInTheDocument();
+            expect(projectItem2).toHaveAttribute("href", "/project-2");
+        });
+
         it("should have correct href for settings link", () => {
             render(Sidebar, { isOpen: true });
 
