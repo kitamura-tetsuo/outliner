@@ -583,12 +583,10 @@ onMount(() => {
 });
 
 // Reactively resubscribe to editor overlay store changes to update focus state
-let overlayPulse = $state(0);
 let isItemActive = $state(false);
 
 onMount(() => {
     const updateActive = () => {
-        overlayPulse++;
         const detail = editorOverlayStore.getItemCursorsAndSelections(model.id);
         isItemActive = detail.isActive || detail.cursors.some(cursor => cursor.isActive && (!cursor.userId || cursor.userId === "local"));
     };

@@ -86,8 +86,6 @@ onDestroy(() => {
 
 // コンテキスト内のリンクをハイライトする
 function highlightLinkInContext(context: string, pageName: string): string {
-    if (!context || !pageName) return context;
-
     // HTMLエスケープ
     const escapeHtml = (text: string): string => {
         return text
@@ -98,15 +96,30 @@ function highlightLinkInContext(context: string, pageName: string): string {
             .replace(/'/g, "&#039;");
     };
 
-    // 内部リンクの正規表現パターン
-    const escapedPageName = escapeHtml(pageName);
-    const internalLinkPattern = new RegExp(`\\\\[(${escapedPageName})\\\\]`, "gi");
+    if (!context || !pageName) return escapeHtml(context);
 
-    // プロジェクト内部リンクの正規表現パターン
-    const projectLinkPattern = new RegExp(`\\\\[\\\\/[^/]+\\\\/(${escapedPageName})\\\\]`, "gi");
+    // RegExp特殊文字をエスケープ
+    const escapeRegExp = (text: string): string => {
+        return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    };
+
+    // コンテキストを先にHTMLエスケープ（XSS対策）
+    const safeContext = escapeHtml(context);
+
+    // ページ名もHTMLエスケープ（エスケープ済みのコンテキストと照合するため）
+    const safePageName = escapeHtml(pageName);
+
+    // RegExp用にエスケープ
+    const regexSafePageName = escapeRegExp(safePageName);
+
+    // 内部リンクの正規表現パターン: [PageName]
+    const internalLinkPattern = new RegExp(`\\[(${regexSafePageName})\\]`, "gi");
+
+    // プロジェクト内部リンクの正規表現パターン: [/project/PageName]
+    const projectLinkPattern = new RegExp(`\\[\\/[^/]+\\/(${regexSafePageName})\\]`, "gi");
 
     // リンクをハイライト
-    let result = context
+    let result = safeContext
         .replace(internalLinkPattern, '<span class="highlight">[$1]</span>')
         .replace(projectLinkPattern, '<span class="highlight">[/project/$1]</span>');
 
