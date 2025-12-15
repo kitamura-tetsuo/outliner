@@ -41,7 +41,7 @@
         "rewrites": [
             {
                 "source": "/api/save-container",
-                "function": "saveContainer"
+                "function": "saveProject"
             },
             {
                 "source": "/api/get-user-containers",
