@@ -19,10 +19,10 @@ test.describe("API-0001: Firebase Functions CORS and token validation", () => {
 
     test("save-container with invalid token returns error", async ({ request }) => {
         const response = await request.post("http://localhost:57000/api/save-container", {
-            data: { idToken: "invalid", projectId: "test" },
+            data: { idToken: "invalid", containerId: "test" },
         });
         expect(response.status()).toBe(500);
         const body = await response.json();
-        expect(body.error).toBe("Failed to save project ID");
+        expect(body.error).toBe("Failed to save container ID");
     });
 });
