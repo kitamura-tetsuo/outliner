@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 
 test("delete-container returns 401 with invalid token", async ({ request }) => {
     const res = await request.post("http://localhost:7090/api/delete-container", {
-        data: { idToken: "invalid", containerId: "dummy" },
+        data: { idToken: "invalid", projectId: "dummy" },
     });
     expect(res.status()).toBe(401);
 });

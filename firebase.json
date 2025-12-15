@@ -65,7 +65,7 @@
             },
             {
                 "source": "/api/delete-container",
-                "function": "deleteContainer"
+                "function": "deleteProject"
             },
             {
                 "source": "/api/update-schedule",
