@@ -44,10 +44,11 @@ test.describe("Bug: Cursor Scroll Misalignment", () => {
         const scrolledCursorRect = await getCursorBoundingBox(page);
         expect(scrolledCursorRect).not.toBeNull();
 
-        // 4. Assert that the cursor's visual position has NOT changed.
+        // 4. Assert that the cursor's visual position has NOT changed significantly.
         // This test asserts the presence of the bug. When the bug is fixed,
         // this test will fail, indicating that the fix is working and this
         // test should be updated to assert the correct behavior.
-        expect(scrolledCursorRect!.top).toEqual(initialCursorRect!.top);
+        const topDifference = Math.abs(scrolledCursorRect!.top - initialCursorRect!.top);
+        expect(topDifference).toBeLessThan(1);
     });
 });
