@@ -36,7 +36,7 @@ export function highlightLinkInContext(context: string, pageName: string): strin
     const projectLinkPattern = new RegExp(`\\[\\/[^/]+\\/(${regexSafePageName})\\]`, "gi");
 
     // Highlight links
-    let result = safeContext
+    const result = safeContext
         .replace(internalLinkPattern, '<span class="highlight">[$1]</span>')
         .replace(projectLinkPattern, '<span class="highlight">[/project/$1]</span>');
 
