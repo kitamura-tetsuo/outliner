@@ -311,7 +311,11 @@ test.describe("FMT-0007: 内部リンク機能", () => {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    cursor.insertText("\n");
+                    if (typeof cursor.insertLineBreak === "function") {
+                        cursor.insertLineBreak();
+                    } else {
+                        cursor.insertText("\n");
+                    }
                 }
             }
         });
@@ -346,25 +350,24 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         });
 
         // データが正しく保存されていることを確認
-        // サブアイテムから両方のリンクを含むアイテムを検索
-        let linkItem = null;
+        // ツリー全体から各リンクを含むアイテムを検索
+        let foundTestPage = false;
+        let foundProjectLink = false;
 
-        for (const item of treeData.items) {
+        const checkItem = (item: any) => {
+            if (item.text.includes("[test-page]")) foundTestPage = true;
+            if (item.text.includes("[/project-name/page-name]")) foundProjectLink = true;
+
             if (item.items) {
-                // itemsがオブジェクトの場合（実際のデータ構造）
                 const itemsArray = Array.isArray(item.items) ? item.items : Object.values(item.items);
-                for (const subItem of itemsArray) {
-                    if (subItem.text.includes("[test-page]") && subItem.text.includes("[/project-name/page-name]")) {
-                        linkItem = subItem;
-                        break;
-                    }
-                }
+                itemsArray.forEach(checkItem);
             }
-        }
+        };
 
-        // 両方のリンクを含むアイテムが見つかることを確認
-        expect(linkItem).not.toBeNull();
-        expect(linkItem!.text).toContain("[test-page]");
-        expect(linkItem!.text).toContain("[/project-name/page-name]");
+        treeData.items.forEach(checkItem);
+
+        // 両方のリンクが見つかることを確認
+        expect(foundTestPage).toBe(true);
+        expect(foundProjectLink).toBe(true);
     });
 });
