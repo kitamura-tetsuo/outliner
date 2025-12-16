@@ -136,33 +136,22 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         expect(titleTextWithoutCursor).toBe("aasdd");
     });
 
-    test("外部リンク構文が正しく表示される", async ({ page }) => {
+    test("外部リンク構文が正しく表示される", async ({ page }, testInfo) => {
         // テストページをセットアップ
-
-        // 最初のアイテムを選択
-        const firstItem = page.locator(".outliner-item").first();
-        await firstItem.locator(".item-content").click();
-        await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.press("Control+a");
-        await page.keyboard.press("Backspace");
-        const firstItemIdForLink = await TestHelpers.getItemIdByIndex(page, 0);
-        expect(firstItemIdForLink).not.toBeNull();
-        await TestHelpers.setCursor(page, firstItemIdForLink!, 0, "local");
-        await TestHelpers.insertText(page, firstItemIdForLink!, "[https://example.com]");
-
-        // 2つ目のアイテムを作成
-        await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["[https://example.com]", "placeholder"]);
 
         // 最初のアイテムのテキスト内容を確認（リンクが適用されていること）
         await expect.poll(async () => {
-            const pageTextsAfterLink = await TestHelpers.getPageTexts(page);
-            return pageTextsAfterLink.some(({ text }) =>
-                text === "[https://example.com]" || text?.includes("[https://example.com]")
+            const treeData = await TreeValidator.getTreeData(page);
+            const items = treeData.items || [];
+            return items.some((item: any) =>
+                item.text === "[https://example.com]" || item.text?.includes("[https://example.com]")
             );
         }).toBe(true);
         const treeDataAfterLink = await TreeValidator.getTreeData(page);
         expect(JSON.stringify(treeDataAfterLink)).toContain("[https://example.com]");
+
+        const firstItem = page.locator(".outliner-item").nth(1);
         const firstItemTextContentInactive = await firstItem.locator(".item-text").textContent();
         expect(firstItemTextContentInactive).toContain("https://example.com");
 
@@ -175,29 +164,18 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         expect(firstItemTextContentActive).toContain("https://example.com");
     });
 
-    test("内部リンク構文が正しく表示される", async ({ page }) => {
+    test("内部リンク構文が正しく表示される", async ({ page }, testInfo) => {
         // テストページをセットアップ
-
-        // 最初のアイテムを選択
-        const firstItem = page.locator(".outliner-item").first();
-        await firstItem.locator(".item-content").click();
-        await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.press("Control+a");
-        await page.keyboard.press("Backspace");
-        const firstItemIdForInternalLink = await TestHelpers.getItemIdByIndex(page, 0);
-        expect(firstItemIdForInternalLink).not.toBeNull();
-        await TestHelpers.setCursor(page, firstItemIdForInternalLink!, 0, "local");
-        await TestHelpers.insertText(page, firstItemIdForInternalLink!, "[asd]");
-
-        // 2つ目のアイテムを作成
-        await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["[asd]", "placeholder"]);
 
         // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
         await expect.poll(async () => {
-            const pageTextsAfterInternalLink = await TestHelpers.getPageTexts(page);
-            return pageTextsAfterInternalLink.some(({ text }) => text === "[asd]" || text?.includes("[asd]"));
+            const treeData = await TreeValidator.getTreeData(page);
+            const items = treeData.items || [];
+            return items.some((item: any) => item.text === "[asd]" || item.text?.includes("[asd]"));
         }).toBe(true);
+
+        const firstItem = page.locator(".outliner-item").nth(1);
         await page.waitForTimeout(500);
         const firstItemTextContentInactiveInternal = await firstItem.locator(".item-text").textContent();
         // 非アクティブ時は内部リンクがレンダリングされるため、制御文字なしでリンクテキストのみ表示される
@@ -280,15 +258,8 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         expect(treeData.items).toBeDefined();
         expect(treeData.items.length).toBeGreaterThan(0);
 
-        // 最初のアイテム（ページタイトル）の子アイテムを確認
-        const pageItem = treeData.items[0];
-        expect(pageItem.items).toBeDefined();
-
-        // itemsがオブジェクトの場合（実際のデータ構造）
-        const itemsArray = Object.values(pageItem.items);
-        expect(itemsArray.length).toBeGreaterThan(0);
-
         // 太字テキストが保存されていることを確認
+        const itemsArray = treeData.items;
         const hasFormattedText = itemsArray.some((item: any) => item.text === "[[aasdd]]");
         expect(hasFormattedText).toBe(true);
     });
