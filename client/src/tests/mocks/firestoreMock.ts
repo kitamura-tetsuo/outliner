@@ -2,11 +2,11 @@
 import { get, type Writable, writable } from "svelte/store";
 import { log } from "../../lib/logger"; // ロガーをインポート
 
-// Mock version of UserContainer from the real store
+// Mock version of UserContainer from the real store (using new Project naming)
 export interface UserContainer {
     userId: string;
-    defaultContainerId?: string;
-    accessibleContainerIds?: string[];
+    defaultProjectId?: string;
+    accessibleProjectIds?: string[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -31,10 +31,11 @@ export function setupMockFirestore(initialData?: {
 
     if (initialData) {
         const userId = initialData.userId || "test-user-id";
+        // Map old naming (defaultContainerId) to new naming (defaultProjectId)
         const containerData: UserContainer = {
             userId: userId,
-            defaultContainerId: initialData.defaultContainerId,
-            accessibleContainerIds: initialData.accessibleContainerIds || [],
+            defaultProjectId: initialData.defaultContainerId,
+            accessibleProjectIds: initialData.accessibleContainerIds || [],
             createdAt: new Date(),
             updatedAt: new Date(),
         };
@@ -100,14 +101,14 @@ export async function mockSaveContainerId(containerId: string): Promise<boolean>
     const userId = "test-user-id";
     const existingData = mockContainers.get(userId) || {
         userId,
-        accessibleContainerIds: [],
+        accessibleProjectIds: [],
         createdAt: new Date(),
         updatedAt: new Date(),
     };
 
     const updatedData = {
         ...existingData,
-        defaultContainerId: containerId,
+        defaultProjectId: containerId,
         updatedAt: new Date(),
     };
 
@@ -126,16 +127,16 @@ export async function mockSaveContainerIdToServer(containerId: string): Promise<
     const userId = "test-user-id";
     const existingData = mockContainers.get(userId) || {
         userId,
-        accessibleContainerIds: [],
+        accessibleProjectIds: [],
         createdAt: new Date(),
         updatedAt: new Date(),
     };
 
     const updatedData = {
         ...existingData,
-        defaultContainerId: containerId,
-        accessibleContainerIds: existingData.accessibleContainerIds
-            ? [...new Set([...existingData.accessibleContainerIds, containerId])]
+        defaultProjectId: containerId,
+        accessibleProjectIds: existingData.accessibleProjectIds
+            ? [...new Set([...existingData.accessibleProjectIds, containerId])]
             : [containerId],
         updatedAt: new Date(),
     };
@@ -159,14 +160,14 @@ export async function mockGetDefaultContainerId(): Promise<string | null> {
 
     // Try from store first
     const containerData = get(mockUserContainer);
-    if (containerData?.defaultContainerId) {
-        return containerData.defaultContainerId;
+    if (containerData?.defaultProjectId) {
+        return containerData.defaultProjectId;
     }
 
     // Then try from mock "database"
     const userId = "test-user-id";
     const storedData = mockContainers.get(userId);
-    return storedData?.defaultContainerId || null;
+    return storedData?.defaultProjectId || null;
 }
 
 // Mock getUserContainers function
@@ -196,18 +197,18 @@ function buildContainersList(data: UserContainer): { id: string; name?: string; 
     const containers = [];
 
     // Add default container if exists
-    if (data.defaultContainerId) {
+    if (data.defaultProjectId) {
         containers.push({
-            id: data.defaultContainerId,
+            id: data.defaultProjectId,
             name: "デフォルトコンテナ",
             isDefault: true,
         });
     }
 
     // Add other accessible containers
-    if (data.accessibleContainerIds && data.accessibleContainerIds.length > 0) {
-        const additionalContainers = data.accessibleContainerIds
-            .filter(id => id !== data.defaultContainerId)
+    if (data.accessibleProjectIds && data.accessibleProjectIds.length > 0) {
+        const additionalContainers = data.accessibleProjectIds
+            .filter(id => id !== data.defaultProjectId)
             .map(id => ({
                 id,
                 name: `コンテナ ${id.substring(0, 8)}...`,

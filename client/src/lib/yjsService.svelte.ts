@@ -1,10 +1,11 @@
-// High-level Yjs service providing shared document utilities
 import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
+import { firestoreStore, saveProjectIdToServer } from "../stores/firestoreStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
+import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
 import { log } from "./logger";
 import { getContainerTitleFromMetaDoc, setContainerTitleInMetaDoc } from "./metaDoc.svelte";
 
@@ -81,6 +82,10 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     console.log(
         `[yjsService] createNewProject: isTest=${isTest}, containerName="${containerName}", projectId="${projectId}"`,
     );
+
+    // Save project ID to server/store
+    await saveProjectIdToServer(projectId);
+
     const project = Project.createInstance(containerName);
     const client = await YjsClient.connect(projectId, project);
     registry.set(keyFor(userId, projectId), [client, project]);
@@ -157,6 +162,34 @@ export function cleanupClient() {
 export async function deleteContainer(containerId: string): Promise<boolean> {
     console.log(`[yjsService] deleteContainer called for: ${containerId}`);
     try {
+        const currentUser = userManager.getCurrentUser();
+        if (currentUser) {
+            const idToken = await userManager.auth.currentUser?.getIdToken();
+            if (idToken) {
+                const url = getFirebaseFunctionUrl("delete-container");
+                console.log(`[yjsService] Calling server delete: ${url}`);
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        idToken,
+                        projectId: containerId,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    console.error(`Failed to delete container on server: ${response.status} ${errText}`);
+                    // If project is not found (404), we can proceed to local cleanup
+                    if (response.status !== 404) {
+                        return false;
+                    }
+                }
+            }
+        }
+
         const key = keyFor(undefined, containerId);
         const instances = registry.get(key);
         if (instances) {
@@ -168,6 +201,32 @@ export async function deleteContainer(containerId: string): Promise<boolean> {
         if (yjsStore.currentContainerId === containerId) {
             yjsStore.reset();
         }
+
+        // Local cleanup of firestoreStore (for test env or optimistic update)
+        if (firestoreStore.userProject) {
+            const newIds = firestoreStore.userProject.accessibleProjectIds.filter(id => id !== containerId);
+            const updatedData = {
+                ...firestoreStore.userProject,
+                accessibleProjectIds: newIds,
+                defaultProjectId: firestoreStore.userProject.defaultProjectId === containerId
+                    ? null
+                    : firestoreStore.userProject.defaultProjectId,
+            };
+            firestoreStore.setUserProject(updatedData);
+
+            // In test environment, also update the localStorage mock to persist deletion across reloads
+            if (
+                typeof window !== "undefined"
+                && (import.meta.env.VITE_IS_TEST === "true" || process.env.NODE_ENV === "test")
+            ) {
+                try {
+                    window.localStorage.setItem("mockUserProject", JSON.stringify(updatedData));
+                } catch (e) {
+                    console.error("Failed to update mockUserProject in localStorage", e);
+                }
+            }
+        }
+
         return true;
     } catch (error) {
         console.error(`Failed to delete container ${containerId}:`, error);

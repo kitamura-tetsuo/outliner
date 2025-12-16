@@ -44,6 +44,10 @@
                 "function": "saveContainer"
             },
             {
+                "source": "/api/save-project",
+                "function": "saveProject"
+            },
+            {
                 "source": "/api/get-user-containers",
                 "function": "getUserContainers"
             },

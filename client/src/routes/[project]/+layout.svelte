@@ -23,7 +23,7 @@ $effect(() => {
 // URLパラメータからプロジェクト名を取得
 $effect(() => {
     // Prefer explicit param over optional data prop
-    const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
+    const projectParam = ($pageStore?.params?.project as string) || (data as any)?.project;
     if (!projectParam) return;
 
     // E2E安定化: テスト環境では即時に空プロジェクトを用意して generalStore.project を満たす

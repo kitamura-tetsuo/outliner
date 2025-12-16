@@ -20,6 +20,9 @@ class GeneralStore {
     // 直接公開フィールド（$state が追跡可能なプロパティ）
     public userProject: UserProject | null = null;
 
+    // Alias for backward compatibility (actual implementation via Object.defineProperty below)
+    public readonly userContainer!: UserProject | null;
+
     // $state 再計算トリガ（CustomEvent 不要のためのトップレベル依存）
     public ucVersion = 0;
 
@@ -391,6 +394,7 @@ export const saveContainerId = saveProjectId;
 export async function saveProjectIdToServer(projectId: string): Promise<boolean> {
     try {
         // テスト環境の場合は、直接 userProject ストアに追加
+        // E2E でもローカルモックを使用し、localStorage に永続化することでリロードに対応する
         if (
             typeof window !== "undefined"
             && (window.mockFluidClient === false
@@ -425,7 +429,9 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
             firestoreStore.setUserProject(updatedData);
             logger.info({ updatedData }, "Project ID saved to mock store");
 
-            // ローカルストレージにも現在のコンテナIDを保存
+            // ローカルストレージにデータを永続化（E2Eのリロード対策）
+            window.localStorage.setItem("mockUserProject", JSON.stringify(updatedData));
+            // 後方互換性のため currentProjectId も保存
             window.localStorage.setItem("currentProjectId", projectId);
 
             return true;
@@ -451,7 +457,7 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
         logger.info(`Saving project ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
-        const response = await fetch(getFirebaseFunctionUrl("saveProject"), {
+        const response = await fetch(getFirebaseFunctionUrl("save-project"), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -529,5 +535,17 @@ if (typeof window !== "undefined") {
             }
             unsubscribeAuth();
         });
+    } else {
+        // Test environment: Load from localStorage mock
+        try {
+            const stored = window.localStorage.getItem("mockUserProject");
+            if (stored) {
+                const data = JSON.parse(stored);
+                firestoreStore.setUserProject(data);
+                logger.info("Loaded mock userProject from localStorage", data);
+            }
+        } catch (e) {
+            console.error("Failed to load mockUserProject", e);
+        }
     }
 }

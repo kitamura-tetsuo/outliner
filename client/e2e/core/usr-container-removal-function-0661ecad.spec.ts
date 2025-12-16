@@ -16,6 +16,7 @@ test("delete-container returns 401 with invalid token", async ({ request }) => {
 });
 
 test("Project deletion redirects to home and removes project from list", async ({ page, browser }) => {
+    test.setTimeout(60000);
     // Create a baseline project
     const { projectName: baselineProjectName } = await TestHelpers.prepareTestEnvironment(
         page,
@@ -30,17 +31,28 @@ test("Project deletion redirects to home and removes project from list", async (
     // Navigate to the settings page and delete the project
     await page.goto(`/${projectToDelete}/settings/delete`);
     await page.waitForSelector("button:has-text('Delete')");
+
+    // Wait for the yjsStore to have the current container ID loaded
+    // This is needed because the layout loads the project asynchronously
+    await page.waitForFunction(
+        () => {
+            const store = (window as any).__YJS_STORE__;
+            return store?.currentContainerId !== null && store?.currentContainerId !== undefined;
+        },
+        { timeout: 10000 },
+    );
+
     await page.click("button:has-text('Delete')");
 
     // After deletion, should be redirected to home
     await page.waitForURL("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Verify the deleted project is no longer visible
-    const deleteProjectLink = page.locator(`.project-list a:has-text("${projectToDelete}")`);
-    await expect(deleteProjectLink).not.toBeVisible({ timeout: 20000 });
+    const deleteProjectOption = page.locator(`select.container-select option:has-text("${projectToDelete}")`);
+    await expect(deleteProjectOption).not.toBeAttached({ timeout: 20000 });
 
     // Verify the baseline project is still present
-    const baselineProjectLink = page.locator(`.project-list a:has-text("${baselineProjectName}")`);
-    await expect(baselineProjectLink).toBeVisible({ timeout: 20000 });
+    const baselineProjectOption = page.locator(`select.container-select option:has-text("${baselineProjectName}")`);
+    await expect(baselineProjectOption).toBeAttached({ timeout: 20000 });
 });

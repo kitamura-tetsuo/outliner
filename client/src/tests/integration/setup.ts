@@ -36,7 +36,8 @@ class MockWebsocketProvider {
         this.doc.on("update", this.handleDocUpdate);
 
         // Listen for awareness updates to broadcast
-        this.awareness.on("update", this.handleAwarenessUpdate);
+        // Note: Using "change" event (typed) instead of "update" for TypeScript compatibility
+        this.awareness.on("change", this.handleAwarenessUpdate);
 
         // Simulate connection in test environment
         setTimeout(() => {
@@ -146,7 +147,8 @@ class MockWebsocketProvider {
     public destroy() {
         // Cleanup
         this.doc.off("update", this.handleDocUpdate);
-        this.awareness.off("update", this.handleAwarenessUpdate);
+        // Note: Using "change" event (typed) instead of "update" for TypeScript compatibility
+        this.awareness.off("change", this.handleAwarenessUpdate);
         const peers = MockWebsocketProvider.rooms.get(this.roomname);
         if (peers) {
             peers.delete(this);
