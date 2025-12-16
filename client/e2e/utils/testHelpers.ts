@@ -504,10 +504,10 @@ export class TestHelpers {
                         // Otherwise return the project root items (pages)
                         const currentPage = gs?.currentPage;
                         let root;
-                        if (gs?.pages?.current) {
-                            root = toArray(gs.pages.current);
-                        } else if (currentPage && currentPage.items) {
+                        if (currentPage && currentPage.items) {
                             root = toArray(currentPage.items);
+                        } else if (gs?.pages?.current) {
+                            root = toArray(gs.pages.current);
                         } else {
                             root = toArray(proj.items);
                         }
