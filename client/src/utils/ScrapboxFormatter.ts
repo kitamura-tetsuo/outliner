@@ -302,7 +302,9 @@ export class ScrapboxFormatter {
                     html += `<code>${content}</code>`;
                     break;
                 case "link":
-                    html += `<a href="${this.escapeHtml(token.url ?? "")}" target="_blank" rel="noopener noreferrer">${content}</a>`;
+                    html += `<a href="${
+                        this.escapeHtml(token.url ?? "")
+                    }" target="_blank" rel="noopener noreferrer">${content}</a>`;
                     break;
                 case "internalLink": {
                     const isProjectLink = token.isProjectLink === true || rawContent.startsWith("/");
