@@ -13,14 +13,29 @@ export class TreeValidator {
             // デバッグ関数の存在確認（Yjs）
             if (typeof window.getYjsTreeDebugData !== "function") {
                 // フォールバック: appStore から基本的なデータを取得
-                const appStore = (window as any).appStore;
-                if (appStore && appStore.pages && appStore.pages.current) {
+                const store = (window as any).generalStore || (window as any).appStore;
+                if (store && store.pages && store.pages.current) {
+                    const mapItem = (item: any): any => ({
+                        text: (item.text && typeof item.text.toString === "function")
+                            ? item.text.toString()
+                            : String(item.text || item.id || ""),
+                        items: (item.items && Array.isArray(item.items))
+                            ? item.items.map(mapItem)
+                            : (item.items && typeof item.items.map === "function")
+                            ? item.items.map(mapItem)
+                            : [],
+                    });
+
+                    // Handle if current is iterable but not array (like Y.Array)
+                    const currentItems = (Array.isArray(store.pages.current))
+                        ? store.pages.current
+                        : (typeof store.pages.current.toArray === "function")
+                        ? store.pages.current.toArray()
+                        : Array.from(store.pages.current);
+
                     return {
-                        itemCount: appStore.pages.current.length,
-                        items: appStore.pages.current.map((page: any) => ({
-                            text: page.text || page.id,
-                            items: page.items || [],
-                        })),
+                        itemCount: currentItems.length,
+                        items: currentItems.map(mapItem),
                     };
                 }
                 throw new Error("getYjsTreeDebugData function is not available and no fallback data found");

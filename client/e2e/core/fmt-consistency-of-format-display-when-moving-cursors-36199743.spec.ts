@@ -116,7 +116,6 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         const titleFontWeight = await pageTitle.locator(".item-text").evaluate(el => {
             return window.getComputedStyle(el).fontWeight;
         });
-        console.log("Title font weight:", titleFontWeight);
         // タイトルのフォントウェイトが設定されていることを確認（実際の値をログで確認）
         expect(titleFontWeight).toBeDefined();
 
@@ -156,12 +155,12 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         await TestHelpers.waitForCursorVisible(page);
 
         // 最初のアイテムのテキスト内容を確認（リンクが適用されていること）
-        const pageTextsAfterLink = await TestHelpers.getPageTexts(page);
-        expect(
-            pageTextsAfterLink.some(({ text }) =>
+        await expect.poll(async () => {
+            const pageTextsAfterLink = await TestHelpers.getPageTexts(page);
+            return pageTextsAfterLink.some(({ text }) =>
                 text === "[https://example.com]" || text?.includes("[https://example.com]")
-            ),
-        ).toBe(true);
+            );
+        }).toBe(true);
         const treeDataAfterLink = await TreeValidator.getTreeData(page);
         expect(JSON.stringify(treeDataAfterLink)).toContain("[https://example.com]");
         const firstItemTextContentInactive = await firstItem.locator(".item-text").textContent();
@@ -195,8 +194,10 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         await TestHelpers.waitForCursorVisible(page);
 
         // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
-        const pageTextsAfterInternalLink = await TestHelpers.getPageTexts(page);
-        expect(pageTextsAfterInternalLink.some(({ text }) => text === "[asd]" || text?.includes("[asd]"))).toBe(true);
+        await expect.poll(async () => {
+            const pageTextsAfterInternalLink = await TestHelpers.getPageTexts(page);
+            return pageTextsAfterInternalLink.some(({ text }) => text === "[asd]" || text?.includes("[asd]"));
+        }).toBe(true);
         await page.waitForTimeout(500);
         const firstItemTextContentInactiveInternal = await firstItem.locator(".item-text").textContent();
         // 非アクティブ時は内部リンクがレンダリングされるため、制御文字なしでリンクテキストのみ表示される
@@ -274,10 +275,6 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
 
         // SharedTreeのデータを取得（フォールバック機能付き）
         const treeData = await TreeValidator.getTreeData(page);
-
-        // デバッグ情報を出力
-        console.log("Tree data structure:", JSON.stringify(treeData, null, 2));
-        console.log("Items count:", treeData.items?.length);
 
         // データが正しく保存されていることを確認
         expect(treeData.items).toBeDefined();

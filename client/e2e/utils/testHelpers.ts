@@ -482,22 +482,41 @@ export class TestHelpers {
                         const proj = gs?.project;
                         if (!proj) return { error: "project not initialized" };
 
+                        const toArray = (p: any) => {
+                            if (!p) return [];
+                            try {
+                                if (Array.isArray(p)) return p;
+                                if (
+                                    typeof p === "object" && p !== null
+                                    && typeof (p as any)[Symbol.iterator] === "function"
+                                ) {
+                                    return Array.from(p as Iterable<unknown>);
+                                }
+                                const len = (p as { length?: number; }).length;
+                                if (typeof len === "number" && len >= 0) {
+                                    return Array.from(p);
+                                }
+                            } catch {}
+                            return [];
+                        };
+
                         // For tree validation, if there's a current page, return its items
                         // Otherwise return the project root items (pages)
                         const currentPage = gs?.currentPage;
                         let root;
-                        if (currentPage && currentPage.items) {
-                            root = currentPage.items;
+                        if (gs?.pages?.current) {
+                            root = toArray(gs.pages.current);
+                        } else if (currentPage && currentPage.items) {
+                            root = toArray(currentPage.items);
                         } else {
-                            root = proj.items as any;
+                            root = toArray(proj.items);
                         }
 
                         const toPlain = (item: any): any => {
                             const children = item.items as any;
                             const asArray: any[] = [];
-                            const len = children?.length ?? 0;
-                            for (let i = 0; i < len; i++) {
-                                const ch = children.at ? children.at(i) : children[i];
+                            const childrenArray = toArray(children);
+                            for (const ch of childrenArray) {
                                 if (ch) asArray.push(toPlain(ch));
                             }
                             const textVal = item.text?.toString?.() ?? String(item.text ?? "");
@@ -505,9 +524,8 @@ export class TestHelpers {
                         };
 
                         const result: any[] = [];
-                        const len = root?.length ?? 0;
-                        for (let i = 0; i < len; i++) {
-                            const it = root.at ? root.at(i) : root[i];
+                        const rootArray = toArray(root);
+                        for (const it of rootArray) {
                             if (it) result.push(toPlain(it));
                         }
                         return { itemCount: result.length, items: result };
@@ -1219,6 +1237,7 @@ export class TestHelpers {
         TestHelpers.slog("Proceeding to tests (skip OutlinerTree quick check)");
 
         // ここでの最終 evaluate はテスト中のページクローズと競合しうるため省略
+        await TestHelpers.setupTreeDebugger(page);
         return { projectName, pageName };
     }
 
