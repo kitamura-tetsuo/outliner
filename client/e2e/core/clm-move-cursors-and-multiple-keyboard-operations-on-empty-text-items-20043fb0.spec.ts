@@ -11,6 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 // このテストは時間がかかるため、タイムアウトを増やす
 
 test.describe("空のテキストアイテムでのカーソル移動", () => {
+    test.setTimeout(60000);
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });

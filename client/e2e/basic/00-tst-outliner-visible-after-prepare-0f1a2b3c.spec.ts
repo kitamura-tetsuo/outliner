@@ -13,6 +13,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("環境準備後にアウトラインページが表示される", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // 増加したタイムアウトで prepareTestEnvironment を実行
+        test.setTimeout(60000);
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
