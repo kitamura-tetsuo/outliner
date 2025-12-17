@@ -2,7 +2,7 @@ import type { YjsClient } from "../yjs/YjsClient";
 import { store as globalStore } from "./store.svelte";
 
 class YjsStore {
-    private _client: YjsClient | undefined;
+    private _client = $state<YjsClient | undefined>();
     // 直近に設定した Project の Y.Doc GUID を記録し、同一ドキュメントでの再設定を抑止
     private _lastProjectGuid: string | null = null;
 

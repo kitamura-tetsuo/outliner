@@ -389,92 +389,107 @@ export const saveContainerId = saveProjectId;
  * @returns 保存に成功したかどうか
  */
 export async function saveProjectIdToServer(projectId: string): Promise<boolean> {
-    try {
-        // テスト環境の場合は、直接 userProject ストアに追加
-        if (
-            typeof window !== "undefined"
-            && (window.mockFluidClient === false
-                || import.meta.env.VITE_IS_TEST === "true"
-                || window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")
-        ) {
-            logger.info("Test environment detected, saving project ID to mock store");
+    const maxRetries = 3;
+    let attempt = 0;
+    while (attempt < maxRetries) {
+        try {
+            // テスト環境の場合は、直接 userProject ストアに追加
+            // ただし、Firebase Emulator を使用している場合（E2Eなど）は API 経由で保存する
+            const isEmulator = typeof window !== "undefined"
+                && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true";
+            if (
+                typeof window !== "undefined"
+                && !isEmulator
+                && (window.mockFluidClient === false
+                    || import.meta.env.VITE_IS_TEST === "true"
+                    || window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")
+            ) {
+                logger.info("Test environment detected (no emulator), saving project ID to mock store");
 
-            // 新しいコンテナデータを作成または更新
-            const updatedData = firestoreStore.userProject
-                ? {
-                    ...firestoreStore.userProject,
-                    defaultProjectId: projectId,
-                    accessibleProjectIds: firestoreStore.userProject.accessibleProjectIds
-                        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
-                        ? [...new Set([...firestoreStore.userProject.accessibleProjectIds, projectId])]
-                        : [projectId],
-                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
-                    updatedAt: new Date(),
-                }
-                : {
-                    userId: "test-user-id",
-                    defaultProjectId: projectId,
-                    accessibleProjectIds: [projectId],
-                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
-                    createdAt: new Date(),
-                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
-                    updatedAt: new Date(),
-                };
+                // 新しいコンテナデータを作成または更新
+                const updatedData = firestoreStore.userProject
+                    ? {
+                        ...firestoreStore.userProject,
+                        defaultProjectId: projectId,
+                        accessibleProjectIds: firestoreStore.userProject.accessibleProjectIds
+                            // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
+                            ? [...new Set([...firestoreStore.userProject.accessibleProjectIds, projectId])]
+                            : [projectId],
+                        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
+                        updatedAt: new Date(),
+                    }
+                    : {
+                        userId: "test-user-id",
+                        defaultProjectId: projectId,
+                        accessibleProjectIds: [projectId],
+                        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
+                        createdAt: new Date(),
+                        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
+                        updatedAt: new Date(),
+                    };
 
-            // ストアを更新
-            firestoreStore.setUserProject(updatedData);
-            logger.info({ updatedData }, "Project ID saved to mock store");
+                // ストアを更新
+                firestoreStore.setUserProject(updatedData);
+                logger.info({ updatedData }, "Project ID saved to mock store");
 
-            // ローカルストレージにも現在のコンテナIDを保存
-            window.localStorage.setItem("currentProjectId", projectId);
+                // ローカルストレージにも現在のコンテナIDを保存
+                window.localStorage.setItem("currentProjectId", projectId);
 
-            return true;
+                return true;
+            }
+
+            // 本番環境ではAPIを使用
+            // ユーザーがログインしていることを確認
+            const currentUser = userManager.getCurrentUser();
+            if (!currentUser) {
+                logger.warn("Cannot save project ID to server: User not logged in");
+                return false;
+            }
+
+            // Firebase IDトークンを取得
+            const idToken = await userManager.auth.currentUser?.getIdToken();
+            if (!idToken) {
+                logger.warn("Cannot save project ID to server: Firebase user not available");
+                return false;
+            }
+
+            // Firebase Functionsのエンドポイントを取得
+            const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
+            logger.info(`Saving project ID to Firebase Functions at ${apiBaseUrl}`);
+
+            // Firebase Functionsを呼び出してコンテナIDを保存
+            const response = await fetch(getFirebaseFunctionUrl("save-project"), {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    idToken,
+                    projectId,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`API error details: ${response.status} ${response.statusText} - ${errorText}`);
+                throw new Error(`API error: ${response.status} ${errorText}`);
+            }
+
+            const result = await response.json();
+            logger.info(`Successfully saved project ID to server for user ${currentUser.id}`);
+            return result.success === true;
+        } catch (error) {
+            attempt++;
+            const err = error instanceof Error ? error : new Error(String(error));
+            console.error(`Error saving project ID to server (attempt ${attempt}/${maxRetries}):`, err);
+            if (attempt >= maxRetries) {
+                logger.error({ err }, "Error saving project ID to server");
+                return false;
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
-
-        // 本番環境ではAPIを使用
-        // ユーザーがログインしていることを確認
-        const currentUser = userManager.getCurrentUser();
-        if (!currentUser) {
-            logger.warn("Cannot save project ID to server: User not logged in");
-            return false;
-        }
-
-        // Firebase IDトークンを取得
-        const idToken = await userManager.auth.currentUser?.getIdToken();
-        if (!idToken) {
-            logger.warn("Cannot save project ID to server: Firebase user not available");
-            return false;
-        }
-
-        // Firebase Functionsのエンドポイントを取得
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
-        logger.info(`Saving project ID to Firebase Functions at ${apiBaseUrl}`);
-
-        // Firebase Functionsを呼び出してコンテナIDを保存
-        const response = await fetch(getFirebaseFunctionUrl("saveProject"), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                idToken,
-                projectId,
-            }),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API error: ${response.status} ${errorText}`);
-        }
-
-        const result = await response.json();
-        logger.info(`Successfully saved project ID to server for user ${currentUser.id}`);
-        return result.success === true;
-    } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Error saving project ID to server");
-        return false;
     }
+    return false;
 }
 
 // Alias for backwards compatibility during containers -> projects migration

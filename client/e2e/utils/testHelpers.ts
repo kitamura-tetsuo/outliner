@@ -1218,6 +1218,26 @@ export class TestHelpers {
         // 追加のUIチェックは省略して直ちにテストへ移行
         TestHelpers.slog("Proceeding to tests (skip OutlinerTree quick check)");
 
+        // Wait for project to be saved to Firestore (via saveProjectIdToServer in layout) to ensure persistence across navigations
+        TestHelpers.slog("Waiting for project to be saved to Firestore");
+        try {
+            await page.waitForFunction(() => {
+                const fsStore = (window as any).__FIRESTORE_STORE__;
+                const yjsStore = (window as any).__YJS_STORE__;
+
+                if (!fsStore || !yjsStore) return false;
+
+                const currentId = yjsStore.currentContainerId;
+                if (!currentId) return false;
+
+                const ids = fsStore.userProject?.accessibleProjectIds || [];
+                return ids.includes(currentId);
+            }, { timeout: 15000 });
+            TestHelpers.slog("Project saved to Firestore confirmed");
+        } catch (e) {
+            console.warn("TestHelper: Timeout waiting for project save to Firestore", e);
+        }
+
         // ここでの最終 evaluate はテスト中のページクローズと競合しうるため省略
         return { projectName, pageName };
     }

@@ -4,6 +4,7 @@ import { page as pageStore } from "$app/stores";
 import { userManager } from "../../auth/UserManager";
 import { getYjsClientByProjectTitle, createNewYjsProject } from "../../services";
 import { yjsStore } from "../../stores/yjsStore.svelte";
+import { saveProjectIdToServer } from "../../stores/firestoreStore.svelte";
 import { store } from "../../stores/store.svelte";
 import { Project } from "../../schema/yjs-schema";
 
@@ -23,7 +24,7 @@ $effect(() => {
 // URLパラメータからプロジェクト名を取得
 $effect(() => {
     // Prefer explicit param over optional data prop
-    const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
+    const projectParam = ($pageStore?.params?.project as string) || (data as any)?.project;
     if (!projectParam) return;
 
     // E2E安定化: テスト環境では即時に空プロジェクトを用意して generalStore.project を満たす
@@ -61,6 +62,10 @@ async function loadProject(projectNameFromParam?: string) {
         if (!client && isTestEnv) {
             try {
                 client = await createNewYjsProject(projectName);
+                // Ensure project is saved to server/mock so it persists and appears in lists
+                if (client) {
+                    await saveProjectIdToServer(client.containerId);
+                }
             } catch (e) {
                 console.warn("Auto-create container failed:", e);
             }
@@ -81,7 +86,7 @@ onMount(() => {
     try {
         userManager.addEventListener(() => {
             // If project not yet loaded but param exists, try again when auth flips
-            const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
+            const projectParam = ($pageStore?.params?.project as string) || (data as any)?.project;
             if (projectParam && !yjsStore.yjsClient) {
                 loadProject(projectParam);
             }

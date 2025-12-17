@@ -157,6 +157,35 @@ export function cleanupClient() {
 export async function deleteContainer(containerId: string): Promise<boolean> {
     console.log(`[yjsService] deleteContainer called for: ${containerId}`);
     try {
+        const user = userManager.auth.currentUser;
+        if (!user) {
+            console.error("[yjsService] deleteContainer: User not authenticated");
+            return false;
+        }
+
+        const idToken = await user.getIdToken();
+        const response = await fetch(`${userManager.functionsUrl}/api/delete-container`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                projectId: containerId,
+                idToken,
+            }),
+        });
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                console.warn("[yjsService] Container not found on server, proceeding with local deletion");
+            } else {
+                console.error(
+                    `[yjsService] Failed to delete container on server: ${response.status} ${response.statusText}`,
+                );
+                return false;
+            }
+        }
+
         const key = keyFor(undefined, containerId);
         const instances = registry.get(key);
         if (instances) {

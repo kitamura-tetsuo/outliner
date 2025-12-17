@@ -4,9 +4,9 @@
     import * as yjsService from "../../../../lib/yjsService.svelte";
 
     let errorMessage: string | null = null;
+    let projectId = $derived(yjsStore.currentContainerId);
 
     async function handleDelete() {
-        const projectId = yjsStore.currentContainerId;
         if (!projectId) {
             errorMessage = "Project ID not found.";
             return;
@@ -23,7 +23,12 @@
 
 <h2>Delete Project</h2>
 <p>Are you sure you want to delete this project?</p>
-<button on:click={handleDelete}>Delete</button>
+
+{#if projectId}
+    <button on:click={handleDelete}>Delete</button>
+{:else}
+    <p>Loading...</p>
+{/if}
 
 {#if errorMessage}
     <p style="color: red;">{errorMessage}</p>
