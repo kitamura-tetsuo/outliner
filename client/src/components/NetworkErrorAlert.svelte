@@ -12,8 +12,12 @@ function dismiss() {
 </script>
 
 {#if error}
-    <div class="network-error">
-        <div class="error-icon">⚠️</div>
+    <div
+        class="network-error"
+        role="alert"
+        aria-live="assertive"
+    >
+        <div class="error-icon" aria-hidden="true">⚠️</div>
         <div class="error-content">
             <h3>サーバー接続エラー</h3>
             <p>{error}</p>
