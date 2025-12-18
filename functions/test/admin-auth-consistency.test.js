@@ -33,26 +33,26 @@ describe("Admin Authorization Consistency", () => {
     // Create a mock auth service
     const verifyIdTokenMock = jest.fn().mockResolvedValue({
       uid: "admin-user",
-      role: "admin"
+      role: "admin",
     });
 
     const getUserMock = jest.fn().mockResolvedValue({
       uid: "admin-user",
       customClaims: {
-        role: "admin"
+        role: "admin",
         // Missing "admin: true" which current code expects
-      }
+      },
     });
 
     const listUsersMock = jest.fn().mockResolvedValue({
-        users: []
+      users: [],
     });
 
     // Mock the auth() call to return our mock service
     authSpy.mockReturnValue({
-        verifyIdToken: verifyIdTokenMock,
-        getUser: getUserMock,
-        listUsers: listUsersMock
+      verifyIdToken: verifyIdTokenMock,
+      getUser: getUserMock,
+      listUsers: listUsersMock,
     });
 
     await myFunctions.adminUserList(req, res);
@@ -61,7 +61,7 @@ describe("Admin Authorization Consistency", () => {
     // Before fix, this will fail (it returns 403).
     expect(statusMock).toHaveBeenCalledWith(200);
     expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
-        success: true
+      success: true,
     }));
 
     authSpy.mockRestore();
