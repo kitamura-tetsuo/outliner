@@ -1806,7 +1806,7 @@ exports.adminCheckForProjectUserListing = onRequest(
       const userRecord = await admin.auth().getUser(uid);
       const customClaims = userRecord.customClaims || {};
 
-      if (!customClaims.admin) {
+      if (!customClaims.admin && customClaims.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
       }
 
@@ -1868,7 +1868,7 @@ exports.adminUserList = onRequest(
       const userRecord = await admin.auth().getUser(uid);
       const customClaims = userRecord.customClaims || {};
 
-      if (!customClaims.admin) {
+      if (!customClaims.admin && customClaims.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
       }
 
