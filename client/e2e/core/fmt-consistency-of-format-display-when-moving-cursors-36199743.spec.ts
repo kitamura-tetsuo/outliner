@@ -1,4 +1,5 @@
-import "../utils/registerAfterEachSnapshot";
+import { registerAfterEach } from "../utils/registerAfterEachSnapshotFn";
+registerAfterEach();
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature FMT-0006
@@ -27,6 +28,9 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
 
         // 太字テキストを入力
         await page.keyboard.type("[[aasdd]]");
+
+        // UIに入力されたか確認
+        await expect(firstItem).toContainText("aasdd");
 
         // 2つ目のアイテムを作成
         await page.keyboard.press("Enter");
@@ -203,9 +207,13 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         expect(firstItemTextContentActiveInternal).toContain("[asd]");
     });
 
-    test.skip("SharedTreeデータが正しく保存される", async ({ page }) => {
+    test("SharedTreeデータが正しく保存される", async ({ page }) => {
         // 最初のアイテムを選択
         const firstItem = page.locator(".outliner-item").nth(1);
+
+        // Wait for UI to update (OutlinerBase listens to currentPage)
+        await page.waitForTimeout(500);
+
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
@@ -248,15 +256,24 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
+                    console.log("[Test] Found cursor:", cursor);
                     // 既存のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
+                        console.log("[Test] Target found, updating text to empty");
                         target.updateText("");
                         cursor.offset = 0;
+                    } else {
+                        console.error("[Test] Target NOT found via cursor.findTarget()");
                     }
                     // 太字テキストを挿入
+                    console.log("[Test] Inserting text via cursor.insertText");
                     cursor.insertText("[[aasdd]]");
+                } else {
+                    console.error("[Test] No cursor instances found");
                 }
+            } else {
+                console.error("[Test] editorOverlayStore not found");
             }
         });
 
@@ -265,10 +282,6 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
 
         // SharedTreeのデータを取得（フォールバック機能付き）
         const treeData = await TreeValidator.getTreeData(page);
-
-        // デバッグ情報を出力
-        console.log("Tree data structure:", JSON.stringify(treeData, null, 2));
-        console.log("Items count:", treeData.items?.length);
 
         // データが正しく保存されていることを確認
         expect(treeData.items).toBeDefined();

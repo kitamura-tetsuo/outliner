@@ -34,13 +34,18 @@ test("Project deletion redirects to home and removes project from list", async (
 
     // After deletion, should be redirected to home
     await page.waitForURL("/");
-    await page.waitForLoadState("networkidle");
 
-    // Verify the deleted project is no longer visible
-    const deleteProjectLink = page.locator(`.project-list a:has-text("${projectToDelete}")`);
-    await expect(deleteProjectLink).not.toBeVisible({ timeout: 20000 });
+    // Wait for the container selector to be loaded
+    await page.waitForSelector(".container-select");
+
+    // Force reload to ensure fresh project list from Firestore
+    await page.reload();
+    await page.waitForSelector(".container-select");
+
+    // Verify the deleted project is no longer in the list
+    const containerSelect = page.locator(".container-select");
+    await expect(containerSelect).not.toContainText(projectToDelete, { timeout: 20000 });
 
     // Verify the baseline project is still present
-    const baselineProjectLink = page.locator(`.project-list a:has-text("${baselineProjectName}")`);
-    await expect(baselineProjectLink).toBeVisible({ timeout: 20000 });
+    await expect(containerSelect).toContainText(baselineProjectName, { timeout: 20000 });
 });

@@ -264,6 +264,8 @@ function initFirestoreSync(): () => void {
             },
             error => {
                 const err = error instanceof Error ? error : new Error(String(error));
+                // Explicit console log for E2E debugging
+                console.error("[firestoreStore] onSnapshot error details:", error?.code, error?.message, error);
                 logger.error({ err }, "Firestoreのリスニングエラー");
             },
         );
@@ -518,7 +520,10 @@ if (typeof window !== "undefined") {
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true";
 
-    if (!__isTestEnv) {
+    const shouldUseEmulator = typeof window !== "undefined"
+        && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true";
+
+    if (!__isTestEnv || shouldUseEmulator) {
         let cleanup: (() => void) | null = null;
 
         // 認証状態が変更されたときに Firestore 同期を初期化/クリーンアップ

@@ -154,7 +154,7 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
             { timeout: 5000 },
         );
 
-        // 3. テキストをコピー
+        // 3. コピー
         await page.keyboard.press("Control+c");
 
         // コピーされたテキストを確認 (waitForFunctionを使用)

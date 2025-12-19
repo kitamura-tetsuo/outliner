@@ -24,10 +24,17 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         const searchInput = page.getByTestId("main-toolbar").getByRole("textbox", { name: "Search pages" });
         await searchInput.waitFor();
         await searchInput.fill("second");
-        const option = page.getByRole("button", { name: "second page" });
-        await option.waitFor();
-        await option.click();
-        const expectedPath = `/${encodeURIComponent(projectName)}/${encodeURIComponent("second page")}`;
-        await expect.poll(() => page.url()).toContain(expectedPath);
+        // Wait for results to be present and stable
+        await page.waitForSelector('button:has-text("second page")', { timeout: 15000 });
+        await page.waitForTimeout(1000);
+        await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(500);
+        await page.keyboard.press("Enter");
+
+        await expect.poll(() => {
+            const path = new URL(page.url()).pathname;
+            const decoded = decodeURIComponent(path).replace(/\+/g, " ");
+            return decoded;
+        }, { timeout: 20000 }).toContain(`/${projectName}/second page`);
     });
 });

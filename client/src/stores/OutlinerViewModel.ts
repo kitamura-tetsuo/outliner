@@ -165,7 +165,13 @@ export class OutlinerViewModel {
             );
             this.ensureViewModelsItemsExist(children, item.id);
         } else {
-            debugLog(`OutlinerViewModel: No children for "${item.text.toString()}"`);
+            const ch = (item as any).items;
+            debugLog(`OutlinerViewModel: No children for "${item.text.toString()}"`, {
+                items: ch,
+                length: ch?.length,
+                ctor: ch?.constructor?.name,
+                keys: ch?.childrenKeys ? ch.childrenKeys() : "N/A",
+            });
         }
     }
     /**

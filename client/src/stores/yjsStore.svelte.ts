@@ -5,6 +5,7 @@ class YjsStore {
     private _client = $state<YjsClient | undefined>();
     // 直近に設定した Project の Y.Doc GUID を記録し、同一ドキュメントでの再設定を抑止
     private _lastProjectGuid: string | null = null;
+    private _isConnected = $state(false);
 
     get yjsClient(): YjsClient | undefined {
         return this._client;
@@ -21,7 +22,15 @@ class YjsStore {
             (globalStore as any).openCommentItemId = null;
         } catch {}
         this._client = v;
-        this.isConnected = !!(v?.isContainerConnected);
+        this._isConnected = v?.isContainerConnected ?? false;
+        if (v?.wsProvider) {
+            const update = () => {
+                this._isConnected = v.isContainerConnected;
+            };
+            v.wsProvider.on("status", update);
+            v.wsProvider.on("sync", update);
+        }
+
         if (v) {
             const connectedProject = v.getProject();
             const newGuid: string | undefined = (connectedProject as any)?.ydoc?.guid;
@@ -39,6 +48,15 @@ class YjsStore {
                 return;
             }
 
+            // Capture provisional project state before overwriting
+            const existingProject = globalStore.project;
+            const prevItems = (existingProject as any)?.items;
+            const prevCount = prevItems?.length ?? 0;
+            const newItems = (connectedProject as any)?.items;
+            const newCount = newItems?.length ?? 0;
+            const isTestEnv = typeof window !== "undefined"
+                && ((window as any).__E2E__ === true || localStorage.getItem("VITE_IS_TEST") === "true");
+
             globalStore.project = connectedProject as any;
             this._lastProjectGuid = newGuid ?? null;
 
@@ -48,7 +66,6 @@ class YjsStore {
             // appear empty. To keep test flows stable, merge page titles from the
             // previous project into the newly connected one if the latter has none.
             try {
-                /*
                 if (isTestEnv && prevCount > 0) {
                     // ケースA: 接続済みプロジェクトが空 -> 以前のページを丸ごと移植（ID維持）
                     if (newCount === 0) {
@@ -133,15 +150,25 @@ class YjsStore {
                         } catch {}
                     }
                 }
-                */
             } catch {
                 // best-effort merge only; ignore failures in non-test environments
+            }
+
+            // Ensure currentPage is updated to reflect the new project context
+            // This triggers GeneralStore's setter logic which handles page migration/replacement
+            if (globalStore.currentPage) {
+                // eslint-disable-next-line no-self-assign
+                globalStore.currentPage = globalStore.currentPage;
             }
         }
     }
 
-    // Connection state is a plain data property for Svelte 5 reactivity
-    isConnected: boolean = false;
+    get isConnected(): boolean {
+        return this._isConnected;
+    }
+    set isConnected(v: boolean) {
+        this._isConnected = v;
+    }
     get connectionState() {
         return this._client?.getConnectionStateString() ?? "未接続";
     }
@@ -155,7 +182,7 @@ class YjsStore {
     reset() {
         this._client = undefined;
         this._lastProjectGuid = null;
-        this.isConnected = false;
+        this._isConnected = false;
     }
 
     getIsConnected() {

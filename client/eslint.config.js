@@ -169,6 +169,12 @@ export default ts.config(
                 "error",
                 {
                     selector:
+                        "CallExpression[callee.type='MemberExpression'][callee.property.name='waitForLoadState'] > Literal[value='networkidle']",
+                    message:
+                        "Do not use waitForLoadState('networkidle'). It is flaky; use explicit visibility assertions instead.",
+                },
+                {
+                    selector:
                         "CallExpression[callee.type='MemberExpression'][callee.object.type='Identifier'][callee.object.name=/^(it|test|describe)$/][callee.property.name='skip']",
                     message: "Do not skip tests; remove `.skip` calls.",
                 },

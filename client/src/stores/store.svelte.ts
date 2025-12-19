@@ -48,58 +48,68 @@ export class GeneralStore {
                     }
                 }
                 if (!next) {
-                    next = items?.addNode?.("tester");
-                    next?.updateText?.(title);
-                }
-                // 子行の移植（先行シードを反映）
-                try {
-                    const prevItems = page?.items;
-                    const nextItems = next?.items;
-                    const prevLen = prevItems?.length ?? 0;
-                    const nextLen = nextItems?.length ?? 0;
-                    if (prevLen > 0) {
-                        const isPlaceholderChild = (node: ItemLike | PlainItemData | null | undefined) => {
-                            const text = node?.text?.toString?.() ?? String(node?.text ?? "");
-                            if (!text) return true;
-                            return text === "一行目: テスト" || text === "二行目: Yjs 反映"
-                                || text === "三行目: 並び順チェック";
-                        };
-                        const shouldReplaceChildren = nextLen === 0
-                            || (nextLen <= 3 && (() => {
-                                for (let idx = 0; idx < nextLen; idx++) {
-                                    const candidate = nextItems?.at ? nextItems.at(idx) : undefined;
-                                    if (!isPlaceholderChild(candidate)) {
-                                        return false;
-                                    }
-                                }
-                                return true;
-                            })());
-
-                        if (shouldReplaceChildren) {
-                            while ((nextItems?.length ?? 0) > 0) {
-                                nextItems.removeAt(nextItems.length - 1);
-                            }
-
-                            const cloneBranch = (source: Items | undefined, target: Items | undefined) => {
-                                if (!source || !target) return;
-                                const length = source.length ?? 0;
-                                for (let index = 0; index < length; index++) {
-                                    const from = source.at(index);
-                                    if (!from) continue;
-                                    const text = from?.text?.toString?.() ?? String(from?.text ?? "");
-                                    const created = target.addNode?.("tester");
-                                    if (!created) continue;
-                                    created.updateText?.(text);
-                                    cloneBranch(from.items, created.items);
-                                }
-                            };
-                            cloneBranch(prevItems, nextItems);
-                        }
+                    const disableAuto = typeof window !== "undefined"
+                        && (window as any).__DISABLE_AUTO_PAGE_CREATION__ === true;
+                    if (disableAuto) {
+                        console.log(
+                            `GeneralStore: Skipping auto page creation for "${title}" due to __DISABLE_AUTO_PAGE_CREATION__ flag`,
+                        );
+                    } else {
+                        next = items?.addNode?.("tester");
+                        next?.updateText?.(title);
                     }
-                } catch {
-                    // Ignore errors during child item migration
                 }
-                this._currentPage = next;
+                if (next) {
+                    // 子行の移植（先行シードを反映）
+                    try {
+                        const prevItems = page?.items;
+                        const nextItems = next?.items;
+                        const prevLen = prevItems?.length ?? 0;
+                        const nextLen = nextItems?.length ?? 0;
+                        if (prevLen > 0) {
+                            const isPlaceholderChild = (node: ItemLike | PlainItemData | null | undefined) => {
+                                const text = node?.text?.toString?.() ?? String(node?.text ?? "");
+                                if (!text) return true;
+                                return text === "一行目: テスト" || text === "二行目: Yjs 反映"
+                                    || text === "三行目: 並び順チェック";
+                            };
+                            const shouldReplaceChildren = nextLen === 0
+                                || (nextLen <= 3 && (() => {
+                                    for (let idx = 0; idx < nextLen; idx++) {
+                                        const candidate = nextItems?.at ? nextItems.at(idx) : undefined;
+                                        if (!isPlaceholderChild(candidate)) {
+                                            return false;
+                                        }
+                                    }
+                                    return true;
+                                })());
+
+                            if (shouldReplaceChildren) {
+                                while ((nextItems?.length ?? 0) > 0) {
+                                    nextItems.removeAt(nextItems.length - 1);
+                                }
+
+                                const cloneBranch = (source: Items | undefined, target: Items | undefined) => {
+                                    if (!source || !target) return;
+                                    const length = source.length ?? 0;
+                                    for (let index = 0; index < length; index++) {
+                                        const from = source.at(index);
+                                        if (!from) continue;
+                                        const text = from?.text?.toString?.() ?? String(from?.text ?? "");
+                                        const created = target.addNode?.("tester");
+                                        if (!created) continue;
+                                        created.updateText?.(text);
+                                        cloneBranch(from.items, created.items);
+                                    }
+                                };
+                                cloneBranch(prevItems, nextItems);
+                            }
+                        }
+                    } catch {
+                        // Ignore errors during child item migration
+                    }
+                }
+                this._currentPage = next ?? v;
                 // 通知
                 this._currentPageSubscribers.forEach(fn => {
                     try {
@@ -145,6 +155,11 @@ export class GeneralStore {
                     // Ignore errors during snapshot saving
                 }
                 _update();
+
+                // 暫定ページ（ydocが不一致）を表示中の場合、プロジェクトデータの更新に合わせて再解決を試みる
+                if (this._currentPage && project?.ydoc && this._currentPage.ydoc !== project.ydoc) {
+                    this.currentPage = this._currentPage;
+                }
             };
             try {
                 ymap?.observeDeep?.(handler);

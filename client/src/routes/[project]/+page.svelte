@@ -42,7 +42,7 @@ function handlePageSelected(event: CustomEvent) {
     const pageName = event.detail.pageName;
 
     if (pageName) {
-        goto(`/${projectName}/${pageName}`);
+        goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
     }
 }
 

@@ -22,6 +22,12 @@ export function getEnv(key: string, defaultValue: string = ""): string {
         // 環境変数から直接値を取得
         const envValue = import.meta.env[key];
         if (envValue !== undefined) {
+            // Force 127.0.0.1 for Functions in test env to avoid localhost resolution issues
+            if (key === "VITE_FIREBASE_FUNCTIONS_URL" && envValue.includes("localhost")) {
+                const newValue = envValue.replace("localhost", "127.0.0.1");
+                log("env", "debug", `Using value for ${key} (forced 127.0.0.1): ${newValue}`);
+                return newValue;
+            }
             log("env", "debug", `Using value for ${key}: ${envValue}`);
             return envValue;
         }

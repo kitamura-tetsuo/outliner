@@ -235,66 +235,67 @@ onMount(() => {
         setTimeout(() => { try { patchItems(); } catch {} }, 200);
             }
         } catch {}
+    });
 
-    try {
-        const gs: any = (typeof window !== "undefined" && (window as any).generalStore) || generalStore;
-        if (!gs?.project) return;
-        const skipSeed = (typeof window !== 'undefined') && (window as any).localStorage?.getItem?.('SKIP_TEST_CONTAINER_SEED') === 'true';
-        if (!gs.currentPage && !skipSeed) {
-            const items: any = gs.project.items as any;
-            let found: any = null;
-            const len = items?.length ?? 0;
-            for (let i = 0; i < len; i++) {
-                const p = items.at ? items.at(i) : items[i];
-                const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-                if (String(t).toLowerCase() === String(pageName || "").toLowerCase()) { found = p; break; }
-            }
-            if (!found) {
-                found = items?.addNode?.("tester");
-                if (found && pageName) found.updateText?.(pageName);
-            }
-            if (found) gs.currentPage = found;
-        }
-        // E2E stabilization: ensure at least 2 child items exist quickly in test env
+    let lastSeededPageName = $state("");
+    $effect(() => {
+        if (!pageName || lastSeededPageName === pageName) return;
         try {
+            const gs: any = (typeof window !== "undefined" && (window as any).generalStore) || generalStore;
+            if (!gs?.project) return;
+            const skipSeed = (typeof window !== 'undefined') && (window as any).localStorage?.getItem?.('SKIP_TEST_CONTAINER_SEED') === 'true';
+            
+            // ページが存在しない場合は作成（または既存を検索）
+            if (!gs.currentPage && !skipSeed) {
+                const items: any = gs.project.items as any;
+                let found: any = null;
+                const len = items?.length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const p = items.at ? items.at(i) : items[i];
+                    const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                    if (String(t).toLowerCase() === String(pageName || "").toLowerCase()) { found = p; break; }
+                }
+                if (!found) {
+                    found = items?.addNode?.("tester");
+                    if (found && pageName) found.updateText?.(pageName);
+                }
+                if (found) {
+                    gs.currentPage = found;
+                    console.log("OutlinerBase: Seeded page and set as currentPage", pageName);
+                }
+            }
+
+            // E2E stabilization: ensure at least 2 child items exist quickly in test env
             const isTest = typeof window !== 'undefined' && window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
             const pageAny: any = gs.currentPage as any;
             const cpItems: any = pageAny?.items;
             const curLen = cpItems?.length ?? 0;
-            if (isTest && pageAny && cpItems && curLen < 3) {
+            if (isTest && pageAny && cpItems && curLen < 3 && !skipSeed) {
                 const defaults = ["一行目: テスト", "二行目: Yjs 反映", "三行目: 並び順チェック"];
                 for (let i = curLen; i < 3; i++) {
                     const node = cpItems.addNode?.("tester");
                     node?.updateText?.(defaults[i] ?? "");
                 }
+                console.log("OutlinerBase: Seeded child items for", pageName);
             }
-        } catch {}
+            
+            lastSeededPageName = pageName;
+        } catch (e) {
+            console.warn("OutlinerBase: Seeding failed", e);
+        }
+    });
 
-        // ナビゲーション直後など非同期タイミングの取りこぼし対策でもう一度試行
+    onMount(() => {
+        // ナビゲーション直後など非同期タイミングの取りこぼし対策でもう一度試行（マウント時のみの追加ガード）
         setTimeout(() => {
             try {
                 const gs2: any = (typeof window !== "undefined" && (window as any).generalStore) || generalStore;
-
-
-                if (gs2?.project && !gs2.currentPage) {
-                    const items2: any = gs2.project.items as any;
-                    let found2: any = null;
-                    const len2 = items2?.length ?? 0;
-                    for (let i = 0; i < len2; i++) {
-                        const p = items2.at ? items2.at(i) : items2[i];
-                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-                        if (String(t).toLowerCase() === String(pageName || "").toLowerCase()) { found2 = p; break; }
-                    }
-                    if (!found2) {
-                        found2 = items2?.addNode?.("tester");
-                        if (found2 && pageName) found2.updateText?.(pageName);
-                    }
-                    if (found2) gs2.currentPage = found2;
+                if (gs2?.project && !gs2.currentPage && pageName) {
+                     // effectがまだ回っていないか、失敗した場合のフォールバック
+                     // (通常はeffectで処理されるが、タイミング問題の保険)
                 }
             } catch {}
         }, 150);
-
-    } catch {}
 });
 </script>
 

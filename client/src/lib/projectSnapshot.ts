@@ -95,18 +95,31 @@ export function saveProjectSnapshot(project: Project | undefined): void {
             title: project.title ?? "",
             items: collectItems(project.items),
         };
-        if (isPlaceholder(snapshot)) return;
-        if (!hasMeaningfulContent(snapshot)) return;
+        if (isPlaceholder(snapshot)) {
+            console.log("[projectSnapshot] Skip saving: isPlaceholder=true");
+            return;
+        }
+        if (!hasMeaningfulContent(snapshot)) {
+            console.log("[projectSnapshot] Skip saving: hasMeaningfulContent=false");
+            return;
+        }
         const key = getStorageKey(snapshot.title);
         const payload = JSON.stringify(snapshot);
+        console.log(
+            `[projectSnapshot] Saving snapshot key="${key}" length=${payload.length} items=${snapshot.items.length}`,
+        );
+        console.log(
+            `[projectSnapshot] Snapshot content summary:`,
+            JSON.stringify(snapshot.items, null, 2).slice(0, 200),
+        );
         try {
             window.sessionStorage?.setItem(key, payload);
         } catch {}
         try {
             window.localStorage?.setItem(key, payload);
         } catch {}
-    } catch {
-        /* noop */
+    } catch (e) {
+        console.warn("[projectSnapshot] saveProjectSnapshot exception", e);
     }
 }
 
@@ -118,14 +131,19 @@ export function loadProjectSnapshot(title: string | undefined): ProjectSnapshot 
         for (const get of sources) {
             try {
                 const raw = get();
-                if (!raw) continue;
+                if (!raw) {
+                    console.log(`[projectSnapshot] Source returned null for key="${key}"`);
+                    continue;
+                }
                 const data = JSON.parse(raw) as ProjectSnapshot;
+                console.log(`[projectSnapshot] Loaded snapshot for key="${key}": items=${data?.items?.length}`);
                 if (!data || !Array.isArray(data.items)) continue;
                 return data;
             } catch {}
         }
         return null;
-    } catch {
+    } catch (e) {
+        console.error("[projectSnapshot] loadProjectSnapshot error", e);
         return null;
     }
 }

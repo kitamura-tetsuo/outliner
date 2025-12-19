@@ -14,6 +14,7 @@ import {
 import { getLogger } from "../lib/logger";
 const logger = getLogger("OutlinerItem");
 
+
 // Debug/Test flags and logger.debug suppression
 const DEBUG_LOG: boolean = (typeof window !== 'undefined') && (((window as any).__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
 const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && ((window as any).__E2E__ === true));
@@ -250,7 +251,7 @@ let commentCountLocal = $state(0);
  */
 function normalizeCommentCount(arr: any): number {
     if (!arr || typeof arr.length !== "number") return 0;
-    return Number(arr.length);
+    return Math.max(0, Number(arr.length));
 }
 
 /**
@@ -279,9 +280,11 @@ function ensureCommentsArray(): any {
  */
 function syncCommentCountFromItem() {
     try {
+        console.log("[OutlinerItem] syncCommentCountFromItem called for", model.id);
         const arr = ensureCommentsArray();
+        console.log("[OutlinerItem] comments array:", arr ? "exists" : "null", "length:", arr?.length, "local:", commentCountLocal);
         if (arr && typeof arr.length === "number") {
-            const newCount = normalizeCommentCount(arr);
+            const newCount = Math.max(0, normalizeCommentCount(arr));
             if (commentCountLocal !== newCount) {
                 commentCountLocal = newCount;
                 logger.debug(
@@ -298,9 +301,6 @@ function syncCommentCountFromItem() {
     }
 }
 
-/**
- * コメント数をローカル状態に適用（observe コールバック用）
- */
 function applyCommentCount(arrOrCount: any) {
     let newCount: number;
     if (typeof arrOrCount === "number") {
@@ -308,6 +308,12 @@ function applyCommentCount(arrOrCount: any) {
     } else {
         newCount = normalizeCommentCount(arrOrCount);
     }
+
+    // Ensure count is never negative
+    if (typeof newCount !== "number" || isNaN(newCount) || newCount < 0) {
+        newCount = 0;
+    }
+
     if (commentCountLocal !== newCount) {
         commentCountLocal = newCount;
     }
@@ -552,8 +558,9 @@ let textString = $state<string>("");
 let compTypeValue = $state<string | undefined>(undefined);
 
 onMount(() => {
+    console.log(`[OutlinerItem] MOUNTED id=${model?.id}`);
     let unsubs: Array<() => void> = [];
-    try {
+    // try {
         const anyItem: any = item as any;
         const tree = anyItem?.tree; const key = anyItem?.key;
         const m = tree?.getNodeValueFromKey?.(key) as any;
@@ -567,18 +574,50 @@ onMount(() => {
         if (m && typeof m.observe === "function") {
             const h2 = (e?: any) => {
                 try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
-                        compTypeValue = m.get?.("componentType");
+                    console.log(`[OutlinerItem] h2 observer triggered for ${model.id}`, e?.keysChanged);
+                    // 初期同期 (e is undefined) またはキー変更時
+                    if (!e || (e.keysChanged && e.keysChanged.has)) {
+                        if (!e || e.keysChanged.has('componentType')) {
+                            compTypeValue = m.get?.("componentType");
+                            console.log(`[OutlinerItem] componentType updated for ${model.id} to ${compTypeValue}`);
+                        }
+                        if (!e || e.keysChanged.has('commentCountCache')) {
+                            const cc = m.get?.('commentCountCache');
+                            console.log(`[OutlinerItem] commentCountCache changed for ${model.id} to ${cc}`);
+                            if (typeof cc === 'number') {
+                                applyCommentCount(cc);
+                            }
+                        }
                     }
                 } catch {}
             };
             m.observe(h2); unsubs.push(() => { try { m.unobserve(h2); } catch {} });
+            console.log(`[OutlinerItem] Attached h2 observer to YMap for ${model.id}`);
             h2();
         } else {
+            console.log(`[OutlinerItem] Failed to attach h2 observer for ${model.id}, m=${!!m}`);
             // フォールバック: 直接取得
             try { compTypeValue = (anyItem as any).componentType; } catch {}
+            try { 
+                const cc = (anyItem as any).value?.get?.('commentCountCache');
+                if (typeof cc === 'number') applyCommentCount(cc);
+            } catch {}
         }
-    } catch {}
+        // Polling debug
+        const timer = setInterval(() => {
+            try {
+                const arr = ensureCommentsArray();
+                const len = arr ? arr.length : 0;
+                 // Force update if mismatch
+                if (typeof len === 'number' && len !== commentCountLocal) {
+                    const safeLen = Math.max(0, len);
+                    if (commentCountLocal !== safeLen) {
+                        commentCountLocal = safeLen;
+                    }
+                }
+            } catch {}
+        }, 500);
+        unsubs.push(() => clearInterval(timer));
     return () => { for (const fn of unsubs) { try { fn(); } catch {} } };
 });
 
@@ -1085,6 +1124,16 @@ function handleMouseMove(event: MouseEvent) {
     // 左ボタンが押されていない場合は無視
     if (event.buttons !== 1) return;
 
+    // Alt+Shift+ドラッグの場合は矩形選択（ボックス選択）
+    // NOTE: Check this BEFORE hasCursorBasedOnState because we might be dragging over other items
+    if (event.altKey && event.shiftKey) {
+        // 現在のマウス位置を取得
+        const currentPosition = getClickPosition(event, textString);
+        // 矩形選択の処理
+        handleBoxSelection(event, currentPosition);
+        return;
+    }
+
     // 編集中でない場合は無視
     if (!hasCursorBasedOnState()) return;
 
@@ -1093,13 +1142,6 @@ function handleMouseMove(event: MouseEvent) {
 
     // 現在のマウス位置を取得
     const currentPosition = getClickPosition(event, textString);
-
-    // Alt+Shift+ドラッグの場合は矩形選択（ボックス選択）
-    if (event.altKey && event.shiftKey) {
-        // 矩形選択の処理
-        handleBoxSelection(event, currentPosition);
-        return;
-    }
 
     // 通常の選択範囲を更新
     if (hiddenTextareaRef) {
@@ -1285,31 +1327,6 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
             "local",
         );
 
-        // 選択確定のたびに矩形選択テキストを計算して lastCopiedText に保持（paste フォールバックのため）
-        try {
-            if (typeof window !== 'undefined') {
-                const lines: string[] = [];
-                for (const r of boxSelectionRanges) {
-                    const el = document.querySelector(`[data-item-id="${r.itemId}"] .item-text`) as HTMLElement | null;
-                    let full = el?.textContent || '';
-                    if (!full) {
-                        // generalStore からのフォールバック
-                        const w: any = (window as any);
-                        const items: any = w?.generalStore?.currentPage?.items;
-                        const len = items?.length ?? 0;
-                        for (let i = 0; i < len; i++) {
-                            const it = items.at ? items.at(i) : items[i];
-                            if (it?.id === r.itemId) { full = String(it?.text ?? ''); break; }
-                        }
-                    }
-                    const s = Math.max(0, Math.min(full.length, Math.min(r.startOffset, r.endOffset)));
-                    const e = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
-                    lines.push(full.substring(s, e));
-                }
-                (window as any).lastCopiedText = lines.join('\n');
-            }
-        } catch {}
-
         // カーソル位置を更新
         editorOverlayStore.setCursor({
             itemId: model.id,
@@ -1325,6 +1342,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
             ranges: boxSelectionRanges,
         });
     }
+
 }
 
 /**

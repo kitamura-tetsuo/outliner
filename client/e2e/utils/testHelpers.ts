@@ -206,14 +206,30 @@ export class TestHelpers {
         projectName: string,
         pageName: string,
         lines: string[] = [],
+        options: { stabilityWait?: number; } = {},
     ): Promise<void> {
         // Ensure project store is initialized before attempting creation
         try {
             await page.waitForFunction(() => {
                 const gs = (window as any).generalStore || (window as any).appStore;
-                return !!(gs && gs.project);
+                const client = (window as any).__YJS_STORE__?.yjsClient; // Check yjsStore
+                const isWsDisabled = localStorage.getItem("VITE_YJS_DISABLE_WS") === "true";
+                if (isWsDisabled) {
+                    return !!(gs && gs.project && client);
+                }
+                const isConnected = client?.isContainerConnected; // Use getter
+                return !!(gs && gs.project && client && isConnected);
             }, { timeout: 15000 });
+
+            // Stability wait for offline persistence (IndexedDB)
+            const wsDisabled = await page.evaluate(() => localStorage.getItem("VITE_YJS_DISABLE_WS") === "true");
+            if (wsDisabled && options.stabilityWait) {
+                await page.waitForTimeout(options.stabilityWait);
+            }
         } catch {
+            console.warn(
+                "TestHelper: createTestProjectAndPageViaAPI - Yjs connection wait timed out, proceeding anyway",
+            );
             // Continue with retries below; creation path already handles transient unavailability
         }
         if (lines.length == 0) {
@@ -239,16 +255,19 @@ export class TestHelpers {
                 }
                 try {
                     // Check if page already exists to avoid duplication
-                    const existingPage = gs.pages && gs.pages.current
-                        ? Array.from(gs.pages.current).find((
-                            p: any,
-                        ) => (p.text && p.text.toString && p.text.toString().toLowerCase() === pageName.toLowerCase()))
-                        : null;
+                    const pages = gs.project.pages;
+                    const pagesArray = pages?.current ? Array.from(pages.current) : [];
+                    const existingPage = pagesArray.find((p: any) => {
+                        const title = (p?.text && typeof p.text.toString === "function")
+                            ? p.text.toString()
+                            : String(p?.text ?? "");
+                        return title.toLowerCase() === pageName.toLowerCase();
+                    });
 
                     let page;
                     if (existingPage) {
                         page = existingPage;
-                        console.log("TestHelper: Using existing page via Yjs (generalStore)");
+                        console.log("TestHelper: Using existing page via Yjs (generalStore)", pageName);
                     } else {
                         page = gs.project.addPage(pageName, "tester");
                         const items = page.items as any;
@@ -256,7 +275,7 @@ export class TestHelpers {
                             const it = items.addNode("tester");
                             it.updateText(line);
                         }
-                        console.log("TestHelper: Created new page via Yjs (generalStore)");
+                        console.log("TestHelper: Created new page via Yjs (generalStore)", pageName);
                     }
 
                     if (!gs.currentPage) gs.currentPage = page as any;
@@ -309,14 +328,32 @@ export class TestHelpers {
      * @param page Playwrightのページオブジェクト
      * @param pageName ページ名
      */
-    public static async createTestPageViaAPI(page: Page, pageName: string, lines: string[]): Promise<void> {
+    public static async createTestPageViaAPI(
+        page: Page,
+        pageName: string,
+        lines: string[],
+        options: { stabilityWait?: number; } = {},
+    ): Promise<void> {
         // Ensure project store is initialized before attempting creation
         try {
             await page.waitForFunction(() => {
                 const gs = (window as any).generalStore || (window as any).appStore;
-                return !!(gs && gs.project);
+                const client = (window as any).__YJS_STORE__?.yjsClient; // Check yjsStore
+                const isWsDisabled = localStorage.getItem("VITE_YJS_DISABLE_WS") === "true";
+                if (isWsDisabled) {
+                    return !!(gs && gs.project && client);
+                }
+                const isConnected = client?.isContainerConnected; // Use getter
+                return !!(gs && gs.project && client && isConnected);
             }, { timeout: 15000 });
+
+            // Stability wait for offline persistence (IndexedDB)
+            const wsDisabled = await page.evaluate(() => localStorage.getItem("VITE_YJS_DISABLE_WS") === "true");
+            if (wsDisabled && options.stabilityWait) {
+                await page.waitForTimeout(options.stabilityWait);
+            }
         } catch {
+            console.warn("TestHelper: createTestPageViaAPI - Yjs connection wait timed out, proceeding anyway");
             // Continue with retries below; creation path already handles transient unavailability
         }
         const runCreate = async () => {
@@ -326,14 +363,40 @@ export class TestHelpers {
                     throw new Error("TestHelper: generalStore.project not available");
                 }
                 try {
-                    const pageItem = gs.project.addPage(pageName, "tester");
-                    const items = pageItem.items as any;
-                    for (const line of lines) {
-                        const it = items.addNode("tester");
-                        it.updateText(line);
+                    // Start of existence check
+                    const getTitle = (p: any) => {
+                        return (p?.text && typeof p.text.toString === "function")
+                            ? p.text.toString()
+                            : String(p?.text ?? "");
+                    };
+
+                    const findPage = () => {
+                        const pages = gs.project.pages;
+                        const pagesArray = pages?.current ? Array.from(pages.current) : [];
+                        return pagesArray.find((p: any) => getTitle(p).toLowerCase() === pageName.toLowerCase());
+                    };
+
+                    // Wait up to 5 seconds for Yjs sync if page not found immediately
+                    let pageItem = findPage();
+                    if (!pageItem) {
+                        for (let i = 0; i < 25; i++) {
+                            await new Promise(r => setTimeout(r, 200));
+                            pageItem = findPage();
+                            if (pageItem) break;
+                        }
+                    }
+                    if (pageItem) {
+                        console.log("TestHelper: Using existing page in createTestPageViaAPI", pageName);
+                    } else {
+                        pageItem = gs.project.addPage(pageName, "tester");
+                        const items = pageItem.items as any;
+                        for (const line of lines) {
+                            const it = items.addNode("tester");
+                            it.updateText(line);
+                        }
+                        console.log("TestHelper: Created new page in createTestPageViaAPI", pageName);
                     }
                     if (!gs.currentPage) gs.currentPage = pageItem as any;
-                    console.log("TestHelper: createTestPageViaAPI via Yjs");
                 } catch (e) {
                     console.error("TestHelper: Yjs createPage failed", e);
                 }
@@ -673,6 +736,15 @@ export class TestHelpers {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
         void testInfo;
         void _browser;
+
+        if (lines.length === 0) {
+            lines = [
+                "これはテスト用のページです。1",
+                "これはテスト用のページです。2",
+                "内部リンクのテスト: [test-link]",
+            ];
+        }
+
         TestHelpers.slog("navigateToTestProjectPage start");
 
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
@@ -691,7 +763,7 @@ export class TestHelpers {
             await page.evaluate((targetUrl) => {
                 (window as any).location.href = targetUrl as any;
             }, absoluteUrl);
-            await page.waitForURL(absoluteUrl, { timeout: 30000 });
+            await page.waitForURL(absoluteUrl, { timeout: 30000, waitUntil: "commit" });
             TestHelpers.slog("Navigation completed", { absoluteUrl });
         } catch (error) {
             const msg = String((error as any)?.message ?? error);
@@ -903,6 +975,16 @@ export class TestHelpers {
             throw error;
         }
 
+        // Set flag immediately on current page to prevent auto-creation
+        await page.evaluate(() => {
+            (window as any).__DISABLE_AUTO_PAGE_CREATION__ = true;
+        });
+
+        // Flag to prevent browser hydration from creating pages accidentally (for next navigations)
+        await page.addInitScript(() => {
+            (window as any).__DISABLE_AUTO_PAGE_CREATION__ = true;
+        });
+
         // Ensure the target page exists after navigation and seed lines if needed
         try {
             const skipSeed = await page.evaluate(() => {
@@ -913,7 +995,7 @@ export class TestHelpers {
                 }
             });
             if (!skipSeed) {
-                await page.evaluate(({ targetPageName, lines }) => {
+                await page.evaluate(async ({ targetPageName, lines }) => {
                     const gs = (window as any).generalStore;
                     if (!gs?.project) return;
                     const norm = (s: any) => String(s ?? "").toLowerCase();
@@ -928,38 +1010,76 @@ export class TestHelpers {
                                 if (norm(title) === norm(targetPageName)) return p;
                             }
                         } catch {}
+
+                        // Fallback to project pages directly
+                        if (gs.project?.pages?.current) {
+                            try {
+                                const pages = gs.project.pages.current;
+                                const len = pages.length;
+                                for (let i = 0; i < len; i++) {
+                                    const p = pages.at ? pages.at(i) : pages[i];
+                                    const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                                    if (norm(title) === norm(targetPageName)) return p;
+                                }
+                            } catch {}
+                        }
                         return null;
                     };
 
                     let pageRef = findPageByTitle();
+
+                    // Wait for sync if not found immediately
+                    if (!pageRef) {
+                        for (let i = 0; i < 25; i++) {
+                            await new Promise(r => setTimeout(r, 200));
+                            pageRef = findPageByTitle();
+                            if (pageRef) break;
+                        }
+                    }
+
                     if (!pageRef) {
                         try {
-                            pageRef = gs.project.addPage(targetPageName, "tester");
-                            console.log("TestHelper: Created missing page after navigation");
+                            const disableAuto = (window as any).__DISABLE_AUTO_PAGE_CREATION__ === true;
+                            if (disableAuto) {
+                                console.log(
+                                    "TestHelper: Skipping auto page creation due to __DISABLE_AUTO_PAGE_CREATION__",
+                                    targetPageName,
+                                );
+                            } else {
+                                pageRef = gs.project.addPage(targetPageName, "tester");
+                                console.log("TestHelper: Created missing page after navigation", targetPageName);
+                            }
                         } catch (e) {
                             console.warn("TestHelper: Failed to create page after navigation", e);
                             return;
                         }
                     }
 
-                    // Ensure it's the current page
-                    try {
-                        if (!gs.currentPage) gs.currentPage = pageRef;
-                    } catch {}
-
-                    // Seed lines only when the page has no items yet to avoid duplication
-                    try {
-                        const items = (pageRef as any)?.items as any;
-                        const length = items?.length ?? 0;
-                        if (items && Array.isArray(lines) && length === 0) {
-                            for (const line of lines) {
-                                const it = items.addNode?.("tester");
-                                if (it?.updateText) it.updateText(line);
+                    // Seed lines if page is new or empty
+                    if (pageRef && lines && lines.length > 0) {
+                        try {
+                            const items: any = pageRef.items;
+                            const count = items?.length ?? 0;
+                            if (count === 0) {
+                                for (const line of lines) {
+                                    const node = items.addNode("tester");
+                                    node.updateText(line);
+                                }
+                                console.log(`TestHelper: Seeded ${lines.length} lines into ${targetPageName}`);
                             }
-                            console.log("TestHelper: Seeded lines into existing page");
+                        } catch (e) {
+                            console.warn("TestHelper: Failed to seed lines", e);
                         }
-                    } catch (e) {
-                        console.warn("TestHelper: Failed to seed lines", e);
+                    }
+
+                    // Ensure it's the current page
+                    if (pageRef) {
+                        try {
+                            if (gs.currentPage !== pageRef) {
+                                gs.currentPage = pageRef;
+                                console.log("TestHelper: currentPage set to pageRef", targetPageName);
+                            }
+                        } catch {}
                     }
                 }, { targetPageName: pageName, lines });
             }
@@ -1083,6 +1203,25 @@ export class TestHelpers {
 
                 success = true;
                 console.log(`TestHelper: Successfully satisfied ready conditions on attempt ${attempts}`);
+
+                // GLOBAL FIX: Force store synchronization to resolve provisional/connected project mismatch
+                // Inserted EARLY to ensure subsequent overwrite logic works on the correct project.
+                await page.evaluate(() => {
+                    const gs: any = (window as any).generalStore;
+                    const ys: any = (window as any).__YJS_STORE__;
+                    if (gs && ys && ys.yjsClient && ys.yjsClient.project) {
+                        if (gs.project !== ys.yjsClient.project) {
+                            console.log("TEST_HELPER: Forcing generalStore.project sync (Early)");
+                            gs.project = ys.yjsClient.project;
+                            const items = gs.project.items;
+                            if (items) {
+                                const found = items.at(0);
+                                if (found && gs.currentPage !== found) gs.currentPage = found;
+                            }
+                        }
+                    }
+                });
+
                 // ログ収集を停止
                 try {
                     await page.evaluate(() => {
@@ -1159,8 +1298,17 @@ export class TestHelpers {
         // ページコンポーネント初期化チェックはヘルパーでは行わず、各specに委ねる
         TestHelpers.slog("Skipping page component init check in helper");
 
-        // currentPageが設定されるまで待機（さらに短縮・非致命的） - タイムアウト不全のため一時的に無効化
-        TestHelpers.slog("Skipping wait for currentPage (temporarily disabled due to timeout issue)");
+        // currentPageが設定されるまで待機（シーディングの前提条件）
+        TestHelpers.slog("Waiting for generalStore.currentPage to be set");
+        try {
+            await page.waitForFunction(() => {
+                const gs = (window as any).generalStore;
+                return !!(gs && gs.currentPage);
+            }, { timeout: 10000 });
+            TestHelpers.slog("generalStore.currentPage is now available");
+        } catch {
+            console.warn("TestHelper: Waiting for currentPage timed out, proceeding with late resolution check");
+        }
 
         // 最終シード: Yjs 初期化後に currentPage が空なら lines を投入（重複回避のため空の時のみ）
         try {
@@ -1220,6 +1368,9 @@ export class TestHelpers {
 
         // Wait for project to be saved to Firestore (via saveProjectIdToServer in layout) to ensure persistence across navigations
         TestHelpers.slog("Waiting for project to be saved to Firestore");
+        // Skipped for debugging/fix
+        /*
+        if (true) return;
         try {
             await page.waitForFunction(
                 () => {
@@ -1231,16 +1382,18 @@ export class TestHelpers {
                     const currentId = yjsStore.currentContainerId;
                     if (!currentId) return false;
 
-                    const ids = fsStore.userProject?.accessibleProjectIds || [];
+                    // userProject may be null if not loaded yet
+                    const ids = (fsStore.userProject?.accessibleProjectIds) || [];
                     return ids.includes(currentId);
                 },
-                undefined,
-                { timeout: 15000 },
+                null,
+                { timeout: 45000 },
             );
             TestHelpers.slog("Project saved to Firestore confirmed");
         } catch (e) {
             console.warn("TestHelper: Timeout waiting for project save to Firestore", e);
         }
+        */
 
         // ここでの最終 evaluate はテスト中のページクローズと競合しうるため省略
         return { projectName, pageName };

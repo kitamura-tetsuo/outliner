@@ -103,10 +103,12 @@ export class YjsClient {
 
     public get isContainerConnected(): boolean {
         try {
-            // WebsocketProvider has a private flag; infer from wsconnected when available
             const p: any = this._provider;
-            if (!p) return true; // treat offline as connected for local mode
-            return !!(p.wsconnected ?? p.connected ?? p._connected ?? false);
+            if (!p) {
+                return true; // treat offline as connected for local mode
+            }
+            const connected = !!(p.wsconnected ?? p.connected ?? p._connected ?? false);
+            return connected;
         } catch {
             return true;
         }

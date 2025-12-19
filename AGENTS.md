@@ -161,7 +161,8 @@ Mocks are generally forbidden. Limited exceptions:
 ## 3. Code Style
 
 - Prefer `undefined` over `null`.
-- Avoid duplicate functions and do not use `page.waitForLoadState('networkidle')`.
+- Avoid duplicate functions.
+- **NEVER use `page.waitForLoadState('networkidle')`**. It is unreliable in applications with continuous network activity (e.g., polling, Yjs/Firebase sync). Instead, wait for specific UI states using `await expect(locator).toBeVisible()` or `page.waitForFunction`.
 - Process synchronously when possible.
 - Write all branch names and commit messages in English.
 - Follow error message when git commit fails by pre-commit hooks.

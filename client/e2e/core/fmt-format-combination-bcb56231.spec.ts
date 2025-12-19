@@ -1,4 +1,5 @@
-import "../utils/registerAfterEachSnapshot";
+import { registerAfterEach } from "../utils/registerAfterEachSnapshotFn";
+registerAfterEach();
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature FMT-0002

@@ -19,7 +19,7 @@ async function fetchApi(path: string, body: ApiRequestBody) {
 
     const url = getFirebaseFunctionUrl(path);
 
-    console.log(`Schedule API: Calling ${url}`);
+    console.log(`Schedule API: Calling ${url} with pageId=${body.pageId} (type=${typeof body.pageId})`);
 
     const res = await fetch(url, {
         method: "POST",
@@ -31,7 +31,9 @@ async function fetchApi(path: string, body: ApiRequestBody) {
         console.error(`Schedule API error: ${res.status} - ${errorText}`);
         throw new Error(`API error ${res.status}: ${errorText}`);
     }
-    return res.json();
+    const data = await res.json();
+    console.log(`Schedule API: Response from ${path}:`, data);
+    return data;
 }
 
 export async function createSchedule(

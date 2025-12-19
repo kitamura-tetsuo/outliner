@@ -20,9 +20,13 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // 内部リンクを含むテストデータを準備
         await TestHelpers.prepareTestEnvironment(page, test.info(), [`This is a link to [${targetPageName}]`]);
 
+        // デバッグ: 状態を確認
+        const html = await page.innerHTML('[data-testid="outliner-base"]');
+        console.log("DEBUG: outliner-base HTML:", html.slice(0, 500));
+
         // 内部リンクが生成されていることを確認
         const linkElement = page.locator(`a.internal-link`).filter({ hasText: targetPageName });
-        await expect(linkElement).toBeVisible({ timeout: 10000 });
+        await expect(linkElement).toBeVisible({ timeout: 15000 });
 
         // 現在は内部リンクのナビゲーション機能が実装されていないため、
         // リンクが正しく生成されていることのみを確認

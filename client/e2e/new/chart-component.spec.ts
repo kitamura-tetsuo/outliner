@@ -17,15 +17,11 @@ test.describe("Chart Component E2E", () => {
     });
 
     test("should display chart component option in dropdown", async ({ page }) => {
-        const projectName = page.url().split("/")[3];
-        const pageName = page.url().split("/")[4];
-        await page.goto(`/${projectName}/${pageName}`);
+        // Wait for the outliner items to be ready (already on the page from prepareTestEnvironment)
+        await TestHelpers.waitForOutlinerItems(page);
 
-        // Wait for the page to load and find an item
-        await page.waitForSelector(".outliner-item", { timeout: 20000 });
-
-        // Find the first non-title item's component selector (skip index 0 which is the page title)
-        const componentSelector = await page.locator(".component-selector select").nth(1);
+        // Find the first non-title item's component selector (the first selector is for the first non-title item)
+        const componentSelector = await page.locator(".component-selector select").first();
         await expect(componentSelector).toBeVisible();
 
         // Check if "チャート" option is available (Japanese text)

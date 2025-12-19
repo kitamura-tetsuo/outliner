@@ -1,4 +1,5 @@
 <script lang="ts">
+import { browser } from "$app/environment";
 import { goto } from "$app/navigation";
 import { resolve } from "$app/paths";
 import { page } from "$app/stores";
@@ -12,12 +13,12 @@ import {
     updateSchedule,
 } from "../../../../services";
 import { store } from "../../../../stores/store.svelte";
-import type { Item } from "../../../../schema/app-schema";
 
 let project = $state("");
 let pageTitle = $state("");
 let pageId = $state("");
 let schedules = $state<Schedule[]>([]);
+let loading = $state(false); // eslint-disable-line @typescript-eslint/no-unused-vars
 let publishTime = $state("");
 let editingId = $state("");
 let editingTime = $state("");
@@ -28,8 +29,10 @@ onMount(async () => {
     project = decodeURIComponent(params.project || "");
     pageTitle = decodeURIComponent(params.page || "");
 
+    console.log("Schedule page: onMount started for project=", project, "pageTitle=", pageTitle);
+
+    // 0) セッションに固定されたpageIdを候補として読み出す
     let sessionPinnedPageId: string | undefined;
-    // 0) セッションに固定されたpageIdを候補として読み出す（ただし即returnせず、現在ページと一致するかを確認する）
     try {
         if (typeof window !== "undefined") {
             const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
@@ -40,67 +43,76 @@ onMount(async () => {
             }
         }
     } catch {}
-    // セッションに保存されている pageId がある場合は最優先で採用する。
-    // 一度解決した pageId を後続の currentPage などで上書きしてしまうと
-    // リロード後に別のページIDを指してしまうことがあるため、
-    // ここで先に固定しておく。
-    if (sessionPinnedPageId) {
-        pageId = sessionPinnedPageId;
-    }
 
-    // store.currentPage が設定されるまで最大5秒待機
+    // store.currentPage が設定され、かつページタイトルが一致するまで最大8秒待機
+    // リロード直後は store.currentPage が古いページのままだったり null だったりするため
     let attempts = 0;
-    while (!store.currentPage && attempts < 50) {
+    while (attempts < 80) {
+        try {
+            const current = store.currentPage;
+            const currentTitle = current?.text?.toString?.() ?? "";
+            if (current && currentTitle.toLowerCase() === pageTitle.toLowerCase()) {
+                pageId = String(current.id ?? "");
+                console.log("Schedule page: store.currentPage matched!", { title: currentTitle, id: pageId });
+                break;
+            }
+        } catch {}
         await new Promise(resolve => setTimeout(resolve, 100));
         attempts++;
     }
 
-    // 1) 最優先: currentPage が現在のページを指している場合に使用（別ページの値が残っているケースを除外）
-    try {
-        const current = store.currentPage;
-        const currentTitle = current?.text?.toString?.() ?? "";
-        if (
-            !pageId &&
-            current &&
-            currentTitle.toLowerCase() === pageTitle.toLowerCase()
-        ) {
-            pageId = String(store.currentPage?.id ?? "");
-        }
-    } catch {}
-
-    // 2) currentPage が未確定の場合は URL の pageTitle から該当ページを特定
+    // 1) currentPage で解決できない場合は store.pages から検索
     if (!pageId) {
         try {
             const items = store.pages?.current;
-            const len = items?.length ?? 0;
-            let found: Item | undefined = undefined;
-            for (let i = 0; i < len; i++) {
-                const p = items?.at(i);
-                if (!p) continue;
-                const title = p.text.toString();
+            const itemsArray = items ? Array.from(items) : [];
+            console.log("Schedule page: Searching in store.pages.count=", itemsArray.length);
+            for (const p of itemsArray) {
+                const title = (p as any)?.text?.toString?.() ?? "";
                 if (title.toLowerCase() === pageTitle.toLowerCase()) {
-                    found = p;
+                    pageId = (p as any).id;
+                    console.log("Schedule page: Found in store.pages. id=", pageId);
                     break;
                 }
             }
-            if (found) {
-                pageId = found.id;
-            }
-        } catch {}
+        } catch (e) {
+            console.warn("Schedule page: Error searching in store.pages", e);
+        }
     }
 
-    // 3) 最後の手段としてセッションの候補を使用（E2E安定化）
+    // 2) 最後の手段としてセッションの候補を使用（E2E安定化）
     if (!pageId && sessionPinnedPageId) {
         pageId = sessionPinnedPageId;
         console.log("Schedule page: Using session fallback pageId=", sessionPinnedPageId);
     }
 
+    // Safety check for ID switching
+    if (pageId && sessionPinnedPageId && String(pageId) !== String(sessionPinnedPageId)) {
+        console.warn("Schedule page: Page ID Switching detected!", {
+            foundId: pageId,
+            sessionPinnedId: sessionPinnedPageId,
+            pageTitle
+        });
+        // We favor the one found in the current store/project over the old session one
+    }
+
+
     if (!pageId) {
-        console.error("Schedule page: pageId is empty, cannot load schedules");
+        console.error("Schedule page: pageId is empty, cannot load schedules. Attempts=", attempts, "pageTitle=", pageTitle);
+        // Debug: Log all available pages
+        try {
+            const items = store.pages?.current;
+            const itemsArray = items ? Array.from(items) : [];
+            console.log("Schedule page: Available pages:", itemsArray.map((p: any) => ({
+                title: p?.text?.toString?.() ?? "",
+                id: p?.id
+            })));
+        } catch {}
         return;
     }
 
-    // 安定化: 解決したpageIdをセッションに保存し、リロード時に同一IDを再利用
+
+    // 安定化: 解決したpageIdをセッションに保存
     try {
         if (typeof window !== "undefined") {
             const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
@@ -109,21 +121,40 @@ onMount(async () => {
         }
     } catch {}
 
-    await refresh();
+    // Wait for auth to be ready if in test environment
+    if (typeof window !== "undefined") {
+        for (let i = 0; i < 50; i++) {
+            if ((window as any).__USER_MANAGER__?.getCurrentUser()) break;
+            await new Promise(r => setTimeout(r, 200));
+        }
+    }
+
+    console.log("Schedule page: starting initial refresh");
+    // $effect handles the initial refresh and any subsequent pageId changes
+});
+
+$effect(() => {
+    if (pageId && browser) {
+        console.log("Schedule page: pageId is set, triggering refresh. id=", pageId);
+        refresh();
+    }
 });
 
 async function refresh() {
     if (!pageId) {
-        console.error("Schedule page: Cannot refresh, pageId is empty");
+        console.warn("Schedule page: refresh aborted because pageId is missing");
         return;
     }
-    console.log("Schedule page: Refreshing schedules for pageId:", pageId);
+    loading = true;
     try {
-        schedules = await listSchedules(pageId);
-        console.log("Schedule page: Loaded schedules:", schedules);
-    }
-    catch (err) {
-        console.error("Schedule page: Error loading schedules:", err);
+        console.log("Schedule page: calling listSchedules for id=", pageId);
+        const list = await listSchedules(pageId); // Changed from scheduleService.listSchedules to listSchedules
+        schedules = list;
+        console.log("Schedule page: listSchedules returned count=", schedules.length, "for id=", pageId);
+    } catch (e) {
+        console.error("Schedule page: listSchedules failed", e);
+    } finally {
+        loading = false;
     }
 }
 
@@ -275,3 +306,6 @@ function toLocalISOString(timestamp: number): string {
         {/each}
     </ul>
 </div>
+
+<style>
+</style>

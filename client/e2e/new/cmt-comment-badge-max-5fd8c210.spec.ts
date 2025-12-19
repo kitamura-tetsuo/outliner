@@ -47,10 +47,13 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
     });
 
     test("Yjs add/remove updates badge count", async ({ page }, testInfo) => {
+        test.setTimeout(60000);
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "PAGE TITLE",
             "COMMENT TARGET",
         ]);
+
+        page.on("console", msg => console.log(`[browser] ${msg.text()}`));
 
         const itemId = await page.evaluate(() => {
             const nodes = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id] .item-text"));

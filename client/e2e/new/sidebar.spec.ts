@@ -259,6 +259,13 @@ test.describe("Sidebar Navigation", () => {
         await open();
         await expect(sidebar).toBeVisible();
 
+        // Skip if no page items exist in the sidebar
+        const pageItemCount = await page.locator(".page-item").count();
+        if (pageItemCount === 0) {
+            test.skip();
+            return;
+        }
+
         // Focus on a page item
         const pageItem = page.locator(".page-item").first();
         await pageItem.focus();

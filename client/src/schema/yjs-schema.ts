@@ -1,9 +1,41 @@
 // Minimal Yjs-based schema wrappers for yjsService and tests
 
+import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 
 export class Item {
+    addComment(author: string, text: string) {
+        let arr = this.comments;
+        const time = Date.now();
+        const c = new Y.Map<any>();
+        const id = uuid();
+        c.set("id", id);
+        c.set("author", author);
+        c.set("text", text);
+        c.set("created", time);
+        c.set("lastChanged", time);
+        arr.push([c]);
+
+        // Also update commentCountCache like app-schema does, for completeness/fallback
+        this.value.set("commentCountCache", arr.length);
+        this.value.set("lastChanged", time);
+
+        return { id };
+    }
+
+    deleteComment(commentId: string) {
+        let arr = this.comments;
+        const ids = arr.toArray().map((m: any) => m.get("id"));
+        const idx = ids.findIndex((id: string) => id === commentId);
+        if (idx >= 0) {
+            arr.delete(idx, 1);
+            // Update cache
+            this.value.set("commentCountCache", arr.length);
+            this.value.set("lastChanged", Date.now());
+        }
+    }
+
     constructor(
         public readonly ydoc: Y.Doc,
         public readonly tree: YTree,
@@ -61,6 +93,16 @@ export class Item {
                 }
             } catch {}
         }
+    }
+
+    get comments(): Y.Array<any> {
+        // Y.Array<Y.Map<any>>
+        let arr = this.value.get("comments") as Y.Array<any> | undefined;
+        if (!arr) {
+            arr = new Y.Array<any>();
+            this.value.set("comments", arr);
+        }
+        return arr;
     }
 
     // 添付を削除

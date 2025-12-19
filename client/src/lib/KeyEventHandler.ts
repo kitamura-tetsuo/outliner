@@ -112,6 +112,16 @@ export class KeyEventHandler {
             cursors.forEach(c => c.formatCode());
         });
 
+        // Ctrl+C copy
+        add("c", true, false, false, () => {
+            const clipboardEvent = new ClipboardEvent("copy", {
+                clipboardData: new DataTransfer(),
+                bubbles: true,
+                cancelable: true,
+            });
+            document.dispatchEvent(clipboardEvent);
+        });
+
         // Ctrl+X cut
         add("x", true, false, false, () => {
             // カットイベントを手動で発生させる

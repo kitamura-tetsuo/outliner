@@ -33,8 +33,10 @@ test.describe("SEA-0001: page title search box", () => {
         // navigate back to first page to ensure SearchBox appears
         await page.goto(`/${encodeURIComponent(ids.projectName)}/${encodeURIComponent(ids.pageName)}`);
         // Wait for the page to be fully loaded and search box to be ready
-        await page.waitForLoadState("networkidle");
-        await page.waitForSelector(".page-search-box input", { state: "visible" });
+        // Wait for the page to be fully loaded and search box to be ready
+        // networkidle is flaky with long-polling/websocket connections, so use domcontentloaded + explicit selector wait
+        await page.waitForLoadState("domcontentloaded");
+        await page.waitForSelector(".page-search-box input", { state: "visible", timeout: 15000 });
     });
 
     test("search box navigates to another page", async ({ page }) => {
@@ -89,8 +91,18 @@ test.describe("SEA-0001: page title search box", () => {
         // Verify the result contains "second-page"
         await expect(firstResult).toContainText("second-page");
 
+        // Ensure input is focused before keyboard interaction
+        await searchInput.focus();
+
         // Navigate using keyboard
+        // 結果リストが安定するまで少し待機（レンダリングのちらつき防止）
+        await page.waitForTimeout(300);
         await page.keyboard.press("ArrowDown");
+
+        // Verify that an item is actually selected before pressing Enter
+        const selectedItem = page.locator(".page-search-box li.selected");
+        await expect(selectedItem).toBeVisible();
+
         await page.keyboard.press("Enter");
 
         // Verify navigation

@@ -10,27 +10,22 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Cursor sync between tabs", () => {
     test("typing in one tab shows in another", async ({ browser }, testInfo) => {
-        // Use a fixed project name to ensure both contexts connect to the same Yjs document
-        const projectName = `Test Project Sync ${Date.now()}`;
-        const pageName = `sync-test-page-${Date.now()}`;
-
         // Create the first browser context and page
         const context1 = await browser.newContext();
         const page1 = await context1.newPage();
 
-        // Enable Yjs WebSocket before page initialization using addInitScript
-        await page1.addInitScript(() => {
-            localStorage.removeItem("VITE_YJS_DISABLE_WS"); // Remove disable flag
-            localStorage.setItem("VITE_YJS_ENABLE_WS", "true"); // Set enable flag
-        });
-
-        // Prepare the environment after enabling WS
-        await TestHelpers.prepareTestEnvironment(page1, testInfo, [
-            "一行目: テスト",
-            "二行目: Yjs 反映",
-            "三行目: 並び順チェック",
-        ], undefined);
-        await page1.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
+        // Prepare the environment with "force" WS and seeded lines
+        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(
+            page1,
+            testInfo,
+            [
+                "一行目: テスト",
+                "二行目: Yjs 反映",
+                "三行目: 並び順チェック",
+            ],
+            undefined,
+            { ws: "force" },
+        );
 
         // Wait for Yjs connection to be established
         try {
@@ -46,19 +41,17 @@ test.describe("Cursor sync between tabs", () => {
         const context2 = await browser.newContext();
         const page2 = await context2.newPage();
 
-        // Also enable Yjs WebSocket for the second page
+        // Initialize the second page's environment to ensure flags (like WS force) are set
+        // But use ForProject version to avoid creating a new project/page
+        await TestHelpers.prepareTestEnvironmentForProject(page2, testInfo, [], undefined);
+        // Manually override WS mode for the second context since prepareTestEnvironmentForProject defaults to disable
         await page2.addInitScript(() => {
-            localStorage.removeItem("VITE_YJS_DISABLE_WS"); // Remove disable flag
-            localStorage.setItem("VITE_YJS_ENABLE_WS", "true"); // Set enable flag
+            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+            localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+            localStorage.removeItem("VITE_YJS_DISABLE_WS");
         });
 
-        // Prepare the environment for the second page using the same project
-        // Use the same initial content to ensure both pages start with identical content
-        await TestHelpers.prepareTestEnvironment(page2, testInfo, [
-            "一行目: テスト",
-            "二行目: Yjs 反映",
-            "三行目: 並び順チェック",
-        ], undefined);
+        // Navigate to the same project and page in the second context
         await page2.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
 
         // Wait for Yjs connection to be established on page2
@@ -71,9 +64,11 @@ test.describe("Cursor sync between tabs", () => {
             // Continue even if connection fails - test might still work with local sync
         }
 
-        // Wait for both pages to load completely with a shorter timeout
+        // Wait for both pages to load completely and synchronize
         await expect(page1.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
-        await expect(page2.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
+        // Wait for the seeded content to specifically appear on page2 to confirm synchronization
+        // Use getByText with regex to handle surrounding text/icons
+        await expect(page2.getByText(/テスト/).first()).toBeVisible({ timeout: 20000 });
 
         // Verify both pages have the same initial content
         const page1InitialTexts = await page1.locator(".outliner-item .item-text").allTextContents();
@@ -107,18 +102,11 @@ test.describe("Cursor sync between tabs", () => {
         // Wait for cursor visibility
         await TestHelpers.waitForCursorVisible(page1);
 
-        // Wait briefly to allow time for potential synchonization
-        await page1.waitForTimeout(5000);
+        // Wait for synchronization to reflect in page2 using Playwright's built-in retry logic
+        // Use regex and first() to avoid strict mode/exact match issues
+        await expect(page2.getByText(/hello/).first()).toBeVisible({ timeout: 30000 });
 
-        // Check if the change appears in page2 - this might not work without a proper Yjs connection
-        const page2Texts = await page2.locator(".outliner-item .item-text").allTextContents();
-        const page2Content = page2Texts.join("\n");
-        if (page2Content.includes("hello")) {
-            console.log("Yjs synchronization successful: 'hello' found in page2");
-        } else {
-            console.log("Yjs synchronization may have failed: 'hello' not found in page2");
-            console.log("Page2 content:", page2Content);
-        }
+        console.log("Yjs synchronization successful: 'hello' found in page2");
 
         // Since Yjs connection may not be established, we'll just verify that the operation didn't crash the app
         // and both pages are still accessible

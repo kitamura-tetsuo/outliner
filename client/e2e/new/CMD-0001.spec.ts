@@ -14,6 +14,8 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
+    // FIXME: Command palette confirm() doesn't insert table component properly.
+    // The command palette opens but the table is not inserted when selecting.
     test("insert table via palette", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
         const id = await TestHelpers.getItemIdByIndex(page, 0);
@@ -227,6 +229,8 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         await expect(page.locator(".inline-join-table")).toBeVisible();
     });
 
+    // FIXME: Command palette confirm() doesn't insert chart component properly.
+    // Same issue as insert table test - command palette selection doesn't work.
     test("filter and insert chart", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
 

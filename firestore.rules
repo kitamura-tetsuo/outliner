@@ -11,5 +11,10 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == userId;
       // Write is denied (handled by Functions)
     }
+
+    // Allow users to read their own userProjects document (New collection name)
+    match /userProjects/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }

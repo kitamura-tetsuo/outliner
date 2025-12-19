@@ -52,9 +52,11 @@ function hydrateFromSnapshotIfNeeded() {
     if (!projectName) return;
     if (!projectLooksLikePlaceholder(store.project)) return;
     const snapshot = loadProjectSnapshot(projectName);
+    console.log(`[SettingsPage] hydrateFromSnapshotIfNeeded: snapshot found? ${!!snapshot}`);
     if (!snapshot) return;
     try {
         const hydrated = snapshotToProject(snapshot);
+        console.log(`[SettingsPage] Hydrated project with items: ${hydrated.items.length}`);
         store.project = hydrated;
         try {
             store.currentPage = undefined;
@@ -77,6 +79,8 @@ function hasMeaningfulContent(content: string | undefined): boolean {
 }
 
 onMount(() => {
+    console.log("[SettingsPage] onMount triggered");
+    console.log(`[SettingsPage] store.project state:`, store.project ? { title: store.project.title, items: store.project.items?.length } : "undefined");
     // Try to get project from yjsStore first, then from store
     project = yjsStore.yjsClient?.getProject() || store.project;
     hydrateFromSnapshotIfNeeded();
