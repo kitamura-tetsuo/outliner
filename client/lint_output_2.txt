@@ -1,0 +1,1509 @@
+
+> outliner@0.0.1 lint
+> npx dprint fmt && eslint . --max-warnings=-1
+
+Formatted [1m1[0m file.
+
+/app/client/src/auth/UserManager.ts
+  18:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/components/LinkPreview.svelte
+  161:97   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  163:98   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  163:149  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  167:63   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/components/OutlinerBase.svelte
+   54:49  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   55:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   55:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   62:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   62:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   85:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   87:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   89:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  116:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  129:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  143:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  159:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  159:77  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  160:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  161:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  162:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  165:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  176:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  221:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  223:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  240:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  240:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  242:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  244:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  244:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  245:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  261:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  261:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  262:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  276:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  276:79  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  280:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  280:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  281:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  303:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/components/OutlinerItem.svelte
+    18:76   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    19:111  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    22:36   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    23:16   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    23:39   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    35:82   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    42:22   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    42:38   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    48:39   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    57:23   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    67:21   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    67:37   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    73:38   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    73:55   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    80:60   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    81:22   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    91:19   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+    91:41   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   102:19   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   102:41   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   103:19   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   104:22   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   104:41   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   141:59   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-unused-vars')
+   142:30   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-unused-vars')
+   233:60   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   234:63   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   251:37   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   259:33   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   261:28   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   304:40   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   346:50   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   384:24   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   384:38   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   385:21   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   387:30   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   405:15   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   405:41   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   454:31   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   458:45   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   459:47   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   460:41   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   482:18   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   482:69   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   483:25   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   483:46   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   485:25   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   487:26   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   490:29   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   494:20   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   494:60   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   525:30   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   525:55   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   541:37   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   542:24   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   545:25   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   547:30   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   557:24   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   557:38   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   559:55   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   568:29   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   579:47   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   637:65   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   643:42   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   767:53   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   898:15   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   898:37   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   942:57   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   955:57   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+   977:69   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1152:53   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1299:34   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1299:51   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1300:38   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1311:28   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1462:52   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1489:46   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1502:75   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1502:127  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1502:166  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1520:34   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1529:67   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1544:110  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1550:41   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1550:92   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1553:47   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1557:52   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1558:150  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1563:71   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1569:101  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1586:90   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1586:125  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1586:167  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1593:25   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1593:76   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1596:31   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1600:36   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1654:24   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1669:77   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1669:103  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1670:63   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1670:89   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1671:63   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1671:90   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1672:71   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1672:97   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1673:71   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1673:98   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1677:71   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1677:97   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1678:60   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1678:86   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1679:60   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1679:87   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1685:87   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1685:113  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1687:69   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1687:95   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1688:69   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1688:96   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1689:77   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1689:103  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1690:77   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1690:104  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1692:81   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1692:107  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1694:66   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1694:92   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1695:66   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1695:93   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1702:23   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1704:81   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1763:28   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1776:62   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1777:62   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1778:70   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1779:70   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1780:59   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1781:59   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1791:69   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1791:95   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1792:69   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1792:96   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1793:77   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1793:103  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1794:77   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1794:104  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1795:66   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1795:92   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1796:66   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1796:93   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1874:32   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1876:39   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1877:41   warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1926:128  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+  1927:129  warning  Unexpected any. Specify a different type                                                              @typescript-eslint/no-explicit-any
+
+/app/client/src/components/OutlinerItemAlias.svelte
+   25:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   25:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   26:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   28:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   52:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   52:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   65:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   70:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   71:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   72:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  137:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  137:78  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:95  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  162:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/components/OutlinerItemAttachments.svelte
+   8:111  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:21   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:36   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:28   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:49   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:43   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:89   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:24   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  47:46   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  47:68   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  50:25   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  50:40   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  51:24   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  53:49   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  59:83   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  59:109  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  61:93   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/components/OutlinerTree.svelte
+    36:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    37:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    76:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    76:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    78:91  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    92:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   154:49  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   156:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   173:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   181:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   182:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   200:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   201:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   202:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   286:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   287:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   288:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   366:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   380:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   498:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   513:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   547:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   564:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   598:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   613:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   621:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   622:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   623:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   629:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   656:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   670:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   693:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   701:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   703:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   717:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   728:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   742:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   747:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   757:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   762:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   771:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   788:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   795:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   797:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   809:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   817:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   819:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   829:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   849:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   857:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   863:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   870:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   876:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   890:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   907:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   954:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   973:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1025:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1025:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1031:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1068:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1079:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1081:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1095:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1103:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1107:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1112:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1120:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1137:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1159:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1161:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1176:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1189:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1202:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1207:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1229:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1241:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1254:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1261:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1285:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1294:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1302:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1316:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1316:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1323:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1324:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1382:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1391:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1446:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1474:37  warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+
+/app/client/src/components/PresenceAvatars.svelte
+  12:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/components/SearchBox.svelte
+  205:14  warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+  207:14  warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+
+/app/client/src/components/SearchPanel.svelte
+   37:37   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:30   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   86:35   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   87:20   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   90:42   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   91:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   92:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   94:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   94:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   94:84   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  103:31   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  105:20   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:42   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:84   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  137:38   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  137:78   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  139:66   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  139:82   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  139:114  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  142:29   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  142:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  147:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:53   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:97   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  151:75   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  151:91   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  151:112  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  155:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  157:56   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  157:79   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  157:105  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  159:53   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  159:97   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  161:75   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  161:91   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  161:112  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  169:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  178:22   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  178:172  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  178:218  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  178:254  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  178:300  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  182:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  184:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  186:30   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  192:60   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  194:33   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  194:73   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  196:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  196:70   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  196:91   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  199:35   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:30   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:189  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:235  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:271  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:317  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  205:26   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  213:35   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  231:46   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  237:37   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  237:77   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  240:47   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  240:70   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  253:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  253:106  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  255:10   warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+  327:104  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  327:149  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  328:110  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  328:155  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/components/Sidebar.svelte
+  53:37  warning  Unexpected href link without resolve()  svelte/no-navigation-without-resolve
+
+/app/client/src/global.d.ts
+  40:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:13  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  43:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  49:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/Cursor.test.ts
+   22:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  221:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  222:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  224:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  261:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  263:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  264:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  327:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  338:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  347:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  364:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  379:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/Cursor.ts
+    61:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    68:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    73:84  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    77:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    89:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    96:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    98:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   106:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   152:73  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   163:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   251:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   259:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   292:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   308:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   325:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   328:73  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   342:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   355:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   368:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   376:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   410:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   426:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   443:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   457:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   509:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   518:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   994:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1020:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1039:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1060:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1079:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1106:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1118:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1157:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1169:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1229:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1242:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1250:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1298:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1328:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1341:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1347:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1386:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1403:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1419:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1443:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1746:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1764:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1795:83  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1798:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1817:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1827:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1869:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1883:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1933:81  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1947:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1959:81  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1973:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1986:81  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2019:85  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2038:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2051:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2065:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2074:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2104:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2114:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2128:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2158:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2170:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2180:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2195:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2209:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2254:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2420:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2463:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2480:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2486:49  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2487:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/KeyEventHandler.test.ts
+   27:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   50:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   54:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   58:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/KeyEventHandler.ts
+   159:38   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   159:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   160:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   161:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   205:38   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   205:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   206:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   208:88   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   210:49   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   210:85   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   211:51   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   211:76   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   211:104  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   214:53   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   214:71   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   217:47   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   299:38   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   299:79   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   300:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   303:40   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   303:91   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   304:46   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   315:28   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   315:43   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   322:26   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   322:75   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   323:79   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   392:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   410:37   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   410:69   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   445:35   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   445:84   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   446:38   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   461:45   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   466:46   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   466:95   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   505:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   522:27   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   522:76   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   523:80   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   549:34   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   564:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   569:42   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   569:91   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   587:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   603:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   617:38   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   617:87   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   693:38   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   693:87   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   734:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   763:22   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   763:71   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   764:23   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   774:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   788:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   830:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   837:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   870:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   882:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   891:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   969:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   993:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1001:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1032:77   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1037:77   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1047:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1048:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1062:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1067:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1081:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1088:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1097:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1176:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1294:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1299:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1311:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1324:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1329:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1345:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1391:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1396:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1472:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1477:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1488:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1498:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1522:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1529:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1592:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1604:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1623:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1628:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1654:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1666:33   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1667:69   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1692:70   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1693:35   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1700:33   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1707:69   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1713:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1719:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1729:28   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1731:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1751:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1782:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1791:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1806:73   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1815:73   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1831:69   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1850:73   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1864:77   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1869:77   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1874:73   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1888:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1908:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1930:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1948:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1963:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1987:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1995:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2026:77   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2031:77   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2041:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2042:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2056:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2061:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2083:16   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/backlinkCollector.ts
+  49:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/cursor/CursorEditor.ts
+  175:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  187:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  217:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  236:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  380:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  397:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  399:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  406:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  408:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  415:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  422:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  423:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  423:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  441:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  448:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  448:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  452:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  453:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  454:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  467:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  469:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  490:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  491:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  492:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  494:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  523:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  551:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  552:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  561:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  562:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  564:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  570:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  572:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  585:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  588:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  591:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  690:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  693:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  720:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/cursor/CursorFormatting.ts
+    7:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    9:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  115:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/cursor/CursorNavigationUtils.ts
+  6:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/cursor/CursorSelection.ts
+    6:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    8:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  314:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  343:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  362:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  383:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  402:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  429:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  441:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  480:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  492:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  558:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  576:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  584:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  632:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  664:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  682:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  688:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  727:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  744:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  760:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  784:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/cursor/CursorTextOperations.ts
+   15:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  229:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  264:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  308:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  341:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  368:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  390:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/debug.ts
+   27:29  warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+  100:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  100:81  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/linkPreviewHandler.ts
+   90:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  133:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  147:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/logger.ts
+  139:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  152:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  209:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/search/index.ts
+   39:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   48:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   52:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   56:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   59:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   59:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   66:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   66:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   75:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   80:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   86:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   86:95  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   96:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  100:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  102:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:93  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  123:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  130:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  131:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  133:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  137:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/yjs/service.test.ts
+   51:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   54:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   91:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   96:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  101:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/yjs/service.ts
+    7:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   13:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   17:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   22:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   34:75  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   80:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   96:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  119:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  139:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  143:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  147:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  148:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  175:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  176:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  177:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  181:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  184:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  185:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  203:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  204:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/yjs/testHelpers.ts
+  193:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  210:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  260:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  263:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  264:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  265:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  268:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  324:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  330:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  331:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  334:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  338:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  503:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  505:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  537:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  548:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  574:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  575:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  577:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  591:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  597:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  606:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  615:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  626:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/lib/yjsService.svelte.ts
+   42:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   42:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   44:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   44:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   48:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   50:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   95:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   96:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  136:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  171:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/routes/+layout.svelte
+  228:24   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  232:26   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  233:25   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  266:33   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  266:76   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  286:56   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  349:33   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  350:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  352:49   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  352:60   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  354:80   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  361:100  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  362:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  362:91   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  366:80   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  366:121  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  377:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  384:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  384:55   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  386:69   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  390:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  403:100  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  406:81   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  414:75   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  417:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  418:58   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  431:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  434:55   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  434:66   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  442:44   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  449:55   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  452:55   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  452:66   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  455:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  455:70   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  458:75   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  462:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  463:58   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  470:44   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  480:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  481:88   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  481:122  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  483:52   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  484:85   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  484:119  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  486:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  487:92   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  487:126  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/routes/+page.svelte
+  62:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  68:14  warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+  96:18  warning  Unexpected href link without resolve()    svelte/no-navigation-without-resolve
+
+/app/client/src/routes/[project]/+layout.svelte
+  14:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:77  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  51:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  69:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  84:85  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/routes/[project]/+page.svelte
+  25:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:14  warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+  51:10  warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+
+/app/client/src/routes/[project]/[page]/+page.svelte
+    50:20   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    51:14   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    59:49   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    62:22   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    62:47   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   124:46   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   153:44   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   155:84   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   183:48   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   209:44   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   215:40   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   218:40   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   218:56   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   247:49   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   247:69   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   257:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   257:74   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   274:71   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   284:83   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   303:49   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   303:69   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   305:53   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   321:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   321:85   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   336:92   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   343:47   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   358:91   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   365:45   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   370:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   370:65   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   370:79   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   371:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   392:38   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   405:72   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   417:67   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   424:48   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   424:76   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   430:68   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   435:45   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   436:45   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   442:75   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   478:61   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   478:112  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   484:82   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   484:99   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   486:67   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   487:64   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   494:79   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   494:97   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   504:71   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   504:94   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   506:83   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   506:107  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   513:71   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   513:90   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   524:44   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   524:60   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   526:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   528:77   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   533:73   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   537:67   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   537:87   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   547:101  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   550:98   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   570:51   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   570:69   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   570:83   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   601:45   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   612:44   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   635:53   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   635:81   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   636:59   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   636:80   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   680:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   686:49   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   689:97   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   693:38   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   693:62   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   695:37   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   708:59   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   719:28   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   719:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   723:47   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   723:82   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   738:33   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   738:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   738:71   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   750:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   751:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   780:28   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   780:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   784:47   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   784:82   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   808:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   837:27   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   837:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   861:29   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   861:53   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   861:67   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   869:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   893:33   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   893:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   893:71   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   897:28   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   908:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   928:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   928:46   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   945:10   warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+   950:10   warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+   954:10   warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+   958:10   warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+   964:23   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   964:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   967:25   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   967:48   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   972:56   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   996:20   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1045:20   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1057:24   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/routes/clipboard-test/+page.svelte
+   50:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  118:75  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  130:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  152:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  238:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  253:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/routes/debug/+page.svelte
+   20:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   31:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   72:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   85:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  211:18  warning  Unexpected href link without resolve()    svelte/no-navigation-without-resolve
+
+/app/client/src/routes/demo/+page.svelte
+  1:10  warning  Unexpected href link without resolve()  svelte/no-navigation-without-resolve
+
+/app/client/src/routes/demo/paraglide/+page.svelte
+  13:10  warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+
+/app/client/src/routes/min/+page.svelte
+  42:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/routes/projects/containers/+page.svelte
+   49:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   62:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   71:18  warning  Unexpected goto() call without resolve()  svelte/no-navigation-without-resolve
+  187:19  warning  Unexpected href link without resolve()    svelte/no-navigation-without-resolve
+
+/app/client/src/routes/table/+page.svelte
+  10:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/routes/yjs-outliner/+page.svelte
+   8:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  18:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  20:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/schema/app-schema.iterable.test.ts
+   7:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  55:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  55:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  66:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  73:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  76:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/schema/yjs-schema.ts
+   13:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   14:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   88:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  119:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  129:49  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  197:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  213:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/AliasPickerStore.svelte.ts
+   43:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   43:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  159:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  181:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  181:75  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  182:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  188:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  188:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  190:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  190:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  190:96  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  212:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  212:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  213:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  238:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  240:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  240:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  247:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  248:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  249:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  288:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  288:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  296:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  296:82  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  300:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  300:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  300:99  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  302:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  339:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  339:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  339:96  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  367:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  367:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  367:92  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  393:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/CommandPaletteStore.svelte.ts
+   47:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   47:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   48:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   78:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   78:78  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  350:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  366:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  380:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  380:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  381:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  383:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  383:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  399:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  408:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  442:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/CommandPaletteStore.test.ts
+   5:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  11:85  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  33:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts
+   185:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   203:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   233:73  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   244:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   286:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   297:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   306:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   384:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   397:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   422:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   441:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   467:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   484:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   559:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   586:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   661:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   712:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   757:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   789:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   838:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1041:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1042:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1054:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1061:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1062:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1074:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1081:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1082:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1085:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1092:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1125:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1142:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1165:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1175:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1188:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1197:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1228:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1234:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1244:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1251:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1265:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1380:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1387:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1445:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/EditorOverlayStore.test.ts
+   5:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   6:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   8:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  12:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:75  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  42:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  48:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  52:73  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/OutlinerViewModel.test.ts
+  49:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  57:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  60:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  63:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/OutlinerViewModel.ts
+    9:28   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   13:26   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   80:36   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:53   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:54   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  136:55   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  146:38   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  147:34   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  148:35   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  150:40   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  161:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  161:106  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  217:40   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  222:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  222:34   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  260:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  261:30   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  320:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  320:44   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/PresenceStore.svelte.ts
+  44:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/UserPreferencesStore.svelte.ts
+  67:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/containerStore.svelte.ts
+  36:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/firestoreStore.svelte.ts
+   29:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   84:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   91:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  119:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  120:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  125:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  489:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  496:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  497:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/projectStore.svelte.ts
+  101:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  106:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  108:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/stores/yjsStore.svelte.ts
+   21:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   27:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   28:78  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   33:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   42:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  177:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/components/TestContainerSelector.svelte
+  19:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/firestoreStore.test.ts
+  59:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/fixtures/EnvProbe.svelte
+  2:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/fixtures/UserContainerDisplay.svelte
+   5:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   6:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/importExport.test.ts
+   19:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   21:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   25:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   26:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   36:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   38:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   42:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   43:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   47:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   48:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   59:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   61:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   65:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   66:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   67:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   70:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   71:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   85:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   89:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   90:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   98:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/integration/cnt-container-selector-reactivity-e3f1a9c2.integration.spec.ts
+  13:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  14:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  47:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  61:6   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  76:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  89:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/integration/cnt-shared-container-store-12ee98aa.integration.spec.ts
+  12:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  12:49  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/integration/cursor/cursor-navigation.integration.spec.ts
+   79:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  161:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  191:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  195:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  223:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/integration/globalStore.integration.spec.ts
+  8:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/integration/itm-add-new-items-with-enter-49d26e99.integration.spec.ts
+  17:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  18:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/integration/yjs/prs-cursor-sync-4d2e1b6a.integration.spec.ts
+  162:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/integration/yjs/prs-real-time-presence-indicators-7b6a1ea8.integration.spec.ts
+  22:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/integration/yjs/yjs-basic-sync-a1b2c3d4.integration.spec.ts
+  10:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/logger.test.ts
+    4:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   15:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   33:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  101:6   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:6   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  125:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/mocks/index.ts
+  36:90  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/presenceStore.test.ts
+  16:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/scheduleService.test.ts
+   22:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   54:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   84:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  111:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/search.test.ts
+   8:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  18:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  32:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/searchHistoryStore.test.ts
+  3:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/syncWorker.test.ts
+  6:9  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/userManager-global.test.ts
+  6:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/tests/utils/testDataHelper.ts
+  30:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:63  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  61:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  80:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  81:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  94:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/types/sql.d.ts
+   9:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/types/yjs-awareness-augmented.d.ts
+  24:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  29:95  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  33:95  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/types/yjs-orderedtree.d.ts
+   6:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/utils/ScrapboxFormatter.ts
+  256:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  858:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  858:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  878:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  910:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/utils/graphUtils.ts
+  16:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  22:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  43:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  46:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  51:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  52:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/utils/textUtils.test.ts
+   6:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   7:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  12:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  14:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  15:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/utils/textUtils.ts
+   8:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  13:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/src/yjs/YjsClient.ts
+   57:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   86:94  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  107:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  126:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  126:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  128:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  130:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  130:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  130:74  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  132:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  136:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  137:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  138:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  155:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  165:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  169:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  175:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  178:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/app/client/vitest-setup-client.ts
+  51:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  51:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  56:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  59:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  69:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  71:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  72:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 1323 problems (0 errors, 1323 warnings)
+  0 errors and 2 warnings potentially fixable with the `--fix` option.
