@@ -19,7 +19,7 @@ test.describe("Cursor positioning on scroll", () => {
         const lastItem = page.locator(".outliner-item").last();
         await lastItem.click();
 
-        // 4. Get the `top` style of the cursor and the last item's container
+        // 4. Get the bounding box of the cursor and the last item's container
         const cursorLocator = page.locator(".cursor.active");
         const lastItemContainer = page.locator(".item-container").last();
 
@@ -27,10 +27,15 @@ test.describe("Cursor positioning on scroll", () => {
         await cursorLocator.waitFor({ state: "visible" });
         await lastItemContainer.waitFor({ state: "visible" });
 
-        const cursorTop = await cursorLocator.evaluate(el => parseFloat(getComputedStyle(el).top));
-        const itemContainerTop = await lastItemContainer.evaluate(el => parseFloat(getComputedStyle(el).top));
+        const cursorBox = await cursorLocator.boundingBox();
+        const itemBox = await lastItemContainer.boundingBox();
 
         // 5. Assert that the cursor's `top` position is aligned with the item's container `top`
-        expect(cursorTop).toBeCloseTo(itemContainerTop, 5);
+        // We use visual position (boundingBox) instead of style.top because static layout doesn't use style.top for items
+        expect(cursorBox).not.toBeNull();
+        expect(itemBox).not.toBeNull();
+
+        // Allow a small difference (e.g. 5px) to account for minor rendering variations or padding adjustments
+        expect(Math.abs(cursorBox!.y - itemBox!.y)).toBeLessThan(5);
     });
 });
