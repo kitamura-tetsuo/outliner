@@ -2,6 +2,25 @@
     // ドラッグ開始位置（全アイテムで共有）
     let dragStartClientX = 0;
     let dragStartClientY = 0;
+
+    // Shared measurement span for text offset calculations (Performance Optimization)
+    let sharedMeasurementSpan: HTMLElement | null = null;
+
+    function getSharedMeasurementSpan(): HTMLElement | null {
+        if (typeof document === 'undefined') return null;
+        if (!sharedMeasurementSpan) {
+            sharedMeasurementSpan = document.createElement("span");
+            sharedMeasurementSpan.style.visibility = "hidden";
+            sharedMeasurementSpan.style.position = "absolute";
+            sharedMeasurementSpan.style.top = "-9999px";
+            sharedMeasurementSpan.style.left = "-9999px";
+            sharedMeasurementSpan.style.whiteSpace = "pre";
+            document.body.appendChild(sharedMeasurementSpan);
+        } else if (!sharedMeasurementSpan.isConnected) {
+            document.body.appendChild(sharedMeasurementSpan);
+        }
+        return sharedMeasurementSpan;
+    }
 </script>
 
 <script lang="ts">
@@ -143,12 +162,23 @@ const addNewItem = () => {}; // eslint-disable-line @typescript-eslint/no-unused
 
 /**
  * Binary search to find the character offset corresponding to a relative X coordinate.
- * Uses the provided span element (which must be already styled and appended to DOM) to measure widths.
+ * OPTIMIZED: Uses Range API and shared span to avoid layout thrashing.
  */
 function findBestOffsetBinary(content: string, relX: number, span: HTMLElement): number {
-    // Fast path: check total width
     span.textContent = content;
-    const totalWidth = span.getBoundingClientRect().width;
+
+    // Fast check for empty content
+    if (content.length === 0) return 0;
+
+    const textNode = span.firstChild;
+    if (!textNode) return 0;
+
+    const range = document.createRange();
+    range.setStart(textNode, 0);
+
+    // Fast path: check total width
+    range.setEnd(textNode, content.length);
+    const totalWidth = range.getBoundingClientRect().width;
 
     if (relX > totalWidth) return content.length;
     if (relX <= 0) return 0;
@@ -158,8 +188,8 @@ function findBestOffsetBinary(content: string, relX: number, span: HTMLElement):
 
     while (low < high) {
         const mid = Math.floor((low + high) / 2);
-        span.textContent = content.slice(0, mid);
-        const w = span.getBoundingClientRect().width;
+        range.setEnd(textNode, mid);
+        const w = range.getBoundingClientRect().width;
 
         if (w < relX) {
             low = mid + 1;
@@ -170,13 +200,15 @@ function findBestOffsetBinary(content: string, relX: number, span: HTMLElement):
 
     // low is the first index where width >= relX
     let best = low;
-    span.textContent = content.slice(0, low);
-    const dist1 = Math.abs(span.getBoundingClientRect().width - relX);
+    range.setEnd(textNode, low);
+    const widthAtLow = range.getBoundingClientRect().width;
+    const dist1 = Math.abs(widthAtLow - relX);
 
     if (low > 0) {
         const prev = low - 1;
-        span.textContent = content.slice(0, prev);
-        const dist2 = Math.abs(span.getBoundingClientRect().width - relX);
+        range.setEnd(textNode, prev);
+        const widthAtPrev = range.getBoundingClientRect().width;
+        const dist2 = Math.abs(widthAtPrev - relX);
         if (dist2 < dist1) {
             best = prev;
         }
@@ -665,22 +697,18 @@ function getClickPosition(event: MouseEvent, content: string): number {
         return 0; // テキストの左側をクリックした場合は先頭
     }
 
-    const span = document.createElement("span");
-    const style = window.getComputedStyle(targetElement);
-    span.style.fontFamily = style.fontFamily;
-    span.style.fontSize = style.fontSize;
-    span.style.fontWeight = style.fontWeight;
-    span.style.letterSpacing = style.letterSpacing;
-    span.style.whiteSpace = "pre";
-    span.style.visibility = "hidden";
-    span.style.position = "absolute";
-    document.body.appendChild(span);
+    const span = getSharedMeasurementSpan();
+    if (span) {
+        const style = window.getComputedStyle(targetElement);
+        span.style.fontFamily = style.fontFamily;
+        span.style.fontSize = style.fontSize;
+        span.style.fontWeight = style.fontWeight;
+        span.style.letterSpacing = style.letterSpacing;
 
-    const best = findBestOffsetBinary(content, relX, span);
+        return findBestOffsetBinary(content, relX, span);
+    }
 
-    document.body.removeChild(span);
-
-    return best;
+    return 0;
 }
 
 function toggleCollapse() {
@@ -1225,24 +1253,20 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         const relEndX = endPixelX - rect.left;
 
         // 文字単位での位置を計算
-        const span = document.createElement("span");
+        const span = getSharedMeasurementSpan();
+        if (!span) return;
+
         const style = window.getComputedStyle(textElement);
         span.style.fontFamily = style.fontFamily;
         span.style.fontSize = style.fontSize;
         span.style.fontWeight = style.fontWeight;
         span.style.letterSpacing = style.letterSpacing;
-        span.style.whiteSpace = "pre";
-        span.style.visibility = "hidden";
-        span.style.position = "absolute";
-        document.body.appendChild(span);
 
         // 開始位置（オフセット）を計算
         const startPos = findBestOffsetBinary(textContent, relStartX, span);
 
         // 終了位置（オフセット）を計算
         const endPos = findBestOffsetBinary(textContent, relEndX, span);
-
-        document.body.removeChild(span);
 
         // 計算した位置を使用
         let itemStartOffset = Math.min(startPos, endPos);
