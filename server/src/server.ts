@@ -1,5 +1,6 @@
 import http from "http";
 import { WebSocketServer } from "ws";
+import { checkContainerAccess } from "./access-control";
 import { type Config } from "./config";
 import { logger as defaultLogger } from "./logger";
 import { getMetrics, recordMessage } from "./metrics";
@@ -149,6 +150,19 @@ export function startServer(config: Config, logger = defaultLogger) {
 
         try {
             const decoded = await verifyIdTokenCached(token);
+
+            // Check container access
+            const hasAccess = await checkContainerAccess(decoded.uid, roomInfo.project);
+            if (!hasAccess) {
+                logger.warn({
+                    event: "ws_connection_denied",
+                    reason: "access_denied",
+                    uid: decoded.uid,
+                    project: roomInfo.project,
+                });
+                ws.close(4003, "ACCESS_DENIED");
+                return;
+            }
 
             // Remove buffer listener
             ws.removeListener("message", bufferListener);
