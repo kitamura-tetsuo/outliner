@@ -1,5 +1,7 @@
 import { expect, test } from "../fixtures/console-forward.ts";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers.ts";
+registerCoverageHooks();
 
 test.describe("Cursor positioning on scroll", () => {
     test("should correctly position the cursor after vertical scrolling", async ({ page }) => {
