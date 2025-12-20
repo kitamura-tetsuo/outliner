@@ -296,6 +296,9 @@ onMount(() => {
 <div class="page-search-box">
 
     <label id="search-pages-label" for="search-pages-input" class="visually-hidden">Search pages</label>
+    <svg class="search-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
     <input
         type="text"
         aria-hidden="false"
@@ -337,9 +340,21 @@ onMount(() => {
     max-width: 400px;
 }
 
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+    color: #9ca3af;
+    pointer-events: none;
+    z-index: 10;
+}
+
 .page-search-box input {
     width: 340px;
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem 0.5rem 2.25rem;
     border: 1px solid #d1d5db;
     border-radius: 0.375rem;
     font-size: 0.875rem;
