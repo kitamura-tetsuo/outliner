@@ -43,13 +43,13 @@ describe("access-control", () => {
     it("allows access via containerUsers", async () => {
         const containerGetStub = sinon.stub().resolves({
             exists: true,
-            data: () => ({ accessibleUserIds: ["u1"] })
+            data: () => ({ accessibleUserIds: ["u1"] }),
         });
 
         collectionStub.callsFake((name) => {
             if (name === "containerUsers") {
                 return {
-                    doc: sinon.stub().withArgs("c1").returns({ get: containerGetStub })
+                    doc: sinon.stub().withArgs("c1").returns({ get: containerGetStub }),
                 };
             }
             return { doc: docStub };
@@ -62,13 +62,13 @@ describe("access-control", () => {
     it("allows access via userContainers", async () => {
         const userGetStub = sinon.stub().resolves({
             exists: true,
-            data: () => ({ accessibleContainerIds: ["c1"] })
+            data: () => ({ accessibleContainerIds: ["c1"] }),
         });
 
         collectionStub.callsFake((name) => {
             if (name === "userContainers") {
                 return {
-                    doc: sinon.stub().withArgs("u1").returns({ get: userGetStub })
+                    doc: sinon.stub().withArgs("u1").returns({ get: userGetStub }),
                 };
             }
             return { doc: docStub };
@@ -81,11 +81,11 @@ describe("access-control", () => {
     it("denies access if neither has permission", async () => {
         const containerGetStub = sinon.stub().resolves({
             exists: true,
-            data: () => ({ accessibleUserIds: ["other"] })
+            data: () => ({ accessibleUserIds: ["other"] }),
         });
         const userGetStub = sinon.stub().resolves({
             exists: true,
-            data: () => ({ accessibleContainerIds: ["other"] })
+            data: () => ({ accessibleContainerIds: ["other"] }),
         });
 
         collectionStub.callsFake((name) => {
@@ -103,7 +103,7 @@ describe("access-control", () => {
 
         // Ensure mock is NOT called by making it throw
         const throwingMock = {
-            collection: sinon.stub().throws(new Error("Should not be called"))
+            collection: sinon.stub().throws(new Error("Should not be called")),
         };
 
         const result = await checkContainerAccess("u1", "c1", throwingMock);
@@ -114,7 +114,7 @@ describe("access-control", () => {
         process.env.ALLOW_TEST_ACCESS = "true";
 
         const throwingMock = {
-            collection: sinon.stub().throws(new Error("Should not be called"))
+            collection: sinon.stub().throws(new Error("Should not be called")),
         };
 
         const result = await checkContainerAccess("u1", "c1", throwingMock);

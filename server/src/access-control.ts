@@ -18,14 +18,14 @@ export async function checkContainerAccess(
     userId: string,
     containerId: string,
     // Allow dependency injection for testing
-    firestoreInstance?: admin.firestore.Firestore
+    firestoreInstance?: admin.firestore.Firestore,
 ): Promise<boolean> {
     // In test/dev environment, allow access if explicitly allowed or strictly in test mode
     if (
-        process.env.FUNCTIONS_EMULATOR === "true" ||
-        process.env.NODE_ENV === "test" ||
-        process.env.NODE_ENV === "development" ||
-        process.env.ALLOW_TEST_ACCESS === "true"
+        process.env.FUNCTIONS_EMULATOR === "true"
+        || process.env.NODE_ENV === "test"
+        || process.env.NODE_ENV === "development"
+        || process.env.ALLOW_TEST_ACCESS === "true"
     ) {
         logger.debug({ event: "access_check_bypass", userId, containerId });
         return true;
@@ -58,10 +58,14 @@ export async function checkContainerAccess(
 
         logger.warn({ event: "access_denied", userId, containerId });
         return false;
-
     } catch (error) {
         // Log the full error object for debugging, but treat as denied safe-fail
-        logger.error({ event: "access_check_error", message: error instanceof Error ? error.message : String(error), userId, containerId });
+        logger.error({
+            event: "access_check_error",
+            message: error instanceof Error ? error.message : String(error),
+            userId,
+            containerId,
+        });
         return false;
     }
 }

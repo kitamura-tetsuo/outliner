@@ -1,5 +1,6 @@
 import http from "http";
 import { WebSocketServer } from "ws";
+import { checkContainerAccess } from "./access-control";
 import { type Config } from "./config";
 import { logger as defaultLogger } from "./logger";
 import { getMetrics, recordMessage } from "./metrics";
@@ -7,7 +8,6 @@ import { createPersistence, logTotalSize, warnIfRoomTooLarge } from "./persisten
 import { parseRoom } from "./room-validator";
 import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners";
 import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
-import { checkContainerAccess } from "./access-control";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let setupWSConnection: any;
 

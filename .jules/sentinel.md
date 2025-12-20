@@ -19,5 +19,5 @@
 ## 2025-12-20 - WebSocket Authorization Bypass
 
 **Vulnerability:** The Yjs WebSocket server (`server/`) authenticated users but failed to authorize their access to the requested project/container room. Any authenticated user could connect to any room by guessing the project ID (Authorization Bypass).
-**Learning:** Checking *who* a user is (Authentication) is insufficient; you must also check *what* they can access (Authorization). WebSocket servers separate from the main API layer often miss these domain-specific permission checks.
+**Learning:** Checking _who_ a user is (Authentication) is insufficient; you must also check _what_ they can access (Authorization). WebSocket servers separate from the main API layer often miss these domain-specific permission checks.
 **Prevention:** Implement an authorization hook in the WebSocket handshake (e.g., in `setupWSConnection`) that queries the central permission store (Firestore in this case) before accepting the connection.
