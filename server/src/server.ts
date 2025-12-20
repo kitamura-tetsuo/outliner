@@ -7,6 +7,7 @@ import { createPersistence, logTotalSize, warnIfRoomTooLarge } from "./persisten
 import { parseRoom } from "./room-validator";
 import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners";
 import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
+import { checkContainerAccess } from "./access-control";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let setupWSConnection: any;
 
@@ -149,6 +150,14 @@ export function startServer(config: Config, logger = defaultLogger) {
 
         try {
             const decoded = await verifyIdTokenCached(token);
+
+            // Authorization check
+            const hasAccess = await checkContainerAccess(decoded.uid, roomInfo.project);
+            if (!hasAccess) {
+                logger.warn({ event: "ws_connection_denied", reason: "forbidden", uid: decoded.uid, room: docName });
+                ws.close(4003, "FORBIDDEN");
+                return;
+            }
 
             // Remove buffer listener
             ws.removeListener("message", bufferListener);
