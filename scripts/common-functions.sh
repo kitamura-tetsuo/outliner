@@ -166,20 +166,34 @@ install_global_packages() {
 
 }
 
+# Install Java 21 from Adoptium (Eclipse Temurin) repository
+install_java_21() {
+  echo "Installing Temurin Java 21 from Adoptium repository..."
+  # Add Adoptium repository if not already added
+  if [ ! -f /etc/apt/sources.list.d/adoptium.list ]; then
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo tee /etc/apt/keyrings/adoptium.asc > /dev/null
+    local codename
+    codename=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
+    echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb ${codename} main" | sudo tee /etc/apt/sources.list.d/adoptium.list > /dev/null
+    retry_apt_get update
+  fi
+  DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends temurin-21-jre
+}
+
 # Install OS utilities if needed
 install_os_utilities() {
   # Check if Java is installed and compatible with Firebase
+  # Firebase emulators now require Java 21+
   if ! command -v java >/dev/null 2>&1; then
-    echo "Java not found. Installing OpenJDK 17 for Firebase compatibility..."
-    retry_apt_get update
-    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends openjdk-17-jre-headless
+    echo "Java not found. Installing Java 21 for Firebase compatibility..."
+    install_java_21
   else
-    # Check Java version (Firebase requires Java 11+)
+    # Check Java version (Firebase requires Java 21+)
     java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
-    if [ "$java_version" -lt 11 ] 2>/dev/null; then
-      echo "Java version $java_version is too old for Firebase. Installing OpenJDK 17..."
-      retry_apt_get update
-      DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends openjdk-17-jre-headless
+    if [ "$java_version" -lt 21 ] 2>/dev/null; then
+      echo "Java version $java_version is too old for Firebase. Installing Java 21..."
+      install_java_21
     else
       echo "Java version $java_version is compatible with Firebase"
     fi

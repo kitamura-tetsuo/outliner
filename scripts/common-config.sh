@@ -75,9 +75,12 @@ export FIREBASE_EMULATOR_HOST=${_FN_HOST_EXPECTED}
 # Log directories
 LOG_DIRS=(
   "${ROOT_DIR}/logs"
+  "${ROOT_DIR}/logs/pm2"
   "${ROOT_DIR}/client/logs"
+  "${ROOT_DIR}/client/logs/pm2"
   "${ROOT_DIR}/client/e2e/logs"
   "${ROOT_DIR}/server/logs"
+  "${ROOT_DIR}/server/logs/pm2"
   "${ROOT_DIR}/functions/logs"
 )
 
