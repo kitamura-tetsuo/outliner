@@ -287,39 +287,6 @@ onMount(async () => {
                 isAuthenticated = authResult !== null;
                 if (isAuthenticated && browser) {
                     setupGlobalDebugFunctions(yjsService?.yjsHighService);
-                    const isTestEnv = import.meta.env.MODE === "test" ||
-                        process.env.NODE_ENV === "test" ||
-                        import.meta.env.VITE_IS_TEST === "true";
-                    if (isTestEnv) {
-                        // テストデータ自動投入をスキップするフラグ
-                        const skipSeed = window.localStorage.getItem("SKIP_TEST_CONTAINER_SEED") === "true";
-                        if (!skipSeed) {
-                            // テスト環境では、既存のコンテナを削除してからテスト用のコンテナを作成する
-                            (async () => {
-                                try {
-                                    // 新しいテスト用コンテナを作成
-                                    const pageName = "test-page";
-                                    const lines = [
-                                        "これはテスト用のページです。1",
-                                        "これはテスト用のページです。2",
-                                        "内部リンクのテスト: [test-link]",
-                                    ];
-                                    (await yjsService.createNewProject("test-1")).createPage(pageName, lines);
-                                    (await yjsService.createNewProject("test-2")).createPage(pageName, lines);
-                                }
-                                catch (error) {
-                                    logger.error(
-                                        "テスト環境のコンテナ準備中にエラーが発生しました",
-                                        error,
-                                    );
-                                }
-                            })();
-                        } else {
-                            if (import.meta.env.DEV) {
-                                logger.info("SKIP_TEST_CONTAINER_SEED=true のため、テスト用コンテナの自動生成をスキップします");
-                            }
-                        }
-                    }
                 }
             });
         }

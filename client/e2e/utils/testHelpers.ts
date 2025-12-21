@@ -84,7 +84,6 @@ export class TestHelpers {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-                localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
 
                 // WebSocket設定を適用
                 if (wsMode === "force") {
@@ -137,7 +136,6 @@ export class TestHelpers {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-                localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
                 // 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
                 localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
                 (window as Window & Record<string, any>).__E2E__ = true;

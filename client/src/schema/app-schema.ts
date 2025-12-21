@@ -15,7 +15,10 @@ export type Comment = {
 
 // コメントコレクション（Y.Array<Y.Map>）用ラッパ
 export class Comments {
-    constructor(private readonly yArray: Y.Array<Y.Map<CommentValueType>>) {}
+    private readonly yArray: Y.Array<Y.Map<CommentValueType>>;
+    constructor(yArray: Y.Array<Y.Map<CommentValueType>>) {
+        this.yArray = yArray;
+    }
 
     addComment(author: string, text: string) {
         const time = Date.now();
@@ -408,11 +411,18 @@ export class Item {
 
 // 子ノード集合ラッパ
 export class Items implements Iterable<Item> {
+    public readonly ydoc: Y.Doc;
+    public readonly tree: YTree;
+    public readonly parentKey: string;
     constructor(
-        public readonly ydoc: Y.Doc,
-        public readonly tree: YTree,
-        public readonly parentKey: string,
-    ) {}
+        ydoc: Y.Doc,
+        tree: YTree,
+        parentKey: string,
+    ) {
+        this.ydoc = ydoc;
+        this.tree = tree;
+        this.parentKey = parentKey;
+    }
 
     private childrenKeys(): string[] {
         const children = this.tree.getNodeChildrenFromKey(this.parentKey);
@@ -497,7 +507,12 @@ export class Items implements Iterable<Item> {
 
 // プロジェクト（Y.Doc）全体のラッパ
 export class Project {
-    constructor(public readonly ydoc: Y.Doc, public readonly tree: YTree) {}
+    public readonly ydoc: Y.Doc;
+    public readonly tree: YTree;
+    constructor(ydoc: Y.Doc, tree: YTree) {
+        this.ydoc = ydoc;
+        this.tree = tree;
+    }
 
     static createInstance(title: string): Project {
         const doc = new Y.Doc();
