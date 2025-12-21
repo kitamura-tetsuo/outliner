@@ -22,6 +22,7 @@
     "homepage": "https://github.com/kitamura-tetsuo/outliner#readme",
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.51.2",
+        "kill-port": "^2.0.1",
         "pm2": "^6.0.14"
     }
 }

@@ -132,9 +132,9 @@ clear_log_files() {
 # Install npm dependencies if needed
 npm_ci_if_needed() {
   # Fix permissions before installing
-  if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
+  if [ "$(id -u)" = "0" ] && [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
     echo "Fixing node_modules ownership before npm install..."
-    sudo chown -R node:node "node_modules" || true
+    chown -R node:node "node_modules" || true
   fi
   
   if [ ! -d node_modules ] || ! npm ls >/dev/null 2>&1; then
@@ -166,20 +166,34 @@ install_global_packages() {
 
 }
 
+# Install Java 21 from Adoptium (Eclipse Temurin) repository
+install_java_21() {
+  echo "Installing Temurin Java 21 from Adoptium repository..."
+  # Add Adoptium repository if not already added
+  if [ ! -f /etc/apt/sources.list.d/adoptium.list ]; then
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo tee /etc/apt/keyrings/adoptium.asc > /dev/null
+    local codename
+    codename=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
+    echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb ${codename} main" | sudo tee /etc/apt/sources.list.d/adoptium.list > /dev/null
+    retry_apt_get update
+  fi
+  DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends temurin-21-jre
+}
+
 # Install OS utilities if needed
 install_os_utilities() {
   # Check if Java is installed and compatible with Firebase
+  # Firebase emulators now require Java 21+
   if ! command -v java >/dev/null 2>&1; then
-    echo "Java not found. Installing OpenJDK 17 for Firebase compatibility..."
-    retry_apt_get update
-    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends openjdk-17-jre-headless
+    echo "Java not found. Installing Java 21 for Firebase compatibility..."
+    install_java_21
   else
-    # Check Java version (Firebase requires Java 11+)
+    # Check Java version (Firebase requires Java 21+)
     java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
-    if [ "$java_version" -lt 11 ] 2>/dev/null; then
-      echo "Java version $java_version is too old for Firebase. Installing OpenJDK 17..."
-      retry_apt_get update
-      DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends openjdk-17-jre-headless
+    if [ "$java_version" -lt 21 ] 2>/dev/null; then
+      echo "Java version $java_version is too old for Firebase. Installing Java 21..."
+      install_java_21
     else
       echo "Java version $java_version is compatible with Firebase"
     fi
@@ -324,25 +338,33 @@ install_all_dependencies() {
   echo "Installing dependencies..."
 
   # Fix permissions before installing
-  echo "Fixing permissions before installing dependencies..."
-  for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
-    if [ -d "$dir" ]; then
-      # Fix node_modules ownership if needed
-      if [ -d "${dir}/node_modules" ] && [ "$(stat -c %U ${dir}/node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
-        echo "Fixing node_modules ownership in $dir..."
-        sudo chown -R node:node "${dir}/node_modules" || true
+  if [ "$(id -u)" = "0" ]; then
+    echo "Fixing permissions before installing dependencies..."
+    for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
+      if [ -d "$dir" ]; then
+        # Fix node_modules ownership if needed
+        if [ -d "${dir}/node_modules" ] && [ "$(stat -c %U ${dir}/node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
+          echo "Fixing node_modules ownership in $dir..."
+          chown -R node:node "${dir}/node_modules" || true
+        fi
+        # Ensure directory is owned by node user
+        if [ "$(stat -c %U $dir)" = "root" ]; then
+          echo "Fixing ownership for $dir..."
+          chown -R node:node "$dir" || true
+        fi
       fi
-      # Ensure directory is owned by node user
-      if [ "$(stat -c %U $dir)" = "root" ]; then
-        echo "Fixing ownership for $dir..."
-        sudo chown -R node:node "$dir" || true
-      fi
-    fi
-  done
+    done
+  fi
+
+  # Root dependencies
+  cd "${ROOT_DIR}"
+  npm_ci_if_needed
 
   # Server dependencies
   cd "${ROOT_DIR}/server"
   npm_ci_if_needed
+  npm run build
+
 
   # Firebase Functions dependencies
   cd "${ROOT_DIR}/functions"

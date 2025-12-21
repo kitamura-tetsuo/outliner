@@ -17,6 +17,18 @@ export class DataValidationHelpers {
                 return;
             }
 
+            // Skip if page was never navigated (e.g., tests using browser fixture directly)
+            try {
+                const url = page.url();
+                if (url === "about:blank" || url === "") {
+                    console.log("[afterEach] Page not initialized, skipping snapshot save");
+                    return;
+                }
+            } catch {
+                console.log("[afterEach] Page not accessible, skipping snapshot save");
+                return;
+            }
+
             const labelBase = testInfo.title.replace(/[^a-z0-9_-]+/gi, "-");
             const label = `${labelBase}-auto-${Date.now()}`;
             await DataValidationHelpers.saveSnapshotsAndCompare(page, label);
@@ -159,14 +171,32 @@ export class DataValidationHelpers {
             return;
         }
 
-        // Wait for the project to be available in the store
+        // Skip if page was never navigated (e.g., tests using browser fixture directly)
+        try {
+            const url = page.url();
+            if (url === "about:blank" || url === "") {
+                console.log("[saveSnapshotsAndCompare] Page not initialized, skipping snapshot");
+                return;
+            }
+        } catch {
+            console.log("[saveSnapshotsAndCompare] Page not accessible, skipping snapshot");
+            return;
+        }
+
+        // Wait for the project to be available in the store with a shorter timeout
         try {
             await page.waitForFunction(() => {
                 const store = (window as any).generalStore || (window as any).appStore;
                 return !!(store && store.project);
-            }, { timeout: 30000 });
-        } catch (e) {
-            console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", e?.message ?? e);
+            }, { timeout: 10000 });
+        } catch (e: any) {
+            const msg = e?.message ?? String(e);
+            // Don't warn for expected cancellation scenarios
+            if (msg.includes("Test ended") || msg.includes("Page closed") || msg.includes("context was destroyed")) {
+                console.log("[saveSnapshotsAndCompare] Test ended before snapshot, skipping");
+            } else {
+                console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", msg);
+            }
             return; // Skip snapshot if project is not available
         }
 

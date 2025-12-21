@@ -75,15 +75,19 @@ export FIREBASE_EMULATOR_HOST=${_FN_HOST_EXPECTED}
 # Log directories
 LOG_DIRS=(
   "${ROOT_DIR}/logs"
+  "${ROOT_DIR}/logs/pm2"
   "${ROOT_DIR}/client/logs"
+  "${ROOT_DIR}/client/logs/pm2"
   "${ROOT_DIR}/client/e2e/logs"
   "${ROOT_DIR}/server/logs"
+  "${ROOT_DIR}/server/logs/pm2"
   "${ROOT_DIR}/functions/logs"
 )
 
 # Ports to monitor for readiness
 REQUIRED_PORTS=(
   ${TEST_YJS_PORT}
+  ${TEST_API_PORT}
   ${VITE_PORT}
   ${FIREBASE_FUNCTIONS_PORT}
   ${FIREBASE_AUTH_PORT}

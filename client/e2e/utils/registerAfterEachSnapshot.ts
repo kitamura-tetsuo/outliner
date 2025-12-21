@@ -15,6 +15,23 @@ if (process.env.E2E_DISABLE_AUTO_SNAPSHOT !== "1") {
             return;
         }
 
+        // Skip snapshot saving for tests that use browser fixture directly
+        // and may not have initialized the page fixture properly
+        try {
+            if (page.isClosed()) {
+                console.log(`[afterEach] Page already closed, skipping snapshot for: ${testInfo.title}`);
+                return;
+            }
+            const url = page.url();
+            if (url === "about:blank" || url === "") {
+                console.log(`[afterEach] Page not initialized (url=${url}), skipping snapshot for: ${testInfo.title}`);
+                return;
+            }
+        } catch (e: any) {
+            console.log(`[afterEach] Page not accessible, skipping snapshot for: ${testInfo.title}`, e?.message);
+            return;
+        }
+
         // Execute with a timeout to prevent hanging
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => reject(new Error("afterEach hook timeout")), 30000); // 30 second timeout
