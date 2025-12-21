@@ -97,7 +97,7 @@ onDestroy(() => {
     >
         <span class="backlink-count">{backlinks.length}</span>
         <span class="backlink-label">バックリンク</span>
-        <span class="toggle-icon">{isOpen ? "▼" : "▶"}</span>
+        <span class="toggle-icon" aria-hidden="true">{isOpen ? "▼" : "▶"}</span>
     </button>
 
     {#if isOpen}
