@@ -139,7 +139,6 @@ import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 const mirrorAttachment = (_url: string) => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
 let attachmentsMirror: string[] = []; // eslint-disable-line @typescript-eslint/no-unused-vars
 let e2eTimer: ReturnType<typeof setInterval> | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-const addNewItem = () => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 /**
  * Binary search to find the character offset corresponding to a relative X coordinate.
@@ -894,6 +893,17 @@ function updateSelectionAndCursor() {
 
 
 
+
+function addNewItem() {
+    if (isReadOnly) return;
+    const p = model.original.parent;
+    if (p) {
+        const idx = model.original.indexInParent();
+        if (idx !== -1) {
+            p.addNode(currentUser, idx + 1);
+        }
+    }
+}
 
 function handleDelete() {
     if (isReadOnly) return;
@@ -2001,8 +2011,18 @@ export function setSelectionPosition(start: number, end: number = start) {
 
         {#if !isPageTitle}
             <div class="item-actions">
-                <button onclick={addNewItem} title="新しいアイテムを追加" aria-label="Add new item">+</button>
-                <button onclick={handleDelete} title="削除" aria-label="Delete item">×</button>
+                <button onclick={addNewItem} title="新しいアイテムを追加" aria-label="Add new item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+                <button onclick={handleDelete} title="削除" aria-label="Delete item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
                 <button
                     onclick={toggleVote}
                     class="vote-btn"
@@ -2011,7 +2031,9 @@ export function setSelectionPosition(start: number, end: number = start) {
                     aria-label="Vote for this item"
                     aria-pressed={model.votes.includes(currentUser)}
                 >
-                    ⭐
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill={model.votes.includes(currentUser) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
                 </button>
             </div>
         {/if}
