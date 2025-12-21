@@ -143,36 +143,23 @@ const addNewItem = () => {}; // eslint-disable-line @typescript-eslint/no-unused
 
 /**
  * Binary search to find the character offset corresponding to a relative X coordinate.
- * Uses the provided span element to measure widths via Range API to avoid layout thrashing.
+ * Uses the provided span element (which must be already styled and appended to DOM) to measure widths.
  */
 function findBestOffsetBinary(content: string, relX: number, span: HTMLElement): number {
-    span.textContent = content;
-    const textNode = span.firstChild;
-
-    // Fast path: empty or no text
-    if (!textNode) return 0;
-
     // Fast path: check total width
-    const spanRect = span.getBoundingClientRect();
-    if (relX > spanRect.width) return content.length;
+    span.textContent = content;
+    const totalWidth = span.getBoundingClientRect().width;
+
+    if (relX > totalWidth) return content.length;
     if (relX <= 0) return 0;
 
-    const range = document.createRange();
-    range.setStart(textNode, 0);
-    range.setEnd(textNode, 0);
-
-    // Calculate start offset (padding-left equivalent)
-    const rangeStartRect = range.getBoundingClientRect();
-    const offset = rangeStartRect.left - spanRect.left;
-
     let low = 0;
-    const len = textNode.textContent?.length ?? 0;
-    let high = len;
+    let high = content.length;
 
     while (low < high) {
         const mid = Math.floor((low + high) / 2);
-        range.setEnd(textNode, mid);
-        const w = range.getBoundingClientRect().width + offset;
+        span.textContent = content.slice(0, mid);
+        const w = span.getBoundingClientRect().width;
 
         if (w < relX) {
             low = mid + 1;
@@ -183,14 +170,13 @@ function findBestOffsetBinary(content: string, relX: number, span: HTMLElement):
 
     // low is the first index where width >= relX
     let best = low;
-
-    range.setEnd(textNode, low);
-    const dist1 = Math.abs((range.getBoundingClientRect().width + offset) - relX);
+    span.textContent = content.slice(0, low);
+    const dist1 = Math.abs(span.getBoundingClientRect().width - relX);
 
     if (low > 0) {
         const prev = low - 1;
-        range.setEnd(textNode, prev);
-        const dist2 = Math.abs((range.getBoundingClientRect().width + offset) - relX);
+        span.textContent = content.slice(0, prev);
+        const dist2 = Math.abs(span.getBoundingClientRect().width - relX);
         if (dist2 < dist1) {
             best = prev;
         }
@@ -1179,6 +1165,9 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
     const topY = Math.min(startPixelY, endPixelY);
     const bottomY = Math.max(startPixelY, endPixelY);
 
+    // 表示されているすべてのアイテムを取得
+    const allItems = Array.from(document.querySelectorAll(".outliner-item"));
+
     // 矩形選択の範囲内にあるアイテムを特定
     const itemsInRange: Array<{
         itemId: string;
@@ -1186,10 +1175,8 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         rect: DOMRect;
     }> = [];
 
-    // 表示されているすべてのアイテムを取得し、矩形選択の範囲内かどうかを判定
-    // DOM順は視覚順と一致すると仮定し、高コストなソートを回避
-    // Array.from(document.querySelectorAll)によるコピーも避け、forEachを直接使用
-    document.querySelectorAll(".outliner-item").forEach(itemElement => {
+    // 各アイテムについて、矩形選択の範囲内かどうかを判定
+    allItems.forEach(itemElement => {
         const itemId = itemElement.getAttribute("data-item-id");
         if (!itemId) return;
 
@@ -1213,6 +1200,9 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
     // 矩形選択の範囲内にあるアイテムがない場合は何もしない
     if (itemsInRange.length === 0) return;
 
+    // Y座標でソート
+    itemsInRange.sort((a, b) => a.rect.top - b.rect.top);
+
     // 各アイテムの選択範囲を計算
     const boxSelectionRanges: Array<{
         itemId: string;
@@ -1220,70 +1210,66 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         endOffset: number;
     }> = [];
 
-    // 計測用スパンを一度だけ作成して再利用（DOM操作の最適化）
-    const span = document.createElement("span");
-    span.style.whiteSpace = "pre";
-    span.style.visibility = "hidden";
-    span.style.position = "absolute";
-    document.body.appendChild(span);
+    // 各アイテムについて、選択範囲を計算
+    itemsInRange.forEach(item => {
+        const textElement = item.element.querySelector(".item-text") as HTMLElement;
+        if (!textElement) return;
 
-    try {
-        // 各アイテムについて、選択範囲を計算
-        itemsInRange.forEach(item => {
-            const textElement = item.element.querySelector(".item-text") as HTMLElement;
-            if (!textElement) return;
+        const textContent = textElement.textContent || "";
 
-            const textContent = textElement.textContent || "";
+        // 選択範囲の開始位置と終了位置を計算
+        const rect = textElement.getBoundingClientRect();
 
-            // 選択範囲の開始位置と終了位置を計算
-            const rect = textElement.getBoundingClientRect();
+        // 矩形選択の左端と右端の相対X座標（テキスト要素基準）
+        const relStartX = startPixelX - rect.left;
+        const relEndX = endPixelX - rect.left;
 
-            // 矩形選択の左端と右端の相対X座標（テキスト要素基準）
-            const relStartX = startPixelX - rect.left;
-            const relEndX = endPixelX - rect.left;
+        // 文字単位での位置を計算
+        const span = document.createElement("span");
+        const style = window.getComputedStyle(textElement);
+        span.style.fontFamily = style.fontFamily;
+        span.style.fontSize = style.fontSize;
+        span.style.fontWeight = style.fontWeight;
+        span.style.letterSpacing = style.letterSpacing;
+        span.style.whiteSpace = "pre";
+        span.style.visibility = "hidden";
+        span.style.position = "absolute";
+        document.body.appendChild(span);
 
-            // 文字単位での位置を計算
-            const style = window.getComputedStyle(textElement);
-            span.style.fontFamily = style.fontFamily;
-            span.style.fontSize = style.fontSize;
-            span.style.fontWeight = style.fontWeight;
-            span.style.letterSpacing = style.letterSpacing;
+        // 開始位置（オフセット）を計算
+        const startPos = findBestOffsetBinary(textContent, relStartX, span);
 
-            // 開始位置（オフセット）を計算
-            const startPos = findBestOffsetBinary(textContent, relStartX, span);
+        // 終了位置（オフセット）を計算
+        const endPos = findBestOffsetBinary(textContent, relEndX, span);
 
-            // 終了位置（オフセット）を計算
-            const endPos = findBestOffsetBinary(textContent, relEndX, span);
-
-            // 計算した位置を使用
-            let itemStartOffset = Math.min(startPos, endPos);
-            let itemEndOffset = Math.max(startPos, endPos);
-
-            // 範囲外の場合は修正
-            if (itemStartOffset < 0) itemStartOffset = 0;
-            if (itemEndOffset > textContent.length) itemEndOffset = textContent.length;
-
-            // 最低1文字は選択されるように調整（極端に狭いドラッグ対策）
-            if (itemStartOffset === itemEndOffset) {
-                if (itemEndOffset < textContent.length) {
-                    itemEndOffset += 1;
-                } else if (itemStartOffset > 0) {
-                    itemStartOffset -= 1;
-                }
-            }
-
-            // 選択範囲が有効な場合のみ追加
-            if (itemStartOffset < itemEndOffset) {
-                boxSelectionRanges.push({
-                    itemId: item.itemId,
-                    startOffset: itemStartOffset,
-                    endOffset: itemEndOffset,
-                });
-            }
-        });
-    } finally {
         document.body.removeChild(span);
-    }
+
+        // 計算した位置を使用
+        let itemStartOffset = Math.min(startPos, endPos);
+        let itemEndOffset = Math.max(startPos, endPos);
+
+        // 範囲外の場合は修正
+        if (itemStartOffset < 0) itemStartOffset = 0;
+        if (itemEndOffset > textContent.length) itemEndOffset = textContent.length;
+
+        // 最低1文字は選択されるように調整（極端に狭いドラッグ対策）
+        if (itemStartOffset === itemEndOffset) {
+            if (itemEndOffset < textContent.length) {
+                itemEndOffset += 1;
+            } else if (itemStartOffset > 0) {
+                itemStartOffset -= 1;
+            }
+        }
+
+        // 選択範囲が有効な場合のみ追加
+        if (itemStartOffset < itemEndOffset) {
+            boxSelectionRanges.push({
+                itemId: item.itemId,
+                startOffset: itemStartOffset,
+                endOffset: itemEndOffset,
+            });
+        }
+    });
 
     // 矩形選択を設定
     if (boxSelectionRanges.length > 0) {

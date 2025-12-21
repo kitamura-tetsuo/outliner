@@ -49,6 +49,12 @@ let unsubscribeUser: (() => void) | null = null;
 // ビューストアを作成
 const viewModel = new OutlinerViewModel();
 
+// コンテナ要素への参照（バインドで更新されるため $state で宣言）
+let containerRef = $state<HTMLDivElement | null>(null);
+
+
+let itemHeights = $state<number[]>([]);
+// 非リアクティブな前回長さの記録（$effect内での自己参照ループを防ぐ）
 
 // ドラッグ選択関連の状態
 let isDragging = $state(false);
@@ -100,6 +106,18 @@ let displayItems = $derived.by<DisplayItem[]>(() => {
     return viewModel.getVisibleItems();
 });
 
+let itemPositions = $derived.by(() => {
+    let currentTop = 8; // 最初のアイテムの上部マージン
+    // Ensure we map over displayItems to guarantee correct length and order
+    return displayItems.map((_, index) => {
+        const height = itemHeights[index];
+        const position = currentTop;
+        // 最小高さ36pxを考慮
+        const effectiveHeight = Math.max(height || 28, 28);
+        currentTop += effectiveHeight;
+        return position;
+    });
+});
 
 onMount(() => {
     currentUser = userManager.getCurrentUser()?.id ?? "anonymous";
@@ -107,6 +125,12 @@ onMount(() => {
         currentUser = result?.user.id ?? "anonymous";
     });
     editorOverlayStore.setOnEditCallback(handleEdit);
+
+    // 初期化: onMount 内で displayItems を直接参照しない
+    // 理由: 直接参照は observeDeep による即時再計算を誘発し得るため、初期レイアウトは保守的に設定する
+    // 方針: Yjs の最小粒度 observeDeep による tick（__displayItemsTick）経由で再計算させる
+    const initialLength = 1; // Start with just the page title
+    itemHeights = new Array(initialLength).fill(0);
 
 });
 
@@ -1443,7 +1467,7 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 
 {#key outlinerKey}
 
-<div class="outliner" onmousedown={handleTreeMouseDown} onmouseup={handleTreeMouseUp} role="application">
+<div class="outliner" bind:this={containerRef} onmousedown={handleTreeMouseDown} onmouseup={handleTreeMouseUp} role="application">
     <div class="toolbar">
     <div class="actions">
         <button onclick={handleAddItem}>アイテム追加</button>
@@ -1454,12 +1478,13 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 </div>
 
     <div class="tree-container" role="region" aria-label="アウトライナーツリー">
-        <!-- フラット表示の各アイテム（静的配置） -->
+        <!-- フラット表示の各アイテム（絶対位置配置） -->
         {#each displayItems as display, index (display.model.id)}
 
             <div
                 class="item-container"
-                style="--item-depth: {display.depth}"
+                style="--item-depth: {display.depth}; top: {(itemPositions[index] != null ? itemPositions[index] : (8 + 28 * index))}px"
+                bind:clientHeight={itemHeights[index]}
             >
                 <OutlinerItem
                     model={display.model}
@@ -1665,10 +1690,11 @@ function handleExternalTextDrop(targetItemId: string, position: string, text: st
 }
 
 .item-container {
-    position: relative;
-    margin-left: calc(max(0, var(--item-depth) - 1) * 24px);
-    width: auto;
+    position: absolute;
+    left: calc(16px + max(0, var(--item-depth) - 1) * 24px);
+    width: calc(100% - 32px - max(0, var(--item-depth) - 1) * 24px);
     min-height: 36px; /* 最小の高さを設定 */
+    transition: left 0.2s ease, top 0.2s ease;
 }
 
 .empty-state {
