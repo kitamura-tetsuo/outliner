@@ -1,3 +1,6 @@
+import { execSync } from "child_process";
+import * as path from "path";
+import { fileURLToPath } from "url";
 import { type Browser, expect, type Page } from "@playwright/test";
 import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
@@ -193,187 +196,6 @@ export class TestHelpers {
                 return { id: String(p.id), text: textVal };
             });
         });
-    }
-
-    /**
-     * テスト用のプロジェクトとページを作成する（Yjs）
-     * @param page Playwrightのページオブジェクト
-     * @param projectName プロジェクト名
-     * @param pageName ページ名
-     */
-    public static async createTestProjectAndPageViaAPI(
-        page: Page,
-        projectName: string,
-        pageName: string,
-        lines: string[] = [],
-    ): Promise<void> {
-        // Ensure project store is initialized before attempting creation
-        try {
-            await page.waitForFunction(() => {
-                const gs = (window as any).generalStore || (window as any).appStore;
-                return !!(gs && gs.project);
-            }, { timeout: 15000 });
-        } catch {
-            // Continue with retries below; creation path already handles transient unavailability
-        }
-        if (lines.length == 0) {
-            lines = [
-                "これはテスト用のページです。1",
-                "これはテスト用のページです。2",
-                "内部リンクのテスト: [test-link]",
-            ];
-        }
-
-        // Yjs/app-store 経由で作成（ページのリロード競合に耐性）
-        const runCreate = async () => {
-            await page.evaluate(async ({ projectName, pageName, lines }) => {
-                console.log(`TestHelper: Creating project/page (Yjs)`, {
-                    projectName,
-                    pageName,
-                    linesCount: lines.length,
-                });
-                // Yjs via generalStore.project
-                const gs = (window as any).generalStore || (window as any).appStore;
-                if (!gs?.project) {
-                    throw new Error("TestHelper: generalStore.project not available");
-                }
-                try {
-                    // Check if page already exists to avoid duplication
-                    const existingPage = gs.pages && gs.pages.current
-                        ? Array.from(gs.pages.current).find((
-                            p: any,
-                        ) => (p.text && p.text.toString && p.text.toString().toLowerCase() === pageName.toLowerCase()))
-                        : null;
-
-                    let page;
-                    if (existingPage) {
-                        page = existingPage;
-                        console.log("TestHelper: Using existing page via Yjs (generalStore)");
-                    } else {
-                        page = gs.project.addPage(pageName, "tester");
-                        const items = page.items as any;
-                        for (const line of lines) {
-                            const it = items.addNode("tester");
-                            it.updateText(line);
-                        }
-                        console.log("TestHelper: Created new page via Yjs (generalStore)");
-                    }
-
-                    if (!gs.currentPage) gs.currentPage = page as any;
-                } catch (e) {
-                    console.error("TestHelper: Yjs page creation failed", e);
-                }
-            }, { projectName, pageName, lines });
-        };
-
-        {
-            // 一時的なページ再読み込み/クローズに強くするため再試行回数を増加
-            let lastErr: any = null;
-            for (let attempt = 1; attempt <= 8; attempt++) {
-                try {
-                    await runCreate();
-                    lastErr = null;
-                    break;
-                } catch (e: any) {
-                    lastErr = e;
-                    const msg = String(e?.message ?? e);
-                    if (
-                        msg.includes("Target page, context or browser has been closed")
-                        || msg.includes("Execution context was destroyed")
-                        || msg.includes("Navigation")
-                        || msg.includes("generalStore.project not available")
-                    ) {
-                        console.log(`TestHelper: createProject retry ${attempt}/8 after navigation/close race`);
-                        try {
-                            await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
-                        } catch {}
-                        if (!page.isClosed()) {
-                            await page.waitForTimeout(200);
-                        } else {
-                            console.log("TestHelper: page already closed; skipping short wait before retry");
-                        }
-                        continue;
-                    } else {
-                        throw e;
-                    }
-                }
-            }
-            if (lastErr) throw lastErr;
-        }
-
-        await page.waitForTimeout(50);
-    }
-
-    /**
-     * テスト用のページを作成する（Yjs）
-     * @param page Playwrightのページオブジェクト
-     * @param pageName ページ名
-     */
-    public static async createTestPageViaAPI(page: Page, pageName: string, lines: string[]): Promise<void> {
-        // Ensure project store is initialized before attempting creation
-        try {
-            await page.waitForFunction(() => {
-                const gs = (window as any).generalStore || (window as any).appStore;
-                return !!(gs && gs.project);
-            }, { timeout: 15000 });
-        } catch {
-            // Continue with retries below; creation path already handles transient unavailability
-        }
-        const runCreate = async () => {
-            await page.evaluate(async ({ pageName, lines }) => {
-                const gs = (window as any).generalStore || (window as any).appStore;
-                if (!gs?.project) {
-                    throw new Error("TestHelper: generalStore.project not available");
-                }
-                try {
-                    const pageItem = gs.project.addPage(pageName, "tester");
-                    const items = pageItem.items as any;
-                    for (const line of lines) {
-                        const it = items.addNode("tester");
-                        it.updateText(line);
-                    }
-                    if (!gs.currentPage) gs.currentPage = pageItem as any;
-                    console.log("TestHelper: createTestPageViaAPI via Yjs");
-                } catch (e) {
-                    console.error("TestHelper: Yjs createPage failed", e);
-                }
-            }, { pageName, lines });
-        };
-
-        {
-            // 一時的なページ再読み込み/クローズに強くするため再試行回数を増加
-            let lastErr: any = null;
-            for (let attempt = 1; attempt <= 8; attempt++) {
-                try {
-                    await runCreate();
-                    lastErr = null;
-                    break;
-                } catch (e: any) {
-                    lastErr = e;
-                    const msg = String(e?.message ?? e);
-                    if (
-                        msg.includes("Target page, context or browser has been closed")
-                        || msg.includes("Execution context was destroyed")
-                        || msg.includes("Navigation")
-                        || msg.includes("generalStore.project not available")
-                    ) {
-                        console.log(`TestHelper: createPage retry ${attempt}/8 after navigation/close race`);
-                        try {
-                            await page.waitForLoadState("domcontentloaded", { timeout: 5000 });
-                        } catch {}
-                        if (!page.isClosed()) {
-                            await page.waitForTimeout(200);
-                        } else {
-                            console.log("TestHelper: page already closed; skipping short wait before retry");
-                        }
-                        continue;
-                    } else {
-                        throw e;
-                    }
-                }
-            }
-            if (lastErr) throw lastErr;
-        }
     }
 
     /**
@@ -679,491 +501,33 @@ export class TestHelpers {
         const projectName = `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = `test-page-${Date.now()}`;
 
+        // Call seeder script to create the project
+        try {
+            const __filename = fileURLToPath(import.meta.url);
+            const __dirname = path.dirname(__filename);
+            const repoRoot = path.resolve(__dirname, "../../../"); // client/e2e/utils -> client/e2e -> client -> root
+            const command = `npm run seed -- create-project "${projectName}" "${pageName}"`;
+            console.log(`Executing seeder: ${command} in ${repoRoot}/scripts`);
+            execSync(command, { cwd: `${repoRoot}/scripts`, stdio: "inherit" });
+            console.log("Seeder executed successfully.");
+        } catch (error) {
+            console.error("Failed to execute test data seeder:", error);
+            throw new Error("Seeder script failed");
+        }
+
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
         const url = `/${encodedProject}/${encodedPage}`;
 
         TestHelpers.slog("Navigating to project page", { url });
-        const base = page.url() && page.url() !== "about:blank" ? page.url() : "http://localhost:7090/";
-        const absoluteUrl = new URL(url, base).toString();
-        try {
-            TestHelpers.slog("Navigation method decided", { hasGoto: false });
-            await page.evaluate((targetUrl) => {
-                (window as any).location.href = targetUrl as any;
-            }, absoluteUrl);
-            await page.waitForURL(absoluteUrl, { timeout: 30000 });
-            TestHelpers.slog("Navigation completed", { absoluteUrl });
-        } catch (error) {
-            const msg = String((error as any)?.message ?? error);
-            if (msg.includes("Target page, context or browser has been closed")) {
-                console.warn("TestHelper: Page/context closed during navigation; NOT reopening per policy");
-                throw error;
-            }
-            if (
-                msg.includes("ECONNREFUSED")
-                || msg.includes("ERR_CONNECTION_REFUSED")
-                || msg.includes("net::ERR_CONNECTION_REFUSED")
-            ) {
-                throw new Error(
-                    "TestHelper: SvelteKit dev server appears not running at http://localhost:7090/. Run scripts/setup.sh and retry.",
-                );
-            }
-            throw error;
-        }
+        await page.goto(url, { timeout: 60000 });
+        TestHelpers.slog("Navigation completed", { url });
 
-        // 遷移後の状態を確認
-        const currentUrl = page.url();
-        TestHelpers.slog("Current URL after navigation", { currentUrl });
+        // Wait for the app to be ready
+        await TestHelpers.waitForAppReady(page);
 
-        // Fetching title can hang in rare states; don't block setup
-        try {
-            const pageTitle = await Promise.race([
-                page.title(),
-                new Promise<string>((resolve) => setTimeout(() => resolve("<title-timeout>"), 2000)),
-            ]);
-            console.log(`TestHelper: Page title: ${pageTitle}`);
-        } catch {
-            console.log("TestHelper: Page title fetch skipped due to transient state");
-        }
-
-        // E2E: Hydration flag wait skipped to avoid long stalls under unstable dev SSR
-        TestHelpers.slog("Skipping hydration-flag wait (proceeding)");
-
-        // ページルートの自動処理を待機（手動設定は行わない）
-        TestHelpers.slog("Waiting for page route to automatically load project and page");
-
-        // Ensure toolbar search box is ready but continue waiting for project/page load
-        try {
-            // Prefer role-based lookup in the main toolbar for stability
-            const input = page
-                .getByTestId("main-toolbar")
-                .getByRole("textbox", { name: "Search pages" });
-            await input.waitFor({ timeout: 3000 });
-            console.log("TestHelper: Search box available");
-        } catch {}
-
-        // 認証状態が検出されるまで待機（2フェーズで再試行）
-        TestHelpers.slog("Waiting for authentication detection (short)");
-        const authReady = await page.waitForFunction(() => {
-            const userManager = (window as any).__USER_MANAGER__;
-            const ok = !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
-            if (!ok) console.log("TestHelper: Auth check (phase1) not ready");
-            return ok;
-        }, { timeout: 5000 }).catch(() => false as const);
-
-        if (!authReady) {
-            TestHelpers.slog("Phase1 auth wait timed out; re-invoking login and retrying");
-            // Guard evaluate against transient navigation/context-destroy races
-            try {
-                await page.evaluate(async () => {
-                    try {
-                        const mgr = (window as any).__USER_MANAGER__;
-                        if (mgr?.loginWithEmailPassword) {
-                            await mgr.loginWithEmailPassword("test@example.com", "password");
-                        }
-                    } catch (e) {
-                        console.log("TestHelper: Re-login attempt failed (continuing)", e);
-                    }
-                });
-            } catch (e: any) {
-                const msg = String(e?.message ?? e);
-                if (
-                    msg.includes("Target page, context or browser has been closed")
-                    || msg.includes("Execution context was destroyed")
-                    || msg.includes("Navigation")
-                ) {
-                    TestHelpers.slog("Re-login evaluate skipped due to transient page/context state");
-                } else {
-                    throw e;
-                }
-            }
-
-            // Be tolerant: page may reload/close during setup; don't fail
-            try {
-                await page.waitForFunction(() => {
-                    const userManager = (window as any).__USER_MANAGER__;
-                    const ok = !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
-                    if (!ok) console.log("TestHelper: Auth check (phase2) not ready");
-                    return ok;
-                }, { timeout: 5000 });
-            } catch (e: any) {
-                const msg = String(e?.message ?? e);
-                if (
-                    msg.includes("Target page, context or browser has been closed")
-                    || msg.includes("Execution context was destroyed")
-                    || msg.includes("Navigation")
-                ) {
-                    TestHelpers.slog("Phase2 auth wait skipped due to transient page/context state");
-                } else {
-                    throw e;
-                }
-            }
-        }
-
-        TestHelpers.slog("Authentication detected, waiting for project loading");
-
-        // ページの詳細な状態をログ出力（ページ閉鎖などの一時的状態に寛容）
-        try {
-            await page.evaluate(() => {
-                console.log("TestHelper: Current page state:");
-                console.log("TestHelper: URL:", window.location.href);
-                console.log("TestHelper: generalStore exists:", !!(window as any).generalStore);
-
-                const generalStore = (window as any).generalStore;
-                if (generalStore) {
-                    console.log("TestHelper: generalStore.project exists:", !!generalStore.project);
-                    console.log("TestHelper: generalStore.pages exists:", !!generalStore.pages);
-                    console.log("TestHelper: generalStore.currentPage exists:", !!generalStore.currentPage);
-                }
-            });
-        } catch (e: any) {
-            const msg = String(e?.message ?? e);
-            if (
-                msg.includes("Target page, context or browser has been closed")
-                || msg.includes("Execution context was destroyed")
-                || msg.includes("Navigation")
-            ) {
-                console.log("TestHelper: Skipping state log due to transient page/context state");
-            } else {
-                throw e;
-            }
-        }
-
-        // generalStoreが設定されるまで待機（OutlinerBaseのマウントは後で確認）
-        TestHelpers.slog("Waiting for generalStore to be available");
-
-        // より詳細なデバッグ情報を追加（ページ閉鎖などに寛容）
-        try {
-            await page.evaluate(() => {
-                console.log("TestHelper: Current page state before generalStore wait:");
-                console.log("TestHelper: URL:", window.location.href);
-                console.log(
-                    "TestHelper: Available global objects:",
-                    Object.keys(window).filter(k => k.startsWith("__") || k.includes("Store") || k.includes("store")),
-                );
-                console.log("TestHelper: Document ready state:", document.readyState);
-                console.log("TestHelper: Body innerHTML length:", document.body.innerHTML.length);
-            });
-        } catch (e: any) {
-            const msg = String(e?.message ?? e);
-            if (
-                msg.includes("Target page, context or browser has been closed")
-                || msg.includes("Execution context was destroyed")
-                || msg.includes("Navigation")
-            ) {
-                console.log("TestHelper: Skipping pre-wait debug log due to transient page/context state");
-            } else {
-                throw e;
-            }
-        }
-
-        try {
-            await page.waitForFunction(() => {
-                const generalStore = (window as any).generalStore;
-                return !!generalStore;
-            }, { timeout: 60000 });
-        } catch (error) {
-            TestHelpers.slog("generalStore wait failed, checking page state");
-            try {
-                await page.evaluate(() => {
-                    console.log("TestHelper: Final page state after generalStore timeout:");
-                    console.log("TestHelper: Available stores:", {
-                        generalStore: !!(window as any).generalStore,
-                        userManager: !!(window as any).__USER_MANAGER__,
-                    });
-                    console.log("TestHelper: DOM elements:", {
-                        outlinerBase: !!document.querySelector('[data-testid="outliner-base"]'),
-                        searchBox: !!document.querySelector(".page-search-box"),
-                        main: !!document.querySelector("main"),
-                    });
-                });
-            } catch (e: any) {
-                const msg = String(e?.message ?? e);
-                if (
-                    msg.includes("Target page, context or browser has been closed")
-                    || msg.includes("Execution context was destroyed")
-                    || msg.includes("Navigation")
-                ) {
-                    console.log("TestHelper: Skipping final state log due to transient page/context state");
-                } else {
-                    throw e;
-                }
-            }
-            // Be tolerant to transient navigation/context-destroy events during boot.
-            const errMsg = String((error as any)?.message ?? error);
-            if (
-                errMsg.includes("Target page, context or browser has been closed")
-                || errMsg.includes("Execution context was destroyed")
-                || errMsg.includes("Navigation")
-            ) {
-                TestHelpers.slog("generalStore wait aborted due to transient page/context change; continuing");
-                // Continue setup without hard-failing; later steps will re-check availability.
-                return { projectName, pageName };
-            }
-            throw error;
-        }
-
-        // Ensure the target page exists after navigation and seed lines if needed
-        try {
-            const skipSeed = await page.evaluate(() => {
-                try {
-                    return window.localStorage?.getItem?.("SKIP_TEST_CONTAINER_SEED") === "true";
-                } catch {
-                    return false;
-                }
-            });
-            if (!skipSeed) {
-                await page.evaluate(({ targetPageName, lines }) => {
-                    const gs = (window as any).generalStore;
-                    if (!gs?.project) return;
-                    const norm = (s: any) => String(s ?? "").toLowerCase();
-
-                    const findPageByTitle = () => {
-                        try {
-                            const arr: any = gs.pages?.current as any;
-                            const len = arr?.length ?? 0;
-                            for (let i = 0; i < len; i++) {
-                                const p = arr?.at ? arr.at(i) : arr[i];
-                                const title = p?.text?.toString?.() ?? String(p?.text ?? "");
-                                if (norm(title) === norm(targetPageName)) return p;
-                            }
-                        } catch {}
-                        return null;
-                    };
-
-                    let pageRef = findPageByTitle();
-                    if (!pageRef) {
-                        try {
-                            pageRef = gs.project.addPage(targetPageName, "tester");
-                            console.log("TestHelper: Created missing page after navigation");
-                        } catch (e) {
-                            console.warn("TestHelper: Failed to create page after navigation", e);
-                            return;
-                        }
-                    }
-
-                    // Ensure it's the current page
-                    try {
-                        if (!gs.currentPage) gs.currentPage = pageRef;
-                    } catch {}
-
-                    // Seed lines only when the page has no items yet to avoid duplication
-                    try {
-                        const items = (pageRef as any)?.items as any;
-                        const length = items?.length ?? 0;
-                        if (items && Array.isArray(lines) && length === 0) {
-                            for (const line of lines) {
-                                const it = items.addNode?.("tester");
-                                if (it?.updateText) it.updateText(line);
-                            }
-                            console.log("TestHelper: Seeded lines into existing page");
-                        }
-                    } catch (e) {
-                        console.warn("TestHelper: Failed to seed lines", e);
-                    }
-                }, { targetPageName: pageName, lines });
-            }
-        } catch (e) {
-            console.log("TestHelper: Post-navigation ensure-page step skipped:", (e as any)?.message ?? e);
-        }
-
-        // プロジェクトとページの自動読み込みを待機
-        TestHelpers.slog("OutlinerBase mounted, waiting for project and page loading");
-
-        // より短いタイムアウトで複数回試行する
-        let attempts = 0;
-        const maxAttempts = 3; // 短縮: 3回試行（各3秒）
-        let success = false;
-
-        // E2E ログ収集を開始（1秒間隔で状態スナップショット）
-        try {
-            await page.evaluate(() => {
-                try {
-                    const w: any = window as any;
-                    if (w.__E2E__ !== true) return;
-                    // フラグが有効な場合のみ interval ログを有効化
-                    const enabled = !!(w.__E2E_ENABLE_INTERVAL_LOGS
-                        || (typeof localStorage !== "undefined"
-                            && localStorage.getItem("E2E_ENABLE_INTERVAL_LOGS") === "1"));
-                    if (!enabled) return;
-                    if (!Array.isArray(w.E2E_LOGS)) w.E2E_LOGS = [];
-                    if (w.__E2E_LOG_INTERVAL) {
-                        clearInterval(w.__E2E_LOG_INTERVAL);
-                        w.__E2E_LOG_INTERVAL = undefined;
-                    }
-                    const snap = () => {
-                        const gs: any = w.generalStore || w.appStore;
-                        const outlinerBase = document.querySelector('[data-testid="outliner-base"]');
-                        w.E2E_LOGS.push({
-                            t: Date.now(),
-                            tag: "interval-snapshot",
-                            href: location.href,
-                            readyState: document.readyState,
-                            hasGS: !!gs,
-                            hasProject: !!(gs?.project),
-                            hasPages: !!(gs?.pages),
-                            hasCurrentPage: !!(gs?.currentPage),
-                            hasOutlinerBase: !!outlinerBase,
-                        });
-                    };
-                    // 直近状態を即時1回記録し、その後1秒間隔で継続
-                    snap();
-                    w.__E2E_LOG_INTERVAL = setInterval(snap, 1000);
-                } catch {}
-            });
-        } catch {}
-
-        while (attempts < maxAttempts && !success) {
-            attempts++;
-            console.log(`TestHelper: Attempt ${attempts}/${maxAttempts} to wait for project loading`);
-
-            try {
-                await page.waitForFunction(() => {
-                    try {
-                        const w: any = window as any;
-                        const generalStore = w.generalStore;
-                        const outlinerBase = document.querySelector('[data-testid="outliner-base"]');
-
-                        const hasProject = !!(generalStore?.project);
-                        const hasPages = !!(generalStore?.pages);
-                        const ok = (!!generalStore && hasProject && hasPages) || !!outlinerBase;
-
-                        // プローブ結果を軽量に記録
-                        try {
-                            if (Array.isArray(w.E2E_LOGS)) {
-                                w.E2E_LOGS.push({
-                                    t: Date.now(),
-                                    tag: "waitForFunction-probe",
-                                    hasGeneralStore: !!generalStore,
-                                    hasOutlinerBase: !!outlinerBase,
-                                    hasProject,
-                                    hasPages,
-                                });
-                            }
-                        } catch {}
-
-                        return ok;
-                    } catch (err) {
-                        try {
-                            const w: any = window as any;
-                            if (Array.isArray(w.E2E_LOGS)) {
-                                w.E2E_LOGS.push({
-                                    t: Date.now(),
-                                    tag: "waitForFunction-error",
-                                    error: String((err as any)?.message ?? err),
-                                });
-                            }
-                        } catch {}
-                        return false;
-                    }
-                }, { timeout: 10000, polling: 300 }); // 増加: 10秒のタイムアウト、0.3秒ごとにポーリング
-
-                // フォールバック: currentPage が未設定ならタイトル一致で設定
-                await page.evaluate((targetPageName) => {
-                    const gs = (window as any).generalStore;
-                    try {
-                        if (gs?.pages && !gs.currentPage) {
-                            const arr: any = gs.pages.current as any;
-                            const len = arr?.length ?? 0;
-                            for (let i = 0; i < len; i++) {
-                                const p = arr?.at ? arr.at(i) : arr[i];
-                                if (!p) continue;
-                                const title = (p?.text as any)?.toString?.() ?? String((p as any)?.text ?? "");
-                                if (String(title).toLowerCase() === String(targetPageName).toLowerCase()) {
-                                    gs.currentPage = p;
-                                    console.log("TestHelper: currentPage set explicitly to", title);
-                                    break;
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        console.warn("TestHelper: failed to set currentPage explicitly", e);
-                    }
-                }, pageName);
-
-                success = true;
-                console.log(`TestHelper: Successfully satisfied ready conditions on attempt ${attempts}`);
-                // ログ収集を停止
-                try {
-                    await page.evaluate(() => {
-                        try {
-                            const w: any = window as any;
-                            if (w.__E2E_LOG_INTERVAL) {
-                                clearInterval(w.__E2E_LOG_INTERVAL);
-                                w.__E2E_LOG_INTERVAL = undefined;
-                            }
-                            if (Array.isArray(w.E2E_LOGS)) {
-                                w.E2E_LOGS.push({ t: Date.now(), tag: "ready-success" });
-                            }
-                        } catch {}
-                    });
-                } catch {}
-            } catch (error) {
-                const msg = error instanceof Error ? error.message : String(error);
-                TestHelpers.slog(`Attempt ${attempts} failed`, { msg });
-
-                // ブラウザコンテキストが閉じられた場合は新しいページを開き直して再試行
-                if (
-                    msg.includes("Target page, context or browser has been closed")
-                    || msg.includes("Context closed")
-                ) {
-                    console.warn("TestHelper: Context/page closed; NOT reopening per policy");
-                }
-
-                if (attempts < maxAttempts) {
-                    TestHelpers.slog("Retrying...");
-                    // ページが閉じられていてもリトライ待機できるように、page.waitForTimeoutではなく
-                    // setTimeoutを直接使用する
-                    await new Promise((resolve) => setTimeout(resolve, 2000));
-                }
-            }
-        }
-
-        if (!success) {
-            TestHelpers.slog("Failed to load project and page after all attempts");
-
-            // 収集した E2E_LOGS を取得して末尾をダンプ
-            try {
-                const tailLogs = await page.evaluate(() => {
-                    const w: any = window as any;
-                    try {
-                        if (w.__E2E_LOG_INTERVAL) {
-                            clearInterval(w.__E2E_LOG_INTERVAL);
-                            w.__E2E_LOG_INTERVAL = undefined;
-                        }
-                    } catch {}
-                    return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
-                });
-                TestHelpers.slog("E2E_LOGS (last 200)", tailLogs);
-            } catch (e) {
-                console.log("E2E_LOGS retrieval failed:", (e as any)?.message ?? e);
-            }
-
-            // 最終状態をログ出力
-            const finalState = await page.evaluate(() => {
-                const generalStore = (window as any).generalStore;
-                return {
-                    hasGeneralStore: !!generalStore,
-                    hasProject: !!(generalStore?.project),
-                    hasPages: !!(generalStore?.pages),
-                    hasCurrentPage: !!(generalStore?.currentPage),
-                };
-            });
-            console.log("TestHelper: Final state:", finalState);
-            throw new Error("Failed to load project and page");
-        }
-
-        // OutlinerBaseの非ブロッキング短時間チェックは、環境によってハングすることがあるためスキップ
-        TestHelpers.slog("Skipping OutlinerBase mount micro-check");
-
-        // ページコンポーネント初期化チェックはヘルパーでは行わず、各specに委ねる
-        TestHelpers.slog("Skipping page component init check in helper");
-
-        // currentPageが設定されるまで待機（さらに短縮・非致命的） - タイムアウト不全のため一時的に無効化
-        TestHelpers.slog("Skipping wait for currentPage (temporarily disabled due to timeout issue)");
-
-        // 最終シード: Yjs 初期化後に currentPage が空なら lines を投入（重複回避のため空の時のみ）
-        try {
+        // Seed initial lines if provided
+        if (lines.length > 0) {
             await page.evaluate((lines) => {
                 try {
                     const gs = (window as any).generalStore;
@@ -1181,45 +545,40 @@ export class TestHelpers {
                     console.warn("TestHelper: late seeding failed", e);
                 }
             }, lines);
-        } catch {}
+        }
 
-        // 強制整形: lines が与えられている場合は先頭から順にテキストを上書き（不足分は追加）
-        try {
-            if (Array.isArray(lines) && lines.length > 0) {
-                await page.evaluate((lines) => {
-                    try {
-                        const gs = (window as any).generalStore;
-                        const pageRef = gs?.currentPage;
-                        const items = pageRef?.items as any;
-                        if (!items) return;
-                        // 既存の先頭要素から順に上書きし、足りなければ追加
-                        for (let i = 0; i < lines.length; i++) {
-                            const want = String(lines[i] ?? "");
-                            let node = items.at ? items.at(i) : items[i];
-                            if (!node && typeof items.addNode === "function") {
-                                node = items.addNode("tester");
-                            }
-                            if (node?.updateText) node.updateText(want);
-                        }
-                    } catch (e) {
-                        console.warn("TestHelper: force overwrite lines failed", e);
-                    }
-                }, lines);
-            }
-        } catch {}
-
-        // 最低限の可視性を短時間だけ確認（失敗しても継続）
-        try {
-            await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 5000 });
-        } catch {}
-
-        TestHelpers.slog("Proceeding after minimal OutlinerBase visibility check");
-
-        // 追加のUIチェックは省略して直ちにテストへ移行
-        TestHelpers.slog("Proceeding to tests (skip OutlinerTree quick check)");
-
-        // ここでの最終 evaluate はテスト中のページクローズと競合しうるため省略
         return { projectName, pageName };
+    }
+
+    /**
+     * Waits for the application to be in a ready state.
+     * This includes waiting for authentication and for the generalStore to be initialized.
+     * @param page Playwright's page object
+     */
+    public static async waitForAppReady(page: Page): Promise<void> {
+        TestHelpers.slog("Waiting for app to be ready");
+
+        // Wait for authentication
+        await page.waitForFunction(() => {
+            const userManager = (window as any).__USER_MANAGER__;
+            return !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
+        }, { timeout: 15000 });
+        TestHelpers.slog("Authentication is ready");
+
+        // Wait for generalStore to be available
+        await page.waitForFunction(() => !!(window as any).generalStore, { timeout: 60000 });
+        TestHelpers.slog("generalStore is available");
+
+        // Wait for project and page to be loaded in the store
+        await page.waitForFunction(() => {
+            const gs = (window as any).generalStore;
+            return !!(gs && gs.project && gs.pages && gs.currentPage);
+        }, { timeout: 30000 });
+        TestHelpers.slog("Project and page are loaded in the store");
+
+        // Wait for the outliner to be visible
+        await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
+        TestHelpers.slog("Outliner is visible");
     }
 
     /**
