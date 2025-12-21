@@ -1,7 +1,7 @@
+import { type Browser, expect, type Page } from "@playwright/test";
 import { execSync } from "child_process";
 import * as path from "path";
 import { fileURLToPath } from "url";
-import { type Browser, expect, type Page } from "@playwright/test";
 import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
 
