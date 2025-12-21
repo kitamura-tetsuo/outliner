@@ -1,27 +1,27 @@
 {
-  "name": "app",
-  "version": "1.0.0",
-  "description": "Outliner is a real-time collaborative application built on Yjs.",
-  "directories": {
-    "doc": "docs"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/kitamura-tetsuo/outliner.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/kitamura-tetsuo/outliner/issues"
-  },
-  "homepage": "https://github.com/kitamura-tetsuo/outliner#readme",
-  "devDependencies": {
-    "@dotenvx/dotenvx": "^1.51.2",
-    "pm2": "^6.0.14"
-  }
+    "name": "app",
+    "version": "1.0.0",
+    "description": "Outliner is a real-time collaborative application built on Yjs.",
+    "directories": {
+        "doc": "docs"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/kitamura-tetsuo/outliner.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "bugs": {
+        "url": "https://github.com/kitamura-tetsuo/outliner/issues"
+    },
+    "homepage": "https://github.com/kitamura-tetsuo/outliner#readme",
+    "devDependencies": {
+        "@dotenvx/dotenvx": "^1.51.2",
+        "pm2": "^6.0.14"
+    }
 }
