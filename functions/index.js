@@ -1552,6 +1552,40 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
+// Helper to determine file metadata for security
+function getUploadOptions(fileName) {
+  const lowerName = fileName.toLowerCase();
+
+  // Allow inline display only for known safe image types
+  // This prevents Stored XSS via HTML/SVG uploads by forcing them to be downloaded
+  const safeImages = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+  };
+
+  for (const [ext, mime] of Object.entries(safeImages)) {
+    if (lowerName.endsWith(ext)) {
+      return {
+        metadata: {
+          contentType: mime,
+          contentDisposition: "inline",
+        },
+      };
+    }
+  }
+
+  // For all other file types (including HTML, SVG, PDF), force attachment (download)
+  // This mitigates XSS risks by preventing the browser from rendering potentially malicious content
+  return {
+    metadata: {
+      contentDisposition: "attachment",
+    },
+  };
+}
+
 // Upload attachment
 exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
   setCorsHeaders(req, res);
@@ -1609,7 +1643,8 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
     const file = bucket.file(filePath);
     logger.info(`uploadAttachment saving file: ${filePath}`);
 
-    await file.save(Buffer.from(fileData, "base64"));
+    const uploadOptions = getUploadOptions(fileName);
+    await file.save(Buffer.from(fileData, "base64"), uploadOptions);
     logger.info(`uploadAttachment file saved successfully: ${filePath}`);
 
     let url;
@@ -1806,7 +1841,7 @@ exports.adminCheckForProjectUserListing = onRequest(
       const userRecord = await admin.auth().getUser(uid);
       const customClaims = userRecord.customClaims || {};
 
-      if (!customClaims.admin) {
+      if (!customClaims.admin && customClaims.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
       }
 
@@ -1868,7 +1903,7 @@ exports.adminUserList = onRequest(
       const userRecord = await admin.auth().getUser(uid);
       const customClaims = userRecord.customClaims || {};
 
-      if (!customClaims.admin) {
+      if (!customClaims.admin && customClaims.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
       }
 
