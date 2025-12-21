@@ -319,15 +319,28 @@ onMount(() => {
             }
         }}
     />
-        {#if results.length && (query.length > 0)}
-            <ul>
-                {#each results as page, i (page.id)}
-                    <li class:selected={i === selected}>
-                        <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
-                    </li>
-                {/each}
-            </ul>
-        {/if}
+    {#if query.length > 0}
+        <button
+            type="button"
+            class="clear-button"
+            aria-label="Clear search"
+            onclick={() => { query = ''; }}
+        >
+            &times;
+        </button>
+    {/if}
+    {#if query.length > 0 && results.length === 0}
+        <div class="no-results" role="status">No results found</div>
+    {/if}
+    {#if results.length && (query.length > 0)}
+        <ul>
+            {#each results as page, i (page.id)}
+                <li class:selected={i === selected}>
+                    <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
+                </li>
+            {/each}
+        </ul>
+    {/if}
 </div>
 
 <style>
@@ -413,6 +426,34 @@ onMount(() => {
     overflow: hidden !important;
     white-space: nowrap !important;
     border: 0 !important;
+}
+
+.clear-button {
+    position: absolute;
+    right: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.25rem;
+    color: #9ca3af;
+    padding: 0.25rem;
+    line-height: 1;
+}
+
+.clear-button:hover {
+    color: #6b7280;
+}
+
+.no-results {
+    padding: 0.5rem 0.75rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
 }
 
 </style>

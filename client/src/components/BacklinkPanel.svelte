@@ -92,32 +92,44 @@ onDestroy(() => {
         onclick={togglePanel}
         class="backlink-toggle-button"
         class:active={isOpen}
+        aria-expanded={isOpen}
+        aria-controls="backlink-content-panel"
     >
         <span class="backlink-count">{backlinks.length}</span>
         <span class="backlink-label">バックリンク</span>
-        <span class="toggle-icon">{isOpen ? "▼" : "▶"}</span>
+        <span class="toggle-icon" aria-hidden="true">{isOpen ? "▼" : "▶"}</span>
     </button>
 
     {#if isOpen}
-        <div class="backlink-content">
+        <div
+            id="backlink-content-panel"
+            class="backlink-content"
+            role="region"
+            aria-label="バックリンク"
+        >
             <div class="backlink-header">
                 <h3>バックリンク</h3>
-                <button onclick={refreshBacklinks} class="refresh-button" title="再読み込み">
+                <button
+                    onclick={refreshBacklinks}
+                    class="refresh-button"
+                    title="再読み込み"
+                    aria-label="バックリンクを再読み込み"
+                >
                     ↻
                 </button>
             </div>
 
             {#if isLoading}
-                <div class="backlink-loading">
+                <div class="backlink-loading" role="status" aria-live="polite">
                     <div class="loader"></div>
                     <p>読み込み中...</p>
                 </div>
             {:else if error}
-                <div class="backlink-error">
+                <div class="backlink-error" role="status" aria-live="polite">
                     <p>{error}</p>
                 </div>
             {:else if backlinks.length === 0}
-                <div class="backlink-empty">
+                <div class="backlink-empty" role="status">
                     <p>このページへのリンクはありません</p>
                 </div>
             {:else}
