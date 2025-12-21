@@ -198,17 +198,22 @@ if [ ! -f node_modules/.bin/paraglide-js ] || [ ! -f node_modules/.bin/dotenvx ]
 fi
 cd "${ROOT_DIR}"
 
+# Ensure root dependencies (pm2, dotenvx, kill-port) are installed
+echo "Ensuring root dependencies are installed..."
+cd "${ROOT_DIR}"
+npm_ci_if_needed
+
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
-npx pm2 delete all || true
-npx kill-port 7091 || true
+"${ROOT_DIR}/node_modules/.bin/pm2" delete all || true
+npx --yes kill-port 7091 || true
 
 # Start all test servers unless skipped
 if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then
   echo "Skipping server start as requested"
 else
   echo "Starting test servers with PM2..."
-  npx pm2 start ecosystem.config.js
+  "${ROOT_DIR}/node_modules/.bin/pm2" start ecosystem.config.js
 fi
 
 # Wait for all services to be ready
