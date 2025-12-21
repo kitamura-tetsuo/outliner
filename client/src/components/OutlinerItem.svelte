@@ -610,7 +610,11 @@ onMount(() => {
 
 // Memoize formatting operations to avoid unnecessary recalculations during render
 let hasFormatting = $derived(ScrapboxFormatter.hasFormatting(textString));
-let formattedHtml = $derived(isItemActive ? ScrapboxFormatter.formatWithControlChars(textString) : ScrapboxFormatter.formatToHtml(textString));
+let formattedHtml = $derived(
+    hasFormatting
+        ? (isItemActive ? ScrapboxFormatter.formatWithControlChars(textString) : ScrapboxFormatter.formatToHtml(textString))
+        : ScrapboxFormatter.escapeHtml(textString)
+);
 
 // 表示エリアのref
 let displayRef: HTMLDivElement;
