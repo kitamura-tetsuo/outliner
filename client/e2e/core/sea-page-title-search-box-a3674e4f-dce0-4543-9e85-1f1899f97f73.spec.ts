@@ -42,6 +42,11 @@ test.describe("SEA-0001: page title search box", () => {
         const searchInput = page.locator(".page-search-box input");
         await expect(searchInput).toBeVisible();
 
+        // Verify accessible labels and icon
+        await expect(searchInput).toHaveAttribute("aria-label", "Search pages");
+        await expect(searchInput).toHaveAttribute("placeholder", "Search pages");
+        await expect(page.locator(".page-search-box .search-icon")).toBeVisible();
+
         // Focus the input first to ensure it's ready for interaction
         await searchInput.focus();
         await page.waitForTimeout(100);

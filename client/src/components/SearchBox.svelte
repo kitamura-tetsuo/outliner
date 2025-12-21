@@ -296,6 +296,9 @@ onMount(() => {
 <div class="page-search-box">
 
     <label id="search-pages-label" for="search-pages-input" class="visually-hidden">Search pages</label>
+    <svg class="search-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
     <input
         type="text"
         aria-hidden="false"
@@ -319,15 +322,28 @@ onMount(() => {
             }
         }}
     />
-        {#if results.length && (query.length > 0)}
-            <ul>
-                {#each results as page, i (page.id)}
-                    <li class:selected={i === selected}>
-                        <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
-                    </li>
-                {/each}
-            </ul>
-        {/if}
+    {#if query.length > 0}
+        <button
+            type="button"
+            class="clear-button"
+            aria-label="Clear search"
+            onclick={() => { query = ''; }}
+        >
+            &times;
+        </button>
+    {/if}
+    {#if query.length > 0 && results.length === 0}
+        <div class="no-results" role="status">No results found</div>
+    {/if}
+    {#if results.length && (query.length > 0)}
+        <ul>
+            {#each results as page, i (page.id)}
+                <li class:selected={i === selected}>
+                    <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
+                </li>
+            {/each}
+        </ul>
+    {/if}
 </div>
 
 <style>
@@ -337,9 +353,21 @@ onMount(() => {
     max-width: 400px;
 }
 
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+    color: #9ca3af;
+    pointer-events: none;
+    z-index: 10;
+}
+
 .page-search-box input {
     width: 340px;
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem 0.5rem 2.25rem;
     border: 1px solid #d1d5db;
     border-radius: 0.375rem;
     font-size: 0.875rem;
@@ -413,6 +441,34 @@ onMount(() => {
     overflow: hidden !important;
     white-space: nowrap !important;
     border: 0 !important;
+}
+
+.clear-button {
+    position: absolute;
+    right: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.25rem;
+    color: #9ca3af;
+    padding: 0.25rem;
+    line-height: 1;
+}
+
+.clear-button:hover {
+    color: #6b7280;
+}
+
+.no-results {
+    padding: 0.5rem 0.75rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
 }
 
 </style>
