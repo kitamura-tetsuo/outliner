@@ -9,6 +9,7 @@ try {
 
 // Default port values matching scripts/common-config.sh
 const TEST_YJS_PORT = process.env.TEST_YJS_PORT || "7093";
+const TEST_API_PORT = process.env.TEST_API_PORT || "7091";
 const VITE_PORT = process.env.VITE_PORT || "7090";
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "outliner-d57b0";
 
@@ -26,6 +27,18 @@ module.exports = {
             },
             out_file: "./logs/pm2/yjs-server-out.log",
             error_file: "./logs/pm2/yjs-server-error.log",
+        },
+        {
+            name: "log-service",
+            script: "log-service.js",
+            cwd: "./server",
+            watch: false,
+            env: {
+                ...process.env,
+                PORT: TEST_API_PORT,
+            },
+            out_file: "./logs/pm2/log-service-out.log",
+            error_file: "./logs/pm2/log-service-error.log",
         },
         {
             name: "firebase-emulators",
