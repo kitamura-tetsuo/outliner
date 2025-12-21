@@ -119,6 +119,11 @@ jobs:
           chmod +x server/node_modules/.bin/* || true
           chmod +x functions/node_modules/.bin/* || true
 
+      - name: Install script dependencies
+        run: |
+          cd scripts
+          npm install
+
       - name: Setup test environment
         run: |
           # Clean up any existing processes on test ports
