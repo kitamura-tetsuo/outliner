@@ -7,6 +7,7 @@ import { getMetrics, recordMessage } from "./metrics";
 import { createPersistence, logTotalSize, warnIfRoomTooLarge } from "./persistence";
 import { parseRoom } from "./room-validator";
 import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners";
+import { sanitizeUrl } from "./utils/sanitize";
 import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let setupWSConnection: any;
@@ -125,7 +126,7 @@ export function startServer(config: Config, logger = defaultLogger) {
         }
         const roomInfo = parseRoom(req.url ?? "/");
         if (!roomInfo) {
-            logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: req.url });
+            logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: sanitizeUrl(req.url) });
             ws.close(4002, "INVALID_ROOM");
             return;
         }
