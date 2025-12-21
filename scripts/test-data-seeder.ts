@@ -37,39 +37,77 @@ class TestDataSeeder {
         });
     }
 
-    createProjectStructure(doc: Y.Doc, name: string, pages: string[]) {
-        const project = Project.fromDoc(doc);
-        project.title = name;
-        const author = "seeder";
-        if (pages.length > 0) {
-            pages.forEach((pageTitle) => {
-                project.addPage(pageTitle, author);
-            });
-        } else {
-            // Create a default page if none are specified
-            project.addPage("Main Page", author);
-        }
-        console.log(`Project structure for "${name}" created with pages: ${pages.join(", ") || "Main Page"}`);
-    }
-
     async createProject(name: string, pages: string[]) {
-        console.log(`Creating project: ${name} with pages: ${pages.join(", ")}`);
         const projectId = uuid();
-        const { doc, provider } = await this.connectToProject(projectId);
+        console.log(`Creating project "${name}" with ID: ${projectId}`);
 
-        this.createProjectStructure(doc, name, pages);
-
-        // Disconnect after a short delay to ensure data is sent
-        setTimeout(() => {
-            console.log("Disconnecting...");
-            provider.disconnect();
-            process.exit(0);
-        }, 1000);
+        await this._withProject(projectId, (project) => {
+            project.title = name;
+            const author = "seeder";
+            if (pages.length > 0) {
+                pages.forEach((pageTitle) => {
+                    project.addPage(pageTitle, author);
+                });
+            } else {
+                project.addPage("Main Page", author);
+            }
+            console.log(`Project structure for "${name}" created with pages: ${pages.join(", ") || "Main Page"}`);
+        });
     }
 
     async clearAll() {
         console.log("Clearing all test data");
         // TODO: Implement data clearing logic
+    }
+
+    private async _withProject(projectId: string, action: (project: Project) => Promise<void> | void) {
+        const { doc, provider } = await this.connectToProject(projectId);
+        const project = Project.fromDoc(doc);
+
+        await action(project);
+
+        // Wait for changes to be synced
+        await new Promise<void>((resolve) => {
+            if (provider.synced) {
+                resolve();
+                return;
+            }
+            const syncListener = (event: { synced: boolean; }) => {
+                if (event.synced) {
+                    provider.off("synced", syncListener);
+                    resolve();
+                }
+            };
+            provider.on("synced", syncListener);
+        });
+
+        console.log("Changes synced successfully.");
+        provider.disconnect();
+    }
+
+    async addPage(projectId: string, title: string) {
+        await this._withProject(projectId, (project) => {
+            console.log(`Adding page "${title}" to project ${projectId}`);
+            const newPage = project.addPage(title, "seeder");
+            console.log(`Page "${title}" added with ID: ${newPage.id}`);
+        });
+    }
+
+    async addTextNode(projectId: string, pageId: string, text: string) {
+        await this._withProject(projectId, (project) => {
+            console.log(`Adding text node to page ${pageId} in project ${projectId}`);
+            const page = project.items.toArray().find((item) => item.id === pageId);
+
+            if (!page) {
+                // This error won't be caught by the main catch block, so we exit here.
+                console.error(`Page with ID ${pageId} not found in project ${projectId}`);
+                process.exit(1);
+            }
+
+            const newNode = page.items.addNode("seeder");
+            newNode.updateText(text);
+            console.log(`Added text node with ID: ${newNode.id} and text: "${text}"`);
+        });
     }
 }
 
@@ -79,7 +117,7 @@ async function main() {
     const seeder = new TestDataSeeder();
 
     switch (command) {
-        case "create-project":
+        case "create-project": {
             const [name, ...pages] = args.slice(1);
             if (!name) {
                 console.error("Project name is required for create-project");
@@ -87,12 +125,35 @@ async function main() {
             }
             await seeder.createProject(name, pages);
             break;
+        }
+        case "add-page": {
+            const [projectId, title] = args.slice(1);
+            if (!projectId || !title) {
+                console.error("Usage: add-page <projectId> <title>");
+                process.exit(1);
+            }
+            await seeder.addPage(projectId, title);
+            break;
+        }
+        case "add-text-node": {
+            const projectId = args[1];
+            const pageId = args[2];
+            const text = args.slice(3).join(" ");
+            if (!projectId || !pageId || !text) {
+                console.error("Usage: add-text-node <projectId> <pageId> <text>");
+                process.exit(1);
+            }
+            await seeder.addTextNode(projectId, pageId, text);
+            break;
+        }
         case "clear-all":
             await seeder.clearAll();
             break;
         default:
             console.error(`Unknown command: ${command}`);
-            console.log("Available commands: create-project <name> <pages...>, clear-all");
+            console.log(
+                "Available commands: create-project <name> <pages...>, add-page <projectId> <title>, add-text-node <projectId> <pageId> <text>, clear-all",
+            );
             process.exit(1);
     }
 }

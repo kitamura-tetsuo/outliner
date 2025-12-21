@@ -323,22 +323,26 @@ EOV
 install_all_dependencies() {
   echo "Installing dependencies..."
 
-  # Fix permissions before installing
-  echo "Fixing permissions before installing dependencies..."
-  for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
-    if [ -d "$dir" ]; then
-      # Fix node_modules ownership if needed
-      if [ -d "${dir}/node_modules" ] && [ "$(stat -c %U ${dir}/node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
-        echo "Fixing node_modules ownership in $dir..."
-        sudo chown -R node:node "${dir}/node_modules" || true
+  # Fix permissions before installing, but only if not in a CI environment
+  if [ -z "$CI" ]; then
+    echo "Fixing permissions before installing dependencies..."
+    for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
+      if [ -d "$dir" ]; then
+        # Fix node_modules ownership if needed
+        if [ -d "${dir}/node_modules" ] && [ "$(stat -c %U ${dir}/node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
+          echo "Fixing node_modules ownership in $dir..."
+          sudo chown -R node:node "${dir}/node_modules" || true
+        fi
+        # Ensure directory is owned by node user
+        if [ "$(stat -c %U $dir)" = "root" ]; then
+          echo "Fixing ownership for $dir..."
+          sudo chown -R node:node "$dir" || true
+        fi
       fi
-      # Ensure directory is owned by node user
-      if [ "$(stat -c %U $dir)" = "root" ]; then
-        echo "Fixing ownership for $dir..."
-        sudo chown -R node:node "$dir" || true
-      fi
-    fi
-  done
+    done
+  else
+    echo "Skipping permission fixes in CI environment."
+  fi
 
   # Server dependencies
   cd "${ROOT_DIR}/server"
