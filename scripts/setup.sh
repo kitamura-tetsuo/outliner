@@ -200,11 +200,7 @@ cd "${ROOT_DIR}"
 
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
-if command -v pm2 &> /dev/null; then
-    pm2 delete all || true
-else
-    echo "PM2 not found, skipping..."
-fi
+npx pm2 delete all || true
 npx kill-port 7091 || true
 
 # Start all test servers unless skipped
@@ -212,7 +208,7 @@ if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then
   echo "Skipping server start as requested"
 else
   echo "Starting test servers with PM2..."
-  pm2 start ecosystem.config.js
+  npx pm2 start ecosystem.config.js
 fi
 
 # Wait for all services to be ready
