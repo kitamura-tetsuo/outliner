@@ -1,7 +1,7 @@
-import * as Y from "yjs";
-import { WebsocketProvider } from "y-websocket";
-import WebSocket from "ws";
 import { v4 as uuid } from "uuid";
+import WebSocket from "ws";
+import { WebsocketProvider } from "y-websocket";
+import * as Y from "yjs";
 import { Project } from "../client/src/schema/app-schema";
 
 // Since we're in Node.js, we need to polyfill WebSocket
@@ -10,20 +10,20 @@ const ws = WebSocket as any;
 const YJS_SERVER_URL = process.env.YJS_SERVER_URL || "ws://localhost:7080";
 
 class TestDataSeeder {
-    async connectToProject(projectId: string): Promise<{ doc: Y.Doc; provider: WebsocketProvider }> {
+    async connectToProject(projectId: string): Promise<{ doc: Y.Doc; provider: WebsocketProvider; }> {
         const doc = new Y.Doc();
         const provider = new WebsocketProvider(YJS_SERVER_URL, projectId, doc, {
             WebSocketPolyfill: ws,
         });
 
         return new Promise((resolve, reject) => {
-            provider.on("status", (event: { status: string }) => {
+            provider.on("status", (event: { status: string; }) => {
                 if (event.status === "connected") {
                     console.log(`Connected to project: ${projectId}`);
                 }
             });
 
-            provider.on("synced", (event: { synced: boolean }) => {
+            provider.on("synced", (event: { synced: boolean; }) => {
                 if (event.synced) {
                     console.log(`Synced with project: ${projectId}`);
                     resolve({ doc, provider });
@@ -51,7 +51,6 @@ class TestDataSeeder {
         }
         console.log(`Project structure for "${name}" created with pages: ${pages.join(", ") || "Main Page"}`);
     }
-
 
     async createProject(name: string, pages: string[]) {
         console.log(`Creating project: ${name} with pages: ${pages.join(", ")}`);
