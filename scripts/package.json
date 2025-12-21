@@ -10,12 +10,15 @@
     "scripts": {
         "test": "vitest run",
         "test:watch": "vitest",
-        "test:coverage": "vitest run --coverage"
+        "test:coverage": "vitest run --coverage",
+        "seed": "ts-node test-data-seeder.ts"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "devDependencies": {
+        "@types/node": "^25.0.3",
+        "ts-node": "^10.9.2",
         "vitest": "^3.2.4"
     },
     "dependencies": {
