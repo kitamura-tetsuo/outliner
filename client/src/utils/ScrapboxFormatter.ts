@@ -18,7 +18,7 @@ export class ScrapboxFormatter {
     /**
      * Helper to escape HTML characters
      */
-    private static escapeHtml(str: string): string {
+    public static escapeHtml(str: string): string {
         return str
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
