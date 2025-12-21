@@ -18,10 +18,16 @@
     "license": "ISC",
     "devDependencies": {
         "@types/node": "^25.0.3",
+        "@types/uuid": "^10.0.0",
+        "@types/ws": "^8.18.1",
         "ts-node": "^10.9.2",
         "vitest": "^3.2.4"
     },
     "dependencies": {
-        "firebase-admin": "^13.4.0"
+        "firebase-admin": "^13.4.0",
+        "uuid": "^13.0.0",
+        "ws": "^8.18.3",
+        "y-websocket": "^3.0.0",
+        "yjs": "^13.6.28"
     }
 }
