@@ -340,9 +340,15 @@ install_all_dependencies() {
     fi
   done
 
+  # Root dependencies
+  cd "${ROOT_DIR}"
+  npm_ci_if_needed
+
   # Server dependencies
   cd "${ROOT_DIR}/server"
   npm_ci_if_needed
+  npm run build
+
 
   # Firebase Functions dependencies
   cd "${ROOT_DIR}/functions"

@@ -200,27 +200,19 @@ cd "${ROOT_DIR}"
 
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
-kill_ports || echo "Warning: Some ports could not be killed"
-# Additional cleanup: kill any stuck Firebase processes
-pkill -9 -f "firebase emulators:start" 2>/dev/null || true
-pkill -9 -f "functionsEmulatorRuntime" 2>/dev/null || true
-pkill -9 -f "cloud-firestore-emulator" 2>/dev/null || true
-pkill -9 -f "cloud-storage-rules" 2>/dev/null || true
-sleep 3
+if command -v pm2 &> /dev/null; then
+    pm2 delete all || true
+else
+    echo "PM2 not found, skipping..."
+fi
+npx kill-port 7091 || true
 
 # Start all test servers unless skipped
 if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then
   echo "Skipping server start as requested"
 else
-  echo "Starting test servers..."
-  echo "Starting Firebase emulator..."
-  start_firebase_emulator
-  echo "Starting Yjs server..."
-  start_yjs_server
-  echo "Starting SvelteKit server..."
-  start_sveltekit_server
-  echo "Starting API server..."
-  start_api_server
+  echo "Starting test servers with PM2..."
+  pm2 start ecosystem.config.js
 fi
 
 # Wait for all services to be ready

@@ -4,7 +4,7 @@ module.exports = {
     apps: [
         {
             name: "yjs-server",
-            script: "index.js",
+            script: "dist/index.js",
             cwd: "./server",
             watch: false,
             env: {
