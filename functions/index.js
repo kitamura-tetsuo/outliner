@@ -1063,8 +1063,8 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
-  const { idToken, pageId, schedule } = req.body || {};
-  if (!idToken || !pageId || !schedule) {
+  const { idToken, pageId, projectId, schedule } = req.body || {};
+  if (!idToken || !pageId || !projectId || !schedule) {
     return res.status(400).json({ error: "Invalid request" });
   }
   try {
@@ -1119,10 +1119,19 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
       }
     }
 
+    // Check access
+    const hasAccess = await checkContainerAccess(uid, projectId);
+    if (!hasAccess) {
+      logger.error(
+        `createSchedule: Access denied for user ${uid} to project ${projectId}`,
+      );
+      return res.status(403).json({ error: "Access denied to project" });
+    }
+
     // 重要なデバッグ情報: 受信したページIDとスケジュール
     try {
       logger.info(
-        `createSchedule: pageId=${pageId}, nextRunAt=${schedule?.nextRunAt}`,
+        `createSchedule: pageId=${pageId}, projectId=${projectId}, nextRunAt=${schedule?.nextRunAt}`,
       );
     } catch (e) {
       logger.warn("createSchedule: logging failed", e);
@@ -1197,8 +1206,8 @@ exports.updateSchedule = onRequest({ cors: true }, async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
-  const { idToken, pageId, scheduleId, schedule } = req.body || {};
-  if (!idToken || !pageId || !scheduleId || !schedule) {
+  const { idToken, pageId, scheduleId, projectId, schedule } = req.body || {};
+  if (!idToken || !pageId || !scheduleId || !projectId || !schedule) {
     return res.status(400).json({ error: "Invalid request" });
   }
   try {
@@ -1241,6 +1250,16 @@ exports.updateSchedule = onRequest({ cors: true }, async (req, res) => {
         throw new Error(`Authentication failed: ${tokenError.message}`);
       }
     }
+
+    // Check access
+    const hasAccess = await checkContainerAccess(uid, projectId);
+    if (!hasAccess) {
+      logger.error(
+        `updateSchedule: Access denied for user ${uid} to project ${projectId}`,
+      );
+      return res.status(403).json({ error: "Access denied to project" });
+    }
+
     const scheduleRef = db
       .collection("pages")
       .doc(pageId)
@@ -1291,8 +1310,8 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const { idToken, pageId } = req.body || {};
-  if (!idToken || !pageId) {
+  const { idToken, pageId, projectId } = req.body || {};
+  if (!idToken || !pageId || !projectId) {
     return res.status(400).json({ error: "Invalid request" });
   }
 
@@ -1308,12 +1327,14 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
       );
     }
 
+    let uid;
     try {
       // エミュレーター環境では checkRevoked: false を設定
       const decoded = await admin.auth().verifyIdToken(idToken, !isEmulatorEnv);
+      uid = decoded.uid;
 
       logger.info(
-        `listSchedules: Token verified successfully for user: ${decoded.uid} (emulator: ${isEmulatorEnv})`,
+        `listSchedules: Token verified successfully for user: ${uid} (emulator: ${isEmulatorEnv})`,
       );
     } catch (tokenError) {
       logger.error(
@@ -1332,6 +1353,16 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
         throw new Error(`Authentication failed: ${tokenError.message}`);
       }
     }
+
+    // Check access
+    const hasAccess = await checkContainerAccess(uid, projectId);
+    if (!hasAccess) {
+      logger.error(
+        `listSchedules: Access denied for user ${uid} to project ${projectId}`,
+      );
+      return res.status(403).json({ error: "Access denied to project" });
+    }
+
     logger.info(`listSchedules: pageId=${pageId}`);
     const snapshot = await db
       .collection("pages")
@@ -1370,8 +1401,8 @@ exports.exportSchedulesIcal = onRequest({ cors: true }, async (req, res) => {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const { idToken, pageId } = req.body || {};
-  if (!idToken || !pageId) {
+  const { idToken, pageId, projectId } = req.body || {};
+  if (!idToken || !pageId || !projectId) {
     return res.status(400).json({ error: "Invalid request" });
   }
 
@@ -1405,6 +1436,15 @@ exports.exportSchedulesIcal = onRequest({ cors: true }, async (req, res) => {
       } else {
         throw new Error(`Authentication failed: ${tokenError.message}`);
       }
+    }
+
+    // Check access
+    const hasAccess = await checkContainerAccess(decoded.uid, projectId);
+    if (!hasAccess) {
+      logger.error(
+        `exportSchedulesIcal: Access denied for user ${decoded.uid} to project ${projectId}`,
+      );
+      return res.status(403).json({ error: "Access denied to project" });
     }
 
     const pageRef = db.collection("pages").doc(pageId);
@@ -1472,8 +1512,8 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const { idToken, pageId, scheduleId } = req.body || {};
-  if (!idToken || !pageId || !scheduleId) {
+  const { idToken, pageId, scheduleId, projectId } = req.body || {};
+  if (!idToken || !pageId || !scheduleId || !projectId) {
     return res.status(400).json({ error: "Invalid request" });
   }
 
@@ -1517,6 +1557,16 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
         throw new Error(`Authentication failed: ${tokenError.message}`);
       }
     }
+
+    // Check access
+    const hasAccess = await checkContainerAccess(uid, projectId);
+    if (!hasAccess) {
+      logger.error(
+        `cancelSchedule: Access denied for user ${uid} to project ${projectId}`,
+      );
+      return res.status(403).json({ error: "Access denied to project" });
+    }
+
     const scheduleRef = db
       .collection("pages")
       .doc(pageId)

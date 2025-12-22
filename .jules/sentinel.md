@@ -27,3 +27,9 @@
 **Vulnerability:** The WebSocket server received authentication tokens via URL query parameters (`?auth=...`) and logged the full URL when connection errors occurred (e.g., invalid room), leaking valid tokens in server logs.
 **Learning:** URLs are often treated as "metadata" and logged freely, but they become sensitive when query parameters carry secrets. This is common in WebSocket handshakes where custom headers are limited.
 **Prevention:** Sanitize URLs before logging. Specifically redact known sensitive query parameters like `token`, `auth`, `key`. Use a centralized logger with automatic redaction rules for URL fields.
+
+## 2025-02-23 - Missing Authorization in Schedule Functions
+
+**Vulnerability:** `createSchedule` and related Cloud Functions did not verify if the user had access to the project associated with the page, relying on `pageId` obscurity. This allowed Insecure Direct Object References (IDOR).
+**Learning:** Cloud Functions handling sub-resources (like pages) must explicitly verify parent resource (project) access if the sub-resource doesn't implicitly enforce it or if the link is not checked.
+**Prevention:** Require `projectId` in requests and verify access using `checkContainerAccess` before performing operations on `pageId`.
