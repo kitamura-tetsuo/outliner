@@ -11,7 +11,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
-        "seed": "tsx test-data-seeder.ts"
+        "seed": "ts-node test-data-seeder.ts"
     },
     "keywords": [],
     "author": "",
@@ -21,7 +21,6 @@
         "@types/uuid": "^10.0.0",
         "@types/ws": "^8.18.1",
         "ts-node": "^10.9.2",
-        "tsx": "^4.21.0",
         "vitest": "^3.2.4"
     },
     "dependencies": {

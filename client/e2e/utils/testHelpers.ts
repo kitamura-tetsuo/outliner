@@ -479,52 +479,6 @@ export class TestHelpers {
     }
 
     /**
-     * API (Store) を使用して新しいページを作成する
-     * @param page Playwrightのページオブジェクト
-     * @param pageName 作成するページ名
-     * @param lines 初期データ行
-     */
-    public static async createTestPageViaAPI(
-        page: Page,
-        pageName: string,
-        lines: string[] = [],
-    ): Promise<void> {
-        TestHelpers.slog("createTestPageViaAPI start", { pageName });
-
-        await page.evaluate(async ({ pageName, lines }) => {
-            const gs = (window as any).generalStore;
-            if (!gs || !gs.project) {
-                throw new Error("generalStore.project is not available");
-            }
-
-            const proj = gs.project;
-            if (typeof proj.addPage !== "function") {
-                console.error("project.addPage is not a function", proj);
-                throw new Error("project.addPage is not a function");
-            }
-
-            const newPage = proj.addPage(pageName, "e2e-tester");
-            console.log(`[createTestPageViaAPI] Created page "${pageName}" with ID ${newPage.id}`);
-
-            // Add lines if any
-            if (lines.length > 0 && newPage.items) {
-                const items = newPage.items;
-                // addNode method availability check
-                if (typeof items.addNode === "function") {
-                    for (const line of lines) {
-                        const node = items.addNode("e2e-tester");
-                        if (node && typeof node.updateText === "function") {
-                            node.updateText(line);
-                        }
-                    }
-                }
-            }
-        }, { pageName, lines });
-
-        TestHelpers.slog("createTestPageViaAPI completed");
-    }
-
-    /**
      * プロジェクトページに移動する
      * 既存のプロジェクトがあればそれを使用し、なければ新規作成する
      * @param page Playwrightのページオブジェクト
@@ -545,20 +499,6 @@ export class TestHelpers {
         const projectName = `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = `test-page-${Date.now()}`;
 
-        // Call seeder script to create the project
-        try {
-            const __filename = fileURLToPath(import.meta.url);
-            const __dirname = path.dirname(__filename);
-            const repoRoot = path.resolve(__dirname, "../../../"); // client/e2e/utils -> client/e2e -> client -> root
-            const command = `npm run seed -- create-project "${projectName}" "${pageName}"`;
-            console.log(`Executing seeder: ${command} in ${repoRoot}/scripts`);
-            execSync(command, { cwd: `${repoRoot}/scripts`, stdio: "inherit" });
-            console.log("Seeder executed successfully.");
-        } catch (error) {
-            console.error("Failed to execute test data seeder:", error);
-            throw new Error("Seeder script failed");
-        }
-
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
         const url = `/${encodedProject}/${encodedPage}`;
@@ -577,29 +517,13 @@ export class TestHelpers {
                     const gs = (window as any).generalStore;
                     const pageRef = gs?.currentPage;
                     const items = pageRef?.items as any;
-                    if (items && Array.isArray(lines) && lines.length > 0) {
-                        // Clear existing items first (remove from end to avoid index shifting)
-                        const existingLength = items?.length ?? 0;
-                        for (let i = existingLength - 1; i >= 0; i--) {
-                            try {
-                                if (typeof items.removeAt === "function") {
-                                    items.removeAt(i);
-                                } else {
-                                    const item = items.at ? items.at(i) : items[i];
-                                    if (item && typeof items.removeNode === "function") {
-                                        items.removeNode(item.id);
-                                    }
-                                }
-                            } catch (e) {
-                                console.warn("TestHelper: failed to remove item at index " + i, e);
-                            }
-                        }
-                        // Add the requested lines
+                    const length = items?.length ?? 0;
+                    if (items && Array.isArray(lines) && lines.length > 0 && length === 0) {
                         for (const line of lines) {
                             const it = items.addNode?.("tester");
                             it?.updateText?.(line);
                         }
-                        console.log("TestHelper: Seeded lines after Yjs init (cleared existing items first)");
+                        console.log("TestHelper: Seeded lines after Yjs init");
                     }
                 } catch (e) {
                     console.warn("TestHelper: late seeding failed", e);
@@ -633,7 +557,7 @@ export class TestHelpers {
         await page.waitForFunction(() => {
             const gs = (window as any).generalStore;
             return !!(gs && gs.project && gs.pages && gs.currentPage);
-        }, { timeout: 30000 });
+        }, { timeout: 60000 });
         TestHelpers.slog("Project and page are loaded in the store");
 
         // Wait for the outliner to be visible
@@ -1463,6 +1387,35 @@ export class TestHelpers {
      * テスト後のクリーンアップ処理
      * @param page Playwrightのページオブジェクト
      */
+    public static async createTestPageViaAPI(
+        page: Page,
+        pageName: string,
+        lines: string[] = [],
+    ): Promise<string> {
+        TestHelpers.slog("createTestPageViaAPI start", { pageName });
+
+        const pageId = await page.evaluate(
+            ({ pageName, lines }) => {
+                const gs = (window as any).generalStore;
+                if (!gs || !gs.project) {
+                    throw new Error("generalStore or project not available");
+                }
+                const newPage = gs.project.addPage(pageName, "api-seeder");
+                if (lines && lines.length > 0) {
+                    for (const line of lines) {
+                        const it = newPage.items.addNode("api-seeder");
+                        it.updateText(line);
+                    }
+                }
+                return newPage.id;
+            },
+            { pageName, lines },
+        );
+
+        TestHelpers.slog("createTestPageViaAPI end", { pageId });
+        return pageId;
+    }
+
     public static async cleanup(page: Page): Promise<void> {
         try {
             // ページがまだ利用可能か確認
