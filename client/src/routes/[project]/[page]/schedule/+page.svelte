@@ -17,6 +17,7 @@ import type { Item } from "../../../../schema/app-schema";
 let project = $state("");
 let pageTitle = $state("");
 let pageId = $state("");
+let containerId = $state("");
 let schedules = $state<Schedule[]>([]);
 let publishTime = $state("");
 let editingId = $state("");
@@ -95,8 +96,21 @@ onMount(async () => {
         console.log("Schedule page: Using session fallback pageId=", sessionPinnedPageId);
     }
 
+    // Get Container ID (Project UUID)
+    if (store.project && (store.project as any).ydoc?.guid) {
+        containerId = (store.project as any).ydoc.guid;
+        console.log("Schedule page: Found container ID=", containerId);
+    } else {
+        console.error("Schedule page: store.project not ready or missing GUID");
+    }
+
     if (!pageId) {
         console.error("Schedule page: pageId is empty, cannot load schedules");
+        return;
+    }
+
+    if (!containerId) {
+        console.error("Schedule page: containerId is empty, cannot load schedules");
         return;
     }
 
@@ -113,13 +127,13 @@ onMount(async () => {
 });
 
 async function refresh() {
-    if (!pageId) {
-        console.error("Schedule page: Cannot refresh, pageId is empty");
+    if (!pageId || !containerId) {
+        console.error("Schedule page: Cannot refresh, pageId or containerId is empty");
         return;
     }
     console.log("Schedule page: Refreshing schedules for pageId:", pageId);
     try {
-        schedules = await listSchedules(pageId);
+        schedules = await listSchedules(containerId, pageId);
         console.log("Schedule page: Loaded schedules:", schedules);
     }
     catch (err) {
@@ -132,14 +146,14 @@ async function addSchedule() {
         console.error("Schedule page: Cannot add schedule, publishTime is empty");
         return;
     }
-    if (!pageId) {
-        console.error("Schedule page: Cannot add schedule, pageId is empty");
+    if (!pageId || !containerId) {
+        console.error("Schedule page: Cannot add schedule, pageId or containerId is empty");
         return;
     }
     console.log("Schedule page: Adding schedule for pageId:", pageId, "publishTime:", publishTime);
     try {
         const ts = new Date(publishTime).getTime();
-        const result = await createSchedule(pageId, { strategy: "one_shot", nextRunAt: ts });
+        const result = await createSchedule(containerId, pageId, { strategy: "one_shot", nextRunAt: ts });
         console.log("Schedule page: Schedule created successfully:", result);
         publishTime = "";
         await refresh();
@@ -150,9 +164,13 @@ async function addSchedule() {
 }
 
 async function cancel(id: string) {
+    if (!containerId) {
+        console.error("Schedule page: Cannot cancel schedule, containerId is empty");
+        return;
+    }
     console.log("Schedule page: Canceling schedule:", id);
     try {
-        await cancelSchedule(pageId, id);
+        await cancelSchedule(containerId, pageId, id);
         console.log("Schedule page: Schedule canceled successfully");
         await refresh();
     }
@@ -171,9 +189,13 @@ async function saveEdit() {
         console.error("Schedule page: Missing editing values");
         return;
     }
+    if (!containerId) {
+        console.error("Schedule page: Cannot save edit, containerId is empty");
+        return;
+    }
     const ts = new Date(editingTime).getTime();
     try {
-        await updateSchedule(pageId, editingId, {
+        await updateSchedule(containerId, pageId, editingId, {
             strategy: "one_shot",
             nextRunAt: ts,
         });
@@ -191,13 +213,13 @@ async function back() {
 }
 
 async function downloadIcs() {
-    if (!pageId) {
-        console.error("Schedule page: Cannot export schedules, pageId is empty");
+    if (!pageId || !containerId) {
+        console.error("Schedule page: Cannot export schedules, pageId or containerId is empty");
         return;
     }
     try {
         isDownloading = true;
-        const { blob, filename } = await exportSchedulesIcal(pageId);
+        const { blob, filename } = await exportSchedulesIcal(containerId, pageId);
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = url;

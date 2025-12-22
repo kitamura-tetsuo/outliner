@@ -25,7 +25,7 @@ it("calls createSchedule API", async () => {
     });
 
     const nextRunAt = Date.now() + 60000;
-    const result = await createSchedule("page1", { strategy: "one_shot", nextRunAt });
+    const result = await createSchedule("project1", "page1", { strategy: "one_shot", nextRunAt });
 
     expect(result).toBeDefined();
     expect(result.scheduleId).toBe("test-schedule-id");
@@ -38,6 +38,7 @@ it("calls createSchedule API", async () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 idToken: "test-id-token",
+                projectId: "project1",
                 pageId: "page1",
                 schedule: { strategy: "one_shot", nextRunAt },
             }),
@@ -56,7 +57,7 @@ it("calls listSchedules API", async () => {
         json: () => Promise.resolve({ schedules: mockSchedules }),
     });
 
-    const result = await listSchedules("page1");
+    const result = await listSchedules("project1", "page1");
 
     expect(result).toBeDefined();
     expect(Array.isArray(result)).toBe(true);
@@ -72,6 +73,7 @@ it("calls listSchedules API", async () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 idToken: "test-id-token",
+                projectId: "project1",
                 pageId: "page1",
             }),
         },
@@ -86,7 +88,7 @@ it("calls cancelSchedule API", async () => {
         json: () => Promise.resolve(mockResponse),
     });
 
-    const result = await cancelSchedule("page1", "test-schedule-id");
+    const result = await cancelSchedule("project1", "page1", "test-schedule-id");
 
     expect(result).toBeDefined();
     expect(result.success).toBe(true);
@@ -99,6 +101,7 @@ it("calls cancelSchedule API", async () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 idToken: "test-id-token",
+                projectId: "project1",
                 pageId: "page1",
                 scheduleId: "test-schedule-id",
             }),
@@ -114,7 +117,7 @@ it("calls updateSchedule API", async () => {
     });
 
     const nextRunAt = Date.now() + 120000;
-    const result = await updateSchedule("page1", "schedule1", {
+    const result = await updateSchedule("project1", "page1", "schedule1", {
         strategy: "one_shot",
         nextRunAt,
     });
@@ -129,6 +132,7 @@ it("calls updateSchedule API", async () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 idToken: "test-id-token",
+                projectId: "project1",
                 pageId: "page1",
                 scheduleId: "schedule1",
                 schedule: { strategy: "one_shot", nextRunAt },

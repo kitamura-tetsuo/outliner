@@ -35,30 +35,33 @@ async function fetchApi(path: string, body: ApiRequestBody) {
 }
 
 export async function createSchedule(
+    projectId: string,
     pageId: string,
     schedule: { strategy: string; nextRunAt: number; params?: Record<string, unknown>; },
 ) {
-    return fetchApi("create-schedule", { pageId, schedule });
+    return fetchApi("create-schedule", { projectId, pageId, schedule });
 }
 
-export async function listSchedules(pageId: string): Promise<Schedule[]> {
-    const data = await fetchApi("list-schedules", { pageId });
+export async function listSchedules(projectId: string, pageId: string): Promise<Schedule[]> {
+    const data = await fetchApi("list-schedules", { projectId, pageId });
     return data.schedules as Schedule[];
 }
 
-export async function cancelSchedule(pageId: string, scheduleId: string) {
-    return fetchApi("cancel-schedule", { pageId, scheduleId });
+export async function cancelSchedule(projectId: string, pageId: string, scheduleId: string) {
+    return fetchApi("cancel-schedule", { projectId, pageId, scheduleId });
 }
 
 export async function updateSchedule(
+    projectId: string,
     pageId: string,
     scheduleId: string,
     schedule: { strategy: string; nextRunAt: number; params?: Record<string, unknown>; },
 ) {
-    return fetchApi("update-schedule", { pageId, scheduleId, schedule });
+    return fetchApi("update-schedule", { projectId, pageId, scheduleId, schedule });
 }
 
 export async function exportSchedulesIcal(
+    projectId: string,
     pageId: string,
 ): Promise<{ blob: Blob; filename: string; }> {
     const idToken = await userManager.auth.currentUser?.getIdToken();
@@ -68,7 +71,7 @@ export async function exportSchedulesIcal(
     const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, pageId }),
+        body: JSON.stringify({ idToken, projectId, pageId }),
     });
     if (!response.ok) {
         const errorText = await response.text();
