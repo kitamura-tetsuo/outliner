@@ -15,7 +15,7 @@
         "y-leveldb": "^0.2.0",
         "y-websocket": "^2.1.0",
         "yjs": "^13.6.27",
-        "zod": "^4.1.13"
+        "zod": "^4.2.1"
     },
     "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
