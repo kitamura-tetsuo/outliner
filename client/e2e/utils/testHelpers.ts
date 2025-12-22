@@ -531,13 +531,29 @@ export class TestHelpers {
                     const gs = (window as any).generalStore;
                     const pageRef = gs?.currentPage;
                     const items = pageRef?.items as any;
-                    const length = items?.length ?? 0;
-                    if (items && Array.isArray(lines) && lines.length > 0 && length === 0) {
+                    if (items && Array.isArray(lines) && lines.length > 0) {
+                        // Clear existing items first (remove from end to avoid index shifting)
+                        const existingLength = items?.length ?? 0;
+                        for (let i = existingLength - 1; i >= 0; i--) {
+                            try {
+                                if (typeof items.removeAt === "function") {
+                                    items.removeAt(i);
+                                } else {
+                                    const item = items.at ? items.at(i) : items[i];
+                                    if (item && typeof items.removeNode === "function") {
+                                        items.removeNode(item.id);
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn("TestHelper: failed to remove item at index " + i, e);
+                            }
+                        }
+                        // Add the requested lines
                         for (const line of lines) {
                             const it = items.addNode?.("tester");
                             it?.updateText?.(line);
                         }
-                        console.log("TestHelper: Seeded lines after Yjs init");
+                        console.log("TestHelper: Seeded lines after Yjs init (cleared existing items first)");
                     }
                 } catch (e) {
                     console.warn("TestHelper: late seeding failed", e);
