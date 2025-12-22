@@ -58,7 +58,11 @@ export class TestHelpers {
         testInfo?: { workerIndex?: number; } | null,
         lines: string[] = [],
         browser?: Browser,
-        options?: { ws?: "force" | "disable" | "default"; },
+        options?: {
+            ws?: "force" | "disable" | "default";
+            projectName?: string;
+            pageName?: string;
+        },
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
@@ -89,6 +93,7 @@ export class TestHelpers {
                 if (wsMode === "force") {
                     localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                     localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+                    localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 } else if (wsMode === "disable") {
                     localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
                 } else {
@@ -113,7 +118,14 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        return await TestHelpers.navigateToTestProjectPage(
+            page,
+            testInfo,
+            lines,
+            browser,
+            options?.projectName,
+            options?.pageName,
+        );
     }
 
     /**
@@ -126,22 +138,35 @@ export class TestHelpers {
         testInfo?: { workerIndex?: number; } | null,
         _lines: string[] = [],
         _browser?: Browser,
+        options?: { ws?: "force" | "disable" | "default"; },
     ): Promise<{ projectName: string; pageName: string; }> {
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
         // Use the parameters to avoid lint errors about unused vars
         void testInfo;
         void _lines;
         void _browser;
-        await page.addInitScript(() => {
+        const wsMode = options?.ws ?? "default";
+        await page.addInitScript((wsMode) => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-                // 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
-                localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
+
+                // WebSocket設定を適用
+                if (wsMode === "force") {
+                    localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                    localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+                    localStorage.removeItem("VITE_YJS_DISABLE_WS");
+                } else if (wsMode === "disable") {
+                    localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
+                } else {
+                    // default: 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
+                    localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
+                }
+
                 (window as Window & Record<string, any>).__E2E__ = true;
                 (window as Window & Record<string, any>).__vite_plugin_react_preamble_installed__ = true;
             } catch {}
-        });
+        }, wsMode);
 
         // デバッガーをセットアップ
         await TestHelpers.setupTreeDebugger(page);
@@ -489,6 +514,8 @@ export class TestHelpers {
         testInfo: any | undefined,
         lines: string[],
         _browser?: Browser,
+        targetProjectName?: string,
+        targetPageName?: string,
     ): Promise<{ projectName: string; pageName: string; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
         void testInfo;
@@ -496,8 +523,8 @@ export class TestHelpers {
         TestHelpers.slog("navigateToTestProjectPage start");
 
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
-        const projectName = `Test Project ${workerIndex} ${Date.now()}`;
-        const pageName = `test-page-${Date.now()}`;
+        const projectName = targetProjectName ?? `Test Project ${workerIndex} ${Date.now()}`;
+        const pageName = targetPageName ?? `test-page-${Date.now()}`;
 
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
