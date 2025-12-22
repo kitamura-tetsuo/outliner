@@ -560,31 +560,7 @@ async function loadProjectAndPage() {
                             // This block is intentionally removed - seeding is now only done in the second block below
                         }
                         // In test environment (unless SKIP_TEST_CONTAINER_SEED is set), ensure default lines exist
-                        if (!shouldSkipTestSeed()) {
-                            const isTestEnv = (
-                                import.meta.env.MODE === "test"
-                                || import.meta.env.VITE_IS_TEST === "true"
-                                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                            );
-                            if (isTestEnv && pageRef) {
-                                const _pageItems: any = (pageRef as any).items as any;
-                                const len = _pageItems?.length ?? 0;
-                                if (len === 0) {
-                                    const defaults = [
-                                        "一行目: テスト",
-                                        "二行目: Yjs 反映",
-                                        "三行目: 並び順チェック",
-                                    ];
-                                    for (const line of defaults) {
-                                        const node = _pageItems.addNode?.("tester");
-                                        node?.updateText?.(line);
-                                    }
-
-
-                                    logger.info("E2E: Seeded default lines after Yjs attach (connected doc)");
-                                }
-                            }
-                        }
+                        // REMOVED: Legacy seeding logic removed. Tests should seed their own data.
                     } catch (e) {
                         logger.warn("loadProjectAndPage: post-attach page resolve/migration failed", e);
                     }
@@ -616,39 +592,7 @@ async function loadProjectAndPage() {
                 logger.info(`generalStore.pages exists: ${!!globalStore.pages}`);
 
                         // Final safety: even if SKIP_TEST_CONTAINER_SEED is true, ensure at least some children exist for E2E stability
-                        try {
-                            const isTestEnv = (
-                                import.meta.env.MODE === "test"
-                                || import.meta.env.VITE_IS_TEST === "true"
-                                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                            );
-                            // Skip seeding if SKIP_TEST_CONTAINER_SEED is set (e.g., during import tests)
-                            if (isTestEnv && !shouldSkipTestSeed()) {
-                                const defaults = [
-                                    "一行目: テスト",
-                                    "二行目: Yjs 反映",
-                                    "三行目: 並び順チェック",
-                                ];
-                                let attempts = 0;
-                                const trySeed = () => {
-                                    try {
-                                        const ref2: any = (store.currentPage as any);
-                                        const pageItems2: any = ref2?.items as any;
-                                        const lenNow = pageItems2?.length ?? 0;
-                                        if (pageItems2 && lenNow < 3) {
-                                            for (let i = lenNow; i < 3; i++) {
-                                                const node = pageItems2.addNode?.("tester");
-                                                node?.updateText?.(defaults[i] ?? "");
-                                            }
-                                            logger.info("E2E: Fallback default lines seeded (post-attach) to reach 3 items");
-                                            return;
-                                        }
-                                    } catch {}
-                                    if (++attempts < 20) setTimeout(trySeed, 250);
-                                };
-                                setTimeout(trySeed, 600);
-                            }
-                        } catch {}
+                        // REMOVED: Legacy seeding logic removed.
 
                 logger.info(`generalStore.currentPage exists: ${!!globalStore.currentPage}`);
                 logger.info(`generalStore === store: ${globalStore === store}`);

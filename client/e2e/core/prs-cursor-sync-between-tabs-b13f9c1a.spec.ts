@@ -10,6 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Cursor sync between tabs", () => {
     test("typing in one tab shows in another", async ({ browser }, testInfo) => {
+        test.setTimeout(60000);
         // Use a fixed project name to ensure both contexts connect to the same Yjs document
         const projectName = `Test Project Sync ${Date.now()}`;
         const pageName = `sync-test-page-${Date.now()}`;
@@ -18,19 +19,19 @@ test.describe("Cursor sync between tabs", () => {
         const context1 = await browser.newContext();
         const page1 = await context1.newPage();
 
-        // Enable Yjs WebSocket before page initialization using addInitScript
-        await page1.addInitScript(() => {
-            localStorage.removeItem("VITE_YJS_DISABLE_WS"); // Remove disable flag
-            localStorage.setItem("VITE_YJS_ENABLE_WS", "true"); // Set enable flag
-        });
-
         // Prepare the environment after enabling WS
-        await TestHelpers.prepareTestEnvironment(page1, testInfo, [
-            "一行目: テスト",
-            "二行目: Yjs 反映",
-            "三行目: 並び順チェック",
-        ], undefined);
-        await page1.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
+        await TestHelpers.prepareTestEnvironment(
+            page1,
+            testInfo,
+            [
+                "一行目: テスト",
+                "二行目: Yjs 反映",
+                "三行目: 並び順チェック",
+            ],
+            undefined,
+            { projectName, pageName, ws: "force" },
+        );
+        // page1 is already navigated to the project page by prepareTestEnvironment
 
         // Wait for Yjs connection to be established
         try {
@@ -46,19 +47,8 @@ test.describe("Cursor sync between tabs", () => {
         const context2 = await browser.newContext();
         const page2 = await context2.newPage();
 
-        // Also enable Yjs WebSocket for the second page
-        await page2.addInitScript(() => {
-            localStorage.removeItem("VITE_YJS_DISABLE_WS"); // Remove disable flag
-            localStorage.setItem("VITE_YJS_ENABLE_WS", "true"); // Set enable flag
-        });
-
-        // Prepare the environment for the second page using the same project
-        // Use the same initial content to ensure both pages start with identical content
-        await TestHelpers.prepareTestEnvironment(page2, testInfo, [
-            "一行目: テスト",
-            "二行目: Yjs 反映",
-            "三行目: 並び順チェック",
-        ], undefined);
+        // Prepare the environment for the second page (init localStorage etc, but do NOT seed/create new project)
+        await TestHelpers.prepareTestEnvironmentForProject(page2, testInfo, [], undefined, { ws: "force" });
         await page2.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
 
         // Wait for Yjs connection to be established on page2

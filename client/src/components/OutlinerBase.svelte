@@ -256,19 +256,8 @@ onMount(() => {
             if (found) gs.currentPage = found;
         }
         // E2E stabilization: ensure at least 2 child items exist quickly in test env
-        try {
-            const isTest = typeof window !== 'undefined' && window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const pageAny: any = gs.currentPage as any;
-            const cpItems: any = pageAny?.items;
-            const curLen = cpItems?.length ?? 0;
-            if (isTest && pageAny && cpItems && curLen < 3) {
-                const defaults = ["一行目: テスト", "二行目: Yjs 反映", "三行目: 並び順チェック"];
-                for (let i = curLen; i < 3; i++) {
-                    const node = cpItems.addNode?.("tester");
-                    node?.updateText?.(defaults[i] ?? "");
-                }
-            }
-        } catch {}
+        // REMOVED: Legacy browser-based seeding logic caused conflicts with test-specific data setup.
+        // Tests should explicitly seed data using TestHelpers.
 
         // ナビゲーション直後など非同期タイミングの取りこぼし対策でもう一度試行
         setTimeout(() => {

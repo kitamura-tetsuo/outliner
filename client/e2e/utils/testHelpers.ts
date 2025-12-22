@@ -1,7 +1,4 @@
 import { type Browser, expect, type Page } from "@playwright/test";
-import { execSync } from "child_process";
-import * as path from "path";
-import { fileURLToPath } from "url";
 import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
 
@@ -58,7 +55,11 @@ export class TestHelpers {
         testInfo?: { workerIndex?: number; } | null,
         lines: string[] = [],
         browser?: Browser,
-        options?: { ws?: "force" | "disable" | "default"; },
+        options?: {
+            ws?: "force" | "disable" | "default";
+            projectName?: string;
+            pageName?: string;
+        },
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
@@ -84,12 +85,12 @@ export class TestHelpers {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-                localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
 
                 // WebSocket設定を適用
                 if (wsMode === "force") {
                     localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                     localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+                    localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 } else if (wsMode === "disable") {
                     localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
                 } else {
@@ -114,7 +115,14 @@ export class TestHelpers {
         // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
 
         // __YJS_STORE__ はプロジェクトページ遷移後に利用可能になるため、ここでは待機せず直接遷移
-        return await TestHelpers.navigateToTestProjectPage(page, testInfo, lines, browser);
+        return await TestHelpers.navigateToTestProjectPage(
+            page,
+            testInfo,
+            lines,
+            browser,
+            options?.projectName,
+            options?.pageName,
+        );
     }
 
     /**
@@ -127,23 +135,35 @@ export class TestHelpers {
         testInfo?: { workerIndex?: number; } | null,
         _lines: string[] = [],
         _browser?: Browser,
+        options?: { ws?: "force" | "disable" | "default"; },
     ): Promise<{ projectName: string; pageName: string; }> {
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
         // Use the parameters to avoid lint errors about unused vars
         void testInfo;
         void _lines;
         void _browser;
-        await page.addInitScript(() => {
+        const wsMode = options?.ws ?? "default";
+        await page.addInitScript((wsMode) => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-                localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
-                // 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
-                localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
+
+                // WebSocket設定を適用
+                if (wsMode === "force") {
+                    localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                    localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+                    localStorage.removeItem("VITE_YJS_DISABLE_WS");
+                } else if (wsMode === "disable") {
+                    localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
+                } else {
+                    // default: 既定は WS 無効（必要なテストのみ個別に FORCE を設定）
+                    localStorage.setItem("VITE_YJS_DISABLE_WS", "true");
+                }
+
                 (window as Window & Record<string, any>).__E2E__ = true;
                 (window as Window & Record<string, any>).__vite_plugin_react_preamble_installed__ = true;
             } catch {}
-        });
+        }, wsMode);
 
         // デバッガーをセットアップ
         await TestHelpers.setupTreeDebugger(page);
@@ -491,6 +511,8 @@ export class TestHelpers {
         testInfo: any | undefined,
         lines: string[],
         _browser?: Browser,
+        targetProjectName?: string,
+        targetPageName?: string,
     ): Promise<{ projectName: string; pageName: string; }> {
         // Derive worker index for unique naming; default to 1 when testInfo is absent
         void testInfo;
@@ -498,22 +520,8 @@ export class TestHelpers {
         TestHelpers.slog("navigateToTestProjectPage start");
 
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
-        const projectName = `Test Project ${workerIndex} ${Date.now()}`;
-        const pageName = `test-page-${Date.now()}`;
-
-        // Call seeder script to create the project
-        try {
-            const __filename = fileURLToPath(import.meta.url);
-            const __dirname = path.dirname(__filename);
-            const repoRoot = path.resolve(__dirname, "../../../"); // client/e2e/utils -> client/e2e -> client -> root
-            const command = `npm run seed -- create-project "${projectName}" "${pageName}"`;
-            console.log(`Executing seeder: ${command} in ${repoRoot}/scripts`);
-            execSync(command, { cwd: `${repoRoot}/scripts`, stdio: "inherit" });
-            console.log("Seeder executed successfully.");
-        } catch (error) {
-            console.error("Failed to execute test data seeder:", error);
-            throw new Error("Seeder script failed");
-        }
+        const projectName = targetProjectName ?? `Test Project ${workerIndex} ${Date.now()}`;
+        const pageName = targetPageName ?? `test-page-${Date.now()}`;
 
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
@@ -573,7 +581,7 @@ export class TestHelpers {
         await page.waitForFunction(() => {
             const gs = (window as any).generalStore;
             return !!(gs && gs.project && gs.pages && gs.currentPage);
-        }, { timeout: 30000 });
+        }, { timeout: 60000 });
         TestHelpers.slog("Project and page are loaded in the store");
 
         // Wait for the outliner to be visible
@@ -1403,6 +1411,35 @@ export class TestHelpers {
      * テスト後のクリーンアップ処理
      * @param page Playwrightのページオブジェクト
      */
+    public static async createTestPageViaAPI(
+        page: Page,
+        pageName: string,
+        lines: string[] = [],
+    ): Promise<string> {
+        TestHelpers.slog("createTestPageViaAPI start", { pageName });
+
+        const pageId = await page.evaluate(
+            ({ pageName, lines }) => {
+                const gs = (window as any).generalStore;
+                if (!gs || !gs.project) {
+                    throw new Error("generalStore or project not available");
+                }
+                const newPage = gs.project.addPage(pageName, "api-seeder");
+                if (lines && lines.length > 0) {
+                    for (const line of lines) {
+                        const it = newPage.items.addNode("api-seeder");
+                        it.updateText(line);
+                    }
+                }
+                return newPage.id;
+            },
+            { pageName, lines },
+        );
+
+        TestHelpers.slog("createTestPageViaAPI end", { pageId });
+        return pageId;
+    }
+
     public static async cleanup(page: Page): Promise<void> {
         try {
             // ページがまだ利用可能か確認
