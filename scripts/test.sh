@@ -17,49 +17,37 @@ if [ -f "${SCRIPT_DIR}/common-config.sh" ]; then
   source "${SCRIPT_DIR}/common-config.sh"
 fi
 
-port_is_ready() {
-  local port="$1"
-  node -e 'const net=require("net");
-const port=Number(process.argv[1]);
-const socket=net.createConnection({ port, host: "127.0.0.1" }, () => {
-  socket.end();
-  process.exit(0);
-});
-socket.once("error", () => process.exit(1));
-setTimeout(() => {
-  socket.destroy();
-  process.exit(1);
-}, 3000).unref();' "$port" >/dev/null 2>&1
-}
-
 ensure_codex_services() {
   if [ "${SKIP_AUTO_SETUP:-0}" = "1" ]; then
     return
   fi
 
-  # Ports that setup.sh is responsible for. If any are missing we trigger setup.
-  local required_ports=(
-    "${TEST_API_PORT:-7091}"
-    "${VITE_PORT:-7090}"
-    "${TEST_YJS_PORT:-7093}"
-    "${FIREBASE_FUNCTIONS_PORT:-57070}"
-    "${FIREBASE_AUTH_PORT:-59099}"
-    "${FIREBASE_FIRESTORE_PORT:-58080}"
-    "${FIREBASE_HOSTING_PORT:-57000}"
-    "${FIREBASE_STORAGE_PORT:-59200}"
+  local required_processes=(
+    "yjs-server"
+    "log-service"
+    "firebase-emulators"
+    "vite-server"
   )
 
   local need_setup=0
-  local port
-  for port in "${required_ports[@]}"; do
-    if ! port_is_ready "$port"; then
+  local process_name
+  for process_name in "${required_processes[@]}"; do
+    # Suppress grep's exit code if it finds nothing
+    local status
+    status=$(npx pm2 info "$process_name" | grep "status" | awk '{print $4}' || true)
+
+    if [ "$status" != "online" ]; then
+      echo "Service '$process_name' is not online (status: ${status:-"Not found"})."
       need_setup=1
       break
     fi
   done
 
   if [ "$need_setup" -eq 1 ]; then
+    echo "One or more services are not running. Triggering setup..."
     "${SCRIPT_DIR}/setup.sh"
+  else
+    echo "All services are running."
   fi
 }
 

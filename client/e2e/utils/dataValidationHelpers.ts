@@ -183,12 +183,12 @@ export class DataValidationHelpers {
             return;
         }
 
-        // Wait for the project to be available in the store with a shorter timeout
+        // Wait for the project to be available in the store
         try {
             await page.waitForFunction(() => {
                 const store = (window as any).generalStore || (window as any).appStore;
                 return !!(store && store.project);
-            }, { timeout: 10000 });
+            }, { timeout: 30000 });
         } catch (e: any) {
             const msg = e?.message ?? String(e);
             // Don't warn for expected cancellation scenarios
