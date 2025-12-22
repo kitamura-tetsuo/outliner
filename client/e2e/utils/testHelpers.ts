@@ -479,6 +479,52 @@ export class TestHelpers {
     }
 
     /**
+     * API (Store) を使用して新しいページを作成する
+     * @param page Playwrightのページオブジェクト
+     * @param pageName 作成するページ名
+     * @param lines 初期データ行
+     */
+    public static async createTestPageViaAPI(
+        page: Page,
+        pageName: string,
+        lines: string[] = [],
+    ): Promise<void> {
+        TestHelpers.slog("createTestPageViaAPI start", { pageName });
+
+        await page.evaluate(async ({ pageName, lines }) => {
+            const gs = (window as any).generalStore;
+            if (!gs || !gs.project) {
+                throw new Error("generalStore.project is not available");
+            }
+
+            const proj = gs.project;
+            if (typeof proj.addPage !== "function") {
+                console.error("project.addPage is not a function", proj);
+                throw new Error("project.addPage is not a function");
+            }
+
+            const newPage = proj.addPage(pageName, "e2e-tester");
+            console.log(`[createTestPageViaAPI] Created page "${pageName}" with ID ${newPage.id}`);
+
+            // Add lines if any
+            if (lines.length > 0 && newPage.items) {
+                const items = newPage.items;
+                // addNode method availability check
+                if (typeof items.addNode === "function") {
+                    for (const line of lines) {
+                        const node = items.addNode("e2e-tester");
+                        if (node && typeof node.updateText === "function") {
+                            node.updateText(line);
+                        }
+                    }
+                }
+            }
+        }, { pageName, lines });
+
+        TestHelpers.slog("createTestPageViaAPI completed");
+    }
+
+    /**
      * プロジェクトページに移動する
      * 既存のプロジェクトがあればそれを使用し、なければ新規作成する
      * @param page Playwrightのページオブジェクト

@@ -64,8 +64,11 @@ class SimpleProject {
         nodeData.set("collapsed", false);
         nodeData.set("checkbox", false);
         nodeData.set("aliasTargetId", undefined);
-        nodeData.set("createdAt", Date.now());
-        nodeData.set("updatedAt", Date.now());
+        nodeData.set("created", Date.now());
+        nodeData.set("lastChanged", Date.now());
+        nodeData.set("votes", new Y.Array<string>());
+        nodeData.set("attachments", new Y.Array<string>());
+        nodeData.set("comments", new Y.Array<Y.Map<any>>());
 
         // Store the node in orderedTree
         this.orderedTree.set(pageId, nodeData);
