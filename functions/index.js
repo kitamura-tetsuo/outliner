@@ -326,7 +326,9 @@ exports.saveProject = onRequest({ cors: true }, async (req, res) => {
           const accessibleUserIds = projectData.accessibleUserIds || [];
 
           if (!accessibleUserIds.includes(userId)) {
-            accessibleUserIds.push(userId);
+            // SECURITY: Prevent users from adding themselves to existing projects
+            // Users must be the creator or already have access
+            throw new Error("Access denied: Cannot join existing project");
           }
 
           transaction.update(projectDocRef, {
@@ -468,7 +470,8 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
           const accessibleUserIds = containerData.accessibleUserIds || [];
 
           if (!accessibleUserIds.includes(userId)) {
-            accessibleUserIds.push(userId);
+            // SECURITY: Prevent users from adding themselves to existing containers
+            throw new Error("Access denied: Cannot join existing container");
           }
 
           transaction.update(containerDocRef, {
