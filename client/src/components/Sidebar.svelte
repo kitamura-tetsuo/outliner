@@ -131,14 +131,17 @@
         top: 5rem; /* Below the toolbar */
         background-color: white;
         border-right: 1px solid #e5e7eb;
-        transition: transform 0.3s ease;
+        transition: transform 0.3s ease, visibility 0s linear 0.3s;
         overflow: hidden;
         z-index: 10;
         transform: translateX(-100%);
+        visibility: hidden;
     }
 
     .sidebar.open {
         transform: translateX(0);
+        visibility: visible;
+        transition: transform 0.3s ease, visibility 0s linear 0s;
     }
 
     .sidebar-content {
