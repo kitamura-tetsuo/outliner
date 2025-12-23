@@ -30,7 +30,7 @@ describe("Vulnerability Reproduction: Insecure Direct Object Reference in saveCo
 
     const mockDb = {
       collection: jest.fn(),
-      runTransaction: jest.fn(async (callback) => {
+      runTransaction: jest.fn(async callback => {
         return callback(mockTransaction);
       }),
     };
@@ -60,7 +60,7 @@ describe("Vulnerability Reproduction: Insecure Direct Object Reference in saveCo
       path: "containerUsers/target-container-id",
     };
 
-    mockDb.collection.mockImplementation((name) => {
+    mockDb.collection.mockImplementation(name => {
       if (name === "userContainers") {
         return {
           doc: jest.fn().mockReturnValue(mockUserContainersRef),
@@ -77,9 +77,13 @@ describe("Vulnerability Reproduction: Insecure Direct Object Reference in saveCo
     });
 
     // Mock transaction.get behavior
-    mockTransaction.get.mockImplementation((ref) => {
-      if (ref.path === "userContainers/attacker-user") return Promise.resolve(mockUserContainersDoc);
-      if (ref.path === "containerUsers/target-container-id") return Promise.resolve(mockContainerUsersDoc);
+    mockTransaction.get.mockImplementation(ref => {
+      if (ref.path === "userContainers/attacker-user") {
+        return Promise.resolve(mockUserContainersDoc);
+      }
+      if (ref.path === "containerUsers/target-container-id") {
+        return Promise.resolve(mockContainerUsersDoc);
+      }
       return Promise.resolve({ exists: false });
     });
 
@@ -120,13 +124,13 @@ describe("Vulnerability Reproduction: Insecure Direct Object Reference in saveCo
     // Expect 500 error because we throw an Error in the transaction which is caught and returns 500
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      error: "Failed to save container ID"
+      error: "Failed to save container ID",
     }));
 
     // Verify attacker was NOT added (update should not be called for containerUsers)
     expect(transactionUpdateSpy).not.toHaveBeenCalledWith(
       expect.objectContaining({ path: "containerUsers/target-container-id" }),
-      expect.anything()
+      expect.anything(),
     );
   });
 });
