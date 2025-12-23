@@ -73,13 +73,7 @@ function projectLooksLikePlaceholder(candidate: any): boolean {
 }
 
 
-	// E2E: シーディング抑止フラグ（prepareTestEnvironment が設定）
-	function shouldSkipTestSeed(): boolean {
-	    try {
-	        return typeof window !== "undefined" &&
-	            window.localStorage?.getItem?.("SKIP_TEST_CONTAINER_SEED") === "true";
-	    } catch { return false; }
-	}
+
 
 /**
  * ロード条件を評価し、必要であればロードを開始する
@@ -155,9 +149,9 @@ async function loadProjectAndPage() {
                 logger.debug("DEBUG: provisional store.project set?", !!(window as any).generalStore?.project);
             }
             // コラボレーションテストでは、暫定ページを作成せず、Yjsの同期を待つ
-            // shouldSkipTestSeed()がtrueの場合は、ページ作成をスキップ
-            if (pageName && !shouldSkipTestSeed()) {
-                console.log(`[+page.svelte] loadProjectAndPage: shouldSkipTestSeed=false, skipping provisional page creation for collaboration tests`);
+            if (pageName && (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
+                 // In test mode, we rely on SeedClient or Yjs sync
+                 logger.info(`[+page.svelte] Test mode: Waiting for Yjs sync...`);
             }
         }
     } catch {}
@@ -672,51 +666,7 @@ async function loadProjectAndPage() {
 
         // E2E 安定化: ページ一覧が空で、テスト環境かつ URL にページ名がある場合は
         // リクエストされたページを暫定的に作成して以降の処理を安定させる
-        if (!shouldSkipTestSeed()) try {
-            const isTestEnv = (
-                import.meta.env.MODE === "test"
-                || import.meta.env.VITE_IS_TEST === "true"
-                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            );
-            if (store.project && store.pages && isTestEnv) {
-                const itemsAny: any = (store.project as any).items as any;
-                const hasTitle = (title: string) => {
-                    const len = itemsAny?.length ?? 0;
-                    for (let i = 0; i < len; i++) {
-                        const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
-                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-                        if (String(t).toLowerCase() === String(title).toLowerCase()) return true;
-                    }
-                    return false;
-                };
-                const ensurePage = (title: string) => {
-                    try {
-                        if (typeof (store.project as any).addPage === "function") {
-                            return (store.project as any).addPage(title, "tester");
-                        } else if (itemsAny?.addNode) {
-                            const node = itemsAny.addNode("tester");
-                            node?.updateText?.(title);
-                            return node;
-                        }
-                    } catch {}
-                    return null;
-                };
 
-                if ((store.pages.current.length === 0) && pageName && !hasTitle(pageName)) {
-                    // コラボレーションテストでは、新しいページを作成せず、Yjsの同期を待つ
-                    console.log(`[+page.svelte] E2E: Waiting for page "${pageName}" to sync via Yjs...`);
-                }
-                // 2ページ目（"second-page"）もテスト安定化のために用意
-                if (!hasTitle("second-page")) {
-                    const created2 = ensurePage("second-page");
-                    if (created2) {
-                        logger.info("E2E: Ensured presence of \"second-page\" for SearchBox tests");
-                    }
-                }
-            }
-        } catch (e) {
-            console.error("E2E: failed to auto-create missing page in +page.svelte", e);
-        }
 
         // 必要なら currentPage をここでフォールバック設定（+layout に依存しすぎない）
         if (store.pages && !store.currentPage) {
@@ -797,9 +747,9 @@ onMount(() => {
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     );
-    if (isTestEnv && store.project && shouldSkipTestSeed()) {
-        // SKIP_TEST_CONTAINER_SEED=trueの場合、コラボレーションテストとして扱う
-        console.log(`[+page.svelte] onMount: Collaboration test mode, waiting for Yjs sync...`);
+    if (isTestEnv && store.project) {
+        // Test mode: waiting for Yjs sync
+        console.log(`[+page.svelte] onMount: Test mode, waiting for Yjs sync...`);
         console.log(`[+page.svelte] onMount: store.currentPage=${!!store.currentPage}, pageName="${pageName}"`);
         if (!store.currentPage) {
             const itemsAny: any = (store.project as any).items as any;
@@ -830,7 +780,8 @@ onMount(() => {
     }
 
     // E2E 環境では、最小限のページを先行準備して UI テストを安定させる
-    if (!shouldSkipTestSeed()) try {
+    // Auto-create logic removed - data seeding now handled by SeedClient in E2E tests
+    try {
         if (isTestEnv && store.project) {
             console.log(`[+page.svelte] onMount: store.currentPage=${!!store.currentPage}, pageName="${pageName}"`);
             if (!store.currentPage) {

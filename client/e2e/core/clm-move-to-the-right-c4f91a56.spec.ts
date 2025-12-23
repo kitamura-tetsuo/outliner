@@ -11,33 +11,15 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0003: 右へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
-
-        // 最初のアイテムを取得 (first()の代わりにページタイトルを使用)
-        // ページが読み込まれた直後は最初のアイテムがページタイトルになる
-        const item = page.locator(".outliner-item.page-title");
-
-        // ページタイトルが見つからない場合は、最初に表示されているアイテムを使用
-        if (await item.count() === 0) {
-            // 画面に表示されているアイテムを取得
-            await page.locator(".outliner-item").first().locator(".item-content").click({ force: true });
-        } else {
-            await item.locator(".item-content").click({ force: true });
-        }
-
-        // カーソルが表示されるまで待機
-        await TestHelpers.waitForCursorVisible(page);
-
-        // グローバル textarea にフォーカスが当たるまで待機
-        await page.waitForSelector("textarea.global-textarea:focus");
-        // 文字入力が可能
-        await page.keyboard.type("Test data");
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Test data", "Second item"]);
+        await TestHelpers.waitForOutlinerItems(page, 10000, 3); // Title + 2 seeded items
     });
 
     test("ArrowRightキーでカーソルが1文字右に移動する", async ({ page }) => {
-        // アクティブなアイテム要素を取得
-        const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
-        expect(activeItemLocator).not.toBeNull();
+        // アクティブなアイテム要素を取得 (Item 1: "Test data")
+        // Note: Item 0 is Title. Item 1 is "Test data".
+        const itemId = await TestHelpers.getItemIdByIndex(page, 1);
+        await TestHelpers.setCursor(page, itemId!);
 
         // 初期カーソル情報を取得して検証
         let cursorData = await CursorValidator.getCursorData(page);
@@ -79,27 +61,21 @@ test.describe("CLM-0003: 右へ移動", () => {
         const initialItemCount = await page.locator(".outliner-item").count();
         console.log(`テスト開始時のアイテム数: ${initialItemCount}`);
 
-        // アクティブなアイテムIDを取得
-        const firstItemId = await TestHelpers.getActiveItemId(page);
+        // 最初のアイテムIDを取得 (Item 1)
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
         console.log(`最初のアイテムID: ${firstItemId}`);
         expect(firstItemId).not.toBeNull();
 
-        // 2つ目のアイテムを追加
-        await page.keyboard.press("End"); // 最後に移動
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("Second item");
-
-        // 2つ目のアイテムが存在することを確認
-        const secondItem = page.locator(".outliner-item").nth(1);
+        // 2つ目のアイテムが存在することを確認 (Item 2)
+        const secondItemId = await TestHelpers.getItemIdByIndex(page, 2);
+        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await secondItem.waitFor({ state: "visible" });
 
         // 2つ目のアイテムのテキスト内容を確認
-        const secondItemText = await secondItem.locator(".item-text").textContent();
-        console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
-        expect(secondItemText).toContain("Second item");
+        await expect(secondItem.locator(".item-text")).toContainText("Second item");
 
-        // 保存したIDを使って最初のアイテムに戻る
-        await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-content").click();
+        // 最初のアイテムにカーソルをセット
+        await TestHelpers.setCursor(page, firstItemId!);
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -152,8 +128,7 @@ test.describe("CLM-0003: 右へ移動", () => {
         const updatedOffset = cursorData.cursorInstances?.[0]?.offset;
         console.log(`移動後のアイテムID: ${updatedItemId}, オフセット: ${updatedOffset}`);
 
-        // 2番目のアイテムのIDを取得
-        const secondItemId = await secondItem.getAttribute("data-item-id");
+        // 2番目のアイテムのIDを取得 (already retrieved)
         console.log(`2番目のアイテムID: ${secondItemId}`);
 
         // The expected behavior is that when pressing ArrowRight at the end of an item,
@@ -166,8 +141,6 @@ test.describe("CLM-0003: 右へ移動", () => {
         await page.keyboard.type("Test input");
 
         // 2番目のアイテムのテキスト内容を再確認
-        const updatedSecondItemText = await secondItem.locator(".item-text").textContent();
-        console.log(`更新後の2番目のアイテムのテキスト: ${updatedSecondItemText}`);
-        expect(updatedSecondItemText).toContain("Test input");
+        await expect(secondItem.locator(".item-text")).toContainText("Test input");
     });
 });

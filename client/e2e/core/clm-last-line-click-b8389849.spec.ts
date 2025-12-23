@@ -7,44 +7,33 @@ registerCoverageHooks();
 
 test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const longText = "A".repeat(80);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [longText]);
+        await TestHelpers.waitForOutlinerItems(page, 10000, 2); // Title + 1 seeded item
     });
 
     test("最後の行のテキスト外クリックでカーソルが行末に表示される", async ({ page }) => {
+        const longText = "A".repeat(80);
+
         // スクリーンショットを撮影（テスト開始時）
         await page.screenshot({ path: "client/test-results/CLM-0001-last-line-start.png" });
 
-        // ページタイトル以外のアイテムを使用（2番目のアイテム）
-        const testItem = page.locator(".outliner-item").nth(1);
-        console.log("Using second item (non-page-title) for last line test");
+        // seeded item (Index 1)
+        const itemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(itemId).not.toBeNull();
 
-        // 折り返しが発生する長いテキストを入力
-        await testItem.locator(".item-content").click({ force: true });
-        console.log("Clicked item content for last line test");
+        // アクティブなアイテムIDを取得 (Should match seeded item or we set it)
+        await TestHelpers.setCursor(page, itemId!);
 
         // カーソルが表示されるまで待機
         const cursorVisible = await TestHelpers.waitForCursorVisible(page, 30000);
         console.log("Cursor visible for last line test:", cursorVisible);
         expect(cursorVisible).toBe(true);
 
-        // アクティブなアイテムIDを取得
-        const itemId = await TestHelpers.getActiveItemId(page);
-        expect(itemId).not.toBeNull();
-
-        // 既存のテキストを削除
-        await page.keyboard.press("Control+A"); // Select all
-        await page.keyboard.press("Delete"); // Delete selected text
-        await page.waitForTimeout(100);
-
-        const longText = "A".repeat(80);
-        await page.keyboard.type(longText);
-        await page.waitForTimeout(100);
-
         // テキストが反映されているか確認
         // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
-        const text = await activeItem.locator(".item-text").textContent();
-        expect(text).toContain("A".repeat(80));
+        await expect(activeItem.locator(".item-text")).toContainText(longText);
 
         // Range APIでビジュアル上の各行の中央y座標を取得
         const visualLineYs = await activeItem.locator(".item-text").evaluate(el => {

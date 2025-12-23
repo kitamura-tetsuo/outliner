@@ -38,8 +38,10 @@ export function extractAuthToken(req: IncomingMessage): string | undefined {
     try {
         const url = new URL(req.url ?? "", "http://localhost");
         const token = url.searchParams.get("auth");
+        console.log(`[Auth] req.url=${req.url}, token=${token ? "FOUND" : "MISSING"}`);
         return token || undefined;
     } catch {
+        console.error("[Auth] URL parse error");
         return undefined;
     }
 }

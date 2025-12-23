@@ -114,8 +114,6 @@ function isConnDebugEnabled(): boolean {
  * Configuration options for browser page initialization.
  */
 export interface BrowserPageOptions {
-    /** Enable WebSocket connection */
-    enableWebSocket?: boolean;
     /** Enable authentication requirement */
     requireAuth?: boolean;
     /** Disable IndexedDB persistence */
@@ -148,7 +146,6 @@ export async function initializeBrowserPage(
     options: BrowserPageOptions = {},
 ): Promise<{ context: BrowserContext; page: Page; }> {
     const {
-        enableWebSocket = true,
         requireAuth = true,
         disableIndexedDB = true,
         consolePrefix = "page",
@@ -162,13 +159,11 @@ export async function initializeBrowserPage(
 
     // Set up localStorage flags
     await page.addInitScript(
-        ({ enableWS, requireAuth, disableIDB }) => {
+        ({ requireAuth, disableIDB }) => {
             localStorage.setItem("VITE_IS_TEST", "true");
-            if (enableWS) {
-                localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
-                // Force-enable WS in tests even if env disables it
-                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-            }
+            localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+            // Force-enable WS in tests even if env disables it
+            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
             if (disableIDB) {
                 localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
             }
@@ -177,7 +172,6 @@ export async function initializeBrowserPage(
             }
         },
         {
-            enableWS: enableWebSocket,
             requireAuth,
             disableIDB: disableIndexedDB,
         },
@@ -409,7 +403,6 @@ export async function prepareTwoBrowserPages(
     const { context: context1, page: page1 } = await initializeBrowserPage(
         browser,
         {
-            enableWebSocket: true,
             requireAuth: true,
             consolePrefix: page1Prefix,
         },
@@ -433,7 +426,6 @@ export async function prepareTwoBrowserPages(
     const { context: context2, page: page2 } = await initializeBrowserPage(
         browser,
         {
-            enableWebSocket: true,
             requireAuth: true,
             consolePrefix: page2Prefix,
         },

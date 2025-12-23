@@ -55,18 +55,33 @@ function parseYProtocolFrame(data: unknown): {
 }
 
 export function startServer(config: Config, logger = defaultLogger) {
-    const server = http.createServer((req, res) => {
-        if (req.url === "/metrics") {
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify(getMetrics(wss)));
-            return;
-        }
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        res.end("ok");
-    });
+    // Create Express app for API endpoints
+    const express = require("express");
+    const app = express();
+
+    // Add JSON body parser middleware
+    app.use(express.json());
+
+    // Create HTTP server from Express app
+    const server = http.createServer(app);
+
     const wss = new WebSocketServer({ server });
     const disableLeveldb = process.env.DISABLE_Y_LEVELDB === "true";
     const persistence = disableLeveldb ? undefined : createPersistence(config.LEVELDB_PATH);
+
+    // Add seed API router
+    const { createSeedRouter } = require("./seed-api");
+    app.use("/api", createSeedRouter(persistence));
+
+    // Metrics endpoint
+    app.get("/metrics", (_req: any, res: any) => {
+        res.json(getMetrics(wss));
+    });
+
+    // Health check endpoint
+    app.get("/", (_req: any, res: any) => {
+        res.send("ok");
+    });
     // Configure y-websocket utils: prefer y-websocket's own utils (to match client lib), fallback to @y/websocket-server
     try {
         // y-websocket/@y/websocket-server のデフォルト永続化は YPERSISTENCE で有効化される。
@@ -163,6 +178,8 @@ export function startServer(config: Config, logger = defaultLogger) {
                     ws.close(4004, "IDLE_TIMEOUT");
                 }, config.IDLE_TIMEOUT_MS);
             };
+            logger.info({ event: "ws_connection_accepted", uid: decoded.uid, room: docName });
+            const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
             let msgCount = 0;
             let ydocRef: any | undefined = undefined;
             ws.on("message", data => {
@@ -226,76 +243,6 @@ export function startServer(config: Config, logger = defaultLogger) {
                 }
             });
 
-            // Replay buffered messages
-            for (const data of msgBuffer) {
-                ws.emit("message", data);
-            }
-            // ws.send パッチで送信フレームを可視化（setupWSConnection より前に適用）
-            try {
-                const origSend = ws.send.bind(ws) as any;
-                (ws as any).send = (data: any, ...rest: any[]) => {
-                    let size = 0;
-                    let firstByte: number | undefined;
-                    let isBinary = false;
-                    if (typeof data === "string") {
-                        size = Buffer.byteLength(data);
-                    } else if (Buffer.isBuffer(data)) {
-                        size = data.length;
-                        isBinary = true;
-                        firstByte = data[0];
-                    } else if (data instanceof ArrayBuffer) {
-                        size = data.byteLength;
-                        isBinary = true;
-                        firstByte = new Uint8Array(data)[0];
-                    } else if (Array.isArray(data)) {
-                        const buf = Buffer.concat(data);
-                        size = buf.length;
-                        isBinary = true;
-                        firstByte = buf[0];
-                    } else if (data) {
-                        const buf = Buffer.from(data as Uint8Array);
-                        size = buf.length;
-                        isBinary = true;
-                        firstByte = buf[0];
-                    }
-                    const parsed = parseYProtocolFrame(data);
-                    let docBytes: number | undefined = undefined;
-                    try {
-                        if (
-                            parsed.topType === "sync"
-                            && (parsed.syncSubtype === "step2" || parsed.syncSubtype === "update") && (ydocRef as any)
-                        ) {
-                            // eslint-disable-next-line @typescript-eslint/no-var-requires
-                            const Ylib = require("yjs");
-                            const enc: Uint8Array = Ylib.encodeStateAsUpdate(ydocRef);
-                            docBytes = enc?.length ?? undefined;
-                        }
-                    } catch { /* ignore */ }
-                    logger.info({
-                        event: "ws_send",
-                        room: docName,
-                        size,
-                        isBinary,
-                        firstByte,
-                        y_type: parsed.topType,
-                        y_sync_step: parsed.syncSubtype,
-                        y_payload_bytes: parsed.payloadBytes,
-                        doc_bytes: docBytes,
-                    });
-                    return origSend(data, ...rest);
-                };
-            } catch { /* noop */ }
-
-            ws.on("close", () => {
-                clearTimeout(idleTimer);
-                totalSockets--;
-                ipCounts.set(ip, (ipCounts.get(ip) ?? 1) - 1);
-                if (ipCounts.get(ip)! <= 0) ipCounts.delete(ip);
-                roomCounts.set(docName, (roomCounts.get(docName) ?? 1) - 1);
-                if (roomCounts.get(docName)! <= 0) roomCounts.delete(docName);
-            });
-            logger.info({ event: "ws_connection_accepted", uid: decoded.uid, room: docName });
-            const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
             if (persistence) {
                 await addRoomSizeListener(persistence, docName, limitBytes, logger);
                 await warnIfRoomTooLarge(persistence, docName, limitBytes, logger);
@@ -336,6 +283,12 @@ export function startServer(config: Config, logger = defaultLogger) {
             } else {
                 setupWSConnection(ws, req, { docName, gc: false });
             }
+
+            // Replay buffered messages AFTER setupWSConnection has attached listeners
+            for (const data of msgBuffer) {
+                ws.emit("message", data);
+            }
+
             ws.on("message", () => recordMessage());
         } catch (err) {
             totalSockets--;
