@@ -12,3 +12,8 @@
 
 **Learning:** The application has a mix of English and Japanese UI text, despite documentation claiming full localization. Changing core component labels to Japanese can be seen as a regression if surrounding components remain in English.
 **Action:** When adding UX improvements to core components in a mixed-language codebase, prioritize visual enhancements (like icons) and maintain existing language unless explicitly instructed to localize. Verify consistency with immediate neighbors (e.g., Toolbar vs Sidebar).
+
+## 2025-05-24 - Hidden Off-screen Content
+
+**Learning:** Slide-out panels using `transform: translateX(-100%)` remain in the accessibility tree and keyboard tab order, confusing users.
+**Action:** Use `visibility: hidden` (with transition delay) or `inert` on the container when it is in the closed state.
