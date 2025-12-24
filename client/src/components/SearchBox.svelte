@@ -301,6 +301,11 @@ onMount(() => {
     </svg>
     <input
         type="text"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls="search-results-list"
+        aria-expanded={results.length > 0 && query.length > 0}
+        aria-activedescendant={selected >= 0 ? `search-result-${selected}` : undefined}
         aria-hidden="false"
         aria-label="Search pages"
         aria-labelledby="search-pages-label"
@@ -336,10 +341,21 @@ onMount(() => {
         <div class="no-results" role="status">No results found</div>
     {/if}
     {#if results.length && (query.length > 0)}
-        <ul>
+        <ul id="search-results-list" role="listbox">
             {#each results as page, i (page.id)}
-                <li class:selected={i === selected}>
-                    <button type="button" onclick={() => handlePageClick(page)}>{page.text}</button>
+                <li
+                    role="option"
+                    id={`search-result-${i}`}
+                    aria-selected={i === selected}
+                    class:selected={i === selected}
+                >
+                    <button
+                        type="button"
+                        tabindex="-1"
+                        onclick={() => handlePageClick(page)}
+                    >
+                        {page.text}
+                    </button>
                 </li>
             {/each}
         </ul>
