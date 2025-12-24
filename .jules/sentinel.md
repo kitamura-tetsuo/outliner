@@ -27,3 +27,9 @@
 **Vulnerability:** The WebSocket server received authentication tokens via URL query parameters (`?auth=...`) and logged the full URL when connection errors occurred (e.g., invalid room), leaking valid tokens in server logs.
 **Learning:** URLs are often treated as "metadata" and logged freely, but they become sensitive when query parameters carry secrets. This is common in WebSocket handshakes where custom headers are limited.
 **Prevention:** Sanitize URLs before logging. Specifically redact known sensitive query parameters like `token`, `auth`, `key`. Use a centralized logger with automatic redaction rules for URL fields.
+## 2024-03-24 - Missing Authorization in Scheduling Functions
+**Vulnerability:** The `createSchedule`, `updateSchedule`, `listSchedules`, `exportSchedulesIcal`, and `cancelSchedule` functions in `functions/index.js` were missing authorization checks. They verified the user's identity (authentication) but did not verify if the user had access to the target project/page (authorization). A malicious user could create schedules on arbitrary pages by guessing the `pageId`.
+
+**Learning:** Authentication != Authorization. Just because a user is logged in does not mean they have permission to access a specific resource. Always check ownership or membership.
+
+**Prevention:** Ensure every Cloud Function that accesses a resource (like a page or container) calls a dedicated access control function (like `checkContainerAccess`) before performing any operations.
