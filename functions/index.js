@@ -1131,7 +1131,9 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
     // Check container access
     const hasAccess = await checkContainerAccess(uid, pageId);
     if (!hasAccess) {
-      logger.warn(`createSchedule: Access denied for user ${uid} to page ${pageId}`);
+      logger.warn(
+        `createSchedule: Access denied for user ${uid} to page ${pageId}`,
+      );
       return res.status(403).json({ error: "Access denied to container" });
     }
 
@@ -1351,7 +1353,9 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
     // Check container access
     const hasAccess = await checkContainerAccess(uid, pageId);
     if (!hasAccess) {
-      logger.warn(`listSchedules: Access denied for user ${uid} to page ${pageId}`);
+      logger.warn(
+        `listSchedules: Access denied for user ${uid} to page ${pageId}`,
+      );
       return res.status(403).json({ error: "Access denied to container" });
     }
 
@@ -1435,7 +1439,9 @@ exports.exportSchedulesIcal = onRequest({ cors: true }, async (req, res) => {
     // Check container access
     const hasAccess = await checkContainerAccess(uid, pageId);
     if (!hasAccess) {
-      logger.warn(`exportSchedulesIcal: Access denied for user ${uid} to page ${pageId}`);
+      logger.warn(
+        `exportSchedulesIcal: Access denied for user ${uid} to page ${pageId}`,
+      );
       return res.status(403).json({ error: "Access denied to container" });
     }
 
@@ -1553,7 +1559,9 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
     // Check container access
     const hasAccess = await checkContainerAccess(uid, pageId);
     if (!hasAccess) {
-      logger.warn(`cancelSchedule: Access denied for user ${uid} to page ${pageId}`);
+      logger.warn(
+        `cancelSchedule: Access denied for user ${uid} to page ${pageId}`,
+      );
       return res.status(403).json({ error: "Access denied to container" });
     }
 
