@@ -18,12 +18,12 @@ test.describe("ALS-0001: Alias change target", () => {
 
         // create alias of first item
         await page.locator(`.outliner-item[data-item-id="${firstId}"] .item-content`).click({ force: true });
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             textarea?.focus();
         });
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
         await page.keyboard.type("/");
         await page.keyboard.type("alias");
         await page.keyboard.press("Enter");
@@ -45,7 +45,7 @@ test.describe("ALS-0001: Alias change target", () => {
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
         // Yjsモデルへの反映を待機（ポーリングで確認）
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // 最初のaliasTargetIdが正しく設定されていることを確認
         let deadline = Date.now() + 5000;
@@ -71,7 +71,7 @@ test.describe("ALS-0001: Alias change target", () => {
         }, { aliasId, thirdId });
 
         // Yjsモデルへの反映を待機（ポーリングで確認）
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // 変更後のaliasTargetIdが正しく設定されていることを確認
         deadline = Date.now() + 5000;

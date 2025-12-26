@@ -17,12 +17,12 @@ const {
     refreshClientLogStream,
     refreshTelemetryLogStream,
     refreshServerLogStream,
-} = require("./utils/logger");
+} = require("./utils/logger.cjs");
 
 const bodyParser = require("body-parser");
 
 // Firebase初期化を実行して完了を待つ
-const { initializeFirebase } = require("./firebase-init");
+const { initializeFirebase } = require("./firebase-init.cjs");
 
 // 開発環境判定
 const isDevelopment = process.env.NODE_ENV !== "production";

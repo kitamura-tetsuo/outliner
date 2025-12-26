@@ -23,7 +23,7 @@ test.describe("SRE-001: Advanced Search & Replace", () => {
 
         await page.getByTestId("search-input").fill("ページです");
         await page.getByTestId("search-button").click();
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
         const hitsText = await page.getByTestId("search-results-hits").textContent();
         let hits = Number((hitsText || "").replace(/[^0-9]/g, ""));
         if (!hits) {
@@ -34,7 +34,7 @@ test.describe("SRE-001: Advanced Search & Replace", () => {
 
         await page.getByTestId("replace-input").fill("PAGE");
         await page.getByTestId("replace-all-button").click();
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
         await page.getByTestId("search-button").click();
         const hitsTextAfter = await page.getByTestId("search-results-hits").textContent();
         let hitsAfter = Number((hitsTextAfter || "").replace(/[^0-9]/g, ""));

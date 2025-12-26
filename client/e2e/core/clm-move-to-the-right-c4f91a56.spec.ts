@@ -84,7 +84,7 @@ test.describe("CLM-0003: 右へ移動", () => {
         await page.keyboard.press("End");
 
         // 少し長めに待機してカーソル移動を確定 - Endキー処理の完了を待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // カーソル情報を取得して、実際に末尾に移動したことを確認
         let cursorData = await CursorValidator.getCursorData(page);
@@ -117,7 +117,7 @@ test.describe("CLM-0003: 右へ移動", () => {
 
         // Rather than waiting for a fixed time, let's check if the cursor position changes
         // Wait up to 1 second for any possible change to occur
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
 
         // Check cursor information after the key press
         cursorData = await CursorValidator.getCursorData(page);

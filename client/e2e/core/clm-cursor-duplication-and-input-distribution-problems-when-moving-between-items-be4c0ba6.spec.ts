@@ -37,7 +37,7 @@ test.describe("カーソル重複問題の検証", () => {
 
         // 3. テキスト「123」を入力
         await page.keyboard.type("123");
-        await page.waitForTimeout(500); // テキスト入力の反映を待つ
+        await page.waitForTimeout(300); // テキスト入力の反映を待つ
         await CursorValidator.validateCursorState(page, 1, "テキスト入力後");
 
         // 4. 2番目のアイテムのテキスト内容を確認
@@ -58,7 +58,7 @@ test.describe("カーソル重複問題の検証", () => {
 
         // 7. テキスト「456」を入力
         await page.keyboard.type("456");
-        await page.waitForTimeout(500); // テキスト入力の反映を待つ
+        await page.waitForTimeout(300); // テキスト入力の反映を待つ
         await CursorValidator.validateCursorState(page, 1, "2回目のテキスト入力後");
 
         // 8. 1番目のアイテムのテキスト内容を確認

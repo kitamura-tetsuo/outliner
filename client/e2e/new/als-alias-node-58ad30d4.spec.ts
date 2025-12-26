@@ -55,7 +55,7 @@ test.describe("ALS-0001: Alias node", () => {
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
         // Yjsモデルへの反映を待機（ポーリングで確認）
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // aliasTargetIdが正しく設定されていることを確認（Yjsモデルから取得）
         const deadline = Date.now() + 5000;

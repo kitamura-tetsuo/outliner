@@ -30,7 +30,6 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
             "三行目: 並び順チェック",
         ],
         undefined,
-        { ws: "force" },
     );
 
     // page1 is already on the correct page, no need to navigate again
@@ -57,9 +56,9 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
     });
 
-    // Prepare the second page environment (flags etc)
+    // Prepare the second page environment (flags etc) - don't seed, we'll join the first project
     // We ignore the returned project/page as we want to join the first one
-    await TestHelpers.prepareTestEnvironment(page2, testInfo, [], undefined, { ws: "force" });
+    await TestHelpers.prepareTestEnvironment(page2, testInfo, [], undefined, { skipSeed: true });
 
     // Navigate page2 to the SAME project/page
     await page2.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);

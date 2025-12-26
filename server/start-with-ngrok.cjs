@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { spawn } = require("child_process");
 const path = require("path");
-const { setupNgrokUrl } = require("./utils/ngrok-helper");
+const { setupNgrokUrl } = require("./utils/ngrok-helper.cjs");
 
 // Local host configuration
 const LOCAL_HOST = process.env.LOCAL_HOST || "localhost";
@@ -93,7 +93,7 @@ function startServer() {
     return new Promise(resolve => {
         console.log("バックエンドサーバーを起動しています...");
 
-        const server = spawn("node", ["log-service.js"], {
+        const server = spawn("node", ["log-service.cjs"], {
             stdio: ["ignore", "pipe", "pipe"],
         });
 

@@ -39,7 +39,7 @@ test.describe("CLM-1cef29b1: ドラッグ後もカーソル数は変化しない
             await page.mouse.move(thirdBox.x + thirdBox.width / 2, thirdBox.y + thirdBox.height / 2, { steps: 10 });
             await page.mouse.up();
         }
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const cursorCountAfter = await page.evaluate(() => {
             return (window as { editorOverlayStore?: { getCursorInstances: () => any[]; }; }).editorOverlayStore!

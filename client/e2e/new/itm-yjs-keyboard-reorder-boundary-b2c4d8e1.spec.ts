@@ -6,6 +6,7 @@ registerCoverageHooks();
  */
 import { expect, test } from "@playwright/test";
 import { ensureOutlinerItemCount, waitForOutlinerItems } from "../helpers";
+import { TestHelpers } from "../utils/testHelpers";
 
 async function setItemTextByIndex(page, index: number, text: string) {
     await page.evaluate(({ index, text }) => {
@@ -41,28 +42,15 @@ async function getActiveCursorInfo(page) {
 }
 
 test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boundary", () => {
-    test.beforeEach(async ({ page }) => {
-        await page.goto("/yjs-outliner");
-
-        // Wait for the general store to be available
-        await page.waitForFunction(() => {
-            const gs: any = (window as any).generalStore;
-            return !!(gs && gs.project && gs.currentPage);
-        }, { timeout: 10000 });
-
-        // Create initial items using the general store API
-        await page.evaluate(() => {
-            const gs: any = (window as any).generalStore;
-            // Make sure we have a current page with items
-            if (!gs.currentPage) {
-                gs.currentPage = gs.project.addPage("test-page", "tester");
-            }
-
-            // Add 5 items
-            for (let i = 0; i < 5; i++) {
-                gs.currentPage.items.addNode("tester").updateText(`Initial Item ${i + 1}`);
-            }
-        });
+    test.beforeEach(async ({ page }, testInfo) => {
+        // Use standard test environment initialization with 4 items (title + 3 items)
+        // Then add 1 more item via page.evaluate to get 5 total items
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "Initial Item 1",
+            "Initial Item 2",
+            "Initial Item 3",
+            "Initial Item 4",
+        ]);
 
         await ensureOutlinerItemCount(page, 5, 10000);
     });

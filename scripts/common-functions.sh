@@ -507,8 +507,16 @@ start_yjs_server() {
   if npm run | grep -q " build"; then
     npm run build --silent || npm run build
   fi
+  
+  # Clean LevelDB database for fresh test state
+  if [ -d "${ROOT_DIR}/server/ydb" ]; then
+    echo "Cleaning LevelDB database for fresh test state..."
+    rm -rf "${ROOT_DIR}/server/ydb"
+    mkdir -p "${ROOT_DIR}/server/ydb"
+  fi
+  
   echo "Launching compiled server..."
-  npx dotenvx run --env-file=.env.test -- bash -lc "DISABLE_Y_LEVELDB=true PORT=${TEST_YJS_PORT} npm start --silent" \
+  npx dotenvx run --env-file=.env.test -- bash -lc "PORT=${TEST_YJS_PORT} npm start --silent" \
     </dev/null > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &
   local yjs_pid=$!
   echo "Yjs WebSocket server started with PID: ${yjs_pid}"

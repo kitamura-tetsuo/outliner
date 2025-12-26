@@ -1,8 +1,8 @@
 import express from "express";
 import type { LeveldbPersistence } from "y-leveldb";
 import * as Y from "yjs";
-import { Project } from "./app-schema";
-import { logger } from "./logger";
+import { Project } from "./app-schema.js";
+import { logger } from "./logger.js";
 
 export interface PageSeedData {
     name: string;
@@ -38,8 +38,20 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
 
             logger.info({ event: "seed_request", projectName, pageCount: pages.length });
 
-            // Get or create the project document
-            const projectRoom = `projects/${encodeURIComponent(projectName)}`;
+            // Use stable ID derived from project name (matches client's stableIdFromTitle in test mode)
+            function stableIdFromTitle(title: string): string {
+                let h = 2166136261 >>> 0; // FNV-1a basis
+                for (let i = 0; i < title.length; i++) {
+                    h ^= title.charCodeAt(i);
+                    h = (h * 16777619) >>> 0;
+                }
+                const hex = h.toString(16);
+                return `p${hex}`; // ensure starts with a letter; matches [A-Za-z0-9_-]+
+            }
+
+            // Get or create the project document using stable ID (same as client)
+            const projectId = stableIdFromTitle(projectName);
+            const projectRoom = `projects/${projectId}`;
             const projectDoc = await persistence.getYDoc(projectRoom);
 
             // Use the actual Project schema from client
@@ -70,7 +82,7 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
 
                     if (subdoc) {
                         // Persist the subdocument
-                        const pageRoom = `projects/${encodeURIComponent(projectName)}/pages/${page.id}`;
+                        const pageRoom = `projects/${projectId}/pages/${page.id}`;
                         const subdocUpdate = Y.encodeStateAsUpdate(subdoc);
                         await persistence.storeUpdate(pageRoom, subdocUpdate);
                         logger.info({ event: "seed_subdoc_persisted", pageRoom, bytes: subdocUpdate.byteLength });

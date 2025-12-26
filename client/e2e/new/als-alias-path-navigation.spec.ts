@@ -16,12 +16,12 @@ test.describe("ALS-0001: Alias path navigation", () => {
         if (!firstId || !secondId) throw new Error("item ids not found");
 
         await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             textarea?.focus();
         });
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         await page.keyboard.type("/");
         await page.keyboard.type("alias");
@@ -42,7 +42,7 @@ test.describe("ALS-0001: Alias path navigation", () => {
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
         // Yjsモデルへの反映を待機（ポーリングで確認）
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // aliasTargetIdが設定されるまで待機
         const deadline = Date.now() + 5000;
@@ -65,7 +65,7 @@ test.describe("ALS-0001: Alias path navigation", () => {
             // 注意: ナビゲーション機能は実装されているが、テスト環境での動作確認のみ
             await TestHelpers.clickAliasPathButton(page, aliasId, 0);
             // ナビゲーション後の安定化待機（環境により再レンダリングが入ることがある）
-            await page.waitForTimeout(500);
+            await TestHelpers.waitForUIStable(page);
         } else {
             console.warn("Alias path buttons not rendered yet; skipping navigation click check.");
         }

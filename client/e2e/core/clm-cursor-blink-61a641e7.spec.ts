@@ -23,7 +23,7 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
             await item.locator(".item-content").click({ force: true });
         }
         await TestHelpers.waitForCursorVisible(page);
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         await page.screenshot({ path: "client/test-results/CLM-0001-blink-end.png" });
     });
 });

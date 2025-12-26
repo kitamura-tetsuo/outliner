@@ -14,12 +14,6 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed with two empty items so we don't have to create them with flaky keys
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["", ""]);
-        await TestHelpers.waitForOutlinerItems(page);
-
-        // Ensure all seeded items are visible (Title + 2 items = 3)
-        await page.waitForFunction(() => {
-            return document.querySelectorAll(".outliner-item[data-item-id]").length >= 3;
-        }, { timeout: 10000 });
     });
 
     test("空のテキストアイテムでのカーソル移動と複数回のキーボード操作", async ({ page }) => {
@@ -42,7 +36,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 7. 右矢印キーを押して2番目のアイテムに移動
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 8. カーソルの数を確認（1つだけのはず）
         const cursorCountAfterFirstMove = await page.evaluate(() => {
@@ -53,7 +47,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 9. 左矢印キーを押して1番目のアイテムに戻る
         await page.keyboard.press("ArrowLeft");
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 10. カーソルの数を確認（1つだけのはず）
         const cursorCountAfterSecondMove = await page.evaluate(() => {
@@ -64,7 +58,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 11. 右矢印キーを押して2番目のアイテムに移動
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 12. カーソルの数を確認（1つだけのはず）
         const cursorCountAfterThirdMove = await page.evaluate(() => {
@@ -75,7 +69,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 13. 左矢印キーを押して1番目のアイテムに戻る
         await page.keyboard.press("ArrowLeft");
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 14. カーソルの数を確認（1つだけのはず）
         const cursorCountAfterFourthMove = await page.evaluate(() => {
@@ -86,7 +80,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 15. 1番目のアイテムにテキストを入力
         await page.keyboard.type("Test text 1");
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 16. 1番目のアイテムのテキスト内容を確認
         // firstItemSelector was defined at start of test
@@ -97,13 +91,13 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // 17. 右矢印キーを押して2番目のアイテムに移動
         await page.keyboard.press("End");
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 18. 2番目のアイテムにテキストを入力
         await page.keyboard.type("Test text 2");
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 19. 2番目のアイテムのテキスト内容を確認
         // Identify second item by index 2 (Title=0, Empty1=1, Empty2=2)
@@ -119,7 +113,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
             await page.keyboard.press("Home");
             await page.waitForTimeout(500);
             await page.keyboard.press("ArrowLeft");
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // 21. カーソルの数を確認
             const cursorCountAfterMove4 = await page.evaluate(() => {

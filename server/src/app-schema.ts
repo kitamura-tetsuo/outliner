@@ -2,8 +2,8 @@
 
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
-import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "./types/yjs-types";
-import { YTree } from "./yjs-orderedtree-cjs/index.js";
+import { YTree } from "yjs-orderedtree";
+import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "./types/yjs-types.js";
 
 export type Comment = {
     id: string;

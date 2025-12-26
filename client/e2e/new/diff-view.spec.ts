@@ -33,7 +33,7 @@ test.describe("snapshot diff viewer", () => {
             { projectName, pageName },
         );
         await page.goto(`/${projectName}/${pageName}/diff`);
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
 
         // ページの状態をデバッグ
         const pageContent = await page.content();

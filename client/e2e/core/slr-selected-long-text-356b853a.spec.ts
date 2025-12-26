@@ -22,12 +22,12 @@ test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
 
         // 長いテキストを入力
         await page.keyboard.type(longText);
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 2つ目のアイテムを作成
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second item text");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 最初のアイテムに戻る
         await page.keyboard.press("ArrowUp");
@@ -64,7 +64,7 @@ test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
         // await page.keyboard.press("ArrowDown");
         // await page.keyboard.press("End");
         // await page.keyboard.press("Control+v");
-        // await page.waitForTimeout(500);
+        // await page.waitForTimeout(300);
         //
         // // ペーストされたテキストを確認
         // const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();

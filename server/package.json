@@ -43,16 +43,16 @@
     },
     "main": "dist/index.js",
     "name": "fluid-outliner-server",
+    "type": "module",
     "scripts": {
         "build": "tsc",
         "create-test-user": "node utils/create-test-user.js",
-        "dev": "nodemon log-service.js",
+        "dev": "nodemon log-service.cjs",
         "start": "node dist/index.js",
-        "start:log-service": "node log-service.js",
+        "start:log-service": "node log-service.cjs",
         "test": "bash ../scripts/run-server-tests.sh",
         "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000",
-        "postinstall": "patch-package",
-        "postbuild": "mkdir -p dist/yjs-orderedtree-cjs && cp src/yjs-orderedtree-cjs/* dist/yjs-orderedtree-cjs/ && sed -i \"s|require(\\\"./yjs-orderedtree-cjs/index.js\\\")|require(\\\"./yjs-orderedtree-cjs\\\")|g\" dist/app-schema.js"
+        "postinstall": "patch-package"
     },
     "version": "1.0.0",
     "resolutions": {

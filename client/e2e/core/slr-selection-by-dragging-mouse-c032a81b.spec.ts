@@ -138,7 +138,7 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         await page.keyboard.press("Control+v");
 
         // 少し待機してペーストが反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 新しいアイテムのテキストを取得
         const newItem = page.locator(".outliner-item").nth(1);

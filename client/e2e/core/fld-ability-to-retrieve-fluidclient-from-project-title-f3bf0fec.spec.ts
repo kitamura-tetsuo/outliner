@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * YJS-0001: プロジェクトとページの取得・検証（Yjs）
@@ -16,19 +17,9 @@ import { expect, test } from "@playwright/test";
 test.describe("YJS-0001: プロジェクトとページの取得・検証", () => {
     const testPageTitle = `test-page-${Date.now()}`;
 
-    test.beforeEach(async ({ page }) => {
-        // 軽量なYjsルートへ移動
-        try {
-            await page.goto("/yjs-outliner");
-        } catch {
-            await page.goto("/");
-        }
-        await expect(page.locator('[data-testid="outliner-base"]').first()).toBeVisible();
-        // generalStore.project の初期化完了を待機
-        await page.waitForFunction(() => {
-            const gs: any = (window as any).generalStore;
-            return !!(gs && gs.project);
-        }, { timeout: 15000 });
+    test.beforeEach(async ({ page }, testInfo) => {
+        // Use standard test environment initialization
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("Yjsプロジェクトが存在しページを作成・検索できる", async ({ page }) => {

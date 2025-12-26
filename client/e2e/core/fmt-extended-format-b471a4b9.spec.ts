@@ -41,7 +41,7 @@ test.describe("拡張フォーマット", () => {
         await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click();
 
         // フォーマットが適用されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 最初のアイテムのHTMLを確認（直接の子要素の.item-textのみを取得）
         const firstItemHtml = await page.locator(
@@ -79,7 +79,7 @@ test.describe("拡張フォーマット", () => {
         await page.locator(`.outliner-item[data-item-id="${secondItemId2}"]`).locator(".item-content").click();
 
         // フォーマットが適用されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 最初のアイテムのHTMLを確認
         const firstItemHtml = await page.locator(
@@ -118,7 +118,7 @@ test.describe("拡張フォーマット", () => {
         await page.locator(`.outliner-item[data-item-id="${secondItemId3}"]`).locator(".item-content").click();
 
         // フォーマットが適用されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 最初のアイテムのHTMLを確認
         const firstItemHtml = await page.locator(

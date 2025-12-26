@@ -26,7 +26,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // プロジェクト内部リンクを入力
         // Insert the link text in one step to avoid keyboard shortcuts dropping characters after '['
         await page.keyboard.insertText(`This is a link to [/${targetProjectName}/${targetPageName}]`);
-        await page.waitForTimeout(500); // Ensure typing is processed
+        await page.waitForTimeout(300); // Ensure typing is processed
 
         // Press Enter to create a new item and potentially process the previous item
         await page.keyboard.press("Enter");
@@ -41,7 +41,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click();
 
         // Wait for the update to propagate and for the first item to be rendered in non-editing mode
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // Wait for the editor to become inactive - wait for the data-active attribute to change to "false"
         // or for the element to no longer have the data-active="true" attribute

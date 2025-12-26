@@ -25,7 +25,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         await TestHelpers.createTestPageViaAPI(page, "third-page", ["Third page line"]);
         // 4番目のページ（検索の誤検出防止用）
         await TestHelpers.createTestPageViaAPI(page, "different-content", ["Different content here"]);
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // 最終確認（ページ作成が成功したかどうかに関わらず、現在のページ状況を確認）
         const finalCheck = await page.evaluate(() => {
@@ -281,7 +281,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         }
 
         // 検索結果の表示を待機
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
 
         // 検索結果を確認（複数ページにまたがる検索結果があることを確認）
         let searchResults = await page.evaluate(() => {
@@ -302,7 +302,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         if (searchResults.count === 0) {
             // 少し待って再取得（描画/反映遅延の緩和）
-            await page.waitForTimeout(500);
+            await TestHelpers.waitForUIStable(page);
             searchResults = await page.evaluate(() => {
                 const resultItems = document.querySelectorAll(
                     '[data-testid="search-result-item"], .search-results .result-item',
@@ -346,7 +346,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         // 再度検索して置換が完了したことを確認
         await page.getByTestId("search-input").fill("page");
         await page.getByTestId("search-button").click();
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
 
         const newSearchResults = await page.evaluate(() => {
             const resultItems = document.querySelectorAll(

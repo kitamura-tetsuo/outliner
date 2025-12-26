@@ -23,7 +23,7 @@ test("debug internal link html", async ({ page }, testInfo) => {
     await TestHelpers.waitForCursorVisible(page);
     await page.keyboard.type("3つ目のアイテム");
 
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(500);
 
     const html = await firstItem.locator(".item-text").innerHTML();
     console.log("first item html", html);

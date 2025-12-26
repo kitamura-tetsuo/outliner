@@ -95,8 +95,20 @@ test.describe("ITM-00cbb408: ドラッグでアイテムを移動", () => {
             sourceContent.dispatchEvent(dragEndEvent);
         }, { secondId, thirdId });
 
-        // ドラッグによる再配置が完了するのを待つ
-        await page.waitForTimeout(2000);
+        // ドラッグによる再配置が完了するのを待つ（状態ベースの待機）
+        await page.waitForFunction(
+            ({ secondId, thirdId }) => {
+                const items = Array.from(document.querySelectorAll(".outliner-item[data-item-id]"));
+                const thirdIdx = items.findIndex(el => el.getAttribute("data-item-id") === thirdId);
+                const secondIdx = items.findIndex(el => el.getAttribute("data-item-id") === secondId);
+                // Item 2 should now be after Item 3
+                return secondIdx > thirdIdx;
+            },
+            { secondId, thirdId },
+            { timeout: 10000 },
+        ).catch(() => {
+            console.log("Drag reorder did not complete as expected, continuing anyway");
+        });
 
         // 移動後の順序を確認 - Item 2がItem 3の後ろ（index 2）に移動しているはず
         await expect(page.locator(`.outliner-item[data-item-id="${secondId}"]`)).toBeVisible();

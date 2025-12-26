@@ -21,7 +21,7 @@ test.describe("フォーマット組み合わせ", () => {
         ]);
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForOutlinerItems(page);
 
         // 2番目のアイテム(ページタイトルではない最初のアイテム)を取得
         const firstItem = page.locator(".outliner-item").nth(1);
@@ -46,7 +46,7 @@ test.describe("フォーマット組み合わせ", () => {
         ]);
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForOutlinerItems(page);
 
         // 2番目のアイテム(ページタイトルではない最初のアイテム)のHTMLを確認
         const firstItemHtml = await page.locator(".outliner-item").nth(1).locator(".item-text").first().innerHTML();
@@ -68,10 +68,14 @@ test.describe("フォーマット組み合わせ", () => {
         ]);
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForOutlinerItems(page);
 
         // 2番目のアイテム(ページタイトルではない最初のアイテム)のHTMLを確認
-        const firstItemHtml = await page.locator(".outliner-item").nth(1).locator(".item-text").first().innerHTML();
+        const firstItem = page.locator(".outliner-item").nth(1);
+        // Wait for specific formatting to appear to handle hydration/rendering delays
+        await firstItem.locator("em").waitFor({ state: "attached", timeout: 5000 }).catch(() => {});
+
+        const firstItemHtml = await firstItem.locator(".item-text").first().innerHTML();
 
         // 斜体とコードの組み合わせが正しく表示されていることを確認
         expect(firstItemHtml).toContain("<em>");
@@ -90,7 +94,7 @@ test.describe("フォーマット組み合わせ", () => {
         ]);
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForOutlinerItems(page);
 
         // 2番目のアイテム(ページタイトルではない最初のアイテム)のHTMLを確認
         const firstItemHtml = await page.locator(".outliner-item").nth(1).locator(".item-text").first().innerHTML();
@@ -117,7 +121,7 @@ test.describe("フォーマット組み合わせ", () => {
         ]);
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForOutlinerItems(page);
 
         // ページタイトルではない最初のアイテムを選択
         const item = page.locator(".outliner-item").nth(1);

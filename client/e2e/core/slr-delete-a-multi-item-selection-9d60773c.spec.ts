@@ -99,7 +99,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
         await page.evaluate(() => {
@@ -113,7 +113,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.keyboard.press("Backspace");
 
         // 少し待機して削除が反映されるのを待つ
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
 
         // 削除後のアイテム数を取得
         const afterCount = await page.locator(".outliner-item").count();
@@ -173,7 +173,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
         try {
@@ -191,7 +191,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.keyboard.press("Delete");
 
         // 少く待機して削除が反映されるのを待つ
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
 
         // 削除後のアイテム数を取得
         const afterCount = await page.locator(".outliner-item").count();
@@ -255,7 +255,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
         try {
@@ -273,7 +273,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.keyboard.press("Delete");
 
         // 少し待機して削除が反映されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 削除後のアイテム数を取得
         const afterCount = await page.locator(".outliner-item").count();
@@ -331,7 +331,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 選択範囲が作成されたことを確認
         try {
@@ -346,7 +346,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.keyboard.press("Delete");
 
         // 少し待機して削除が反映されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // カーソルが表示されていることを確認
         await page.evaluate(() => {

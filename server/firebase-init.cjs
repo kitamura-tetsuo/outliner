@@ -2,7 +2,7 @@ require("@dotenvx/dotenvx").config();
 const admin = require("firebase-admin");
 const path = require("path");
 const fs = require("fs");
-const { serverLogger: logger } = require("./utils/logger");
+const { serverLogger: logger } = require("./utils/logger.cjs");
 
 // Normalize emulator env hosts to expected ports when provided by parent process
 // This avoids accidental drift (e.g., external 9100) breaking local setup
@@ -43,7 +43,7 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 let devAuthHelper;
 if (isDevelopment) {
     try {
-        devAuthHelper = require("./scripts/setup-dev-auth");
+        devAuthHelper = require("./scripts/setup-dev-auth.cjs");
         logger.info("Development auth helper loaded");
     } catch (error) {
         logger.warn(`Development auth helper not available: ${error.message}`);

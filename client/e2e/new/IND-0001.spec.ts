@@ -97,7 +97,7 @@ test.describe("IND-0001: Advanced indentation and selection", () => {
         await page.keyboard.press("End");
         await page.keyboard.press("Enter");
         await page.keyboard.press("Control+v");
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
         const finalCount = await items.count();
         expect(finalCount).toBeGreaterThanOrEqual(initialCount);
     });

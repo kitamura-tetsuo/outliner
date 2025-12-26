@@ -55,10 +55,13 @@ export class TestHelpers {
         testInfo?: { workerIndex?: number; } | null,
         lines: string[] = [],
         browser?: Browser,
-        options?: {
+        options: { // Ensure options is always defined
             projectName?: string;
             pageName?: string;
-        },
+            skipSeed?: boolean;
+            doNotSeed?: boolean;
+            doNotNavigate?: boolean;
+        } = {}, // Default to an empty object
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
@@ -98,32 +101,77 @@ export class TestHelpers {
             } catch {}
         });
 
-        // 初回ナビゲーション前に addInitScript でフラグを設定しているため、直ちにプロジェクトページへ遷移する
-        // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
+        const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
+        const projectName = options?.projectName ?? `Test Project ${workerIndex} ${Date.now()}`;
+        const pageName = options?.pageName ?? `test-page-${Date.now()}`;
+        const defaultLines = [
+            "これはテスト用のページです。1",
+            "これはテスト用のページです。2",
+            "内部リンクのテスト: [test-link]",
+        ];
+        const seedLines = lines.length > 0 ? lines : defaultLines;
 
-        // 初回ナビゲーション前に addInitScript でフラグを設定しているため、直ちにプロジェクトページへ遷移する
-        // 事前待機は行わず、単一遷移の安定性を優先して直ちにターゲットへ遷移する
+        if (!options.skipSeed && !options.doNotSeed) {
+            await TestHelpers.createAndSeedProject(page, testInfo, seedLines, options);
+        }
 
-        // Prepare unique project/page names
+        if (!options?.doNotNavigate) {
+            await TestHelpers.navigateToProjectPage(page, projectName, pageName, seedLines);
+        } else {
+            TestHelpers.slog("Skipping navigation (doNotNavigate option is true)");
+        }
+
+        return { projectName, pageName };
+    }
+
+    /**
+     * Creates and seeds a new project and page via API.
+     * Does NOT navigate to the page.
+     * @returns The name of the created project and page.
+     */
+    public static async createAndSeedProject(
+        page: Page,
+        testInfo?: { workerIndex?: number; } | null,
+        lines: string[] = [],
+        options?: {
+            projectName?: string;
+            pageName?: string;
+            skipSeed?: boolean;
+        },
+    ): Promise<{ projectName: string; pageName: string; }> {
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
         const projectName = options?.projectName ?? `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = options?.pageName ?? `test-page-${Date.now()}`;
 
         // Seed data using backend client
-        const authToken = await TestHelpers.getTestAuthToken();
-        if (lines.length > 0) {
+        if (!options?.skipSeed) {
             TestHelpers.slog("Seeding data via backend client...");
             const { SeedClient } = await import("./seedClient.js");
+            const authToken = await TestHelpers.getTestAuthToken();
+            const defaultLines = [
+                "これはテスト用のページです。1",
+                "これはテスト用のページです。2",
+                "内部リンクのテスト: [test-link]",
+            ];
+            const seedLines = lines.length > 0 ? lines : defaultLines;
             const seeder = new SeedClient(projectName, authToken);
-            await seeder.seed([{ name: pageName, lines }]);
+            await seeder.seed([{ name: pageName, lines: seedLines }]);
             TestHelpers.slog("Seeding completed.");
         } else {
-            // Ensure at least the project and page exist
-            const { SeedClient } = await import("./seedClient.js");
-            const seeder = new SeedClient(projectName, authToken);
-            await seeder.seed([{ name: pageName }]);
+            TestHelpers.slog("Skipping seed (skipSeed option is true)");
         }
+        return { projectName, pageName };
+    }
 
+    /**
+     * Navigates to a specific project page and waits for it to be ready.
+     */
+    public static async navigateToProjectPage(
+        page: Page,
+        projectName: string,
+        pageName: string,
+        seedLines: string[] = [], // Pass seedLines to correctly wait for UI elements
+    ): Promise<void> {
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
         const url = `/${encodedProject}/${encodedPage}`;
@@ -132,29 +180,69 @@ export class TestHelpers {
         await page.goto(url, { timeout: 60000 });
         TestHelpers.slog("Navigation completed", { url });
 
-        // Wait for the app to be ready
         await TestHelpers.waitForAppReady(page);
 
         // Wait for tree data to be synced (subdocuments need time to load)
-        if (lines.length > 0) {
-            TestHelpers.slog("Waiting for tree data to sync...");
-            await page.waitForFunction(
-                (expectedCount) => {
-                    const gs = (window as any).generalStore;
-                    if (!gs?.currentPage?.items) return false;
-                    const items = gs.currentPage.items;
-                    const count = items?.length ?? 0;
-                    return count >= expectedCount;
-                },
-                lines.length,
-                { timeout: 10000 },
-            ).catch(() => {
-                TestHelpers.slog("Warning: Tree data sync timeout, continuing anyway");
-            });
-            TestHelpers.slog("Tree data synced");
-        }
+        // This part only makes sense if seeding happened. We need effective seedLines here.
+        TestHelpers.slog("Waiting for tree data to sync...");
+        const defaultLines = [
+            "これはテスト用のページです。1",
+            "これはテスト用のページです。2",
+            "内部リンクのテスト: [test-link]",
+        ];
+        const effectiveSeedLines = seedLines.length > 0 ? seedLines : defaultLines;
 
-        return { projectName, pageName };
+        await page.waitForFunction(
+            (expectedCount) => {
+                const gs = (window as any).generalStore;
+                if (!gs?.currentPage?.items) return false;
+                const items = gs.currentPage.items;
+                const count = items?.length ?? 0;
+                return count >= expectedCount;
+            },
+            effectiveSeedLines.length,
+            { timeout: 10000 },
+        ).catch(() => {
+            TestHelpers.slog("Warning: Tree data sync timeout, continuing anyway");
+        });
+        TestHelpers.slog("Tree data synced");
+
+        const expectedItemCount = effectiveSeedLines.length + 1;
+        TestHelpers.slog("Waiting for outliner items to render...", { count: expectedItemCount });
+        await TestHelpers.waitForOutlinerItems(page, 30000, expectedItemCount);
+
+        // Wait for seeded text content to be hydrated/rendered
+        if (effectiveSeedLines.length > 0) {
+            TestHelpers.slog("Waiting for seed text content to hydrate...");
+            const limit = 20;
+            const indicesToCheck = effectiveSeedLines.length <= limit
+                ? effectiveSeedLines.map((_, i) => i)
+                : [
+                    0,
+                    ...Array.from(
+                        { length: limit - 2 },
+                        (_, i) => Math.floor((i + 1) * effectiveSeedLines.length / (limit - 1)),
+                    ),
+                    effectiveSeedLines.length - 1,
+                ];
+
+            for (const index of indicesToCheck) {
+                const line = effectiveSeedLines[index];
+                if (!line) continue;
+
+                try {
+                    const itemIndex = index + 1;
+                    const item = page.locator(".outliner-item").nth(itemIndex);
+                    await expect(item.locator(".item-text")).not.toBeEmpty({ timeout: 20000 });
+                } catch (e) {
+                    const msg = `Failed to wait for non-empty text at index ${
+                        index + 1
+                    } for seed line: "${line}". Error: ${e}`;
+                    console.error(msg);
+                    throw new Error(msg);
+                }
+            }
+        }
     }
 
     /**
@@ -437,6 +525,63 @@ export class TestHelpers {
     }
 
     /**
+     * アイテム数が期待値に達するまで待機する（UI操作後の安定化に使用）
+     * @param page Playwrightのページオブジェクト
+     * @param expectedCount 期待するアイテム数
+     * @param timeout タイムアウト時間（ミリ秒）
+     */
+    public static async waitForItemCount(page: Page, expectedCount: number, timeout = 10000): Promise<boolean> {
+        try {
+            await page.waitForFunction(
+                (count) => {
+                    const items = document.querySelectorAll(".outliner-item[data-item-id]");
+                    return items.length >= count;
+                },
+                expectedCount,
+                { timeout },
+            );
+            return true;
+        } catch {
+            console.log(`Timeout waiting for item count to reach ${expectedCount}`);
+            return false;
+        }
+    }
+
+    /**
+     * カーソルが完全に操作可能な状態になるまで待機する（クリック後の安定化に使用）
+     * waitForCursorVisibleより厳格で、グローバルテキストエリアのフォーカスも確認
+     * @param page Playwrightのページオブジェクト
+     * @param timeout タイムアウト時間（ミリ秒）
+     */
+    public static async ensureCursorReady(page: Page, timeout = 10000): Promise<void> {
+        // 1. カーソルが可視になるまで待機
+        await this.waitForCursorVisible(page, timeout);
+
+        // 2. グローバルテキストエリアにフォーカスがあることを確認
+        await page.waitForFunction(() => {
+            const textarea = document.querySelector<HTMLTextAreaElement>(".global-textarea");
+            return textarea && document.activeElement === textarea;
+        }, { timeout: 5000 }).catch(async () => {
+            // フォーカスがない場合は手動でフォーカス
+            await this.focusGlobalTextarea(page);
+        });
+
+        // 3. 短い安定化待機
+        await page.waitForTimeout(50);
+    }
+
+    /**
+     * キーボード操作後にUIが安定するまで待機する（Enter, Backspace等の操作後に使用）
+     * @param page Playwrightのページオブジェクト
+     */
+    public static async waitForUIStable(page: Page): Promise<void> {
+        // カーソルが可視であることを確認
+        await this.waitForCursorVisible(page, 5000);
+        // 最小限のUI更新待機
+        await page.waitForTimeout(100);
+    }
+
+    /**
      * エディターストアを使用してカーソルを設定する
      * @param page Playwrightのページオブジェクト
      * @param itemId アイテムID
@@ -521,23 +666,6 @@ export class TestHelpers {
                 console.error(`TestHelpers.insertText: editorOverlayStore or getCursorInstances not available`);
             }
         }, { itemId, text, userId });
-    }
-
-    /**
-     * プロジェクトページに移動する (Legacy wrapper kept for compatibility if needed, but implementation updated)
-     */
-    public static async navigateToTestProjectPage(
-        page: Page,
-        testInfo: any | undefined,
-        lines: string[],
-        _browser?: Browser,
-        targetProjectName?: string,
-        targetPageName?: string,
-    ): Promise<{ projectName: string; pageName: string; }> {
-        return this.prepareTestEnvironment(page, testInfo, lines, undefined, {
-            projectName: targetProjectName,
-            pageName: targetPageName,
-        });
     }
 
     /**

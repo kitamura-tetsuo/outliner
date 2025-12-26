@@ -48,13 +48,13 @@ test.describe("LNK-0007: バックリンク機能", () => {
             return;
         }
         await link.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
         }
 
         // 新しいページにテキストを入力
@@ -101,13 +101,13 @@ test.describe("LNK-0007: バックリンク機能", () => {
             return;
         }
         await link2.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
         }
 
         // 新しいページにテキストを入力
@@ -193,13 +193,13 @@ test.describe("LNK-0007: バックリンク機能", () => {
             return;
         }
         await link3.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
         }
 
         // 新しいページにテキストを入力
@@ -248,13 +248,13 @@ test.describe("LNK-0007: バックリンク機能", () => {
             return;
         }
         await link4.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
         }
 
         // 新しいページにテキストを入力
@@ -316,13 +316,13 @@ test.describe("LNK-0007: バックリンク機能", () => {
             return;
         }
         await link5.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
         }
 
         // 新しいページにテキストを入力
@@ -351,7 +351,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         const sourcePageLink = backlinkList.locator(".source-page-link").first();
         // リンクをクリック
         await sourcePageLink.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 元のページに戻ったことを確認
         const currentUrl = page.url();

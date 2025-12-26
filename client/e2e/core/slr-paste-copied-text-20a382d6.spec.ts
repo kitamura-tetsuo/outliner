@@ -52,7 +52,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
@@ -171,7 +171,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
         }, selectedText);
 
         // 少し待機してペーストが反映されるのを待つ
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
 
         // ペーストされたアイテムのテキストを確認
         const items = page.locator(".outliner-item");

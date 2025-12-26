@@ -125,7 +125,7 @@ test.describe("CMT-0001: comment threads", () => {
         await expect(commentButton).toBeVisible();
 
         // Add extra wait to ensure the page is fully loaded and stable
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // Ensure any existing comment thread is closed before starting
         try {
@@ -150,7 +150,7 @@ test.describe("CMT-0001: comment threads", () => {
         });
 
         // Wait for thread to be fully interactive
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
 
         await page.fill('[data-testid="new-comment-input"]', "hello");
         const addBtns = page.locator('[data-testid="add-comment-btn"]');

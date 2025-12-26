@@ -128,7 +128,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
         // Ctrl+Uを押して下線を追加
         await page.keyboard.press("Control+u");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // テキストに下線が追加されたことを確認（Enter前に確認）
         const afterFormatInnerHTML = await firstItem.locator(".item-text").innerHTML();

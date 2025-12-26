@@ -26,7 +26,7 @@ test.describe("SRE-001: Advanced Search & Replace regex", () => {
 
         await page.getByTestId("search-input").fill("regex line \\d");
         await page.getByTestId("search-button").click();
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
         const hitsText = await page.getByTestId("search-results-hits").textContent();
         let hits = Number((hitsText || "").replace(/[^0-9]/g, ""));
         if (!hits) {

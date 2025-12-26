@@ -62,7 +62,7 @@ test.describe("ITM-multi-line-input-6dcdbeef: 複数行テキスト入力", () =
         await page.keyboard.type("abc");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("d");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         await expect(
             page.locator(`.outliner-item[data-item-id="${newId}"] .item-text`),

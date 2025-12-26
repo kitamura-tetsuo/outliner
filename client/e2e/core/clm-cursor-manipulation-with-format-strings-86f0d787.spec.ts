@@ -14,7 +14,6 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("フォーマット文字列でのカーソル操作", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2"]);
-        await TestHelpers.waitForOutlinerItems(page);
     });
 
     test("太字文字列内でのカーソル移動が正しく機能する", async ({ page }) => {
@@ -134,7 +133,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         });
 
         // 少し待機してからテキストを確認
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const textContent = await item.locator(".item-text").textContent();
         console.log("Text content after format insertion:", textContent);
@@ -256,7 +255,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         });
 
         // 少し待機してからテキストを確認
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const textContent = await item.locator(".item-text").textContent();
         console.log("Text content after insertion:", textContent);

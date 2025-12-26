@@ -72,7 +72,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await indentButton.click();
         console.log("MOB-0003: Clicked indent button");
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         const rootItemsAfterIndentImmediate: unknown = await TreeValidator.getTreePathData(page, "items.0.items");
         console.log(
             "MOB-0003: root items immediate after indent",
@@ -106,7 +106,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(300);
 
         await toolbar.locator("button[aria-label='Outdent']").click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         await expect.poll(async () => {
             const rootItems: unknown = await TreeValidator.getTreePathData(page, "items.0.items");
@@ -167,7 +167,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(300);
 
         await toolbar.locator("button[aria-label='New Child']").click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // データ構造から子要素があることを確認
         const afterNewChildData = await TreeValidator.getTreeData(page) as {

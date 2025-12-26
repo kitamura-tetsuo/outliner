@@ -22,7 +22,7 @@ test.describe("LNK-0004: 仮ページ編集保存", () => {
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(300);
         }
 
         const outlinerBase = page.locator("[data-testid='outliner-base']");
@@ -30,14 +30,14 @@ test.describe("LNK-0004: 仮ページ編集保存", () => {
 
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const firstId = await firstItem.getAttribute("data-item-id");
         await TestHelpers.setCursor(page, firstId!);
         await TestHelpers.insertText(page, firstId!, "これは編集された仮ページです。");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
 
         const currentUrl = page.url();
         expect(currentUrl).toContain(nonExistentPage);

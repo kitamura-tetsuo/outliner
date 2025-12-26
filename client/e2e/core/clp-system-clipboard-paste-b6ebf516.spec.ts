@@ -26,7 +26,7 @@ test.describe("System clipboard paste", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         await page.keyboard.press("Control+v");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const text = await item.locator(".item-text").textContent();
         expect(text).toContain("pasted text");

@@ -32,12 +32,12 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         if (!firstId || !secondId) throw new Error("item ids not found");
 
         await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             textarea?.focus();
         });
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // Open alias picker
         await page.keyboard.type("/");
@@ -152,7 +152,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
         // 少し待ってからaliasTargetIdをチェック
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
 
         // aliasPickerStoreのデバッグ情報
         /*
@@ -231,12 +231,12 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         if (!firstId) throw new Error("first item not found");
 
         await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             textarea?.focus();
         });
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         await page.keyboard.type("/");
         await page.keyboard.type("alias");

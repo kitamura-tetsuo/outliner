@@ -1,7 +1,0 @@
-{
-    "name": "yjs-orderedtree-cjs",
-    "version": "1.0.1-beta.3-cjs",
-    "description": "CommonJS version of yjs-orderedtree with bug fixes",
-    "main": "index.js",
-    "types": "index.d.ts"
-}

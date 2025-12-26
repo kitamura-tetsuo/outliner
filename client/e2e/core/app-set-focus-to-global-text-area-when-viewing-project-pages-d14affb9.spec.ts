@@ -136,7 +136,7 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         }, testText);
 
         // 少し待機してからテキストが入力されていることを確認
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // アイテムのテキストを確認
         const itemText = await firstItem.textContent();

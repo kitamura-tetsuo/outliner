@@ -144,7 +144,7 @@ test.describe("Sidebar Navigation", () => {
         await settingsLink.click();
 
         // Wait for navigation
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // Verify we're on the settings page or the navigation was attempted
         // Note: This test verifies the click handler works; actual navigation depends on route setup
@@ -265,7 +265,7 @@ test.describe("Sidebar Navigation", () => {
 
         // Press Enter to activate
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // Verify navigation occurred (URL should change or page should respond)
         // This is a basic check that the keyboard event handler is attached
@@ -286,7 +286,7 @@ test.describe("Sidebar Navigation", () => {
 
         // Press Enter to activate
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // Verify navigation occurred
         const currentUrl = page.url();

@@ -51,9 +51,8 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         // 初期状態のアイテム数を取得
         const initialItemCount = await page.locator(".outliner-item").count();
 
-        // Enterキーを押下
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(300);
+        await TestHelpers.waitForItemCount(page, initialItemCount + 1);
 
         // 新しいアイテム数を取得
         const newItemCount = await page.locator(".outliner-item").count();
@@ -97,9 +96,8 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
             .textContent();
 
-        // Enterキーを押下
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 1つ目のアイテムのテキストを取得
         const firstItemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
@@ -141,9 +139,8 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
             await page.keyboard.press("ArrowRight");
         }
 
-        // Enterキーを押下
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -187,7 +184,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
 
         // Enterキーを押下
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);

@@ -99,7 +99,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
         console.log("Navigation result:", navigationResult);
 
         // 少し待機してナビゲーションが完了するのを待つ
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
 
         // ナビゲーションが成功したことを確認
         // 実際のURLを確認してから適切な検証を行う

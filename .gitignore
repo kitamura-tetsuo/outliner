@@ -114,3 +114,4 @@ NEXT_SESSION_PROMPT.txt
 .codex-setup-installed
 server/ydb
 
+.leveldb/

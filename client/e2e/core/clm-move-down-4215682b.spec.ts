@@ -14,25 +14,22 @@ test.describe("CLM-0005: 下へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line"]);
 
-        // Wait for items to be visible
-        await TestHelpers.waitForOutlinerItems(page);
-
-        // Ensure all seeded items are visible (Title + 2 items = 3)
-        await page.waitForFunction(() => {
-            return document.querySelectorAll(".outliner-item[data-item-id]").length >= 3;
-        }, { timeout: 10000 });
-
         // カーソルを1行目(First line)に移動
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(firstItemId).not.toBeNull();
-        const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"] .item-content`);
-        await item.click({ force: true });
 
-        // グローバル textarea にフォーカスが当たるまで待機
-        await page.waitForSelector("textarea.global-textarea:focus");
+        // Use ensureCursorReady/setCursor for robust focus
+        await TestHelpers.setCursor(page, firstItemId!, 0);
+        await TestHelpers.ensureCursorReady(page);
 
-        // カーソルが表示されるまで待機
-        await TestHelpers.waitForCursorVisible(page);
+        // Verify we are actually on the first item
+        const activeItem = await TestHelpers.getActiveItemId(page);
+        if (activeItem !== firstItemId) {
+            // Retry set cursor once if mismatch
+            console.log("Retry setCursor in beforeEach due to mismatch");
+            await TestHelpers.setCursor(page, firstItemId!, 0);
+            await TestHelpers.ensureCursorReady(page);
+        }
     });
 
     test("カーソルを1行下に移動する", async ({ page }) => {
@@ -125,19 +122,17 @@ test.describe("CLM-0005: 下へ移動", () => {
         const lastItemId = await TestHelpers.getItemIdByIndex(page, 2);
         expect(lastItemId).not.toBeNull();
 
-        const lastItem = page.locator(`.outliner-item[data-item-id="${lastItemId}"] .item-content`);
-        await lastItem.click({ force: true });
-
-        await page.waitForSelector("textarea.global-textarea:focus");
-        await TestHelpers.waitForCursorVisible(page);
+        await TestHelpers.setCursor(page, lastItemId!, 0);
+        await TestHelpers.ensureCursorReady(page);
 
         // カーソルを行の最初に移動
         await page.keyboard.press("Home");
         await TestHelpers.waitForCursorVisible(page);
 
         // 初期テキスト取得
-        const initialItemText = await page.locator(`.outliner-item[data-item-id="${lastItemId}"]`).locator(".item-text")
-            .textContent();
+        const lastItemTextLocator = page.locator(`.outliner-item[data-item-id="${lastItemId}"]`).locator(".item-text");
+        await expect(lastItemTextLocator).toContainText("Second line", { timeout: 10000 });
+        const initialItemText = await lastItemTextLocator.textContent();
         expect(initialItemText).toContain("Second line");
 
         // 下矢印キーを押下（次のアイテムがないので同じアイテムの末尾に移動するはず）

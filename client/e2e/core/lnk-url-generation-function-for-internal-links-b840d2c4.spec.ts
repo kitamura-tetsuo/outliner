@@ -120,7 +120,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         ]);
 
         // We need to ensure the page is loaded and formatted, so wait a bit
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // フォーカスを外して内部リンクが正しく表示されるようにする
         await page.evaluate(() => {
@@ -129,7 +129,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
                 (activeElement as HTMLElement).blur();
             }
         });
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // アイテムが表示されていることを確認
         await page.waitForSelector(".outliner-item", { timeout: 5000 });
@@ -294,9 +294,9 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
             }
         }, pageName);
 
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
         await page.locator("body").click({ position: { x: 5, y: 5 } });
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         const internalLink = page.locator(".item-text a.internal-link").filter({ hasText: pageName }).first();
         await expect(internalLink).toBeVisible({ timeout: 5000 });

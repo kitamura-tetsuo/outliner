@@ -20,7 +20,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // アイテムをクリックしてフォーカスを当てる
         await page.click(`.outliner-item[data-item-id="${id}"] .item-content`);
-        await page.waitForTimeout(1000); // フォーカスが安定するまで待機
+        await TestHelpers.waitForUIStable(page); // フォーカスが安定するまで待機
 
         // グローバルテキストエリアにフォーカスを確実に設定
         await page.evaluate(() => {
@@ -29,12 +29,12 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                 textarea.focus();
             }
         });
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         await page.keyboard.type("/");
 
         // デバッグ: コマンドパレットの状態を確認
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
         const paletteExists = await page.locator(".slash-command-palette").count();
         console.log(`Command palette exists: ${paletteExists}`);
 
@@ -233,7 +233,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // ページタイトルアイテムをクリックしてフォーカスを当てる（テーブルテストと同じアプローチ）
         const titleId = await TestHelpers.getItemIdByIndex(page, 0);
         await page.click(`.outliner-item[data-item-id="${titleId}"] .item-content`);
-        await page.waitForTimeout(1000); // フォーカスが安定するまで待機
+        await TestHelpers.waitForUIStable(page); // フォーカスが安定するまで待機
 
         // グローバルテキストエリアにフォーカスを確実に設定
         await page.evaluate(() => {
@@ -242,7 +242,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                 textarea.focus();
             }
         });
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         await page.keyboard.type("/ch");
 

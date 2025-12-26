@@ -156,7 +156,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
 
         // プロジェクトページに戻って、ページリストを確認
         await page.goto(`/${encoded}`);
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
 
         // ページリストを確認
         const pageLinks = await page.locator('a[href*="/"]').allTextContents();
@@ -193,7 +193,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
                 if (btnText === "▶") {
                     console.log("Expanding Child item");
                     await collapseBtn.click();
-                    await page.waitForTimeout(500);
+                    await TestHelpers.waitForUIStable(page);
                 }
             }
         }
