@@ -21,18 +21,7 @@ import Sidebar from "../components/Sidebar.svelte";
 // Defer services import; it depends on UserManager
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
-// Load test data helper globally in test environments so E2E can seed data on any route
-if (browser && (
-    import.meta.env.MODE === "test" ||
-    import.meta.env.VITE_IS_TEST === "true" ||
-    process.env.NODE_ENV === "test"
-)) {
-    import("../tests/utils/testDataHelper").then(() => {
-        console.log("Test data helper loaded (layout)");
-    }).catch(err => {
-        console.error("Failed to load test data helper in layout:", err);
-    });
-}
+
 
 let { children } = $props();
 const logger = getLogger("AppLayout");

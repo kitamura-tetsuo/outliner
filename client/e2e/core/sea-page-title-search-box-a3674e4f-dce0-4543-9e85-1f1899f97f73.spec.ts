@@ -11,7 +11,10 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SEA-0001: page title search box", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
-        await TestHelpers.createTestPageViaAPI(page, "second-page", ["second page text"]);
+        await TestHelpers.createAndSeedProject(page, null, ["second page text"], {
+            projectName: ids.projectName,
+            pageName: "second-page",
+        });
 
         // Wait for the page to be created and available in the project
         await page.waitForFunction(() => {

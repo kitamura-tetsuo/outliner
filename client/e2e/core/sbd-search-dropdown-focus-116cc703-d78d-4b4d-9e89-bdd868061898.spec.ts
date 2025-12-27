@@ -11,7 +11,10 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SBD-ebaa03c1: search dropdown visibility", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
-        await TestHelpers.createTestPageViaAPI(page, "another-page", ["another page text"]);
+        await TestHelpers.createAndSeedProject(page, null, ["another page text"], {
+            projectName: ids.projectName,
+            pageName: "another-page",
+        });
         await page.goto(`/${encodeURIComponent(ids.projectName)}/${encodeURIComponent(ids.pageName)}`);
 
         // Wait for the page to be properly loaded and indexed for search

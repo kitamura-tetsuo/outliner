@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box", () => {
     test("search results update when pages load after typing", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const input = page
             .getByTestId("main-toolbar")
             .getByRole("textbox", { name: "Search pages" });
@@ -18,7 +18,10 @@ test.describe("SEA-0001: page title search box", () => {
         await input.focus();
         await input.fill("second");
         // Create page after user types to simulate late data availability
-        await TestHelpers.createTestPageViaAPI(page, "second-page", ["second page text"]);
+        await TestHelpers.createAndSeedProject(page, null, ["second page text"], {
+            projectName: projectName,
+            pageName: "second-page",
+        });
         await page.waitForSelector(".page-search-box li");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Enter");

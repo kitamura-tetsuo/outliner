@@ -177,22 +177,6 @@ async function loadProjectAndPage() {
                 client = yjsStore.yjsClient as any;
             }
         }
-        // テスト環境ではクライアントが見つからない場合に自動作成
-        if (!client) {
-            const isTestEnv = (
-                import.meta.env.MODE === "test"
-                || import.meta.env.VITE_IS_TEST === "true"
-                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            );
-            if (isTestEnv) {
-                logger.warn("loadProjectAndPage: No client found for project; creating new Yjs project for tests", { projectName });
-                try {
-                    client = await createNewYjsProject(projectName);
-                } catch (e) {
-                    logger.error("loadProjectAndPage: Failed to create Yjs project in test env", e);
-                }
-            }
-        }
         logger.info(`loadProjectAndPage: YjsClient loaded for project: ${projectName}`);
         logger.info(`loadProjectAndPage: Client containerId: ${client?.containerId}`);
 

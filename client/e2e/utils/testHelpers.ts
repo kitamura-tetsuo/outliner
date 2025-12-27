@@ -61,6 +61,7 @@ export class TestHelpers {
             skipSeed?: boolean;
             doNotSeed?: boolean;
             doNotNavigate?: boolean;
+            ws?: string;
         } = {}, // Default to an empty object
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
@@ -231,9 +232,11 @@ export class TestHelpers {
                 if (!line) continue;
 
                 try {
+                    // Start checking from index + 1 because the first .outliner-item is the page title
                     const itemIndex = index + 1;
                     const item = page.locator(".outliner-item").nth(itemIndex);
-                    await expect(item.locator(".item-text")).not.toBeEmpty({ timeout: 20000 });
+                    // Wait for the specific text to appear to ensure hydration is complete
+                    await expect(item.locator(".item-text")).toContainText(line, { timeout: 20000 });
                 } catch (e) {
                     const msg = `Failed to wait for non-empty text at index ${
                         index + 1
@@ -1517,39 +1520,6 @@ export class TestHelpers {
     }
 
     // 注: 422行目に同名のメソッドが既に定義されているため、このメソッドは削除します
-
-    /**
-     * テスト後のクリーンアップ処理
-     * @param page Playwrightのページオブジェクト
-     */
-    public static async createTestPageViaAPI(
-        page: Page,
-        pageName: string,
-        lines: string[] = [],
-    ): Promise<string> {
-        TestHelpers.slog("createTestPageViaAPI start", { pageName });
-
-        const pageId = await page.evaluate(
-            ({ pageName, lines }) => {
-                const gs = (window as any).generalStore;
-                if (!gs || !gs.project) {
-                    throw new Error("generalStore or project not available");
-                }
-                const newPage = gs.project.addPage(pageName, "api-seeder");
-                if (lines && lines.length > 0) {
-                    for (const line of lines) {
-                        const it = newPage.items.addNode("api-seeder");
-                        it.updateText(line);
-                    }
-                }
-                return newPage.id;
-            },
-            { pageName, lines },
-        );
-
-        TestHelpers.slog("createTestPageViaAPI end", { pageId });
-        return pageId;
-    }
 
     public static async cleanup(page: Page): Promise<void> {
         try {

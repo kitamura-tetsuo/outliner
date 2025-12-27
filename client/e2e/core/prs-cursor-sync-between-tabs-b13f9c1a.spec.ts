@@ -48,7 +48,7 @@ test.describe("Cursor sync between tabs", () => {
         const page2 = await context2.newPage();
 
         // Prepare the environment for the second page (init localStorage etc, but do NOT seed/create new project)
-        await TestHelpers.prepareTestEnvironmentForProject(page2, testInfo, [], undefined, { ws: "force" });
+        await TestHelpers.prepareTestEnvironmentForProject(page2, testInfo, [], undefined);
         await page2.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
 
         // Wait for Yjs connection to be established on page2

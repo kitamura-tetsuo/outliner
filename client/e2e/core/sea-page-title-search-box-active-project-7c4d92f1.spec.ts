@@ -16,7 +16,10 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
         projectName = ids.projectName;
         initialPageName = ids.pageName;
-        await TestHelpers.createTestPageViaAPI(page, "second page", ["search target"]);
+        await TestHelpers.createAndSeedProject(page, null, ["search target"], {
+            projectName: ids.projectName,
+            pageName: "second page",
+        });
         await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(initialPageName)}`);
     });
 

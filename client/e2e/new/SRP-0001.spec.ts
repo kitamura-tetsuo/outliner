@@ -13,18 +13,27 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SRP-0001: Project-Wide Search & Replace", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // 検索テスト用に複数のページを含むテスト環境を準備
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "First page line",
         ]);
 
         // TestHelpersのcreateTestPageViaAPI機能を使用して追加ページを作成
         console.log("Creating additional pages for search test using Yjs generalStore...");
         // 2番目のページ
-        await TestHelpers.createTestPageViaAPI(page, "second-page", ["Second page line"]);
+        await TestHelpers.createAndSeedProject(page, null, ["Second page line"], {
+            projectName: projectName,
+            pageName: "second-page",
+        });
         // 3番目のページ
-        await TestHelpers.createTestPageViaAPI(page, "third-page", ["Third page line"]);
+        await TestHelpers.createAndSeedProject(page, null, ["Third page line"], {
+            projectName: projectName,
+            pageName: "third-page",
+        });
         // 4番目のページ（検索の誤検出防止用）
-        await TestHelpers.createTestPageViaAPI(page, "different-content", ["Different content here"]);
+        await TestHelpers.createAndSeedProject(page, null, ["Different content here"], {
+            projectName: projectName,
+            pageName: "different-content",
+        });
         await TestHelpers.waitForUIStable(page);
 
         // 最終確認（ページ作成が成功したかどうかに関わらず、現在のページ状況を確認）

@@ -59,7 +59,8 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     const user = userManager.getCurrentUser();
     let userId = user?.id;
     const isTest = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test";
+        || process.env.NODE_ENV === "test"
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
     if (!userId && isTest) userId = "test-user-id";
     if (!userId) throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
 

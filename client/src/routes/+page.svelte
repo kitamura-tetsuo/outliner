@@ -5,29 +5,7 @@ import { getLogger } from "../lib/logger";
 import { yjsStore } from "../stores/yjsStore.svelte";
 
 // Import test helper in test environments only
-if (typeof window !== "undefined" && (
-    import.meta.env.MODE === "test" ||
-    import.meta.env.VITE_IS_TEST === "true" ||
-    process.env.NODE_ENV === "test"
-)) {
-    // Dynamic import to ensure test helper is available and seed default data if allowed
-    import("../tests/utils/testDataHelper").then((mod) => {
-        // logger.debug("Test data helper loaded"); // noise削減のため抑制
-        try {
-            const skip = window.localStorage.getItem("SKIP_TEST_CONTAINER_SEED") === "true";
-            if (!skip && typeof mod.setupTestEnvironment === "function") {
-                mod.setupTestEnvironment();
-                // logger.debug("Test data helper: setupTestEnvironment called on home page"); // noise削減のため抑制
-            } else if (skip) {
-                // logger.debug("SKIP_TEST_CONTAINER_SEED=true; skipping default test data setup on home page"); // noise削減のため抑制
-            }
-        } catch (e) {
-            logger.warn("Test data helper: auto-setup failed", e);
-        }
-    }).catch(err => {
-        logger.error("Failed to load test data helper:", err);
-    });
-}
+// Legacy auto-seeding logic removed. Tests should handle seeding explicitly.
 
 const logger = getLogger("HomePage");
 
