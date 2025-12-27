@@ -70,9 +70,13 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     let userId = user?.id;
     const isTest = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
+        || (typeof window !== "undefined"
+            && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
+
     if (!userId && isTest) userId = "test-user-id";
-    if (!userId) throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
+    if (!userId) {
+        throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
+    }
 
     // In test environment, derive a stable projectId from the title so separate browsers join the same room
     function stableIdFromTitle(title: string): string {
@@ -104,6 +108,7 @@ export async function createNewProject(containerName: string): Promise<YjsClient
 
     // update store
     yjsStore.yjsClient = client;
+
     if (typeof window !== "undefined") {
         (window as any).__CURRENT_PROJECT__ = project;
         (window as any).__CURRENT_PROJECT_TITLE__ = containerName;
@@ -145,7 +150,8 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     if (!userId) {
         const isTest = import.meta.env.MODE === "test"
             || process.env.NODE_ENV === "test"
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
+            || (typeof window !== "undefined"
+                && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
         if (isTest) userId = "test-user-id";
     }
 
@@ -159,7 +165,9 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
 
     // Save title to metadata Y.Doc for dropdown display
     setContainerTitleInMetaDoc(resolvedId, title);
+
     yjsStore.yjsClient = client;
+
     return client;
 }
 
