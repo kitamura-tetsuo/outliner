@@ -114,7 +114,10 @@ class GeneralStore {
     }
 }
 // 2重ロード対策: 既存のグローバルがあればそれを使う
-const __tmpStore = $state(new GeneralStore());
+// Svelte 5 runes が利用可能な場合はそれを使用し、そうでない場合は通常のオブジェクトを使用
+const __tmpStore = (typeof $state !== "undefined")
+    ? $state(new GeneralStore())
+    : new GeneralStore();
 const existingCandidate = typeof window !== "undefined"
     ? (window as any).__FIRESTORE_STORE__
     : (globalThis as any).__FIRESTORE_STORE__;
@@ -190,9 +193,9 @@ try {
     const err = error instanceof Error ? error : new Error(String(error));
     logger.error({ err }, "Critical error initializing Firestore");
     // データベース接続に失敗した場合でもアプリが動作し続けられるように
-    // 最低限の初期化だけを行う
-    if (!db) {
-        db = getFirestore(app!);
+    // appがundefinedの場合は何もしない（後続の処理で適切に処理される）
+    if (!db && app) {
+        db = getFirestore(app);
     }
 }
 

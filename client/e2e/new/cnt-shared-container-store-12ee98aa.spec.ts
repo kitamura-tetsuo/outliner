@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/cnt-shared-container-store-12ee98aa.yaml
  */
 import { expect, test } from "@playwright/test";
+import { setupTestEnvironment } from "../../src/tests/utils/testDataHelper";
 
 test.describe("CNT-12ee98aa: Shared Container Store", () => {
     test("container selector shows options", async ({ page }) => {
@@ -15,16 +16,9 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
     });
 
     test("container selector lists projects from store", async ({ page }) => {
-        // 自動シードを無効化
-        await page.addInitScript(() => {
-            window.localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
-        });
-        await page.goto("/");
-
         // Hydration完了とグローバルの公開を待つ
         await page.waitForFunction(() => {
             return typeof (window as any).__FIRESTORE_STORE__ !== "undefined"
-                && typeof (window as any).__TEST_DATA_HELPER__ !== "undefined"
                 && typeof (window as any).__USER_MANAGER__ !== "undefined";
         }, { timeout: 10000 });
 
@@ -38,7 +32,8 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
             }
         }, { timeout: 20000 });
 
-        await page.evaluate(() => (window as any).__TEST_DATA_HELPER__?.setupTestEnvironment?.());
+        // Set up test environment using the proper helper
+        await page.evaluate(() => setupTestEnvironment());
 
         // UI反映を待つ
         await page.waitForFunction(() => document.querySelectorAll("select.container-select option").length >= 2);
@@ -50,18 +45,12 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
     });
 
     test("deletion page shows projects from store", async ({ page }) => {
-        // 自動シードを無効化
-        await page.addInitScript(() => {
-            window.localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
-        });
-
         // Navigate to deletion page
         await page.goto("/projects/delete");
 
         // Wait for hydration and global objects to be available
         await page.waitForFunction(() => {
             return typeof (window as any).__FIRESTORE_STORE__ !== "undefined"
-                && typeof (window as any).__TEST_DATA_HELPER__ !== "undefined"
                 && typeof (window as any).__USER_MANAGER__ !== "undefined";
         }, { timeout: 10000 });
 
@@ -78,7 +67,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         await page.evaluate(() => (window as any).__INIT_FIRESTORE_SYNC__?.());
 
         // Set up test environment with data (after navigating to the page)
-        await page.evaluate(() => (window as any).__TEST_DATA_HELPER__?.setupTestEnvironment?.());
+        await page.evaluate(() => setupTestEnvironment());
 
         // Wait for the firestore store to have the expected data
         await page.waitForFunction(() => {
@@ -106,20 +95,10 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         // ホームページに移動
         await page.goto("http://localhost:7090/");
 
-        // テストヘルパーが利用可能になるまで待つ
-        await page.waitForFunction(() => {
-            return typeof (window as any).__TEST_DATA_HELPER__ !== "undefined";
-        }, { timeout: 10000 });
-
         // テストヘルパーを使用してテストデータを設定
         await page.evaluate(() => {
-            const testHelper = (window as any).__TEST_DATA_HELPER__;
-            if (testHelper) {
-                testHelper.setupTestEnvironment();
-                console.log("Test environment setup completed");
-            } else {
-                console.error("Test helper not available");
-            }
+            setupTestEnvironment();
+            console.log("Test environment setup completed");
         });
 
         // コンテナセレクターが表示されることを確認
@@ -153,20 +132,10 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         // ホームページに移動
         await page.goto("http://localhost:7090/");
 
-        // テストヘルパーが利用可能になるまで待つ
-        await page.waitForFunction(() => {
-            return typeof (window as any).__TEST_DATA_HELPER__ !== "undefined";
-        }, { timeout: 10000 });
-
         // テストヘルパーを使用してテストデータを設定
         await page.evaluate(() => {
-            const testHelper = (window as any).__TEST_DATA_HELPER__;
-            if (testHelper) {
-                testHelper.setupTestEnvironment();
-                console.log("Test environment setup completed");
-            } else {
-                console.error("Test helper not available");
-            }
+            setupTestEnvironment();
+            console.log("Test environment setup completed");
         });
 
         // 初期状態でコンテナセレクターが表示されることを確認

@@ -37,13 +37,18 @@ type AuthEventListener = (result: IAuthResult | null) => void;
 export class UserManager {
     // Firebase 設定
     private firebaseConfig = {
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-        appId: import.meta.env.VITE_FIREBASE_APP_ID,
-        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+        apiKey: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_API_KEY) || "demo-api-key",
+        authDomain: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN)
+            || "demo-project.firebaseapp.com",
+        projectId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_PROJECT_ID) || "demo-project",
+        storageBucket: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET)
+            || "demo-project.appspot.com",
+        messagingSenderId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID)
+            || "123456789",
+        appId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_APP_ID)
+            || "1:123456789:web:abcdef",
+        measurementId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID)
+            || "G-XXXXXXXXXX",
     };
 
     private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57000");
@@ -54,7 +59,7 @@ export class UserManager {
     private unsubscribeAuth: (() => void) | null = null;
 
     // 開発環境かどうかの判定
-    private isDevelopment = import.meta.env.DEV;
+    private isDevelopment = (typeof import.meta !== "undefined" && import.meta.env?.DEV) || false;
 
     /**
      * Firebaseアプリインスタンスを遅延初期化で取得
@@ -96,17 +101,19 @@ export class UserManager {
         this.initAuthListenerAsync();
 
         // テスト環境の検出
-        const isTestEnv = import.meta.env.MODE === "test"
-            || process.env.NODE_ENV === "test"
-            || import.meta.env.VITE_IS_TEST === "true";
+        const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
+            || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
+            || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true");
 
         // プロダクション環境では絶対にエミュレータを使用しない
-        const isProduction = !import.meta.env.DEV && import.meta.env.MODE === "production";
+        const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
+            && (typeof import.meta !== "undefined" && import.meta.env?.MODE) === "production";
         const useEmulatorInLocalStorage = typeof window !== "undefined"
             && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true";
 
         // isTestEnv のいずれかが true の場合は useEmulator を true にする
-        const useEmulator = isTestEnv || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
+        const useEmulator = isTestEnv
+            || (typeof import.meta !== "undefined" && import.meta.env?.VITE_USE_FIREBASE_EMULATOR === "true")
             || useEmulatorInLocalStorage;
 
         if (isProduction && useEmulator) {
@@ -157,8 +164,12 @@ export class UserManager {
     private connectToFirebaseEmulator(): boolean {
         try {
             // 環境変数から接続情報を取得（デフォルトはlocalhost:59099）
-            const host = import.meta.env.VITE_FIREBASE_EMULATOR_HOST || "localhost";
-            const port = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || "59099", 10);
+            const host = (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_EMULATOR_HOST)
+                || "localhost";
+            const port = parseInt(
+                (typeof import.meta !== "undefined" && import.meta.env?.VITE_AUTH_EMULATOR_PORT) || "59099",
+                10,
+            );
 
             logger.info(`Connecting to Firebase Auth emulator at ${host}:${port}`);
             connectAuthEmulator(this.auth, `http://${host}:${port}`, { disableWarnings: true });
@@ -172,9 +183,11 @@ export class UserManager {
 
     // テスト環境用のユーザーをセットアップ
     private async _setupMockUser() {
-        const isTestEnv = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test"
-            || import.meta.env.VITE_IS_TEST === "true";
-        const isProduction = !import.meta.env.DEV && import.meta.env.MODE === "production";
+        const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
+            || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
+            || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true");
+        const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
+            && (typeof import.meta !== "undefined" && import.meta.env?.MODE) === "production";
 
         // E2Eテスト用にFirebaseメール/パスワード認証を使う
         if (isTestEnv && !isProduction) {

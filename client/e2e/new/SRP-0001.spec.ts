@@ -17,7 +17,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             "First page line",
         ]);
 
-        // TestHelpersのcreateTestPageViaAPI機能を使用して追加ページを作成
+        // 追加ページを作成
         console.log("Creating additional pages for search test using Yjs generalStore...");
         // 2番目のページ
         await TestHelpers.createAndSeedProject(page, null, ["Second page line"], {

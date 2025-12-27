@@ -9,8 +9,8 @@ import { log } from "./logger"; // ロガーをインポート
  */
 export function getEnv(key: string, defaultValue: string = ""): string {
     // 実行環境の検出 - VITE_IS_TEST is not available in client runtime for security
-    const isTestEnv = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test";
+    const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
+        || (typeof process !== "undefined" && process.env?.NODE_ENV === "test");
 
     // テスト環境専用の処理
     if (isTestEnv) {
@@ -20,7 +20,7 @@ export function getEnv(key: string, defaultValue: string = ""): string {
         }
 
         // 環境変数から直接値を取得
-        const envValue = import.meta.env[key];
+        const envValue = typeof import.meta !== "undefined" && import.meta.env?.[key];
         if (envValue !== undefined) {
             log("env", "debug", `Using value for ${key}: ${envValue}`);
             return envValue;
@@ -31,7 +31,7 @@ export function getEnv(key: string, defaultValue: string = ""): string {
         if (key === "VITE_FORCE_AZURE") return "false";
     }
 
-    return import.meta.env[key] || defaultValue;
+    return (typeof import.meta !== "undefined" && import.meta.env?.[key]) || defaultValue;
 }
 
 /**
@@ -39,9 +39,9 @@ export function getEnv(key: string, defaultValue: string = ""): string {
  */
 export function getDebugConfig() {
     return {
-        isDevelopment: import.meta.env.DEV,
-        isTest: import.meta.env.VITE_IS_TEST,
+        isDevelopment: (typeof import.meta !== "undefined" && import.meta.env?.DEV) || false,
+        isTest: (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST) || false,
         host: typeof window !== "undefined" ? window.location.host : "server-side",
-        nodeEnv: import.meta.env.MODE,
+        nodeEnv: (typeof import.meta !== "undefined" && import.meta.env?.MODE) || "unknown",
     };
 }
