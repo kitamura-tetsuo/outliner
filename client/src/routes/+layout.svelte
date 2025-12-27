@@ -516,6 +516,9 @@ onDestroy(async () => {
 </script>
 
 <div data-testid="app-layout">
+    <!-- Accessible skip link -->
+    <a href="#main-content" class="skip-link">Skip to content</a>
+
     <!-- Global main toolbar with SearchBox (SEA-0001) -->
     <Toolbar />
 
@@ -553,7 +556,7 @@ onDestroy(async () => {
     <Sidebar bind:isOpen={isSidebarOpen} />
 
     <!-- Ensure content is not hidden behind fixed toolbar and accounts for sidebar -->
-    <div class="main-content" class:with-sidebar={isSidebarOpen}>
+    <div id="main-content" class="main-content" class:with-sidebar={isSidebarOpen} tabindex="-1" style="outline: none;">
         {@render children()}
     </div>
 
@@ -613,5 +616,26 @@ onDestroy(async () => {
 /* Theme toggle button - ensure it's above the sidebar */
 .theme-toggle {
     z-index: 50;
+}
+
+/* Skip link for accessibility */
+.skip-link {
+    position: fixed;
+    top: -9999px;
+    left: 0.5rem;
+    z-index: 20000; /* Above toolbar */
+    background: #3b82f6; /* Blue 500 */
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    text-decoration: none;
+    font-weight: 500;
+    transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+    top: 0.5rem;
+    outline: 2px solid white;
+    box-shadow: 0 0 0 4px #3b82f6;
 }
 </style>
