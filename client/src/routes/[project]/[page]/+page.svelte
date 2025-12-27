@@ -524,12 +524,52 @@ async function loadProjectAndPage() {
 
                             // Hydrate page items from page subdoc's pageItems map
                             // This bridges the gap between how items are stored (in page subdoc) and how they're accessed (via page.items)
+                            // Add retry logic to handle timing issues when subdoc hasn't finished syncing
                             try {
                                 if (store.project && pageRef?.id) {
                                     const projAny = store.project as any;
                                     if (typeof projAny.hydratePageItems === "function") {
-                                        projAny.hydratePageItems(pageRef.id);
-                                        logger.info(`loadProjectAndPage: Hydrated page items for page: ${pageRef.id}`);
+                                        // Retry hydration until items are present (handles subdoc sync timing)
+                                        const maxHydrationRetries = 10;
+                                        let hydratedItems = 0;
+                                        for (let hRetry = 0; hRetry < maxHydrationRetries; hRetry++) {
+                                            // Get fresh page ref and items count each iteration
+                                            const freshPage = projAny.findPage(pageRef.id);
+                                            if (!freshPage) {
+                                                logger.warn(`loadProjectAndPage: Page ${pageRef.id} not found during hydration retry ${hRetry + 1}`);
+                                                await new Promise(r => setTimeout(r, 200));
+                                                continue;
+                                            }
+                                            projAny.hydratePageItems(pageRef.id);
+                                            // Give time for hydration to take effect
+                                            await new Promise(r => setTimeout(r, 200));
+                                            const itemsAfter = (freshPage as any).items?.length ?? 0;
+                                            // Get page items directly from subdoc to verify
+                                            let subdocItemCount = 0;
+                                            try {
+                                                const pagesMap = projAny.ydoc.getMap("pages");
+                                                const subdoc = pagesMap.get(pageRef.id);
+                                                if (subdoc) {
+                                                    const pageItems = subdoc.getMap("pageItems");
+                                                    const keys = Array.from(pageItems.keys()).filter(k => k !== "initialized");
+                                                    subdocItemCount = keys.length;
+                                                }
+                                            } catch {}
+                                            logger.info(`loadProjectAndPage: Hydration attempt ${hRetry + 1}: pageItems=${itemsAfter}, subdocPageItems=${subdocItemCount}`);
+                                            if (itemsAfter >= 3 && subdocItemCount > 0) {
+                                                // We have enough items and subdoc has data
+                                                hydratedItems = itemsAfter;
+                                                logger.info(`loadProjectAndPage: Successfully hydrated page ${pageRef.id} (items: ${itemsAfter}, subdocItems: ${subdocItemCount})`);
+                                                break;
+                                            }
+                                            if (hRetry === maxHydrationRetries - 1) {
+                                                logger.warn(`loadProjectAndPage: Hydration timed out for page ${pageRef.id} (items: ${itemsAfter}, subdocItems: ${subdocItemCount})`);
+                                            }
+                                        }
+                                        if (hydratedItems > 0) {
+                                            // Update store with hydrated page
+                                            store.currentPage = pageRef as any;
+                                        }
                                     }
                                 }
                             } catch (e) {
