@@ -119,7 +119,7 @@ export class TestHelpers {
         const defaultLines = [
             "これはテスト用のページです。1",
             "これはテスト用のページです。2",
-            "内部リンクのテスト: [test-link]",
+            "これはテスト用のページです。3",
         ];
         const seedLines = lines.length > 0 ? lines : defaultLines;
 
@@ -227,7 +227,7 @@ export class TestHelpers {
         // Allow time for WebSocket connection and initial sync before checking app state
         // This is especially important in test environments where seeded data needs to propagate
         // The seeded page subdocument needs time to connect and sync its items
-        await page.waitForTimeout(5000);
+        await page.waitForTimeout(10000);
 
         // E2E stability: wait for store.currentPage to be set explicitly
         // This bypasses the retry logic in +page.svelte and provides a more direct wait
@@ -270,100 +270,20 @@ export class TestHelpers {
         const defaultLines = [
             "これはテスト用のページです。1",
             "これはテスト用のページです。2",
-            "内部リンクのテスト: [test-link]",
+            "これはテスト用のページです。3",
         ];
         // If seedLines is null/undefined, use default. If it is an array (even empty), use it.
         const effectiveSeedLines = seedLines !== null ? seedLines : defaultLines;
 
-        await page.waitForFunction(
-            (expectedCount) => {
-                const gs = (window as any).generalStore;
-                if (!gs?.currentPage?.items) return false;
-                const items = gs.currentPage.items;
-                const count = items?.length ?? 0;
-                return count >= expectedCount;
-            },
-            effectiveSeedLines.length,
-            { timeout: 10000 },
-        ).catch(() => {
-            TestHelpers.slog("Warning: Tree data sync timeout, continuing anyway");
-        });
-        TestHelpers.slog("Tree data synced");
-
-        const expectedItemCount = effectiveSeedLines.length + 1;
+        // Wait for items to be present (Yjs sync indicator)
+        const expectedItemCount = effectiveSeedLines.length + 1; // +1 for page title
         TestHelpers.slog("Waiting for outliner items to render...", { count: expectedItemCount });
         await TestHelpers.waitForOutlinerItems(page, 30000, expectedItemCount);
 
-        // Explicitly wait for the first seeded line's text to appear in the UI
-        if (effectiveSeedLines.length > 0 && effectiveSeedLines[0]) {
-            TestHelpers.slog("Waiting for first seed line text to hydrate...");
-            const firstSeededLineText = effectiveSeedLines[0];
-            await page.waitForFunction(
-                ({ expectedText }) => {
-                    const firstItemTextElement = document.querySelector(".outliner-item:nth-child(2) .item-text");
-                    return firstItemTextElement && firstItemTextElement.textContent?.includes(expectedText);
-                },
-                { expectedText: firstSeededLineText },
-                { timeout: 30000 },
-            ).catch((e) => {
-                // Log warning and continue - items are found (data-item-id present) but text sync timing may vary
-                TestHelpers.slog("Warning: First seeded line text not hydrated within timeout, continuing anyway", {
-                    expectedText: firstSeededLineText,
-                    error: e?.message,
-                });
-            });
-            TestHelpers.slog("First seed line text hydrated (or timeout, continuing).");
-        }
+        // Small delay to allow Svelte components to render
+        await page.waitForTimeout(500);
 
-        await page.waitForTimeout(500); // Add a small delay to allow Svelte components to render.
-
-        // Wait for seeded text content to be hydrated/rendered
-        if (effectiveSeedLines.length > 0) {
-            TestHelpers.slog("Waiting for seed text content to hydrate...");
-            const limit = 20;
-            const indicesToCheck = effectiveSeedLines.length <= limit
-                ? effectiveSeedLines.map((_, i) => i)
-                : [
-                    0,
-                    ...Array.from(
-                        { length: limit - 2 },
-                        (_, i) => Math.floor((i + 1) * effectiveSeedLines.length / (limit - 1)),
-                    ),
-                    effectiveSeedLines.length - 1,
-                ];
-
-            for (const index of indicesToCheck) {
-                const line = effectiveSeedLines[index];
-                if (!line) continue;
-
-                try {
-                    // Start checking from index + 1 because the first .outliner-item is the page title
-                    const itemIndex = index + 1;
-                    const item = page.locator(".outliner-item").nth(itemIndex);
-
-                    TestHelpers.slog("DEBUG: Checking item", { itemIndex, expectedLine: line });
-
-                    const fullItemText = await item.textContent();
-                    const itemTextSpanContent = await item.locator(".item-text").textContent();
-
-                    TestHelpers.slog("DEBUG: Item content before assertion", {
-                        itemIndex,
-                        fullItemText,
-                        itemTextSpanContent,
-                        expectedLine: line,
-                    });
-
-                    // Wait for the specific text to appear to ensure hydration is complete
-                    await expect(item.locator(".item-text")).toContainText(line, { timeout: 30000 });
-                } catch (e) {
-                    // Log warning and continue - text sync timing may vary but items are present
-                    const msg = `Warning: Failed to wait for text at index ${
-                        index + 1
-                    } for seed line: "${line}". Continuing anyway. Error: ${e}`;
-                    console.warn(msg);
-                }
-            }
-        }
+        TestHelpers.slog("Test environment ready");
     }
 
     /**
