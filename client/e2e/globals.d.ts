@@ -19,7 +19,7 @@ if (typeof (globalThis as any).$state === "undefined") {
     (globalThis as any).$derived = function<T>(value: T): T {
         return value;
     };
-    (globalThis as any).$effect = function(_callback: () => void | (() => void)): void {
+    (globalThis as any).$effect = function(): void {
         // No-op for E2E tests
     };
     (globalThis as any).$props = function(): any {
