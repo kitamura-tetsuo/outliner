@@ -205,14 +205,115 @@ export class Project {
         return new Items(this.ydoc, this.tree, "root");
     }
 
+    /**
+     * Find a page by ID
+     */
+    findPage(pageId: string): Item | undefined {
+        const len = this.items.length;
+        for (let i = 0; i < len; i++) {
+            const item = this.items.at(i);
+            if (item && item.id === pageId) {
+                return item;
+            }
+        }
+        return undefined;
+    }
+
     // Fluid互換API: ページ（最上位アイテム）を追加
     addPage(title: string, author: string): Item {
         const page = this.items.addNode(author ?? "user");
         page.updateText(title ?? "");
         const pages = this.ydoc.getMap<Y.Doc>("pages");
         const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as any);
-        pages.set(page.id, subdoc);
         subdoc.load();
+        // Create a map to store page-specific items within the subdoc
+        const pageItems = subdoc.getMap<any>("pageItems");
+        pageItems.set("initialized", Date.now());
+        pages.set(page.id, subdoc);
         return page;
+    }
+
+    /**
+     * Get items for a specific page by page ID.
+     * Handles items stored in the page subdocument's pageItems map.
+     * Returns raw item data for use in merging/copying.
+     */
+    getPageItems(pageId: string): Array<{ id: string; text: string; author: string; }> {
+        try {
+            // First check if page exists
+            const page = this.findPage(pageId);
+            if (!page) return [];
+
+            // Try to get items from page subdoc's pageItems map
+            const pages = this.ydoc.getMap<Y.Doc>("pages");
+            const subdoc = pages.get(pageId);
+            if (subdoc) {
+                const pageItems = subdoc.getMap<Y.Map<any>>("pageItems");
+                const itemKeys = Array.from(pageItems.keys()).filter(k => k !== "initialized");
+                return itemKeys.map(key => {
+                    const value = pageItems.get(key);
+                    if (!value) return null;
+                    return {
+                        id: value.get("id") as string,
+                        text: value.get("text") as string,
+                        author: value.get("author") as string,
+                    };
+                }).filter(Boolean) as Array<{ id: string; text: string; author: string; }>;
+            }
+        } catch {}
+        return [];
+    }
+
+    /**
+     * Copy items from page subdoc's pageItems map to the page's items in the main tree.
+     * This bridges the gap between how items are stored (in page subdoc) and how they're accessed (via page.items).
+     */
+    hydratePageItems(pageId: string): void {
+        const pageItems = this.getPageItems(pageId);
+        const page = this.findPage(pageId);
+        if (!page || pageItems.length === 0) return;
+
+        // Get the page's items collection in the main tree
+        const pageItemKeys = this.getPageItemKeys(pageId);
+        const existingIds = new Set(pageItemKeys);
+
+        // Add each item from pageItems to the page's items
+        for (const itemData of pageItems) {
+            if (!existingIds.has(itemData.id)) {
+                const newItem = page.items.addNode(itemData.author);
+                // The new item already has an empty text, we need to update it
+                // But updateText works on the pageItem's text, not the new item's text
+                // We need to set the text directly
+                const textField = (newItem as any).value.get("text") as Y.Text;
+                if (textField) {
+                    textField.delete(0, textField.length);
+                    if (itemData.text) {
+                        textField.insert(0, itemData.text);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the keys of items that belong to a specific page (stored in main tree at root level).
+     * This is a workaround for the schema issue where page items are stored at root level.
+     */
+    private getPageItemKeys(pageId: string): string[] {
+        // In the current schema, page items are stored at the root level
+        // We identify them by checking if they're near the page in the tree order
+        // This is a temporary solution until the schema is fixed
+        const keys: string[] = [];
+        const len = this.items.length;
+        for (let i = 0; i < len; i++) {
+            const item = this.items.at(i);
+            if (item && item.id !== pageId) {
+                // In the current broken schema, all items are at root level
+                // We can't easily distinguish page items from other items
+                // For now, return all item IDs (this is a known limitation)
+                keys.push(item.id);
+            }
+        }
+        return keys;
     }
 }

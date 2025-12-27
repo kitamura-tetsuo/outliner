@@ -69,23 +69,42 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
                 // Add page to project using the real schema
                 const page = project.addPage(pageData.name, "seed-server");
 
-                // Add lines to the page subdocument
+                // Store items in the page subdocument's pageItems map
                 if (pageData.lines && pageData.lines.length > 0) {
-                    for (const line of pageData.lines) {
-                        const item = page.items.addNode("seed-server");
-                        item.updateText(line);
-                    }
-
-                    // Get the subdocument for this page
-                    const pages = projectDoc.getMap<Y.Doc>("pages");
-                    const subdoc = pages.get(page.id);
+                    const pagesMap = projectDoc.getMap<Y.Doc>("pages");
+                    const subdoc = pagesMap.get(page.id);
 
                     if (subdoc) {
+                        const pageItems = subdoc.getMap<any>("pageItems");
+
+                        // Add each line as an item in the pageItems map
+                        for (const line of pageData.lines) {
+                            const itemKey = `item-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+                            const itemValue = new Y.Map<any>();
+
+                            // Set item properties
+                            itemValue.set("id", itemKey);
+                            itemValue.set("text", line);
+                            itemValue.set("author", "seed-server");
+                            itemValue.set("created", Date.now());
+                            itemValue.set("lastChanged", Date.now());
+                            itemValue.set("componentType", undefined);
+                            itemValue.set("aliasTargetId", undefined);
+
+                            // Store the item in pageItems
+                            pageItems.set(itemKey, itemValue);
+                        }
+
                         // Persist the subdocument
                         const pageRoom = `projects/${projectId}/pages/${page.id}`;
                         const subdocUpdate = Y.encodeStateAsUpdate(subdoc);
                         await persistence.storeUpdate(pageRoom, subdocUpdate);
-                        logger.info({ event: "seed_subdoc_persisted", pageRoom, bytes: subdocUpdate.byteLength });
+                        logger.info({
+                            event: "seed_subdoc_persisted",
+                            pageRoom,
+                            bytes: subdocUpdate.byteLength,
+                            itemCount: pageData.lines.length,
+                        });
                     }
                 }
             }

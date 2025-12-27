@@ -521,6 +521,20 @@ async function loadProjectAndPage() {
                                     store.currentPage = pageRef as any;
                                 }
                             } catch {}
+
+                            // Hydrate page items from page subdoc's pageItems map
+                            // This bridges the gap between how items are stored (in page subdoc) and how they're accessed (via page.items)
+                            try {
+                                if (store.project && pageRef?.id) {
+                                    const projAny = store.project as any;
+                                    if (typeof projAny.hydratePageItems === "function") {
+                                        projAny.hydratePageItems(pageRef.id);
+                                        logger.info(`loadProjectAndPage: Hydrated page items for page: ${pageRef.id}`);
+                                    }
+                                }
+                            } catch (e) {
+                                logger.warn("loadProjectAndPage: Failed to hydrate page items", e);
+                            }
                             // Migrate pre-attached seeded children from provisional page to connected page if needed
                             try {
                                 const prev: any = prevCurrent;
