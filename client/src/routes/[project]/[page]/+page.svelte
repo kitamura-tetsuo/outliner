@@ -389,6 +389,12 @@ async function loadProjectAndPage() {
                         if (isTestEnv && !pageRef && pageName) {
                             for (let i = 0; i < 100; i++) {
                                 await new Promise(r => setTimeout(r, 200));
+                                // Ensure store.project is set before accessing items
+                                if (!store.project) {
+                                    const gs = (window as any).generalStore;
+                                    if (gs?.project) store.project = gs.project as any;
+                                    continue; // Skip this iteration if still no project
+                                }
                                 // Re-fetch items from store.project as it might have updated
                                 const currentItems = (store.project as any)?.items;
                                 pageRef = findPage(currentItems, pageName);

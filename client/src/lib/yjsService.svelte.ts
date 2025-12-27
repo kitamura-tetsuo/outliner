@@ -143,7 +143,9 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     const user = userManager.getCurrentUser();
     let userId = user?.id;
     if (!userId) {
-        const isTest = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
+        const isTest = import.meta.env.MODE === "test"
+            || process.env.NODE_ENV === "test"
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
         if (isTest) userId = "test-user-id";
     }
 
