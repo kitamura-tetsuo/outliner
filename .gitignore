@@ -115,3 +115,4 @@ NEXT_SESSION_PROMPT.txt
 server/ydb
 
 .leveldb/
+.aider.tags.cache.v4/
