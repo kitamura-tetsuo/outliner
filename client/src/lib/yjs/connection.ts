@@ -147,6 +147,7 @@ async function getFreshIdToken(): Promise<string> {
 export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: string): Promise<PageConnection> {
     const wsBase = getWsBase();
     const room = pageRoomPath(projectId, pageId);
+    console.log(`[connectPageDoc] Connecting to page room: ${room}, doc.guid=${doc.guid}`);
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
             const persistence = createPersistence(room, doc);
@@ -169,9 +170,13 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     // This ensures seeded data is available immediately
     await new Promise<void>((resolve) => {
         if (provider.synced) {
+            console.log(`[connectPageDoc] Provider already synced for room: ${room}`);
             resolve();
         } else if (typeof provider.once === "function") {
-            provider.once("synced", () => resolve());
+            provider.once("synced", () => {
+                console.log(`[connectPageDoc] Sync event fired for room: ${room}`);
+                resolve();
+            });
             // Fallback timeout in case 'synced' event doesn't fire
             setTimeout(() => {
                 console.log(`[connectPageDoc] Timeout waiting for sync, proceeding anyway for room: ${room}`);
@@ -186,6 +191,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
             resolve();
         }
     });
+    console.log(`[connectPageDoc] Connected to page room: ${room}, returning connection`);
 
     const awareness = provider.awareness;
     // Debug hook (guarded)
@@ -299,8 +305,14 @@ export async function createProjectConnection(projectId: string): Promise<Projec
             const keysChanged = e.changes.keys;
             for (const key of keysChanged.keys()) {
                 const sub = pagesMap.get(key);
+                console.log(
+                    `[createProjectConnection] pagesMap observer: key=${key}, sub=${!!sub}, pages.has=${
+                        pages.has(key)
+                    }`,
+                );
                 if (sub && !pages.has(key)) {
                     // Best-effort, non-blocking connection setup
+                    console.log(`[createProjectConnection] Connecting page via observer: ${key}`);
                     void connectPageDoc(sub, projectId, key).then(c => pages.set(key, c));
                 }
                 if (!sub && pages.has(key)) {
@@ -312,18 +324,30 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         });
         // Connect any pages that were already in the map before the observer was attached
         // This ensures pages seeded via HTTP API are properly connected
+        console.log(`[createProjectConnection] Connecting initial pages from pagesMap, count=${pagesMap.size}`);
         for (const key of pagesMap.keys()) {
             const sub = pagesMap.get(key);
+            console.log(
+                `[createProjectConnection] Initial page: key=${key}, sub=${!!sub}, pages.has=${pages.has(key)}`,
+            );
             if (sub && !pages.has(key)) {
                 // Explicitly load the subdoc to ensure server data is fetched before connecting
                 // This is critical for seeded data to be available immediately
                 try {
                     sub.load();
+                    console.log(`[createProjectConnection] Called sub.load() for page: ${key}`);
                 } catch {}
-                void connectPageDoc(sub, projectId, key).then(c => pages.set(key, c));
+                console.log(`[createProjectConnection] Starting connectPageDoc for page: ${key}`);
+                void connectPageDoc(sub, projectId, key).then(c => {
+                    pages.set(key, c);
+                    console.log(`[createProjectConnection] Page ${key} connected and added to pages Map`);
+                });
             }
         }
-    } catch {}
+        console.log(`[createProjectConnection] Initial pages connection started, pages.size=${pages.size}`);
+    } catch (e) {
+        console.error(`[createProjectConnection] Error in pagesMap setup: ${e}`);
+    }
 
     const dispose = () => {
         try {

@@ -412,6 +412,38 @@ async function loadProjectAndPage() {
                                 pageRef = findPage(currentItems, pageName);
                                 if (pageRef) {
                                     logger.info(`E2E: Found page "${pageName}" after retry ${i + 1}`);
+                                    // Wait for page subdocument to be connected and items to be available
+                                    // This ensures seeded content is properly synced before proceeding
+                                    try {
+                                        const pageId = pageRef?.id;
+                                        const yjsClient = yjsStore.yjsClient;
+                                        logger.info(`E2E: Checking page connection: pageId=${pageId}, yjsClient=${!!yjsClient}`);
+                                        if (yjsClient && pageId) {
+                                            const pageConn = yjsClient.getPageConnection?.(pageId);
+                                            logger.info(`E2E: Initial pageConn check: pageConn=${!!pageConn}`);
+                                            // Wait for page connection in the YjsClient
+                                            for (let waitIter = 0; waitIter < 50; waitIter++) {
+                                                const conn = yjsClient.getPageConnection?.(pageId);
+                                                if (conn) {
+                                                    // Check if the page has items (content is loaded)
+                                                    const pageItems = pageRef?.items;
+                                                    const itemCount = pageItems?.length ?? 0;
+                                                    logger.info(`E2E: Page connected, checking items: count=${itemCount}`);
+                                                    if (itemCount > 0) {
+                                                        logger.info(`E2E: Page "${pageName}" connected with ${itemCount} items`);
+                                                        break;
+                                                    }
+                                                } else {
+                                                    logger.info(`E2E: Waiting for page connection (iter ${waitIter}/50)`);
+                                                }
+                                                await new Promise(r => setTimeout(r, 100));
+                                            }
+                                        } else {
+                                            logger.warn(`E2E: yjsClient or pageId not available`);
+                                        }
+                                    } catch (e) {
+                                        logger.warn(`E2E: Error waiting for page connection: ${e}`);
+                                    }
                                     break;
                                 }
                                 if ((i + 1) % 10 === 0) {
@@ -443,6 +475,26 @@ async function loadProjectAndPage() {
                                                         if (String(itemText).toLowerCase() === String(pageName).toLowerCase()) {
                                                             pageRef = item;
                                                             logger.info(`E2E: Found page via fallback search: "${itemText}" (id=${pageId})`);
+                                                            // Wait for page subdocument to be connected and items to be available
+                                                            try {
+                                                                const yjsClient = yjsStore.yjsClient;
+                                                                if (yjsClient && pageId) {
+                                                                    for (let waitIter = 0; waitIter < 50; waitIter++) {
+                                                                        const pageConn = yjsClient.getPageConnection?.(pageId);
+                                                                        if (pageConn) {
+                                                                            const pageItems = pageRef?.items;
+                                                                            const itemCount = pageItems?.length ?? 0;
+                                                                            if (itemCount > 0) {
+                                                                                logger.info(`E2E: Page "${pageName}" connected with ${itemCount} items`);
+                                                                                break;
+                                                                            }
+                                                                        }
+                                                                        await new Promise(r => setTimeout(r, 100));
+                                                                    }
+                                                                }
+                                                            } catch (e) {
+                                                                logger.warn(`E2E: Error waiting for page connection in fallback: ${e}`);
+                                                            }
                                                             break;
                                                         }
                                                     }
@@ -806,27 +858,50 @@ onMount(() => {
         console.log(`[+page.svelte] onMount: store.currentPage=${!!store.currentPage}, pageName="${pageName}"`);
         if (!store.currentPage) {
             const itemsAny: any = (store.project as any).items as any;
-            // Yjsの同期を待つために、定期的にページリストをチェック
-            const checkInterval = setInterval(() => {
-                const currentLen = itemsAny?.length ?? 0;
-                for (let i = 0; i < currentLen; i++) {
-                    const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
-                    const title = p?.text?.toString?.() ?? String(p?.text ?? "");
-                    if (String(title).toLowerCase() === String(pageName).toLowerCase()) {
-                        store.currentPage = p as any;
-                        clearInterval(checkInterval);
-                        console.log(`[+page.svelte] Found page via Yjs sync: ${title} (id=${p?.id})`);
-                        break;
+            // Use async function for proper await support
+            (async () => {
+                for (let retry = 0; retry < 20; retry++) {
+                    await new Promise(r => setTimeout(r, 500));
+                    const currentLen = itemsAny?.length ?? 0;
+                    for (let i = 0; i < currentLen; i++) {
+                        const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
+                        const title = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        if (String(title).toLowerCase() === String(pageName).toLowerCase()) {
+                            store.currentPage = p as any;
+                            console.log(`[+page.svelte] Found page via Yjs sync: ${title} (id=${p?.id})`);
+                            // Wait for page subdocument to be connected and items to be available
+                            try {
+                                const yjsClient = yjsStore.yjsClient;
+                                const pageId = p?.id;
+                                console.log(`[+page.svelte] Checking page connection: pageId=${pageId}, yjsClient=${!!yjsClient}`);
+                                if (yjsClient && pageId) {
+                                    const pageConn = yjsClient.getPageConnection?.(pageId);
+                                    console.log(`[+page.svelte] Initial pageConn check: pageConn=${!!pageConn}`);
+                                    for (let waitIter = 0; waitIter < 50; waitIter++) {
+                                        const conn = yjsClient.getPageConnection?.(pageId);
+                                        if (conn) {
+                                            const pageItems = p?.items;
+                                            const itemCount = pageItems?.length ?? 0;
+                                            console.log(`[+page.svelte] Page connected, checking items: count=${itemCount}`);
+                                            if (itemCount > 0) {
+                                                console.log(`[+page.svelte] Page "${pageName}" connected with ${itemCount} items`);
+                                                break;
+                                            }
+                                        } else {
+                                            console.log(`[+page.svelte] Waiting for page connection (iter ${waitIter}/50)`);
+                                        }
+                                        await new Promise(r => setTimeout(r, 100));
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn(`[+page.svelte] Error waiting for page connection in onMount: ${e}`);
+                            }
+                            return;
+                        }
                     }
                 }
-            }, 500);
-            // 10秒後にタイムアウト
-            setTimeout(() => {
-                clearInterval(checkInterval);
-                if (!store.currentPage) {
-                    console.warn(`[+page.svelte] Page not found after 10s: ${pageName}`);
-                }
-            }, 10000);
+                console.warn(`[+page.svelte] Page not found after retries: ${pageName}`);
+            })();
         } else {
             console.log(`[+page.svelte] onMount: store.currentPage already set, skipping search`);
         }
