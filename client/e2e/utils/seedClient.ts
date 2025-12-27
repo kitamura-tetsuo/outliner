@@ -1,4 +1,4 @@
-import type { PageSeedData } from "../../../server/src/seed-api";
+import type { PageSeedData } from "../../../../server/src/seed-api";
 
 export { type PageSeedData };
 

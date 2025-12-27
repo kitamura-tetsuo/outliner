@@ -6,7 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/cnt-shared-container-store-12ee98aa.yaml
  */
 import { expect, test } from "@playwright/test";
-import { setupTestEnvironment } from "../../src/tests/utils/testDataHelper";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CNT-12ee98aa: Shared Container Store", () => {
     test("container selector shows options", async ({ page }) => {
@@ -15,14 +15,16 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         await expect(select).toBeVisible();
     });
 
-    test("container selector lists projects from store", async ({ page }) => {
-        // Hydration完了とグローバルの公開を待つ
-        await page.waitForFunction(() => {
-            return typeof (window as any).__FIRESTORE_STORE__ !== "undefined"
-                && typeof (window as any).__USER_MANAGER__ !== "undefined";
-        }, { timeout: 10000 });
+    test("container selector lists projects from store", async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
 
-        // Firebaseのテストユーザーでログイン完了を待つ
+        // Set up accessible projects for container selector
+        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
+
+        // Navigate to home page
+        await page.goto("http://localhost:7090/");
+
+        // Wait for auth and store to be ready
         await page.waitForFunction(() => {
             try {
                 const um = (window as any).__USER_MANAGER__;
@@ -32,11 +34,11 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
             }
         }, { timeout: 20000 });
 
-        // Set up test environment using the proper helper
-        await page.evaluate(() => setupTestEnvironment());
-
-        // UI反映を待つ
-        await page.waitForFunction(() => document.querySelectorAll("select.container-select option").length >= 2);
+        // Wait for container selector to have options
+        await page.waitForFunction(() => {
+            const cs = (window as any).__CONTAINER_STORE__;
+            return cs && cs.containers && cs.containers.length >= 2;
+        }, { timeout: 10000 });
 
         const options = page.locator("select.container-select option");
         await expect(options).toHaveCount(2);
@@ -44,7 +46,12 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         await expect(options.nth(1)).toHaveText(/test-project-2/);
     });
 
-    test("deletion page shows projects from store", async ({ page }) => {
+    test("deletion page shows projects from store", async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+
+        // Set up accessible projects
+        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
+
         // Navigate to deletion page
         await page.goto("/projects/delete");
 
@@ -66,19 +73,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
 
         await page.evaluate(() => (window as any).__INIT_FIRESTORE_SYNC__?.());
 
-        // Set up test environment with data (after navigating to the page)
-        await page.evaluate(() => setupTestEnvironment());
-
-        // Wait for the firestore store to have the expected data
-        await page.waitForFunction(() => {
-            const fs = (window as any).__FIRESTORE_STORE__;
-            return fs
-                && fs.userProject
-                && fs.userProject.accessibleProjectIds
-                && fs.userProject.accessibleProjectIds.length >= 2;
-        }, { timeout: 10000 });
-
-        // Now wait for the container store to reflect the changes
+        // Wait for the container store to have the expected data
         await page.waitForFunction(() => {
             const cs = (window as any).__CONTAINER_STORE__;
             return cs && cs.containers && cs.containers.length >= 2;
@@ -91,66 +86,57 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         await expect(rows.nth(1).locator("td").nth(1)).toContainText("test-project-2");
     });
 
-    test("dropdown list shows containers after initialization", async ({ page }) => {
-        // ホームページに移動
+    test("dropdown list shows containers after initialization", async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+
+        // Set up accessible projects
+        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
+
+        // Navigate to home page
         await page.goto("http://localhost:7090/");
 
-        // テストヘルパーを使用してテストデータを設定
-        await page.evaluate(() => {
-            setupTestEnvironment();
-            console.log("Test environment setup completed");
-        });
-
-        // コンテナセレクターが表示されることを確認
+        // Container selector should be visible
         const select = page.locator("select.container-select");
         await expect(select).toBeVisible();
 
-        // 少し待ってからオプションを確認（初期化を待つ）
-        await page.waitForTimeout(2000);
+        // Wait for container store to have containers
+        await page.waitForFunction(() => {
+            const cs = (window as any).__CONTAINER_STORE__;
+            return cs && cs.containers && cs.containers.length >= 2;
+        }, { timeout: 10000 });
 
-        // オプションが存在することを確認
+        // Check options exist
         const options = select.locator("option");
         const optionCount = await options.count();
-
-        // デバッグ情報を出力
-        console.log(`Option count: ${optionCount}`);
-        for (let i = 0; i < optionCount; i++) {
-            const optionText = await options.nth(i).textContent();
-            console.log(`Option ${i}: ${optionText}`);
-        }
-
-        // 少なくとも1つのオプションが表示されることを確認
-        // テスト環境では、デフォルトのテストデータまたはログイン後のデータが表示される
-        expect(optionCount).toBeGreaterThan(0);
+        expect(optionCount).toBeGreaterThanOrEqual(2);
 
         // "利用可能なコンテナがありません"が表示されていないことを確認
         const noContainerOption = select.locator("option", { hasText: "利用可能なコンテナがありません" });
         await expect(noContainerOption).not.toBeVisible();
     });
 
-    test("dropdown list is populated on page load", async ({ page }) => {
-        // ホームページに移動
+    test("dropdown list is populated on page load", async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+
+        // Set up accessible projects
+        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
+
+        // Navigate to home page
         await page.goto("http://localhost:7090/");
 
-        // テストヘルパーを使用してテストデータを設定
-        await page.evaluate(() => {
-            setupTestEnvironment();
-            console.log("Test environment setup completed");
-        });
-
-        // 初期状態でコンテナセレクターが表示されることを確認
+        // Initial container selector visibility check
         const select = page.locator("select.container-select");
         await expect(select).toBeVisible();
 
-        // 初期化を待つ
-        await page.waitForTimeout(2000);
+        // Wait for container store to have containers
+        await page.waitForFunction(() => {
+            const cs = (window as any).__CONTAINER_STORE__;
+            return cs && cs.containers && cs.containers.length >= 2;
+        }, { timeout: 10000 });
 
-        // オプションが表示されることを確認
+        // Verify options are displayed
         const options = select.locator("option");
         const optionCount = await options.count();
-        console.log(`Final option count: ${optionCount}`);
-
-        // テストデータが設定されているので、2つのオプションが表示されることを確認
         expect(optionCount).toBeGreaterThanOrEqual(2);
     });
 });

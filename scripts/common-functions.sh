@@ -324,7 +324,7 @@ install_all_dependencies() {
   echo "Installing dependencies..."
 
   # Fix permissions before installing, but only if not in a CI environment
-  if [ -z "$CI" ]; then
+  if [ -z "${CI:-}" ]; then
     echo "Fixing permissions before installing dependencies..."
     for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
       if [ -d "$dir" ]; then

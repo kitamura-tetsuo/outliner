@@ -140,6 +140,35 @@ export class TestHelpers {
     }
 
     /**
+     * Sets up test user project data with accessible projects for container selector tests.
+     * This is a minimal alternative to setupTestEnvironment for tests that only need
+     * the container selector to have options, without full project seeding.
+     * @param page Playwright page object
+     * @param projectNames Array of project names to add as accessible
+     */
+    public static async setAccessibleProjects(
+        page: Page,
+        projectNames: string[] = ["test-project-1", "test-project-2"],
+    ): Promise<void> {
+        await page.evaluate(({ projects }) => {
+            const fs = (window as any).__FIRESTORE_STORE__;
+            if (fs) {
+                fs.userProject = {
+                    userId: "test-user-id",
+                    defaultProjectId: projects[0] || "test-project-1",
+                    accessibleProjectIds: projects,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                };
+                // Trigger sync for container store
+                if ((window as any).__CONTAINER_STORE__) {
+                    (window as any).__CONTAINER_STORE__.syncFromFirestore();
+                }
+            }
+        }, { projects: projectNames });
+    }
+
+    /**
      * Creates and seeds a new project and page via API.
      * Does NOT navigate to the page.
      * @returns The name of the created project and page.

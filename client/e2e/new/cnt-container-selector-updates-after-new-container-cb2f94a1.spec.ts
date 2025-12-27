@@ -6,7 +6,6 @@ registerCoverageHooks();
  *  Source  : docs/client-features/cnt-shared-container-store-12ee98aa.yaml
  */
 import { expect, test } from "@playwright/test";
-import { setupTestEnvironment } from "../../src/tests/utils/testDataHelper";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
@@ -19,17 +18,8 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
     test("dropdown list updates when new container is added", async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
 
-        // Ensure auth is ready, then seed containers
-        await page.waitForFunction(() => {
-            try {
-                const w: any = window as any;
-                const um = w.__USER_MANAGER__;
-                return !!(um && um.auth && um.auth.currentUser);
-            } catch {
-                return false;
-            }
-        }, { timeout: 20000 });
-        await page.evaluate(() => setupTestEnvironment());
+        // Set up accessible projects for container selector
+        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
 
         const select = page.locator("select.container-select");
         await expect(select).toBeVisible();

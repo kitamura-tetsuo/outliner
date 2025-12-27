@@ -113,11 +113,9 @@ class GeneralStore {
         // コンストラクタは空にする
     }
 }
-// 2重ロード対策: 既存のグローバルがあればそれを使う
-// Svelte 5 runes が利用可能な場合はそれを使用し、そうでない場合は通常のオブジェクトを使用
-const __tmpStore = (typeof $state !== "undefined")
-    ? $state(new GeneralStore())
-    : new GeneralStore();
+// Svelte 5 runes を使用してストアを作成
+// ファイルが .svelte.ts 拡張子を持つため、$state は常に利用可能
+const __tmpStore = $state(new GeneralStore());
 const existingCandidate = typeof window !== "undefined"
     ? (window as any).__FIRESTORE_STORE__
     : (globalThis as any).__FIRESTORE_STORE__;
