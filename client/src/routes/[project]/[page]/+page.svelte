@@ -140,21 +140,8 @@ async function loadProjectAndPage() {
     pageNotFound = false;
 
     // 即時に仮プロジェクト/ページを用意して UI 待機を満たす（本接続が来たら yjsStore が置換）
-    try {
-        if (!store.project) {
-            const { Project } = await import("../../../schema/app-schema");
-            const provisional = Project.createInstance(projectName);
-            store.project = provisional as any;
-            if (typeof window !== "undefined") {
-                logger.debug("DEBUG: provisional store.project set?", !!(window as any).generalStore?.project);
-            }
-            // コラボレーションテストでは、暫定ページを作成せず、Yjsの同期を待つ
-            if (pageName && (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
-                 // In test mode, we rely on SeedClient or Yjs sync
-                 logger.info(`[+page.svelte] Test mode: Waiting for Yjs sync...`);
-            }
-        }
-    } catch {}
+    // REMOVED: Legacy provisional project creation. We now wait for the real project to load via Yjs.
+
 
             logger.info(`loadProjectAndPage: Set isLoading=true, calling getYjsClientByProjectTitle`);
 

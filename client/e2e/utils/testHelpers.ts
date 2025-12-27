@@ -117,7 +117,10 @@ export class TestHelpers {
         }
 
         if (!options?.doNotNavigate) {
-            await TestHelpers.navigateToProjectPage(page, projectName, pageName, seedLines);
+            // If we skipped seeding, we likely want to verify empty state or handle seeding manually,
+            // so we shouldn't force waiting for default seed lines.
+            const linesToWait = (options?.skipSeed || options?.doNotSeed) ? [] : seedLines;
+            await TestHelpers.navigateToProjectPage(page, projectName, pageName, linesToWait);
         } else {
             TestHelpers.slog("Skipping navigation (doNotNavigate option is true)");
         }
@@ -171,7 +174,7 @@ export class TestHelpers {
         page: Page,
         projectName: string,
         pageName: string,
-        seedLines: string[] = [], // Pass seedLines to correctly wait for UI elements
+        seedLines: string[] | null = null, // Allow null to signal "use default", empty array for "expect nothing"
     ): Promise<void> {
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
@@ -191,7 +194,8 @@ export class TestHelpers {
             "これはテスト用のページです。2",
             "内部リンクのテスト: [test-link]",
         ];
-        const effectiveSeedLines = seedLines.length > 0 ? seedLines : defaultLines;
+        // If seedLines is null/undefined, use default. If it is an array (even empty), use it.
+        const effectiveSeedLines = seedLines !== null ? seedLines : defaultLines;
 
         await page.waitForFunction(
             (expectedCount) => {
