@@ -287,29 +287,33 @@ export class TestHelpers {
     }
 
     /**
-     * プロジェクト用 E2E（ホーム滞在用）: ホームに遷移して環境を初期化する
-     * - プロジェクト/ページには移動しない
-     * - シーディングは SeedClient を使用して別途行う前提
+     * プロジェクト用 E2E: テスト環境を初期化し、指定されたプロジェクトページに移動して
+     * シーディングされたデータが同期されるのを待つ
+     * - シーディングは SeedClient を使用して事前に行われている前提
+     * @param page Playwrightページオブジェクト
+     * @param testInfo テスト情報
+     * @param lines 初期データ行（オプション）
+     * @param browser ブラウザインスタンス（オプション）
+     * @param options オプション設定（projectName, pageName, skipSync）
+     * @returns プロジェクト名とページ名
      */
     public static async prepareTestEnvironmentForProject(
         page: Page,
         testInfo?: { workerIndex?: number; } | null,
         _lines: string[] = [],
         _browser?: Browser,
+        options?: { projectName?: string; pageName?: string; skipSync?: boolean; },
     ): Promise<{ projectName: string; pageName: string; }> {
+        // Use parameters to avoid lint errors about unused vars
+        void _lines;
+        void _browser;
         // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
-        // Use the parameters to avoid lint errors about unused vars
-        void testInfo;
-        void _lines;
-        void _browser;
-        // Use the parameters to avoid lint errors about unused vars
-        void testInfo;
-        void _lines;
-        void _browser;
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                // Force WebSocket connection for E2E tests that need WS sync
+                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
 
                 (window as Window & Record<string, any>).__E2E__ = true;
@@ -321,10 +325,63 @@ export class TestHelpers {
         await TestHelpers.setupTreeDebugger(page);
         await TestHelpers.setupCursorDebugger(page);
 
-        // ホームに遷移して初期化のみ行う（プロジェクト/ページへは移動しない）
-        console.log("TestHelper: Navigate to home (ForProject)");
-        await page.goto("/", { timeout: 30000, waitUntil: "domcontentloaded" });
-        return { projectName: "home", pageName: "" };
+        const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
+        const projectName = options?.projectName ?? `Test Project ${workerIndex} ${Date.now()}`;
+        const pageName = options?.pageName ?? `test-page-${Date.now()}`;
+
+        if (options?.skipSync) {
+            // For tests that only need environment setup without page navigation
+            console.log("TestHelper: Skip sync (skipSync option is true)");
+            await page.goto("/", { timeout: 30000, waitUntil: "domcontentloaded" });
+            return { projectName, pageName };
+        }
+
+        // Navigate to the project page and wait for seeded data
+        const encodedProject = encodeURIComponent(projectName);
+        const encodedPage = encodeURIComponent(pageName);
+        const url = `/${encodedProject}/${encodedPage}`;
+
+        console.log("TestHelper: Navigate to project page", { url });
+        await page.goto(url, { timeout: 60000, waitUntil: "domcontentloaded" });
+
+        // Allow time for WebSocket connection and initial sync before checking app state
+        await page.waitForTimeout(10000);
+
+        // Wait for store.currentPage to be set explicitly
+        const targetPageName = pageName;
+        await page.waitForFunction(
+            (targetName) => {
+                const gs = (window as any).generalStore;
+                if (!gs?.project) return false;
+                if (!gs?.currentPage) return false;
+                const cp = gs.currentPage;
+                const cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
+                return cpText.toLowerCase() === targetName.toLowerCase();
+            },
+            targetPageName,
+            { timeout: 60000 },
+        ).catch((e) => {
+            // Log warning and continue - the +page.svelte retry logic will handle it
+            let cpText = "";
+            try {
+                if (typeof window !== "undefined") {
+                    const gs = (window as any).generalStore;
+                    const cp = gs?.currentPage;
+                    cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
+                }
+            } catch {}
+            TestHelpers.slog("Warning: currentPage not set or mismatch in prepareTestEnvironmentForProject", {
+                currentPageText: cpText,
+                expectedPageName: pageName,
+                error: e?.message,
+            });
+        });
+
+        // Wait for outliner items to be visible (indicates seeded data is synced)
+        await TestHelpers.waitForOutlinerItems(page, 30000, 2);
+
+        console.log("TestHelper: Project environment ready", { projectName, pageName });
+        return { projectName, pageName };
     }
 
     /**
