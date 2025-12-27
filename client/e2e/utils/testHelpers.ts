@@ -88,6 +88,9 @@ export class TestHelpers {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                // Force WebSocket connection for E2E tests that need WS sync
+                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                localStorage.removeItem("VITE_YJS_DISABLE_WS");
 
                 (window as Window & Record<string, any>).__E2E__ = true;
                 // Vite エラーオーバーレイ抑止
