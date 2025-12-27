@@ -263,6 +263,14 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                 }
             }
         });
+        // Connect any pages that were already in the map before the observer was attached
+        // This ensures pages seeded via HTTP API are properly connected
+        for (const key of pagesMap.keys()) {
+            const sub = pagesMap.get(key);
+            if (sub && !pages.has(key)) {
+                void connectPageDoc(sub, projectId, key).then(c => pages.set(key, c));
+            }
+        }
     } catch {}
 
     const dispose = () => {

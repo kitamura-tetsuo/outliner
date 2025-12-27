@@ -106,8 +106,16 @@ export class TestHelpers {
         });
 
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
-        const projectName = options?.projectName ?? `Test Project ${workerIndex} ${Date.now()}`;
-        const pageName = options?.pageName ?? `test-page-${Date.now()}`;
+        // Use a single timestamp for both project and page names to ensure consistency
+        const timestamp = Date.now();
+        const projectName = options?.projectName ?? `Test Project ${workerIndex} ${timestamp}`;
+        const pageName = options?.pageName ?? `test-page-${timestamp}`;
+        // Pass the timestamp to createAndSeedProject for consistent naming
+        const effectiveOptions = {
+            ...options,
+            projectName,
+            pageName,
+        };
         const defaultLines = [
             "これはテスト用のページです。1",
             "これはテスト用のページです。2",
@@ -116,7 +124,7 @@ export class TestHelpers {
         const seedLines = lines.length > 0 ? lines : defaultLines;
 
         if (!options.skipSeed && !options.doNotSeed) {
-            await TestHelpers.createAndSeedProject(page, testInfo, seedLines, options);
+            await TestHelpers.createAndSeedProject(page, testInfo, seedLines, effectiveOptions);
         }
 
         if (!options?.doNotNavigate) {
@@ -186,6 +194,38 @@ export class TestHelpers {
         TestHelpers.slog("Navigating to project page", { url });
         await page.goto(url, { timeout: 60000 });
         TestHelpers.slog("Navigation completed", { url });
+
+        // Allow time for WebSocket connection and initial sync before checking app state
+        // This is especially important in test environments where seeded data needs to propagate
+        // The seeded page subdocument needs time to connect and sync its items
+        await page.waitForTimeout(5000);
+
+        // E2E stability: wait for store.currentPage to be set explicitly
+        // This bypasses the retry logic in +page.svelte and provides a more direct wait
+        TestHelpers.slog("Waiting for store.currentPage to be set...");
+        const targetPageName = pageName; // Capture for closure
+        await page.waitForFunction(
+            (targetName) => {
+                const gs = (window as any).generalStore;
+                if (!gs?.project) return false;
+                if (!gs?.currentPage) return false;
+                const cp = gs.currentPage;
+                const cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
+                return cpText.toLowerCase() === targetName.toLowerCase();
+            },
+            targetPageName,
+            { timeout: 60000 },
+        ).catch((e) => {
+            // Fallback: log warning and continue - the +page.svelte retry logic will handle it
+            const gs = (window as any).generalStore;
+            const cp = gs?.currentPage;
+            const cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
+            TestHelpers.slog("Warning: currentPage not set or mismatch, continuing anyway", {
+                currentPageText: cpText,
+                expectedPageName: pageName,
+                error: e?.message,
+            });
+        });
 
         await TestHelpers.waitForAppReady(page);
 

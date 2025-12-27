@@ -93,6 +93,11 @@ function scheduleLoadIfNeeded(
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     );
 
+    // DEBUG: Log to console directly to see if it's captured
+    if (typeof console !== 'undefined') {
+        console.log("[DEBUG] scheduleLoadIfNeeded called", { pj, pg, auth, isTestEnv, hasStore: !!store });
+    }
+
     // 条件未成立
     if (!pj || !pg || !(auth || isTestEnv)) {
         logger.info(
@@ -387,23 +392,70 @@ async function loadProjectAndPage() {
                         // Retry finding page to avoid duplicate creation during Yjs sync (Test Env only)
 
                         if (isTestEnv && !pageRef && pageName) {
+                            logger.info(`E2E: Starting retry loop for page "${pageName}"`);
                             for (let i = 0; i < 100; i++) {
                                 await new Promise(r => setTimeout(r, 200));
                                 // Ensure store.project is set before accessing items
                                 if (!store.project) {
                                     const gs = (window as any).generalStore;
-                                    if (gs?.project) store.project = gs.project as any;
-                                    continue; // Skip this iteration if still no project
+                                    if (gs?.project) {
+                                        store.project = gs.project as any;
+                                        logger.info(`E2E: Synced store.project from generalStore`);
+                                    } else {
+                                        logger.info(`E2E: Retry ${i + 1}: store.project not set, gs.project also not set`);
+                                        continue;
+                                    }
                                 }
                                 // Re-fetch items from store.project as it might have updated
                                 const currentItems = (store.project as any)?.items;
+                                const itemsCount = currentItems?.length ?? 0;
                                 pageRef = findPage(currentItems, pageName);
                                 if (pageRef) {
                                     logger.info(`E2E: Found page "${pageName}" after retry ${i + 1}`);
                                     break;
                                 }
+                                if ((i + 1) % 10 === 0) {
+                                    // Log page titles every 10 retries
+                                    logger.info(`E2E: Retry ${i + 1}: items count=${itemsCount}, page not found yet`);
+                                    for (let j = 0; j < Math.min(itemsCount, 5); j++) {
+                                        const p = currentItems.at ? currentItems.at(j) : currentItems[j];
+                                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                                        logger.info(`E2E:   Item ${j}: "${t}"`);
+                                    }
+                                }
                             }
-                            if (!pageRef) logger.warn(`E2E: Failed to find page "${pageName}" after retries`);
+                            if (!pageRef) {
+                                logger.warn(`E2E: Failed to find page "${pageName}" after retries, trying fallback...`);
+                                // Fallback: directly search in project's pages map
+                                try {
+                                    const projectAny = store.project as any;
+                                    if (projectAny?.ydoc) {
+                                        const pagesMap = projectAny.ydoc.getMap("pages");
+                                        for (const [pageId] of pagesMap) {
+                                            // Get the page item from project.items
+                                            const itemsAny = projectAny.items as any;
+                                            if (itemsAny) {
+                                                for (let k = 0; k < (itemsAny.length ?? 0); k++) {
+                                                    const item = itemsAny.at ? itemsAny.at(k) : itemsAny[k];
+                                                    if (item?.id === pageId) {
+                                                        // Verify title matches (case-insensitive)
+                                                        const itemText = item?.text?.toString?.() ?? String(item?.text ?? "");
+                                                        if (String(itemText).toLowerCase() === String(pageName).toLowerCase()) {
+                                                            pageRef = item;
+                                                            logger.info(`E2E: Found page via fallback search: "${itemText}" (id=${pageId})`);
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if (pageRef) break;
+                                        }
+                                    }
+                                } catch (e) {
+                                    logger.warn(`E2E: Fallback search failed: ${e}`);
+                                }
+                                if (!pageRef) logger.warn(`E2E: Failed to find page "${pageName}" even with fallback`);
+                            }
                         }
 
                         if (pageRef) {
@@ -712,8 +764,16 @@ async function loadProjectAndPage() {
 }
 
 onMount(() => {
-    // 初期ロードを試行
-    scheduleLoadIfNeeded();
+    try {
+        // DIRECT DEBUG: This should appear if onMount is called
+        if (typeof console !== 'undefined') {
+            console.log("[DEBUG] onMount called");
+        }
+        // 初期ロードを試行
+        scheduleLoadIfNeeded();
+    } catch (e) {
+        console.error("[DEBUG] onMount error:", e);
+    }
 
     // E2E安定化: currentPage.items の初期生成を追跡して pageId を随時キャプチャ
     try {
