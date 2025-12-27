@@ -377,7 +377,7 @@ async function loadProjectAndPage() {
                         );
 
                         if (isTestEnv && !pageRef && pageName) {
-                            for (let i = 0; i < 50; i++) {
+                            for (let i = 0; i < 100; i++) {
                                 await new Promise(r => setTimeout(r, 200));
                                 // Re-fetch items from store.project as it might have updated
                                 const currentItems = (store.project as any)?.items;
@@ -390,13 +390,6 @@ async function loadProjectAndPage() {
                             if (!pageRef) logger.warn(`E2E: Failed to find page "${pageName}" after retries`);
                         }
 
-                        if (!pageRef && pageName) {
-                            // Use latest items reference
-                            const targetItems = (store.project as any)?.items ?? itemsAny;
-                            pageRef = targetItems?.addNode?.("tester");
-                            pageRef?.updateText?.(pageName);
-                            logger.info(`E2E: Created requested page after Yjs attach: "${pageName}"`);
-                        }
                         if (pageRef) {
                             // Capture current provisional page BEFORE switching, to migrate its children if needed
                             const prevCurrent: any = (store.currentPage as any);

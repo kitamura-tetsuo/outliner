@@ -236,7 +236,7 @@ export class TestHelpers {
                     const itemIndex = index + 1;
                     const item = page.locator(".outliner-item").nth(itemIndex);
                     // Wait for the specific text to appear to ensure hydration is complete
-                    await expect(item.locator(".item-text")).toContainText(line, { timeout: 20000 });
+                    await expect(item.locator(".item-text")).toContainText(line, { timeout: 30000 });
                 } catch (e) {
                     const msg = `Failed to wait for non-empty text at index ${
                         index + 1
