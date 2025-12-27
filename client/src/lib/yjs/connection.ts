@@ -301,6 +301,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Fallback: also observe direct changes to the pages map (helps in test env)
     try {
         const pagesMap = doc.getMap<Y.Doc>("pages");
+        // Track pending page connections for proper awaiting
+        // This is declared here so it can be accessed after the observer loop
+        const pendingPageConnections = new Map<string, Promise<void>>();
         pagesMap.observe((e: Y.YMapEvent<Y.Doc>) => {
             const keysChanged = e.changes.keys;
             for (const key of keysChanged.keys()) {
@@ -311,9 +314,20 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                     }`,
                 );
                 if (sub && !pages.has(key)) {
-                    // Best-effort, non-blocking connection setup
+                    // Explicitly load the subdoc to ensure server data is fetched before connecting
+                    // This is critical for seeded data to be available immediately
+                    try {
+                        sub.load();
+                        console.log(`[createProjectConnection] Called sub.load() for page: ${key}`);
+                    } catch {}
                     console.log(`[createProjectConnection] Connecting page via observer: ${key}`);
-                    void connectPageDoc(sub, projectId, key).then(c => pages.set(key, c));
+                    // Store the promise so we can track completion
+                    const pagePromise = connectPageDoc(sub, projectId, key).then(c => {
+                        pages.set(key, c);
+                        console.log(`[createProjectConnection] Page ${key} connected and added to pages Map`);
+                        pendingPageConnections.delete(key);
+                    });
+                    pendingPageConnections.set(key, pagePromise);
                 }
                 if (!sub && pages.has(key)) {
                     const c = pages.get(key);
@@ -325,6 +339,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         // Connect any pages that were already in the map before the observer was attached
         // This ensures pages seeded via HTTP API are properly connected
         console.log(`[createProjectConnection] Connecting initial pages from pagesMap, count=${pagesMap.size}`);
+        const initialPagePromises: Promise<void>[] = [];
         for (const key of pagesMap.keys()) {
             const sub = pagesMap.get(key);
             console.log(
@@ -338,13 +353,32 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                     console.log(`[createProjectConnection] Called sub.load() for page: ${key}`);
                 } catch {}
                 console.log(`[createProjectConnection] Starting connectPageDoc for page: ${key}`);
-                void connectPageDoc(sub, projectId, key).then(c => {
+                const pagePromise = connectPageDoc(sub, projectId, key).then(c => {
                     pages.set(key, c);
                     console.log(`[createProjectConnection] Page ${key} connected and added to pages Map`);
                 });
+                initialPagePromises.push(pagePromise);
             }
         }
-        console.log(`[createProjectConnection] Initial pages connection started, pages.size=${pages.size}`);
+        // Wait for all initial page connections to complete before returning
+        // This ensures seeded data is available immediately
+        if (initialPagePromises.length > 0) {
+            console.log(
+                `[createProjectConnection] Waiting for ${initialPagePromises.length} initial page connections...`,
+            );
+            await Promise.all(initialPagePromises);
+            console.log(`[createProjectConnection] All initial page connections completed, pages.size=${pages.size}`);
+        }
+
+        // Also wait for any pages that were added via observer during the initial wait
+        // This ensures all seeded pages are connected before returning
+        if (pendingPageConnections.size > 0) {
+            console.log(
+                `[createProjectConnection] Waiting for ${pendingPageConnections.size} pending page connections from observer...`,
+            );
+            await Promise.all(pendingPageConnections.values());
+            console.log(`[createProjectConnection] All pending page connections completed, pages.size=${pages.size}`);
+        }
     } catch (e) {
         console.error(`[createProjectConnection] Error in pagesMap setup: ${e}`);
     }
