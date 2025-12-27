@@ -164,6 +164,29 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
     });
+
+    // Wait for initial sync to complete before returning
+    // This ensures seeded data is available immediately
+    await new Promise<void>((resolve) => {
+        if (provider.synced) {
+            resolve();
+        } else if (typeof provider.once === "function") {
+            provider.once("synced", () => resolve());
+            // Fallback timeout in case 'synced' event doesn't fire
+            setTimeout(() => {
+                console.log(`[connectPageDoc] Timeout waiting for sync, proceeding anyway for room: ${room}`);
+                resolve();
+            }, 5000);
+        } else {
+            // Provider doesn't support 'once' method (e.g., in some test environments)
+            // Proceed without waiting
+            console.log(
+                `[connectPageDoc] Provider doesn't support 'once', proceeding without sync wait for room: ${room}`,
+            );
+            resolve();
+        }
+    });
+
     const awareness = provider.awareness;
     // Debug hook (guarded)
     attachConnDebug(room, provider, awareness, doc);
@@ -213,6 +236,30 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     }
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
+    });
+
+    // Wait for initial project sync to complete before connecting pages
+    // This ensures the pagesMap is populated with all seeded pages
+    await new Promise<void>((resolve) => {
+        if (provider.synced) {
+            resolve();
+        } else if (typeof provider.once === "function") {
+            provider.once("synced", () => resolve());
+            // Fallback timeout in case 'synced' event doesn't fire
+            setTimeout(() => {
+                console.log(
+                    `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
+                );
+                resolve();
+            }, 5000);
+        } else {
+            // Provider doesn't support 'once' method (e.g., in some test environments)
+            // Proceed without waiting
+            console.log(
+                `[createProjectConnection] Provider doesn't support 'once', proceeding without sync wait for room: ${room}`,
+            );
+            resolve();
+        }
     });
 
     // Awareness (presence)
@@ -268,6 +315,11 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         for (const key of pagesMap.keys()) {
             const sub = pagesMap.get(key);
             if (sub && !pages.has(key)) {
+                // Explicitly load the subdoc to ensure server data is fetched before connecting
+                // This is critical for seeded data to be available immediately
+                try {
+                    sub.load();
+                } catch {}
                 void connectPageDoc(sub, projectId, key).then(c => pages.set(key, c));
             }
         }
