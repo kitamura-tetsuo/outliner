@@ -881,8 +881,10 @@ export class TestHelpers {
             });
         }
 
-        // 少し待機して安定させる
-        await page.waitForTimeout(300);
+        // 少し待機して安定させる (ページが閉じている場合はスキップ)
+        if (!page.isClosed()) {
+            await page.waitForTimeout(300);
+        }
         TestHelpers.slog("waitForOutlinerItems: end");
     }
 

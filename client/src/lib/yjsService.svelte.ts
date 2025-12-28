@@ -44,6 +44,7 @@ class Registry {
 }
 
 let registry: Registry;
+
 if (
     typeof window !== "undefined"
     && ((window as any).__YJS_CLIENT_REGISTRY__ || (window as any).__FLUID_CLIENT_REGISTRY__)
@@ -68,11 +69,13 @@ function keyFor(userId?: string, containerId?: string): ClientKey {
 export async function createNewProject(containerName: string): Promise<YjsClient> {
     const user = userManager.getCurrentUser();
     let userId = user?.id;
+
     const isTest = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
-        || (typeof window !== "undefined"
-            && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
+
     if (!userId && isTest) userId = "test-user-id";
+
     if (!userId) {
         throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
     }
@@ -93,6 +96,7 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     }
 
     const projectId = isTest ? stableIdFromTitle(containerName) : uuid();
+
     console.log(
         `[yjsService] createNewProject: isTest=${isTest}, containerName="${containerName}", projectId="${projectId}"`,
     );
@@ -146,18 +150,18 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     // In Yjs-only mode, containerId is optional. We create if missing.
     const user = userManager.getCurrentUser();
     let userId = user?.id;
-    if (!userId) {
-        const isTest = import.meta.env.MODE === "test"
-            || process.env.NODE_ENV === "test"
-            || (typeof window !== "undefined"
-                && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
-        if (isTest) userId = "test-user-id";
-    }
+
+    const isTest = import.meta.env.MODE === "test"
+        || process.env.NODE_ENV === "test"
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
+
+    if (!userId && isTest) userId = "test-user-id";
 
     const resolvedId = containerId || uuid();
     const title = typeof window !== "undefined"
         ? (((window as any).__CURRENT_PROJECT_TITLE__ as string | undefined) ?? "Test Project")
         : "Test Project";
+
     const project = Project.createInstance(title);
     const client = await YjsClient.connect(resolvedId, project);
     registry.set(keyFor(userId, resolvedId), [client, project]);
@@ -166,6 +170,7 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     setContainerTitleInMetaDoc(resolvedId, title);
 
     yjsStore.yjsClient = client;
+
     return client;
 }
 
