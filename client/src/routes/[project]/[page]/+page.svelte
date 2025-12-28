@@ -535,12 +535,19 @@ async function loadProjectAndPage() {
                                     if (typeof projAny.hydratePageItems === "function") {
                                         let hydrationItemCount = 0;
                                         // Skip hydration if already done for this page to prevent duplicates
-                                        if (_hydratedPages.has(pageRef.id)) {
+                                        // Also check inside the retry loop to prevent hydration on each iteration
+                                        const isAlreadyHydrated = _hydratedPages.has(pageRef.id);
+                                        if (isAlreadyHydrated) {
                                             logger.info(`loadProjectAndPage: Skipping hydration for already-hydrated page ${pageRef.id}`);
                                         } else {
                                             // Retry hydration until items are present (handles subdoc sync timing)
                                             const maxHydrationRetries = 10;
                                             for (let hRetry = 0; hRetry < maxHydrationRetries; hRetry++) {
+                                                // Double-check hydration status before each attempt
+                                                if (_hydratedPages.has(pageRef.id)) {
+                                                    logger.info(`loadProjectAndPage: Skipping hydration retry ${hRetry + 1} - page ${pageRef.id} already hydrated`);
+                                                    break;
+                                                }
                                                 // Get fresh page ref and items count each iteration
                                                 const freshPageBefore = projAny.findPage(pageRef.id);
                                                 if (!freshPageBefore) {
@@ -602,38 +609,9 @@ async function loadProjectAndPage() {
                                     for (let attempt = 0; attempt < 20; attempt++) {
                                         const prevLen = prev?.items?.length ?? 0;
                                         const nextLen = next?.items?.length ?? 0;
-                                        const isPlaceholderChild = (node: any) => {
-                                            const text = node?.text?.toString?.() ?? String(node?.text ?? "");
-                                            if (!text) return true;
-                                            return text === "一行目: テスト" || text === "二行目: Yjs 反映" || text === "三行目: 並び順チェック";
-                                        };
-                                        // Check if the connected page has real content (non-placeholder items)
-                                        const hasRealContent = () => {
-                                            const len = next?.items?.length ?? 0;
-                                            for (let idx = 0; idx < len; idx++) {
-                                                const candidate = next.items?.at ? next.items.at(idx) : next.items[idx];
-                                                const text = candidate?.text?.toString?.() ?? String(candidate?.text ?? "");
-                                                // If the item is not a placeholder, then we consider it has real content
-                                                if (text && 
-                                                    text !== "一行目: テスト" && 
-                                                    text !== "二行目: Yjs 反映" && 
-                                                    text !== "三行目: 並び順チェック") {
-                                                    return true;
-                                                }
-                                            }
-                                            return false;
-                                        };
-                                        
-                                        const shouldReplaceChildren = prevLen > 0 && !hasRealContent() && 
-                                            (nextLen === 0 || (nextLen <= 3 && (() => {
-                                                for (let idx = 0; idx < nextLen; idx++) {
-                                                    const candidate = next.items?.at ? next.items.at(idx) : next.items[idx];
-                                                    if (!isPlaceholderChild(candidate)) {
-                                                        return false;
-                                                    }
-                                                }
-                                                return true;
-                                            })()));
+                                        // Skip migration if destination already has items (they were likely hydrated from seeded subdoc)
+                                        // This prevents duplicate items when both hydration and migration try to add content
+                                        const shouldReplaceChildren = prevLen > 0 && nextLen === 0;
                                         if (shouldReplaceChildren) {
                                             const mapId = (fromId: string | undefined, toId: string | undefined) => {
                                                 if (!fromId || !toId) return;

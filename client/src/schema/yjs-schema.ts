@@ -323,58 +323,72 @@ export class Project {
             return;
         }
 
-        // Get existing item IDs for this page to avoid duplicates
-        // Note: In the current schema, page items are stored at root level, but we can
-        // still check if items with matching IDs already exist
+        // Get existing item IDs and texts for this page to avoid duplicates
+        // Also track texts to catch duplicates even if IDs don't match
         const existingIds = new Set<string>();
+        const existingTexts = new Set<string>();
         const pageItemsLen = page.items.length;
         for (let i = 0; i < pageItemsLen; i++) {
             const item = page.items.at(i);
             if (item) {
                 existingIds.add(item.id);
+                const text = item.text?.toString?.() ?? String(item.text ?? "");
+                if (text) existingTexts.add(text);
             }
         }
 
         console.log(
-            `[hydrate] Hydrating ${pageItems.length} items for page ${pageId}, existingIds=${existingIds.size}`,
+            `[hydrate] Hydrating ${pageItems.length} items for page ${pageId}, existingIds=${existingIds.size}, existingTexts=${existingTexts.size}`,
         );
 
         // Add each item from pageItems to the page's items
+        // Skip if ID already exists OR if text already exists (double protection against duplicates)
         let addedCount = 0;
+        let skippedCount = 0;
         for (const itemData of pageItems) {
-            if (!existingIds.has(itemData.id)) {
-                const newItem = page.items.addNode(itemData.author);
-                // The new item already has an empty text, we need to update it
-                // Handle both Y.Text objects (from schema) and strings (from server seeding)
-                const textValue = (newItem as any).value.get("text");
-                if (textValue instanceof Y.Text) {
-                    // Normal case: text is a Y.Text object
-                    textValue.delete(0, textValue.length);
-                    if (itemData.text) {
-                        textValue.insert(0, itemData.text);
-                    }
-                } else if (typeof textValue === "string") {
-                    // Server seeding case: text is stored as a string
-                    // Replace the string with a proper Y.Text
-                    const newText = new Y.Text();
-                    if (itemData.text) {
-                        newText.insert(0, itemData.text);
-                    }
-                    (newItem as any).value.set("text", newText);
-                } else {
-                    // Fallback: try to use the value directly
-                    try {
-                        const textField = textValue as Y.Text;
-                        textField.delete(0, textField.length);
-                        if (itemData.text) {
-                            textField.insert(0, itemData.text);
-                        }
-                    } catch {}
-                }
-                addedCount++;
+            // Skip if ID already exists
+            if (existingIds.has(itemData.id)) {
+                console.log(`[hydrate] Skipping item with existing ID: ${itemData.id}`);
+                skippedCount++;
+                continue;
             }
+            // Also skip if text already exists (catch duplicates from different ID sources)
+            if (existingTexts.has(itemData.text)) {
+                console.log(`[hydrate] Skipping item with existing text: ${itemData.text}`);
+                skippedCount++;
+                continue;
+            }
+            const newItem = page.items.addNode(itemData.author);
+            // The new item already has an empty text, we need to update it
+            // Handle both Y.Text objects (from schema) and strings (from server seeding)
+            const textValue = (newItem as any).value.get("text");
+            if (textValue instanceof Y.Text) {
+                // Normal case: text is a Y.Text object
+                textValue.delete(0, textValue.length);
+                if (itemData.text) {
+                    textValue.insert(0, itemData.text);
+                }
+            } else if (typeof textValue === "string") {
+                // Server seeding case: text is stored as a string
+                // Replace the string with a proper Y.Text
+                const newText = new Y.Text();
+                if (itemData.text) {
+                    newText.insert(0, itemData.text);
+                }
+                (newItem as any).value.set("text", newText);
+            } else {
+                // Fallback: try to use the value directly
+                try {
+                    const textField = textValue as Y.Text;
+                    textField.delete(0, textField.length);
+                    if (itemData.text) {
+                        textField.insert(0, itemData.text);
+                    }
+                } catch {}
+            }
+            addedCount++;
         }
-        console.log(`[hydrate] Added ${addedCount} items for page ${pageId}`);
+        console.log(`[hydrate] Added ${addedCount} items, skipped ${skippedCount} duplicates for page ${pageId}`);
     }
 
     /**
