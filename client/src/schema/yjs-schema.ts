@@ -323,9 +323,18 @@ export class Project {
             return;
         }
 
-        // Get the page's items collection in the main tree
-        const pageItemKeys = this.getPageItemKeys(pageId);
-        const existingIds = new Set(pageItemKeys);
+        // Get existing item IDs for this page to avoid duplicates
+        // Note: In the current schema, page items are stored at root level, but we can
+        // still check if items with matching IDs already exist
+        const existingIds = new Set<string>();
+        const pageItemsLen = page.items.length;
+        for (let i = 0; i < pageItemsLen; i++) {
+            const item = page.items.at(i);
+            if (item) {
+                existingIds.add(item.id);
+            }
+        }
+
         console.log(
             `[hydrate] Hydrating ${pageItems.length} items for page ${pageId}, existingIds=${existingIds.size}`,
         );
@@ -336,8 +345,7 @@ export class Project {
             if (!existingIds.has(itemData.id)) {
                 const newItem = page.items.addNode(itemData.author);
                 // The new item already has an empty text, we need to update it
-                // But updateText works on the pageItem's text, not the new item's text
-                // We need to set the text directly
+                // Set the text directly on the Y.Text field
                 const textField = (newItem as any).value.get("text") as Y.Text;
                 if (textField) {
                     textField.delete(0, textField.length);

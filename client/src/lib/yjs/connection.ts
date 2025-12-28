@@ -163,21 +163,11 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         token = "";
     }
 
-    // CRITICAL: Load the subdoc first to ensure server-seeded data is available
-    // This must be done before creating the provider to ensure the doc state is complete
+    // Load the subdoc to ensure local state is ready
+    // Note: Data from the server is fetched via WebSocket sync, which we wait for below
     try {
         doc.load();
         console.log(`[connectPageDoc] Loaded subdoc for room: ${room}`);
-
-        // Wait for pageItems to be populated (handles seeded data timing)
-        const pageItemsMap = doc.getMap("pageItems");
-        let waitCount = 0;
-        const maxWait = 20; // Wait up to 2 seconds for items to appear
-        while (pageItemsMap.size <= 1 && waitCount < maxWait) { // size <= 1 means only "initialized" key
-            await new Promise(resolve => setTimeout(resolve, 100));
-            waitCount++;
-        }
-        console.log(`[connectPageDoc] Waited ${waitCount} iterations for pageItems, size=${pageItemsMap.size}`);
     } catch (e) {
         console.log(`[connectPageDoc] Subdoc load failed for room: ${room}, continuing anyway`, e);
     }
@@ -211,6 +201,25 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
             resolve();
         }
     });
+
+    // CRITICAL: Wait for pageItems to be populated after WebSocket sync
+    // This ensures server-seeded data is available before returning
+    // The data from the server is synced via WebSocket, so we must wait after sync
+    try {
+        const pageItemsMap = doc.getMap("pageItems");
+        let waitCount = 0;
+        const maxWait = 30; // Wait up to 3 seconds for items to appear (increased from 20)
+        while (pageItemsMap.size <= 1 && waitCount < maxWait) { // size <= 1 means only "initialized" key
+            await new Promise(resolve => setTimeout(resolve, 100));
+            waitCount++;
+        }
+        console.log(
+            `[connectPageDoc] Waited ${waitCount} iterations for pageItems after sync, size=${pageItemsMap.size}`,
+        );
+    } catch (e) {
+        console.log(`[connectPageDoc] Error waiting for pageItems after sync for room: ${room}, continuing anyway`, e);
+    }
+
     console.log(`[connectPageDoc] Connected to page room: ${room}, returning connection`);
 
     const awareness = provider.awareness;
