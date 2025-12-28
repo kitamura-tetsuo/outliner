@@ -224,10 +224,9 @@ export class TestHelpers {
         await page.goto(url, { timeout: 60000 });
         TestHelpers.slog("Navigation completed", { url });
 
-        // Allow more time for WebSocket connection and initial sync before checking app state
-        // This is especially important in test environments where seeded data needs to propagate
-        // The seeded page subdocument needs time to connect and sync its items
-        await page.waitForTimeout(5000);
+        // Allow time for WebSocket connection and initial sync before checking app state
+        // Reduced from 5000ms as the waitForAppReady call below will handle full sync
+        await page.waitForTimeout(2000);
 
         // E2E stability: wait for store.currentPage to be set explicitly
         // This bypasses the retry logic in +page.svelte and provides a more direct wait
@@ -353,7 +352,8 @@ export class TestHelpers {
         await page.goto(url, { timeout: 60000, waitUntil: "domcontentloaded" });
 
         // Allow time for WebSocket connection and initial sync before checking app state
-        await page.waitForTimeout(10000);
+        // Reduced from 10000ms as the subsequent waits will handle full sync
+        await page.waitForTimeout(3000);
 
         // Wait for store.currentPage to be set explicitly
         const targetPageName = pageName;
@@ -998,7 +998,7 @@ export class TestHelpers {
                 }
             }
 
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(200);
         }
 
         throw new Error(`Timeout waiting for page data: ${pageName} after ${timeout}ms`);
