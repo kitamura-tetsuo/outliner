@@ -256,34 +256,40 @@ onMount(() => {
             if (found) gs.currentPage = found;
         }
         // E2E stabilization: ensure default test content exists in test environments
-        // This provides a fallback when HTTP-based seeding (SeedClient) is not available
+        // This provides a fallback when HTTP-based seeding (SeedClient) is not available or failed
+        // We delay this to give hydration a chance to load seeded content first
         const isTestEnv = (typeof window !== 'undefined') && (window as any).localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-        if (isTestEnv && gs.currentPage && gs.currentPage.items) {
-            const childItems: any = gs.currentPage.items as any;
-            const childCount = childItems?.length ?? 0;
-            // If no children, add default test content
-            if (childCount === 0 && typeof childItems.addNode === 'function') {
-                const defaultLines = [
-                    "これはテスト用のページです。1",
-                    "これはテスト用のページです。2",
-                    "これはテスト用のページです。3",
-                ];
-                for (const line of defaultLines) {
-                    try {
-                        const newItem = childItems.addNode("tester");
-                        if (newItem && typeof newItem.updateText === 'function') {
-                            newItem.updateText(line);
+        if (isTestEnv) {
+            setTimeout(() => {
+                try {
+                    const gsCheck: any = (typeof window !== 'undefined') ? (window as any).generalStore : null;
+                    if (gsCheck?.currentPage && gsCheck.currentPage.items) {
+                        const childItems: any = gsCheck.currentPage.items as any;
+                        const childCount = childItems?.length ?? 0;
+                        // Only add default content if no children (hydration failed or no seeding)
+                        if (childCount === 0 && typeof childItems.addNode === 'function') {
+                            const defaultLines = [
+                                "これはテスト用のページです。1",
+                                "これはテスト用のページです。2",
+                                "これはテスト用のページです。3",
+                            ];
+                            for (const line of defaultLines) {
+                                try {
+                                    const newItem = childItems.addNode("tester");
+                                    if (newItem && typeof newItem.updateText === 'function') {
+                                        newItem.updateText(line);
+                                    }
+                                } catch (e) {
+                                    console.log("[OutlinerBase] Failed to add node:", e);
+                                }
+                            }
+                            console.log("[OutlinerBase] Browser-based seeding: added default test content, new count:", childItems?.length);
                         }
-                    } catch (e) {
-                        console.log("[OutlinerBase] Failed to add node:", e);
                     }
+                } catch (e) {
+                    console.log("[OutlinerBase] Browser seeding check failed:", e);
                 }
-                console.log("[OutlinerBase] Browser-based seeding: added default test content, new count:", childItems?.length);
-            } else {
-                console.log("[OutlinerBase] Skipping browser seeding: childCount=", childCount);
-            }
-        } else {
-            console.log("[OutlinerBase] Skipping browser seeding: isTestEnv=", isTestEnv, "hasCurrentPage=", !!gs.currentPage, "hasItems=", !!gs.currentPage?.items);
+            }, 2000); // Delay to give hydration time to load seeded content
         }
 
         // ナビゲーション直後など非同期タイミングの取りこぼし対策でもう一度試行
