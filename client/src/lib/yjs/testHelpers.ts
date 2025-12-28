@@ -161,6 +161,7 @@ export async function initializeBrowserPage(
     await page.addInitScript(
         ({ requireAuth, disableIDB }) => {
             localStorage.setItem("VITE_IS_TEST", "true");
+            localStorage.setItem("VITE_E2E_TEST", "true"); // Additional flag for robust detection
             localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
             // Force-enable WS in tests even if env disables it
             localStorage.setItem("VITE_YJS_FORCE_WS", "true");
@@ -559,6 +560,7 @@ export async function prepareTwoFullBrowserPages(
     // Enable WebSocket and test flags for page2
     await page2.addInitScript(() => {
         localStorage.setItem("VITE_IS_TEST", "true");
+        localStorage.setItem("VITE_E2E_TEST", "true"); // Additional flag for robust detection
         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
         localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
         localStorage.setItem("VITE_YJS_ENABLE_WS", "true");

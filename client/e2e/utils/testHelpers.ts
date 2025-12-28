@@ -87,6 +87,7 @@ export class TestHelpers {
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_E2E_TEST", "true"); // Additional flag for robust detection
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 // Force WebSocket connection for E2E tests that need WS sync
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
@@ -1862,6 +1863,7 @@ export class TestHelpers {
                     origin: "http://localhost:5173",
                     localStorage: [
                         { name: "VITE_IS_TEST", value: "true" },
+                        { name: "VITE_E2E_TEST", value: "true" },
                         { name: "VITE_USE_FIREBASE_EMULATOR", value: "true" },
                         { name: "VITE_YJS_FORCE_WS", value: "true" },
                     ],
@@ -1870,6 +1872,7 @@ export class TestHelpers {
                     origin: "http://localhost:7090",
                     localStorage: [
                         { name: "VITE_IS_TEST", value: "true" },
+                        { name: "VITE_E2E_TEST", value: "true" },
                         { name: "VITE_USE_FIREBASE_EMULATOR", value: "true" },
                         { name: "VITE_YJS_FORCE_WS", value: "true" },
                     ],
@@ -1878,6 +1881,7 @@ export class TestHelpers {
                     origin: "http://localhost",
                     localStorage: [
                         { name: "VITE_IS_TEST", value: "true" },
+                        { name: "VITE_E2E_TEST", value: "true" },
                         { name: "VITE_USE_FIREBASE_EMULATOR", value: "true" },
                         { name: "VITE_YJS_FORCE_WS", value: "true" },
                     ],

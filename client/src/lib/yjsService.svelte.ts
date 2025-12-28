@@ -68,8 +68,22 @@ function keyFor(userId?: string, containerId?: string): ClientKey {
 function isTestEnvironment(): boolean {
     // Check for test environment using reliable localStorage detection
     // This works in both Vite test mode and Playwright E2E tests
+    // Check multiple sources for robustness
     if (typeof window === "undefined") return false;
-    return window.localStorage?.getItem?.("VITE_IS_TEST") === "true";
+
+    // Check localStorage first (set by addInitScript in test setup)
+    const lsValue = window.localStorage?.getItem?.("VITE_IS_TEST");
+    if (lsValue === "true") return true;
+
+    // Also check sessionStorage as fallback
+    const ssValue = window.sessionStorage?.getItem?.("VITE_IS_TEST");
+    if (ssValue === "true") return true;
+
+    // Check for E2E flag that may be set during test setup
+    const e2eFlag = window.localStorage?.getItem?.("VITE_E2E_TEST");
+    if (e2eFlag === "true") return true;
+
+    return false;
 }
 
 export async function createNewProject(containerName: string): Promise<YjsClient> {
