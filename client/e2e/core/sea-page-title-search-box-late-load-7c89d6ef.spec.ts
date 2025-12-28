@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box", () => {
     test("search results update when pages load after typing", async ({ page }, testInfo) => {
-        const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const input = page
             .getByTestId("main-toolbar")
             .getByRole("textbox", { name: "Search pages" });
@@ -22,6 +22,12 @@ test.describe("SEA-0001: page title search box", () => {
             projectName: projectName,
             pageName: "second-page",
         });
+        // Navigate to the new page and back to ensure sync, then focus the input again
+        await TestHelpers.navigateToProjectPage(page, projectName, "second-page");
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName);
+        // Focus the input again after navigating back
+        await input.focus();
+        await input.fill("second");
         await page.waitForSelector(".page-search-box li");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Enter");

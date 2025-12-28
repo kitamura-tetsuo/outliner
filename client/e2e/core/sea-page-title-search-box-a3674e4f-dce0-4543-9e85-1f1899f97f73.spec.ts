@@ -16,28 +16,12 @@ test.describe("SEA-0001: page title search box", () => {
             pageName: "second-page",
         });
 
-        // Wait for the page to be created and available in the project
-        await page.waitForFunction(() => {
-            const gs = (window as any).generalStore || (window as any).appStore;
-            if (!gs?.project?.items) return false;
-            const items = gs.project.items;
-            let count = 0;
-            try {
-                if (typeof items[Symbol.iterator] === "function") {
-                    count = Array.from(items).length;
-                } else if (typeof items.length === "number") {
-                    count = items.length;
-                }
-            } catch {}
-            // We expect at least 2 pages: the initial page and "second-page"
-            return count >= 2;
-        }, { timeout: 10000 });
+        // Navigate to the second page and wait for it to sync, then navigate back
+        // This ensures the second page is synced to the Yjs document
+        await TestHelpers.navigateToProjectPage(page, ids.projectName, "second-page");
 
         // navigate back to first page to ensure SearchBox appears
-        await page.goto(`/${encodeURIComponent(ids.projectName)}/${encodeURIComponent(ids.pageName)}`);
-        // Wait for the page to be fully loaded and search box to be ready
-        await page.waitForLoadState("networkidle");
-        await page.waitForSelector(".page-search-box input", { state: "visible" });
+        await TestHelpers.navigateToProjectPage(page, ids.projectName, ids.pageName);
     });
 
     test("search box navigates to another page", async ({ page }) => {

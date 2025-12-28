@@ -162,9 +162,8 @@ test.describe("Multi-Page Schedule Management", () => {
         const pageName1 = "stable-page-1";
         const pageName2 = "stable-page-2";
 
-        // Go to page 1 (Let +page.svelte create it on the connected project)
-        await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName1)}`);
-        await page.waitForSelector(`text=${pageName1}`, { timeout: 10000 });
+        // Go to page 1 using navigateToProjectPage for reliable sync
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName1);
         await ensureConnectedPage();
 
         // Open schedule for first page
@@ -203,11 +202,8 @@ test.describe("Multi-Page Schedule Management", () => {
         // Navigate back to page list
         await page.locator('button:has-text("Back")').click();
 
-        // Navigate to the other page
-        await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName2)}`);
-
-        // Wait for page to load
-        await page.waitForSelector(`text=${pageName2}`, { timeout: 10000 });
+        // Navigate to the other page using navigateToProjectPage for reliable sync
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName2);
         await ensureConnectedPage();
 
         const currentPageId = await page.evaluate(() => {
@@ -227,11 +223,8 @@ test.describe("Multi-Page Schedule Management", () => {
         await expect(backButton).toBeEnabled();
         await backButton.click();
 
-        // Return to the first page
-        await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName1)}`);
-
-        // Wait for page to load completely
-        await page.waitForSelector(`text=${pageName1}`, { timeout: 10000 });
+        // Return to the first page using navigateToProjectPage for reliable sync
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName1);
         await ensureConnectedPage();
 
         // Navigate to schedule management again

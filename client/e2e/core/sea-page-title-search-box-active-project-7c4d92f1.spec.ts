@@ -20,7 +20,9 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
             projectName: ids.projectName,
             pageName: "second page",
         });
-        await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(initialPageName)}`);
+        // Navigate to the second page and wait for it to sync, then navigate back
+        await TestHelpers.navigateToProjectPage(page, projectName, "second page");
+        await TestHelpers.navigateToProjectPage(page, projectName, initialPageName);
     });
 
     test("navigates using the active project title even with spaces", async ({ page }) => {

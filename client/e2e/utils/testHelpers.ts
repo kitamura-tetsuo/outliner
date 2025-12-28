@@ -227,7 +227,7 @@ export class TestHelpers {
         // Allow time for WebSocket connection and initial sync before checking app state
         // This is especially important in test environments where seeded data needs to propagate
         // The seeded page subdocument needs time to connect and sync its items
-        await page.waitForTimeout(10000);
+        await page.waitForTimeout(3000);
 
         // E2E stability: wait for store.currentPage to be set explicitly
         // This bypasses the retry logic in +page.svelte and provides a more direct wait
