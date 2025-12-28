@@ -437,6 +437,19 @@ async function loadProjectAndPage() {
                                                         logger.info(`E2E: Page "${pageName}" connected with ${itemCount} items`);
                                                         break;
                                                     }
+                                                    // If items are 0, trigger re-hydration to ensure seeded content is copied
+                                                    if (itemCount === 0) {
+                                                        logger.info(`E2E: Page connected but items=0, triggering re-hydration`);
+                                                        try {
+                                                            const projAny = store.project as any;
+                                                            if (typeof projAny.hydratePageItems === "function") {
+                                                                await projAny.hydratePageItems(pageId);
+                                                                logger.info(`E2E: Re-hydration triggered for page ${pageId}`);
+                                                            }
+                                                        } catch (e) {
+                                                            logger.warn(`E2E: Error during re-hydration: ${e}`);
+                                                        }
+                                                    }
                                                 } else {
                                                     logger.info(`E2E: Waiting for page connection (iter ${waitIter}/50)`);
                                                 }
@@ -491,6 +504,18 @@ async function loadProjectAndPage() {
                                                                             if (itemCount > 0) {
                                                                                 logger.info(`E2E: Page "${pageName}" connected with ${itemCount} items`);
                                                                                 break;
+                                                                            }
+                                                                            // If items are 0, trigger re-hydration to ensure seeded content is copied
+                                                                            if (itemCount === 0) {
+                                                                                logger.info(`E2E: Fallback: Page connected but items=0, triggering re-hydration`);
+                                                                                try {
+                                                                                    if (typeof projectAny.hydratePageItems === "function") {
+                                                                                        await projectAny.hydratePageItems(pageId);
+                                                                                        logger.info(`E2E: Fallback: Re-hydration triggered for page ${pageId}`);
+                                                                                    }
+                                                                                } catch (e) {
+                                                                                    logger.warn(`E2E: Fallback: Error during re-hydration: ${e}`);
+                                                                                }
                                                                             }
                                                                         }
                                                                         await new Promise(r => setTimeout(r, 100));
@@ -556,8 +581,6 @@ async function loadProjectAndPage() {
                                                     continue;
                                                 }
                                                 await projAny.hydratePageItems(pageRef.id);
-                                                // Mark as hydrated to prevent duplicate hydration in subsequent retries
-                                                _hydratedPages.add(pageRef.id);
                                                 // Give time for hydration to take effect
                                                 await new Promise(r => setTimeout(r, 200));
                                                 // Get FRESH page ref after hydration to see the updated items
@@ -576,10 +599,15 @@ async function loadProjectAndPage() {
                                                 } catch {}
                                                 logger.info(`loadProjectAndPage: Hydration attempt ${hRetry + 1}: pageItems=${itemsAfter}, subdocPageItems=${subdocItemCount}`);
                                                 if (itemsAfter >= 3 && subdocItemCount > 0) {
-                                                    // We have enough items and subdoc has data
+                                                    // We have enough items and subdoc has data - now mark as hydrated
+                                                    _hydratedPages.add(pageRef.id);
                                                     hydrationItemCount = itemsAfter;
                                                     logger.info(`loadProjectAndPage: Successfully hydrated page ${pageRef.id} (items: ${itemsAfter}, subdocItems: ${subdocItemCount})`);
                                                     break;
+                                                }
+                                                // Only mark as hydrated if we have items (hydration succeeded)
+                                                if (itemsAfter > 0) {
+                                                    _hydratedPages.add(pageRef.id);
                                                 }
                                                 if (hRetry === maxHydrationRetries - 1) {
                                                     logger.warn(`loadProjectAndPage: Hydration timed out for page ${pageRef.id} (items: ${itemsAfter}, subdocItems: ${subdocItemCount})`);

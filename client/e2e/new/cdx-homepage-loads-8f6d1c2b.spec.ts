@@ -8,7 +8,8 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test("home page is reachable", async ({ page }, testInfo) => {
-    await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
-    await expect(page.getByRole("heading", { name: "Outliner" })).toBeVisible();
+test("project page is reachable", async ({ page }, testInfo) => {
+    const { projectName, pageName } = await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+    // On a project page, the heading shows the project and page title
+    await expect(page.getByRole("heading", { name: `${projectName} / ${pageName}` })).toBeVisible();
 });
