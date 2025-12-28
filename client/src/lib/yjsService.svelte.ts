@@ -65,14 +65,17 @@ function keyFor(userId?: string, containerId?: string): ClientKey {
         : { type: "user", id: userId || "anonymous" };
 }
 
+function isTestEnvironment(): boolean {
+    // Check for test environment using reliable localStorage detection
+    // This works in both Vite test mode and Playwright E2E tests
+    if (typeof window === "undefined") return false;
+    return window.localStorage?.getItem?.("VITE_IS_TEST") === "true";
+}
+
 export async function createNewProject(containerName: string): Promise<YjsClient> {
     const user = userManager.getCurrentUser();
     let userId = user?.id;
-    const isTest = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test"
-        || (typeof window !== "undefined"
-            && (import.meta.env.VITE_IS_TEST === "true"
-                || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"));
+    const isTest = isTestEnvironment();
 
     if (!userId && isTest) userId = "test-user-id";
     if (!userId) {
@@ -148,11 +151,7 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     // In Yjs-only mode, containerId is optional. We create if missing.
     const user = userManager.getCurrentUser();
     let userId = user?.id;
-    const isTest = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test"
-        || (typeof window !== "undefined"
-            && (import.meta.env.VITE_IS_TEST === "true"
-                || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"));
+    const isTest = isTestEnvironment();
 
     if (!userId && isTest) userId = "test-user-id";
     const resolvedId = containerId || uuid();
