@@ -26,9 +26,11 @@ import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
 import { store } from "../../../stores/store.svelte";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 
+import { SvelteSet } from 'svelte/reactivity';
+
 // Track which pages have been hydrated to prevent duplicate hydration during retries
 // This is needed because hydratePageItems can be called multiple times
-const _hydratedPages = new Set<string>();
+const _hydratedPages = new SvelteSet<string>();
 
 // URLパラメータを取得（SvelteKit page store に追従）
 // NOTE: `$page` の値を参照する必要がある（store オブジェクトではなく値）。
@@ -531,13 +533,13 @@ async function loadProjectAndPage() {
                                 if (store.project && pageRef?.id) {
                                     const projAny = store.project as any;
                                     if (typeof projAny.hydratePageItems === "function") {
+                                        let hydrationItemCount = 0;
                                         // Skip hydration if already done for this page to prevent duplicates
                                         if (_hydratedPages.has(pageRef.id)) {
                                             logger.info(`loadProjectAndPage: Skipping hydration for already-hydrated page ${pageRef.id}`);
                                         } else {
                                             // Retry hydration until items are present (handles subdoc sync timing)
                                             const maxHydrationRetries = 10;
-                                            let hydratedItems = 0;
                                             for (let hRetry = 0; hRetry < maxHydrationRetries; hRetry++) {
                                                 // Get fresh page ref and items count each iteration
                                                 const freshPageBefore = projAny.findPage(pageRef.id);
@@ -568,7 +570,7 @@ async function loadProjectAndPage() {
                                                 logger.info(`loadProjectAndPage: Hydration attempt ${hRetry + 1}: pageItems=${itemsAfter}, subdocPageItems=${subdocItemCount}`);
                                                 if (itemsAfter >= 3 && subdocItemCount > 0) {
                                                     // We have enough items and subdoc has data
-                                                    hydratedItems = itemsAfter;
+                                                    hydrationItemCount = itemsAfter;
                                                     logger.info(`loadProjectAndPage: Successfully hydrated page ${pageRef.id} (items: ${itemsAfter}, subdocItems: ${subdocItemCount})`);
                                                     break;
                                                 }
@@ -577,7 +579,7 @@ async function loadProjectAndPage() {
                                                 }
                                             }
                                         }
-                                        if (hydratedItems > 0) {
+                                        if (hydrationItemCount > 0) {
                                             // Get the fresh page reference after hydration to ensure we have the updated items
                                             const hydratedPageRef = projAny.findPage(pageRef.id);
                                             if (hydratedPageRef) {

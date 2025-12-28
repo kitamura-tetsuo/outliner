@@ -1,4 +1,4 @@
-import type { PageSeedData } from "../../../../server/src/seed-api";
+import type { PageSeedData } from "../../../server/src/seed-api";
 
 export { type PageSeedData };
 
@@ -15,7 +15,6 @@ export class SeedClient {
     constructor(projectId: string, authToken: string) {
         this.projectId = encodeURIComponent(projectId);
         this.authToken = authToken;
-
         // Determine API URL from environment
         const yjsPort = process.env.VITE_YJS_PORT || "7093";
         this.apiUrl = process.env.VITE_YJS_API_URL || `http://localhost:${yjsPort}`;
@@ -26,7 +25,6 @@ export class SeedClient {
      */
     public async seed(pages: PageSeedData[]): Promise<void> {
         console.log(`[SeedClient] Seeding project "${this.projectId}" with ${pages.length} pages via HTTP API...`);
-
         try {
             const response = await fetch(`${this.apiUrl}/api/seed`, {
                 method: "POST",
