@@ -238,29 +238,70 @@ export class Project {
      * Handles items stored in the page subdocument's pageItems map.
      * Returns raw item data for use in merging/copying.
      */
-    getPageItems(pageId: string): Array<{ id: string; text: string; author: string; }> {
+    async getPageItems(pageId: string): Promise<Array<{ id: string; text: string; author: string; }>> {
         try {
             // First check if page exists
             const page = this.findPage(pageId);
-            if (!page) return [];
+            if (!page) {
+                console.log(`[hydrate] Page ${pageId} not found in project tree`);
+                return [];
+            }
 
             // Try to get items from page subdoc's pageItems map
             const pages = this.ydoc.getMap<Y.Doc>("pages");
             const subdoc = pages.get(pageId);
-            if (subdoc) {
-                const pageItems = subdoc.getMap<Y.Map<any>>("pageItems");
-                const itemKeys = Array.from(pageItems.keys()).filter(k => k !== "initialized");
-                return itemKeys.map(key => {
-                    const value = pageItems.get(key);
-                    if (!value) return null;
-                    return {
-                        id: value.get("id") as string,
-                        text: value.get("text") as string,
-                        author: value.get("author") as string,
-                    };
-                }).filter(Boolean) as Array<{ id: string; text: string; author: string; }>;
+            if (!subdoc) {
+                console.log(`[hydrate] Subdoc not found for page ${pageId}`);
+                return [];
             }
-        } catch {}
+
+            // CRITICAL: Ensure subdoc is loaded before accessing its data
+            // This is needed because subdocs may not be fully loaded when first accessed
+            try {
+                subdoc.load();
+            } catch {
+                // load() may fail if subdoc doesn't have persistence, continue anyway
+            }
+
+            const pageItems = subdoc.getMap<Y.Map<any>>("pageItems");
+            let pageItemsSize = pageItems.size;
+
+            // Wait for items to be available if subdoc just loaded
+            let waitCount = 0;
+            const maxWait = 10;
+            while (pageItemsSize <= 1 && waitCount < maxWait) { // <= 1 means only "initialized" key
+                await new Promise(resolve => setTimeout(resolve, 100));
+                const newSize = pageItems.size;
+                if (newSize === pageItemsSize) {
+                    // Size hasn't changed, no more items to wait for
+                    break;
+                }
+                pageItemsSize = newSize;
+                waitCount++;
+            }
+
+            const itemKeys = Array.from(pageItems.keys()).filter(k => k !== "initialized");
+            console.log(
+                `[hydrate] Page ${pageId}: pageItems.size=${pageItemsSize}, itemKeys=${itemKeys.length}, waitCount=${waitCount}`,
+            );
+
+            if (itemKeys.length === 0) {
+                console.log(`[hydrate] No items in pageItems map for page ${pageId}`);
+                return [];
+            }
+
+            return itemKeys.map(key => {
+                const value = pageItems.get(key);
+                if (!value) return null;
+                return {
+                    id: value.get("id") as string,
+                    text: value.get("text") as string,
+                    author: value.get("author") as string,
+                };
+            }).filter(Boolean) as Array<{ id: string; text: string; author: string; }>;
+        } catch (e) {
+            console.log(`[hydrate] Error getting page items for ${pageId}:`, e);
+        }
         return [];
     }
 
@@ -268,16 +309,29 @@ export class Project {
      * Copy items from page subdoc's pageItems map to the page's items in the main tree.
      * This bridges the gap between how items are stored (in page subdoc) and how they're accessed (via page.items).
      */
-    hydratePageItems(pageId: string): void {
-        const pageItems = this.getPageItems(pageId);
+    async hydratePageItems(pageId: string): Promise<void> {
+        const pageItems = await this.getPageItems(pageId);
         const page = this.findPage(pageId);
-        if (!page || pageItems.length === 0) return;
+        if (!page) {
+            console.log(`[hydrate] Cannot hydrate: page ${pageId} not found`);
+            return;
+        }
+
+        // Always attempt to hydrate items, even if page has no items yet
+        if (pageItems.length === 0) {
+            console.log(`[hydrate] No items to hydrate for page ${pageId}`);
+            return;
+        }
 
         // Get the page's items collection in the main tree
         const pageItemKeys = this.getPageItemKeys(pageId);
         const existingIds = new Set(pageItemKeys);
+        console.log(
+            `[hydrate] Hydrating ${pageItems.length} items for page ${pageId}, existingIds=${existingIds.size}`,
+        );
 
         // Add each item from pageItems to the page's items
+        let addedCount = 0;
         for (const itemData of pageItems) {
             if (!existingIds.has(itemData.id)) {
                 const newItem = page.items.addNode(itemData.author);
@@ -291,8 +345,10 @@ export class Project {
                         textField.insert(0, itemData.text);
                     }
                 }
+                addedCount++;
             }
         }
+        console.log(`[hydrate] Added ${addedCount} items for page ${pageId}`);
     }
 
     /**

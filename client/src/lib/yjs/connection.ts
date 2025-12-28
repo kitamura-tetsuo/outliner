@@ -162,6 +162,26 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         // but local-only mode may still function for offline scenarios.
         token = "";
     }
+
+    // CRITICAL: Load the subdoc first to ensure server-seeded data is available
+    // This must be done before creating the provider to ensure the doc state is complete
+    try {
+        doc.load();
+        console.log(`[connectPageDoc] Loaded subdoc for room: ${room}`);
+
+        // Wait for pageItems to be populated (handles seeded data timing)
+        const pageItemsMap = doc.getMap("pageItems");
+        let waitCount = 0;
+        const maxWait = 20; // Wait up to 2 seconds for items to appear
+        while (pageItemsMap.size <= 1 && waitCount < maxWait) { // size <= 1 means only "initialized" key
+            await new Promise(resolve => setTimeout(resolve, 100));
+            waitCount++;
+        }
+        console.log(`[connectPageDoc] Waited ${waitCount} iterations for pageItems, size=${pageItemsMap.size}`);
+    } catch (e) {
+        console.log(`[connectPageDoc] Subdoc load failed for room: ${room}, continuing anyway`, e);
+    }
+
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
     });
@@ -304,7 +324,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         // Track pending page connections for proper awaiting
         // This is declared here so it can be accessed after the observer loop
         const pendingPageConnections = new Map<string, Promise<void>>();
-        pagesMap.observe((e: Y.YMapEvent<Y.Doc>) => {
+        pagesMap.observe(async (e: Y.YMapEvent<Y.Doc>) => {
             const keysChanged = e.changes.keys;
             for (const key of keysChanged.keys()) {
                 const sub = pagesMap.get(key);

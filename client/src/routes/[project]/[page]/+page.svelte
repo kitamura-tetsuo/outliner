@@ -540,7 +540,7 @@ async function loadProjectAndPage() {
                                                 await new Promise(r => setTimeout(r, 200));
                                                 continue;
                                             }
-                                            projAny.hydratePageItems(pageRef.id);
+                                            await projAny.hydratePageItems(pageRef.id);
                                             // Give time for hydration to take effect
                                             await new Promise(r => setTimeout(r, 200));
                                             const itemsAfter = (freshPage as any).items?.length ?? 0;
