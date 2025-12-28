@@ -208,14 +208,26 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     try {
         const pageItemsMap = doc.getMap("pageItems");
         let waitCount = 0;
-        const maxWait = 30; // Wait up to 3 seconds for items to appear (increased from 20)
+        const maxWait = 50; // Wait up to 5 seconds for items to appear (increased from 30)
+        const initialSize = pageItemsMap.size;
+        console.log(`[connectPageDoc] Initial pageItemsMap size: ${initialSize} for room: ${room}`);
         while (pageItemsMap.size <= 1 && waitCount < maxWait) { // size <= 1 means only "initialized" key
             await new Promise(resolve => setTimeout(resolve, 100));
             waitCount++;
         }
+        const finalSize = pageItemsMap.size;
         console.log(
-            `[connectPageDoc] Waited ${waitCount} iterations for pageItems after sync, size=${pageItemsMap.size}`,
+            `[connectPageDoc] Waited ${waitCount} iterations for pageItems after sync, initialSize=${initialSize}, finalSize=${finalSize} for room: ${room}`,
         );
+        // If still only has "initialized" key (size <= 1), log warning but continue
+        if (finalSize <= 1) {
+            console.warn(
+                `[connectPageDoc] WARNING: pageItems not fully populated for room: ${room}, size=${finalSize}`,
+            );
+            // Log the actual keys for debugging
+            const keys = Array.from(pageItemsMap.keys());
+            console.warn(`[connectPageDoc] pageItems keys: ${JSON.stringify(keys)}`);
+        }
     } catch (e) {
         console.log(`[connectPageDoc] Error waiting for pageItems after sync for room: ${room}, continuing anyway`, e);
     }
