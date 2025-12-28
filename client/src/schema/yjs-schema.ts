@@ -345,13 +345,31 @@ export class Project {
             if (!existingIds.has(itemData.id)) {
                 const newItem = page.items.addNode(itemData.author);
                 // The new item already has an empty text, we need to update it
-                // Set the text directly on the Y.Text field
-                const textField = (newItem as any).value.get("text") as Y.Text;
-                if (textField) {
-                    textField.delete(0, textField.length);
+                // Handle both Y.Text objects (from schema) and strings (from server seeding)
+                const textValue = (newItem as any).value.get("text");
+                if (textValue instanceof Y.Text) {
+                    // Normal case: text is a Y.Text object
+                    textValue.delete(0, textValue.length);
                     if (itemData.text) {
-                        textField.insert(0, itemData.text);
+                        textValue.insert(0, itemData.text);
                     }
+                } else if (typeof textValue === "string") {
+                    // Server seeding case: text is stored as a string
+                    // Replace the string with a proper Y.Text
+                    const newText = new Y.Text();
+                    if (itemData.text) {
+                        newText.insert(0, itemData.text);
+                    }
+                    (newItem as any).value.set("text", newText);
+                } else {
+                    // Fallback: try to use the value directly
+                    try {
+                        const textField = textValue as Y.Text;
+                        textField.delete(0, textField.length);
+                        if (itemData.text) {
+                            textField.insert(0, itemData.text);
+                        }
+                    } catch {}
                 }
                 addedCount++;
             }

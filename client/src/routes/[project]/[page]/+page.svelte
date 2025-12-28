@@ -534,8 +534,8 @@ async function loadProjectAndPage() {
                                         let hydratedItems = 0;
                                         for (let hRetry = 0; hRetry < maxHydrationRetries; hRetry++) {
                                             // Get fresh page ref and items count each iteration
-                                            const freshPage = projAny.findPage(pageRef.id);
-                                            if (!freshPage) {
+                                            const freshPageBefore = projAny.findPage(pageRef.id);
+                                            if (!freshPageBefore) {
                                                 logger.warn(`loadProjectAndPage: Page ${pageRef.id} not found during hydration retry ${hRetry + 1}`);
                                                 await new Promise(r => setTimeout(r, 200));
                                                 continue;
@@ -543,6 +543,8 @@ async function loadProjectAndPage() {
                                             await projAny.hydratePageItems(pageRef.id);
                                             // Give time for hydration to take effect
                                             await new Promise(r => setTimeout(r, 200));
+                                            // Get FRESH page ref after hydration to see the updated items
+                                            const freshPage = projAny.findPage(pageRef.id);
                                             const itemsAfter = (freshPage as any).items?.length ?? 0;
                                             // Get page items directly from subdoc to verify
                                             let subdocItemCount = 0;
@@ -567,8 +569,13 @@ async function loadProjectAndPage() {
                                             }
                                         }
                                         if (hydratedItems > 0) {
-                                            // Update store with hydrated page
-                                            store.currentPage = pageRef as any;
+                                            // Get the fresh page reference after hydration to ensure we have the updated items
+                                            const hydratedPageRef = projAny.findPage(pageRef.id);
+                                            if (hydratedPageRef) {
+                                                store.currentPage = hydratedPageRef as any;
+                                            } else {
+                                                store.currentPage = pageRef as any;
+                                            }
                                         }
                                     }
                                 }
