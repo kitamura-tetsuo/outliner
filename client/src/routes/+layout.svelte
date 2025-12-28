@@ -181,11 +181,7 @@ onMount(async () => {
 
 
         // Service WorkerはE2Eテストでは無効化して、ナビゲーションやページクローズ干渉を防ぐ
-        const isE2e = (
-            import.meta.env.MODE === "test"
-            || import.meta.env.VITE_IS_TEST === "true"
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        );
+        const isE2e = import.meta.env.MODE === "test";
         if (!isE2e && "serviceWorker" in navigator) {
             navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
                 .then(reg => {
@@ -222,11 +218,7 @@ onMount(async () => {
         // Yjs: no auth-coupled init hook required
 
         // E2E ではページ遷移に干渉しないようにクリーンアップ系のリスナーを無効化
-        const isE2eCleanup = (
-            import.meta.env.MODE === "test"
-            || import.meta.env.VITE_IS_TEST === "true"
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        );
+        const isE2eCleanup = import.meta.env.MODE === "test";
         if (!isE2eCleanup) {
             // ブラウザ終了時のイベントリスナーを登録
             window.addEventListener("beforeunload", handleBeforeUnload);

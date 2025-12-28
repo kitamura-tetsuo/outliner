@@ -66,22 +66,19 @@ function keyFor(userId?: string, containerId?: string): ClientKey {
 }
 
 function isTestEnvironment(): boolean {
-    // Check for test environment using reliable localStorage detection
-    // This works in both Vite test mode and Playwright E2E tests
-    // Check multiple sources for robustness
-    if (typeof window === "undefined") return false;
+    // Check for test environment using reliable detection
+    // Use import.meta.env.MODE which is available at build time and reliable
+    if (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test") {
+        return true;
+    }
 
-    // Check localStorage first (set by addInitScript in test setup)
-    const lsValue = window.localStorage?.getItem?.("VITE_IS_TEST");
-    if (lsValue === "true") return true;
-
-    // Also check sessionStorage as fallback
-    const ssValue = window.sessionStorage?.getItem?.("VITE_IS_TEST");
-    if (ssValue === "true") return true;
-
-    // Check for E2E flag that may be set during test setup
-    const e2eFlag = window.localStorage?.getItem?.("VITE_E2E_TEST");
-    if (e2eFlag === "true") return true;
+    // Fallback to localStorage checks (for runtime detection if needed)
+    if (typeof window !== "undefined") {
+        // Check localStorage (set by addInitScript in test setup)
+        if (window.localStorage?.getItem?.("VITE_IS_TEST") === "true") return true;
+        // Check E2E flag
+        if (window.localStorage?.getItem?.("VITE_E2E_TEST") === "true") return true;
+    }
 
     return false;
 }

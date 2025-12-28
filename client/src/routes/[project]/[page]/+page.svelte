@@ -91,11 +91,7 @@ function scheduleLoadIfNeeded(
     const pg = (opts?.page ?? pageName) || "";
     const auth = opts?.authenticated ?? isAuthenticated;
 
-    const isTestEnv = (
-        import.meta.env.MODE === "test"
-        || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-    );
+    const isTestEnv = import.meta.env.MODE === "test";
 
     // DEBUG: Log to console directly to see if it's captured
     if (typeof console !== 'undefined') {
@@ -119,7 +115,7 @@ function scheduleLoadIfNeeded(
 
     // Execute immediately in test environments to avoid race conditions with child component mounting
     // The setTimeout(0) deferral caused timing issues where OutlinerBase mounted before currentPage was set
-    if (import.meta.env.MODE === "test" || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")) {
+    if (import.meta.env.MODE === "test") {
         if (!__loadingInProgress) loadProjectAndPage();
     } else {
         // 反応深度の問題を避けるため、イベントループに委ねる
@@ -925,11 +921,7 @@ onMount(() => {
 
     // コラボレーションテスト用: Yjsの同期を待つ
     // SKIP_TEST_CONTAINER_SEED=trueの場合でも、ページの同期を待つ必要がある
-    const isTestEnv = (
-        import.meta.env.MODE === "test"
-        || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-    );
+    const isTestEnv = import.meta.env.MODE === "test";
     if (isTestEnv && store.project) {
         // Test mode: waiting for Yjs sync
         console.log(`[+page.svelte] onMount: Test mode, waiting for Yjs sync...`);
