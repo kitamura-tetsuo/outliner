@@ -239,58 +239,7 @@ onMount(() => {
     try {
         const gs: any = (typeof window !== "undefined" && (window as any).generalStore) || generalStore;
         if (!gs?.project) return;
-        const skipSeed = (typeof window !== 'undefined') && (window as any).localStorage?.getItem?.('SKIP_TEST_CONTAINER_SEED') === 'true';
-        if (!gs.currentPage && !skipSeed) {
-            const items: any = gs.project.items as any;
-            let found: any = null;
-            const len = items?.length ?? 0;
-            for (let i = 0; i < len; i++) {
-                const p = items.at ? items.at(i) : items[i];
-                const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-                if (String(t).toLowerCase() === String(pageName || "").toLowerCase()) { found = p; break; }
-            }
-            if (!found) {
-                found = items?.addNode?.("tester");
-                if (found && pageName) found.updateText?.(pageName);
-            }
-            if (found) gs.currentPage = found;
-        }
-        // E2E stabilization: ensure default test content exists in test environments
-        // This provides a fallback when HTTP-based seeding (SeedClient) is not available or failed
-        // We delay this to give hydration a chance to load seeded content first
-        const isTestEnv = (typeof window !== 'undefined') && (window as any).localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-        if (isTestEnv) {
-            setTimeout(() => {
-                try {
-                    const gsCheck: any = (typeof window !== 'undefined') ? (window as any).generalStore : null;
-                    if (gsCheck?.currentPage && gsCheck.currentPage.items) {
-                        const childItems: any = gsCheck.currentPage.items as any;
-                        const childCount = childItems?.length ?? 0;
-                        // Only add default content if no children (hydration failed or no seeding)
-                        if (childCount === 0 && typeof childItems.addNode === 'function') {
-                            const defaultLines = [
-                                "これはテスト用のページです。1",
-                                "これはテスト用のページです。2",
-                                "これはテスト用のページです。3",
-                            ];
-                            for (const line of defaultLines) {
-                                try {
-                                    const newItem = childItems.addNode("tester");
-                                    if (newItem && typeof newItem.updateText === 'function') {
-                                        newItem.updateText(line);
-                                    }
-                                } catch (e) {
-                                    console.log("[OutlinerBase] Failed to add node:", e);
-                                }
-                            }
-                            console.log("[OutlinerBase] Browser-based seeding: added default test content, new count:", childItems?.length);
-                        }
-                    }
-                } catch (e) {
-                    console.log("[OutlinerBase] Browser seeding check failed:", e);
-                }
-            }, 2000); // Delay to give hydration time to load seeded content
-        }
+        // REMOVED: Legacy browser-based seeding. Tests should use TestHelpers.createAndSeedProject for data seeding.
 
         // ナビゲーション直後など非同期タイミングの取りこぼし対策でもう一度試行
         setTimeout(() => {
