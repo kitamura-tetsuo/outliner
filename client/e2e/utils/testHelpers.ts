@@ -283,6 +283,13 @@ export class TestHelpers {
         // Small delay to allow Svelte components to render
         await page.waitForTimeout(500);
 
+        // Additional wait for seeded content to be fully visible
+        // This is especially important for tests that check specific seeded content
+        if (seedLines && seedLines.length > 0) {
+            TestHelpers.slog("Waiting for seeded content to be visible...");
+            await page.waitForTimeout(1000);
+        }
+
         TestHelpers.slog("Test environment ready");
     }
 
@@ -816,6 +823,137 @@ export class TestHelpers {
         // Wait for the outliner to be visible
         await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
         TestHelpers.slog("Outliner is visible");
+    }
+
+    /**
+     * Waits for a specific page's subdocument to be loaded and have items.
+     * This is useful for ensuring seeded data is available before proceeding with tests.
+     * @param page Playwright's page object
+     * @param pageName The name of the page to wait for
+     * @param timeout Timeout in milliseconds (default 30 seconds)
+     * @returns Promise that resolves when the page has items
+     */
+    public static async waitForPageData(page: Page, pageName: string, timeout = 30000): Promise<void> {
+        TestHelpers.slog("waitForPageData: start", { pageName });
+
+        const deadline = Date.now() + timeout;
+        let consecutiveErrors = 0;
+
+        while (Date.now() < deadline) {
+            if (page.isClosed()) {
+                throw new Error("Page closed while waiting for page data");
+            }
+
+            try {
+                const hasData = await page.evaluate(async (targetPageName) => {
+                    try {
+                        // First check if Yjs is connected
+                        const yjsStore = (window as any).__YJS_STORE__;
+                        const isConnected = yjsStore?.getIsConnected?.() === true;
+                        if (!isConnected) {
+                            return {
+                                ready: false,
+                                reason: "Yjs not connected",
+                                yjsState: yjsStore ? Object.keys(yjsStore) : "no yjsStore",
+                            };
+                        }
+
+                        const gs = (window as any).generalStore;
+                        if (!gs) {
+                            return { ready: false, reason: "no generalStore" };
+                        }
+
+                        if (!gs.project) {
+                            return { ready: false, reason: "no project in store" };
+                        }
+
+                        if (!gs.currentPage) {
+                            // Check if page exists in project but not set as current
+                            const pages = gs.project.pages;
+                            if (pages && typeof pages.current?.id === "string") {
+                                return { ready: false, reason: "currentPage not set but project has pages" };
+                            }
+                            return { ready: false, reason: "no currentPage" };
+                        }
+
+                        const currentPage = gs.currentPage;
+                        const pageText = currentPage?.text?.toString?.() ?? String(currentPage?.text ?? "");
+                        if (!pageText || pageText.toLowerCase() !== targetPageName.toLowerCase()) {
+                            return {
+                                ready: false,
+                                reason: "page name mismatch",
+                                currentPageText: pageText,
+                                expectedPageName: targetPageName,
+                            };
+                        }
+
+                        const items = currentPage?.items;
+                        if (!items || typeof items.length !== "number") {
+                            return { ready: false, reason: "no items or length" };
+                        }
+
+                        // Check if we have at least 2 items (page title + at least 1 child)
+                        if (items.length < 2) {
+                            return { ready: false, reason: "insufficient items", count: items.length };
+                        }
+
+                        // Verify items have text content
+                        let hasTextContent = false;
+                        for (let i = 0; i < items.length; i++) {
+                            const item = items.at ? items.at(i) : items[i];
+                            if (item?.text && String(item.text).trim().length > 0) {
+                                hasTextContent = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasTextContent) {
+                            return { ready: false, reason: "no text content in items" };
+                        }
+
+                        return { ready: true, itemCount: items.length };
+                    } catch (e) {
+                        return { ready: false, reason: "error", error: String(e) };
+                    }
+                }, pageName);
+
+                if (hasData.ready) {
+                    TestHelpers.slog("waitForPageData: success", { pageName, itemCount: hasData.itemCount });
+                    return;
+                }
+
+                TestHelpers.slog("waitForPageData: waiting", { pageName, reason: hasData.reason, details: hasData });
+                consecutiveErrors = 0;
+            } catch (e) {
+                consecutiveErrors++;
+                TestHelpers.slog("waitForPageData: error, will retry", {
+                    pageName,
+                    error: String(e),
+                    consecutiveErrors,
+                });
+                if (consecutiveErrors > 5) {
+                    // Try to get more debugging info
+                    try {
+                        const debugInfo = await page.evaluate(() => {
+                            return {
+                                yjsStoreKeys: (window as any).__YJS_STORE__
+                                    ? Object.keys((window as any).__YJS_STORE__)
+                                    : "no yjsStore",
+                                generalStoreKeys: (window as any).generalStore
+                                    ? Object.keys((window as any).generalStore).filter(k => !k.startsWith("_"))
+                                    : "no gs",
+                                url: window.location.href,
+                            };
+                        });
+                        TestHelpers.slog("waitForPageData: debug info", { pageName, debug: debugInfo });
+                    } catch {}
+                }
+            }
+
+            await page.waitForTimeout(500);
+        }
+
+        throw new Error(`Timeout waiting for page data: ${pageName} after ${timeout}ms`);
     }
 
     /**

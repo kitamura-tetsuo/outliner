@@ -93,14 +93,45 @@ test.describe("Cursor sync between tabs", () => {
             throw new Error("YJS connection not established on page2 - cannot sync seeded data");
         }
 
+        // Wait for page data to be fully loaded on page2 (seeds are in page subdocument)
+        // This ensures the seeded content is available before checking
+        await TestHelpers.waitForPageData(page2, pageName, 30000);
+
         // Wait for outliner items to be visible on page2
         await expect(page2.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
+
+        // Also verify page1 has the seeded content (the seed might not have completed before page1 loaded)
+        await TestHelpers.waitForPageData(page1, pageName, 30000);
+
+        // Additional wait for text content to be rendered on both pages
+        // Items might exist in DOM but text not yet populated
+        const waitForTextContent = async (page: typeof page1) => {
+            await page.waitForFunction(() => {
+                const items = document.querySelectorAll(".outliner-item .item-text");
+                if (items.length < 4) return false; // Need 4 items (page title + 3 seeded)
+                for (const item of items) {
+                    const text = item.textContent?.trim();
+                    if (text && text.length > 0 && text !== "Loading...") {
+                        return true;
+                    }
+                }
+                return false;
+            }, { timeout: 15000 }).catch(() => {
+                console.log("Warning: Text content not fully rendered, continuing anyway");
+            });
+        };
+
+        await waitForTextContent(page1);
+        await waitForTextContent(page2);
 
         // Verify both pages have the same initial content
         const page1InitialTexts = await page1.locator(".outliner-item .item-text").allTextContents();
         const page1InitialContent = page1InitialTexts.join("\n");
         const page2InitialTexts = await page2.locator(".outliner-item .item-text").allTextContents();
         const page2InitialContent = page2InitialTexts.join("\n");
+
+        console.log("Page1 content:", page1InitialContent.substring(0, 100));
+        console.log("Page2 content:", page2InitialContent.substring(0, 100));
 
         expect(page1InitialContent).toContain("テスト");
         expect(page2InitialContent).toContain("テスト");
