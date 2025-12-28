@@ -311,12 +311,11 @@ export class TestHelpers {
     public static async prepareTestEnvironmentForProject(
         page: Page,
         testInfo?: { workerIndex?: number; } | null,
-        _lines: string[] = [],
+        lines: string[] = [],
         _browser?: Browser,
         options?: { projectName?: string; pageName?: string; skipSync?: boolean; },
     ): Promise<{ projectName: string; pageName: string; }> {
         // Use parameters to avoid lint errors about unused vars
-        void _lines;
         void _browser;
 
         // デバッガーをセットアップ
@@ -333,6 +332,17 @@ export class TestHelpers {
             await page.goto("/", { timeout: 30000, waitUntil: "domcontentloaded" });
             return { projectName, pageName };
         }
+
+        // Seed the project with data before navigating
+        const defaultLines = [
+            "これはテスト用のページです。1",
+            "これはテスト用のページです。2",
+            "これはテスト用のページです。3",
+        ];
+        const seedLines = lines.length > 0 ? lines : defaultLines;
+
+        console.log("TestHelper: Seeding project before navigation", { projectName, pageName });
+        await TestHelpers.createAndSeedProject(page, testInfo, seedLines, { projectName, pageName });
 
         // Navigate to the project page and wait for seeded data
         const encodedProject = encodeURIComponent(projectName);
@@ -626,19 +636,33 @@ export class TestHelpers {
      * @param timeout タイムアウト時間（ミリ秒）
      */
     public static async waitForCursorVisible(page: Page, timeout = 15000): Promise<boolean> {
+        // ページが閉じている場合は早期リターン
+        if (page.isClosed()) {
+            TestHelpers.slog("waitForCursorVisible: page is closed, returning false");
+            return false;
+        }
         try {
             // CursorValidatorを使用してカーソルの存在を確認
-            await page.waitForFunction(() => {
-                const editorOverlayStore = (window as any).editorOverlayStore;
-                if (!editorOverlayStore) {
-                    return false;
-                }
-                const cursors = Object.values(editorOverlayStore.cursors);
-                const activeCursors = cursors.filter((c: any) => c.isActive);
-                return activeCursors.length > 0;
-            }, { timeout });
+            await page.waitForFunction(
+                () => {
+                    if (typeof window === "undefined") return false;
+                    const editorOverlayStore = (window as any)?.editorOverlayStore;
+                    if (!editorOverlayStore) {
+                        return false;
+                    }
+                    const cursors = Object.values(editorOverlayStore.cursors);
+                    const activeCursors = cursors.filter((c: any) => c.isActive);
+                    return activeCursors.length > 0;
+                },
+                { timeout },
+            );
             return true;
         } catch (_error) {
+            // ページが閉じられた場合はエラーではなく終了
+            if (page.isClosed()) {
+                TestHelpers.slog("waitForCursorVisible: page closed during wait, returning false");
+                return false;
+            }
             console.log("Timeout waiting for cursor to be visible, continuing anyway");
             void _error;
             // ページが閉じられていないかチェックしてからスクリーンショットを撮影
@@ -683,8 +707,18 @@ export class TestHelpers {
      * @param timeout タイムアウト時間（ミリ秒）
      */
     public static async ensureCursorReady(page: Page, timeout = 10000): Promise<void> {
+        // ページが閉じている場合は何もしない
+        if (page.isClosed()) {
+            TestHelpers.slog("ensureCursorReady: page is closed, skipping");
+            return;
+        }
         // 1. カーソルが可視になるまで待機
         await this.waitForCursorVisible(page, timeout);
+
+        // ページが閉じている場合は終了
+        if (page.isClosed()) {
+            return;
+        }
 
         // 2. グローバルテキストエリアにフォーカスがあることを確認
         await page.waitForFunction(() => {
@@ -692,11 +726,15 @@ export class TestHelpers {
             return textarea && document.activeElement === textarea;
         }, { timeout: 5000 }).catch(async () => {
             // フォーカスがない場合は手動でフォーカス
-            await this.focusGlobalTextarea(page);
+            if (!page.isClosed()) {
+                await this.focusGlobalTextarea(page);
+            }
         });
 
         // 3. 短い安定化待機
-        await page.waitForTimeout(50);
+        if (!page.isClosed()) {
+            await page.waitForTimeout(50);
+        }
     }
 
     /**
@@ -704,10 +742,17 @@ export class TestHelpers {
      * @param page Playwrightのページオブジェクト
      */
     public static async waitForUIStable(page: Page): Promise<void> {
+        // ページが閉じている場合は何もしない
+        if (page.isClosed()) {
+            TestHelpers.slog("waitForUIStable: page is closed, skipping");
+            return;
+        }
         // カーソルが可視であることを確認
         await this.waitForCursorVisible(page, 5000);
         // 最小限のUI更新待機
-        await page.waitForTimeout(100);
+        if (!page.isClosed()) {
+            await page.waitForTimeout(100);
+        }
     }
 
     /**
