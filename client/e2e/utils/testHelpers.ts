@@ -290,6 +290,7 @@ export class TestHelpers {
      * プロジェクト用 E2E: テスト環境を初期化し、指定されたプロジェクトページに移動して
      * シーディングされたデータが同期されるのを待つ
      * - シーディングは SeedClient を使用して事前に行われている前提
+     * - localStorage は storageState を通じて設定されるため、ここではナビゲーションと待機のみを行う
      * @param page Playwrightページオブジェクト
      * @param testInfo テスト情報
      * @param lines 初期データ行（オプション）
@@ -307,19 +308,6 @@ export class TestHelpers {
         // Use parameters to avoid lint errors about unused vars
         void _lines;
         void _browser;
-        // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
-        await page.addInitScript(() => {
-            try {
-                localStorage.setItem("VITE_IS_TEST", "true");
-                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-                // Force WebSocket connection for E2E tests that need WS sync
-                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-                localStorage.removeItem("VITE_YJS_DISABLE_WS");
-
-                (window as Window & Record<string, any>).__E2E__ = true;
-                (window as Window & Record<string, any>).__vite_plugin_react_preamble_installed__ = true;
-            } catch {}
-        });
 
         // デバッガーをセットアップ
         await TestHelpers.setupTreeDebugger(page);
@@ -1640,6 +1628,35 @@ export class TestHelpers {
 
             // クリーンアップはオプショナルな操作なのでエラーはスローしない
         }
+    }
+
+    /**
+     * Creates a storage state object with test environment localStorage values.
+     * This should be passed to browser.newContext() via the storageState option
+     * to ensure localStorage is set BEFORE the page loads.
+     */
+    public static createTestStorageState(): object {
+        return {
+            cookies: [],
+            origins: [
+                {
+                    origin: "http://localhost:5173",
+                    localStorage: [
+                        { name: "VITE_IS_TEST", value: "true" },
+                        { name: "VITE_USE_FIREBASE_EMULATOR", value: "true" },
+                        { name: "VITE_YJS_FORCE_WS", value: "true" },
+                    ],
+                },
+                {
+                    origin: "http://localhost",
+                    localStorage: [
+                        { name: "VITE_IS_TEST", value: "true" },
+                        { name: "VITE_USE_FIREBASE_EMULATOR", value: "true" },
+                        { name: "VITE_YJS_FORCE_WS", value: "true" },
+                    ],
+                },
+            ],
+        };
     }
 
     /**

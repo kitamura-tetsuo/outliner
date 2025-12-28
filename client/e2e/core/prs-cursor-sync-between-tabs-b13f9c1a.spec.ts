@@ -43,8 +43,10 @@ test.describe("Cursor sync between tabs", () => {
             // Continue even if connection fails - test might still work with local sync
         }
 
-        // Create the second browser context and page
-        const context2 = await browser.newContext();
+        // Create the second browser context and page with proper storage state for test environment
+        const context2 = await browser.newContext({
+            storageState: TestHelpers.createTestStorageState(),
+        });
         const page2 = await context2.newPage();
 
         // Prepare the environment for the second page and navigate to the same project page
