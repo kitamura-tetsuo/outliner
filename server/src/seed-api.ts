@@ -95,7 +95,9 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
                             pageItems.set(itemKey, itemValue);
                         }
 
-                        // Persist the subdocument
+                        // CRITICAL: Persist the subdocument to LevelDB
+                        // Without this, the seeded items won't be available when
+                        // clients connect and load the page subdocument
                         const pageRoom = `projects/${projectId}/pages/${page.id}`;
                         const subdocUpdate = Y.encodeStateAsUpdate(subdoc);
                         await persistence.storeUpdate(pageRoom, subdocUpdate);
@@ -104,6 +106,12 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
                             pageRoom,
                             bytes: subdocUpdate.byteLength,
                             itemCount: pageData.lines.length,
+                        });
+                    } else {
+                        logger.warn({
+                            event: "seed_subdoc_not_found",
+                            pageId: page.id,
+                            pageName: pageData.name,
                         });
                     }
                 }
