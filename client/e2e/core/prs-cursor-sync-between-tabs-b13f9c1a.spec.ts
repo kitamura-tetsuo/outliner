@@ -49,28 +49,51 @@ test.describe("Cursor sync between tabs", () => {
         });
         const page2 = await context2.newPage();
 
-        // Prepare the environment for the second page and navigate to the same project page
-        // This sets up localStorage for test mode and WebSocket, then waits for seeded data to sync
-        await TestHelpers.prepareTestEnvironmentForProject(
-            page2,
-            testInfo,
-            [],
-            undefined,
-            { projectName, pageName },
-        );
+        // Set up localStorage flags for page2 (in addition to storageState)
+        await page2.addInitScript(() => {
+            localStorage.setItem("VITE_IS_TEST", "true");
+            localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+            (window as any).__E2E__ = true;
+        });
+
+        // Navigate page2 to the same URL as page1
+        await page2.goto(page1.url(), { waitUntil: "domcontentloaded" });
+
+        // Wait for UserManager and authenticate on page2 (required for Yjs connection)
+        await page2.waitForFunction(() => {
+            return !!(window as any).__USER_MANAGER__;
+        }, { timeout: 10000 });
+
+        await page2.evaluate(async () => {
+            const mgr = (window as any).__USER_MANAGER__;
+            if (mgr?.loginWithEmailPassword) {
+                await mgr.loginWithEmailPassword("test@example.com", "password");
+            }
+        });
+
+        await page2.waitForFunction(() => {
+            const mgr = (window as any).__USER_MANAGER__;
+            return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
+        }, { timeout: 10000 });
 
         // Wait for Yjs connection to be established on page2
-        try {
-            await page2.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
-                timeout: 10000, // Shorter timeout to avoid hanging
-            });
-        } catch {
-            console.log("YJS connection not established on page2, continuing with test");
-            // Continue even if connection fails - test might still work with local sync
+        const page2Connected = await page2.waitForFunction(
+            () => (window as any).__YJS_STORE__?.getIsConnected?.() === true,
+            null,
+            {
+                timeout: 20000, // Longer timeout for YJS connection
+            },
+        ).then(() => true).catch(() => {
+            console.log("YJS connection not established on page2");
+            return false;
+        });
+
+        if (!page2Connected) {
+            throw new Error("YJS connection not established on page2 - cannot sync seeded data");
         }
 
-        // Wait for both pages to load completely with a shorter timeout
-        await expect(page1.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
+        // Wait for outliner items to be visible on page2
         await expect(page2.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
 
         // Verify both pages have the same initial content

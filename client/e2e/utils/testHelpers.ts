@@ -366,7 +366,40 @@ export class TestHelpers {
         });
 
         // Wait for outliner items to be visible (indicates seeded data is synced)
-        await TestHelpers.waitForOutlinerItems(page, 30000, 2);
+        await TestHelpers.waitForOutlinerItems(page, 30000, 4);
+
+        // Additional wait for seeded content to be fully synced
+        // This ensures the seeded items (3 lines + page title = 4 items) are available
+        const seededContentCheck = await page.waitForFunction(
+            () => {
+                try {
+                    const gs = (window as any).generalStore;
+                    if (!gs?.currentPage) return false;
+                    const items = gs.currentPage.items;
+                    if (!items || typeof items.length !== "number") return false;
+                    // Check if we have at least 4 items (page title + 3 seeded lines)
+                    if (items.length < 4) return false;
+                    // Verify the content contains expected seeded text
+                    const itemTexts: string[] = [];
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items.at ? items.at(i) : items[i];
+                        if (item?.text) {
+                            itemTexts.push(String(item.text));
+                        }
+                    }
+                    const content = itemTexts.join("\n");
+                    return content.includes("テスト") || content.includes("これはテスト用のページです");
+                } catch {
+                    return false;
+                }
+            },
+            null,
+            { timeout: 15000 },
+        ).then(() => true).catch(() => false);
+
+        if (!seededContentCheck) {
+            TestHelpers.slog("Warning: Seeded content not fully synced, continuing anyway");
+        }
 
         console.log("TestHelper: Project environment ready", { projectName, pageName });
         return { projectName, pageName };
@@ -1641,6 +1674,14 @@ export class TestHelpers {
             origins: [
                 {
                     origin: "http://localhost:5173",
+                    localStorage: [
+                        { name: "VITE_IS_TEST", value: "true" },
+                        { name: "VITE_USE_FIREBASE_EMULATOR", value: "true" },
+                        { name: "VITE_YJS_FORCE_WS", value: "true" },
+                    ],
+                },
+                {
+                    origin: "http://localhost:7090",
                     localStorage: [
                         { name: "VITE_IS_TEST", value: "true" },
                         { name: "VITE_USE_FIREBASE_EMULATOR", value: "true" },
