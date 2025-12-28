@@ -281,11 +281,14 @@ export class TestHelpers {
         await TestHelpers.waitForOutlinerItems(page, 30000, expectedItemCount);
 
         // Small delay to allow Svelte components to render
-        await page.waitForTimeout(500);
+        // Use a safe delay that checks if page is still open
+        if (!page.isClosed()) {
+            await page.waitForTimeout(500);
+        }
 
         // Additional wait for seeded content to be fully visible
         // This is especially important for tests that check specific seeded content
-        if (seedLines && seedLines.length > 0) {
+        if (!page.isClosed() && seedLines && seedLines.length > 0) {
             TestHelpers.slog("Waiting for seeded content to be visible...");
             await page.waitForTimeout(1000);
         }
