@@ -15,7 +15,8 @@ test.describe("SBD-ebaa03c1: search dropdown visibility", () => {
             projectName: ids.projectName,
             pageName: "another-page",
         });
-        await page.goto(`/${encodeURIComponent(ids.projectName)}/${encodeURIComponent(ids.pageName)}`);
+        // Navigate to the seeded page so the search can find it
+        await page.goto(`/${encodeURIComponent(ids.projectName)}/another-page`);
 
         // Wait for the page to be properly loaded and indexed for search
         await page.waitForTimeout(500);
