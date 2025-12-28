@@ -26,7 +26,9 @@ import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
 import { store } from "../../../stores/store.svelte";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 
-
+// Track which pages have been hydrated to prevent duplicate hydration during retries
+// This is needed because hydratePageItems can be called multiple times
+const _hydratedPages = new Set<string>();
 
 // URLパラメータを取得（SvelteKit page store に追従）
 // NOTE: `$page` の値を参照する必要がある（store オブジェクトではなく値）。
@@ -529,43 +531,50 @@ async function loadProjectAndPage() {
                                 if (store.project && pageRef?.id) {
                                     const projAny = store.project as any;
                                     if (typeof projAny.hydratePageItems === "function") {
-                                        // Retry hydration until items are present (handles subdoc sync timing)
-                                        const maxHydrationRetries = 10;
-                                        let hydratedItems = 0;
-                                        for (let hRetry = 0; hRetry < maxHydrationRetries; hRetry++) {
-                                            // Get fresh page ref and items count each iteration
-                                            const freshPageBefore = projAny.findPage(pageRef.id);
-                                            if (!freshPageBefore) {
-                                                logger.warn(`loadProjectAndPage: Page ${pageRef.id} not found during hydration retry ${hRetry + 1}`);
-                                                await new Promise(r => setTimeout(r, 200));
-                                                continue;
-                                            }
-                                            await projAny.hydratePageItems(pageRef.id);
-                                            // Give time for hydration to take effect
-                                            await new Promise(r => setTimeout(r, 200));
-                                            // Get FRESH page ref after hydration to see the updated items
-                                            const freshPage = projAny.findPage(pageRef.id);
-                                            const itemsAfter = (freshPage as any).items?.length ?? 0;
-                                            // Get page items directly from subdoc to verify
-                                            let subdocItemCount = 0;
-                                            try {
-                                                const pagesMap = projAny.ydoc.getMap("pages");
-                                                const subdoc = pagesMap.get(pageRef.id);
-                                                if (subdoc) {
-                                                    const pageItems = subdoc.getMap("pageItems");
-                                                    const keys = Array.from(pageItems.keys()).filter(k => k !== "initialized");
-                                                    subdocItemCount = keys.length;
+                                        // Skip hydration if already done for this page to prevent duplicates
+                                        if (_hydratedPages.has(pageRef.id)) {
+                                            logger.info(`loadProjectAndPage: Skipping hydration for already-hydrated page ${pageRef.id}`);
+                                        } else {
+                                            // Retry hydration until items are present (handles subdoc sync timing)
+                                            const maxHydrationRetries = 10;
+                                            let hydratedItems = 0;
+                                            for (let hRetry = 0; hRetry < maxHydrationRetries; hRetry++) {
+                                                // Get fresh page ref and items count each iteration
+                                                const freshPageBefore = projAny.findPage(pageRef.id);
+                                                if (!freshPageBefore) {
+                                                    logger.warn(`loadProjectAndPage: Page ${pageRef.id} not found during hydration retry ${hRetry + 1}`);
+                                                    await new Promise(r => setTimeout(r, 200));
+                                                    continue;
                                                 }
-                                            } catch {}
-                                            logger.info(`loadProjectAndPage: Hydration attempt ${hRetry + 1}: pageItems=${itemsAfter}, subdocPageItems=${subdocItemCount}`);
-                                            if (itemsAfter >= 3 && subdocItemCount > 0) {
-                                                // We have enough items and subdoc has data
-                                                hydratedItems = itemsAfter;
-                                                logger.info(`loadProjectAndPage: Successfully hydrated page ${pageRef.id} (items: ${itemsAfter}, subdocItems: ${subdocItemCount})`);
-                                                break;
-                                            }
-                                            if (hRetry === maxHydrationRetries - 1) {
-                                                logger.warn(`loadProjectAndPage: Hydration timed out for page ${pageRef.id} (items: ${itemsAfter}, subdocItems: ${subdocItemCount})`);
+                                                await projAny.hydratePageItems(pageRef.id);
+                                                // Mark as hydrated to prevent duplicate hydration in subsequent retries
+                                                _hydratedPages.add(pageRef.id);
+                                                // Give time for hydration to take effect
+                                                await new Promise(r => setTimeout(r, 200));
+                                                // Get FRESH page ref after hydration to see the updated items
+                                                const freshPage = projAny.findPage(pageRef.id);
+                                                const itemsAfter = (freshPage as any).items?.length ?? 0;
+                                                // Get page items directly from subdoc to verify
+                                                let subdocItemCount = 0;
+                                                try {
+                                                    const pagesMap = projAny.ydoc.getMap("pages");
+                                                    const subdoc = pagesMap.get(pageRef.id);
+                                                    if (subdoc) {
+                                                        const pageItems = subdoc.getMap("pageItems");
+                                                        const keys = Array.from(pageItems.keys()).filter(k => k !== "initialized");
+                                                        subdocItemCount = keys.length;
+                                                    }
+                                                } catch {}
+                                                logger.info(`loadProjectAndPage: Hydration attempt ${hRetry + 1}: pageItems=${itemsAfter}, subdocPageItems=${subdocItemCount}`);
+                                                if (itemsAfter >= 3 && subdocItemCount > 0) {
+                                                    // We have enough items and subdoc has data
+                                                    hydratedItems = itemsAfter;
+                                                    logger.info(`loadProjectAndPage: Successfully hydrated page ${pageRef.id} (items: ${itemsAfter}, subdocItems: ${subdocItemCount})`);
+                                                    break;
+                                                }
+                                                if (hRetry === maxHydrationRetries - 1) {
+                                                    logger.warn(`loadProjectAndPage: Hydration timed out for page ${pageRef.id} (items: ${itemsAfter}, subdocItems: ${subdocItemCount})`);
+                                                }
                                             }
                                         }
                                         if (hydratedItems > 0) {
