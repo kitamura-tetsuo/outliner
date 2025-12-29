@@ -124,10 +124,15 @@ export class TestHelpers {
         ];
         const seedLines = lines.length > 0 ? lines : defaultLines;
 
-        if (!options.skipSeed && !options.doNotSeed) {
+        // When skipSeed is true but projectName/pageName are provided, preserve them for navigation
+        // This allows multiple pages to join the same project when only the first page seeds data
+        const shouldSeed = !options.skipSeed && !options.doNotSeed;
+        if (shouldSeed) {
             await TestHelpers.createAndSeedProject(page, testInfo, seedLines, effectiveOptions);
         }
 
+        // Always navigate if not explicitly skipped, even when skipSeed is true
+        // This ensures subsequent pages can join the project created by the first page
         if (!options?.doNotNavigate) {
             // If we skipped seeding, we likely want to verify empty state or handle seeding manually,
             // so we shouldn't force waiting for default seed lines.

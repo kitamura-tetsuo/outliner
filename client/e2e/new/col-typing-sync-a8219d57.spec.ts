@@ -56,12 +56,16 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
     });
 
-    // Prepare the second page environment (flags etc) - don't seed, we'll join the first project
-    // We ignore the returned project/page as we want to join the first one
-    await TestHelpers.prepareTestEnvironment(page2, testInfo, [], undefined, { skipSeed: true });
-
-    // Navigate page2 to the SAME project/page
-    await page2.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
+    // Prepare the second page environment (flags etc) - pass the project/page names from page1
+    // so page2 joins the same project instead of creating a new one
+    // Use _ to ignore the return value since we already have the project/page names from page1
+    await TestHelpers.prepareTestEnvironment(
+        page2,
+        testInfo,
+        [],
+        undefined,
+        { skipSeed: true, projectName, pageName },
+    );
 
     // Wait for app to initialize before checking connection
     await page2.waitForFunction(() => !!(window as any).__YJS_STORE__, null, { timeout: 10000 });

@@ -14,8 +14,22 @@ test.describe("snapshot diff viewer", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("display diff and revert", async ({ page }, testInfo) => {
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo, []);
+    test("display diff and revert", async ({ page }) => {
+        // Get project/page names from beforeEach's setup to avoid creating a new project
+        const projectData = await page.evaluate(() => {
+            const gs = (window as any).generalStore;
+            return {
+                projectName: gs?.project?.title || gs?.project?.text || "",
+                pageName: gs?.currentPage?.text || gs?.currentPage?.title || "",
+                hasProject: !!gs?.project,
+                hasCurrentPage: !!gs?.currentPage,
+            };
+        });
+        console.log("Project data from store:", projectData);
+        const { projectName, pageName } = projectData;
+        if (!projectName || !pageName) {
+            throw new Error(`Failed to get project/page names from store: ${JSON.stringify(projectData)}`);
+        }
         await page.evaluate(
             ({ projectName, pageName }) => {
                 (window as any).__SNAPSHOT_SERVICE__.setCurrentContent(
@@ -33,7 +47,15 @@ test.describe("snapshot diff viewer", () => {
             { projectName, pageName },
         );
         await page.goto(`/${projectName}/${pageName}/diff`);
-        await TestHelpers.waitForUIStable(page);
+
+        // Wait for the diff page to load without waiting for cursor (diff page may not have cursor)
+        try {
+            await page.waitForFunction(() => (window as any).generalStore?.currentPage !== null, null, {
+                timeout: 30000,
+            });
+        } catch {
+            console.log("Warning: currentPage not set on diff page, continuing anyway");
+        }
 
         // ページの状態をデバッグ
         const pageContent = await page.content();
