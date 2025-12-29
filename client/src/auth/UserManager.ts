@@ -103,7 +103,9 @@ export class UserManager {
         // テスト環境の検出
         const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
             || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
-            || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true");
+            || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+            || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
         // プロダクション環境では絶対にエミュレータを使用しない
         const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
@@ -185,7 +187,9 @@ export class UserManager {
     private async _setupMockUser() {
         const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
             || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
-            || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true");
+            || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
+            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+            || (typeof window !== "undefined" && (window as any).__E2E__ === true);
         const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
             && (typeof import.meta !== "undefined" && import.meta.env?.MODE) === "production";
 

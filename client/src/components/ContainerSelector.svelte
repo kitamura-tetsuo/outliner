@@ -67,7 +67,9 @@ onMount(() => {
     if (typeof window !== "undefined") {
         const isTestEnv = import.meta.env.MODE === "test"
             || import.meta.env.VITE_IS_TEST === "true"
-            || window.location.hostname === "localhost";
+            || window.location.hostname === "localhost"
+            || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
+            || (window as any).__E2E__ === true;
 
         if (isTestEnv) {
             // テスト環境では ucVersion の変化に追従するバックストップを設ける

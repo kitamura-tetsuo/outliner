@@ -22,7 +22,9 @@ export function projectsFromUserProject(
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.mockFluidClient === false)
-        || (typeof window !== "undefined" && window.location.hostname === "localhost");
+        || (typeof window !== "undefined" && window.location.hostname === "localhost")
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
     // ID 重複を排除して安定化
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
@@ -96,7 +98,9 @@ if (typeof window !== "undefined") {
     const isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
-        || window.location.hostname === "localhost";
+        || window.location.hostname === "localhost"
+        || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
+        || (window as any).__E2E__ === true;
     if (isTestEnv) {
         (window as any).__PROJECT_STORE__ = projectStore;
     }

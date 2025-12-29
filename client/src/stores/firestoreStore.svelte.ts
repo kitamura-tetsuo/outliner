@@ -40,7 +40,9 @@ class GeneralStore {
         try {
             const __isTestEnv = import.meta.env.MODE === "test"
                 || process.env.NODE_ENV === "test"
-                || import.meta.env.VITE_IS_TEST === "true";
+                || import.meta.env.VITE_IS_TEST === "true"
+                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+                || (typeof window !== "undefined" && (window as any).__E2E__ === true);
             if (typeof window !== "undefined" && __isTestEnv) {
                 window.dispatchEvent(new CustomEvent("firestore-uc-changed"));
             }
@@ -130,7 +132,9 @@ if (typeof window !== "undefined") {
     const isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
-        || window.location.hostname === "localhost";
+        || window.location.hostname === "localhost"
+        || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
+        || (window as any).__E2E__ === true;
     if (isTestEnv) {
         (window as any).__FIRESTORE_STORE__ = firestoreStore;
     }
@@ -153,7 +157,9 @@ try {
     const isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.mockFluidClient === false);
+        || (typeof window !== "undefined" && window.mockFluidClient === false)
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
     // プロダクション環境では絶対にエミュレータを使用しない
     const isProduction = process.env.NODE_ENV === "production"
@@ -247,7 +253,9 @@ function initFirestoreSync(): () => void {
                     // incoming が空配列の場合は上書きを抑止する（初期同期で空→即時消去されるのを避ける）
                     const isTestEnv = import.meta.env.MODE === "test"
                         || process.env.NODE_ENV === "test"
-                        || import.meta.env.VITE_IS_TEST === "true";
+                        || import.meta.env.VITE_IS_TEST === "true"
+                        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+                        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
                     const hasSeeded = !!(firestoreStore.userProject?.accessibleProjectIds?.length);
                     const incomingEmpty = !(projectData.accessibleProjectIds?.length);
                     if (isTestEnv && hasSeeded && incomingEmpty) {
@@ -502,7 +510,9 @@ Object.defineProperty(firestoreStore, "userContainer", {
 if (typeof window !== "undefined") {
     const __isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
-        || import.meta.env.VITE_IS_TEST === "true";
+        || import.meta.env.VITE_IS_TEST === "true"
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
     if (!__isTestEnv) {
         let cleanup: (() => void) | null = null;

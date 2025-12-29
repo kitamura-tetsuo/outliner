@@ -10,9 +10,37 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Multi-Page Schedule Management", () => {
     let testProject: { projectName: string; pageName: string; };
+    const pageName1 = "stable-page-1";
+    const pageName2 = "stable-page-2";
 
-    test.beforeEach(async ({ page }) => {
-        testProject = await TestHelpers.prepareTestEnvironment(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        // Set up test environment flags BEFORE any navigation
+        await page.addInitScript(() => {
+            try {
+                localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_E2E_TEST", "true");
+                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                localStorage.removeItem("VITE_YJS_DISABLE_WS");
+                (window as Window & Record<string, any>).__E2E__ = true;
+            } catch {}
+        });
+
+        // Create project with both pages upfront using createAndSeedProject
+        testProject = await TestHelpers.createAndSeedProject(page, testInfo, [
+            "これはテスト用のページです。1",
+            "これはテスト用のページです。2",
+            "これはテスト用のページです。3",
+        ], {
+            projectName: undefined, // Let it generate a unique name
+            pageName: pageName1, // First page name
+        });
+
+        // Add second page via direct API call for multi-page test
+        const { SeedClient } = await import("../utils/seedClient.js");
+        const authToken = await TestHelpers.getTestAuthToken();
+        const seeder = new SeedClient(testProject.projectName, authToken);
+        await seeder.seed([{ name: pageName2, lines: ["Second page content"] }]);
 
         // Enable console logging
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));
@@ -154,13 +182,6 @@ test.describe("Multi-Page Schedule Management", () => {
             }, { timeout: 30000 });
             // await page.waitForTimeout(500); // Small buffer for reactivity
         };
-
-        // Wait for connection initially
-        await ensureConnectedPage();
-
-        // Define stable page names for the test
-        const pageName1 = "stable-page-1";
-        const pageName2 = "stable-page-2";
 
         // Go to page 1 using navigateToProjectPage for reliable sync
         await TestHelpers.navigateToProjectPage(page, projectName, pageName1);

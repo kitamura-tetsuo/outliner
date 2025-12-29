@@ -31,7 +31,9 @@ if (typeof window !== "undefined") {
     const isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
-        || window.location.hostname === "localhost";
+        || window.location.hostname === "localhost"
+        || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
+        || (window as any).__E2E__ === true;
     if (isTestEnv) {
         (window as any).__CONTAINER_STORE__ = containerStore;
     }

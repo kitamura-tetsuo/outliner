@@ -10,7 +10,9 @@ import { log } from "./logger"; // ロガーをインポート
 export function getEnv(key: string, defaultValue: string = ""): string {
     // 実行環境の検出 - VITE_IS_TEST is not available in client runtime for security
     const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
-        || (typeof process !== "undefined" && process.env?.NODE_ENV === "test");
+        || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
     // テスト環境専用の処理
     if (isTestEnv) {

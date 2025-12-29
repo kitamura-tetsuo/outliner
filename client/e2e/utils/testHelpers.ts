@@ -1898,7 +1898,7 @@ export class TestHelpers {
     /**
      * Get a valid ID token for the test user from local Firebase Emulator
      */
-    private static async getTestAuthToken(): Promise<string> {
+    public static async getTestAuthToken(): Promise<string> {
         const authHost = process.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || "localhost:59099";
         // Ensure protocol
         const host = authHost.startsWith("http") ? authHost : `http://${authHost}`;

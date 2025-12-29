@@ -14,7 +14,9 @@ import { onMount } from "svelte";
 onMount(() => {
     const isTest = import.meta.env.MODE === "test"
         || import.meta.env.VITE_IS_TEST === "true"
-        || process.env.NODE_ENV === "test";
+        || process.env.NODE_ENV === "test"
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
     if (isTest) {
         // In unit tests, avoid real navigation to keep jsdom stable.
         // E2E/integration tests will handle navigation explicitly.
