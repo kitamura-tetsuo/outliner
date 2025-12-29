@@ -52,6 +52,18 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
             "COMMENT TARGET",
         ]);
 
+        // Wait for outliner items to be loaded before querying for items
+        // This is necessary because Yjs sync may take time for seeded data to appear
+        await page.waitForSelector(".outliner-item[data-item-id]", { timeout: 30000 }).catch(() => {
+            console.log("Warning: Outliner items not found within timeout, continuing anyway");
+        });
+
+        // Wait for the specific "COMMENT TARGET" text to appear
+        await page.waitForSelector(".outliner-item .item-text", { hasText: "COMMENT TARGET" }, { timeout: 30000 })
+            .catch(() => {
+                console.log("Warning: 'COMMENT TARGET' text not found within timeout, continuing anyway");
+            });
+
         const itemId = await page.evaluate(() => {
             const nodes = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id] .item-text"));
             for (const n of nodes) {

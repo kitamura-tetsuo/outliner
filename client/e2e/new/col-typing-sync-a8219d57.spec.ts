@@ -13,10 +13,14 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     const page1 = await context1.newPage();
     page1.on("console", (msg) => console.log(`[PAGE1] ${msg.text()}`));
 
-    // Match configuration of working Yjs tests
+    // Match configuration of working Yjs tests - use consistent settings with testHelpers
     await page1.addInitScript(() => {
-        localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
-        localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
+        localStorage.setItem("VITE_IS_TEST", "true");
+        localStorage.setItem("VITE_E2E_TEST", "true");
+        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+        localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+        // Note: We intentionally do NOT set VITE_DISABLE_YJS_INDEXEDDB to ensure
+        // IndexedDB caching is available for Yjs sync stability
     });
 
     // Prepare the environment with initial content to ensure both contexts connect to the same document
@@ -45,15 +49,34 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         console.log("YJS connection not established, continuing with test");
         // Continue even if connection fails - test might still work with local sync
     }
+
+    // Wait for outliner items to be loaded before checking content
+    // This is necessary because Yjs sync may take time for seeded data to appear
+    await page1.waitForFunction(
+        () => {
+            const items = document.querySelectorAll(".outliner-item[data-item-id]");
+            return items.length >= 4; // Expect 4 items (title + 3 seeded lines)
+        },
+        null,
+        { timeout: 30000 },
+    ).catch(() => {
+        console.log("Warning: Expected 4 outliner items not found on page1, continuing anyway");
+    });
+
     await expect(page1.locator(".outliner-item")).toHaveCount(4, { timeout: 10000 }); // Expect 4 items (title + 3 initial)
 
     const context2 = await browser.newContext();
     const page2 = await context2.newPage();
     page2.on("console", (msg) => console.log(`[PAGE2] ${msg.text()}`));
 
+    // Use consistent settings with page1 and testHelpers for reliable Yjs sync
     await page2.addInitScript(() => {
-        localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
-        localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
+        localStorage.setItem("VITE_IS_TEST", "true");
+        localStorage.setItem("VITE_E2E_TEST", "true");
+        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+        localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+        // Note: We intentionally do NOT set VITE_DISABLE_YJS_INDEXEDDB to ensure
+        // IndexedDB caching is available for Yjs sync stability
     });
 
     // Prepare the second page environment (flags etc) - pass the project/page names from page1
@@ -79,6 +102,19 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         console.log("YJS connection not established on page2, continuing with test");
         // Continue even if connection fails - test might still work with local sync
     }
+
+    // Wait for outliner items to be loaded before checking content
+    // This is necessary because Yjs sync may take time for seeded data to appear
+    await page2.waitForFunction(
+        () => {
+            const items = document.querySelectorAll(".outliner-item[data-item-id]");
+            return items.length >= 4; // Expect 4 items (title + 3 seeded lines)
+        },
+        null,
+        { timeout: 30000 },
+    ).catch(() => {
+        console.log("Warning: Expected 4 outliner items not found on page2, continuing anyway");
+    });
 
     // Wait for both pages to load completely
     await expect(page1.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });

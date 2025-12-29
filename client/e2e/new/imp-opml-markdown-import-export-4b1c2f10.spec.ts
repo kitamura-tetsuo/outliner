@@ -73,7 +73,31 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         console.log("Browser console logs:", consoleLogs);
 
         await page.goto(`/${encoded}/ImportedPage`);
+
+        // Wait for Yjs connection and page items to be loaded
+        // This is necessary because page navigation and Yjs sync may take time
+        await page.waitForFunction(
+            () => {
+                const yjsStore = (window as any).__YJS_STORE__;
+                const isConnected = yjsStore?.getIsConnected?.() === true;
+                if (!isConnected) return false;
+
+                // Check if page items exist
+                const items = document.querySelectorAll(".outliner-item[data-item-id]");
+                return items.length >= 2; // ImportedPage + Child
+            },
+            null,
+            { timeout: 30000 },
+        ).catch(() => {
+            console.log("Warning: Yjs not connected or page items not loaded within timeout");
+        });
+
         await TestHelpers.waitForOutlinerItems(page);
+
+        // Wait for the "Child" item to appear - Yjs sync may take time
+        await page.waitForSelector(".outliner-item", { hasText: "Child" }, { timeout: 15000 }).catch(() => {
+            console.log("Warning: 'Child' item not found within timeout, continuing with test");
+        });
 
         // ページ表示後のツリーデータを確認
         const pageTreeData = await TreeValidator.getTreeData(page);
@@ -117,7 +141,30 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         console.log("Browser console logs:", consoleLogs);
 
         await page.goto(`/${encoded}/Imported`);
+
+        // Wait for Yjs connection and page items to be loaded
+        await page.waitForFunction(
+            () => {
+                const yjsStore = (window as any).__YJS_STORE__;
+                const isConnected = yjsStore?.getIsConnected?.() === true;
+                if (!isConnected) return false;
+
+                // Check if page items exist
+                const items = document.querySelectorAll(".outliner-item[data-item-id]");
+                return items.length >= 2; // Imported + Child
+            },
+            null,
+            { timeout: 30000 },
+        ).catch(() => {
+            console.log("Warning: Yjs not connected or page items not loaded within timeout");
+        });
+
         await TestHelpers.waitForOutlinerItems(page);
+
+        // Wait for the "Child" item to appear
+        await page.waitForSelector(".outliner-item", { hasText: "Child" }, { timeout: 15000 }).catch(() => {
+            console.log("Warning: 'Child' item not found within timeout, continuing with test");
+        });
 
         // ページ表示後のツリーデータを確認
         const pageTreeData = await TreeValidator.getTreeData(page);
@@ -163,6 +210,24 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         console.log("Available pages:", pageLinks);
 
         await page.goto(`/${encoded}/Parent`);
+
+        // Wait for Yjs connection and page items to be loaded
+        await page.waitForFunction(
+            () => {
+                const yjsStore = (window as any).__YJS_STORE__;
+                const isConnected = yjsStore?.getIsConnected?.() === true;
+                if (!isConnected) return false;
+
+                // Check if page items exist
+                const items = document.querySelectorAll(".outliner-item[data-item-id]");
+                return items.length >= 1; // At least Parent
+            },
+            null,
+            { timeout: 30000 },
+        ).catch(() => {
+            console.log("Warning: Yjs not connected or page items not loaded within timeout");
+        });
+
         await TestHelpers.waitForOutlinerItems(page);
 
         // SharedTreeの状態を確認
