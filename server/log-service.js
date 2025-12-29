@@ -175,8 +175,8 @@ function startLogService() {
                     const testUserPassword = process.env.TEST_USER_PASSWORD;
 
                     if (
-                        testUserPassword && email === "test@example.com" &&
-                        password === testUserPassword
+                        testUserPassword && email === "test@example.com"
+                        && password === testUserPassword
                     ) {
                         // 開発環境用のカスタムトークンを生成
                         const customToken = await admin.auth().createCustomToken(userRecord.uid, {
