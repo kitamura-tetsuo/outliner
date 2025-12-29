@@ -114,7 +114,9 @@ function isAuthRequired(): boolean {
 async function getFreshIdToken(): Promise<string> {
     // Wait for auth and fetch a fresh ID token
     const auth = userManager.auth;
-    const isTestEnv = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
+    const isTestEnv = import.meta.env.MODE === "test"
+        || (typeof window !== "undefined"
+            && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true" || (window as any).__E2E__ === true));
     const mustAuth = isAuthRequired();
 
     // If auth is required (e.g., E2E talking to secured WS), wait until user is available

@@ -72,12 +72,14 @@ function isTestEnvironment(): boolean {
         return true;
     }
 
-    // Fallback to localStorage checks (for runtime detection if needed)
+    // Fallback to runtime checks (for E2E tests where MODE might not be "test")
     if (typeof window !== "undefined") {
-        // Check localStorage (set by addInitScript in test setup)
-        if (window.localStorage?.getItem?.("VITE_IS_TEST") === "true") return true;
-        // Check E2E flag
-        if (window.localStorage?.getItem?.("VITE_E2E_TEST") === "true") return true;
+        // Check localStorage flags set by test setup (addInitScript in testHelpers)
+        const ls = window.localStorage;
+        if (ls?.getItem?.("VITE_IS_TEST") === "true") return true;
+        if (ls?.getItem?.("VITE_E2E_TEST") === "true") return true;
+        // Check __E2E__ property set by test helpers as additional detection
+        if ((window as any).__E2E__ === true) return true;
     }
 
     return false;
