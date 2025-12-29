@@ -1111,29 +1111,8 @@ onMount(async () => {
     if (currentUser) {
         isAuthenticated = true;
         logger.info("onMount: User already authenticated, setting isAuthenticated=true");
-        // Ensure YJS client is initialized even if auth event happened before listener registration
-        try {
-            // Check if we need to initialize the YJS client
-            const needsClientInit = !yjsStore.yjsClient;
-            const isTestEnv = import.meta.env.MODE === "test"
-                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                || (typeof window !== "undefined" && (window as any).__E2E__ === true);
-            if (needsClientInit && isTestEnv) {
-                logger.info("onMount: YJS client not ready, creating it directly");
-                const { getYjsClientByProjectTitle, createNewYjsProject } = await import("../../../services");
-                let client = await getYjsClientByProjectTitle(projectName);
-                if (!client) {
-                    logger.info("onMount: Creating new Yjs project");
-                    client = await createNewYjsProject(projectName);
-                }
-                if (client) {
-                    yjsStore.yjsClient = client as any;
-                    logger.info("onMount: YJS client created and set");
-                }
-            }
-        } catch (e) {
-            logger.warn("onMount: Failed to create YJS client", e);
-        }
+        // YJS client initialization is handled by scheduleLoadIfNeeded via loadProjectAndPage
+        // No duplicate initialization needed here
     }
     else {
         // 認証状態が変更されるまで待機（テスト環境対応）
@@ -1154,29 +1133,8 @@ onMount(async () => {
         if (currentUser) {
             isAuthenticated = true;
             logger.info(`onMount: Authentication detected after ${retryCount} retries, setting isAuthenticated=true`);
-            // Ensure YJS client is initialized even if auth event happened before listener registration
-            try {
-                // Check if we need to initialize the YJS client
-                const needsClientInit = !yjsStore.yjsClient;
-                const isTestEnv = import.meta.env.MODE === "test"
-                    || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                    || (typeof window !== "undefined" && (window as any).__E2E__ === true);
-                if (needsClientInit && isTestEnv) {
-                    logger.info("onMount: YJS client not ready, creating it directly");
-                    const { getYjsClientByProjectTitle, createNewYjsProject } = await import("../../../services");
-                    let client = await getYjsClientByProjectTitle(projectName);
-                    if (!client) {
-                        logger.info("onMount: Creating new Yjs project");
-                        client = await createNewYjsProject(projectName);
-                    }
-                    if (client) {
-                        yjsStore.yjsClient = client as any;
-                        logger.info("onMount: YJS client created and set");
-                    }
-                }
-            } catch (e) {
-                logger.warn("onMount: Failed to create YJS client", e);
-            }
+            // YJS client initialization is handled by scheduleLoadIfNeeded via loadProjectAndPage
+            // No duplicate initialization needed here
         }
         else {
             logger.info("onMount: No authentication detected after retries, staying unauthenticated");
