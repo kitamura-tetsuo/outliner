@@ -39,6 +39,9 @@ jobs:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           token: ${{ github.event_name == 'pull_request' && secrets.GITHUB_TOKEN || github.token }}
 
+      - name: Setup Test Environment
+        uses: ./.github/actions/setup-test-env
+
       - name: Check and fix formatting
         id: format_check
         run: |
@@ -103,10 +106,8 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Install Java 21
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openjdk-21-jre-headless
+      - name: Setup Test Environment
+        uses: ./.github/actions/setup-test-env
 
       - name: Firebase deployment dry run
         if: |
@@ -136,11 +137,7 @@ jobs:
 
           echo "Checking functions source code..."
           cd functions
-          npm install # Need dependencies for syntax check if not cached? 
-          # Actually pr-test restored cache. I should use the action or minimal setup.
-          # But for syntax check check `node -c index.js` might need deps if it imports?
-          # `node -c` checks syntax only, but if imports are resolved...
-          # The original pr-test used `node -c index.js`. 
+          # Dependencies restored by setup-test-env
           node -c index.js
           cd ..
 
