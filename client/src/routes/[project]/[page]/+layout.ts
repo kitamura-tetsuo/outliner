@@ -1,5 +1,3 @@
-import { error, redirect } from "@sveltejs/kit";
-
 // E2E stability: Load project data before rendering any page in the route
 // This ensures that when navigating directly to child routes like /schedule,
 // the project data is already loaded and available in the store
