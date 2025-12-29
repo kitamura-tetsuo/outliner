@@ -17,7 +17,16 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
     test("option list updates after createNewProject + setUserContainer replacement", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+        // ContainerSelector is on the home page, not project pages
+        // Use skipSync to avoid navigating to a project page
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
+
+        // Navigate to home page where ContainerSelector is rendered
+        await page.goto("/", { waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(2000);
+
+        // Set up accessible projects for container selector
+        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
 
         const select = page.locator("select.container-select");
         await expect(select).toBeVisible();

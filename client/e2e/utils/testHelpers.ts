@@ -158,7 +158,16 @@ export class TestHelpers {
     ): Promise<void> {
         await page.evaluate(({ projects }) => {
             const fs = (window as any).__FIRESTORE_STORE__;
-            if (fs) {
+            if (fs && fs.setUserProject) {
+                fs.setUserProject({
+                    userId: "test-user-id",
+                    defaultProjectId: projects[0] || "test-project-1",
+                    accessibleProjectIds: projects,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                });
+            } else if (fs) {
+                // Fallback for older implementations
                 fs.userProject = {
                     userId: "test-user-id",
                     defaultProjectId: projects[0] || "test-project-1",
@@ -166,10 +175,10 @@ export class TestHelpers {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 };
-                // Trigger sync for container store
-                if ((window as any).__CONTAINER_STORE__) {
-                    (window as any).__CONTAINER_STORE__.syncFromFirestore();
-                }
+            }
+            // Trigger sync for container store
+            if ((window as any).__CONTAINER_STORE__) {
+                (window as any).__CONTAINER_STORE__.syncFromFirestore();
             }
         }, { projects: projectNames });
     }

@@ -16,7 +16,9 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
     });
 
     test("container selector lists projects from store", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+        // ContainerSelector is on the home page, not project pages
+        // Use skipSync to avoid navigating to a project page
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
 
         // Set up accessible projects for container selector
         await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
@@ -47,7 +49,8 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
     });
 
     test("deletion page shows projects from store", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+        // Use skipSync to avoid navigating to a project page
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
 
         // Set up accessible projects
         await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
@@ -87,7 +90,9 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
     });
 
     test("dropdown list shows containers after initialization", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+        // ContainerSelector is on the home page, not project pages
+        // Use skipSync to avoid navigating to a project page
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
 
         // Set up accessible projects
         await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
@@ -116,7 +121,9 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
     });
 
     test("dropdown list is populated on page load", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+        // ContainerSelector is on the home page, not project pages
+        // Use skipSync to avoid navigating to a project page
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
 
         // Set up accessible projects
         await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);

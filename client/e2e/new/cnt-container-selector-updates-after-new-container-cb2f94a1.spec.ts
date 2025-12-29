@@ -16,7 +16,13 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CNT-12ee98aa: Shared Container Store", () => {
     test("dropdown list updates when new container is added", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+        // ContainerSelector is on the home page, not project pages
+        // Use skipSync to avoid navigating to a project page
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
+
+        // Navigate to home page where ContainerSelector is rendered
+        await page.goto("/", { waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(2000);
 
         // Set up accessible projects for container selector
         await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
