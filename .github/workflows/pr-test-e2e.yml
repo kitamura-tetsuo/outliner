@@ -1,0 +1,84 @@
+name: Test E2E
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: ["Format Check and Auto-Fix"]
+    types:
+      - completed
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-test:
+    if: |
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') &&
+      !(github.event_name == 'push' && contains(github.event.head_commit.message, 'Auto-fix: Format code with dprint'))
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [basic, core, new, auth, utils, server, yjs]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          clean: true
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Test Environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Run E2E tests (${{ matrix.project }})
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p job_logs
+          cd client
+          # Run specific project using the github:test:e2e script with --project argument
+          npm run github:test:e2e -- --project=${{ matrix.project }} 2>&1 | tee -a ../job_logs/e2e-${{ matrix.project }}.log
+        env:
+          CI: true
+          NODE_ENV: test
+          TEST_ENV: localhost
+          DISPLAY: :99
+          DISABLE_POSTHOG: true
+          VITE_DISABLE_FLUID_TELEMETRY: true
+
+      - name: Summarise failures
+        if: failure()
+        run: |
+          echo "## ❌ E2E Test Failed (${{ matrix.project }})" >> $GITHUB_STEP_SUMMARY
+          if [ -f "job_logs/e2e-${{ matrix.project }}.log" ]; then
+            grep -E -A1 -B0 "FAIL|FAILED" "job_logs/e2e-${{ matrix.project }}.log" >> $GITHUB_STEP_SUMMARY || true
+          fi
+
+      - name: Upload Logs & Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts-${{ matrix.project }}
+          path: |
+            job_logs/
+            client/test-results/
+            client/playwright-report/
+            client/logs/
+            server/logs/
+          retention-days: 2

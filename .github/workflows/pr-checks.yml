@@ -1,0 +1,153 @@
+name: Checks
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: ["Format Check and Auto-Fix"]
+    types:
+      - completed
+  workflow_dispatch:
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format-and-lint:
+    if: |
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') &&
+      !(github.event_name == 'push' && contains(github.event.head_commit.message, 'Auto-fix: Format code with dprint'))
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          clean: true
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          token: ${{ github.event_name == 'pull_request' && secrets.GITHUB_TOKEN || github.token }}
+
+      - name: Check and fix formatting
+        id: format_check
+        run: |
+          echo "Running formatting check..."
+          if ! ./scripts/check_format.sh; then
+            echo "❌ Code is not properly formatted!"
+            echo "🔧 Auto-fixing formatting issues..."
+            dprint fmt
+
+            # Check if there are any changes
+            if git diff --quiet; then
+              echo "No changes were made by dprint fmt"
+            else
+              # Configure git
+              git config user.email "action@github.com" || git config --global user.email "action@github.com"
+              git config user.name "GitHub Action" || git config --global user.name "GitHub Action"
+
+              # Only auto-commit for push/PR events
+              if [[ "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "pull_request" ]]; then
+                git fetch origin
+                if git merge-base --is-ancestor HEAD origin/${{ github.ref_name }}; then
+                  git add .
+                  git commit -m "Auto-fix: Format code with dprint"
+                  
+                  if ! git push; then
+                    echo "Push failed, trying to pull and retry..."
+                    git pull --rebase origin ${{ github.ref_name }}
+                    git push
+                  fi
+                  echo "✅ Formatting issues have been automatically fixed and committed!"
+                else
+                  echo "⚠️ Local branch is behind remote, skipping auto-commit"
+                fi
+              fi
+            fi
+          else
+            echo "✅ All code is properly formatted!"
+          fi
+
+      - name: Create .setup-installed
+        run: touch .setup-installed
+
+      - name: Lint functions
+        run: |
+          cd functions
+          npm run lint -- --fix
+
+  firebase-validation:
+    needs: format-and-lint
+    if: success()
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install Java 21
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-21-jre-headless
+
+      - name: Firebase deployment dry run
+        if: |
+          !(
+            github.actor == 'dependabot[bot]' ||
+            (github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]') ||
+            startsWith(github.head_ref, 'dependabot/') ||
+            startsWith(github.ref_name, 'dependabot/')
+          )
+        run: |
+          # Create temporary env file
+          cat > functions/.env <<EOF
+          AZURE_TENANT_ID=test-tenant-id
+          AZURE_ENDPOINT=https://test.fluidrelay.azure.com
+          AZURE_PRIMARY_KEY=test-primary-key
+          AZURE_SECONDARY_KEY=test-secondary-key
+          AZURE_ACTIVE_KEY=primary
+          NODE_ENV=test
+          EOF
+
+          # Set Firebase project
+          firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
+
+          # Validate
+          echo "Validating Firebase configuration..."
+          firebase functions:config:get --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No config found"
+
+          echo "Checking functions source code..."
+          cd functions
+          npm install # Need dependencies for syntax check if not cached? 
+          # Actually pr-test restored cache. I should use the action or minimal setup.
+          # But for syntax check check `node -c index.js` might need deps if it imports?
+          # `node -c` checks syntax only, but if imports are resolved...
+          # The original pr-test used `node -c index.js`. 
+          node -c index.js
+          cd ..
+
+          echo "Validating Firebase project configuration..."
+          firebase projects:list --token "${{ secrets.FIREBASE_TOKEN }}" | grep outliner-d57b0
+
+          echo "Performing Firebase Functions deployment validation..."
+          firebase deploy --only functions --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --dry-run
+        env:
+          CI: true
