@@ -429,11 +429,17 @@ export class Items implements Iterable<Item> {
     }
 
     [Symbol.iterator](): Iterator<Item> {
+        // childrenKeys() returns keys sorted by order.
+        // We capture them once to avoid O(N^2) complexity caused by re-sorting in at(index) on every iteration.
+        const keys = this.childrenKeys();
         let index = 0;
         return {
             next: (): IteratorResult<Item> => {
-                const it = this.at(index++);
-                if (it) return { value: it, done: false };
+                if (index < keys.length) {
+                    const key = keys[index++];
+                    // Directly create Item without calling at() to avoid re-sorting
+                    return { value: new Item(this.ydoc, this.tree, key!), done: false };
+                }
                 return { value: undefined!, done: true };
             },
         };
