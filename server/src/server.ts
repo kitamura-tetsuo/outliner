@@ -17,6 +17,8 @@ import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth.js";
 // @ts-ignore - Optional dependency, may not be available
 import { setupWSConnection as wsSetup } from "@y/websocket-server/utils";
 const setupWSConnection: any = wsSetup || (() => undefined);
+import { checkContainerAccess } from "./access-control.js";
+import { sanitizeUrl } from "./utils/sanitize.js";
 
 // --- Yjs protocol debug helpers (best-effort decode for logging) ---
 function parseYProtocolFrame(data: unknown): {
@@ -139,7 +141,7 @@ export function startServer(config: Config, logger = defaultLogger) {
         }
         const roomInfo = parseRoom(req.url ?? "/");
         if (!roomInfo) {
-            logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: req.url });
+            logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: sanitizeUrl(req.url) });
             ws.close(4002, "INVALID_ROOM");
             return;
         }
@@ -186,6 +188,14 @@ export function startServer(config: Config, logger = defaultLogger) {
 
         try {
             const decoded = await verifyIdTokenCached(token);
+
+            // Authorization check
+            const hasAccess = await checkContainerAccess(decoded.uid, roomInfo.project);
+            if (!hasAccess) {
+                logger.warn({ event: "ws_connection_denied", reason: "forbidden", uid: decoded.uid, room: docName });
+                ws.close(4003, "FORBIDDEN");
+                return;
+            }
 
             // Remove buffer listener
             ws.removeListener("message", bufferListener);

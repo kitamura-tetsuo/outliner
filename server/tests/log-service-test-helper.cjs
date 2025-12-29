@@ -22,9 +22,11 @@ if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
     process.env.GCLOUD_PROJECT = "test-project";
 }
 
-admin.initializeApp({
-    projectId: "test-project",
-});
+if (!admin.apps.length) {
+    admin.initializeApp({
+        projectId: "test-project",
+    });
+}
 
 // データベース接続設定（テスト用）
 const db = admin.firestore();

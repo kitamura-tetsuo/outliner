@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: ["Format Check and Auto-Fix"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Check if we should skip this run
+  check-skip:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        run: |
+          # If triggered by workflow_run, check conclusion
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            if [[ "${{ github.event.workflow_run.conclusion }}" != "success" ]]; then
+              echo "should_skip=true" >> $GITHUB_OUTPUT
+              echo "Skipping because formatter workflow failed"
+              exit 0
+            fi
+          fi
+          
+          # If triggered by push, check commit message for auto-fix
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            if [[ "${{ github.event.head_commit.message }}" == *"Auto-fix: Format code with dprint"* ]]; then
+              echo "should_skip=true" >> $GITHUB_OUTPUT
+              echo "Skipping auto-fix commit"
+              exit 0
+            fi
+          fi
+          
+          echo "should_skip=false" >> $GITHUB_OUTPUT
+
+  checks:
+    needs: check-skip
+    if: needs.check-skip.outputs.should_skip != 'true'
+    uses: ./.github/workflows/pr-checks.yml
+    secrets: inherit
+
+  unit-test:
+    needs: check-skip
+    if: needs.check-skip.outputs.should_skip != 'true'
+    uses: ./.github/workflows/pr-test-unit.yml
+    secrets: inherit
+
+  integration-test:
+    needs: check-skip
+    if: needs.check-skip.outputs.should_skip != 'true'
+    uses: ./.github/workflows/pr-test-integration.yml
+    secrets: inherit
+
+  e2e-test:
+    needs: check-skip
+    if: needs.check-skip.outputs.should_skip != 'true'
+    uses: ./.github/workflows/pr-test-e2e.yml
+    secrets: inherit
