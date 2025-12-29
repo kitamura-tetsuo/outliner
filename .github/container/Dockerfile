@@ -20,9 +20,9 @@ COPY functions/package.json functions/package-lock.json ./functions/
 
 # Install dependencies
 # We ignore scripts to speed up install and avoid issues with missing tools in the minimal build env
-RUN cd client && npm ci --ignore-scripts
-RUN cd server && npm ci --ignore-scripts
-RUN cd functions && npm ci --ignore-scripts
+RUN cd client && npm install --ignore-scripts
+RUN cd server && npm install --ignore-scripts
+RUN cd functions && npm install --ignore-scripts
 
 # Rebuild client dependencies that might need it (like esbuild)
 RUN cd client && npm rebuild
