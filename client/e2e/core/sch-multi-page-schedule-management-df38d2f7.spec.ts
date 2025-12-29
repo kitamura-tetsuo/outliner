@@ -164,15 +164,24 @@ test.describe("Multi-Page Schedule Management", () => {
         const { projectName } = testProject;
 
         // Strict helper to ensure we are on the connected project and page
+        // Waits for multiple conditions to ensure YJS client is connected and page is loaded
         const ensureConnectedPage = async () => {
+            // First wait for the basic page structure to be ready
             await page.waitForFunction(() => {
-                const win: any = window as any;
+                const win = window as any;
+                // Check for basic page readiness
+                return win.generalStore?.project !== undefined;
+            }, { timeout: 30000 });
+
+            // Then wait for YJS client to be connected (might take additional time for WebSocket)
+            await page.waitForFunction(() => {
+                const win = window as any;
                 const client = win.__YJS_STORE__?.yjsClient;
                 const gs = win.generalStore;
+                // Full check: client, project, and currentPage all need to be ready
                 if (!client || !gs?.project || !gs?.currentPage) return false;
 
                 // Ensure project matches client project (confirms connected project)
-                // Note: client.getProject might be a function or property depending on impl
                 if (client.getProject) {
                     const cp = typeof client.getProject === "function" ? client.getProject() : client.getProject;
                     if (gs.project !== cp) return false;
@@ -180,7 +189,6 @@ test.describe("Multi-Page Schedule Management", () => {
 
                 return true;
             }, { timeout: 30000 });
-            // await page.waitForTimeout(500); // Small buffer for reactivity
         };
 
         // Go to page 1 using navigateToProjectPage for reliable sync

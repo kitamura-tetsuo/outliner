@@ -41,11 +41,35 @@ onMount(async () => {
         }
     } catch {}
     // セッションに保存されている pageId がある場合は最優先で採用する。
-    // 一度解決した pageId を後続の currentPage などで上書きしてしまうと
-    // リロード後に別のページIDを指してしまうことがあるため、
-    // ここで先に固定しておく。
+    // ただし、pageIdが現在のpageTitleに対応するページのものであるかを検証する
     if (sessionPinnedPageId) {
-        pageId = sessionPinnedPageId;
+        // Validate that sessionPinnedPageId actually belongs to current pageTitle
+        let isValid = false;
+        try {
+            const items = store.pages?.current;
+            const len = items?.length ?? 0;
+            for (let i = 0; i < len; i++) {
+                const p = items?.at(i);
+                if (!p) continue;
+                if (String(p.id) === String(sessionPinnedPageId)) {
+                    const title = p.text?.toString?.() ?? "";
+                    if (title.toLowerCase() === pageTitle.toLowerCase()) {
+                        isValid = true;
+                        break;
+                    }
+                }
+            }
+        } catch {}
+        if (isValid) {
+            pageId = sessionPinnedPageId;
+            console.log("Schedule page: Using validated session pinned pageId=", sessionPinnedPageId);
+        } else {
+            console.log("Schedule page: Session pinned pageId invalid for current page, will resolve fresh", {
+                sessionPinnedPageId,
+                pageTitle
+            });
+            sessionPinnedPageId = undefined; // Clear so we don't use stale value
+        }
     }
 
     // store.currentPage が設定されるまで最大5秒待機
@@ -104,8 +128,29 @@ onMount(async () => {
     try {
         if (typeof window !== "undefined") {
             const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
-            window.sessionStorage?.setItem(key, String(pageId));
-            console.log("Schedule page: Saved session pageId=", pageId);
+            // Only save if pageId was resolved from current page (not from stale session)
+            // Validate that the resolved pageId actually belongs to the current pageTitle
+            const isValidPageId = pageId && (() => {
+                try {
+                    const items = store.pages?.current;
+                    const len = items?.length ?? 0;
+                    for (let i = 0; i < len; i++) {
+                        const p = items?.at(i);
+                        if (!p) continue;
+                        if (String(p.id) === String(pageId)) {
+                            const title = p.text?.toString?.() ?? "";
+                            return title.toLowerCase() === pageTitle.toLowerCase();
+                        }
+                    }
+                } catch {}
+                return false;
+            })();
+            if (isValidPageId) {
+                window.sessionStorage?.setItem(key, String(pageId));
+                console.log("Schedule page: Saved validated session pageId=", pageId);
+            } else {
+                console.log("Schedule page: Skipping session save - pageId not validated", { pageId, pageTitle });
+            }
         }
     } catch {}
 
