@@ -28,10 +28,14 @@ class YjsStore {
             const existingGuid: string | undefined = (globalStore.project as any)?.ydoc?.guid;
 
             // If the currently connected project refers to the same Y.Doc (GUID), skip
+            // However, if store.project is a provisional/empty project, we want to update
+            // to ensure we have the real connected project with seeded data
             if (
                 (existingGuid && newGuid && existingGuid === newGuid)
-                || globalStore.project === (connectedProject as any)
+                && globalStore.project === (connectedProject as any)
             ) {
+                // Still update to ensure reactivity is triggered
+                globalStore.project = connectedProject as any;
                 return;
             }
             // さらに、自身が直前に設定した GUID とも比較して冪等性を高める

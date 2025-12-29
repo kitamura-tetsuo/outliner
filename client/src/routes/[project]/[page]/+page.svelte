@@ -155,6 +155,19 @@ async function loadProjectAndPage() {
     error = undefined;
     pageNotFound = false;
 
+    // E2E stability: Brief pause to allow parallel page navigation to set yjsStore first
+    // If no client exists after a short wait, create a new one rather than blocking indefinitely
+    let waitCount = 0;
+    const maxBriefWait = 5; // 0.5 seconds max wait
+    while (!yjsStore.yjsClient && waitCount < maxBriefWait) {
+        await new Promise(r => setTimeout(r, 100));
+        waitCount++;
+    }
+    if (waitCount > 0) {
+        logger.info(`loadProjectAndPage: Waited ${waitCount * 100}ms for existing yjsStore.yjsClient`);
+    }
+    // If no client exists after brief wait, proceed to create/get one (don't wait forever)
+
     // 即時に仮プロジェクト/ページを用意して UI 待機を満たす（本接続が来たら yjsStore が置換）
     // REMOVED: Legacy provisional project creation. We now wait for the real project to load via Yjs.
 
@@ -163,21 +176,31 @@ async function loadProjectAndPage() {
 
     try {
         // コンテナを読み込む
-        logger.info(`loadProjectAndPage: Calling getYjsClientByProjectTitle("${projectName}")`);
-        let client = await getYjsClientByProjectTitle(projectName);
+        // E2E stability: Check yjsStore FIRST before registry lookup to ensure we reuse existing client
+        let client = yjsStore.yjsClient as any;
+        if (client) {
+            const existingProject = client.getProject?.();
+            if (existingProject && existingProject.title === projectName) {
+                logger.info(`loadProjectAndPage: Reusing existing yjsStore client for "${projectName}"`);
+            } else {
+                client = null; // Client exists but for different project
+                logger.info(`loadProjectAndPage: yjsStore client exists but project mismatch, checking registry`);
+            }
+        }
+
+        // If not found in yjsStore, check registry
+        if (!client) {
+            logger.info(`loadProjectAndPage: Calling getYjsClientByProjectTitle("${projectName}")`);
+            client = await getYjsClientByProjectTitle(projectName);
+        }
+
+        // Last resort: create new client if not found anywhere
         if (!client) {
             try {
-                logger.info(`loadProjectAndPage: No client found for title, creating new Yjs project: ${projectName}`);
+                logger.info(`loadProjectAndPage: No client found, creating new Yjs project: ${projectName}`);
                 client = await createNewYjsProject(projectName);
             } catch (e) {
                 logger.warn("loadProjectAndPage: createNewYjsProject failed", e);
-            }
-        }
-        // Fallback: reuse existing client from store if lookup failed (SPA navigation retains it)
-        if (!client && yjsStore.yjsClient) {
-            const fallbackProject = yjsStore.yjsClient.getProject?.();
-            if (fallbackProject && (fallbackProject.title === projectName)) {
-                client = yjsStore.yjsClient as any;
             }
         }
         logger.info(`loadProjectAndPage: YjsClient loaded for project: ${projectName}`);
@@ -889,7 +912,17 @@ async function loadProjectAndPage() {
     finally {
         isLoading = false;
         __loadingInProgress = false;
-        // b schedule page d: 5B URL 5B /schedule 5D 5b5D 5b5D
+        // Export to window for child pages to trigger load
+        if (typeof window !== "undefined") {
+            (window as any).loadProjectAndPage = loadProjectAndPage;
+            (window as any).__loadingInProgress = __loadingInProgress;
+            // E2E stability: Also export the current YjsClient for child pages to access
+            if (yjsStore.yjsClient) {
+                (window as any).__YJS_CLIENT__ = yjsStore.yjsClient;
+                console.log("[+page.svelte] Exported YjsClient to window:", yjsStore.yjsClient.containerId);
+            }
+        }
+        // b schedule page d: 5B URL 5B /schedule 5D 5b5D 班级
         try { capturePageIdForSchedule(); } catch {}
     }
 }
