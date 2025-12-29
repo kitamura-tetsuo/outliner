@@ -15,16 +15,10 @@ export class SeedClient {
     constructor(projectId: string, authToken: string) {
         this.projectId = encodeURIComponent(projectId);
         this.authToken = authToken;
-        // Use the API server URL for seeding (same server that serves the seed API)
-        // VITE_API_SERVER_URL is set in .env.test to point to the server's API port (7091)
-        const apiUrl = process.env.VITE_API_SERVER_URL;
-        if (apiUrl) {
-            this.apiUrl = apiUrl;
-        } else {
-            // Fallback to Yjs port if API URL not set (for backwards compatibility)
-            const yjsPort = process.env.VITE_YJS_PORT || "7093";
-            this.apiUrl = `http://localhost:${yjsPort}`;
-        }
+        // Use VITE_YJS_PORT for the seed API (same port as Yjs WebSocket server)
+        // The seed API is served from the Yjs server, not the log service
+        const yjsPort = process.env.VITE_YJS_PORT || "7093";
+        this.apiUrl = process.env.VITE_YJS_API_URL || `http://localhost:${yjsPort}`;
     }
 
     /**
