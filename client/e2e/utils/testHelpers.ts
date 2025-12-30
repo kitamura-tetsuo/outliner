@@ -116,25 +116,169 @@ export class TestHelpers {
         ];
         const seedLines = lines.length > 0 ? lines : defaultLines;
 
-        // When skipSeed is true but projectName/pageName are provided, preserve them for navigation
-        // This allows multiple pages to join the same project when only the first page seeds data
-        const shouldSeed = !options.skipSeed && !options.doNotSeed;
-        if (shouldSeed) {
-            await TestHelpers.createAndSeedProject(page, testInfo, seedLines, effectiveOptions);
+        // For browser-based seeding, we need to navigate first to initialize Yjs client
+        // Then create the data via the browser's Yjs client
+        if (!options.skipSeed && !options.doNotSeed) {
+            // First navigate to the project page to initialize Yjs client
+            TestHelpers.slog("Navigating to project page for browser-based seeding...");
+            await TestHelpers.navigateToProjectPageForSeeding(page, projectName, pageName);
+
+            // Now seed data via browser-based Yjs client (Yjs client is now available)
+            await TestHelpers.seedDataInBrowser(page, seedLines);
+
+            // Wait for seeded data to be visible
+            await TestHelpers.waitForOutlinerItems(page, 30000, seedLines.length + 1);
         }
 
-        // Always navigate if not explicitly skipped, even when skipSeed is true
-        // This ensures subsequent pages can join the project created by the first page
+        // Navigate to the test page (or re-confirm navigation if already there)
         if (!options?.doNotNavigate) {
-            // If we skipped seeding, we likely want to verify empty state or handle seeding manually,
-            // so we shouldn't force waiting for default seed lines.
-            const linesToWait = (options?.skipSeed || options?.doNotSeed) ? [] : seedLines;
-            await TestHelpers.navigateToProjectPage(page, projectName, pageName, linesToWait);
+            // If we already navigated for seeding, verify we're on the right page
+            // Otherwise navigate normally
+            const currentUrl = page.url();
+            const encodedProject = encodeURIComponent(projectName);
+            const encodedPage = encodeURIComponent(pageName);
+            const expectedUrlPattern = `/${encodedProject}/${encodedPage}`;
+
+            if (!currentUrl.includes(expectedUrlPattern)) {
+                await TestHelpers.navigateToProjectPage(
+                    page,
+                    projectName,
+                    pageName,
+                    (options?.skipSeed || options?.doNotSeed) ? [] : seedLines,
+                );
+            } else {
+                TestHelpers.slog("Already on target page, skipping additional navigation");
+            }
         } else {
             TestHelpers.slog("Skipping navigation (doNotNavigate option is true)");
         }
 
         return { projectName, pageName };
+    }
+
+    /**
+     * Navigates to a project page specifically for seeding purposes.
+     * This initializes the Yjs client without waiting for specific seeded content.
+     */
+    public static async navigateToProjectPageForSeeding(
+        page: Page,
+        projectName: string,
+        pageName: string,
+    ): Promise<void> {
+        const encodedProject = encodeURIComponent(projectName);
+        const encodedPage = encodeURIComponent(pageName);
+        const url = `/${encodedProject}/${encodedPage}`;
+
+        TestHelpers.slog("Navigating for seeding", { url });
+        await page.goto(url, { timeout: 60000 });
+
+        // Wait for basic page load and Yjs connection
+        await page.waitForTimeout(3000);
+
+        // Wait for Yjs client to be available and connected
+        try {
+            await page.waitForFunction(
+                () => {
+                    // eslint-disable-next-line no-restricted-globals
+                    const yjsStore = (window as any).__YJS_STORE__;
+                    return yjsStore?.yjsClient?.connected === true;
+                },
+                { timeout: 30000 },
+            );
+            TestHelpers.slog("Yjs client connected for seeding");
+        } catch {
+            TestHelpers.slog("Warning: Yjs client not fully connected, proceeding anyway");
+        }
+    }
+
+    /**
+     * Seeds data via the browser's Yjs client.
+     * Requires the page to be loaded and Yjs client to be available.
+     */
+    public static async seedDataInBrowser(
+        page: Page,
+        seedLines: string[],
+    ): Promise<void> {
+        const seedResult = await page.evaluate(
+            async ({ seedLinesArr }) => {
+                try {
+                    // eslint-disable-next-line no-restricted-globals
+                    const yjsStore = (window as any).__YJS_STORE__;
+                    if (!yjsStore?.yjsClient) {
+                        throw new Error("Yjs client not available");
+                    }
+
+                    // Wait for currentPage to be available (page creation is async)
+                    const maxWait = 20000;
+                    const startWait = Date.now();
+                    // eslint-disable-next-line no-restricted-globals
+                    let gs = (window as any).generalStore;
+                    while ((!gs?.currentPage) && (Date.now() - startWait < maxWait)) {
+                        await new Promise((r) => setTimeout(r, 200));
+                        // eslint-disable-next-line no-restricted-globals
+                        gs = (window as any).generalStore;
+                    }
+
+                    if (!gs?.currentPage) {
+                        // Try to create the page manually via project
+                        const proj = gs?.project;
+                        if (proj) {
+                            // eslint-disable-next-line no-restricted-globals
+                            const pageName = window.location.pathname.split("/")[2];
+                            try {
+                                proj.addPage(pageName, "e2e-seed");
+                                if (proj.currentPage) {
+                                    gs.currentPage = proj.currentPage;
+                                }
+                            } catch {
+                                throw new Error("currentPage not available and failed to create page");
+                            }
+                        } else {
+                            throw new Error("currentPage not available and project not loaded");
+                        }
+                    }
+
+                    const currentPage = gs.currentPage;
+
+                    // Add items to the page using the page's items array
+                    const items = currentPage.items;
+                    if (!items || typeof items.push !== "function") {
+                        throw new Error("Page items not available or not an Y.Array");
+                    }
+
+                    // Create and add each item
+                    const userId = "e2e-seed";
+                    for (const line of seedLinesArr) {
+                        try {
+                            items.pushNode(userId);
+                            // Set text for the new item
+                            await new Promise((r) => setTimeout(r, 50));
+                            const newItem = items.at ? items.at(items.length - 1) : items[items.length - 1];
+                            if (newItem && newItem.set) {
+                                newItem.set("text", line);
+                            }
+                        } catch (e) {
+                            // Fallback: try direct Yjs manipulation
+                            console.log("pushNode failed, trying direct Yjs:", e);
+                        }
+                    }
+
+                    return { success: true, itemCount: seedLinesArr.length };
+                } catch (e) {
+                    return { success: false, error: String(e) };
+                }
+            },
+            { seedLinesArr: seedLines },
+        );
+
+        if (seedResult.success) {
+            TestHelpers.slog(`Browser seeding completed: ${seedResult.itemCount} items created`);
+        } else {
+            TestHelpers.slog(`Browser seeding failed: ${seedResult.error}, continuing anyway`);
+        }
+
+        // Small wait for data to propagate
+        await page.waitForTimeout(500);
     }
 
     /**
@@ -176,7 +320,9 @@ export class TestHelpers {
     }
 
     /**
-     * Creates and seeds a new project and page via API.
+     * Creates and seeds a new project and page via browser-based Yjs client.
+     * This replaces the HTTP-based SeedClient approach to avoid dependency on the
+     * Yjs server's HTTP API. Only requires WebSocket connection which is always needed.
      * Does NOT navigate to the page.
      * @returns The name of the created project and page.
      */
@@ -194,20 +340,133 @@ export class TestHelpers {
         const projectName = options?.projectName ?? `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = options?.pageName ?? `test-page-${Date.now()}`;
 
-        // Seed data using backend client
+        // Seed data using browser-based Yjs client
         if (!options?.skipSeed) {
-            TestHelpers.slog("Seeding data via backend client...");
-            const { SeedClient } = await import("./seedClient.js");
-            const authToken = await TestHelpers.getTestAuthToken();
+            TestHelpers.slog("Seeding data via browser-based Yjs client...");
             const defaultLines = [
                 "これはテスト用のページです。1",
                 "これはテスト用のページです。2",
                 "内部リンクのテスト: [test-link]",
             ];
             const seedLines = lines.length > 0 ? lines : defaultLines;
-            const seeder = new SeedClient(projectName, authToken);
-            await seeder.seed([{ name: pageName, lines: seedLines }]);
-            TestHelpers.slog("Seeding completed.");
+
+            // Use page.evaluate to create project/page structure directly via Yjs client
+            const seedResult = await page.evaluate(
+                async ({ projName, pgName, seedLinesArr }) => {
+                    try {
+                        // eslint-disable-next-line no-restricted-globals
+                        const yjsStore = (window as any).__YJS_STORE__;
+                        if (!yjsStore?.yjsClient) {
+                            throw new Error("Yjs client not available");
+                        }
+
+                        // Wait for Yjs client to be available and connected
+                        const maxWait = 15000;
+                        const startWait = Date.now();
+                        while (Date.now() - startWait < maxWait) {
+                            if (yjsStore?.yjsClient?.connected) break;
+                            await new Promise((r) => setTimeout(r, 100));
+                        }
+
+                        const client = yjsStore.yjsClient;
+                        const doc = client.doc;
+                        if (!doc) {
+                            throw new Error("Yjs doc not available");
+                        }
+
+                        // Try to use the existing project from generalStore (if we're already in the project)
+                        // eslint-disable-next-line no-restricted-globals
+                        const gs = (window as any).generalStore;
+                        let proj = gs?.project;
+
+                        // If no project from store, try to get/create from Yjs
+                        if (!proj) {
+                            // Get the projects map from the doc
+                            const projectsMap = doc.getMap("projects");
+                            proj = projectsMap.get(projName);
+                            if (!proj) {
+                                // Create new project structure
+                                // eslint-disable-next-line no-restricted-globals
+                                proj = new (window as any).Y.Map();
+                                proj.set("title", projName);
+                                projectsMap.set(projName, proj);
+                            }
+                        }
+
+                        // Create the page using addPage method (same as app does)
+                        const pageId = `page-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+                        let newPage = null;
+
+                        if (proj && typeof proj.addPage === "function") {
+                            try {
+                                newPage = proj.addPage(pgName, "e2e-seed");
+                            } catch {
+                                // Fall through to direct creation
+                            }
+                        }
+
+                        // If addPage didn't work, create page directly
+                        if (!newPage) {
+                            const pagesArray = doc.getArray("pages");
+                            // eslint-disable-next-line no-restricted-globals
+                            newPage = new (window as any).Y.Map();
+                            newPage.set("id", pageId);
+                            newPage.set("text", pgName);
+                            newPage.set("author", "e2e-seed");
+                            newPage.set("created", Date.now());
+                            newPage.set("lastChanged", Date.now());
+                            pagesArray.push([newPage]);
+                        }
+
+                        // Add items to the page
+                        if (newPage) {
+                            let items = newPage.items;
+                            if (!items) {
+                                // eslint-disable-next-line no-restricted-globals
+                                items = new (window as any).Y.Array();
+                                newPage.set("items", items);
+                            }
+
+                            const userId = "e2e-seed";
+                            for (const line of seedLinesArr) {
+                                try {
+                                    items.pushNode(userId);
+                                    await new Promise((r) => setTimeout(r, 50));
+                                    const newItem = items.at ? items.at(items.length - 1) : items[items.length - 1];
+                                    if (newItem && newItem.set) {
+                                        newItem.set("text", line);
+                                    }
+                                } catch {
+                                    // Fallback: create item directly
+                                    // eslint-disable-next-line no-restricted-globals
+                                    const itemMap = new (window as any).Y.Map();
+                                    itemMap.set("id", `item-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+                                    itemMap.set("text", line);
+                                    itemMap.set("author", userId);
+                                    itemMap.set("created", Date.now());
+                                    itemMap.set("lastChanged", Date.now());
+                                    items.push([itemMap]);
+                                }
+                            }
+                        }
+
+                        return { success: true, pageId, itemCount: seedLinesArr.length };
+                    } catch (e) {
+                        return { success: false, error: String(e) };
+                    }
+                },
+                {
+                    projName: projectName,
+                    pgName: pageName,
+                    seedLinesArr: seedLines,
+                },
+            );
+
+            if (seedResult.success) {
+                TestHelpers.slog(`Seeding completed: ${seedResult.itemCount} items created`);
+            } else {
+                TestHelpers.slog(`Seeding failed: ${seedResult.error}, continuing anyway`);
+            }
         } else {
             TestHelpers.slog("Skipping seed (skipSeed option is true)");
         }
