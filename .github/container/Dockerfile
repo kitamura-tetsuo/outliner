@@ -23,6 +23,7 @@ COPY functions/package.json functions/package-lock.json ./functions/
 
 # Install dependencies via setup.sh
 ENV SKIP_SERVER_START=1
+ENV SKIP_PORT_WAIT=1
 ENV SKIP_INSTALL=0
 RUN bash scripts/setup.sh
 
