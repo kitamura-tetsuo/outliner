@@ -9,6 +9,7 @@ on:
     workflows: ["Format Check and Auto-Fix"]
     types:
       - completed
+    branches: [main, develop]
 
 permissions:
   contents: write
@@ -27,6 +28,8 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # If triggered by workflow_run, check conclusion
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
@@ -34,6 +37,23 @@ jobs:
               echo "should_skip=true" >> $GITHUB_OUTPUT
               echo "Skipping because formatter workflow failed"
               exit 0
+            fi
+
+            # Check if the commit is the same as the triggering workflow's head_commit
+            # If it is, then no new commit was created by the formatter, so we skip (duplicate of push trigger)
+            HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
+            TRIGGERING_SHA="${{ github.event.workflow_run.head_sha }}"
+            
+            # Fetch the latest commit of the branch
+            echo "Checking for changes on $HEAD_BRANCH..."
+            LATEST_SHA=$(gh api repos/${{ github.repository }}/git/ref/heads/$HEAD_BRANCH --jq .object.sha)
+             
+            if [[ "$TRIGGERING_SHA" == "$LATEST_SHA" ]]; then
+               echo "should_skip=true" >> $GITHUB_OUTPUT
+               echo "Skipping because no changes were made by formatter (SHA matches)"
+               exit 0
+            else
+               echo "Formatting changed code ($TRIGGERING_SHA != $LATEST_SHA). Running CI."
             fi
           fi
           
