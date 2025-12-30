@@ -566,14 +566,8 @@ async function loadProjectAndPage() {
                         if (pageRef) {
                             // Capture current provisional page BEFORE switching, to migrate its children if needed
                             const prevCurrent: any = (store.currentPage as any);
-                            // Move currentPage to the connected project's page
-                            try {
-                                const cur = prevCurrent;
-                                const sameDoc = !!(cur?.ydoc && pageRef?.ydoc && cur.ydoc === pageRef.ydoc);
-                                if (!sameDoc || cur?.id !== pageRef?.id) {
-                                    store.currentPage = pageRef as any;
-                                }
-                            } catch {}
+                            // IMPORTANT: Defer setting store.currentPage until AFTER hydration to ensure items are loaded
+                            let targetPageRef: any = null;
 
                             // Hydrate page items from page subdoc's pageItems map
                             // This bridges the gap between how items are stored (in page subdoc) and how they're accessed (via page.items)
@@ -641,11 +635,11 @@ async function loadProjectAndPage() {
                                         if (hydrationItemCount > 0) {
                                             // Get the fresh page reference after hydration to ensure we have the updated items
                                             const hydratedPageRef = projAny.findPage(pageRef.id);
-                                            if (hydratedPageRef) {
-                                                store.currentPage = hydratedPageRef as any;
-                                            } else {
-                                                store.currentPage = pageRef as any;
-                                            }
+                                            targetPageRef = hydratedPageRef || pageRef;
+                                        } else {
+                                            // Even if hydration didn't complete, we still need a page reference
+                                            // But don't set store.currentPage yet - we'll handle this after migration
+                                            targetPageRef = pageRef;
                                         }
                                     }
                                 }
@@ -747,6 +741,21 @@ async function loadProjectAndPage() {
                                     logger.info("loadProjectAndPage: Applied pending import to pageRef", { projectName, pageName });
                                 }
                             } catch {}
+
+                            // CRITICAL: Only set store.currentPage AFTER hydration and migration are complete
+                            // This ensures the page has items before the UI tries to render them
+                            if (targetPageRef) {
+                                try {
+                                    const cur = prevCurrent;
+                                    const sameDoc = !!(cur?.ydoc && targetPageRef?.ydoc && cur?.ydoc === targetPageRef?.ydoc);
+                                    if (!sameDoc || cur?.id !== targetPageRef?.id) {
+                                        store.currentPage = targetPageRef as any;
+                                        logger.info(`loadProjectAndPage: Set store.currentPage to hydrated page (id=${targetPageRef?.id})`);
+                                    }
+                                } catch (e) {
+                                    logger.warn("loadProjectAndPage: Failed to set store.currentPage", e);
+                                }
+                            }
 
                             // Ensure minimum lines exist in connected page for E2E stability
                             // Skip if SKIP_TEST_CONTAINER_SEED is set (e.g., during import tests)
@@ -977,13 +986,12 @@ onMount(() => {
                         const p = itemsAny.at ? itemsAny.at(i) : itemsAny[i];
                         const title = p?.text?.toString?.() ?? String(p?.text ?? "");
                         if (String(title).toLowerCase() === String(pageName).toLowerCase()) {
-                            store.currentPage = p as any;
-                            console.log(`[+page.svelte] Found page via Yjs sync: ${title} (id=${p?.id})`);
-                            // Wait for page subdocument to be connected and items to be available
+                            // Wait for page subdocument to be connected and items to be available BEFORE setting currentPage
                             try {
                                 const yjsClient = yjsStore.yjsClient;
                                 const pageId = p?.id;
                                 console.log(`[+page.svelte] Checking page connection: pageId=${pageId}, yjsClient=${!!yjsClient}`);
+                                let itemsLoaded = false;
                                 if (yjsClient && pageId) {
                                     const pageConn = yjsClient.getPageConnection?.(pageId);
                                     console.log(`[+page.svelte] Initial pageConn check: pageConn=${!!pageConn}`);
@@ -995,7 +1003,21 @@ onMount(() => {
                                             console.log(`[+page.svelte] Page connected, checking items: count=${itemCount}`);
                                             if (itemCount > 0) {
                                                 console.log(`[+page.svelte] Page "${pageName}" connected with ${itemCount} items`);
+                                                itemsLoaded = true;
                                                 break;
+                                            }
+                                            // If items are 0, trigger re-hydration to ensure seeded content is copied
+                                            if (itemCount === 0) {
+                                                console.log(`[+page.svelte] Page connected but items=0, triggering re-hydration`);
+                                                try {
+                                                    const projAny = store.project as any;
+                                                    if (typeof projAny.hydratePageItems === "function") {
+                                                        await projAny.hydratePageItems(pageId);
+                                                        console.log(`[+page.svelte] Re-hydration triggered for page ${pageId}`);
+                                                    }
+                                                } catch (e) {
+                                                    console.warn(`[+page.svelte] Error during re-hydration: ${e}`);
+                                                }
                                             }
                                         } else {
                                             console.log(`[+page.svelte] Waiting for page connection (iter ${waitIter}/50)`);
@@ -1003,10 +1025,16 @@ onMount(() => {
                                         await new Promise(r => setTimeout(r, 100));
                                     }
                                 }
+                                // Only set currentPage AFTER items are confirmed loaded
+                                if (itemsLoaded) {
+                                    store.currentPage = p as any;
+                                    console.log(`[+page.svelte] Found page via Yjs sync with items: ${title} (id=${p?.id})`);
+                                    return;
+                                }
+                                console.log(`[+page.svelte] Page found but items not loaded yet, continuing retry...`);
                             } catch (e) {
                                 console.warn(`[+page.svelte] Error waiting for page connection in onMount: ${e}`);
                             }
-                            return;
                         }
                     }
                 }
