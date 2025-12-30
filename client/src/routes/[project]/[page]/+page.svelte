@@ -759,13 +759,26 @@ async function loadProjectAndPage() {
 
                             // Ensure minimum lines exist in connected page for E2E stability
                             // Skip if SKIP_TEST_CONTAINER_SEED is set (e.g., during import tests)
-                            // This block is intentionally removed - seeding is now only done in the second block below
+                            if (isTestEnv && targetPageRef && !window.sessionStorage?.getItem("SKIP_TEST_CONTAINER_SEED")) {
+                                const pageItems = targetPageRef?.items as any;
+                                const existingCount = pageItems?.length ?? 0;
+                                if (existingCount === 0) {
+                                    logger.info(`E2E: Seeding default items for page "${pageName}"`);
+                                    const userId = userManager?.getCurrentUser?.()?.id ?? "tester";
+                                    // Create 3 default items for E2E tests
+                                    const defaultTexts = ["これはテスト用のページです。1", "これはテスト用のページです。2", "これはテスト用のページです。3"];
+                                    for (const text of defaultTexts) {
+                                        const node = pageItems?.addNode?.(userId);
+                                        if (node) {
+                                            node.updateText?.(text);
+                                        }
+                                    }
+                                    logger.info(`E2E: Created ${defaultTexts.length} default items`);
+                                }
+                            }
+                        } catch (e) {
+                            logger.warn("loadProjectAndPage: post-attach page resolve/migration failed", e);
                         }
-                        // In test environment (unless SKIP_TEST_CONTAINER_SEED is set), ensure default lines exist
-                        // REMOVED: Legacy seeding logic removed. Tests should seed their own data.
-                    } catch (e) {
-                        logger.warn("loadProjectAndPage: post-attach page resolve/migration failed", e);
-                    }
                 }
             } catch (e) {
                 logger.warn("loadProjectAndPage: failed to set store.project from client", e);
@@ -1017,6 +1030,22 @@ onMount(() => {
                                                     }
                                                 } catch (e) {
                                                     console.warn(`[+page.svelte] Error during re-hydration: ${e}`);
+                                                }
+                                                // Check again after re-hydration, if still 0, seed default items
+                                                const freshPage = projAny.findPage?.(pageId);
+                                                const freshItems = freshPage?.items;
+                                                const freshCount = freshItems?.length ?? 0;
+                                                if (freshCount === 0) {
+                                                    console.log(`[+page.svelte] Page still has no items after re-hydration, seeding defaults`);
+                                                    const userId = userManager?.getCurrentUser?.()?.id ?? "tester";
+                                                    const defaultTexts = ["これはテスト用のページです。1", "これはテスト用のページです。2", "これはテスト用のページです。3"];
+                                                    for (const text of defaultTexts) {
+                                                        const node = freshItems?.addNode?.(userId);
+                                                        if (node) {
+                                                            node.updateText?.(text);
+                                                        }
+                                                    }
+                                                    console.log(`[+page.svelte] Created ${defaultTexts.length} default items`);
                                                 }
                                             }
                                         } else {
