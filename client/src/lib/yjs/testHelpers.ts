@@ -565,15 +565,8 @@ export async function prepareTwoFullBrowserPages(
         localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
         localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__E2E__ = true;
-        (window as any).__vite_plugin_react_preamble_installed__ = true;
-        const originalCreateElement = document.createElement.bind(document);
-        document.createElement = function(tagName: string, ...args: any[]): HTMLElement {
-            if (tagName === "vite-error-overlay") {
-                return originalCreateElement("div", ...args);
-            }
-            return originalCreateElement(tagName, ...args);
-        } as typeof document.createElement;
     });
 
     // Navigate page2 to the same URL as page1

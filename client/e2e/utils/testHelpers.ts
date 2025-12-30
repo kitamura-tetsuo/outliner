@@ -93,16 +93,8 @@ export class TestHelpers {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
 
+                // eslint-disable-next-line no-restricted-globals
                 (window as Window & Record<string, any>).__E2E__ = true;
-                // Vite エラーオーバーレイ抑止
-                (window as Window & Record<string, any>).__vite_plugin_react_preamble_installed__ = true;
-                const originalCreateElement = document.createElement;
-                document.createElement = function(tagName: string, ...args: [ElementCreationOptions?]) {
-                    if (tagName === "vite-error-overlay") {
-                        return originalCreateElement.call(this, "div", ...args);
-                    }
-                    return originalCreateElement.call(this, tagName, ...args);
-                } as typeof document.createElement;
             } catch {}
         });
 
