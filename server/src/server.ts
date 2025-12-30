@@ -89,6 +89,7 @@ export function startServer(config: Config, logger = defaultLogger) {
 
     const ipCounts = new Map<string, number>();
     const roomCounts = new Map<string, number>();
+    const connectionRateLimits = new Map<string, number[]>();
     let totalSockets = 0;
     const allowedOrigins = new Set(
         config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
@@ -100,9 +101,39 @@ export function startServer(config: Config, logger = defaultLogger) {
         }, config.LEVELDB_LOG_INTERVAL_MS);
     }
 
+    // Rate limiter cleanup interval
+    setInterval(() => {
+        const now = Date.now();
+        const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
+        for (const [ip, timestamps] of connectionRateLimits) {
+            const valid = timestamps.filter(t => t > windowStart);
+            if (valid.length === 0) {
+                connectionRateLimits.delete(ip);
+            } else if (valid.length < timestamps.length) {
+                connectionRateLimits.set(ip, valid);
+            }
+        }
+    }, config.RATE_LIMIT_WINDOW_MS * 5);
+
     wss.on("connection", async (ws, req) => {
         const ip = req.socket.remoteAddress ?? "";
         const origin = req.headers.origin ?? "";
+
+        // Rate Limiting Check
+        const now = Date.now();
+        const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
+        let timestamps = connectionRateLimits.get(ip) || [];
+        timestamps = timestamps.filter(t => t > windowStart);
+
+        if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
+            logger.warn({ event: "ws_connection_denied", reason: "rate_limit_exceeded", ip });
+            // 4029: Too Many Requests (Private Use Code)
+            ws.close(4029, "RATE_LIMIT_EXCEEDED");
+            return;
+        }
+        timestamps.push(now);
+        connectionRateLimits.set(ip, timestamps);
+
         if (allowedOrigins.size && !allowedOrigins.has(origin)) {
             logger.warn({ event: "ws_connection_denied", reason: "invalid_origin", origin });
             ws.close(4003, "ORIGIN_NOT_ALLOWED");
