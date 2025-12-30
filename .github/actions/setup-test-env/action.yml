@@ -58,6 +58,8 @@ runs:
         DISABLE_POSTHOG: true
         VITE_DISABLE_FLUID_TELEMETRY: true
         PREINSTALLED_ENV: true
+        SKIP_SERVER_START: "0"
+        SKIP_PORT_WAIT: "0"
       run: |
         # Create sentinel file to skip dependency installation in setup.sh
         touch .setup-installed
