@@ -44,18 +44,16 @@ export class TestHelpers {
      * 各テストの前に呼び出すことで、テスト環境を一貫した状態にする
      * @param page Playwrightのページオブジェクト
      * @param testInfo テスト情報
-     * @param lines 初期データ行（オプション - 現在は使用されない）
+     * @param lines 初期データ行（オプション - HTTP経由でシードする場合は指定）
      * @param browser ブラウザインスタンス
      * @param options オプション設定
      * @param options.ws WebSocket設定 ("force" | "disable" | "default")
      * @returns 作成したプロジェクト名とページ名
-     * @note ページ作成とデータ投入は+page.svelteのE2Eロジックが自動的に処理するため、
-     *       ここではナビゲーションのみを行います。
      */
     public static async prepareTestEnvironment(
         page: Page,
         testInfo?: { workerIndex?: number; } | null,
-        _lines: string[] = [],
+        lines: string[] = [],
         _browser?: Browser,
         options: {
             projectName?: string;
@@ -67,9 +65,6 @@ export class TestHelpers {
             skipAppReady?: boolean;
         } = {},
     ): Promise<{ projectName: string; pageName: string; }> {
-        // Mark deprecated params as intentionally unused
-        void _lines;
-        void _browser;
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
             // Avoid duplicating console output when using fixtures/console-forward.
@@ -88,17 +83,15 @@ export class TestHelpers {
                 });
             }
         } catch {}
-        // 可能な限り早期にテスト用フラグを適用（初回ナビゲーション前）
 
+        // Set test environment flags before navigation (needed for WebSocket connection)
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_IS_TEST", "true");
-                localStorage.setItem("VITE_E2E_TEST", "true"); // Additional flag for robust detection
+                localStorage.setItem("VITE_E2E_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-                // Force WebSocket connection for E2E tests that need WS sync
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-
                 // eslint-disable-next-line no-restricted-globals
                 (window as Window & Record<string, any>).__E2E__ = true;
             } catch {}
@@ -108,6 +101,22 @@ export class TestHelpers {
         const timestamp = Date.now();
         const projectName = options?.projectName ?? `Test Project ${workerIndex} ${timestamp}`;
         const pageName = options?.pageName ?? `test-page-${timestamp}`;
+
+        // HTTP-based seeding before navigation (replaces legacy browser-based seeding)
+        // Always seed to create the page, even if lines is empty
+        if (!options?.doNotSeed && !options?.skipSeed) {
+            try {
+                const { SeedClient } = await import("../utils/seedClient.js");
+                const authToken = await TestHelpers.getTestAuthToken();
+                const seeder = new SeedClient(projectName, authToken);
+                await seeder.seedPage(pageName, lines);
+                TestHelpers.slog(
+                    `prepareTestEnvironment: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
+                );
+            } catch (e) {
+                TestHelpers.slog(`prepareTestEnvironment: SeedClient seeding failed: ${e}`);
+            }
+        }
 
         // Navigate to the test page (or re-confirm navigation if already there)
         if (!options?.doNotNavigate) {
@@ -297,25 +306,21 @@ export class TestHelpers {
     /**
      * プロジェクト用 E2E: テスト環境を初期化し、指定されたプロジェクトページに移動して
      * データが同期されるのを待つ
-     * - ページ作成とデータ投入は+page.svelteのE2Eロジックが自動的に処理するため、
-     *   ここではナビゲーションのみを行います。
+     * - ページ作成とデータ投入はHTTP経由でシーディング
      * @param page Playwrightページオブジェクト
      * @param testInfo テスト情報
-     * @param lines 初期データ行（オプション - 現在は使用されない）
+     * @param lines 初期データ行（オプション - HTTP経由でシードする場合に指定）
      * @param browser ブラウザインスタンス（オプション）
-     * @param options オプション設定（projectName, pageName, skipSync）
+     * @param options オプション設定（projectName, pageName, skipSync, skipAppReady）
      * @returns プロジェクト名とページ名
      */
     public static async prepareTestEnvironmentForProject(
         page: Page,
         testInfo?: { workerIndex?: number; } | null,
-        _lines: string[] = [],
+        lines: string[] = [],
         _browser?: Browser,
         options?: { projectName?: string; pageName?: string; skipSync?: boolean; skipAppReady?: boolean; },
     ): Promise<{ projectName: string; pageName: string; }> {
-        // Mark deprecated params as intentionally unused
-        void _lines;
-        void _browser;
         // デバッガーをセットアップ
         await TestHelpers.setupTreeDebugger(page);
         await TestHelpers.setupCursorDebugger(page);
@@ -324,6 +329,22 @@ export class TestHelpers {
         const projectName = options?.projectName ?? `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = options?.pageName ?? `test-page-${Date.now()}`;
 
+        // HTTP-based seeding before navigation (replaces legacy browser-based seeding)
+        // Always seed to create the page, even if lines is empty
+        {
+            try {
+                const { SeedClient } = await import("../utils/seedClient.js");
+                const authToken = await TestHelpers.getTestAuthToken();
+                const seeder = new SeedClient(projectName, authToken);
+                await seeder.seedPage(pageName, lines);
+                TestHelpers.slog(
+                    `prepareTestEnvironmentForProject: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
+                );
+            } catch (e) {
+                TestHelpers.slog(`prepareTestEnvironmentForProject: SeedClient seeding failed: ${e}`);
+            }
+        }
+
         if (options?.skipSync) {
             // For tests that only need environment setup without page navigation
             console.log("TestHelper: Skip sync (skipSync option is true)");
@@ -331,7 +352,7 @@ export class TestHelpers {
             return { projectName, pageName };
         }
 
-        // Navigate to the project page - page creation and data seeding is handled by +page.svelte
+        // Navigate to the project page
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
         const url = `/${encodedProject}/${encodedPage}`;
