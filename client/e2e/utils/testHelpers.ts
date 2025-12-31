@@ -121,7 +121,7 @@ export class TestHelpers {
         if (!options?.doNotNavigate) {
             const encodedProject = encodeURIComponent(projectName);
             const encodedPage = encodeURIComponent(pageName);
-            const url = `/${encodedProject}/${encodedPage}`;
+            const url = `/${encodedProject}/${encodedPage}?isTest=true`;
 
             TestHelpers.slog("Navigating to project page", { url });
             await page.goto(url, { timeout: 60000 });
@@ -225,7 +225,7 @@ export class TestHelpers {
     ): Promise<void> {
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
-        const url = `/${encodedProject}/${encodedPage}`;
+        const url = `/${encodedProject}/${encodedPage}?isTest=true`;
 
         TestHelpers.slog("Navigating to project page", { url });
         await page.goto(url, { timeout: 60000 });
@@ -242,15 +242,23 @@ export class TestHelpers {
         await page.waitForFunction(
             (targetName) => {
                 const gs = (window as any).generalStore;
-                if (!gs?.project) return false;
-                if (!gs?.currentPage) return false;
+                if (!gs?.project) {
+                    console.log(`[TestHelpers] Waiting for project... gs=${!!gs}`);
+                    return false;
+                }
                 const cp = gs.currentPage;
                 const cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
-                return cpText.toLowerCase() === targetName.toLowerCase();
+                if (cpText.toLowerCase() === targetName.toLowerCase()) {
+                    return true;
+                }
+                console.log(
+                    `[TestHelpers] Waiting for currentPage match... expected="${targetName}", actual="${cpText}", hasCp=${!!cp}`,
+                );
+                return false;
             },
             targetPageName,
             { timeout: 60000 },
-        ).catch((e) => {
+        ).catch(async (e) => {
             // Fallback: log warning and continue - the +page.svelte retry logic will handle it
             // Guard against window not being available (e.g., page context destroyed)
             let cpText = "";
@@ -261,11 +269,24 @@ export class TestHelpers {
                     cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
                 }
             } catch {}
-            TestHelpers.slog("Warning: currentPage not set or mismatch, continuing anyway", {
-                currentPageText: cpText,
-                expectedPageName: pageName,
-                error: e?.message,
-            });
+            TestHelpers.slog("Warning: currentPage not set or mismatch within timeout", { error: e?.message });
+
+            // Extensive Debugging info
+            try {
+                const debugState = await page.evaluate(() => {
+                    const win = window as any;
+                    return {
+                        pageState: win.__PAGE_STATE__,
+                        generalStore: !!win.generalStore,
+                        gsProject: !!win.generalStore?.project,
+                        gsCurrentPage: !!win.generalStore?.currentPage,
+                        logs: win.__LOGS__ || [],
+                    };
+                });
+                TestHelpers.slog("Debug State on Timeout:", debugState);
+            } catch (err) {
+                TestHelpers.slog("Failed to get debug state:", err);
+            }
         });
 
         await TestHelpers.waitForAppReady(page);
@@ -801,7 +822,8 @@ export class TestHelpers {
         // The E2E check must be inside waitForFunction to run in browser context
         const shouldSkipAuth = skipAuthCheck || await page.waitForFunction(() => {
             return (window as any).__E2E__ === true
-                || window.localStorage?.getItem?.("VITE_IS_TEST") === "true";
+                || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
+                || window.location.search.includes("isTest=true");
         }, { timeout: 5000 }).catch(() => false);
 
         if (shouldSkipAuth) {

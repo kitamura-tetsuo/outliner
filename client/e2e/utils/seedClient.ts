@@ -12,13 +12,31 @@ export class SeedClient {
     private authToken: string;
     private apiUrl: string;
 
-    constructor(projectId: string, authToken: string) {
-        this.projectId = encodeURIComponent(projectId);
+    constructor(projectTitle: string, authToken: string) {
+        // Derive stable ID from title to match client-side logic in test mode
+        this.projectId = SeedClient.stableIdFromTitle(projectTitle);
         this.authToken = authToken;
         // Use VITE_YJS_PORT for the seed API (same port as Yjs WebSocket server)
-        // The seed API is served from the Yjs server, not the log service
-        const yjsPort = process.env.VITE_YJS_PORT || "7093";
-        this.apiUrl = process.env.VITE_YJS_API_URL || `http://localhost:${yjsPort}`;
+        // The seed API is served from the Yjs server at /api/seed
+        this.apiUrl = process.env.VITE_YJS_API_URL || `http://localhost:${process.env.VITE_YJS_PORT || 7093}`;
+    }
+
+    /**
+     * Derive a stable projectId from the title so separate browsers join the same room
+     * Duplicated from client/src/lib/yjsService.svelte.ts to ensure consistency
+     */
+    public static stableIdFromTitle(title: string): string {
+        try {
+            let h = 2166136261 >>> 0; // FNV-1a basis
+            for (let i = 0; i < title.length; i++) {
+                h ^= title.charCodeAt(i);
+                h = (h * 16777619) >>> 0;
+            }
+            const hex = h.toString(16);
+            return `p${hex}`; // ensure starts with a letter; matches [A-Za-z0-9_-]+
+        } catch {
+            return `p${Math.random().toString(16).slice(2)}`;
+        }
     }
 
     /**

@@ -66,23 +66,62 @@ function keyFor(userId?: string, containerId?: string): ClientKey {
 }
 
 function isTestEnvironment(): boolean {
+    let mode = "unknown";
+    if (typeof import.meta !== "undefined" && import.meta.env) {
+        mode = import.meta.env.MODE;
+    }
+
     // Check for test environment using reliable detection
-    // Use import.meta.env.MODE which is available at build time and reliable
-    if (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test") {
+    if (mode === "test") {
         return true;
     }
 
     // Fallback to runtime checks (for E2E tests where MODE might not be "test")
     if (typeof window !== "undefined") {
-        // Check localStorage flags set by test setup (addInitScript in testHelpers)
-        const ls = window.localStorage;
-        if (ls?.getItem?.("VITE_IS_TEST") === "true") return true;
-        if (ls?.getItem?.("VITE_E2E_TEST") === "true") return true;
-        // Check __E2E__ property set by test helpers as additional detection
-        if ((window as any).__E2E__ === true) return true;
+        const win = window as any;
+        const ls = win.localStorage;
+
+        const isTestLs = ls?.getItem?.("VITE_IS_TEST");
+        const isE2eLs = ls?.getItem?.("VITE_E2E_TEST");
+        const isE2eWin = win.__E2E__;
+
+        // Robust check via URL params to avoid localStorage race conditions
+        const urlParams = new URL(win.location.href).searchParams;
+        const isTestUrl = urlParams.get("isTest") === "true";
+
+        const debugMsg =
+            `isTestEnvironment check: MODE=${mode}, VITE_IS_TEST=${isTestLs}, VITE_E2E_TEST=${isE2eLs}, __E2E__=${isE2eWin}, URL_IS_TEST=${isTestUrl}`;
+        // Only log if we are about to return false (to avoid spam in hot paths, though this is called rarely)
+        // or just log it once.
+        // Using console.log might be spammy if called in a loop, but getClientByProjectTitle calls it.
+        // We'll log it if it matters (i.e. inside getClient logging).
+        // Actually, let's just log it to window log always for now.
+        // addToWindowLog(debugMsg); // Can't call addToWindowLog here easily if it's defined below?
+        // addToWindowLog IS defined below. Function hoisting works.
+        // But let's keep it simple.
+
+        if (isTestLs === "true") return true;
+        if (isE2eLs === "true") return true;
+        if (isE2eWin === true) return true;
+        if (isTestUrl === true) return true;
     }
 
     return false;
+}
+
+// In test environment, derive a stable projectId from the title so separate browsers join the same room
+export function stableIdFromTitle(title: string): string {
+    try {
+        let h = 2166136261 >>> 0; // FNV-1a basis
+        for (let i = 0; i < title.length; i++) {
+            h ^= title.charCodeAt(i);
+            h = (h * 16777619) >>> 0;
+        }
+        const hex = h.toString(16);
+        return `p${hex}`; // ensure starts with a letter; matches [A-Za-z0-9_-]+
+    } catch {
+        return `p${Math.random().toString(16).slice(2)}`;
+    }
 }
 
 export async function createNewProject(containerName: string): Promise<YjsClient> {
@@ -95,28 +134,15 @@ export async function createNewProject(containerName: string): Promise<YjsClient
         throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
     }
 
-    // In test environment, derive a stable projectId from the title so separate browsers join the same room
-    function stableIdFromTitle(title: string): string {
-        try {
-            let h = 2166136261 >>> 0; // FNV-1a basis
-            for (let i = 0; i < title.length; i++) {
-                h ^= title.charCodeAt(i);
-                h = (h * 16777619) >>> 0;
-            }
-            const hex = h.toString(16);
-            return `p${hex}`; // ensure starts with a letter; matches [A-Za-z0-9_-]+
-        } catch {
-            return `p${Math.random().toString(16).slice(2)}`;
-        }
-    }
-
     const projectId = isTest ? stableIdFromTitle(containerName) : uuid();
     console.log(
         `[yjsService] createNewProject: isTest=${isTest}, containerName="${containerName}", projectId="${projectId}"`,
     );
 
     const project = Project.createInstance(containerName);
+    console.log(`[yjsService] createNewProject: Connecting to YjsClient for projectId "${projectId}"...`);
     const client = await YjsClient.connect(projectId, project);
+    console.log(`[yjsService] createNewProject: YjsClient connected for projectId "${projectId}".`);
     registry.set(keyFor(userId, projectId), [client, project]);
 
     // Save title to metadata Y.Doc for dropdown display
@@ -134,11 +160,39 @@ export async function createNewProject(containerName: string): Promise<YjsClient
     return client;
 }
 
+// Debug helper for E2E tests
+
 export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
-    log("yjsService", "info", `Get client by title: ${projectTitle}`);
     for (const [, [client, project]] of registry.entries()) {
-        if (project?.title === projectTitle && client) return client;
+        if (project?.title === projectTitle && client) {
+            return client;
+        }
     }
+
+    // In test environment, attempt to auto-connect if we can derive the ID
+    const isTest = isTestEnvironment();
+
+    if (isTest) {
+        const userId = userManager.getCurrentUser()?.id || "test-user-id";
+        const projectId = stableIdFromTitle(projectTitle);
+
+        // Check if already connected by ID (but title mismatch? unlikely for stable ID)
+        if (registry.has(keyFor(userId, projectId))) {
+            const [c] = registry.get(keyFor(userId, projectId))!;
+            if (c) {
+                return c;
+            }
+        }
+
+        const project = Project.createInstance(projectTitle);
+        const client = await YjsClient.connect(projectId, project);
+
+        registry.set(keyFor(userId, projectId), [client, project]);
+        // Also save title to persistence so next time it might appear
+        setContainerTitleInMetaDoc(projectId, projectTitle);
+        return client;
+    }
+
     return undefined;
 }
 
