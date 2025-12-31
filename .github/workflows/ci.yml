@@ -5,11 +5,6 @@ on:
     branches: [main, develop]
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-  workflow_run:
-    workflows: ["Format Check and Auto-Fix"]
-    types:
-      - completed
-    branches: [main, develop]
 
 permissions:
   contents: write
@@ -21,86 +16,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Check if we should skip this run
-  check-skip:
-    runs-on: ubuntu-latest
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-    steps:
-      - id: skip_check
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # If triggered by workflow_run, check conclusion
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            if [[ "${{ github.event.workflow_run.conclusion }}" != "success" ]]; then
-              echo "should_skip=true" >> $GITHUB_OUTPUT
-              echo "Skipping because formatter workflow failed"
-              exit 0
-            fi
-
-            # Check if the commit is the same as the triggering workflow's head_commit
-            # If it is, then no new commit was created by the formatter, so we skip (duplicate of push trigger)
-            HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
-            TRIGGERING_SHA="${{ github.event.workflow_run.head_sha }}"
-            
-            # Fetch the latest commit of the branch
-            echo "Checking for changes on $HEAD_BRANCH..."
-            LATEST_SHA=$(gh api repos/${{ github.repository }}/git/ref/heads/$HEAD_BRANCH --jq .object.sha)
-             
-            if [[ "$TRIGGERING_SHA" == "$LATEST_SHA" ]]; then
-               echo "should_skip=true" >> $GITHUB_OUTPUT
-               echo "Skipping because no changes were made by formatter (SHA matches)"
-               exit 0
-            else
-               echo "Formatting changed code ($TRIGGERING_SHA != $LATEST_SHA). Running CI."
-            fi
-          fi
-          
-          # If triggered by push, check commit message for auto-fix
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            if [[ "${{ github.event.head_commit.message }}" == *"Auto-fix: Format code with dprint"* ]]; then
-              echo "should_skip=true" >> $GITHUB_OUTPUT
-              echo "Skipping auto-fix commit"
-              exit 0
-            fi
-          fi
-          
-          echo "should_skip=false" >> $GITHUB_OUTPUT
+  format:
+    name: Format Check and Auto-Fix
+    uses: ./.github/workflows/ci-format.yml
+    secrets: inherit
 
   checks:
-    needs: check-skip
-    if: needs.check-skip.outputs.should_skip != 'true'
-    uses: ./.github/workflows/ci/checks.yml
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-checks.yml
     secrets: inherit
 
   unit-test:
-    needs: check-skip
-    if: needs.check-skip.outputs.should_skip != 'true'
-    uses: ./.github/workflows/ci/test-unit.yml
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-test-unit.yml
     secrets: inherit
 
   integration-test:
-    needs: check-skip
-    if: needs.check-skip.outputs.should_skip != 'true'
-    uses: ./.github/workflows/ci/test-integration.yml
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-test-integration.yml
     secrets: inherit
 
   e2e-test:
-    needs: check-skip
-    if: needs.check-skip.outputs.should_skip != 'true'
-    uses: ./.github/workflows/ci/test-e2e.yml
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-test-e2e.yml
     secrets: inherit
 
   eslint-client:
     name: Lint Code with ESLint
-    needs: check-skip
-    if: needs.check-skip.outputs.should_skip != 'true'
-    uses: ./.github/workflows/ci/eslint.yml
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-eslint.yml
     secrets: inherit
 
   lint-diff-lines:
-    needs: check-skip
-    if: needs.check-skip.outputs.should_skip != 'true'
-    uses: ./.github/workflows/ci/lint-diff-lines.yml
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-lint-diff-lines.yml
     secrets: inherit

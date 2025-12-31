@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  format-and-lint:
+  lint:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository }}:latest
@@ -32,44 +32,7 @@ jobs:
       - name: Setup Test Environment
         uses: ./.github/actions/setup-test-env
 
-      - name: Check and fix formatting
-        id: format_check
-        run: |
-          echo "Running formatting check..."
-          if ! ./scripts/check_format.sh; then
-            echo "❌ Code is not properly formatted!"
-            echo "🔧 Auto-fixing formatting issues..."
-            dprint fmt
 
-            # Check if there are any changes
-            if git diff --quiet; then
-              echo "No changes were made by dprint fmt"
-            else
-              # Configure git
-              git config user.email "action@github.com" || git config --global user.email "action@github.com"
-              git config user.name "GitHub Action" || git config --global user.name "GitHub Action"
-
-              # Only auto-commit for push/PR events
-              if [[ "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "pull_request" ]]; then
-                git fetch origin
-                if git merge-base --is-ancestor HEAD origin/${{ github.ref_name }}; then
-                  git add .
-                  git commit -m "Auto-fix: Format code with dprint"
-                  
-                  if ! git push; then
-                    echo "Push failed, trying to pull and retry..."
-                    git pull --rebase origin ${{ github.ref_name }}
-                    git push
-                  fi
-                  echo "✅ Formatting issues have been automatically fixed and committed!"
-                else
-                  echo "⚠️ Local branch is behind remote, skipping auto-commit"
-                fi
-              fi
-            fi
-          else
-            echo "✅ All code is properly formatted!"
-          fi
 
       - name: Create .setup-installed
         run: touch .setup-installed
@@ -80,7 +43,7 @@ jobs:
           npm run lint -- --fix
 
   firebase-validation:
-    needs: format-and-lint
+    needs: lint
     if: success()
     runs-on: ubuntu-latest
     container:
