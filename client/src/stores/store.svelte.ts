@@ -174,16 +174,8 @@ export const store = $state(new GeneralStore());
 if (typeof window !== "undefined") {
     (window as unknown as { appStore: GeneralStore; }).appStore = store;
     (window as unknown as { generalStore: GeneralStore; }).generalStore = store; // TestHelpersとの互換性のため
-
-    // 起動直後に仮プロジェクトを用意（本接続が来れば yjsStore が置換）
-    try {
-        if (!store.project) {
-            const parts = window.location.pathname.split("/").filter(Boolean);
-            const title = decodeURIComponent(parts[0] || "Untitled Project");
-            (store as { project: Project; }).project = Project.createInstance(title);
-            console.log("INIT: Provisional Project set in store.svelte.ts", { title });
-        }
-    } catch {
-        // Ignore errors during initial project setup
-    }
 }
+
+// NOTE: Removed auto-creation logic. Projects are now created via HTTP seeding (SeedClient)
+// and loaded via loadProjectAndPage in +page.svelte. This ensures proper synchronization
+// between seeded data and the store state.
