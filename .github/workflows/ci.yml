@@ -71,23 +71,36 @@ jobs:
   checks:
     needs: check-skip
     if: needs.check-skip.outputs.should_skip != 'true'
-    uses: ./.github/workflows/pr-checks.yml
+    uses: ./.github/workflows/ci/checks.yml
     secrets: inherit
 
   unit-test:
     needs: check-skip
     if: needs.check-skip.outputs.should_skip != 'true'
-    uses: ./.github/workflows/pr-test-unit.yml
+    uses: ./.github/workflows/ci/test-unit.yml
     secrets: inherit
 
   integration-test:
     needs: check-skip
     if: needs.check-skip.outputs.should_skip != 'true'
-    uses: ./.github/workflows/pr-test-integration.yml
+    uses: ./.github/workflows/ci/test-integration.yml
     secrets: inherit
 
   e2e-test:
     needs: check-skip
     if: needs.check-skip.outputs.should_skip != 'true'
-    uses: ./.github/workflows/pr-test-e2e.yml
+    uses: ./.github/workflows/ci/test-e2e.yml
+    secrets: inherit
+
+  eslint-client:
+    name: Lint Code with ESLint
+    needs: check-skip
+    if: needs.check-skip.outputs.should_skip != 'true'
+    uses: ./.github/workflows/ci/eslint.yml
+    secrets: inherit
+
+  lint-diff-lines:
+    needs: check-skip
+    if: needs.check-skip.outputs.should_skip != 'true'
+    uses: ./.github/workflows/ci/lint-diff-lines.yml
     secrets: inherit
