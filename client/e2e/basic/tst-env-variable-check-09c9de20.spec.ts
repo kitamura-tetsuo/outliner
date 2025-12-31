@@ -5,9 +5,8 @@ registerCoverageHooks();
  *  Title   : Environment variable is loaded in browser
  */
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 
-test("VITE_IS_TEST is true in client runtime", async ({ page }, testInfo) => {
+test("VITE_IS_TEST is true in client runtime", async ({ page }) => {
     // Navigate directly to home page - no project/page context needed
     await page.goto("/", { waitUntil: "networkidle" });
     const value = await page.evaluate(() => {

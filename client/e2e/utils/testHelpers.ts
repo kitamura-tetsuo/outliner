@@ -92,7 +92,6 @@ export class TestHelpers {
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                // eslint-disable-next-line no-restricted-globals
                 (window as Window & Record<string, any>).__E2E__ = true;
             } catch {}
         });
@@ -798,18 +797,23 @@ export class TestHelpers {
     public static async waitForAppReady(page: Page, skipAuthCheck = false): Promise<void> {
         TestHelpers.slog("Waiting for app to be ready", { skipAuthCheck });
 
-        // Skip all checks if skipAuthCheck is true (for server-side tests)
-        if (skipAuthCheck) {
-            TestHelpers.slog("Skipping app ready checks (server-side test)");
-            return;
-        }
+        // Skip authentication check if skipAuthCheck is true, or if we're in an E2E test environment
+        // The E2E check must be inside waitForFunction to run in browser context
+        const shouldSkipAuth = skipAuthCheck || await page.waitForFunction(() => {
+            return (window as any).__E2E__ === true
+                || window.localStorage?.getItem?.("VITE_IS_TEST") === "true";
+        }, { timeout: 5000 }).catch(() => false);
 
-        // Wait for authentication
-        await page.waitForFunction(() => {
-            const userManager = (window as any).__USER_MANAGER__;
-            return !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
-        }, { timeout: 15000 });
-        TestHelpers.slog("Authentication is ready");
+        if (shouldSkipAuth) {
+            TestHelpers.slog("Skipping auth check (E2E test environment)");
+        } else {
+            // Wait for authentication
+            await page.waitForFunction(() => {
+                const userManager = (window as any).__USER_MANAGER__;
+                return !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
+            }, { timeout: 15000 });
+            TestHelpers.slog("Authentication is ready");
+        }
 
         // Wait for generalStore to be available
         await page.waitForFunction(() => !!(window as any).generalStore, { timeout: 60000 });

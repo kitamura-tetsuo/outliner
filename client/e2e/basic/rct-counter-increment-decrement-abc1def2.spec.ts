@@ -6,10 +6,9 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("counter", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }) => {
         // Navigate directly to counter page (doesn't need project/page context)
         await page.goto("/counter", { waitUntil: "networkidle" });
     });
