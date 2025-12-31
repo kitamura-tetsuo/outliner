@@ -301,11 +301,19 @@ export class ScrapboxFormatter {
                 case "code":
                     html += `<code>${content}</code>`;
                     break;
-                case "link":
-                    html += `<a href="${
-                        this.escapeHtml(token.url ?? "")
-                    }" target="_blank" rel="noopener noreferrer">${content}</a>`;
+                case "link": {
+                    const url = token.url ?? "";
+                    // Validate URL protocol to prevent XSS (only allow http/https)
+                    if (/^https?:\/\//i.test(url)) {
+                        html += `<a href="${
+                            this.escapeHtml(url)
+                        }" target="_blank" rel="noopener noreferrer">${content}</a>`;
+                    } else {
+                        // If URL is invalid or unsafe (e.g. javascript:), render as plain text
+                        html += content;
+                    }
                     break;
+                }
                 case "internalLink": {
                     const isProjectLink = token.isProjectLink === true || rawContent.startsWith("/");
                     if (isProjectLink) {
