@@ -129,39 +129,6 @@ export class TestHelpers {
     }
 
     /**
-     * @deprecated This function is no longer used. Page creation and data seeding
-     * is now handled automatically by +page.svelte's E2E logic.
-     * Please use prepareTestEnvironment() instead which only handles navigation.
-     */
-    public static async navigateToProjectPageForSeeding(
-        _page: Page,
-        _projectName: string,
-        _pageName: string,
-    ): Promise<void> {
-        // Mark deprecated params as intentionally unused
-        void _page;
-        void _projectName;
-        void _pageName;
-        // Intentionally empty - function kept for backwards compatibility
-        TestHelpers.slog("navigateToProjectPageForSeeding is deprecated and no-op");
-    }
-
-    /**
-     * @deprecated This function is no longer used. Data seeding is now handled
-     * automatically by +page.svelte's E2E logic.
-     */
-    public static async seedDataInBrowser(
-        _page: Page,
-        _seedLines: string[],
-    ): Promise<void> {
-        // Mark deprecated params as intentionally unused
-        void _page;
-        void _seedLines;
-        // Intentionally empty - function kept for backwards compatibility
-        TestHelpers.slog("seedDataInBrowser is deprecated and no-op");
-    }
-
-    /**
      * Sets up test user project data with accessible projects for container selector tests.
      * This is a minimal alternative to setupTestEnvironment for tests that only need
      * the container selector to have options, without full project seeding.
@@ -200,27 +167,38 @@ export class TestHelpers {
     }
 
     /**
-     * @deprecated This function is no longer used. Project creation and data seeding
-     * is now handled automatically by +page.svelte's E2E logic.
-     * Please use prepareTestEnvironment() instead.
+     * Creates a project and page using SeedClient for HTTP-based seeding.
+     * This replaces the legacy browser-based seeding logic.
      */
     public static async createAndSeedProject(
-        _page: Page,
-        testInfo?: { workerIndex?: number; } | null,
-        _lines: string[] = [],
+        page: Page,
+        testInfo: { workerIndex?: number; } | null,
+        lines: string[],
         options?: {
             projectName?: string;
             pageName?: string;
             skipSeed?: boolean;
         },
     ): Promise<{ projectName: string; pageName: string; }> {
-        // Mark deprecated params as intentionally unused
-        void _page;
-        void _lines;
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
         const projectName = options?.projectName ?? `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = options?.pageName ?? `test-page-${Date.now()}`;
-        TestHelpers.slog("createAndSeedProject is deprecated and no-op, returning names only");
+
+        // Use SeedClient for HTTP-based seeding instead of browser-based seeding
+        if (!options?.skipSeed) {
+            try {
+                const { SeedClient } = await import("../utils/seedClient.js");
+                const authToken = await TestHelpers.getAuthToken(page);
+                const seeder = new SeedClient(projectName, authToken);
+                await seeder.seedPage(pageName, lines);
+                TestHelpers.slog(
+                    `createAndSeedProject: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
+                );
+            } catch (e) {
+                TestHelpers.slog(`createAndSeedProject: SeedClient seeding failed, page will be empty: ${e}`);
+            }
+        }
+
         return { projectName, pageName };
     }
 
