@@ -22,6 +22,17 @@ export class SeedClient {
     }
 
     /**
+     * Seed a single page with lines
+     */
+    public async seedPage(pageName: string, lines: string[]): Promise<void> {
+        const pages: PageSeedData[] = [{
+            name: pageName,
+            lines: lines,
+        }];
+        await this.seed(pages);
+    }
+
+    /**
      * Seed the project with pages via HTTP API
      */
     public async seed(pages: PageSeedData[]): Promise<void> {

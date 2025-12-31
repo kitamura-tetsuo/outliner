@@ -12,7 +12,8 @@ const require = createRequire(import.meta.url);
 
 test.describe("WebSocket connection limits", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Server-side test: skip page navigation entirely as we only need WebSocket connections
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, { doNotNavigate: true });
     });
 
     test("rejects second connection when per-room limit reached", async () => {

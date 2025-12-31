@@ -64,6 +64,7 @@ export class TestHelpers {
             doNotSeed?: boolean;
             doNotNavigate?: boolean;
             ws?: string;
+            skipAppReady?: boolean;
         } = {},
     ): Promise<{ projectName: string; pageName: string; }> {
         // Mark deprecated params as intentionally unused
@@ -122,7 +123,10 @@ export class TestHelpers {
             await page.waitForTimeout(2000);
 
             // Wait for the page to be ready (generalStore.currentPage to be set)
-            await TestHelpers.waitForAppReady(page);
+            // Skip for server-side tests that don't need full app initialization
+            if (!options?.skipAppReady) {
+                await TestHelpers.waitForAppReady(page, options?.skipAppReady);
+            }
         }
 
         return { projectName, pageName };
@@ -188,7 +192,7 @@ export class TestHelpers {
         if (!options?.skipSeed) {
             try {
                 const { SeedClient } = await import("../utils/seedClient.js");
-                const authToken = await TestHelpers.getAuthToken(page);
+                const authToken = await TestHelpers.getTestAuthToken();
                 const seeder = new SeedClient(projectName, authToken);
                 await seeder.seedPage(pageName, lines);
                 TestHelpers.slog(
@@ -307,7 +311,7 @@ export class TestHelpers {
         testInfo?: { workerIndex?: number; } | null,
         _lines: string[] = [],
         _browser?: Browser,
-        options?: { projectName?: string; pageName?: string; skipSync?: boolean; },
+        options?: { projectName?: string; pageName?: string; skipSync?: boolean; skipAppReady?: boolean; },
     ): Promise<{ projectName: string; pageName: string; }> {
         // Mark deprecated params as intentionally unused
         void _lines;
@@ -338,8 +342,10 @@ export class TestHelpers {
         // Allow time for WebSocket connection and initial sync
         await page.waitForTimeout(3000);
 
-        // Wait for the page to be ready
-        await TestHelpers.waitForAppReady(page);
+        // Wait for the page to be ready (skip for server-side tests)
+        if (!options?.skipAppReady) {
+            await TestHelpers.waitForAppReady(page);
+        }
 
         console.log("TestHelper: Project environment ready", { projectName, pageName });
         return { projectName, pageName };
@@ -766,9 +772,16 @@ export class TestHelpers {
      * Waits for the application to be in a ready state.
      * This includes waiting for authentication and for the generalStore to be initialized.
      * @param page Playwright's page object
+     * @param skipAuthCheck If true, skip the authentication check (for server-side tests)
      */
-    public static async waitForAppReady(page: Page): Promise<void> {
-        TestHelpers.slog("Waiting for app to be ready");
+    public static async waitForAppReady(page: Page, skipAuthCheck = false): Promise<void> {
+        TestHelpers.slog("Waiting for app to be ready", { skipAuthCheck });
+
+        // Skip all checks if skipAuthCheck is true (for server-side tests)
+        if (skipAuthCheck) {
+            TestHelpers.slog("Skipping app ready checks (server-side test)");
+            return;
+        }
 
         // Wait for authentication
         await page.waitForFunction(() => {

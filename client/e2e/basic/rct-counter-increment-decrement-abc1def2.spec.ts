@@ -10,8 +10,8 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("counter", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
-        await page.goto("/counter");
+        // Navigate directly to counter page (doesn't need project/page context)
+        await page.goto("/counter", { waitUntil: "networkidle" });
     });
 
     test("increments and decrements", async ({ page }) => {
