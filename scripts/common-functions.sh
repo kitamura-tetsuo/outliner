@@ -403,23 +403,50 @@ EOF
 
   cd "${ROOT_DIR}"
 
-  # Wait for Firebase emulator to start and verify it's working
-  echo "Waiting for Firebase emulator to start..."
-  if wait_for_port ${FIREBASE_AUTH_PORT}; then
+  # Wait for Firebase emulator to start (concurrently)
+  echo "Waiting for Firebase emulator services to start (max 60s)..."
+  local timeout=60
+  local elapsed=0
+  local auth_ready=false
+  local functions_ready=false
+  local hosting_ready=false
+
+  while [ $elapsed -lt $timeout ]; do
+    if [ "$auth_ready" = false ]; then
+        if port_is_open ${FIREBASE_AUTH_PORT}; then auth_ready=true; fi
+    fi
+    if [ "$functions_ready" = false ]; then
+        if port_is_open ${FIREBASE_FUNCTIONS_PORT}; then functions_ready=true; fi
+    fi
+    if [ "$hosting_ready" = false ]; then
+        if port_is_open ${FIREBASE_HOSTING_PORT}; then hosting_ready=true; fi
+    fi
+
+    if [ "$auth_ready" = true ] && [ "$functions_ready" = true ] && [ "$hosting_ready" = true ]; then
+        echo "All Firebase emulator services are ready."
+        break
+    fi
+
+    sleep 1
+    elapsed=$((elapsed + 1))
+    if [ $((elapsed % 10)) -eq 0 ]; then
+        echo "Still waiting for Firebase services... ($((timeout - elapsed))s remaining)"
+    fi
+  done
+
+  if [ "$auth_ready" = true ]; then
     echo "Firebase Auth emulator is running on port ${FIREBASE_AUTH_PORT}"
   else
     echo "Warning: Firebase Auth emulator may not be ready on port ${FIREBASE_AUTH_PORT}"
   fi
 
-  # Check if Firebase Functions emulator is running
-  if wait_for_port ${FIREBASE_FUNCTIONS_PORT}; then
+  if [ "$functions_ready" = true ]; then
     echo "Firebase Functions emulator is running on port ${FIREBASE_FUNCTIONS_PORT}"
   else
     echo "Warning: Firebase Functions emulator may not be ready on port ${FIREBASE_FUNCTIONS_PORT}"
   fi
 
-  # Check if Firebase Hosting emulator is running
-  if wait_for_port ${FIREBASE_HOSTING_PORT}; then
+  if [ "$hosting_ready" = true ]; then
     echo "Firebase Hosting emulator is running on port ${FIREBASE_HOSTING_PORT}"
   else
     echo "Warning: Firebase Hosting emulator may not be ready on port ${FIREBASE_HOSTING_PORT}"
