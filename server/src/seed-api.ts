@@ -79,7 +79,9 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
                         // Ensure subdoc is loaded before accessing its data
                         subdoc.load();
 
+                        // Create a pageItems map in the subdoc (same as client's addPage)
                         const pageItems = subdoc.getMap<any>("pageItems");
+                        pageItems.set("initialized", Date.now());
 
                         // Add each line as an item in the pageItems map
                         for (const line of pageData.lines) {
