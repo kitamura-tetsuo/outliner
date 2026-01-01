@@ -233,35 +233,21 @@ firebase deploy
 
 ユニットテストは `Vitest`、E2E テストは `Playwright` を使用しています。
 
+テスト実行には `scripts/test.sh` を推奨します。このスクリプトは必要に応じて自動的に `scripts/setup.sh` を呼び出し、エミュレータ環境をセットアップします。
+
 ```bash
-# ユニットテスト
-cd client
-npm run test:unit
+# 特定のテストを実行 (Unit/Integration/E2E 自動判別)
+scripts/test.sh client/e2e/path/to/test.spec.ts
 
-# E2E テスト (dotenvxで復号化して実行)
-dotenvx run -- npm run test:e2e
+# E2E テスト (ディレクトリ指定)
+scripts/test.sh client/e2e
 
-# E2E テスト (Precise Coverage モード)
-# イベントハンドラやコールバックの実行回数を正確に取得
-PRECISE_COVERAGE=true dotenvx run -- npm run test:e2e
-
-# 環境維持テスト (Vitest)
-dotenvx run -- npm run test:env
+# 全テスト実行
+scripts/test.sh
 ```
 
-#### カバレッジモード
-
-E2Eテストでは2つのカバレッジモードを選択できます:
-
-- **Best-effort Coverage** (デフォルト): パフォーマンスへの影響が少ない。ほとんどのケースで十分。
-- **Precise Coverage** (`PRECISE_COVERAGE=true`): イベントハンドラやコールバックの実行回数を正確に取得。パフォーマンスへの影響が大きい。
-
-詳細は `docs/coverage-event-handlers.md` を参照してください。
-
-テストの前には `scripts/setup.sh` を実行してローカルのエミュレータ群を起動してください。
-スクリプトは初回実行後にインストール結果をキャッシュするため、二回目以降は依存関係のインストールをスキップして短時間で完了します。
-
-自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。
+`scripts/test.sh` を使用する場合、事前の `scripts/setup.sh` 手動実行は不要です（自動的に行われます）。
+他の方法で実行する場合は、事前に `scripts/setup.sh` を実行してローカルのエミュレータ群を起動してください。
 
 ### Playwrightテストを順番に実行する
 

@@ -28,11 +28,10 @@ This document consolidates the key development policies for this repository. Fol
   cd client && npx tsc --noEmit --project tsconfig.json
   ```
 - Fix one test file at a time and run it immediately to confirm the fix.
-- When code or tests change, run only the related test file. Use the following
-  commands to run a specific test:
-  - Unit: `cd client && npm run test:unit -- path/to/test.spec.ts`
-  - Integration: `cd client && npm run test:integration -- path/to/test.spec.ts`
-  - E2E: `cd client && npm run test:e2e -- path/to/test.spec.ts`
+- When code or tests change, run only the related test file. Use `scripts/test.sh`:
+  - Unit: `scripts/test.sh client/src/lib/path/to/test.spec.ts`
+  - Integration: `scripts/test.sh client/tests/integration/path/to/test.spec.ts`
+  - E2E: `scripts/test.sh client/e2e/path/to/test.spec.ts`
 - CI keeps tests green on the `main` branch. If tests fail in your branch, the
   cause lies in changes made after you diverged from `main`. Investigate those
   modifications to identify the problem.
@@ -84,8 +83,8 @@ Mocks are generally forbidden. Limited exceptions:
 
 ### Running E2E Tests
 
-- Always run `scripts/setup.sh` before tests to start emulators.
-- Execute E2E tests one file at a time with `scripts/run-e2e-progress.sh 1`.
+- Use `scripts/test.sh` to run tests; it automatically runs `scripts/setup.sh` to start emulators if needed.
+- Execute E2E tests one file at a time with `scripts/test.sh` or `scripts/run-e2e-progress.sh`.
 - The Codex environment is prone to timeouts. Keep each Playwright spec short and split larger flows across multiple files. Document any timeouts; tests will be rerun elsewhere.
 - Use `TestHelpers.prepareTestEnvironment(page)` in `test.beforeEach` and Playwright's `expect(locator).toBeVisible()` assertions.
 - **Test Data Creation**: For display/rendering tests, create test data using `TestHelpers.prepareTestEnvironment(page, test.info(), lines)` where `lines` is an array of strings representing item text. This ensures proper Yjs synchronization and avoids keyboard input issues with special characters like `[/` that may trigger command palettes or shortcuts.
@@ -121,7 +120,7 @@ Mocks are generally forbidden. Limited exceptions:
 - Firebase Storage Emulator runs on port 59200 (configured in firebase.json)
 - Firebase Auth Emulator runs on port 59099 (configured in firebase.json)
 - Firebase Firestore Emulator runs on port 58080 (configured in firebase.json)
-- Use `scripts/setup.sh` to start all Firebase emulators
+- `scripts/test.sh` automatically calls `scripts/setup.sh` to start all Firebase emulators if needed.
 - All attachment upload/download functionality requires Firebase Functions Emulator to be running
 - Tests will fail with "API error 404" if Firebase Functions Emulator is not running
 

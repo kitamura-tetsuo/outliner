@@ -6,7 +6,11 @@ registerCoverageHooks();
 
 test.describe("ALS-0001: Alias change target", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "これはテスト用のページです。1",
+            "これはテスト用のページです。2",
+            "これはテスト用のページです。3",
+        ]);
     });
 
     test("change alias target and update path", async ({ page }) => {
