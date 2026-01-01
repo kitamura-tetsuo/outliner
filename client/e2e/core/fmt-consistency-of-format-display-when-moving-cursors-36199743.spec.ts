@@ -213,7 +213,14 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
     });
 
     test("SharedTreeデータが正しく保存される", async ({ page }) => {
-        // 最初のアイテムを選択
+        // 最初のアイテム（タイトル）を選択してEnterキーを押下し、2つ目のアイテムを作成
+        const titleItem = page.locator(".outliner-item").first();
+        await titleItem.locator(".item-content").click();
+        await TestHelpers.waitForCursorVisible(page);
+        await page.keyboard.press("Enter");
+        await TestHelpers.waitForCursorVisible(page);
+
+        // 2つ目のアイテム（直前で作成したアイテム）を選択
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
