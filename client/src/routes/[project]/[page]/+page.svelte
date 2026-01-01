@@ -141,37 +141,57 @@
             );
 
             // 3. ページの検索・特定
-            const items = project.items as any;
+            // const items = project.items as any; // Moved inside findPage for freshness
             let targetPage: any = null;
 
-            // タイトルで検索 (Case-insensitive)
-            if (items) {
-                const len = items.length ?? 0;
-                for (let i = 0; i < len; i++) {
-                    const p = items.at ? items.at(i) : items[i];
-                    const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-                    if (
-                        String(t).toLowerCase() ===
-                        String(pageName).toLowerCase()
-                    ) {
-                        targetPage = p;
+            // Helper to find page by name
+            const findPage = () => {
+                const items = project.items as any;
+                if (items) {
+                    const len = typeof items.length === "function" ? items.length() : (items.length ?? 0);
+                    for (let i = 0; i < len; i++) {
+                        const p = items.at ? items.at(i) : items[i];
+                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        if (
+                            String(t).toLowerCase() ===
+                            String(pageName).toLowerCase()
+                        ) {
+                            return p;
+                        }
+                    }
+                }
+                return null;
+            };
+
+            targetPage = findPage();
+
+            // Retry for eventual consistency (especially in tests where data is seeded via API)
+            if (!targetPage) {
+                logger.info(`loadProjectAndPage: Page "${pageName}" not found initially. Retrying...`);
+                // Wait up to 15 seconds (150 * 100ms) for Yjs to sync
+                const maxRetries = 150;
+                for (let i = 0; i < maxRetries; i++) {
+                    await new Promise(r => setTimeout(r, 100));
+                    targetPage = findPage();
+                    if (targetPage) {
+                        logger.info(`loadProjectAndPage: Found page "${pageName}" after retry ${i+1}`);
                         break;
+                    }
+                    if (i % 10 === 0) {
+                        const items = project.items as any;
+                        const len = typeof items?.length === "function" ? items.length() : (items?.length ?? 0);
+                        logger.debug(`loadProjectAndPage: Retry ${i+1}/${maxRetries}, items.length=${len}`);
                     }
                 }
             }
 
             // 4. ページが存在しない場合: 自動作成
+            // REMOVED: Legacy auto-creation logic.
+            // If the page doesn't exist, we should not automatically create it on navigation.
+            // This ensures tests fail if seeding was missed, and avoids accidental creation in production.
             if (!targetPage) {
                 logger.info(
-                    `loadProjectAndPage: Page "${pageName}" not found. Auto-creating...`,
-                );
-                const currentUser =
-                    userManager.getCurrentUser()?.id || "anonymous";
-
-                // プロジェクトにページを追加
-                targetPage = project.addPage(pageName, currentUser);
-                logger.info(
-                    `loadProjectAndPage: Page created with ID: ${targetPage?.id}`,
+                    `loadProjectAndPage: Page "${pageName}" not found. skipping auto-creation.`,
                 );
             }
 
@@ -261,109 +281,6 @@
                 } catch {}
             });
         } catch {}
-
-        // コラボレーションテスト用: Yjsの同期を待つ
-        // SKIP_TEST_CONTAINER_SEED=trueの場合でも、ページの同期を待つ必要がある
-        const isTestEnv =
-            import.meta.env.MODE === "test" ||
-            import.meta.env.VITE_IS_TEST === "true" ||
-            (typeof window !== "undefined" &&
-                window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
-        if (isTestEnv && store.project) {
-            // Test mode: waiting for Yjs sync
-            console.log(
-                `[+page.svelte] onMount: Test mode, waiting for Yjs sync...`,
-            );
-            console.log(
-                `[+page.svelte] onMount: store.currentPage=${!!store.currentPage}, pageName="${pageName}"`,
-            );
-            if (!store.currentPage) {
-                const itemsAny: any = (store.project as any).items as any;
-                // Use async function for proper await support
-                (async () => {
-                    for (let retry = 0; retry < 20; retry++) {
-                        await new Promise((r) => setTimeout(r, 500));
-                        const currentLen = itemsAny?.length ?? 0;
-                        for (let i = 0; i < currentLen; i++) {
-                            const p = itemsAny.at
-                                ? itemsAny.at(i)
-                                : itemsAny[i];
-                            const title =
-                                p?.text?.toString?.() ?? String(p?.text ?? "");
-                            if (
-                                String(title).toLowerCase() ===
-                                String(pageName).toLowerCase()
-                            ) {
-                                store.currentPage = p as any;
-                                console.log(
-                                    `[+page.svelte] Found page via Yjs sync: ${title} (id=${p?.id})`,
-                                );
-                                // Wait for page subdocument to be connected and items to be available
-                                try {
-                                    const yjsClient = yjsStore.yjsClient;
-                                    const pageId = p?.id;
-                                    console.log(
-                                        `[+page.svelte] Checking page connection: pageId=${pageId}, yjsClient=${!!yjsClient}`,
-                                    );
-                                    if (yjsClient && pageId) {
-                                        const pageConn =
-                                            yjsClient.getPageConnection?.(
-                                                pageId,
-                                            );
-                                        console.log(
-                                            `[+page.svelte] Initial pageConn check: pageConn=${!!pageConn}`,
-                                        );
-                                        for (
-                                            let waitIter = 0;
-                                            waitIter < 50;
-                                            waitIter++
-                                        ) {
-                                            const conn =
-                                                yjsClient.getPageConnection?.(
-                                                    pageId,
-                                                );
-                                            if (conn) {
-                                                const pageItems = p?.items;
-                                                const itemCount =
-                                                    pageItems?.length ?? 0;
-                                                console.log(
-                                                    `[+page.svelte] Page connected, checking items: count=${itemCount}`,
-                                                );
-                                                if (itemCount > 0) {
-                                                    console.log(
-                                                        `[+page.svelte] Page "${pageName}" connected with ${itemCount} items`,
-                                                    );
-                                                    break;
-                                                }
-                                            } else {
-                                                console.log(
-                                                    `[+page.svelte] Waiting for page connection (iter ${waitIter}/50)`,
-                                                );
-                                            }
-                                            await new Promise((r) =>
-                                                setTimeout(r, 100),
-                                            );
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.warn(
-                                        `[+page.svelte] Error waiting for page connection in onMount: ${e}`,
-                                    );
-                                }
-                                return;
-                            }
-                        }
-                    }
-                    console.warn(
-                        `[+page.svelte] Page not found after retries: ${pageName}`,
-                    );
-                })();
-            } else {
-                console.log(
-                    `[+page.svelte] onMount: store.currentPage already set, skipping search`,
-                );
-            }
-        }
 
         // ルートパラメータの変化を監視
         const unsub = page.subscribe(($p) => {

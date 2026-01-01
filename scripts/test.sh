@@ -136,6 +136,10 @@ normalize_to_client() {
       local without_client="${trimmed#client/}"
       attempts+=("$CLIENT_DIR/$without_client")
     fi
+
+    # Also try e2e/ prefixed paths for E2E tests
+    attempts+=("$CLIENT_DIR/e2e/$raw")
+    attempts+=("$CLIENT_DIR/e2e/$trimmed")
   fi
 
   local candidate

@@ -9,10 +9,12 @@ export { type PageSeedData };
  */
 export class SeedClient {
     private projectId: string;
+    private projectTitle: string;
     private authToken: string;
     private apiUrl: string;
 
     constructor(projectTitle: string, authToken: string) {
+        this.projectTitle = projectTitle;
         // Derive stable ID from title to match client-side logic in test mode
         this.projectId = SeedClient.stableIdFromTitle(projectTitle);
         this.authToken = authToken;
@@ -54,7 +56,9 @@ export class SeedClient {
      * Seed the project with pages via HTTP API
      */
     public async seed(pages: PageSeedData[]): Promise<void> {
-        console.log(`[SeedClient] Seeding project "${this.projectId}" with ${pages.length} pages via HTTP API...`);
+        console.log(
+            `[SeedClient] Seeding project "${this.projectId}" (title: "${this.projectTitle}") with ${pages.length} pages via HTTP API...`,
+        );
         try {
             const response = await fetch(`${this.apiUrl}/api/seed`, {
                 method: "POST",
@@ -63,7 +67,7 @@ export class SeedClient {
                     "Authorization": `Bearer ${this.authToken}`,
                 },
                 body: JSON.stringify({
-                    projectName: decodeURIComponent(this.projectId),
+                    projectName: this.projectTitle,
                     pages,
                 }),
             });
