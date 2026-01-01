@@ -14,6 +14,8 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("フォーマット文字列でのカーソル操作", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2"]);
+        // Wait for outliner items to be rendered after seeding
+        await TestHelpers.waitForOutlinerItems(page, 30000, 3); // 3 = page title + 2 items
     });
 
     test("太字文字列内でのカーソル移動が正しく機能する", async ({ page }) => {

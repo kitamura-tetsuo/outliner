@@ -70,13 +70,13 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
                 const page = project.addPage(pageData.name, "seed-server");
 
                 // Store items in the page subdocument's pageItems map
+                // This matches how the client schema expects items to be stored
                 if (pageData.lines && pageData.lines.length > 0) {
                     const pagesMap = projectDoc.getMap<Y.Doc>("pages");
                     const subdoc = pagesMap.get(page.id);
 
                     if (subdoc) {
                         // Ensure subdoc is loaded before accessing its data
-                        // This is required for subdocs to properly load their state
                         subdoc.load();
 
                         const pageItems = subdoc.getMap<any>("pageItems");
@@ -100,13 +100,11 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
                         }
 
                         // CRITICAL: Persist the subdocument to LevelDB
-                        // Without this, the seeded items won't be available when
-                        // clients connect and load the page subdocument
                         const pageRoom = `projects/${projectId}/pages/${page.id}`;
                         const subdocUpdate = Y.encodeStateAsUpdate(subdoc);
                         await persistence.storeUpdate(pageRoom, subdocUpdate);
                         logger.info({
-                            event: "seed_subdoc_persisted",
+                            event: "seed_items_persisted",
                             pageRoom,
                             bytes: subdocUpdate.byteLength,
                             itemCount: pageData.lines.length,
