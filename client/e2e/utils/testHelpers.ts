@@ -1888,7 +1888,6 @@ export class TestHelpers {
         const host = authHost.startsWith("http") ? authHost : `http://${authHost}`;
         const apiKey = "fake-api-key";
         const signInUrl = `${host}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
-        const signUpUrl = `${host}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
 
         const payload = {
             email: "test@example.com",
@@ -1905,17 +1904,30 @@ export class TestHelpers {
 
             if (!response.ok) {
                 const text = await response.text();
+                // If user not found, try to sign up
                 if (text.includes("EMAIL_NOT_FOUND")) {
                     console.log("[TestHelpers] User not found, creating new test user...");
-                    response = await fetch(signUpUrl, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload),
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`SignUp failed: ${response.status} ${errorText}`);
+                    try {
+                        return await this.signUpTestUser(host, apiKey);
+                    } catch (e: any) {
+                        // Handle race condition: if another worker created the user in the meantime
+                        if (e.message && e.message.includes("EMAIL_EXISTS")) {
+                            console.log("[TestHelpers] Race condition detected (EMAIL_EXISTS). Retrying sign-in...");
+                            // Retry sign-in
+                            const retryResponse = await fetch(signInUrl, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(payload),
+                            });
+                            if (!retryResponse.ok) {
+                                const retryText = await retryResponse.text();
+                                throw new Error(`Auth retry failed: ${retryText}`);
+                            }
+                            const retryData: any = await retryResponse.json();
+                            return retryData.idToken;
+                        } else {
+                            throw e;
+                        }
                     }
                 } else {
                     console.error(`[TestHelpers] Auth failed: ${response.status} ${text}`);
@@ -1927,10 +1939,28 @@ export class TestHelpers {
             return data.idToken;
         } catch (e) {
             console.error("[TestHelpers] Failed to get test auth token", e);
-            // Fallback: return empty string if emulator is not reachable,
-            // but this will likely fail backend validation.
             return "";
         }
+    }
+
+    private static async signUpTestUser(host: string, apiKey: string): Promise<string> {
+        const signUpUrl = `${host}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
+        const payload = {
+            email: "test@example.com",
+            password: "password",
+            returnSecureToken: true,
+        };
+        const response = await fetch(signUpUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`SignUp failed: ${response.status} ${errorText}`);
+        }
+        const data: any = await response.json();
+        return data.idToken;
     }
 }
 

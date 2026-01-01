@@ -1,7 +1,61 @@
 // Minimal Yjs-based schema wrappers for yjsService and tests
 
+import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
+
+export type Comment = {
+    id: string;
+    author: string;
+    text: string;
+    created: number;
+    lastChanged: number;
+};
+
+export type CommentValueType = string | number;
+
+// コメントコレクション（Y.Array<Y.Map>）用ラッパ
+export class Comments {
+    private readonly yArray: Y.Array<Y.Map<CommentValueType>>;
+    constructor(yArray: Y.Array<Y.Map<CommentValueType>>, private readonly itemId: string) {
+        this.yArray = yArray;
+    }
+
+    addComment(author: string, text: string) {
+        const time = Date.now();
+        const c = new Y.Map<CommentValueType>();
+        c.set("id", uuid());
+        c.set("author", author);
+        c.set("text", text);
+        c.set("created", time);
+        c.set("lastChanged", time);
+        this.yArray.push([c]);
+        // Client side event dispatch for UI updates (badge count)
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(
+                new CustomEvent("item-comment-count", { detail: { id: this.itemId, count: this.yArray.length } }),
+            );
+        }
+        return { id: c.get("id") as string };
+    }
+
+    deleteComment(commentId: string) {
+        const ids = this.yArray.toArray().map((m) => m.get("id"));
+        const idx = ids.findIndex((id) => id === commentId);
+        if (idx >= 0) {
+            this.yArray.delete(idx, 1);
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                    new CustomEvent("item-comment-count", { detail: { id: this.itemId, count: this.yArray.length } }),
+                );
+            }
+        }
+    }
+
+    get length() {
+        return this.yArray.length;
+    }
+}
 
 export class Item {
     constructor(
@@ -27,13 +81,19 @@ export class Item {
     }
 
     set aliasTargetId(value: string | undefined) {
-        this.value.set("aliasTargetId", value);
+        if (value === undefined) {
+            this.value.delete("aliasTargetId");
+        } else {
+            this.value.set("aliasTargetId", value);
+        }
     }
 
     updateText(text: string) {
         const t = this.text;
-        t.delete(0, t.length);
-        if (text) t.insert(0, text);
+        if (t) {
+            t.delete(0, t.length);
+            if (text) t.insert(0, text);
+        }
         this.value.set("lastChanged", Date.now());
     }
 
@@ -50,7 +110,8 @@ export class Item {
     // 添付を追加（重複は無視）。テスト同期用に CustomEvent も発火
     addAttachment(url: string) {
         const arr = this.attachments;
-        if (!arr.toArray().includes(url)) {
+        const existing = arr.toArray();
+        if (!existing.includes(url)) {
             arr.push([url]);
             this.value.set("lastChanged", Date.now());
             try {
@@ -66,7 +127,8 @@ export class Item {
     // 添付を削除
     removeAttachment(url: string) {
         const arr = this.attachments;
-        const idx = arr.toArray().indexOf(url);
+        const existing = arr.toArray();
+        const idx = existing.indexOf(url);
         if (idx >= 0) {
             arr.delete(idx, 1);
             this.value.set("lastChanged", Date.now());
@@ -78,6 +140,31 @@ export class Item {
                 }
             } catch {}
         }
+    }
+
+    // コメント: 専用のクラスでラップする
+    get comments() {
+        // server implements Comments class wrapper, here we can simplify or assume mapped
+        // Ideally we should match server implementation structure if complex
+        // For E2E test dispatch, we need basic operations.
+        // Assuming 'comments' is a Y.Array in the item's map
+        // Fix: Explicitly cast to match Comments constructor expectation
+        const yarr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>>;
+        if (!yarr) {
+            // Initialize if missing (schema should ensure, but safety first)
+            const arr = new Y.Array<Y.Map<CommentValueType>>();
+            this.value.set("comments", arr);
+            return new Comments(arr, this.id);
+        }
+        return new Comments(yarr, this.id);
+    }
+
+    addComment(author: string, text: string) {
+        return this.comments.addComment(author, text);
+    }
+
+    removeComment(commentId: string) {
+        this.comments.deleteComment(commentId);
     }
 
     get items(): Items {
