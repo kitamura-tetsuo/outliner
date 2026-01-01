@@ -177,10 +177,10 @@
                         logger.info(`loadProjectAndPage: Found page "${pageName}" after retry ${i+1}`);
                         break;
                     }
-                    if (i % 10 === 0) {
+                    if (i % 10 === 0 || i === maxRetries - 1) {
                         const items = project.items as any;
                         const len = typeof items?.length === "function" ? items.length() : (items?.length ?? 0);
-                        logger.debug(`loadProjectAndPage: Retry ${i+1}/${maxRetries}, items.length=${len}`);
+                        logger.info(`loadProjectAndPage: Retry ${i+1}/${maxRetries}, items.length=${len}, pageName="${pageName}"`);
                     }
                 }
             }

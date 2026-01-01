@@ -47,10 +47,9 @@ export class GeneralStore {
                         break;
                     }
                 }
-                if (!next) {
-                    next = items?.addNode?.("tester");
-                    next?.updateText?.(title);
-                }
+                // REMOVED: Legacy browser-based auto-creation. Tests should use TestHelpers.createAndSeedProject for data seeding.
+                // If page doesn't exist, do not auto-create it here - let tests fail if seeding was missed.
+
                 // 子行の移植（先行シードを反映）
                 try {
                     const prevItems = page?.items;
