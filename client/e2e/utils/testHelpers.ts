@@ -84,12 +84,11 @@ export class TestHelpers {
             }
         } catch {}
 
-        // Set test environment flags before navigation (needed for WebSocket connection)
+        // Set WebSocket flag before navigation (needed for Yjs connection)
+        // Note: VITE_IS_TEST, VITE_USE_FIREBASE_EMULATOR are already set by globals.d.ts
         await page.addInitScript(() => {
             try {
-                localStorage.setItem("VITE_IS_TEST", "true");
-                localStorage.setItem("VITE_E2E_TEST", "true");
-                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                // Force WebSocket connection for Yjs (required for test environment)
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as Window & Record<string, any>).__E2E__ = true;

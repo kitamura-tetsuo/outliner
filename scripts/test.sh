@@ -238,7 +238,7 @@ case "$detected_type" in
       # Sanitize spec path for filename
       SAFE_SPEC_NAME=$(echo "$spec" | sed 's/[^a-zA-Z0-9]/_/g')
       export PLAYWRIGHT_JSON_OUTPUT_NAME="${LOGS_DIR}/e2e-${SAFE_SPEC_NAME}-${TIMESTAMP}.json"
-      npm run test:e2e -- "$spec" "${pass_through[@]}" --reporter=list,json
+      npm run test:e2e -- "$spec" "${pass_through[@]}" --reporter=json
     done
     ;;
   *)
