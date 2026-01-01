@@ -37,10 +37,11 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         }, { timeout: 20000 });
 
         // Wait for container selector to have options
+        // Wait for container selector to have options
         await page.waitForFunction(() => {
             const cs = (window as any).__CONTAINER_STORE__;
-            return cs && cs.containers && cs.containers.length >= 2;
-        }, { timeout: 10000 });
+            return cs && Array.isArray(cs.containers) && cs.containers.length >= 2;
+        }, { timeout: 30000 });
 
         const options = page.locator("select.container-select option");
         await expect(options).toHaveCount(2);

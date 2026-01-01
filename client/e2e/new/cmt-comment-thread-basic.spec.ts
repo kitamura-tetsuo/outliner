@@ -116,9 +116,16 @@ test.describe("CMT-0001: comment threads", () => {
         test.setTimeout(60000); // Increase timeout for this specific test under load
         // Using TestHelpers.prepareTestEnvironment from beforeEach ensures we have a fresh page for this test
         await TestHelpers.waitForOutlinerItems(page);
+        // Wait for outliner items to be populated (robust wait)
+        await page.locator(".outliner-item[data-item-id]").nth(1).waitFor({ state: "attached", timeout: 30000 });
         // インデックス1を使用（インデックス0はページタイトルでコメントボタンが表示されない）
-        const firstId = await TestHelpers.getItemIdByIndex(page, 1);
-        if (!firstId) throw new Error("item id not found");
+        // Retry logic for getItemIdByIndex in case of transient state
+        let firstId = await TestHelpers.getItemIdByIndex(page, 1);
+        if (!firstId) {
+            await page.waitForTimeout(1000);
+            firstId = await TestHelpers.getItemIdByIndex(page, 1);
+        }
+        if (!firstId) throw new Error("item id not found after retry");
 
         // First, wait for the comment button to be visible and ready
         const commentButton = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-button-${firstId}"]`);
