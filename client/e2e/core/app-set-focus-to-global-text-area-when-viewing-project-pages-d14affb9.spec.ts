@@ -40,7 +40,8 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         expect(elements.globalTextarea).toBe(true);
 
         // 最初のアイテムをクリックしてフォーカスを設定
-        const firstItem = page.locator(".outliner-item").first();
+        const firstItem = page.locator(".outliner-item[data-item-id]").first();
+        await firstItem.waitFor();
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 

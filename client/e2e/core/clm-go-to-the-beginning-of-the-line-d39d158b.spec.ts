@@ -14,9 +14,9 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("CLM-0007: 行頭へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line", "Third line"]);
-        await TestHelpers.waitForOutlinerItems(page);
+        await TestHelpers.waitForOutlinerItems(page, 30000, 3);
         // Ensure all seeded items are visible
-        await page.locator(".outliner-item >> nth=2").waitFor();
+        await page.locator(".outliner-item[data-item-id] >> nth=2").waitFor();
 
         // 2番目のアイテム（Second line）を取得してクリック
         const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
