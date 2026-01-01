@@ -8,6 +8,8 @@ test("debug internal link html", async ({ page }, testInfo) => {
     await TestHelpers.prepareTestEnvironment(page, testInfo);
 
     const items = page.locator(".outliner-item");
+    // Wait for seeding to populate 4 items
+    await page.waitForFunction(() => document.querySelectorAll(".outliner-item").length >= 4, { timeout: 30000 });
     await expect(items).toHaveCount(4, { timeout: 10000 });
 
     const firstItem = items.nth(1);

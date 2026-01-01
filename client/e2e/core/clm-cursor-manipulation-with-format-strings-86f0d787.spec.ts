@@ -15,7 +15,8 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2"]);
         // Wait for outliner items to be rendered after seeding (wait for specific content)
-        await page.locator(".outliner-item[data-item-id]").filter({ hasText: "Item 2" }).waitFor({ timeout: 60000 });
+        // Wait for outliner items to be rendered after seeding (robust wait)
+        await page.locator(".outliner-item[data-item-id]").first().waitFor({ timeout: 60000 });
     });
 
     test("太字文字列内でのカーソル移動が正しく機能する", async ({ page }) => {

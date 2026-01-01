@@ -80,8 +80,14 @@ test.describe("YJS-0001: プロジェクトとページの取得・検証", () =
     });
 
     test("generalStore からプロジェクトデータへアクセスできる", async ({ page }) => {
-        const info = await page.evaluate(() => {
+        const info = await page.evaluate(async () => {
             const gs: any = (window as any).generalStore;
+            // Wait for items to be populated
+            const start = Date.now();
+            while (Date.now() - start < 10000) {
+                if (gs?.project?.items?.length > 0) break;
+                await new Promise(r => setTimeout(r, 100));
+            }
             const pages: any = gs?.project?.items;
             const len = pages?.length ?? 0;
             const titles: string[] = [];
