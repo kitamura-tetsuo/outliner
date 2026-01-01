@@ -69,7 +69,7 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
         const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
         const tokenVerifyUrl = process.env.VITE_TOKEN_VERIFY_URL;
 
-        expect(apiKey).toBe("test-api-key");
+        expect(apiKey).toBe("AIzaSyCMPfoobar1234567890abcdefghij");
         expect(projectId).toBe("test-project-id");
         expect(tokenVerifyUrl).toBe("http://localhost:7091/verify");
 

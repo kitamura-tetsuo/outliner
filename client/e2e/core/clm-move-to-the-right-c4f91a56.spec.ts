@@ -20,6 +20,8 @@ test.describe("CLM-0003: 右へ移動", () => {
         // Note: Item 0 is Title. Item 1 is "Test data".
         const itemId = await TestHelpers.getItemIdByIndex(page, 1);
         await TestHelpers.setCursor(page, itemId!);
+        // Ensure cursor is fully ready and active before asserting
+        await TestHelpers.ensureCursorReady(page);
 
         // 初期カーソル情報を取得して検証
         let cursorData = await CursorValidator.getCursorData(page);

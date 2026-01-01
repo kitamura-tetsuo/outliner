@@ -346,6 +346,15 @@ export class TestHelpers {
         await TestHelpers.setupTreeDebugger(page);
         await TestHelpers.setupCursorDebugger(page);
 
+        // Set WebSocket flag and E2E flag before navigation (consistency with prepareTestEnvironment)
+        await page.addInitScript(() => {
+            try {
+                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                localStorage.removeItem("VITE_YJS_DISABLE_WS");
+                (window as Window & Record<string, any>).__E2E__ = true;
+            } catch {}
+        });
+
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
         const projectName = options?.projectName ?? `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = options?.pageName ?? `test-page-${Date.now()}`;
