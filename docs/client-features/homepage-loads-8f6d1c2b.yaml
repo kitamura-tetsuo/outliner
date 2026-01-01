@@ -1,8 +1,8 @@
-id: CDX-8f6d1c2b
+id: APP-8f6d1c2b
 title: Home page loads after setup
 title-ja: セットアップ後にホームページが表示される
 description: The application shows the outliner page once the test environment is prepared.
-category: codex
+category: core
 status: experimental
 acceptance:
 - At least one outliner item is rendered

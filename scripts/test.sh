@@ -32,7 +32,7 @@ setTimeout(() => {
 }, 3000).unref();' "$port" >/dev/null 2>&1
 }
 
-ensure_codex_services() {
+ensure_services() {
   if [ "${SKIP_AUTO_SETUP:-0}" = "1" ]; then
     return
   fi
@@ -88,7 +88,7 @@ if [ $# -eq 0 ]; then
   fi
   echo "✅ ESLint check passed!"
 
-  ensure_codex_services
+  ensure_services
   npm run test:unit
   npm run test:integration
   cleanup_e2e_coverage
@@ -232,7 +232,7 @@ case "$detected_type" in
     npm run test:production -- "${normalized_paths[@]}" "${pass_through[@]}" --reporter=default --reporter=json --outputFile="${LOGS_DIR}/production-${TIMESTAMP}.json"
     ;;
   e2e)
-    ensure_codex_services
+    ensure_services
     cleanup_e2e_coverage
     for spec in "${normalized_paths[@]}"; do
       # Sanitize spec path for filename

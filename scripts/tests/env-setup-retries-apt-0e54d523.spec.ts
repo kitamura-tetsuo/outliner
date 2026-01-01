@@ -1,5 +1,5 @@
 /** @feature ENV-0e54d523
- *  Title   : Codex setup retries apt installs
+ *  Title   : Setup retries apt installs
  *  Source  : docs/dev-features.yaml
  */
 import fs from "fs";
@@ -13,7 +13,7 @@ const repoRoot = path.resolve(__dirname, "../..");
 const setupScript = path.join(repoRoot, "scripts", "setup.sh");
 const commonFunctions = path.join(repoRoot, "scripts", "common-functions.sh");
 
-test("codex-setup uses retry_apt_get", () => {
+test("setup uses retry_apt_get", () => {
     const content = fs.readFileSync(setupScript, "utf8");
     expect(content.includes("retry_apt_get -y install python3-venv python3-pip")).toBe(true);
 });
