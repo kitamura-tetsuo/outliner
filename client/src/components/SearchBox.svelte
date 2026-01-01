@@ -327,9 +327,12 @@ onMount(() => {
             type="button"
             class="clear-button"
             aria-label="Clear search"
+            title="Clear search"
             onclick={() => { query = ''; }}
         >
-            &times;
+            <svg class="clear-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
         </button>
     {/if}
     {#if query.length > 0 && results.length === 0}
@@ -455,10 +458,28 @@ onMount(() => {
     color: #9ca3af;
     padding: 0.25rem;
     line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    width: 1.5rem;
+    height: 1.5rem;
 }
 
 .clear-button:hover {
     color: #6b7280;
+    background-color: #f3f4f6;
+}
+
+.clear-button:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 1px;
+    background-color: #f3f4f6;
+}
+
+.clear-icon {
+    width: 1rem;
+    height: 1rem;
 }
 
 .no-results {
