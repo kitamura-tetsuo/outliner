@@ -268,7 +268,7 @@ export class Project {
 
             // Wait for items to be available if subdoc just loaded
             let waitCount = 0;
-            const maxWait = 10;
+            const maxWait = 100; // Increase to 10s for slow CI environments
             while (pageItemsSize <= 1 && waitCount < maxWait) { // <= 1 means only "initialized" key
                 await new Promise(resolve => setTimeout(resolve, 100));
                 const newSize = pageItems.size;

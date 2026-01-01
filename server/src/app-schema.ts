@@ -261,6 +261,7 @@ export class Item {
             if (currentPage && thisDoc && targetDoc && thisDoc !== targetDoc) {
                 const items = currentPage.items;
                 // 1) IDマップ経由で対応先を探す
+
                 try {
                     const map = w?.__ITEM_ID_MAP__;
                     const mappedId = map ? map[String(this.id)] : undefined;

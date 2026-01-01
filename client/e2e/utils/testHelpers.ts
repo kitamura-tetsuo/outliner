@@ -1887,23 +1887,40 @@ export class TestHelpers {
         // Ensure protocol
         const host = authHost.startsWith("http") ? authHost : `http://${authHost}`;
         const apiKey = "fake-api-key";
-        const url = `${host}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
+        const signInUrl = `${host}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
+        const signUpUrl = `${host}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
+
+        const payload = {
+            email: "test@example.com",
+            password: "password",
+            returnSecureToken: true,
+        };
 
         try {
-            const response = await fetch(url, {
+            let response = await fetch(signInUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: "test@example.com",
-                    password: "password",
-                    returnSecureToken: true,
-                }),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
                 const text = await response.text();
-                console.error(`[TestHelpers] Auth failed: ${response.status} ${text}`);
-                throw new Error(`Auth failed: ${text}`);
+                if (text.includes("EMAIL_NOT_FOUND")) {
+                    console.log("[TestHelpers] User not found, creating new test user...");
+                    response = await fetch(signUpUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`SignUp failed: ${response.status} ${errorText}`);
+                    }
+                } else {
+                    console.error(`[TestHelpers] Auth failed: ${response.status} ${text}`);
+                    throw new Error(`Auth failed: ${text}`);
+                }
             }
 
             const data: any = await response.json();
