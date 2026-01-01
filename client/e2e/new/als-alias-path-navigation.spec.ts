@@ -6,7 +6,7 @@ registerCoverageHooks();
 
 test.describe("ALS-0001: Alias path navigation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["first item", "second item"]);
     });
 
     test("alias path shows clickable links", async ({ page }) => {
