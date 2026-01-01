@@ -15,13 +15,7 @@
     } from "../../../lib/linkPreviewHandler";
     import { getLogger } from "../../../lib/logger";
     import {
-        createSnapshotClient,
-        loadProjectSnapshot,
-        snapshotToProject,
-    } from "../../../lib/projectSnapshot";
-    import {
         getYjsClientByProjectTitle,
-        createNewYjsProject,
     } from "../../../services";
     const logger = getLogger("+page");
 
@@ -29,12 +23,6 @@
     import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
     import { store } from "../../../stores/store.svelte";
     import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
-
-    import { SvelteSet } from "svelte/reactivity";
-
-    // Track which pages have been hydrated to prevent duplicate hydration during retries
-    // This is needed because hydratePageItems can be called multiple times
-    const _hydratedPages = new SvelteSet<string>();
 
     // URLパラメータを取得（SvelteKit page store に追従）
     // NOTE: `$page` の値を参照する必要がある（store オブジェクトではなく値）。
@@ -97,7 +85,7 @@
     }
 
     // 認証成功時の処理
-    async function handleAuthSuccess(authResult: any) {
+    function handleAuthSuccess() {
         logger.info("handleAuthSuccess: 認証成功");
         isAuthenticated = true;
         scheduleLoadIfNeeded({ authenticated: true });

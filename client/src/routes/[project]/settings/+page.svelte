@@ -1,6 +1,5 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import { resolve } from "$app/paths";
     import { page } from "$app/stores";
     import { onMount } from "svelte";
     import {
@@ -12,19 +11,13 @@
     import { yjsStore } from "../../../stores/yjsStore.svelte";
     import { store } from "../../../stores/store.svelte";
     import {
+        createSnapshotClient,
         loadProjectSnapshot,
-        saveProjectSnapshot,
         snapshotToProject,
         snapshotToMarkdown,
         snapshotToOpml,
-        createSnapshotClient,
     } from "../../../lib/projectSnapshot";
-    import type { Project, Items } from "../../../schema/app-schema";
-
-    interface PlainTreeItem {
-        text: string;
-        children: PlainTreeItem[];
-    }
+    import type { Project } from "../../../schema/app-schema";
 
     let project: Project | undefined = undefined;
     let exportText = $state("");

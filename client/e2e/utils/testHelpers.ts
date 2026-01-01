@@ -260,15 +260,6 @@ export class TestHelpers {
             { timeout: 60000 },
         ).catch(async (e) => {
             // Fallback: log warning and continue - the +page.svelte retry logic will handle it
-            // Guard against window not being available (e.g., page context destroyed)
-            let cpText = "";
-            try {
-                if (typeof window !== "undefined") {
-                    const gs = (window as any).generalStore;
-                    const cp = gs?.currentPage;
-                    cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
-                }
-            } catch {}
             TestHelpers.slog("Warning: currentPage not set or mismatch within timeout", { error: e?.message });
 
             // Extensive Debugging info

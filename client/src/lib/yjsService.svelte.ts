@@ -5,7 +5,6 @@ import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
-import { log } from "./logger";
 import { getContainerTitleFromMetaDoc, setContainerTitleInMetaDoc } from "./metaDoc.svelte";
 
 interface ClientKey {
@@ -88,17 +87,6 @@ function isTestEnvironment(): boolean {
         // Robust check via URL params to avoid localStorage race conditions
         const urlParams = new URL(win.location.href).searchParams;
         const isTestUrl = urlParams.get("isTest") === "true";
-
-        const debugMsg =
-            `isTestEnvironment check: MODE=${mode}, VITE_IS_TEST=${isTestLs}, VITE_E2E_TEST=${isE2eLs}, __E2E__=${isE2eWin}, URL_IS_TEST=${isTestUrl}`;
-        // Only log if we are about to return false (to avoid spam in hot paths, though this is called rarely)
-        // or just log it once.
-        // Using console.log might be spammy if called in a loop, but getClientByProjectTitle calls it.
-        // We'll log it if it matters (i.e. inside getClient logging).
-        // Actually, let's just log it to window log always for now.
-        // addToWindowLog(debugMsg); // Can't call addToWindowLog here easily if it's defined below?
-        // addToWindowLog IS defined below. Function hoisting works.
-        // But let's keep it simple.
 
         if (isTestLs === "true") return true;
         if (isE2eLs === "true") return true;
