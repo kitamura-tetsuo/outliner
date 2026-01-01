@@ -99,7 +99,7 @@ jobs:
           mkdir -p job_logs
           cd client
           # Run specific project using the github:test:e2e script with --project argument
-          npm run github:test:e2e -- --project=${{ matrix.project }} --reporter=github,line,json 2>&1 | tee -a ../job_logs/e2e-${{ matrix.project }}.log
+          npm run github:test:e2e -- --project=${{ matrix.project }} 2>&1 | tee -a ../job_logs/e2e-${{ matrix.project }}.log
         env:
           CI: true
           NODE_ENV: test

@@ -90,6 +90,10 @@ export default defineConfig({
 
     reporter: [
         ["html", { open: "never" }],
+        ...(process.env.CI ? [["github"], ["line"]] : [["list"]]),
+        ...(process.env.PLAYWRIGHT_JSON_OUTPUT_NAME
+            ? [["json", { outputFile: process.env.PLAYWRIGHT_JSON_OUTPUT_NAME }]]
+            : []),
         // E2Eカバレッジレポートは scripts/generate-e2e-coverage.js で生成されます
     ],
     // テスト実行時のタイムアウトを延長（環境初期化の揺らぎに対応）

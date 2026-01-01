@@ -92,7 +92,8 @@ if [ $# -eq 0 ]; then
   npm run test:unit
   npm run test:integration
   cleanup_e2e_coverage
-  npm run test:e2e --
+  export PLAYWRIGHT_JSON_OUTPUT_NAME="${LOGS_DIR}/e2e-all-${TIMESTAMP}.json"
+  NODE_ENV=test TEST_ENV=localhost ./node_modules/.bin/dotenvx run --overload --env-file=.env.test -- ./node_modules/.bin/playwright test
   exit 0
 fi
 
@@ -234,11 +235,12 @@ case "$detected_type" in
   e2e)
     ensure_services
     cleanup_e2e_coverage
+    for spec in "${normalized_paths[@]}"; do
       # Sanitize spec path for filename
       SAFE_SPEC_NAME=$(echo "$spec" | sed 's/[^a-zA-Z0-9]/_/g')
       export PLAYWRIGHT_JSON_OUTPUT_NAME="${LOGS_DIR}/e2e-${SAFE_SPEC_NAME}-${TIMESTAMP}.json"
       # Executing directly to avoid duplicate reporters from npm script
-      NODE_ENV=test TEST_ENV=localhost ./node_modules/.bin/dotenvx run --overload --env-file=.env.test -- ./node_modules/.bin/playwright test "$spec" "${pass_through[@]}" --reporter=list,json
+      NODE_ENV=test TEST_ENV=localhost ./node_modules/.bin/dotenvx run --overload --env-file=.env.test -- ./node_modules/.bin/playwright test "$spec" "${pass_through[@]}"
     done
     ;;
   *)
