@@ -20,6 +20,11 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
             "Child item",
         ]);
         const encoded = encodeURIComponent(projectName);
+
+        // Ensure items are loaded before navigating away
+        // This prevents "Child item" from being missed in the export if sync is slow
+        await TestHelpers.waitForOutlinerItems(page);
+
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
 

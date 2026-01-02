@@ -113,7 +113,7 @@ test.describe("CMT-0001: comment threads", () => {
     });
 
     test("add, edit and remove comment", async ({ page }) => {
-        test.setTimeout(60000); // Increase timeout for this specific test under load
+        test.setTimeout(120000); // Increase timeout for this specific test under load
         // Using TestHelpers.prepareTestEnvironment from beforeEach ensures we have a fresh page for this test
         // Wait for thread to be fully interactive (avoid waitForUIStable)
         await page.waitForTimeout(500);

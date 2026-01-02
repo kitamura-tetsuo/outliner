@@ -23,12 +23,18 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
 
         // Navigate to home page where ContainerSelector is rendered
         await page.goto("/", { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(5000);
 
         // Set up accessible projects for container selector
         await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
 
-        const select = page.locator("select.container-select");
+        const select = page.locator("select.project-select");
+
+        // Debug/Wait for wrapper first
+        await page.waitForSelector(".project-selector-wrapper", { timeout: 10000 });
+
+        // Wait for select to be attached to DOM
+        await select.waitFor({ state: "attached", timeout: 10000 });
         await expect(select).toBeVisible();
 
         // 0) Seed baseline container to observe a delta instead of placeholder option
@@ -36,18 +42,18 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
             const svc: any = (window as any).__YJS_SERVICE__;
             if (!svc?.createClient) throw new Error("__YJS_SERVICE__.createClient is not available");
             const client = await svc.createClient();
-            return client.containerId as string;
+            return client.projectId as string; // containerId -> projectId check
         });
 
-        await page.evaluate(async (containerId) => {
+        await page.evaluate(async (projectId) => {
             const fs: any = (window as any).__FIRESTORE_STORE__;
             if (!fs) throw new Error("__FIRESTORE_STORE__ is not available");
             const apply = () => {
                 const now = new Date();
                 fs.setUserProject({
                     userId: "test-user-id",
-                    defaultProjectId: containerId,
-                    accessibleProjectIds: [containerId],
+                    defaultProjectId: projectId,
+                    accessibleProjectIds: [projectId],
                     createdAt: now,
                     updatedAt: now,
                 });
@@ -59,7 +65,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
 
         await page.waitForFunction(
             (id) =>
-                Array.from(document.querySelectorAll("select.container-select option")).some(option =>
+                Array.from(document.querySelectorAll("select.project-select option")).some(option =>
                     (option as HTMLOptionElement).value === id
                 ),
             baselineId,
@@ -73,7 +79,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
             const svc: any = (window as any).__YJS_SERVICE__;
             if (!svc?.createClient) throw new Error("__YJS_SERVICE__.createClient is not available");
             const client = await svc.createClient();
-            return client.containerId as string;
+            return client.projectId as string;
         });
 
         // 2) Replace userProject via store API (setUserProject) with baseline + new project
@@ -97,7 +103,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
 
         // 3) Wait for UI to reflect the change (eventless path)
         await page.waitForFunction(
-            (count) => document.querySelectorAll("select.container-select option").length > count,
+            (count) => document.querySelectorAll("select.project-select option").length > count,
             initialCount,
             { timeout: 10000 },
         );

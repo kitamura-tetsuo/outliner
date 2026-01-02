@@ -27,7 +27,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         // Set up accessible projects for container selector
         await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
 
-        const select = page.locator("select.container-select");
+        const select = page.locator("select.project-select");
         await expect(select).toBeVisible();
         const initialCount = await select.locator("option").count();
 
@@ -41,7 +41,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
 
         // Wait for the dropdown to reflect the new container
         await page.waitForFunction(
-            (count) => document.querySelectorAll("select.container-select option").length > count,
+            (count) => document.querySelectorAll("select.project-select option").length > count,
             initialCount,
             { timeout: 10000 },
         );

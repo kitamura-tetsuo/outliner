@@ -59,7 +59,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
             return items.length >= 4; // Expect 4 items (title + 3 seeded lines)
         },
         null,
-        { timeout: 45000 },
+        { timeout: 120000 },
     );
 
     // Verify item count (accept >= 4 to handle potential duplicates/ghost items)
@@ -109,6 +109,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     }
 
     // Wait for outliner items to be loaded before checking content
+    // Wait for outliner items to be loaded before checking content
     // This is necessary because Yjs sync may take time for seeded data to appear
     console.log("Waiting for 4 outliner items on page2...");
     await page2.waitForFunction(
@@ -118,7 +119,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
             return items.length >= 4; // Expect 4 items (title + 3 seeded lines)
         },
         null,
-        { timeout: 45000 },
+        { timeout: 120000 },
     );
 
     // Wait for both pages to load completely

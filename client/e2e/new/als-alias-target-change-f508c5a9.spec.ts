@@ -15,9 +15,26 @@ test.describe("ALS-0001: Alias change target", () => {
 
     test("change alias target and update path", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
-        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
-        const secondId = await TestHelpers.getItemIdByIndex(page, 1);
-        const thirdId = await TestHelpers.getItemIdByIndex(page, 2);
+
+        // Retry logic for fetching IDs
+        let firstId = await TestHelpers.getItemIdByIndex(page, 0);
+        if (!firstId) {
+            await page.waitForTimeout(1000);
+            firstId = await TestHelpers.getItemIdByIndex(page, 0);
+        }
+
+        let secondId = await TestHelpers.getItemIdByIndex(page, 1);
+        if (!secondId) {
+            await page.waitForTimeout(1000);
+            secondId = await TestHelpers.getItemIdByIndex(page, 1);
+        }
+
+        let thirdId = await TestHelpers.getItemIdByIndex(page, 2);
+        if (!thirdId) {
+            await page.waitForTimeout(1000);
+            thirdId = await TestHelpers.getItemIdByIndex(page, 2);
+        }
+
         if (!firstId || !secondId || !thirdId) throw new Error("item ids not found");
 
         // create alias of first item
