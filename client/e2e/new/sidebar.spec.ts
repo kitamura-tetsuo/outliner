@@ -260,6 +260,9 @@ test.describe("Sidebar Navigation", () => {
         await expect(sidebar).toBeVisible();
 
         // Focus on a page item
+        // Wait for pages to be loaded
+        await TestHelpers.waitForPagesList(page);
+
         await expect(page.locator(".page-item").first()).toBeVisible({ timeout: 10000 });
         const pageItem = page.locator(".page-item").first();
         await pageItem.focus();

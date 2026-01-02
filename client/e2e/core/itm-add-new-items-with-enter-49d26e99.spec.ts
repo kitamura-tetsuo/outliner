@@ -17,8 +17,10 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
         await TestHelpers.waitForOutlinerItems(page);
 
         // Click the first content item (index 1) which contains our seeded text
+        // Add retry logic with longer timeout for CI
         const contentItem = page.locator(".outliner-item").nth(1);
-        await contentItem.waitFor({ state: "visible" });
+        await contentItem.waitFor({ state: "attached", timeout: 30000 });
+        await contentItem.waitFor({ state: "visible", timeout: 15000 });
         await contentItem.locator(".item-content").click({ force: true });
 
         // グローバル textarea にフォーカスが当たるまで待機

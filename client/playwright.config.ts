@@ -92,7 +92,7 @@ export default defineConfig({
 
     reporter: [
         ["html", { open: "never" }],
-        [process.env.CI ? "github" : "list"],
+        ["list"],
         ...(process.env.PLAYWRIGHT_JSON_OUTPUT_NAME
             ? [["json", { outputFile: process.env.PLAYWRIGHT_JSON_OUTPUT_NAME }]]
             : []),

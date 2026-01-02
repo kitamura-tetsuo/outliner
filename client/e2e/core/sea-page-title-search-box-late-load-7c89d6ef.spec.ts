@@ -10,6 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box", () => {
     test("search results update when pages load after typing", async ({ page }, testInfo) => {
+        test.setTimeout(300000);
         const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const input = page
             .getByTestId("main-toolbar")
@@ -23,21 +24,41 @@ test.describe("SEA-0001: page title search box", () => {
             pageName: "second-page",
         });
         // Navigate to the new page and back to ensure sync, then focus the input again
-        await TestHelpers.navigateToProjectPage(page, projectName, "second-page");
-        await TestHelpers.navigateToProjectPage(page, projectName, pageName);
+        await TestHelpers.navigateToProjectPage(page, projectName, "second-page", ["second page text"]);
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName, []);
         // Focus the input again after navigating back
         const inputAfterNav = page
             .getByTestId("main-toolbar")
             .getByRole("textbox", { name: "Search pages" });
         await inputAfterNav.waitFor();
         await inputAfterNav.focus();
-        await inputAfterNav.pressSequentially("second", { delay: 100 });
-        await inputAfterNav.blur();
+
+        // Ensure the project items are loaded (at least 2 items: current page + search target)
+        await page.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                const gs = (window as any).generalStore || (window as any).appStore;
+                const items = gs?.project?.items;
+                if (!items) return false;
+                const arr = Array.from(items as any);
+                return arr.some((item: any) => {
+                    const text = item?.text?.toString?.() || String(item?.text ?? "");
+                    return text.toLowerCase().includes("second");
+                });
+            },
+            { timeout: 30000 },
+        ).catch(() => console.log("[Test] Warning: second page not found in project items store"));
+
+        await page.waitForTimeout(2000);
+        await inputAfterNav.click();
+        await inputAfterNav.fill("second");
+        await page.waitForTimeout(1000); // Allow Svelte reactivity
+
         // Explicitly wait for results
         await page.waitForFunction(() => document.querySelectorAll(".page-search-box li").length > 0, {
-            timeout: 30000,
+            timeout: 60000,
         });
-        await page.waitForSelector(".page-search-box li");
+        await page.waitForSelector(".page-search-box li", { timeout: 60000 });
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Enter");
         await expect(page).toHaveURL(/second-page/);

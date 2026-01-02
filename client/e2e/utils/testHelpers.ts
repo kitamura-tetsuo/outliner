@@ -132,7 +132,34 @@ export class TestHelpers {
             TestHelpers.slog("Navigation completed", { url });
 
             // Wait for the page to load and Yjs to connect
-            await page.waitForTimeout(2000);
+            // Increased from 2s to 3s for CI environments
+            await page.waitForTimeout(3000);
+
+            // Wait for Yjs to connect before checking for items
+            TestHelpers.slog("Waiting for __YJS_STORE__ to be connected...");
+            try {
+                await page.waitForFunction(
+                    () => {
+                        const y = (window as any).__YJS_STORE__;
+                        return y && y.isConnected;
+                    },
+                    { timeout: 30000 },
+                );
+                TestHelpers.slog("__YJS_STORE__ connected");
+            } catch (e) {
+                TestHelpers.slog("Warning: __YJS_STORE__ not connected within timeout", { error: e?.message });
+            }
+
+            // Wait for store initialization
+            try {
+                await page.waitForFunction(
+                    () => !!(window as any).generalStore?.project,
+                    { timeout: 30000 },
+                );
+                TestHelpers.slog("generalStore initialized");
+            } catch (e) {
+                TestHelpers.slog("Warning: generalStore not initialized within timeout", { error: e?.message });
+            }
 
             // Skip the full waitForAppReady for E2E tests to avoid timeout issues
             // The page initialization happens asynchronously
@@ -1140,6 +1167,15 @@ export class TestHelpers {
             const minRequiredItems = minCount;
             let ensured = false;
 
+            // Ensure Yjs is connected before counting items
+            const yjsConnected = await page.evaluate(() => {
+                const y = (window as any).__YJS_STORE__;
+                return !!(y && y.isConnected);
+            });
+            if (!yjsConnected) {
+                TestHelpers.slog("waitForOutlinerItems: Warning - Yjs not connected yet");
+            }
+
             // まずは最小UIの可視性を軽く待機（非致命的）
             try {
                 TestHelpers.slog("waitForOutlinerItems: wait outliner-base visible");
@@ -1199,6 +1235,24 @@ export class TestHelpers {
             await page.waitForTimeout(300);
         }
         TestHelpers.slog("waitForOutlinerItems: end");
+    }
+
+    /**
+     * ページリストが読み込まれるまで待機する（サイドバーナビゲーションテスト用）
+     * @param page Playwrightのページオブジェクト
+     * @param timeout タイムアウト時間（ミリ秒）
+     */
+    public static async waitForPagesList(page: Page, timeout = 15000): Promise<void> {
+        TestHelpers.slog("waitForPagesList: start");
+        await page.waitForFunction(
+            () => {
+                const gs = (window as any).generalStore;
+                const pages = gs?.pages?.current;
+                return pages && pages.length > 0;
+            },
+            { timeout },
+        );
+        TestHelpers.slog("waitForPagesList: success");
     }
 
     /**

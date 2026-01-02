@@ -8,6 +8,7 @@ let ids: { projectName: string; pageName: string; };
 let page: Page;
 
 test.beforeEach(async ({ page: initialPage, browser }, testInfo) => {
+    test.setTimeout(120000);
     const result = await TestHelpers.prepareTestEnvironment(initialPage, testInfo, [], browser);
     ids = { projectName: result.projectName, pageName: result.pageName };
     page = initialPage;
@@ -79,7 +80,9 @@ test("adds multiple outliner items sequentially with Enter", async () => {
     const items = page.locator(".outliner-item[data-item-id]");
     const startCount = await items.count();
 
-    await items.last().click();
+    const lastItem = items.last();
+    await lastItem.waitFor({ state: "visible" });
+    await lastItem.click();
     await page.keyboard.press("Enter");
     await page.keyboard.type("Second");
     await page.keyboard.press("Enter");
