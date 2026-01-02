@@ -5,7 +5,7 @@ import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
 test("debug internal link html", async ({ page }, testInfo) => {
-    await TestHelpers.prepareTestEnvironment(page, testInfo);
+    await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2", "Item 3"]);
 
     const items = page.locator(".outliner-item");
     // Wait for seeding to populate 4 items

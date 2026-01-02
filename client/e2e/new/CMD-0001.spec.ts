@@ -20,7 +20,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // アイテムをクリックしてフォーカスを当てる
         await page.click(`.outliner-item[data-item-id="${id}"] .item-content`);
-        await TestHelpers.waitForUIStable(page); // フォーカスが安定するまで待機
+        await page.waitForTimeout(200); // Wait for focus to settle
 
         // グローバルテキストエリアにフォーカスを確実に設定
         await page.evaluate(() => {
@@ -29,12 +29,12 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                 textarea.focus();
             }
         });
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(200);
 
         await page.keyboard.type("/");
 
         // デバッグ: コマンドパレットの状態を確認
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(200);
         const paletteExists = await page.locator(".slash-command-palette").count();
         console.log(`Command palette exists: ${paletteExists}`);
 
@@ -231,9 +231,14 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         await TestHelpers.waitForOutlinerItems(page);
 
         // ページタイトルアイテムをクリックしてフォーカスを当てる（テーブルテストと同じアプローチ）
-        const titleId = await TestHelpers.getItemIdByIndex(page, 0);
+        await TestHelpers.waitForOutlinerItems(page);
+        let titleId = await TestHelpers.getItemIdByIndex(page, 0);
+        if (!titleId || titleId === "null") {
+            await page.waitForTimeout(1000);
+            titleId = await TestHelpers.getItemIdByIndex(page, 0);
+        }
         await page.click(`.outliner-item[data-item-id="${titleId}"] .item-content`);
-        await TestHelpers.waitForUIStable(page); // フォーカスが安定するまで待機
+        await page.waitForTimeout(500); // Wait for focus to settle
 
         // グローバルテキストエリアにフォーカスを確実に設定
         await page.evaluate(() => {
@@ -242,7 +247,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                 textarea.focus();
             }
         });
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(200);
 
         await page.keyboard.type("/ch");
 

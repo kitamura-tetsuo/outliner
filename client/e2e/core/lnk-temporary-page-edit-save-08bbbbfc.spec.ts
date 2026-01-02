@@ -17,7 +17,7 @@ test.describe("LNK-0004: 仮ページ編集保存", () => {
         const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const sourceUrl = `/${encodeURIComponent(projectName)}/`;
         const nonExistentPage = "edit-temp-page-" + Date.now().toString().slice(-6);
-        await page.goto(`${sourceUrl}${nonExistentPage}`);
+        await page.goto(`${sourceUrl}${nonExistentPage}?isTest=true`);
         await page.waitForSelector("body", { timeout: 10000 });
 
         const loginButton = page.locator("button:has-text('開発者ログイン')");
@@ -29,6 +29,13 @@ test.describe("LNK-0004: 仮ページ編集保存", () => {
         const outlinerBase = page.locator("[data-testid='outliner-base']");
         await expect(outlinerBase).toBeVisible();
 
+        // Auto-creation is disabled, so we must click 'Add Item' to create the temp page
+        const addItemBtn = page.getByRole("button", { name: "アイテム追加" });
+        if (await addItemBtn.isVisible()) {
+            await addItemBtn.click();
+        }
+
+        await TestHelpers.waitForOutlinerItems(page);
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
         await page.waitForTimeout(300);

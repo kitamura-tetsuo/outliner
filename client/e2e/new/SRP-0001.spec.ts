@@ -34,7 +34,15 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             projectName: projectName,
             pageName: "different-content",
         });
-        await TestHelpers.waitForUIStable(page);
+        // Ensure store pages are ready
+        await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const gs = (window as any).generalStore || (window as any).appStore;
+            const pages = gs?.pages?.current;
+            // Handle both Array and Yjs Items (both have length or size)
+            const count = pages ? (pages.length !== undefined ? pages.length : (pages as any).size) : 0;
+            return count >= 4;
+        }, { timeout: 30000 });
 
         // 最終確認（ページ作成が成功したかどうかに関わらず、現在のページ状況を確認）
         const finalCheck = await page.evaluate(() => {
@@ -290,7 +298,10 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         }
 
         // 検索結果の表示を待機
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForSelector('[data-testid="search-result-item"], .search-results .result-item', {
+            state: "attached",
+            timeout: 10000,
+        }).catch(() => {});
 
         // 検索結果を確認（複数ページにまたがる検索結果があることを確認）
         let searchResults = await page.evaluate(() => {
@@ -311,7 +322,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         if (searchResults.count === 0) {
             // 少し待って再取得（描画/反映遅延の緩和）
-            await TestHelpers.waitForUIStable(page);
+            await page.waitForTimeout(500);
             searchResults = await page.evaluate(() => {
                 const resultItems = document.querySelectorAll(
                     '[data-testid="search-result-item"], .search-results .result-item',
@@ -355,7 +366,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         // 再度検索して置換が完了したことを確認
         await page.getByTestId("search-input").fill("page");
         await page.getByTestId("search-button").click();
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(500);
 
         const newSearchResults = await page.evaluate(() => {
             const resultItems = document.querySelectorAll(

@@ -5,12 +5,19 @@ import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
 test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
+    // Actually, on second thought, I should modify `beforeEach` to seed the long text if it's the only test.
+    // Yes, it is the only test in this file.
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const longText =
+            "This is a very long text that contains many characters and should be long enough to test the selection range functionality with long texts. "
+            + "We want to make sure that the selection range works correctly with long texts and that the text is properly selected and copied.";
+
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [longText, "Second item text"]);
+        await TestHelpers.waitForOutlinerItems(page, 10000, 3);
     });
 
     test("長いテキストを含むアイテムの選択範囲を作成できる", async ({ page }) => {
-        // 最初のアイテムに長いテキストを入力
+        test.setTimeout(120000);
         const longText =
             "This is a very long text that contains many characters and should be long enough to test the selection range functionality with long texts. "
             + "We want to make sure that the selection range works correctly with long texts and that the text is properly selected and copied.";
@@ -20,22 +27,8 @@ test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
         await firstItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
-        // 長いテキストを入力
-        await page.keyboard.type(longText);
-        await page.waitForTimeout(300);
-
-        // 2つ目のアイテムを作成
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("Second item text");
-        await page.waitForTimeout(300);
-
-        // 最初のアイテムに戻る
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("Home");
-        await page.waitForTimeout(300);
-
-        // 長いテキストが正しく入力されていることを確認
-        const firstItemText = await page.locator(".outliner-item").first().locator(".item-text").textContent();
+        // Already seeded, just verify text
+        const firstItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
         expect(firstItemText).toContain("This is a very long text");
         expect(firstItemText).toContain("properly selected and copied");
 

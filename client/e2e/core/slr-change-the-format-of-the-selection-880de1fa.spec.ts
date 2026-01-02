@@ -16,30 +16,24 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
             (window as any).DEBUG_MODE = true;
         });
 
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Seed with data
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "This is a test text for formatting",
+            "This is another line for multi-item selection",
+        ]);
+        // Wait for Title + 2 items
+        await TestHelpers.waitForOutlinerItems(page, 10000, 3);
 
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
-        // デバッグモードを有効化（ページ読み込み後）
-        await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
-        });
-
         // カーソルが表示されるのを待つ
         await TestHelpers.waitForCursorVisible(page);
 
-        // テスト用のテキストを入力
-        await page.keyboard.type("This is a test text for formatting");
-
-        // 2つ目のアイテムを作成
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("This is another line for multi-item selection");
-
-        // 最初のアイテムに戻る
+        // 最初のアイテムに戻る (click resets cursor to end usually, or just click first item is enough)
+        // Ensure we are at start if needed, but the tests seem to do specific navigation anyway
         await page.keyboard.press("Home");
-        await page.keyboard.press("ArrowUp");
         await page.keyboard.press("Home");
 
         // カーソルが表示されていることを確認
@@ -50,7 +44,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
     test("単一アイテム内の選択範囲を太字に変更できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
@@ -80,7 +74,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
     test("単一アイテム内の選択範囲を斜体に変更できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
@@ -109,7 +103,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
     test("単一アイテム内の選択範囲に下線を追加できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
@@ -144,7 +138,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
     test("単一アイテム内の選択範囲を取り消し線に変更できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
@@ -174,7 +168,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
     test("単一アイテム内の選択範囲をコードに変更できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
@@ -204,7 +198,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
 
     test("複数アイテムにまたがる選択範囲をフォーマット変更できる", async ({ page }) => {
         // 最初のアイテムをクリックして選択
-        const firstItem = page.locator(".outliner-item").nth(0);
+        const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
@@ -235,7 +229,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
         expect(firstItemText).toBeTruthy();
 
         // 2つ目のアイテムのテキストを確認
-        const secondItem = page.locator(".outliner-item").nth(1);
+        const secondItem = page.locator(".outliner-item").nth(2);
         const secondItemText = await secondItem.locator(".item-text").textContent();
         expect(secondItemText).toBeTruthy();
     });

@@ -10,29 +10,17 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0003: 行末まで選択", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Seed with 3 lines
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line", "Third line"]);
+        // Wait for Title + 3 items
+        await TestHelpers.waitForOutlinerItems(page, 10000, 4);
 
-        // 最初のアイテムを選択
+        // 最初のアイテムを選択してカーソルを表示させる
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
         await page.waitForSelector("textarea.global-textarea:focus");
-
-        // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
-
-        // テスト用のテキストを入力（改行を明示的に入力）
-        await page.keyboard.type("First line");
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("Second line");
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("Third line");
-
-        // カーソルを2行目の先頭に移動
-        await page.keyboard.press("Home");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowDown");
-        await page.keyboard.press("Home");
     });
 
     test("Shift + Endで現在位置から行末までを選択する", async ({ page }) => {

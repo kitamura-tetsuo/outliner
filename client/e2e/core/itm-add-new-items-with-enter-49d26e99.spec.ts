@@ -10,19 +10,16 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-0001: Enterで新規アイテム追加", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Seed with the text we expect to manipulate
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First part of text. Second part of text."]);
 
-        // ページタイトルを優先的に使用
-        const item = page.locator(".outliner-item.page-title");
+        // Wait for items to be rendered
+        await TestHelpers.waitForOutlinerItems(page);
 
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
-        if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
-            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
-            await item.locator(".item-content").click({ force: true });
-        }
+        // Click the first content item (index 1) which contains our seeded text
+        const contentItem = page.locator(".outliner-item").nth(1);
+        await contentItem.waitFor({ state: "visible" });
+        await contentItem.locator(".item-content").click({ force: true });
 
         // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus");

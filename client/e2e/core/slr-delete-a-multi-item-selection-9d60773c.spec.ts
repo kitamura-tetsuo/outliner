@@ -15,40 +15,22 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             (window as any).DEBUG_MODE = true;
         });
 
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Seed with 4 lines
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "First item text",
+            "Second item text",
+            "Third item text",
+            "Fourth item text",
+        ]);
+        // Wait for Title + 4 items
+        await TestHelpers.waitForOutlinerItems(page, 10000, 5);
 
-        // 最初のアイテムを選択
+        // 最初のアイテムを選択してカーソルを表示
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
-        // デバッグモードを有効化（ページ読み込み後）
-        await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
-        });
-
         await page.waitForSelector("textarea.global-textarea:focus");
-
-        // テスト用のテキストを入力
-        await page.keyboard.type("First item text");
-
-        // 2つ目のアイテムを作成
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("Second item text");
-
-        // 3つ目のアイテムを作成
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("Third item text");
-
-        // 4つ目のアイテムを作成
-        await page.keyboard.press("Enter");
-        await page.keyboard.type("Fourth item text");
-
-        // 最初のアイテムに戻る
-        await page.keyboard.press("Home");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("Home");
+        await TestHelpers.waitForCursorVisible(page);
 
         // デバッグモードを再度有効化
         await page.evaluate(() => {

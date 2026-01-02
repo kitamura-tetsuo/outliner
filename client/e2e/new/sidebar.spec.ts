@@ -144,7 +144,7 @@ test.describe("Sidebar Navigation", () => {
         await settingsLink.click();
 
         // Wait for navigation
-        await TestHelpers.waitForUIStable(page);
+        await expect(page).toHaveURL(/settings/i);
 
         // Verify we're on the settings page or the navigation was attempted
         // Note: This test verifies the click handler works; actual navigation depends on route setup
@@ -263,14 +263,14 @@ test.describe("Sidebar Navigation", () => {
         const pageItem = page.locator(".page-item").first();
         await pageItem.focus();
 
+        const currentUrl = page.url();
         // Press Enter to activate
         await page.keyboard.press("Enter");
-        await TestHelpers.waitForUIStable(page);
+        await expect(page).not.toHaveURL(currentUrl);
 
         // Verify navigation occurred (URL should change or page should respond)
         // This is a basic check that the keyboard event handler is attached
-        const currentUrl = page.url();
-        expect(currentUrl).toBeTruthy();
+        expect(page.url()).toBeTruthy();
     });
 
     test("should handle keyboard navigation on settings link", async ({ page }) => {
@@ -286,7 +286,7 @@ test.describe("Sidebar Navigation", () => {
 
         // Press Enter to activate
         await page.keyboard.press("Enter");
-        await TestHelpers.waitForUIStable(page);
+        await expect(page).toHaveURL(/settings/i);
 
         // Verify navigation occurred
         const currentUrl = page.url();

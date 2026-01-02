@@ -7,7 +7,13 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Seed with default content to ensure items exist
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "First item",
+            "Second item",
+            "Third item text",
+        ]);
+        await TestHelpers.waitForOutlinerItems(page, 10000, 4);
     });
 
     test("コピーしたテキストを別の場所にペーストできる", async ({ page }) => {

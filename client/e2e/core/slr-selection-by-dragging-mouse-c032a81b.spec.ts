@@ -10,7 +10,10 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0004: マウスドラッグによる選択", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Seed
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["This is a test text for mouse drag selection"]);
+        // Wait for Title + 1 item
+        await TestHelpers.waitForOutlinerItems(page, 10000, 2);
 
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
@@ -20,9 +23,6 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
-
-        // テスト用のテキストを入力
-        await page.keyboard.type("This is a test text for mouse drag selection");
     });
 
     test("マウスドラッグで単一アイテム内のテキストを選択できる", async ({ page }) => {
