@@ -88,10 +88,15 @@ export class TestHelpers {
         // Note: VITE_IS_TEST, VITE_USE_FIREBASE_EMULATOR are already set by globals.d.ts
         await page.addInitScript(() => {
             try {
-                // Force WebSocket connection for Yjs (required for test environment)
+                // Force test environment flags
+                localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_E2E_TEST", "true");
+                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as Window & Record<string, any>).__E2E__ = true;
+                console.log("[E2E] Test environment flags set in localStorage");
             } catch {}
         });
 
@@ -151,6 +156,31 @@ export class TestHelpers {
     }
 
     /**
+     * 手動でテストユーザーとしてログインする
+     * UserManagerの自動ログインが失敗または遅延する場合に有用
+     */
+    public static async login(
+        page: Page,
+        email: string = "test@example.com",
+        password: string = "password",
+    ): Promise<void> {
+        TestHelpers.slog(`Manual login attempt for ${email}`);
+        await page.evaluate(async ({ e, p }) => {
+            const um = (window as any).__USER_MANAGER__;
+            if (um && typeof um.loginWithEmailPassword === "function") {
+                await um.loginWithEmailPassword(e, p);
+            } else {
+                console.error("[E2E] UserManager or loginWithEmailPassword not found");
+                throw new Error("UserManager or loginWithEmailPassword not found");
+            }
+        }, { e: email, p: password });
+
+        // 認証状態が伝播されるのを待機
+        await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 15 * 1000 });
+        TestHelpers.slog("Manual login successful");
+    }
+
+    /**
      * Sets up test user project data with accessible projects for container selector tests.
      * This is a minimal alternative to setupTestEnvironment for tests that only need
      * the container selector to have options, without full project seeding.
@@ -168,17 +198,36 @@ export class TestHelpers {
                 () => !!(window as any).__FIRESTORE_STORE__ && !!(window as any).__USER_MANAGER__,
                 { timeout: 15000 },
             );
-            // Attempt to wait for actual user login to avoid race condition where we use "test-user-id" but then user logs in
-            await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 5000 });
+
+            // Wait for user login
+            TestHelpers.slog("setAccessibleProjects: Waiting for currentUser...");
+            const hasUser = await page.evaluate(() => {
+                const um = (window as any).__USER_MANAGER__;
+                return !!um?.auth?.currentUser;
+            });
+
+            if (!hasUser) {
+                TestHelpers.slog("setAccessibleProjects: currentUser is null, attempting manual login...");
+                await TestHelpers.login(page);
+            }
+
+            // Final check
+            await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 10000 });
+            TestHelpers.slog("setAccessibleProjects: Auth confirmed.");
         } catch (e) {
-            console.warn("setAccessibleProjects: Timeout waiting for stores or currentUser, proceeding with fallback");
+            console.error("setAccessibleProjects: CRITICAL: Could not establish authentication.", e);
+            throw e; // Fail the test early
         }
 
         await page.evaluate(async ({ projects }) => {
             const fs = (window as any).__FIRESTORE_STORE__;
             const um = (window as any).__USER_MANAGER__;
-            // Use actual authenticated user ID if available, otherwise fallback to "test-user-id"
-            const userId = um?.auth?.currentUser?.uid || "test-user-id";
+            const userId = um?.auth?.currentUser?.uid;
+
+            if (!userId) {
+                console.error("[E2E] setAccessibleProjects: userId is null!");
+                throw new Error("setAccessibleProjects: Not authenticated");
+            }
             console.log("DEBUG: setAccessibleProjects START inside evaluate");
 
             console.log("DEBUG: setAccessibleProjects using userId:", userId);
@@ -208,6 +257,8 @@ export class TestHelpers {
             // Persist to Firestore for tests that navigate/reload
             if (fs && fs.testSaveUserProject) {
                 await fs.testSaveUserProject();
+                // Add a small delay to ensure Firestore emulator has settled before potential navigation
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
         }, { projects: projectNames });
     }
@@ -1924,6 +1975,7 @@ export class TestHelpers {
      * Get a valid ID token for the test user from local Firebase Emulator
      */
     public static async getTestAuthToken(): Promise<string> {
+        const projectId = process.env.VITE_FIREBASE_PROJECT_ID || "outliner-d57b0";
         const authHost = process.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || "localhost:59099";
         // Ensure protocol
         const host = authHost.startsWith("http") ? authHost : `http://${authHost}`;

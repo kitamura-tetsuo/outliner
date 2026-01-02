@@ -40,7 +40,14 @@ export class UserManager {
         apiKey: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_API_KEY) || "demo-api-key",
         authDomain: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN)
             || "demo-project.firebaseapp.com",
-        projectId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_PROJECT_ID) || "demo-project",
+        projectId: (() => {
+            if (typeof window !== "undefined") {
+                const stored = window.localStorage?.getItem?.("VITE_FIREBASE_PROJECT_ID");
+                if (stored) return stored;
+            }
+            return (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_PROJECT_ID)
+                || "outliner-d57b0";
+        })(),
         storageBucket: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET)
             || "demo-project.appspot.com",
         messagingSenderId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID)

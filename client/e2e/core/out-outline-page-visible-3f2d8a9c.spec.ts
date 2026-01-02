@@ -17,7 +17,7 @@ test("displays outline page after environment setup", async () => {
     const encodedProject = encodeURIComponent(ids.projectName);
     const encodedPage = encodeURIComponent(ids.pageName);
 
-    await expect(page).toHaveURL(new RegExp(`/${encodedProject}/${encodedPage}$`));
+    await expect(page).toHaveURL(new RegExp(`/${encodedProject}/${encodedPage}(\\?.*)?$`));
     await expect(page.locator('[data-testid="outliner-base"]').first()).toBeVisible();
 
     await TestHelpers.waitForOutlinerItems(page);

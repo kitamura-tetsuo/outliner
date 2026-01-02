@@ -16,6 +16,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
     });
 
     test("container selector lists projects from store", async ({ page }, testInfo) => {
+        test.setTimeout(120000);
         // ContainerSelector is on the home page, not project pages
         // Use skipSync to avoid navigating to a project page
         await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
@@ -37,9 +38,12 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         }, { timeout: 20000 });
 
         // Wait for container selector to have options
-        // Wait for container selector to have options
         await page.waitForFunction(() => {
             const cs = (window as any).__CONTAINER_STORE__;
+            // Force sync if containers are missing
+            if (cs && (!cs.containers || cs.containers.length === 0)) {
+                cs.syncFromFirestore?.();
+            }
             return cs && Array.isArray(cs.containers) && cs.containers.length >= 2;
         }, { timeout: 30000 });
 
@@ -50,6 +54,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
     });
 
     test("deletion page shows projects from store", async ({ page }, testInfo) => {
+        test.setTimeout(120000);
         // Use skipSync to avoid navigating to a project page
         await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
 

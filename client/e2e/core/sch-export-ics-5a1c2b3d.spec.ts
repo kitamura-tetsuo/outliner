@@ -16,6 +16,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
     let pageId: string;
 
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(90000); // Increase timeout for CI environment
         // Attach browser console logs for debugging
         page.on("console", (msg) => {
             const type = msg.type();

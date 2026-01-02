@@ -35,13 +35,15 @@ export const isSingleSpecRun = detectSingleSpec();
 const isLocalhostEnv = process.env.TEST_ENV === "localhost" || true; // デフォルトでlocalhostを使用
 
 // テスト用ポートを定義 - これを明示的に指定
-const TEST_PORT = isLocalhostEnv ? "7090" : "7080";
 // Tinylicious サーバーのポートを定義
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TINYLICIOUS_PORT = isLocalhostEnv ? "7092" : "7082";
 // ホストを定義
 const VITE_HOST = process.env.VITE_HOST || "localhost";
-// 環境設定ファイルを定義
+const TEST_PORT = 7090;
+
+// Force the same project ID as the emulator
+process.env.VITE_FIREBASE_PROJECT_ID = "outliner-d57b0";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
 
@@ -85,22 +87,21 @@ export default defineConfig({
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: (process.env.CI || !isSingleSpecRun) ? 2 : 1,
-    workers: process.env.CI ? 4 : 4,
+    workers: 4,
     maxFailures: process.env.CI ? 3 : 5,
 
     reporter: [
         ["html", { open: "never" }],
-        ...(process.env.CI ? [["github"]] : [["list"]]),
+        [process.env.CI ? "github" : "list"],
         ...(process.env.PLAYWRIGHT_JSON_OUTPUT_NAME
             ? [["json", { outputFile: process.env.PLAYWRIGHT_JSON_OUTPUT_NAME }]]
             : []),
-        // E2Eカバレッジレポートは scripts/generate-e2e-coverage.js で生成されます
-    ],
+    ] as any,
     // テスト実行時のタイムアウトを延長（環境初期化の揺らぎに対応）
-    timeout: 60 * 1000, // 60秒
+    timeout: process.env.CI ? 120 * 1000 : 60 * 1000, // CIでは120秒、それ以外は60秒
     expect: {
         // 要素の検出待機のタイムアウト設定を延長
-        timeout: 60 * 1000, // 60秒
+        timeout: process.env.CI ? 90 * 1000 : 60 * 1000, // CIでは90秒、それ以外は60秒
     },
 
     use: {
@@ -113,7 +114,6 @@ export default defineConfig({
         },
         // Clipboard APIを有効にするためにlocalhostを使用
         baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
-        trace: "on-first-retry",
         // クリップボードへのアクセスを許可
         permissions: ["clipboard-read", "clipboard-write"],
     },

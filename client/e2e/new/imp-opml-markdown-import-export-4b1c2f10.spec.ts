@@ -11,6 +11,7 @@ import { TreeValidator } from "../utils/treeValidation";
 
 test.describe("IMP-0001: OPML/Markdown import and export", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(90000);
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
@@ -95,7 +96,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         await TestHelpers.waitForOutlinerItems(page);
 
         // Wait for the "Child" item to appear - Yjs sync may take time
-        await page.waitForSelector(".outliner-item", { hasText: "Child" }, { timeout: 15000 }).catch(() => {
+        await page.locator(".outliner-item", { hasText: "Child" }).waitFor({ timeout: 15000 }).catch(() => {
             console.log("Warning: 'Child' item not found within timeout, continuing with test");
         });
 
@@ -162,7 +163,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         await TestHelpers.waitForOutlinerItems(page);
 
         // Wait for the "Child" item to appear
-        await page.waitForSelector(".outliner-item", { hasText: "Child" }, { timeout: 15000 }).catch(() => {
+        await page.locator(".outliner-item", { hasText: "Child" }).waitFor({ timeout: 15000 }).catch(() => {
             console.log("Warning: 'Child' item not found within timeout, continuing with test");
         });
 

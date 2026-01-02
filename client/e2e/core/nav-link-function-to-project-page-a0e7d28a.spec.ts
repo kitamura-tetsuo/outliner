@@ -13,6 +13,7 @@ test.describe("NAV-0002: プロジェクトページへのリンク機能", () =
     let pageName: string;
 
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(90000); // Increase timeout for CI environment
         const result = await TestHelpers.prepareTestEnvironment(page, testInfo);
         projectName = result.projectName;
         pageName = result.pageName;

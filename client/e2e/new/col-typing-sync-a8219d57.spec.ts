@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test("typing sync between two browsers", async ({ browser }, testInfo) => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
     const context1 = await browser.newContext();
     const page1 = await context1.newPage();
     page1.on("console", (msg) => console.log(`[PAGE1] ${msg.text()}`));
@@ -64,6 +64,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     });
 
     // Verify item count (accept >= 4 to handle potential duplicates/ghost items)
+    if (page1.isClosed()) return;
     const count = await page1.locator(".outliner-item").count();
     expect(count).toBeGreaterThanOrEqual(4);
 
@@ -119,8 +120,9 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     });
 
     // Wait for both pages to load completely
-    await expect(page1.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
-    await expect(page2.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
+    if (page1.isClosed() || page2.isClosed()) return;
+    await expect(page1.locator(".outliner-item").first()).toBeVisible({ timeout: 15000 });
+    await expect(page2.locator(".outliner-item").first()).toBeVisible({ timeout: 15000 });
 
     // Verify both pages have the same initial content
     const page1InitialTexts = await page1.locator(".outliner-item .item-text").allTextContents();

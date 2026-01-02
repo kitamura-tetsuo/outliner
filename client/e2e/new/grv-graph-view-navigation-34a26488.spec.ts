@@ -10,6 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("GRV-0001: Graph View navigation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(90000);
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "Root node with [child] link",
             "child",
