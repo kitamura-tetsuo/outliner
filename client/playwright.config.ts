@@ -125,9 +125,42 @@ export default defineConfig({
             testDir: "./e2e/basic",
         },
         {
-            // コアテスト: 認証不要の基本機能テスト
-            name: "core",
+            // コアテスト1: a-c (excl clm), f
+            name: "core-1",
             testDir: "./e2e/core",
+            testMatch: ["[abcf]*.spec.ts"],
+            testIgnore: ["**/clm*.spec.ts"],
+        },
+        {
+            // コアテスト2: clm only
+            name: "core-2",
+            testDir: "./e2e/core",
+            testMatch: ["**/clm*.spec.ts"],
+        },
+        {
+            // コアテスト3: l only
+            name: "core-3",
+            testDir: "./e2e/core",
+            testMatch: ["**/l*.spec.ts"],
+        },
+        {
+            // コアテスト4: slr only
+            name: "core-4",
+            testDir: "./e2e/core",
+            testMatch: ["**/slr*.spec.ts"],
+        },
+        {
+            // コアテスト5: n, o, p, s (excl slr)
+            name: "core-5",
+            testDir: "./e2e/core",
+            testMatch: ["**/[nops]*.spec.ts"],
+            testIgnore: ["**/slr*.spec.ts"],
+        },
+        {
+            // コアテスト6: d, e, g, h, i, j, k, m, q, t, u, v, w, x, y, z, M
+            name: "core-6",
+            testDir: "./e2e/core",
+            testMatch: ["**/[deghijkmtuvwxyzM]*.spec.ts"],
         },
         {
             // 新機能テスト

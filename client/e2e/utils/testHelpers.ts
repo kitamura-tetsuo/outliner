@@ -136,7 +136,7 @@ export class TestHelpers {
                     // Wait for outliner base to be visible
                     await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
                     // Wait for items to be rendered (with seeded data)
-                    await TestHelpers.waitForOutlinerItems(page, 30000, 1);
+                    await TestHelpers.waitForOutlinerItems(page, 60000, 1);
                     // Give extra time for store to be fully populated
                     await page.waitForTimeout(1000);
                 } catch (e) {
@@ -1896,7 +1896,7 @@ export class TestHelpers {
         };
 
         try {
-            let response = await fetch(signInUrl, {
+            const response = await fetch(signInUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),

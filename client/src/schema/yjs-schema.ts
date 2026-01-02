@@ -24,24 +24,27 @@ export class Comments {
     addComment(author: string, text: string) {
         const time = Date.now();
         const c = new Y.Map<CommentValueType>();
-        c.set("id", uuid());
+        const id = uuid();
+        c.set("id", id);
         c.set("author", author);
         c.set("text", text);
         c.set("created", time);
         c.set("lastChanged", time);
         this.yArray.push([c]);
+
         // Client side event dispatch for UI updates (badge count)
         if (typeof window !== "undefined") {
             window.dispatchEvent(
                 new CustomEvent("item-comment-count", { detail: { id: this.itemId, count: this.yArray.length } }),
             );
         }
-        return { id: c.get("id") as string };
+        return { id: id };
     }
 
     deleteComment(commentId: string) {
         const ids = this.yArray.toArray().map((m) => m.get("id"));
         const idx = ids.findIndex((id) => id === commentId);
+
         if (idx >= 0) {
             this.yArray.delete(idx, 1);
             if (typeof window !== "undefined") {
