@@ -149,7 +149,7 @@ class YjsStore {
     get connectionState() {
         return this._client?.getConnectionStateString() ?? "未接続";
     }
-    get currentContainerId() {
+    get currentProjectId() {
         return this._client?.containerId ?? null;
     }
     get currentUser() {
@@ -168,8 +168,8 @@ class YjsStore {
     getConnectionState() {
         return this.connectionState;
     }
-    getCurrentContainerId() {
-        return this.currentContainerId;
+    getCurrentProjectId() {
+        return this.currentProjectId;
     }
     getCurrentUser() {
         return this.currentUser;

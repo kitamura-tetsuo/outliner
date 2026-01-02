@@ -1,56 +1,55 @@
 <script lang="ts">
-import { goto } from "$app/navigation";
-import ContainerSelector from "../components/ContainerSelector.svelte";
-import { getLogger } from "../lib/logger";
-import { yjsStore } from "../stores/yjsStore.svelte";
+    import { goto } from "$app/navigation";
+    import ProjectSelector from "../components/ProjectSelector.svelte";
+    import { getLogger } from "../lib/logger";
+    import { yjsStore } from "../stores/yjsStore.svelte";
 
-// Import test helper in test environments only
-// Legacy auto-seeding logic removed. Tests should handle seeding explicitly.
+    // Import test helper in test environments only
+    // Legacy auto-seeding logic removed. Tests should handle seeding explicitly.
 
-const logger = getLogger("HomePage");
+    const logger = getLogger("HomePage");
 
-// In test runs, redirect to lightweight test page for stability
-import { onMount } from "svelte";
-onMount(() => {
-    const isTest = import.meta.env.MODE === "test"
-        || import.meta.env.VITE_IS_TEST === "true"
-        || process.env.NODE_ENV === "test"
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
-    if (isTest) {
-        // In unit tests, avoid real navigation to keep jsdom stable.
-        // E2E/integration tests will handle navigation explicitly.
-        return;
+    // In test runs, redirect to lightweight test page for stability
+    import { onMount } from "svelte";
+    onMount(() => {
+        const isTest =
+            import.meta.env.MODE === "test" ||
+            import.meta.env.VITE_IS_TEST === "true" ||
+            process.env.NODE_ENV === "test" ||
+            (typeof window !== "undefined" &&
+                window.localStorage?.getItem?.("VITE_IS_TEST") === "true") ||
+            (typeof window !== "undefined" && (window as any).__E2E__ === true);
+        if (isTest) {
+            // In unit tests, avoid real navigation to keep jsdom stable.
+            // E2E/integration tests will handle navigation explicitly.
+            return;
+        }
+    });
+
+    // プロジェクト選択時の処理
+    async function handleProjectSelected(
+        selectedProjectId: string,
+        projectName: string,
+    ) {
+        // const client = yjsStore.yjsClient;
+        // if (client?.projectId === selectedProjectId) {
+        //     logger.info("Selected project is already loaded");
+        //     return;
+        // }
+
+        try {
+            // Defer import to avoid SSR issues in test/SSR context
+            const { createYjsClient } = await import("../services");
+            const client = await createYjsClient(selectedProjectId);
+            yjsStore.yjsClient = client as any;
+
+            // プロジェクトページへ遷移
+            logger.info(`Navigating to project page: /${projectName}`);
+            goto(`/${projectName}`);
+        } catch (error) {
+            logger.error("Failed to switch project:", error);
+        }
     }
-});
-
-// コンテナ選択時の処理
-async function handleContainerSelected(
-    selectedContainerId: string,
-    containerName: string,
-) {
-    // const client = yjsStore.yjsClient;
-    // if (client?.containerId === selectedContainerId) {
-    //     logger.info("Selected container is already loaded");
-    //     return;
-    // }
-
-    try {
-        // Defer import to avoid SSR issues in test/SSR context
-        const { createYjsClient } = await import("../services");
-        const client = await createYjsClient(selectedContainerId);
-        yjsStore.yjsClient = client as any;
-
-        // プロジェクトページへ遷移
-        // コンテナ名をプロジェクト名として使用
-        const projectName = containerName || selectedContainerId;
-        logger.info(`Navigating to project page: /${projectName}`);
-        goto(`/${projectName}`);
-    }
-    catch (error) {
-        logger.error("Failed to switch container:", error);
-    }
-}
 </script>
 
 <svelte:head>
@@ -65,85 +64,85 @@ async function handleContainerSelected(
         <p>以下のオプションから選択してください：</p>
     </div>
 
-    <!-- コンテナセレクター -->
-    <div class="container-selector">
+    <!-- プロジェクトセレクター -->
+    <div class="project-selector-wrapper">
         <h2>既存のアウトライナーを開く</h2>
-        <ContainerSelector onContainerSelected={handleContainerSelected} />
+        <ProjectSelector onProjectSelected={handleProjectSelected} />
     </div>
 
-    <!-- 新規コンテナ作成リンク -->
+    <!-- 新規プロジェクト作成リンク -->
     <div class="action-buttons">
-        <a href="/projects" class="new-container-button">
+        <a href="/projects" class="new-project-button">
             <span class="icon">+</span> 新しいアウトライナーを作成
         </a>
     </div>
 </main>
+// test 1760075075
 
 <style>
-main {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-}
+    main {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
 
-.main-content {
-    padding-top: 5rem; /* ツールバーの高さ分のパディング（余裕を持って5rem） */
-}
+    .main-content {
+        padding-top: 5rem; /* ツールバーの高さ分のパディング（余裕を持って5rem） */
+    }
 
-h1 {
-    color: #333;
-    text-align: center;
-    margin-bottom: 2rem;
-}
+    h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
 
-h2 {
-    color: #444;
-    margin-bottom: 1rem;
-}
+    h2 {
+        color: #444;
+        margin-bottom: 1rem;
+    }
 
-.welcome-message {
-    text-align: center;
-    padding: 1.5rem;
-    background: #f5f5f5;
-    border-radius: 8px;
-    margin: 2rem 0;
-    color: #555;
-}
+    .welcome-message {
+        text-align: center;
+        padding: 1.5rem;
+        background: #f5f5f5;
+        border-radius: 8px;
+        margin: 2rem 0;
+        color: #555;
+    }
 
-.container-selector {
-    margin: 2rem 0;
-    padding: 1.5rem;
-    background: #f9f9f9;
-    border-radius: 8px;
-    border: 1px solid #eee;
-}
+    .project-selector-wrapper {
+        margin: 2rem 0;
+        padding: 1.5rem;
+        background: #f9f9f9;
+        border-radius: 8px;
+        border: 1px solid #eee;
+    }
 
-.action-buttons {
-    margin: 2rem 0;
-    display: flex;
-    justify-content: center;
-}
+    .action-buttons {
+        margin: 2rem 0;
+        display: flex;
+        justify-content: center;
+    }
 
-.new-container-button {
-    display: inline-flex;
-    align-items: center;
-    background-color: #4caf50;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
-    text-decoration: none;
-    font-weight: bold;
-    transition: background-color 0.2s;
-    font-size: 1.1rem;
-}
+    .new-project-button {
+        display: inline-flex;
+        align-items: center;
+        background-color: #4caf50;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: background-color 0.2s;
+        font-size: 1.1rem;
+    }
 
-.new-container-button:hover {
-    background-color: #45a049;
-}
+    .new-project-button:hover {
+        background-color: #45a049;
+    }
 
-.new-container-button .icon {
-    font-size: 1.2rem;
-    margin-right: 0.5rem;
-}
+    .new-project-button .icon {
+        font-size: 1.2rem;
+        margin-right: 0.5rem;
+    }
 </style>
-// test 1760075075

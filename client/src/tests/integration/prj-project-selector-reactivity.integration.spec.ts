@@ -1,15 +1,15 @@
 import { render, screen, waitFor, within } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import ContainerSelector from "../../components/ContainerSelector.svelte";
+import ProjectSelector from "../../components/ProjectSelector.svelte";
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
 
-// ContainerSelector の <select> の option 数が
+// ProjectSelector の <select> の option 数が
 // firestoreStore.userProject.accessibleProjectIds の増減に連動して
 // 直接増減することを検証する（UI レベルの検証）
 
-describe("CNT: ContainerSelector option count reflects accessibleProjectIds", () => {
+describe("PRJ: ProjectSelector option count reflects accessibleProjectIds", () => {
     beforeEach(() => {
-        // ContainerSelector 内の ensureUserLoggedIn が参照するオブジェクトを最小スタブ
+        // ProjectSelector 内の ensureUserLoggedIn が参照するオブジェクトを最小スタブ
         (globalThis as any).window ||= globalThis as any;
         (globalThis as any).window.__USER_MANAGER__ = {
             addEventListener: vi.fn(() => vi.fn()),
@@ -21,22 +21,22 @@ describe("CNT: ContainerSelector option count reflects accessibleProjectIds", ()
         // 初期状態: プロジェクト 1 件
         firestoreStore.setUserProject({
             userId: "u",
-            accessibleProjectIds: ["c-1"],
-            defaultProjectId: "c-1",
+            accessibleProjectIds: ["p-1"],
+            defaultProjectId: "p-1",
             createdAt: new Date(),
             updatedAt: new Date(),
         } as any);
     });
 
     it("option 数が accessibleProjectIds の増減に合わせて変化する", async () => {
-        render(ContainerSelector);
+        render(ProjectSelector);
 
         const select = screen.getByRole("combobox");
         // 初期 1 件
         expect(within(select).getAllByRole("option").length).toBe(1);
 
         // 2 件に増やす（配列の破壊的変更 -> Proxy 経由で setUserProject + ucVersion 増分）
-        (firestoreStore.userProject!.accessibleProjectIds as any).push("c-2");
+        (firestoreStore.userProject!.accessibleProjectIds as any).push("p-2");
         // store integrity check
         expect(firestoreStore.userProject?.accessibleProjectIds?.length ?? 0).toBe(2);
         await waitFor(() => {
@@ -54,14 +54,14 @@ describe("CNT: ContainerSelector option count reflects accessibleProjectIds", ()
 // 明示的に初期化（前テストの push/pop 影響を遮断）
 firestoreStore.setUserProject({
     userId: "u",
-    accessibleProjectIds: ["c-1"],
-    defaultProjectId: "c-1",
+    accessibleProjectIds: ["p-1"],
+    defaultProjectId: "p-1",
     createdAt: new Date(),
     updatedAt: new Date(),
 } as any);
 
 it("setUserProject による差し替えでも option 数が即時に反映される", async () => {
-    render(ContainerSelector);
+    render(ProjectSelector);
 
     const select = screen.getByRole("combobox");
     expect(within(select).getAllByRole("option").length).toBe(1);
@@ -69,8 +69,8 @@ it("setUserProject による差し替えでも option 数が即時に反映さ�
     // 差し替えで 2 件
     firestoreStore.setUserProject({
         userId: "u",
-        accessibleProjectIds: ["c-1", "c-2"],
-        defaultProjectId: "c-1",
+        accessibleProjectIds: ["p-1", "p-2"],
+        defaultProjectId: "p-1",
         createdAt: new Date(),
         updatedAt: new Date(),
     } as any);
@@ -82,8 +82,8 @@ it("setUserProject による差し替えでも option 数が即時に反映さ�
     // 差し替えで 1 件に戻す
     firestoreStore.setUserProject({
         userId: "u",
-        accessibleProjectIds: ["c-1"],
-        defaultProjectId: "c-1",
+        accessibleProjectIds: ["p-1"],
+        defaultProjectId: "p-1",
         createdAt: new Date(),
         updatedAt: new Date(),
     } as any);

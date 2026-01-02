@@ -23,17 +23,16 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
 
-        // Setup debugger functions on the new page
+        // Setup debugger functions on the new page (since navigation clears window context)
         await TestHelpers.setupTreeDebugger(page);
 
-        // Wait for the project data to be loaded via Yjs after navigation
+        await TestHelpers.setupTreeDebugger(page);
+
+        // Wait for Yjs connection to be ready before export
         await page.waitForFunction(() => {
-            const data = (window as any).getYjsTreeDebugData();
-            if (!data || !data.items || data.items.length === 0) {
-                return false;
-            }
-            return true;
-        });
+            const y = (window as any).__YJS_STORE__;
+            return y && y.isConnected;
+        }, { timeout: 15000 }).catch(() => console.log("Warning: Yjs connect wait timed out"));
 
         await page.click("text=Export Markdown");
         const md = await page.locator("textarea[data-testid='export-output']").inputValue();

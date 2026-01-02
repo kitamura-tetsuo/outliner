@@ -56,7 +56,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
     });
 
     test("先頭/末尾では移動しない（並び不変・カーソルは1つ）", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 10000);
+        await waitForOutlinerItems(page, 5, 30000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");

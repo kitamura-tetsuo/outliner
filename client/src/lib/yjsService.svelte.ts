@@ -112,7 +112,7 @@ export function stableIdFromTitle(title: string): string {
     }
 }
 
-export async function createNewProject(containerName: string): Promise<YjsClient> {
+export async function createNewProject(projectName: string): Promise<YjsClient> {
     const user = userManager.getCurrentUser();
     let userId = user?.id;
     const isTest = isTestEnvironment();
@@ -122,27 +122,27 @@ export async function createNewProject(containerName: string): Promise<YjsClient
         throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
     }
 
-    const projectId = isTest ? stableIdFromTitle(containerName) : uuid();
+    const projectId = isTest ? stableIdFromTitle(projectName) : uuid();
     console.log(
-        `[yjsService] createNewProject: isTest=${isTest}, containerName="${containerName}", projectId="${projectId}"`,
+        `[yjsService] createNewProject: isTest=${isTest}, projectName="${projectName}", projectId="${projectId}"`,
     );
 
-    const project = Project.createInstance(containerName);
+    const project = Project.createInstance(projectName);
     console.log(`[yjsService] createNewProject: Connecting to YjsClient for projectId "${projectId}"...`);
     const client = await YjsClient.connect(projectId, project);
     console.log(`[yjsService] createNewProject: YjsClient connected for projectId "${projectId}".`);
     registry.set(keyFor(userId, projectId), [client, project]);
 
     // Save title to metadata Y.Doc for dropdown display
-    // Save container title to metadata Y.Doc for persistence across page reloads
-    setContainerTitleInMetaDoc(projectId, containerName);
+    // Save project title to metadata Y.Doc for persistence across page reloads
+    setContainerTitleInMetaDoc(projectId, projectName);
 
     // update store
     yjsStore.yjsClient = client;
 
     if (typeof window !== "undefined") {
         (window as any).__CURRENT_PROJECT__ = project;
-        (window as any).__CURRENT_PROJECT_TITLE__ = containerName;
+        (window as any).__CURRENT_PROJECT_TITLE__ = projectName;
     }
 
     return client;
@@ -232,10 +232,10 @@ export function cleanupClient() {
 }
 
 // Compatibility stubs for UI that previously used Fluid Functions
-export async function deleteContainer(containerId: string): Promise<boolean> {
-    // No-op in Yjs-only mode; containers are client-local concepts here.
-    // Using containerId to satisfy function signature
-    console.log(`[yjsService] deleteContainer called for: ${containerId}`);
+export async function deleteProject(projectId: string): Promise<boolean> {
+    // No-op in Yjs-only mode; projects are client-local concepts here.
+    // Using projectId to satisfy function signature
+    console.log(`[yjsService] deleteProject called for: ${projectId}`);
     return true;
 }
 

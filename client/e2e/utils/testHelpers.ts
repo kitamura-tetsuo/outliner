@@ -254,9 +254,13 @@ export class TestHelpers {
                     updatedAt: new Date(),
                 };
             }
-            if ((window as any).__CONTAINER_STORE__) {
-                (window as any).__CONTAINER_STORE__.syncFromFirestore();
-                console.log("[setAccessibleProjects] Triggered containerStore.syncFromFirestore()");
+            const ps = (window as any).__PROJECT_STORE__;
+
+            if (ps && typeof ps.syncFromFirestore === "function") {
+                ps.syncFromFirestore();
+                console.log("[setAccessibleProjects] Triggered projectStore.syncFromFirestore()");
+            } else {
+                console.log("[setAccessibleProjects] Warning: projectStore not found for sync");
             }
 
             // Persist to Firestore for tests that navigate/reload
