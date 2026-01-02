@@ -115,6 +115,8 @@ test.describe("CMT-0001: comment threads", () => {
     test("add, edit and remove comment", async ({ page }) => {
         test.setTimeout(60000); // Increase timeout for this specific test under load
         // Using TestHelpers.prepareTestEnvironment from beforeEach ensures we have a fresh page for this test
+        // Wait for thread to be fully interactive (avoid waitForUIStable)
+        await page.waitForTimeout(500);
         await TestHelpers.waitForOutlinerItems(page);
         // Wait for outliner items to be populated (robust wait)
         await page.locator(".outliner-item[data-item-id]").nth(1).waitFor({ state: "attached", timeout: 30000 });
@@ -132,7 +134,8 @@ test.describe("CMT-0001: comment threads", () => {
         await expect(commentButton).toBeVisible();
 
         // Add extra wait to ensure the page is fully loaded and stable
-        await TestHelpers.waitForUIStable(page);
+        // Note: Do NOT use TestHelpers.waitForUIStable(page) here as it waits for editor cursor which may not be active
+        await page.waitForTimeout(500);
 
         // Ensure any existing comment thread is closed before starting
         try {
@@ -150,25 +153,19 @@ test.describe("CMT-0001: comment threads", () => {
         // Click the comment button
         await commentButton.click();
 
-        // Wait for the comment thread to appear with increased timeout
-        // Use a more specific locator to ensure we're waiting for the right thread
         await expect(page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`)).toBeVisible({
             timeout: 30000,
         });
 
-        // Wait for thread to be fully interactive
-        await TestHelpers.waitForUIStable(page);
+        // Wait for thread to be fully interactive (avoid waitForUIStable)
+        await page.waitForTimeout(500);
 
         await page.fill('[data-testid="new-comment-input"]', "hello");
         const addBtns = page.locator('[data-testid="add-comment-btn"]');
-        const addCount = await addBtns.count();
-
-        console.log("DEBUG add-btn count:", addCount);
+        // const addCount = await addBtns.count();
         // Try narrowing to the currently visible thread
         const thread = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`);
         const addInThread = thread.locator('[data-testid="add-comment-btn"]');
-
-        console.log("DEBUG add-btn in thread visible:", await addInThread.isVisible());
         await addInThread.click();
 
         // Wait for comment count to appear and have the correct value

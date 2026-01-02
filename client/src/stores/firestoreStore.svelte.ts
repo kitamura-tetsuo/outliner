@@ -1,5 +1,13 @@
 import { type FirebaseApp } from "firebase/app";
-import { connectFirestoreEmulator, doc, type Firestore, getDoc, getFirestore, onSnapshot } from "firebase/firestore";
+import {
+    connectFirestoreEmulator,
+    doc,
+    type Firestore,
+    getDoc,
+    getFirestore,
+    onSnapshot,
+    setDoc,
+} from "firebase/firestore";
 
 import { userManager } from "../auth/UserManager";
 import { getFirebaseApp } from "../lib/firebase-app";
@@ -69,6 +77,22 @@ class GeneralStore {
                     `[firestoreStore.setUserProject] prev.ucVersion=${payload.prev.ucVersion} prev.len=${payload.prev.accessibleProjectIdsLength} prev.default=${payload.prev.defaultProjectId} -> next.ucVersion=${payload.next.ucVersion} next.len=${payload.next.accessibleProjectIdsLength} next.default=${payload.next.defaultProjectId}`,
                 );
             } catch {}
+        }
+    }
+    // テスト用: 現在の状態をFirestoreに保存する
+    async testSaveUserProject() {
+        const self = firestoreStore as any;
+        if (!self.userProject) return;
+        if (!db) return;
+
+        try {
+            const userId = self.userProject.userId;
+            const userProjectRef = doc(db, "userProjects", userId);
+            await setDoc(userProjectRef, self.userProject);
+            console.log(`[firestoreStore] Saved userProject to Firestore for ${userId}`);
+        } catch (e) {
+            console.error("[firestoreStore] Failed to save userProject to Firestore", e);
+            throw e;
         }
     }
 

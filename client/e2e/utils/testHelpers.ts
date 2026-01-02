@@ -161,11 +161,31 @@ export class TestHelpers {
         page: Page,
         projectNames: string[] = ["test-project-1", "test-project-2"],
     ): Promise<void> {
-        await page.evaluate(({ projects }) => {
+        console.log("DEBUG: Calling setAccessibleProjects inner evaluate");
+        // Wait for Firestore store to be initialized
+        try {
+            await page.waitForFunction(
+                () => !!(window as any).__FIRESTORE_STORE__ && !!(window as any).__USER_MANAGER__,
+                { timeout: 15000 },
+            );
+            // Attempt to wait for actual user login to avoid race condition where we use "test-user-id" but then user logs in
+            await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 5000 });
+        } catch (e) {
+            console.warn("setAccessibleProjects: Timeout waiting for stores or currentUser, proceeding with fallback");
+        }
+
+        await page.evaluate(async ({ projects }) => {
             const fs = (window as any).__FIRESTORE_STORE__;
+            const um = (window as any).__USER_MANAGER__;
+            // Use actual authenticated user ID if available, otherwise fallback to "test-user-id"
+            const userId = um?.auth?.currentUser?.uid || "test-user-id";
+            console.log("DEBUG: setAccessibleProjects START inside evaluate");
+
+            console.log("DEBUG: setAccessibleProjects using userId:", userId);
+
             if (fs && fs.setUserProject) {
                 fs.setUserProject({
-                    userId: "test-user-id",
+                    userId: userId,
                     defaultProjectId: projects[0] || "test-project-1",
                     accessibleProjectIds: projects,
                     createdAt: new Date(),
@@ -174,16 +194,20 @@ export class TestHelpers {
             } else if (fs) {
                 // Fallback for older implementations
                 fs.userProject = {
-                    userId: "test-user-id",
+                    userId: userId,
                     defaultProjectId: projects[0] || "test-project-1",
                     accessibleProjectIds: projects,
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 };
             }
-            // Trigger sync for container store
             if ((window as any).__CONTAINER_STORE__) {
                 (window as any).__CONTAINER_STORE__.syncFromFirestore();
+            }
+
+            // Persist to Firestore for tests that navigate/reload
+            if (fs && fs.testSaveUserProject) {
+                await fs.testSaveUserProject();
             }
         }, { projects: projectNames });
     }
@@ -345,6 +369,23 @@ export class TestHelpers {
         // デバッガーをセットアップ
         await TestHelpers.setupTreeDebugger(page);
         await TestHelpers.setupCursorDebugger(page);
+
+        // Attach verbose console/pageerror/requestfailed listeners for debugging
+        try {
+            if (process.env.E2E_ATTACH_BROWSER_CONSOLE === "1") {
+                page.on("console", (msg) => {
+                    const type = msg.type();
+                    const txt = msg.text();
+                    console.log(`[BROWSER-CONSOLE:${type}]`, txt);
+                });
+                page.on("pageerror", (err) => {
+                    console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
+                });
+                page.on("requestfailed", (req) => {
+                    console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
+                });
+            }
+        } catch {}
 
         // Set WebSocket flag and E2E flag before navigation (consistency with prepareTestEnvironment)
         await page.addInitScript(() => {

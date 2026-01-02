@@ -86,7 +86,7 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     retries: (process.env.CI || !isSingleSpecRun) ? 2 : 1,
     workers: process.env.CI ? 4 : 4,
-    maxFailures: process.env.CI ? 1 : 5,
+    maxFailures: process.env.CI ? 3 : 5,
 
     reporter: [
         ["html", { open: "never" }],
