@@ -4,6 +4,8 @@ import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 
+console.log("HELLO WORLD YJS SCHEMA LOADED");
+
 export type Comment = {
     id: string;
     author: string;
@@ -31,6 +33,9 @@ export class Comments {
         c.set("created", time);
         c.set("lastChanged", time);
         this.yArray.push([c]);
+        console.error(
+            `[Comments.addComment] Added comment ${id} to item ${this.itemId}. New count: ${this.yArray.length}`,
+        );
 
         // Client side event dispatch for UI updates (badge count)
         if (typeof window !== "undefined") {
@@ -42,16 +47,24 @@ export class Comments {
     }
 
     deleteComment(commentId: string) {
+        console.error(`[Comments.deleteComment] Attempting to delete comment ${commentId} from item ${this.itemId}`);
         const ids = this.yArray.toArray().map((m) => m.get("id"));
         const idx = ids.findIndex((id) => id === commentId);
 
         if (idx >= 0) {
             this.yArray.delete(idx, 1);
+            console.error(`[Comments.deleteComment] Deleted comment at index ${idx}. New count: ${this.yArray.length}`);
             if (typeof window !== "undefined") {
                 window.dispatchEvent(
                     new CustomEvent("item-comment-count", { detail: { id: this.itemId, count: this.yArray.length } }),
                 );
             }
+        } else {
+            console.error(
+                `[Comments.deleteComment] Comment ${commentId} not found in item ${this.itemId}. Available: ${
+                    ids.join(", ")
+                }`,
+            );
         }
     }
 

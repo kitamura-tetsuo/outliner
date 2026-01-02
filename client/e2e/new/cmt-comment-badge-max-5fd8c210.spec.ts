@@ -139,33 +139,41 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
         // 1件削除
         await page.evaluate(([id, cid]) => {
             const gs: any = (window as any).generalStore;
+            // Helper to delete comment from item
+            const deleteFromItem = (it: any) => {
+                if (typeof it.deleteComment === "function") {
+                    it.deleteComment(cid);
+                    return true;
+                }
+                // Fallback: items from current page might be proxies/POJOs missing prototype methods.
+                // Try accessing comments property directly.
+                if (it.comments && typeof it.comments.deleteComment === "function") {
+                    it.comments.deleteComment(cid);
+                    return true;
+                }
+                return false;
+            };
 
-            // Same approach for delete - try current page first
+            // Try current page first
             if (gs?.currentPage) {
                 const items = gs.currentPage.items;
                 for (let i = 0; i < items.length; i++) {
                     const it = items.at(i);
                     if (it && String(it.id) === String(id)) {
-                        if (typeof it.deleteComment === "function") {
-                            it.deleteComment(cid);
-                        } else {
-                            console.error("Item does not have deleteComment method");
-                        }
-                        break;
+                        deleteFromItem(it);
+                        return;
                     }
                 }
-            } // Fallback to project items
-            else if (gs?.project) {
+            }
+
+            // Fallback to project items
+            if (gs?.project) {
                 const items = gs.project.items;
                 for (let i = 0; i < items.length; i++) {
                     const it = items.at(i);
                     if (it && String(it.id) === String(id)) {
-                        if (typeof it.deleteComment === "function") {
-                            it.deleteComment(cid);
-                        } else {
-                            console.error("Item does not have deleteComment method");
-                        }
-                        break;
+                        deleteFromItem(it);
+                        return;
                     }
                 }
             }

@@ -5,6 +5,8 @@ import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types";
 
+console.log("HELLO WORLD APP SCHEMA LOADED");
+
 export type Comment = {
     id: string;
     author: string;
@@ -39,26 +41,9 @@ export class Comments {
     }
 
     deleteComment(commentId: string) {
-        try {
-            console.info("[Comments.deleteComment] called with id=", commentId);
-        } catch {}
-        const ids = this.yArray.toArray().map((m) => m.get("id"));
-        try {
-            console.info("[Comments.deleteComment] current ids=", ids);
-        } catch {}
-        const idx = ids.findIndex((id) => id === commentId);
-        try {
-            console.info("[Comments.deleteComment] found idx=", idx);
-        } catch {}
+        const idx = this.yArray.toArray().findIndex((m) => m.get("id") === commentId);
         if (idx >= 0) {
             this.yArray.delete(idx, 1);
-            try {
-                console.info("[Comments.deleteComment] deleted idx=", idx);
-            } catch {}
-        } else {
-            try {
-                console.info("[Comments.deleteComment] not found, skip");
-            } catch {}
         }
     }
 
