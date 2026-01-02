@@ -19,6 +19,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         localStorage.setItem("VITE_E2E_TEST", "true");
         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+        localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
         // Note: We intentionally do NOT set VITE_DISABLE_YJS_INDEXEDDB to ensure
         // IndexedDB caching is available for Yjs sync stability
     });
@@ -58,10 +59,8 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
             return items.length >= 4; // Expect 4 items (title + 3 seeded lines)
         },
         null,
-        { timeout: 30000 },
-    ).catch(() => {
-        console.log("Warning: Expected 4 outliner items not found on page1, continuing anyway");
-    });
+        { timeout: 45000 },
+    );
 
     // Verify item count (accept >= 4 to handle potential duplicates/ghost items)
     if (page1.isClosed()) return;
@@ -78,6 +77,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         localStorage.setItem("VITE_E2E_TEST", "true");
         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+        localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
         // Note: We intentionally do NOT set VITE_DISABLE_YJS_INDEXEDDB to ensure
         // IndexedDB caching is available for Yjs sync stability
     });
@@ -118,12 +118,8 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
             return items.length >= 4; // Expect 4 items (title + 3 seeded lines)
         },
         null,
-        { timeout: 30000 },
-    ).catch(async () => {
-        const html = await page2.evaluate(() => document.body.innerHTML);
-        console.log("Warning: Expected 4 outliner items not found on page2, continuing anyway.");
-        console.log("Page2 HTML Snippet:", html.substring(0, 500));
-    });
+        { timeout: 45000 },
+    );
 
     // Wait for both pages to load completely
     if (page1.isClosed() || page2.isClosed()) return;

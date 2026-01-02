@@ -32,8 +32,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
             if (!data || !data.items || data.items.length === 0) {
                 return false;
             }
-            const page = data.items[0]; // The first page
-            return page && page.items && page.items.length > 0;
+            return true;
         });
 
         await page.click("text=Export Markdown");

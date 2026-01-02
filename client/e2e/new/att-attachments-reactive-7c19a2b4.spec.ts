@@ -20,7 +20,7 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
         ]);
 
         // Wait for items to be stable
-        await page.locator(".outliner-item[data-item-id]").nth(1).waitFor({ state: "attached", timeout: 30000 });
+        await TestHelpers.waitForOutlinerItems(page, 30000, 2);
         let itemId = await TestHelpers.getItemIdByIndex(page, 1);
         if (!itemId) {
             await page.waitForTimeout(1000);

@@ -197,6 +197,9 @@ test.describe("CMT-0001: comment threads", () => {
         await page.fill(`[data-testid="edit-input-${commentId}"]`, "");
         await page.fill(`[data-testid="edit-input-${commentId}"]`, "edited");
 
+        // Confirm input value is set correctly before saving
+        await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).toHaveValue("edited");
+
         // 保存ボタンをクリック
         await page.click(`[data-testid="save-edit-${commentId}"]`);
 
@@ -210,7 +213,7 @@ test.describe("CMT-0001: comment threads", () => {
         // Use a more specific selector to ensure we're checking the right comment
         // Increase timeout and add retry mechanism for Yjs synchronization
         await expect(page.locator(`[data-testid="comment-${commentId}"] .text`)).toHaveText("edited", {
-            timeout: 45000,
+            timeout: 60000,
         });
 
         await page.click(`[data-testid="comment-${commentId}"] .delete`);

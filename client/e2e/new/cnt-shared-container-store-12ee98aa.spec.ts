@@ -21,11 +21,11 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         // Use skipSync to avoid navigating to a project page
         await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
 
-        // Set up accessible projects for container selector
-        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
-
         // Navigate to home page
         await page.goto("http://localhost:7090/");
+
+        // Set up accessible projects for container selector - executed AFTER navigation to ensure store is populated in-memory
+        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
 
         // Wait for auth and store to be ready
         await page.waitForFunction(() => {
@@ -120,11 +120,11 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         // Use skipSync to avoid navigating to a project page
         await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
 
-        // Set up accessible projects
-        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
-
         // Navigate to home page
         await page.goto("http://localhost:7090/");
+
+        // Set up accessible projects
+        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
 
         // Container selector should be visible
         const select = page.locator("select.container-select");
@@ -151,11 +151,11 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         // Use skipSync to avoid navigating to a project page
         await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
 
-        // Set up accessible projects
-        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
-
         // Navigate to home page
         await page.goto("http://localhost:7090/");
+
+        // Set up accessible projects
+        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
 
         // Initial container selector visibility check
         const select = page.locator("select.container-select");

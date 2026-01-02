@@ -16,6 +16,9 @@ test.describe("snapshot diff viewer", () => {
 
     test("display diff and revert", async ({ page }) => {
         // Get project/page names from beforeEach's setup to avoid creating a new project
+        // Wait for store to be populated
+        await page.waitForFunction(() => !!(window as any).generalStore?.currentPage); // eslint-disable-line no-restricted-globals
+
         const projectData = await page.evaluate(() => {
             const gs = (window as any).generalStore;
             return {
