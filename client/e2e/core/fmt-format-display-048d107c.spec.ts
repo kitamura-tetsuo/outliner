@@ -116,6 +116,7 @@ test.describe("フォーマット表示", () => {
 
     test("取り消し線フォーマット（[- text]）が視覚的に取り消し線付きで表示される", async ({ page }) => {
         // 最初のアイテムを選択
+        await TestHelpers.waitForOutlinerItems(page);
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click();
 

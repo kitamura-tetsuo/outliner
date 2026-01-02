@@ -49,7 +49,9 @@ test.describe("フォーマット組み合わせ", () => {
         await TestHelpers.waitForOutlinerItems(page);
 
         // 2番目のアイテム(ページタイトルではない最初のアイテム)のHTMLを確認
-        const firstItemHtml = await page.locator(".outliner-item").nth(1).locator(".item-text").first().innerHTML();
+        const secondItem = page.locator(".outliner-item").nth(1);
+        await secondItem.waitFor({ state: "visible" });
+        const firstItemHtml = await secondItem.locator(".item-text").first().innerHTML();
 
         // 太字と取り消し線の組み合わせが正しく表示されていることを確認
         expect(firstItemHtml).toContain("<strong>");
@@ -72,6 +74,7 @@ test.describe("フォーマット組み合わせ", () => {
 
         // 2番目のアイテム(ページタイトルではない最初のアイテム)のHTMLを確認
         const firstItem = page.locator(".outliner-item").nth(1);
+        await firstItem.waitFor({ state: "visible" });
         // Wait for specific formatting to appear to handle hydration/rendering delays
         await firstItem.locator("em").waitFor({ state: "attached", timeout: 5000 }).catch(() => {});
 

@@ -21,6 +21,7 @@ test.describe("System clipboard paste", () => {
             await navigator.clipboard.writeText("pasted text");
         });
 
+        await TestHelpers.waitForOutlinerItems(page);
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);

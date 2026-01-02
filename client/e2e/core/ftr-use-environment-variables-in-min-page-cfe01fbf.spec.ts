@@ -70,7 +70,7 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
         const tokenVerifyUrl = process.env.VITE_TOKEN_VERIFY_URL;
 
         expect(apiKey).toBe("AIzaSyCMPfoobar1234567890abcdefghij");
-        expect(projectId).toBe("test-project-id");
+        expect(projectId).toBe("outliner-d57b0");
         expect(tokenVerifyUrl).toBe("http://localhost:7091/verify");
 
         // 基本的なページアクセス確認
