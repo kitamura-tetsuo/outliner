@@ -14,9 +14,7 @@
         setupLinkPreviewHandlers,
     } from "../../../lib/linkPreviewHandler";
     import { getLogger } from "../../../lib/logger";
-    import {
-        getYjsClientByProjectTitle,
-    } from "../../../services";
+    import { getYjsClientByProjectTitle } from "../../../services";
     const logger = getLogger("+page");
 
     import { yjsStore } from "../../../stores/yjsStore.svelte";
@@ -148,10 +146,14 @@
             const findPage = () => {
                 const items = project.items as any;
                 if (items) {
-                    const len = typeof items.length === "function" ? items.length() : (items.length ?? 0);
+                    const len =
+                        typeof items.length === "function"
+                            ? items.length()
+                            : (items.length ?? 0);
                     for (let i = 0; i < len; i++) {
                         const p = items.at ? items.at(i) : items[i];
-                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        const t =
+                            p?.text?.toString?.() ?? String(p?.text ?? "");
                         if (
                             String(t).toLowerCase() ===
                             String(pageName).toLowerCase()
@@ -167,20 +169,29 @@
 
             // Retry for eventual consistency (especially in tests where data is seeded via API)
             if (!targetPage) {
-                logger.info(`loadProjectAndPage: Page "${pageName}" not found initially. Retrying...`);
+                logger.info(
+                    `loadProjectAndPage: Page "${pageName}" not found initially. Retrying...`,
+                );
                 // Wait up to 15 seconds (150 * 100ms) for Yjs to sync
                 const maxRetries = 150;
                 for (let i = 0; i < maxRetries; i++) {
-                    await new Promise(r => setTimeout(r, 100));
+                    await new Promise((r) => setTimeout(r, 100));
                     targetPage = findPage();
                     if (targetPage) {
-                        logger.info(`loadProjectAndPage: Found page "${pageName}" after retry ${i+1}`);
+                        logger.info(
+                            `loadProjectAndPage: Found page "${pageName}" after retry ${i + 1}`,
+                        );
                         break;
                     }
                     if (i % 10 === 0 || i === maxRetries - 1) {
                         const items = project.items as any;
-                        const len = typeof items?.length === "function" ? items.length() : (items?.length ?? 0);
-                        logger.info(`loadProjectAndPage: Retry ${i+1}/${maxRetries}, items.length=${len}, pageName="${pageName}"`);
+                        const len =
+                            typeof items?.length === "function"
+                                ? items.length()
+                                : (items?.length ?? 0);
+                        logger.info(
+                            `loadProjectAndPage: Retry ${i + 1}/${maxRetries}, items.length=${len}, pageName="${pageName}"`,
+                        );
                     }
                 }
             }
@@ -427,6 +438,8 @@
                 logger.info(
                     `onMount: Authentication detected after ${retryCount} retries, setting isAuthenticated=true`,
                 );
+                // Ensure loading starts after authentication is confirmed
+                scheduleLoadIfNeeded();
             } else {
                 logger.info(
                     "onMount: No authentication detected after retries, staying unauthenticated",

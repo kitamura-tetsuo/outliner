@@ -25,26 +25,28 @@ export interface UserProject {
 }
 
 class GeneralStore {
-    // 直接公開フィールド（$state が追跡可能なプロパティ）
-    public userProject: UserProject | null = null;
+    // 直接公開フィールド
+    public userProject = $state<UserProject | null>(null);
 
-    // $state 再計算トリガ（CustomEvent 不要のためのトップレベル依存）
-    public ucVersion = 0;
+    // $state 再計算トリガ
+    public ucVersion = $state(0);
+
+    // Aliases for backwards compatibility
+    get userContainer() {
+        return this.userProject;
+    }
 
     // 明示 API で wrap + 新参照を適用
     setUserProject(value: UserProject | null) {
-        // $state が追跡する公開プロパティに直接代入
-        const self = firestoreStore as any;
-        const prevVersion = self.ucVersion ?? 0;
-        const prevLength = self.userProject?.accessibleProjectIds?.length ?? 0;
-        const prevDefault = self.userProject?.defaultProjectId;
+        const prevVersion = this.ucVersion;
+        const prevLength = this.userProject?.accessibleProjectIds?.length ?? 0;
+        const prevDefault = this.userProject?.defaultProjectId;
 
-        const nextProject = value ? self.wrapUserProject(value) : null;
-        self.userProject = nextProject;
+        const nextProject = value ? this.wrapUserProject(value) : null;
+        this.userProject = nextProject;
 
-        // $state 依存を更新（CustomEvent に頼らない）
-        self.ucVersion = prevVersion + 1;
-        // 追加通知（テスト環境限定）: UI への橋渡しとして軽量な DOM イベントを発火
+        this.ucVersion = prevVersion + 1;
+        // 追加通知（テスト環境限定）
         try {
             const __isTestEnv = import.meta.env.MODE === "test"
                 || process.env.NODE_ENV === "test"
@@ -56,28 +58,18 @@ class GeneralStore {
             }
         } catch {}
 
-        const nextLength = self.userProject?.accessibleProjectIds?.length ?? 0;
-        const nextDefault = self.userProject?.defaultProjectId;
+        const nextLength = this.userProject?.accessibleProjectIds?.length ?? 0;
+        const nextDefault = this.userProject?.defaultProjectId;
 
         if (typeof console !== "undefined" && typeof console.info === "function") {
-            try {
-                const payload = {
-                    prev: {
-                        ucVersion: prevVersion,
-                        accessibleProjectIdsLength: prevLength,
-                        defaultProjectId: prevDefault,
-                    },
-                    next: {
-                        ucVersion: self.ucVersion,
-                        accessibleProjectIdsLength: nextLength,
-                        defaultProjectId: nextDefault,
-                    },
-                };
-                console.info(
-                    `[firestoreStore.setUserProject] prev.ucVersion=${payload.prev.ucVersion} prev.len=${payload.prev.accessibleProjectIdsLength} prev.default=${payload.prev.defaultProjectId} -> next.ucVersion=${payload.next.ucVersion} next.len=${payload.next.accessibleProjectIdsLength} next.default=${payload.next.defaultProjectId}`,
-                );
-            } catch {}
+            console.info(
+                `[firestoreStore.setUserProject] prev.ucVersion=${prevVersion} prev.len=${prevLength} prev.default=${prevDefault} -> next.ucVersion=${this.ucVersion} next.len=${nextLength} next.default=${nextDefault}`,
+            );
         }
+    }
+
+    setUserContainer(value: UserProject | null) {
+        this.setUserProject(value);
     }
     // テスト用: 現在の状態をFirestoreに保存する
     async testSaveUserProject() {
@@ -538,22 +530,8 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
 // Alias for backwards compatibility during containers -> projects migration
 export const saveContainerIdToServer = saveProjectIdToServer;
 
-// UserContainer type alias for backward compatibility
-export type UserContainer = UserProject;
-
-// Getter alias to access userProject as userContainer
-Object.defineProperty(firestoreStore, "userContainer", {
-    get() {
-        return (firestoreStore as any).userProject;
-    },
-    enumerable: true,
-    configurable: true,
-});
-
-// Method alias for setUserContainer -> setUserProject
-(firestoreStore as any).setUserContainer = function(value: UserProject | null) {
-    return (firestoreStore as any).setUserProject(value);
-};
+// Getter alias to access userProject as userContainer (deprecated, move to class)
+// Already handled in GeneralStore class
 
 // アプリ起動時に自動的に初期化
 if (typeof window !== "undefined") {

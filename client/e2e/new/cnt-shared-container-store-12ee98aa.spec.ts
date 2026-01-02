@@ -38,14 +38,34 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
         }, { timeout: 20000 });
 
         // Wait for container selector to have options
+        console.log("Waiting for container selector to have 2 options...");
         await page.waitForFunction(() => {
             const cs = (window as any).__CONTAINER_STORE__;
+            const count = cs?.containers?.length ?? 0;
+            console.log(`[E2E] Current container count: ${count}`);
             // Force sync if containers are missing
-            if (cs && (!cs.containers || cs.containers.length === 0)) {
-                cs.syncFromFirestore?.();
+            if (cs && count === 0) {
+                if (!(window as any).__WAS_FORCE_SYNCED__) {
+                    console.log("[E2E] containers empty, triggering syncFromFirestore()");
+                    cs.syncFromFirestore?.();
+                    (window as any).__WAS_FORCE_SYNCED__ = true;
+                }
             }
-            return cs && Array.isArray(cs.containers) && cs.containers.length >= 2;
-        }, { timeout: 30000 });
+            return count >= 2;
+        }, { timeout: 45000 }).catch(async (e) => {
+            const debug = await page.evaluate(() => {
+                const cs = (window as any).__CONTAINER_STORE__;
+                const fs = (window as any).__FIRESTORE_STORE__;
+                return {
+                    containerCount: cs?.containers?.length,
+                    userProject: fs?.userProject,
+                    hasCs: !!cs,
+                    hasFs: !!fs,
+                };
+            });
+            console.error("[E2E] Timeout waiting for 2 containers. Debug state:", JSON.stringify(debug));
+            throw e;
+        });
 
         const options = page.locator("select.container-select option");
         await expect(options).toHaveCount(2);

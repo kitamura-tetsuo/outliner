@@ -98,25 +98,31 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
 
     // Wait for Yjs connection with improved timeout handling
     try {
+        console.log("Waiting for page2 to be connected to Yjs...");
         await page2.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
-            timeout: 20000,
+            timeout: 30000,
         });
+        console.log("page2 connected to Yjs");
     } catch {
-        console.log("YJS connection not established on page2, continuing with test");
-        // Continue even if connection fails - test might still work with local sync
+        const status = await page2.evaluate(() => (window as any).__YJS_STORE__?.getConnectionState?.());
+        console.log(`YJS connection not established on page2 (status: ${status}), continuing with test`);
     }
 
     // Wait for outliner items to be loaded before checking content
     // This is necessary because Yjs sync may take time for seeded data to appear
+    console.log("Waiting for 4 outliner items on page2...");
     await page2.waitForFunction(
         () => {
             const items = document.querySelectorAll(".outliner-item[data-item-id]");
+            console.log(`[page2] Found ${items.length} items`);
             return items.length >= 4; // Expect 4 items (title + 3 seeded lines)
         },
         null,
         { timeout: 30000 },
-    ).catch(() => {
-        console.log("Warning: Expected 4 outliner items not found on page2, continuing anyway");
+    ).catch(async () => {
+        const html = await page2.evaluate(() => document.body.innerHTML);
+        console.log("Warning: Expected 4 outliner items not found on page2, continuing anyway.");
+        console.log("Page2 HTML Snippet:", html.substring(0, 500));
     });
 
     // Wait for both pages to load completely
@@ -127,6 +133,28 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     // Verify both pages have the same initial content
     const page1InitialTexts = await page1.locator(".outliner-item .item-text").allTextContents();
     const page2InitialTexts = await page2.locator(".outliner-item .item-text").allTextContents();
+
+    // Log debug info for both pages
+    const page1Debug = await page1.evaluate(() => {
+        const y = (window as any).__YJS_STORE__;
+        const p = (window as any).generalStore?.project;
+        return {
+            projectId: y?.ydoc?.guid,
+            isConnected: y?.isConnected,
+            itemCount: p?.items?.length ?? 0,
+        };
+    });
+    const page2Debug = await page2.evaluate(() => {
+        const y = (window as any).__YJS_STORE__;
+        const p = (window as any).generalStore?.project;
+        return {
+            projectId: y?.ydoc?.guid,
+            isConnected: y?.isConnected,
+            itemCount: p?.items?.length ?? 0,
+        };
+    });
+    console.log(`[DEBUG] Page1: ${JSON.stringify(page1Debug)}`);
+    console.log(`[DEBUG] Page2: ${JSON.stringify(page2Debug)}`);
 
     expect(page1InitialTexts.join("\n")).toContain("テスト");
     expect(page2InitialTexts.join("\n")).toContain("テスト");

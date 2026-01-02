@@ -219,6 +219,10 @@ export class TestHelpers {
             throw e; // Fail the test early
         }
 
+        const currentUserId = await page.evaluate(() => (window as any).__USER_MANAGER__?.auth?.currentUser?.uid);
+        TestHelpers.slog(
+            `[setAccessibleProjects] Setting projects for userId=${currentUserId}: ids=${JSON.stringify(projectNames)}`,
+        );
         await page.evaluate(async ({ projects }) => {
             const fs = (window as any).__FIRESTORE_STORE__;
             const um = (window as any).__USER_MANAGER__;
@@ -252,15 +256,18 @@ export class TestHelpers {
             }
             if ((window as any).__CONTAINER_STORE__) {
                 (window as any).__CONTAINER_STORE__.syncFromFirestore();
+                console.log("[setAccessibleProjects] Triggered containerStore.syncFromFirestore()");
             }
 
             // Persist to Firestore for tests that navigate/reload
             if (fs && fs.testSaveUserProject) {
                 await fs.testSaveUserProject();
-                // Add a small delay to ensure Firestore emulator has settled before potential navigation
-                await new Promise(resolve => setTimeout(resolve, 500));
+                console.log("[setAccessibleProjects] Project saved to Firestore emulator");
             }
         }, { projects: projectNames });
+
+        TestHelpers.slog("[setAccessibleProjects] Seeding complete, waiting 500ms for propagation...");
+        await page.waitForTimeout(500);
     }
 
     /**
@@ -317,8 +324,17 @@ export class TestHelpers {
         TestHelpers.slog("Navigation completed", { url });
 
         // Allow time for WebSocket connection and initial sync before checking app state
-        // Reduced from 5000ms as the waitForAppReady call below will handle full sync
-        await page.waitForTimeout(2000);
+        TestHelpers.slog("Waiting for __YJS_STORE__ to be connected...");
+        await page.waitForFunction(
+            () => {
+                const y = (window as any).__YJS_STORE__;
+                return y && y.isConnected;
+            },
+            { timeout: 30000 },
+        ).catch(() => TestHelpers.slog("Warning: __YJS_STORE__ connect wait timed out"));
+        TestHelpers.slog("__YJS_STORE__ connected");
+
+        await page.waitForTimeout(1000);
 
         // E2E stability: wait for store.currentPage to be set explicitly
         // This bypasses the retry logic in +page.svelte and provides a more direct wait
