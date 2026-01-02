@@ -19,7 +19,8 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
             "三行目: 並び順チェック",
         ]);
         // Wait for outliner items to be visible with increased timeout
-        await TestHelpers.waitForOutlinerItems(page, 45000);
+        // Wait for 4 items (page header + 3 seeded lines)
+        await TestHelpers.waitForOutlinerItems(page, 45000, 4);
     });
 
     test("navigate alias picker with keyboard", async ({ page }) => {
@@ -29,7 +30,16 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await TestHelpers.waitForOutlinerItems(page, 10000);
         const firstId = await TestHelpers.getItemIdByIndex(page, 0);
         const secondId = await TestHelpers.getItemIdByIndex(page, 1);
-        if (!firstId || !secondId) throw new Error("item ids not found");
+
+        if (!firstId || !secondId) {
+            console.log("Retrying getItemIdByIndex due to sync delay");
+            await page.waitForTimeout(2000);
+        }
+
+        const firstIdFinal = firstId || await TestHelpers.getItemIdByIndex(page, 0);
+        const secondIdFinal = secondId || await TestHelpers.getItemIdByIndex(page, 1);
+
+        if (!firstIdFinal || !secondIdFinal) throw new Error("item ids not found after retry");
 
         await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
         await TestHelpers.waitForUIStable(page);

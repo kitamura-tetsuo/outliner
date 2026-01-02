@@ -184,7 +184,7 @@ export class Item {
     }
 
     get items(): Items {
-        return new Items(this.ydoc, this.tree, this.key);
+        return wrapArrayLike(new Items(this.ydoc, this.tree, this.key));
     }
 
     get parent(): Items | null {
@@ -305,7 +305,7 @@ export class Project {
     }
 
     get items(): Items {
-        return new Items(this.ydoc, this.tree, "root");
+        return wrapArrayLike(new Items(this.ydoc, this.tree, "root"));
     }
 
     /**
@@ -515,4 +515,49 @@ export class Project {
         }
         return keys;
     }
+}
+
+// 内部: Items を配列風アクセス可能にする Proxy でラップ
+function wrapArrayLike(items: Items): Items {
+    type PropertyKey = string | number | symbol;
+    const isIndex = (p: PropertyKey): boolean => (typeof p === "number") || (typeof p === "string" && /^\d+$/.test(p));
+
+    return new Proxy(items, {
+        get(target, prop, receiver) {
+            if (isIndex(prop)) {
+                const idx = Number(prop);
+                return target.at(idx);
+            }
+            if (prop === "length") return target.length;
+            if (prop === Symbol.iterator) return target[Symbol.iterator].bind(target);
+            return Reflect.get(target, prop, receiver);
+        },
+        has(target, prop) {
+            if (isIndex(prop)) {
+                const idx = Number(prop);
+                return idx >= 0 && idx < target.length;
+            }
+            return Reflect.has(target, prop);
+        },
+        getOwnPropertyDescriptor(target, prop) {
+            if (isIndex(prop)) {
+                const idx = Number(prop);
+                return {
+                    configurable: true,
+                    enumerable: true,
+                    value: target.at(idx),
+                    writable: false,
+                };
+            }
+            if (prop === "length") {
+                return {
+                    configurable: true,
+                    enumerable: false,
+                    value: target.length,
+                    writable: false,
+                };
+            }
+            return Object.getOwnPropertyDescriptor(target, prop as keyof Items);
+        },
+    });
 }

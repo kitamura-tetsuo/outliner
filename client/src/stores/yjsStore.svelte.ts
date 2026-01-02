@@ -46,6 +46,16 @@ class YjsStore {
             globalStore.project = connectedProject as any;
             this._lastProjectGuid = newGuid ?? null;
 
+            // Attach listeners to update isConnected state reactively
+            if (v.wsProvider) {
+                const updateConnected = () => {
+                    this.isConnected = v.isContainerConnected;
+                };
+                v.wsProvider.on("status", updateConnected);
+                v.wsProvider.on("sync", updateConnected);
+                // Initial check
+                updateConnected();
+            }
             // In headless E2E runs, pages can be created on a provisional project
             // before the live Yjs project is connected. When the connection arrives,
             // the store switches to the connected project, which would otherwise

@@ -8,7 +8,9 @@
         importMarkdownIntoProject,
         importOpmlIntoProject,
     } from "../../../services";
+    import { getYjsClientByProjectTitle } from "../../../services";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
+
     import { store } from "../../../stores/store.svelte";
     import {
         createSnapshotClient,
@@ -75,9 +77,26 @@
         return true;
     }
 
-    onMount(() => {
-        // Try to get project from yjsStore first, then from store
-        project = (yjsStore.yjsClient?.getProject() || store.project) as any;
+    onMount(async () => {
+        // Ensure Yjs connection for the current project
+        const projectName = $page.params.project;
+        if (projectName) {
+            try {
+                const client = await getYjsClientByProjectTitle(projectName);
+                if (client) {
+                    yjsStore.yjsClient = client as any;
+                    project = client.getProject() as any;
+                }
+            } catch (err) {
+                console.warn("SettingsPage: Failed to connect to Yjs", err);
+            }
+        }
+
+        // Try to get project from yjsStore first, then from store if Yjs fails
+        if (!project) {
+            project = (yjsStore.yjsClient?.getProject() ||
+                store.project) as any;
+        }
         hydrateFromSnapshotIfNeeded();
     });
 
@@ -175,10 +194,15 @@
             currentProject.items?.length || 0,
         );
         if (currentProject.items && currentProject.items.length > 0) {
-            console.log(
-                "doImport: First page after import:",
-                (currentProject as any).items[0].text,
-            );
+            const items = currentProject.items as any;
+            const firstPage = items.at ? items.at(0) : items[0];
+            const text = firstPage
+                ? typeof firstPage.text === "function"
+                    ? firstPage.text()
+                    : (firstPage.text?.toString?.() ??
+                      String(firstPage.text ?? ""))
+                : "";
+            console.log("doImport: First page after import:", text);
         }
 
         // If we modified a Yjs-backed project, make sure the changes are reflected in the stores
@@ -211,13 +235,43 @@
 
         // Navigate to the first imported page instead of reloading
         if (currentProject.items && currentProject.items.length > 0) {
-            const firstPage = (currentProject as any).items[0];
-            try {
-                store.currentPage = firstPage;
-            } catch {}
-            const pageName = firstPage.text;
-            console.log(`doImport: Navigating to /${projectName}/${pageName}`);
-            await goto(`/${projectName}/${pageName}`);
+            const items = currentProject.items as any;
+            const firstPage = items.at ? items.at(0) : items[0];
+
+            if (firstPage) {
+                try {
+                    store.currentPage = firstPage;
+                } catch {}
+
+                // Get text - handle both Yjs getter and plain property
+                let pageName = "";
+                try {
+                    pageName =
+                        typeof firstPage.text === "function"
+                            ? firstPage.text()
+                            : (firstPage.text?.toString?.() ??
+                              String(firstPage.text ?? ""));
+                } catch {
+                    pageName = String(firstPage.text ?? "");
+                }
+
+                if (pageName) {
+                    const encodedProject = encodeURIComponent(projectName);
+                    const encodedPage = encodeURIComponent(pageName);
+                    console.log(
+                        `doImport: Navigating to /${encodedProject}/${encodedPage}`,
+                    );
+                    await goto(`/${encodedProject}/${encodedPage}`);
+                } else {
+                    console.log(
+                        "doImport: First page has no title, cannot navigate",
+                    );
+                }
+            } else {
+                console.log(
+                    "doImport: First page is undefined despite length > 0",
+                );
+            }
         } else {
             console.log("doImport: No pages found after import");
         }

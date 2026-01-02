@@ -5,7 +5,8 @@ registerCoverageHooks();
  *  Title   : OPML/Markdown import and export
  *  Source  : docs/client-features/imp-opml-markdown-import-export-4b1c2f10.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/console-forward";
+
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 
@@ -23,7 +24,8 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
 
         // Ensure items are loaded before navigating away
         // This prevents "Child item" from being missed in the export if sync is slow
-        await TestHelpers.waitForOutlinerItems(page);
+        // Wait for at least 2 items (page header + "Child item")
+        await TestHelpers.waitForOutlinerItems(page, 45000, 2);
 
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
@@ -33,11 +35,30 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
 
         await TestHelpers.setupTreeDebugger(page);
 
-        // Wait for Yjs connection to be ready before export
+        // Wait for Yjs connection and data sync to be ready before export
+        // We wait specifically for "Child item" to appear in the Yjs project tree
         await page.waitForFunction(() => {
             const y = (window as any).__YJS_STORE__;
-            return y && y.isConnected;
-        }, { timeout: 15000 }).catch(() => console.log("Warning: Yjs connect wait timed out"));
+            if (!y || !y.isConnected) return false;
+            const project = y.yjsClient?.getProject();
+            if (!project) return false;
+
+            const searchInItems = (items: any, text: string, depth: number): boolean => {
+                const len = items.length;
+                console.log(`[searchInItems] depth=${depth} count=${len}`);
+                for (let i = 0; i < len; i++) {
+                    const item = items.at(i);
+                    if (!item) continue;
+                    const itemText = item.text?.toString?.() ?? "";
+                    console.log(`[searchInItems] depth=${depth} item[${i}]: "${itemText}"`);
+                    if (itemText.includes(text)) return true;
+                    if (searchInItems(item.items, text, depth + 1)) return true;
+                }
+                return false;
+            };
+
+            return searchInItems(project.items, "Child item", 0);
+        }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs sync wait for 'Child item' timed out"));
 
         await page.click("text=Export Markdown");
         const md = await page.locator("textarea[data-testid='export-output']").inputValue();
@@ -52,6 +73,13 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
+
+        // Wait for Yjs connection before import
+        await page.waitForFunction(() => {
+            const y = (window as any).__YJS_STORE__;
+            return y && y.isConnected && y.yjsClient;
+        }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait on settings failed"));
+
         await page.selectOption("select[data-testid='import-format-select']", "markdown");
         const md = "- ImportedPage\n  - Child";
         await page.fill("textarea[data-testid='import-input']", md);
@@ -121,6 +149,13 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
+
+        // Wait for Yjs connection before import
+        await page.waitForFunction(() => {
+            const y = (window as any).__YJS_STORE__;
+            return y && y.isConnected && y.yjsClient;
+        }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait on settings failed"));
+
         const xml = "<opml><body><outline text='Imported'><outline text='Child'/></outline></body></opml>";
         await page.fill("textarea[data-testid='import-input']", xml);
 
@@ -185,6 +220,13 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         const encoded = encodeURIComponent(projectName);
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
+
+        // Wait for Yjs connection before import
+        await page.waitForFunction(() => {
+            const y = (window as any).__YJS_STORE__;
+            return y && y.isConnected && y.yjsClient;
+        }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait on settings failed"));
+
         await page.selectOption("select[data-testid='import-format-select']", "markdown");
         const md = "- Parent\n  - Child\n    - Grand";
         await page.fill("textarea[data-testid='import-input']", md);
@@ -203,17 +245,29 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
 
         await importButton.click();
         console.log("Import button clicked");
-        await page.waitForTimeout(2000);
 
-        // プロジェクトページに戻って、ページリストを確認
-        await page.goto(`/${encoded}`);
-        await TestHelpers.waitForUIStable(page);
+        // Wait for automatic navigation to the Parent page
+        await page.waitForURL(url => url.pathname.includes("/Parent"), { timeout: 30000 }).catch(async () => {
+            console.log("Manual navigation fallback for Parent page");
+            await page.goto(`/${encoded}/Parent`);
+        });
 
-        // ページリストを確認
-        const pageLinks = await page.locator('a[href*="/"]').allTextContents();
-        console.log("Available pages:", pageLinks);
+        // Ensure Yjs connection and page items are loaded
+        await page.waitForFunction(
+            () => {
+                const yjsStore = (window as any).__YJS_STORE__;
+                const isConnected = yjsStore?.getIsConnected?.() === true;
+                if (!isConnected) return false;
 
-        await page.goto(`/${encoded}/Parent`);
+                // Check if page items exist
+                const items = document.querySelectorAll(".outliner-item[data-item-id]");
+                return items.length >= 1; // At least Parent
+            },
+            null,
+            { timeout: 30000 },
+        ).catch(() => {
+            console.log("Warning: Yjs not connected or page items not loaded within timeout");
+        });
 
         // Wait for Yjs connection and page items to be loaded
         await page.waitForFunction(
