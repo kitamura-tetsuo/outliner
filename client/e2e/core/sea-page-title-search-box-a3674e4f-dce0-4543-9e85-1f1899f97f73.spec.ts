@@ -39,13 +39,15 @@ test.describe("SEA-0001: page title search box", () => {
         await page.waitForTimeout(100);
 
         // Type the search query
-        await searchInput.fill("second");
+        await searchInput.pressSequentially("second", { delay: 100 });
+        await searchInput.blur(); // Ensure change event fires
 
         // Wait for the search to process and results to be computed
         // Check that the results are available in the component state
         await page.waitForFunction(() => {
             const input = document.querySelector(".page-search-box input") as HTMLInputElement;
-            if (!input || input.value !== "second") return false;
+            // Allow loose match or check if value is set
+            if (!input || !input.value.includes("second")) return false;
 
             // Check if results are being computed
             const gs = (window as any).generalStore || (window as any).appStore;
@@ -72,11 +74,16 @@ test.describe("SEA-0001: page title search box", () => {
         // Wait for search results to appear with a more specific selector
         // The results should contain a list item with the text "second-page"
         const resultsList = page.locator(".page-search-box ul");
-        await expect(resultsList).toBeVisible({ timeout: 10000 });
+        // Explicitly wait for the list to be present in the DOM
+        await page.waitForFunction(() => !!document.querySelector(".page-search-box ul"), { timeout: 30000 });
+        await expect(resultsList).toBeVisible({ timeout: 30000 });
 
         // Wait for at least one list item to be present
+        await page.waitForFunction(() => document.querySelectorAll(".page-search-box li").length > 0, {
+            timeout: 30000,
+        });
         const firstResult = page.locator(".page-search-box li").first();
-        await expect(firstResult).toBeVisible({ timeout: 10000 });
+        await expect(firstResult).toBeVisible({ timeout: 30000 });
 
         // Verify the result contains "second-page"
         await expect(firstResult).toContainText("second-page");

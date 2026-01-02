@@ -55,7 +55,7 @@ test.describe("NAV-0002: プロジェクトページへのリンク機能", () =
         await expect(page).toHaveURL(`/${projectName}`);
 
         // プロジェクトページが完全にロードされるのを待つ
-        await page.waitForLoadState("networkidle");
+        // await page.waitForLoadState("networkidle"); // Removed flaky wait
 
         // プロジェクトページのタイトルが表示されることを確認
         // プロジェクト名がページのどこかに表示されていることを確認（h1要素以外の可能性も考慮）

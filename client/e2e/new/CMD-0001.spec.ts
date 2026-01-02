@@ -16,10 +16,17 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
     test("insert table via palette", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
-        const id = await TestHelpers.getItemIdByIndex(page, 0);
+        let id = await TestHelpers.getItemIdByIndex(page, 0);
+        if (!id || id === "null") {
+            await page.waitForTimeout(1000);
+            id = await TestHelpers.getItemIdByIndex(page, 0);
+        }
+        if (!id || id === "null") throw new Error("first item ID not found");
 
         // アイテムをクリックしてフォーカスを当てる
-        await page.click(`.outliner-item[data-item-id="${id}"] .item-content`);
+        const itemLocator = page.locator(`.outliner-item[data-item-id="${id}"] .item-content`);
+        await itemLocator.waitFor({ state: "visible" });
+        await itemLocator.click();
         await page.waitForTimeout(200); // Wait for focus to settle
 
         // グローバルテキストエリアにフォーカスを確実に設定

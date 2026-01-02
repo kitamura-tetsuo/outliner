@@ -22,16 +22,17 @@ test.describe("SRE-001: Advanced Search & Replace regex", () => {
         await expect(page.getByTestId("search-panel")).toBeVisible();
 
         // enable regex mode
-        await page.locator('label:has-text("正規表現") input').check();
+        const regexCheckbox = page.locator('label:has-text("正規表現") input');
+        await regexCheckbox.check();
+        await expect(regexCheckbox).toBeChecked();
 
         await page.getByTestId("search-input").fill("regex line \\d");
         await page.getByTestId("search-button").click();
-        await page.waitForSelector('[data-testid="search-results-hits"]', { timeout: 10000 });
-        const hitsText = await page.getByTestId("search-results-hits").textContent();
-        let hits = Number((hitsText || "").replace(/[^0-9]/g, ""));
-        if (!hits) {
-            hits = await page.evaluate(() => (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0);
-        }
-        expect(hits).toBe(2);
+        // Wait for hits to update
+        await expect.poll(async () => {
+            const text = await page.getByTestId("search-results-hits").textContent();
+            const val = Number((text || "").replace(/[^0-9]/g, ""));
+            return val;
+        }, { timeout: 10000 }).toBe(2);
     });
 });

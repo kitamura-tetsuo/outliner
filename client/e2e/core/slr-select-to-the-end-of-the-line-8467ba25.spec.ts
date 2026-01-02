@@ -17,6 +17,7 @@ test.describe("SLR-0003: 行末まで選択", () => {
 
         // 最初のアイテムを選択してカーソルを表示させる
         const item = page.locator(".outliner-item").first();
+        await item.waitFor({ state: "visible" });
         await item.locator(".item-content").click({ force: true });
 
         await page.waitForSelector("textarea.global-textarea:focus");

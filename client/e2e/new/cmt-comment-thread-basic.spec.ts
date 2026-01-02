@@ -142,8 +142,8 @@ test.describe("CMT-0001: comment threads", () => {
             const existingThread = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`);
             if (await existingThread.count() > 0) {
                 // Click outside to close any existing thread
-                await page.locator(".outliner-base").click({ position: { x: 10, y: 10 } });
-                await expect(existingThread).not.toBeVisible({ timeout: 2000 });
+                await page.locator(".outliner-base").click({ position: { x: 10, y: 10 }, force: true });
+                await expect(existingThread).not.toBeVisible({ timeout: 5000 });
             }
         } catch (e) {
             // If there's no existing thread or error in closing, continue
@@ -191,11 +191,15 @@ test.describe("CMT-0001: comment threads", () => {
         await page.click(`[data-testid="comment-${commentId}"] .edit`);
 
         // 編集入力フィールドが表示されるまで待機
-        await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).toBeVisible({ timeout: 30000 });
+        const editInput = page.locator(`[data-testid="edit-input-${commentId}"]`);
+        await editInput.waitFor({ state: "visible", timeout: 30000 });
+        await editInput.focus();
 
         // 編集入力フィールドをクリアしてから新しいテキストを入力
-        await page.fill(`[data-testid="edit-input-${commentId}"]`, "");
-        await page.fill(`[data-testid="edit-input-${commentId}"]`, "edited");
+        // Simply filling might be flaky if there are event handlers resetting it or if focus is lost
+        await editInput.fill("");
+        await expect(editInput).toHaveValue("", { timeout: 5000 });
+        await editInput.fill("edited");
 
         // Confirm input value is set correctly before saving
         await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).toHaveValue("edited");

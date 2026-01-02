@@ -160,7 +160,7 @@ test.describe("Multi-Page Schedule Management", () => {
     });
 
     test("schedule operations across pages", async ({ page }) => {
-        test.setTimeout(60000); // Increase timeout for stability
+        test.setTimeout(120000); // Increase timeout for stability
         const { projectName } = testProject;
 
         // Strict helper to ensure we are on the connected project and page

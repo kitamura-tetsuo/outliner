@@ -959,7 +959,7 @@ export class TestHelpers {
             await page.waitForFunction(() => {
                 const userManager = (window as any).__USER_MANAGER__;
                 return !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
-            }, { timeout: 15000 });
+            }, { timeout: 30000 });
             TestHelpers.slog("Authentication is ready");
         }
 

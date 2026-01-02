@@ -26,8 +26,17 @@ test.describe("SEA-0001: page title search box", () => {
         await TestHelpers.navigateToProjectPage(page, projectName, "second-page");
         await TestHelpers.navigateToProjectPage(page, projectName, pageName);
         // Focus the input again after navigating back
-        await input.focus();
-        await input.fill("second");
+        const inputAfterNav = page
+            .getByTestId("main-toolbar")
+            .getByRole("textbox", { name: "Search pages" });
+        await inputAfterNav.waitFor();
+        await inputAfterNav.focus();
+        await inputAfterNav.pressSequentially("second", { delay: 100 });
+        await inputAfterNav.blur();
+        // Explicitly wait for results
+        await page.waitForFunction(() => document.querySelectorAll(".page-search-box li").length > 0, {
+            timeout: 30000,
+        });
         await page.waitForSelector(".page-search-box li");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Enter");

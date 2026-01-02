@@ -28,7 +28,13 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
     test("navigates using the active project title even with spaces", async ({ page }) => {
         const searchInput = page.getByTestId("main-toolbar").getByRole("textbox", { name: "Search pages" });
         await searchInput.waitFor();
-        await searchInput.fill("second");
+        await searchInput.pressSequentially("second", { delay: 100 });
+        await searchInput.blur();
+        // Explicitly wait for the option to be in the DOM
+        await page.waitForFunction(() => {
+            const buttons = document.querySelectorAll("button");
+            return Array.from(buttons).some(b => b.textContent?.includes("second page"));
+        }, { timeout: 30000 });
         const option = page.getByRole("button", { name: "second page" });
         await option.waitFor();
         await option.click();

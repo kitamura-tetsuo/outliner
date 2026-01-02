@@ -35,6 +35,12 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             pageName: "different-content",
         });
         // Ensure store pages are ready
+        // First wait for Yjs connection to be established
+        // eslint-disable-next-line no-restricted-globals
+        await page.waitForFunction(() => (window as any).__YJS_STORE__?.isConnected, { timeout: 30000 }).catch(() => {
+            console.log("Yjs connection wait timed out, proceeding to check pages anyway...");
+        });
+
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
             const gs = (window as any).generalStore || (window as any).appStore;
@@ -42,10 +48,11 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             // Handle both Array and Yjs Items (both have length or size)
             const count = pages ? (pages.length !== undefined ? pages.length : (pages as any).size) : 0;
             return count >= 4;
-        }, { timeout: 30000 });
+        }, { timeout: 60000 });
 
         // 最終確認（ページ作成が成功したかどうかに関わらず、現在のページ状況を確認）
         const finalCheck = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).appStore;
             const toArray = (p: any) => {
                 if (!p) return [] as any[];
@@ -86,6 +93,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             const searchBtn = document.querySelector('[data-testid="search-toggle-button"]');
             return {
                 searchBtnExists: !!searchBtn,
+                // eslint-disable-next-line no-restricted-globals
                 searchImplemented: typeof (window as any).__SEARCH_SERVICE__ !== "undefined",
             };
         });
@@ -113,9 +121,11 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         }
 
         // 強制オープン（常に呼ぶ）
+        // eslint-disable-next-line no-restricted-globals
         await page.evaluate(() => (window as any).__OPEN_SEARCH__?.());
 
         // 開いたことを確認
+        // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(() => (window as any).__SEARCH_PANEL_VISIBLE__ === true, { timeout: 4000 }).catch(
             () => {
                 console.log("__SEARCH_PANEL_VISIBLE__ was not set to true within timeout");
@@ -129,6 +139,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         const visibleCheck = await page.evaluate(() => {
             const el = document.querySelector('[data-testid="search-panel"]') as HTMLElement | null;
             if (!el) return { exists: false };
+            // eslint-disable-next-line no-restricted-globals
             const style = window.getComputedStyle(el);
             const rect = el.getBoundingClientRect();
             return {
@@ -147,6 +158,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         // 実データの確認
         const dataCheck = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).appStore;
             const toArray = (p: any) => {
                 if (!p) return [] as any[];
@@ -188,6 +200,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         // ストア構造を詳しく調査
         const storeDebug = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).appStore;
             console.log("Store debug info:");
             console.log("- store exists:", !!store);
@@ -221,6 +234,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         // モックデータが設定されている場合は、SearchPanelにもモックデータを設定
         const mockDataSetup = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).appStore;
 
             // より詳細なデバッグ情報
@@ -309,6 +323,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                 '[data-testid="search-result-item"], .search-results .result-item',
             );
             const domCount = resultItems.length;
+            // eslint-disable-next-line no-restricted-globals
             const fallbackCount = (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0;
             return {
                 count: domCount > 0 ? domCount : fallbackCount,
@@ -328,6 +343,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                     '[data-testid="search-result-item"], .search-results .result-item',
                 );
                 const domCount = resultItems.length;
+                // eslint-disable-next-line no-restricted-globals
                 const fallbackCount = (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0;
                 return {
                     count: domCount > 0 ? domCount : fallbackCount,
@@ -373,6 +389,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                 '[data-testid="search-result-item"], .search-results .result-item',
             );
             const domCount = resultItems.length;
+            // eslint-disable-next-line no-restricted-globals
             const fallbackCount = (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0;
             return {
                 count: domCount, // After replacement, rely on DOM only
