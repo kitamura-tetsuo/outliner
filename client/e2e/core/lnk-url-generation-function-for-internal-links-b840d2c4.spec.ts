@@ -17,23 +17,22 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 
 test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page }) => {
         // ブラウザコンソールの出力を取得
         page.on("console", msg => {
             if (msg.type() === "log" || msg.type() === "error") {
                 console.log(`Browser ${msg.type()}: ${msg.text()}`);
             }
         });
-
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
     /**
      * @testcase 内部リンクのURLが正しく生成される
      * @description 内部リンクのURLが正しく生成されることを確認するテスト
      */
-    test("内部リンクのURLが正しく生成される", async ({ page }) => {
-        // アウトライナーアイテムが表示されるのを待つ
-        await page.waitForSelector(".outliner-item", { timeout: 30000 });
+    test("内部リンクのURLが正しく生成される", async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
+        // アウトライナーアイテムが表示されるのを待つ (最低2つ: ページタイトル + 1つ目のアイテム)
+        await TestHelpers.waitForItemCount(page, 2, 30000);
 
         // デバッグ: アイテム数を確認
         const itemCount = await page.locator(".outliner-item").count();
@@ -132,7 +131,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         await page.waitForTimeout(500);
 
         // アイテムが表示されていることを確認
-        await page.waitForSelector(".outliner-item", { timeout: 5000 });
+        await TestHelpers.waitForItemCount(page, 7, 10000); // Title + 6 seeded lines
 
         // ScrapboxFormatterの動作をテスト
         const formatterTest = await page.evaluate(pageName => {
@@ -282,7 +281,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
             "3つ目のアイテム",
         ]);
 
-        await page.waitForSelector(".outliner-item", { timeout: 30000 });
+        await TestHelpers.waitForItemCount(page, 4, 30000); // Title + 3 seeded lines
 
         await page.evaluate(dynamicPageName => {
             const store = (window as any).generalStore || (window as any).appStore;

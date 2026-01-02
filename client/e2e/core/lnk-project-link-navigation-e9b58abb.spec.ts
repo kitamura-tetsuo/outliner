@@ -9,17 +9,20 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    test.beforeEach(async () => {
+        // ... console listener if needed, but this file doesn't have it
     });
 
-    test("プロジェクト内部リンクをクリックして遷移先のページ内容が正しく表示される", async ({ page }) => {
+    test("プロジェクト内部リンクをクリックして遷移先のページ内容が正しく表示される", async ({ page }, testInfo) => {
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
         // テスト用のプロジェクト名とページ名を生成
         const targetProjectName = "target-project-" + Date.now().toString().slice(-6);
         const targetPageName = "target-page-" + Date.now().toString().slice(-6);
 
         // 最初のアイテムにプロジェクト内部リンクを作成
+        await TestHelpers.waitForOutlinerItems(page);
         const firstItem = page.locator(".outliner-item").first();
+        await firstItem.locator(".item-content").waitFor({ state: "visible" });
         await firstItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 

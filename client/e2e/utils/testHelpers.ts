@@ -783,9 +783,13 @@ export class TestHelpers {
                 { timeout },
             );
             return true;
-        } catch {
-            console.log(`Timeout waiting for item count to reach ${expectedCount}`);
-            return false;
+        } catch (e) {
+            console.error(`Timeout waiting for item count to reach ${expectedCount}`);
+            throw new Error(
+                `Timeout waiting for item count to reach ${expectedCount}: ${
+                    e instanceof Error ? e.message : String(e)
+                }`,
+            );
         }
     }
 
