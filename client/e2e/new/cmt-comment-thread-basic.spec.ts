@@ -148,7 +148,6 @@ test.describe("CMT-0001: comment threads", () => {
         await page.waitForTimeout(500);
 
         await page.fill('[data-testid="new-comment-input"]', "hello");
-        const addBtns = page.locator('[data-testid="add-comment-btn"]');
         // const addCount = await addBtns.count();
         // Try narrowing to the currently visible thread
         const thread = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`);
@@ -188,16 +187,17 @@ test.describe("CMT-0001: comment threads", () => {
         // Use keyboard selection to clear the field completely
         await editInput.click(); // Ensure focus
 
-        // Robust clearing: Select All + Backspace
-        // Robust clearing: Select All + Backspace
-        await editInput.press("Control+A");
-        await editInput.press("Backspace");
-        // Double check and retry clear if needed (reactivity might revert)
-        const val = await editInput.inputValue();
-        if (val !== "") {
-            await editInput.fill("");
+        // Robust clearing loop: Select All + Backspace until empty or timeout
+        // This handles cases where framework reactivity or auto-save might restore the value
+        const clearDeadline = Date.now() + 10000;
+        await editInput.focus();
+        while (Date.now() < clearDeadline) {
+            await editInput.press("Control+A");
+            await editInput.press("Backspace");
+            const val = await editInput.inputValue();
+            if (val === "") break;
+            await page.waitForTimeout(200);
         }
-
         // Verify it is empty and allow for potential framework reactivity to settle
         await expect(editInput).toHaveValue("", { timeout: 10000 });
 

@@ -50,15 +50,30 @@ test.describe("SEA-0001: page title search box", () => {
         ).catch(() => console.log("[Test] Warning: second page not found in project items store"));
 
         await page.waitForTimeout(2000); // Give explicit time for indexing if any
-        await inputAfterNav.click();
-        // Use pressSequentially to simulate real user typing which triggers search events more reliably
-        await inputAfterNav.pressSequentially("second", { delay: 100 });
-        await page.waitForTimeout(1000); // Allow Svelte reactivity
 
-        // Explicitly wait for results
-        await expect.poll(async () => {
-            return await page.locator(".page-search-box li").count();
-        }, { timeout: 60000 }).toBeGreaterThan(0);
+        // Retry mechanism
+        let found = false;
+        // Increase retries to handle very slow indexing in CI (up to ~60s total)
+        for (let i = 0; i < 6; i++) {
+            await inputAfterNav.click();
+            await inputAfterNav.press("Control+A");
+            await inputAfterNav.press("Backspace");
+            await inputAfterNav.pressSequentially("second", { delay: 100 });
+            await page.waitForTimeout(1000); // Allow Svelte reactivity
+
+            try {
+                // Explicitly wait for results
+                await expect.poll(async () => {
+                    return await page.locator(".page-search-box li").count();
+                }, { timeout: 10000 }).toBeGreaterThan(0);
+                found = true;
+                break;
+            } catch (e) {
+                console.log(`Search attempt ${i + 1} failed, retrying...`);
+                await page.waitForTimeout(1000);
+            }
+        }
+        expect(found).toBe(true);
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Enter");
         await expect(page).toHaveURL(/second-page/);

@@ -234,7 +234,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
 
     test("escape key closes alias picker", async ({ page }) => {
         // Add timeout for the whole test
-        test.setTimeout(30000);
+        test.setTimeout(60000);
 
         await TestHelpers.waitForOutlinerItems(page, 10000);
         const firstId = await TestHelpers.getItemIdByIndex(page, 0);

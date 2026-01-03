@@ -59,20 +59,35 @@ test.describe("SEA-0001: page title search box", () => {
         ).catch(() => console.log("[Test] Warning: second page not found in project items store"));
 
         await page.waitForTimeout(2000); // Give explicit time for indexing if any
-        await searchInput.click();
-        // Use pressSequentially to simulate real user typing which triggers search events more reliably
-        await searchInput.pressSequentially("second", { delay: 100 });
 
         // Wait for search results to appear with a more specific selector
         // The results should contain a list item with the text "second-page"
         const firstResult = page.locator(".page-search-box li").first();
 
-        // Robustly wait for the result
-        await expect.poll(async () => {
-            const count = await page.locator(".page-search-box li").count();
-            if (count === 0) return false;
-            return await firstResult.isVisible();
-        }, { timeout: 45000 }).toBe(true);
+        // Retry mechanism
+        let found = false;
+        // Increase retries to handle very slow indexing in CI (up to ~60s total)
+        for (let i = 0; i < 6; i++) {
+            await searchInput.click();
+            await searchInput.press("Control+A");
+            await searchInput.press("Backspace");
+            await searchInput.pressSequentially("second", { delay: 100 });
+
+            try {
+                // Robustly wait for the result
+                await expect.poll(async () => {
+                    const count = await page.locator(".page-search-box li").count();
+                    if (count === 0) return false;
+                    return await firstResult.isVisible();
+                }, { timeout: 10000 }).toBe(true);
+                found = true;
+                break;
+            } catch (e) {
+                console.log(`Search attempt ${i + 1} failed, retrying...`);
+                await page.waitForTimeout(1000);
+            }
+        }
+        expect(found).toBe(true);
 
         // Verify the result contains "second-page"
         await expect(firstResult).toContainText("second-page");

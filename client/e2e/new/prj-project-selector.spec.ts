@@ -10,14 +10,14 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe.serial("Prj: Project Selector", () => {
     // Basic setup for tests that don't depend on existing projects
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async () => {
         // hook handling if needed
     });
 
     /**
      * Test 1: Project selector shows available options
      */
-    test("project selector shows options", async ({ page }, testInfo) => {
+    test("project selector shows options", async ({ page }) => {
         // Use setAccessibleProjects to simulate having projects without full seeding
         await page.goto("/");
         await TestHelpers.setAccessibleProjects(page, ["project-A", "project-B"]);
@@ -70,7 +70,7 @@ test.describe.serial("Prj: Project Selector", () => {
     /**
      * Test 3: Switching project via selector works
      */
-    test("switching project via selector navigates", async ({ page }, testInfo) => {
+    test("switching project via selector navigates", async ({ page }) => {
         // 1. Setup with multiple projects
         await page.goto("/");
         const project1 = "Project One";

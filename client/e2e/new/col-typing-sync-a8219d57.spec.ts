@@ -148,6 +148,21 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
             itemCount: p?.items?.length ?? 0,
         };
     });
+    // Wait for Page 2 to actually receive data if it hasn't yet
+    if (page2Debug.itemCount === 0) {
+        console.log("Page 2 has 0 items, waiting for sync...");
+        try {
+            // eslint-disable-next-line no-restricted-globals
+            await page2.waitForFunction(() => (window as any).generalStore?.project?.items?.length > 0, null, {
+                timeout: 30000,
+            });
+            // Refresh debug info via page2Debug variable update or just proceed as texts will be re-fetched
+            const newItemCount = await page2.evaluate(() => (window as any).generalStore?.project?.items?.length);
+            console.log(`Page 2 synced, item count: ${newItemCount}`);
+        } catch (e) {
+            console.log("Page 2 sync wait failed or timed out", e);
+        }
+    }
     console.log(`[DEBUG] Page1: ${JSON.stringify(page1Debug)}`);
     console.log(`[DEBUG] Page2: ${JSON.stringify(page2Debug)}`);
 

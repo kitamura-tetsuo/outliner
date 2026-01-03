@@ -1321,8 +1321,13 @@ export class TestHelpers {
                 if (msg.includes("closed") || msg.includes("destroyed")) {
                     console.log(`getItemIdByIndex: Retrying due to error: ${msg}`);
                     attempts++;
-                    await page.waitForTimeout(500);
-                    continue;
+                    if (!page.isClosed()) {
+                        await page.waitForTimeout(500);
+                        continue;
+                    } else {
+                        console.log("getItemIdByIndex: Page is closed, aborting retry.");
+                        break;
+                    }
                 }
                 throw e;
             }
@@ -2068,7 +2073,7 @@ export class TestHelpers {
      * Get a valid ID token for the test user from local Firebase Emulator
      */
     public static async getTestAuthToken(): Promise<string> {
-        const projectId = process.env.VITE_FIREBASE_PROJECT_ID || "outliner-d57b0";
+        // const projectId = process.env.VITE_FIREBASE_PROJECT_ID || "outliner-d57b0";
         const authHost = process.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || "localhost:59099";
         // Ensure protocol
         const host = authHost.startsWith("http") ? authHost : `http://${authHost}`;

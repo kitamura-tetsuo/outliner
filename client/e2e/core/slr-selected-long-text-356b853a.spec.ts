@@ -18,10 +18,6 @@ test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
 
     test("長いテキストを含むアイテムの選択範囲を作成できる", async ({ page }) => {
         test.setTimeout(120000);
-        const longText =
-            "This is a very long text that contains many characters and should be long enough to test the selection range functionality with long texts. "
-            + "We want to make sure that the selection range works correctly with long texts and that the text is properly selected and copied.";
-
         // 最初のアイテムをクリックしてフォーカス
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click({ force: true });

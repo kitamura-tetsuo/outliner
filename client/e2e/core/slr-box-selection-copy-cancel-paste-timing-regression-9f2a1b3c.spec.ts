@@ -232,7 +232,7 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
 
         // ペーストが成功したことを確認 (waitForFunctionを使用)
         await page.waitForFunction(
-            (expectedText) => {
+            () => {
                 const pasted = (window as any).lastPastedText || "";
                 return pasted.includes("First line") && pasted.length > 0;
             },

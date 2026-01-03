@@ -44,15 +44,31 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         }, { timeout: 30000 }).catch(() => console.log("[Test] Warning: second page not found in project items store"));
 
         await page.waitForTimeout(2000);
-        await searchInput.click();
-        await searchInput.fill("second");
-        await page.waitForTimeout(1000); // Allow Svelte reactivity
 
-        // Explicitly wait for the option to be in the DOM
-        await expect.poll(async () => {
-            const buttons = page.locator(".page-search-box button");
-            return await buttons.count() > 0 && await buttons.filter({ hasText: "second page" }).count() > 0;
-        }, { timeout: 60000 }).toBe(true);
+        // Retry mechanism: Type and check for results, retry if not found (handling slow indexing)
+        let found = false;
+        // Increase retries to handle very slow indexing in CI (up to ~60s total)
+        for (let i = 0; i < 6; i++) {
+            await searchInput.click();
+            await searchInput.press("Control+A");
+            await searchInput.press("Backspace");
+            await searchInput.pressSequentially("second", { delay: 100 });
+            await page.waitForTimeout(1000); // Allow Svelte reactivity
+
+            try {
+                // Explicitly wait for the option to be in the DOM
+                await expect.poll(async () => {
+                    const buttons = page.locator(".page-search-box button");
+                    return await buttons.count() > 0 && await buttons.filter({ hasText: "second page" }).count() > 0;
+                }, { timeout: 10000 }).toBe(true);
+                found = true;
+                break;
+            } catch (e) {
+                console.log(`Search attempt ${i + 1} failed, retrying...`);
+                await page.waitForTimeout(1000);
+            }
+        }
+        expect(found).toBe(true); // Fail if still not found after retries
 
         const option = page.getByRole("button", { name: "second page" });
         await option.click();

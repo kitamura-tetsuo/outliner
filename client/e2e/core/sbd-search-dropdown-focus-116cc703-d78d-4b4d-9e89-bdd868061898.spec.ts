@@ -40,7 +40,7 @@ test.describe("SBD-ebaa03c1: search dropdown visibility", () => {
                 if (items.length) {
                     count = items.length;
                 } else if (typeof items[Symbol.iterator] === "function") {
-                    for (const _ of items) count++;
+                    count = [...items].length;
                 }
             } catch {}
             return count >= 2;
