@@ -55,10 +55,9 @@ test.describe("SEA-0001: page title search box", () => {
         await page.waitForTimeout(1000); // Allow Svelte reactivity
 
         // Explicitly wait for results
-        await page.waitForFunction(() => document.querySelectorAll(".page-search-box li").length > 0, {
-            timeout: 60000,
-        });
-        await page.waitForSelector(".page-search-box li", { timeout: 60000 });
+        await expect.poll(async () => {
+            return await page.locator(".page-search-box li").count();
+        }, { timeout: 60000 }).toBeGreaterThan(0);
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Enter");
         await expect(page).toHaveURL(/second-page/);

@@ -49,12 +49,12 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         await page.waitForTimeout(1000); // Allow Svelte reactivity
 
         // Explicitly wait for the option to be in the DOM
-        await page.waitForFunction(() => {
-            const buttons = document.querySelectorAll(".page-search-box button");
-            return Array.from(buttons).some(b => b.textContent?.includes("second page"));
-        }, { timeout: 60000 });
+        await expect.poll(async () => {
+            const buttons = page.locator(".page-search-box button");
+            return await buttons.count() > 0 && await buttons.filter({ hasText: "second page" }).count() > 0;
+        }, { timeout: 60000 }).toBe(true);
+
         const option = page.getByRole("button", { name: "second page" });
-        await option.waitFor({ timeout: 60000 });
         await option.click();
         const expectedPath = `/${encodeURIComponent(projectName)}/${encodeURIComponent("second page")}`;
         await expect.poll(() => page.url()).toContain(expectedPath);

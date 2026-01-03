@@ -64,16 +64,14 @@ test.describe("SEA-0001: page title search box", () => {
 
         // Wait for search results to appear with a more specific selector
         // The results should contain a list item with the text "second-page"
-        const resultsList = page.locator(".page-search-box ul");
-        // Explicitly wait for the list to be present in the DOM
-        await page.waitForFunction(() => {
-            const el = document.querySelector(".page-search-box ul");
-            return el && el.querySelectorAll("li").length > 0;
-        }, { timeout: 45000 });
-        await expect(resultsList).toBeVisible({ timeout: 45000 });
-
         const firstResult = page.locator(".page-search-box li").first();
-        await expect(firstResult).toBeVisible({ timeout: 45000 });
+
+        // Robustly wait for the result
+        await expect.poll(async () => {
+            const count = await page.locator(".page-search-box li").count();
+            if (count === 0) return false;
+            return await firstResult.isVisible();
+        }, { timeout: 45000 }).toBe(true);
 
         // Verify the result contains "second-page"
         await expect(firstResult).toContainText("second-page");

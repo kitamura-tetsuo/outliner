@@ -312,58 +312,22 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         }
 
         // 検索結果の表示を待機
-        await page.waitForSelector('[data-testid="search-result-item"], .search-results .result-item', {
-            state: "attached",
-            timeout: 10000,
-        }).catch(() => {});
+        await expect.poll(async () => {
+            return await page.locator('[data-testid="search-result-item"], .search-results .result-item').count();
+        }, { timeout: 10000 }).toBeGreaterThan(0);
 
         // 検索結果を確認（複数ページにまたがる検索結果があることを確認）
-        let searchResults = await page.evaluate(() => {
-            const resultItems = document.querySelectorAll(
-                '[data-testid="search-result-item"], .search-results .result-item',
-            );
-            const domCount = resultItems.length;
-            // eslint-disable-next-line no-restricted-globals
-            const fallbackCount = (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0;
-            return {
-                count: domCount > 0 ? domCount : fallbackCount,
-                items: Array.from(resultItems).map(item => item.textContent),
-                domCount,
-                fallbackCount,
-            } as any;
-        });
-
-        console.log(`Search results found:`, searchResults);
-
-        if (searchResults.count === 0) {
-            // 少し待って再取得（描画/反映遅延の緩和）
-            await page.waitForTimeout(500);
-            searchResults = await page.evaluate(() => {
-                const resultItems = document.querySelectorAll(
-                    '[data-testid="search-result-item"], .search-results .result-item',
-                );
-                const domCount = resultItems.length;
-                // eslint-disable-next-line no-restricted-globals
-                const fallbackCount = (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0;
-                return {
-                    count: domCount > 0 ? domCount : fallbackCount,
-                    items: Array.from(resultItems).map(item => item.textContent),
-                    domCount,
-                    fallbackCount,
-                } as any;
-            });
-            console.log("Search results after retry:", searchResults);
-        }
-
-        // 検索結果が最低1件あることを確認（"page"を含むページが存在するため）
-        expect(searchResults.count).toBeGreaterThanOrEqual(1);
+        const searchResultsCount = await page.locator(
+            '[data-testid="search-result-item"], .search-results .result-item',
+        ).count();
+        expect(searchResultsCount).toBeGreaterThanOrEqual(1);
 
         // 作成されたページ数に応じて結果数を確認
         if (dataCheck.totalPages >= 2) {
-            expect(searchResults.count).toBeGreaterThanOrEqual(2);
+            expect(searchResultsCount).toBeGreaterThanOrEqual(2);
         }
         if (dataCheck.totalPages >= 3) {
-            expect(searchResults.count).toBeGreaterThanOrEqual(3);
+            expect(searchResultsCount).toBeGreaterThanOrEqual(3);
         }
 
         // 置換文字列を入力してすべて置換

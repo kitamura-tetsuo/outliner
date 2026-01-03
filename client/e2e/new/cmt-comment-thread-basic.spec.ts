@@ -137,19 +137,6 @@ test.describe("CMT-0001: comment threads", () => {
         // Note: Do NOT use TestHelpers.waitForUIStable(page) here as it waits for editor cursor which may not be active
         await page.waitForTimeout(500);
 
-        // Ensure any existing comment thread is closed before starting
-        try {
-            const existingThread = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`);
-            if (await existingThread.count() > 0) {
-                // Click outside to close any existing thread
-                await page.locator(".outliner-base").click({ position: { x: 10, y: 10 }, force: true });
-                await expect(existingThread).not.toBeVisible({ timeout: 5000 });
-            }
-        } catch (e) {
-            // If there's no existing thread or error in closing, continue
-            console.log("No existing thread to close or error during close attempt:", e);
-        }
-
         // Click the comment button
         await commentButton.click();
 
@@ -199,13 +186,12 @@ test.describe("CMT-0001: comment threads", () => {
         // Simply filling might be flaky if there are event handlers resetting it or if focus is lost
         // Use keyboard selection to clear the field completely
         await editInput.click(); // Ensure focus
-        await page.keyboard.press("Control+a"); // Select all
-        await page.keyboard.press("Backspace"); // Delete
+        await editInput.fill("");
         await expect(editInput).toHaveValue("", { timeout: 5000 });
         await editInput.fill("edited");
 
         // Confirm input value is set correctly before saving
-        await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).toHaveValue("edited");
+        await expect(editInput).toHaveValue("edited");
 
         // 保存ボタンをクリック
         await page.click(`[data-testid="save-edit-${commentId}"]`);
@@ -238,6 +224,9 @@ test.describe("CMT-0001: comment threads", () => {
                 console.log("[afterEach] Page already closed, skipping comment cleanup");
                 return;
             }
+            // Quick check to avoid heavy evaluate if no comments exist
+            const hasComments = await page.locator(".comment-thread").count() > 0;
+            if (!hasComments) return;
 
             await page.evaluate(() => {
                 try {

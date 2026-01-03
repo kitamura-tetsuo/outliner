@@ -263,17 +263,16 @@ test.describe("Sidebar Navigation", () => {
         // Wait for pages to be loaded
         await TestHelpers.waitForPagesList(page);
 
-        await expect(page.locator(".page-item").first()).toBeVisible({ timeout: 10000 });
         const pageItem = page.locator(".page-item").first();
+        await pageItem.waitFor({ state: "visible", timeout: 10000 });
         await pageItem.focus();
 
         const currentUrl = page.url();
         // Press Enter to activate
         await page.keyboard.press("Enter");
-        await expect(page).not.toHaveURL(currentUrl);
 
-        // Verify navigation occurred (URL should change or page should respond)
-        // This is a basic check that the keyboard event handler is attached
+        // Wait for navigation to occur (URL change)
+        await expect.poll(() => page.url()).not.toBe(currentUrl);
         expect(page.url()).toBeTruthy();
     });
 
