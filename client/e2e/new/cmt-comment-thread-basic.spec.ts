@@ -189,8 +189,14 @@ test.describe("CMT-0001: comment threads", () => {
         await editInput.click(); // Ensure focus
 
         // Robust clearing: Select All + Backspace
+        // Robust clearing: Select All + Backspace
         await editInput.press("Control+A");
         await editInput.press("Backspace");
+        // Double check and retry clear if needed (reactivity might revert)
+        const val = await editInput.inputValue();
+        if (val !== "") {
+            await editInput.fill("");
+        }
 
         // Verify it is empty and allow for potential framework reactivity to settle
         await expect(editInput).toHaveValue("", { timeout: 10000 });

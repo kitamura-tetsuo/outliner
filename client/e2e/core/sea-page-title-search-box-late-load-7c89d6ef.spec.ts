@@ -49,9 +49,10 @@ test.describe("SEA-0001: page title search box", () => {
             { timeout: 30000 },
         ).catch(() => console.log("[Test] Warning: second page not found in project items store"));
 
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(2000); // Give explicit time for indexing if any
         await inputAfterNav.click();
-        await inputAfterNav.fill("second");
+        // Use pressSequentially to simulate real user typing which triggers search events more reliably
+        await inputAfterNav.pressSequentially("second", { delay: 100 });
         await page.waitForTimeout(1000); // Allow Svelte reactivity
 
         // Explicitly wait for results

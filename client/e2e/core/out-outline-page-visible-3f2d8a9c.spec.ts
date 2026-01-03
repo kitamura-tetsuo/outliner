@@ -57,6 +57,7 @@ test("creates a new outliner item when pressing Enter", async () => {
     const items = page.locator(".outliner-item[data-item-id]");
     const initialCount = await items.count();
 
+    await items.last().waitFor({ state: "visible", timeout: 30000 });
     await items.last().click();
     await page.keyboard.press("Enter");
     await page.keyboard.type("Second item");

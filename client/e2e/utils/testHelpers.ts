@@ -1143,9 +1143,9 @@ export class TestHelpers {
      * @param timeout タイムアウト時間（ミリ秒）
      * @param minCount 最小アイテム数（デフォルト 1）
      */
-    public static async waitForOutlinerItems(page: Page, timeout = 30000, minCount = 1): Promise<void> {
+    public static async waitForOutlinerItems(page: Page, count = 1, timeout = 30000): Promise<void> {
         TestHelpers.slog("waitForOutlinerItems: start");
-        console.log(`Waiting for ${minCount} outliner items (with data-item-id) to be visible...`);
+        console.log(`Waiting for ${count} outliner items (with data-item-id) to be visible...`);
 
         // 現在のURLを確認
         const currentUrl = page.url();
@@ -1164,7 +1164,7 @@ export class TestHelpers {
         // データ属性付きの実アイテムが出現するまで待つ（プレースホルダー .outliner-item は除外）
         try {
             const deadline = Date.now() + timeout;
-            const minRequiredItems = minCount;
+            const minRequiredItems = count;
             let ensured = false;
 
             // Ensure Yjs is connected before counting items
@@ -1179,7 +1179,7 @@ export class TestHelpers {
             // まずは最小UIの可視性を軽く待機（非致命的）
             try {
                 TestHelpers.slog("waitForOutlinerItems: wait outliner-base visible");
-                await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: Math.min(4000, timeout) });
+                await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: Math.min(15000, timeout) });
             } catch {}
 
             while (Date.now() < deadline) {
