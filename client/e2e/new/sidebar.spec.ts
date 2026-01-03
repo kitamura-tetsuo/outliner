@@ -263,6 +263,9 @@ test.describe("Sidebar Navigation", () => {
         // Wait for pages to be loaded
         await TestHelpers.waitForPagesList(page);
 
+        // Explicitly wait for the DOM to render the list items
+        await expect(page.locator(".page-item").first()).toBeVisible({ timeout: 20000 });
+
         const pageItem = page.locator(".page-item").first();
         await pageItem.waitFor({ state: "visible", timeout: 10000 });
         await pageItem.focus();

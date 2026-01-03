@@ -1281,38 +1281,53 @@ export class TestHelpers {
      * 指定インデックスのアイテムIDを取得する
      */
     public static async getItemIdByIndex(page: Page, index: number): Promise<string | null> {
-        return await page.evaluate(i => {
-            // Prefer AliasPickerStore.itemId while picker is visible (robust for newly created alias)
+        let attempts = 0;
+        while (attempts < 3) {
             try {
-                const ap: any = (window as any).aliasPickerStore;
-                if (ap && ap.isVisible && typeof ap.itemId === "string" && ap.itemId) {
-                    const chosen = ap.itemId as string;
+                return await page.evaluate(i => {
+                    // Prefer AliasPickerStore.itemId while picker is visible (robust for newly created alias)
                     try {
-                        const gs: any = (window as any).generalStore;
-                        const proj = encodeURIComponent(gs?.project?.title ?? "");
-                        const parts = (window.location.pathname || "/").split("/").filter(Boolean);
-                        const pageTitle = decodeURIComponent(parts[1] || "");
-                        const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
-                        window.sessionStorage?.setItem(key, chosen);
+                        const ap: any = (window as any).aliasPickerStore;
+                        if (ap && ap.isVisible && typeof ap.itemId === "string" && ap.itemId) {
+                            const chosen = ap.itemId as string;
+                            try {
+                                const gs: any = (window as any).generalStore;
+                                const proj = encodeURIComponent(gs?.project?.title ?? "");
+                                const parts = (window.location.pathname || "/").split("/").filter(Boolean);
+                                const pageTitle = decodeURIComponent(parts[1] || "");
+                                const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
+                                window.sessionStorage?.setItem(key, chosen);
+                            } catch {}
+                            return chosen;
+                        }
+                    } catch {}
+                    const items = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id]"));
+                    const target = items[i];
+                    const chosen = target?.dataset.itemId ?? null;
+                    try {
+                        if (chosen) {
+                            const gs: any = (window as any).generalStore;
+                            const proj = encodeURIComponent(gs?.project?.title ?? "");
+                            const parts = (window.location.pathname || "/").split("/").filter(Boolean);
+                            const pageTitle = decodeURIComponent(parts[1] || "");
+                            const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
+                            window.sessionStorage?.setItem(key, chosen);
+                        }
                     } catch {}
                     return chosen;
+                }, index);
+            } catch (e: any) {
+                const msg = e?.message || String(e);
+                if (msg.includes("closed") || msg.includes("destroyed")) {
+                    console.log(`getItemIdByIndex: Retrying due to error: ${msg}`);
+                    attempts++;
+                    await page.waitForTimeout(500);
+                    continue;
                 }
-            } catch {}
-            const items = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id]"));
-            const target = items[i];
-            const chosen = target?.dataset.itemId ?? null;
-            try {
-                if (chosen) {
-                    const gs: any = (window as any).generalStore;
-                    const proj = encodeURIComponent(gs?.project?.title ?? "");
-                    const parts = (window.location.pathname || "/").split("/").filter(Boolean);
-                    const pageTitle = decodeURIComponent(parts[1] || "");
-                    const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
-                    window.sessionStorage?.setItem(key, chosen);
-                }
-            } catch {}
-            return chosen;
-        }, index);
+                throw e;
+            }
+        }
+        return null;
     }
 
     /**

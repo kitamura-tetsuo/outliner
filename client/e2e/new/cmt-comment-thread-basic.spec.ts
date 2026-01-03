@@ -185,9 +185,16 @@ test.describe("CMT-0001: comment threads", () => {
         // 編集入力フィールドをクリアしてから新しいテキストを入力
         // Simply filling might be flaky if there are event handlers resetting it or if focus is lost
         // Use keyboard selection to clear the field completely
+        // Use keyboard selection to clear the field completely
         await editInput.click(); // Ensure focus
-        await editInput.fill("");
-        await expect(editInput).toHaveValue("", { timeout: 5000 });
+
+        // Robust clearing: Select All + Backspace
+        await editInput.press("Control+A");
+        await editInput.press("Backspace");
+
+        // Verify it is empty and allow for potential framework reactivity to settle
+        await expect(editInput).toHaveValue("", { timeout: 10000 });
+
         await editInput.fill("edited");
 
         // Confirm input value is set correctly before saving

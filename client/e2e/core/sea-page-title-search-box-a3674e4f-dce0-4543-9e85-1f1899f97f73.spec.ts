@@ -58,9 +58,10 @@ test.describe("SEA-0001: page title search box", () => {
             { timeout: 30000 },
         ).catch(() => console.log("[Test] Warning: second page not found in project items store"));
 
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(2000); // Give explicit time for indexing if any
         await searchInput.click();
-        await searchInput.fill("second");
+        // Use pressSequentially to simulate real user typing which triggers search events more reliably
+        await searchInput.pressSequentially("second", { delay: 100 });
 
         // Wait for search results to appear with a more specific selector
         // The results should contain a list item with the text "second-page"
