@@ -39,6 +39,21 @@ test.describe("SEA-0001: page title search box", () => {
         await searchInput.focus();
         await page.waitForTimeout(100);
 
+        // Explicitly wait for project items to be loaded from Yjs BEFORE typing
+        // This ensures the SearchBox has data to search against
+        await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const gs = (window as any).generalStore || (window as any).appStore;
+            const items = gs?.project?.items;
+            return items && items.length >= 2; // Should have at least current page + second page
+        }, { timeout: 30000 }).catch(() =>
+            console.log("[Test] Warning: Timeout waiting for project items to populate")
+        );
+
+        // Type the search query
+        // Ensure the project items are loaded (at least 2 items: current page + search target)
+        await page.waitForTimeout(100);
+
         // Type the search query
         // Ensure the project items are loaded (at least 2 items: current page + search target)
         await page.waitForFunction(

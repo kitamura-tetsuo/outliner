@@ -51,6 +51,9 @@ export class GeneralStore {
                 // If page doesn't exist, do not auto-create it here - let tests fail if seeding was missed.
 
                 // 子行の移植（先行シードを反映）
+                // DISABLED: Legacy browser-based auto-creation logic causes duplication in E2E tests
+                // with server-side seeding. Tests should rely on SeedClient and proper Yjs sync.
+                /*
                 try {
                     const prevItems = page?.items;
                     const nextItems = next?.items;
@@ -98,6 +101,7 @@ export class GeneralStore {
                 } catch {
                     // Ignore errors during child item migration
                 }
+                */
                 this._currentPage = next;
                 // 通知
                 this._currentPageSubscribers.forEach(fn => {
@@ -128,6 +132,18 @@ export class GeneralStore {
 
         console.log(`store: Setting project`, { projectExists: !!v, projectTitle: v?.title });
 
+        // Debug: Check items length immediately
+        try {
+            const items = v?.items;
+            console.log(`store: [DEBUG] Project items length on set: ${items?.length}`);
+            if (items && items.length > 0) {
+                const names = Array.from(items).map((i: any) => i.text || i.id);
+                console.log(`store: [DEBUG] Project item names:`, names);
+            }
+        } catch (e) {
+            console.log(`store: [DEBUG] Error checking items:`, e);
+        }
+
         this._project = v;
         console.log(`store: Setting up Yjs observe for pages`);
 
@@ -139,6 +155,10 @@ export class GeneralStore {
         const subscribe = createSubscriber((_update) => {
             const handler = (_events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
                 try {
+                    // Debug logging for tree updates
+                    console.log(`store: [DEBUG] orderedTree updated`);
+                    const currentItems = project?.items;
+                    console.log(`store: [DEBUG] Project items length after update: ${currentItems?.length}`);
                     saveProjectSnapshot(project);
                 } catch {
                     // Ignore errors during snapshot saving

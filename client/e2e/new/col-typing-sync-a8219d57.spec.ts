@@ -30,9 +30,9 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         page1,
         testInfo,
         [
-            "一行目: テスト",
-            "二行目: Yjs 反映",
-            "三行目: 並び順チェック",
+            "Line 1: Test",
+            "Line 2: Yjs sync",
+            "Line 3: Order check",
         ],
         undefined,
     );
@@ -166,8 +166,8 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     console.log(`[DEBUG] Page1: ${JSON.stringify(page1Debug)}`);
     console.log(`[DEBUG] Page2: ${JSON.stringify(page2Debug)}`);
 
-    expect(page1InitialTexts.join("\n")).toContain("テスト");
-    expect(page2InitialTexts.join("\n")).toContain("テスト");
+    expect(page1InitialTexts.join("\n")).toContain("Line 1: Test");
+    expect(page2InitialTexts.join("\n")).toContain("Line 1: Test");
 
     // Use editorOverlayStore cursor APIs for reliable editing targeting content row (skip title row)
     // Edit the second item to avoid page title

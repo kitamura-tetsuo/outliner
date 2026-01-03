@@ -193,7 +193,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
             setTimeout(() => {
                 console.log(`[connectPageDoc] Timeout waiting for sync, proceeding anyway for room: ${room}`);
                 resolve();
-            }, 5000);
+            }, 15000);
         } else {
             // Provider doesn't support 'once' method (e.g., in some test environments)
             // Proceed without waiting
@@ -210,7 +210,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     try {
         const pageItemsMap = doc.getMap("pageItems");
         let waitCount = 0;
-        const maxWait = 50; // Wait up to 5 seconds for items to appear (increased from 30)
+        const maxWait = 200; // Wait up to 20 seconds for items to appear (increased from 5s)
         const initialSize = pageItemsMap.size;
         console.log(`[connectPageDoc] Initial pageItemsMap size: ${initialSize} for room: ${room}`);
         while (pageItemsMap.size <= 1 && waitCount < maxWait) { // size <= 1 means only "initialized" key
@@ -300,7 +300,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                     `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
                 );
                 resolve();
-            }, 5000);
+            }, 15000);
         } else {
             // Provider doesn't support 'once' method (e.g., in some test environments)
             // Proceed without waiting
