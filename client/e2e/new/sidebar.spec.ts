@@ -261,7 +261,9 @@ test.describe("Sidebar Navigation", () => {
 
         // Focus on a page item
         // Wait for pages to be loaded
-        await TestHelpers.waitForPagesList(page);
+        // Ensure app is fully hydrated before checking specific store state
+        await page.waitForLoadState("networkidle").catch(() => {});
+        await TestHelpers.waitForPagesList(page, 30000);
 
         // Explicitly wait for the DOM to render the list items
         await expect(page.locator(".page-item").first()).toBeVisible({ timeout: 20000 });

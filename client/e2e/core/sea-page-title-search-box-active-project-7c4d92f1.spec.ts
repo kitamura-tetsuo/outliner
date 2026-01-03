@@ -49,10 +49,11 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         let found = false;
         // Increase retries to handle very slow indexing in CI (up to ~60s total)
         for (let i = 0; i < 6; i++) {
-            await searchInput.click();
-            await searchInput.press("Control+A");
+            await searchInput.clear();
+            await searchInput.fill("second");
+            // Trigger events ensuring reactivity
+            await searchInput.press("Space");
             await searchInput.press("Backspace");
-            await searchInput.pressSequentially("second", { delay: 100 });
             await page.waitForTimeout(1000); // Allow Svelte reactivity
 
             try {

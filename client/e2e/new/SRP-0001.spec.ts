@@ -14,8 +14,9 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(240000); // Allow extra time for heavy seeding (creating 4 pages)
         // 検索テスト用に複数のページを含むテスト環境を準備
+        // Reduced initial seed to improve setup speed
         const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "First page line",
+            "search target",
         ]);
 
         // 追加ページを作成

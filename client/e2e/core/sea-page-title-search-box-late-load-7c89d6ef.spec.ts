@@ -55,10 +55,11 @@ test.describe("SEA-0001: page title search box", () => {
         let found = false;
         // Increase retries to handle very slow indexing in CI (up to ~60s total)
         for (let i = 0; i < 6; i++) {
-            await inputAfterNav.click();
-            await inputAfterNav.press("Control+A");
+            await inputAfterNav.clear();
+            await inputAfterNav.fill("second");
+            // Trigger events ensuring reactivity
+            await inputAfterNav.press("Space");
             await inputAfterNav.press("Backspace");
-            await inputAfterNav.pressSequentially("second", { delay: 100 });
             await page.waitForTimeout(1000); // Allow Svelte reactivity
 
             try {

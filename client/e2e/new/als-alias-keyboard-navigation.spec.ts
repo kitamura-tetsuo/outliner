@@ -33,7 +33,9 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
 
         if (!firstId || !secondId) {
             console.log("Retrying getItemIdByIndex due to sync delay");
-            await page.waitForTimeout(2000);
+            if (!page.isClosed()) {
+                await page.waitForTimeout(2000);
+            }
         }
 
         const firstIdFinal = firstId || await TestHelpers.getItemIdByIndex(page, 0);
