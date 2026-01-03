@@ -16,21 +16,18 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CNT-12ee98aa: Shared Container Store", () => {
     test("dropdown list updates when new container is added", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+        // ContainerSelector is on the home page, not project pages
+        // Use skipSync to avoid navigating to a project page
+        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
 
-        // Ensure test data helper and auth are ready, then seed containers
-        await page.waitForFunction(() => {
-            try {
-                const w: any = window as any;
-                const um = w.__USER_MANAGER__;
-                return !!(w.__TEST_DATA_HELPER__ && um && um.auth && um.auth.currentUser);
-            } catch {
-                return false;
-            }
-        }, { timeout: 20000 });
-        await page.evaluate(() => (window as any).__TEST_DATA_HELPER__?.setupTestEnvironment?.());
+        // Navigate to home page where ContainerSelector is rendered
+        await page.goto("/", { waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(2000);
 
-        const select = page.locator("select.container-select");
+        // Set up accessible projects for container selector
+        await TestHelpers.setAccessibleProjects(page, ["test-project-1", "test-project-2"]);
+
+        const select = page.locator("select.project-select");
         await expect(select).toBeVisible();
         const initialCount = await select.locator("option").count();
 
@@ -44,7 +41,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
 
         // Wait for the dropdown to reflect the new container
         await page.waitForFunction(
-            (count) => document.querySelectorAll("select.container-select option").length > count,
+            (count) => document.querySelectorAll("select.project-select option").length > count,
             initialCount,
             { timeout: 10000 },
         );

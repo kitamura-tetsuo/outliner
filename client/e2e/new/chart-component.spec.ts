@@ -10,6 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Chart Component E2E", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(90000);
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "first line",
             "second line",

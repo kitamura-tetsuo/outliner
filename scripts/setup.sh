@@ -79,8 +79,8 @@ echo "=== Outliner Test Environment Setup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
 
 # In CI/self-hosted environments, always run full setup to ensure clean state
-if [ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
-  echo "CI environment detected, removing setup sentinel to ensure full setup..."
+if ([ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]) && [ "${PREINSTALLED_ENV:-}" != "true" ]; then
+  echo "CI environment detected (and PREINSTALLED_ENV not set), removing setup sentinel to ensure full setup..."
   rm -f "$SETUP_SENTINEL"
 fi
 

@@ -1,6 +1,7 @@
 import { expect, test } from "../fixtures/console-forward.ts";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers.ts";
+registerCoverageHooks();
 
 registerCoverageHooks();
 

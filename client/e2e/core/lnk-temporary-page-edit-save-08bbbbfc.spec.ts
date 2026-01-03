@@ -9,35 +9,43 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-0004: 仮ページ編集保存", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    test.beforeEach(async () => {
+        // No global setup needed here, environment is handled per test
     });
 
-    test("仮ページを編集した場合に実際のページとして保存される", async ({ page }) => {
-        const sourceUrl = page.url();
+    test("仮ページを編集した場合に実際のページとして保存される", async ({ page }, testInfo) => {
+        const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const sourceUrl = `/${encodeURIComponent(projectName)}/`;
         const nonExistentPage = "edit-temp-page-" + Date.now().toString().slice(-6);
-        await page.goto(`${sourceUrl}${nonExistentPage}`);
+        await page.goto(`${sourceUrl}${nonExistentPage}?isTest=true`);
         await page.waitForSelector("body", { timeout: 10000 });
 
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(300);
         }
 
         const outlinerBase = page.locator("[data-testid='outliner-base']");
         await expect(outlinerBase).toBeVisible();
 
+        // Auto-creation is disabled, so we must click 'Add Item' to create the temp page
+        const addItemBtn = page.getByRole("button", { name: "アイテム追加" });
+        if (await addItemBtn.isVisible()) {
+            await addItemBtn.click();
+        }
+
+        await TestHelpers.waitForOutlinerItems(page);
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const firstId = await firstItem.getAttribute("data-item-id");
         await TestHelpers.setCursor(page, firstId!);
         await TestHelpers.insertText(page, firstId!, "これは編集された仮ページです。");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
 
         const currentUrl = page.url();
         expect(currentUrl).toContain(nonExistentPage);

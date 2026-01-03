@@ -34,7 +34,7 @@ test.describe("CLM-0004: 上へ移動", () => {
         );
 
         // テキストが入力されるのを待機
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // カーソルが再表示されるのを待機（テキスト入力後の再レンダリングのため）
         await TestHelpers.waitForCursorVisible(page);
@@ -163,7 +163,7 @@ test.describe("CLM-0004: 上へ移動", () => {
         // 上矢印キーを押下
         await page.keyboard.press("ArrowUp");
         // 更新を待機
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 新しいカーソル位置を取得
         const newPosition = await cursor.boundingBox();

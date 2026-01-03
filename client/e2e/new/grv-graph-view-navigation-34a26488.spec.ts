@@ -10,6 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("GRV-0001: Graph View navigation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(90000);
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "Root node with [child] link",
             "child",
@@ -99,7 +100,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
         console.log("Navigation result:", navigationResult);
 
         // 少し待機してナビゲーションが完了するのを待つ
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForOutlinerItems(page);
 
         // ナビゲーションが成功したことを確認
         // 実際のURLを確認してから適切な検証を行う

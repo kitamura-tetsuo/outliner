@@ -109,6 +109,7 @@ export default ts.config(
             "**/tests/**/*.{js,ts,tsx}",
         ],
         rules: {
+            "@typescript-eslint/no-explicit-any": "warn",
             "no-restricted-imports": [
                 "error",
                 {
@@ -182,6 +183,36 @@ export default ts.config(
                     message: "Do not use x-prefixed helpers to skip tests.",
                 },
             ],
+            "no-restricted-globals": [
+                "warn",
+                {
+                    name: "window",
+                    message:
+                        "Do not access 'window' in E2E tests. If you are using page.evaluate, try to avoid coupling to global state.",
+                },
+                {
+                    name: "generalStore",
+                    message:
+                        "Do not access internal stores in E2E tests. Test user-visible behavior or use proper seeding APIs.",
+                },
+                {
+                    name: "appStore",
+                    message:
+                        "Do not access internal stores in E2E tests. Test user-visible behavior or use proper seeding APIs.",
+                },
+                {
+                    name: "editorOverlayStore",
+                    message:
+                        "Do not access internal stores in E2E tests. Test user-visible behavior or use proper seeding APIs.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["e2e/utils/testHelpers.ts"],
+        rules: {
+            "no-restricted-syntax": "off", // Allow internal store access in helpers
+            "no-restricted-globals": "off", // Allow internal store access in helpers
         },
     },
 );

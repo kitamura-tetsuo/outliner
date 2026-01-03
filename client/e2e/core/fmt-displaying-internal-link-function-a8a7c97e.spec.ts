@@ -37,7 +37,10 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     };
 
     const createBlankItem = async (page: Page): Promise<string> => {
-        await ensureOutlinerReady(page);
+        // Ensure the app is fully loaded and items are partially visible before accessing the store
+        await TestHelpers.waitForOutlinerItems(page);
+
+        // Double check store availability just in case
         await page.waitForFunction(() => {
             const gs = (window as any).generalStore || (window as any).appStore;
             return !!(gs?.currentPage?.items);
@@ -127,7 +130,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
 
         // 明示的にフォーカスを外してレンダリングを安定化
         await page.locator("body").click({ position: { x: 5, y: 5 } });
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
         await page.waitForFunction(
             (itemId) => {
                 const store = (window as any).editorOverlayStore;
@@ -171,7 +174,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         await setItemText(page, thirdItemId, "3つ目のアイテム");
 
         await page.locator("body").click({ position: { x: 5, y: 5 } });
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
         await page.waitForFunction(
             (itemId) => {
                 const store = (window as any).editorOverlayStore;

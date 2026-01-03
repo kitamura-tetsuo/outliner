@@ -5,17 +5,13 @@ import path from "path";
 import { DataValidationHelpers } from "../utils/dataValidationHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { compareTestCaseSnapshots } from "../utils/snapshotComparison.js";
+import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
 test.describe("snapshot comparison", () => {
     test("generate yjs snapshot for current mode", async ({ page }, testInfo) => {
-        // Navigate to a lightweight Yjs page if available
-        // Fall back to root if route not present
-        try {
-            await page.goto("/yjs-outliner");
-        } catch {
-            await page.goto("/");
-        }
+        // Use standard test environment initialization
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         const name = `${testInfo.title.replace(/[^a-z0-9_-]+/gi, "-")}-auto-${Date.now()}`;
         await DataValidationHelpers.saveSnapshotsAndCompare(page, name);

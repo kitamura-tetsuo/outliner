@@ -30,7 +30,7 @@ test.describe("Schedule Management UI", () => {
         await expect(page.locator("text=Schedule Management")).toBeVisible();
 
         // ページが完全に読み込まれるまで少し待つ
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // ページの状態をログ出力
         const pageId = await page.evaluate(() => {
@@ -46,7 +46,7 @@ test.describe("Schedule Management UI", () => {
         await page.locator('button:has-text("Add")').click();
 
         // スケジュール追加後、少し待つ
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(500);
 
         // スケジュール専用のセレクターを使用
         const scheduleItems = page.locator('[data-testid="schedule-item"]');

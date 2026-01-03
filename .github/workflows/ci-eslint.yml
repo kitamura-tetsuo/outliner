@@ -1,0 +1,21 @@
+name: Lint Code with ESLint
+
+on:
+  workflow_call:
+
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dprint
+        run: npm install -g dprint
+      - name: Install dependencies
+        working-directory: client
+        run: npm ci
+      - name: Run ESLint
+        working-directory: client
+        run: npm run lint -- --quiet

@@ -33,3 +33,11 @@ repos:
         always_run: true
         stages: [commit, push]
         verbose: true
+      - id: lint-changed-lines
+        name: Lint changed lines
+        language: script
+        entry: ./scripts/lint-changed-lines-wrapper.sh
+        pass_filenames: false
+        always_run: true
+        stages: [commit]
+        verbose: true

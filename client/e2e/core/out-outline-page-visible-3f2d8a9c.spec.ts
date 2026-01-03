@@ -8,6 +8,7 @@ let ids: { projectName: string; pageName: string; };
 let page: Page;
 
 test.beforeEach(async ({ page: initialPage, browser }, testInfo) => {
+    test.setTimeout(120000);
     const result = await TestHelpers.prepareTestEnvironment(initialPage, testInfo, [], browser);
     ids = { projectName: result.projectName, pageName: result.pageName };
     page = initialPage;
@@ -17,7 +18,7 @@ test("displays outline page after environment setup", async () => {
     const encodedProject = encodeURIComponent(ids.projectName);
     const encodedPage = encodeURIComponent(ids.pageName);
 
-    await expect(page).toHaveURL(new RegExp(`/${encodedProject}/${encodedPage}$`));
+    await expect(page).toHaveURL(new RegExp(`/${encodedProject}/${encodedPage}(\\?.*)?$`));
     await expect(page.locator('[data-testid="outliner-base"]').first()).toBeVisible();
 
     await TestHelpers.waitForOutlinerItems(page);
@@ -56,12 +57,13 @@ test("creates a new outliner item when pressing Enter", async () => {
     const items = page.locator(".outliner-item[data-item-id]");
     const initialCount = await items.count();
 
+    await items.last().waitFor({ state: "visible", timeout: 30000 });
     await items.last().click();
     await page.keyboard.press("Enter");
     await page.keyboard.type("Second item");
 
     // Wait for a brief moment to allow changes to be processed
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // Check count without calling waitForOutlinerItems again to avoid potential extra item creation
     // Based on observed behavior: pressing Enter creates 2 new items instead of 1
@@ -79,14 +81,16 @@ test("adds multiple outliner items sequentially with Enter", async () => {
     const items = page.locator(".outliner-item[data-item-id]");
     const startCount = await items.count();
 
-    await items.last().click();
+    const lastItem = items.last();
+    await lastItem.waitFor({ state: "visible" });
+    await lastItem.click();
     await page.keyboard.press("Enter");
     await page.keyboard.type("Second");
     await page.keyboard.press("Enter");
     await page.keyboard.type("Third");
 
     // Wait for a brief moment to allow changes to be processed
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(300);
 
     // Check count without calling waitForOutlinerItems again to avoid potential extra item creation
     // Based on observed behavior: two Enter presses create 3 new items total

@@ -6,14 +6,16 @@ import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * 確認事項
- * - TestHelpers.prepareTestEnvironment() 実行後にアウトラインページが表示される
+ * - TestHelpers.createAndSeedProject() + navigateToProjectPage() 実行後にアウトラインページが表示される
  * - OutlinerBase のアンカー要素と「アイテム追加」ボタンが表示される
  */
 
 test.describe("環境準備後にアウトラインページが表示される", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // 増加したタイムアウトで prepareTestEnvironment を実行
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Use HTTP-based seeding via SeedClient instead of legacy browser-based seeding
+        const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, []);
+        // Navigate to the seeded page
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName, []);
     });
 
     test.afterEach(async ({ page }) => {

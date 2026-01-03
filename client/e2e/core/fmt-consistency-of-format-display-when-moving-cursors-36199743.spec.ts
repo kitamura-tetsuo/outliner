@@ -41,7 +41,7 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
 
         // 空のアイテムを作成
         await page.keyboard.type("temp");
-        await page.waitForTimeout(500); // Wait for UI to update
+        await page.waitForTimeout(300); // Wait for UI to update
         const thirdItem = page.locator(".outliner-item").nth(2);
         const thirdItemBox = await thirdItem.boundingBox();
         if (thirdItemBox) {
@@ -54,7 +54,7 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         await page.waitForTimeout(300);
 
         // 1つ目のアイテムのテキスト内容を確認（制御文字が非表示でフォーマットが適用されていること）
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         await expect.poll(async () => {
             return await firstItem.locator(".item-text").innerHTML();
         }).toContain("<strong>aasdd</strong>");
@@ -63,7 +63,7 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         const secondItem = page.locator(".outliner-item").nth(1);
 
         // Wait for UI to update after cursor changes
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         await expect.poll(async () => {
             const html = await secondItem.locator(".item-text").innerHTML();
@@ -197,7 +197,7 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
         const pageTextsAfterInternalLink = await TestHelpers.getPageTexts(page);
         expect(pageTextsAfterInternalLink.some(({ text }) => text === "[asd]" || text?.includes("[asd]"))).toBe(true);
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         const firstItemTextContentInactiveInternal = await firstItem.locator(".item-text").textContent();
         // 非アクティブ時は内部リンクがレンダリングされるため、制御文字なしでリンクテキストのみ表示される
         expect(firstItemTextContentInactiveInternal).toContain("asd");
@@ -213,7 +213,14 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
     });
 
     test("SharedTreeデータが正しく保存される", async ({ page }) => {
-        // 最初のアイテムを選択
+        // 最初のアイテム（タイトル）を選択してEnterキーを押下し、2つ目のアイテムを作成
+        const titleItem = page.locator(".outliner-item").first();
+        await titleItem.locator(".item-content").click();
+        await TestHelpers.waitForCursorVisible(page);
+        await page.keyboard.press("Enter");
+        await TestHelpers.waitForCursorVisible(page);
+
+        // 2つ目のアイテム（直前で作成したアイテム）を選択
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
@@ -270,7 +277,7 @@ test.describe("カーソル移動時のフォーマット表示の一貫性", ()
         });
 
         // 少し待機してデータが反映されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // SharedTreeのデータを取得（フォールバック機能付き）
         const treeData = await TreeValidator.getTreeData(page);

@@ -80,7 +80,7 @@ test.describe("CLM-0008: 行末へ移動", () => {
         await page.keyboard.press("End");
 
         // Wait for the UI to update after pressing End key
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // Instead of just waiting for the cursor to be visible,
         // let's also check that the page has processed the keypress

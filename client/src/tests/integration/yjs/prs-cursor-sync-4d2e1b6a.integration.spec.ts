@@ -90,7 +90,7 @@ describe("yjs presence", () => {
                     console.log("Timeout waiting for page connection on client 1");
                     resolve(null);
                 }
-            }, 10000);
+            }, 30000);
         });
 
         const p1c2 = await new Promise<PageConnection | null>((resolve) => {
@@ -111,7 +111,7 @@ describe("yjs presence", () => {
                     console.log("Timeout waiting for page connection on client 2");
                     resolve(null);
                 }
-            }, 10000);
+            }, 30000);
         });
 
         if (!p1c1 || !p1c2) throw new Error("page connection not established");

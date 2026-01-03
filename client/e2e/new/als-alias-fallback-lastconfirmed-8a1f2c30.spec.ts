@@ -24,6 +24,9 @@ test.describe("ALS-8a1f2c30: alias fallback shows path within 2s", () => {
         // プロジェクトページへ（prepare で遷移済みだが明示）
         // await page.goto(`/${projectName}/${pageName}`);
 
+        // Wait for the target item to be rendered before trying to find its ID
+        await expect(page.locator(".outliner-item", { hasText: "TARGET AAA" })).toBeVisible();
+
         // 文言から安定的にターゲット/エイリアスのIDを取得
         const [targetId, aliasId] = await page.evaluate(() => {
             const findIdByExactText = (text: string): string | null => {

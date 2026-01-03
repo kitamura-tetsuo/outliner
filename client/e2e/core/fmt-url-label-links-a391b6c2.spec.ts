@@ -20,7 +20,7 @@ test.describe("URL label links", () => {
             "Please see [https://example.com Example Site]",
         ]);
 
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForOutlinerItems(page);
 
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(firstItemId).not.toBeNull();

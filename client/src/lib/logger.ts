@@ -8,8 +8,8 @@ type Console = typeof console;
 
 // ブラウザのコンソールAPIを使用するかどうか
 // テスト環境では常にtrueを返すようにする
-const isTestEnvironment = import.meta.env.NODE_ENV === "test"
-    || import.meta.env.VITEST === "true"
+const isTestEnvironment = (typeof import.meta !== "undefined" && import.meta.env?.NODE_ENV === "test")
+    || (typeof import.meta !== "undefined" && import.meta.env?.VITEST === "true")
     || (typeof process !== "undefined" && process.env?.NODE_ENV === "test");
 
 const useConsoleAPI = isTestEnvironment
@@ -17,7 +17,7 @@ const useConsoleAPI = isTestEnvironment
 
 // pino のインスタンス（ブラウザ用の設定）
 const baseLogger = pino({
-    level: import.meta.env.DEV ? "debug" : "info", // 開発環境では詳細なログを出力
+    level: (typeof import.meta !== "undefined" && import.meta.env?.DEV) ? "debug" : "info", // 開発環境では詳細なログを出力
     browser: {
         asObject: true, // ログをオブジェクトとして扱う
         write: {

@@ -253,7 +253,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         await page.keyboard.up("Shift");
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // 選択範囲の要素が存在することを確認
         const selectionElements = page.locator(".editor-overlay .selection");

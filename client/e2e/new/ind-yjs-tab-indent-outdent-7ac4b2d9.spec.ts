@@ -26,10 +26,14 @@ async function pressShiftTab(page) {
 
 test.describe("IND: Yjs Tab/Shift+Tab indent/outdent", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(300000); // Wait up to 5m for slow environment setup
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // Create a few test items to work with
+        // Ensure items are visible before clicking
+        await TestHelpers.waitForOutlinerItems(page);
         const first = page.locator(".outliner-item").first();
+        await first.locator(".item-content").waitFor({ state: "visible", timeout: 30000 });
         await first.locator(".item-content").click({ force: true });
         await page.waitForSelector("textarea.global-textarea:focus");
 

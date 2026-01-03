@@ -144,7 +144,7 @@ test.describe("Sidebar Navigation", () => {
         await settingsLink.click();
 
         // Wait for navigation
-        await page.waitForTimeout(500);
+        await expect(page).toHaveURL(/settings/i);
 
         // Verify we're on the settings page or the navigation was attempted
         // Note: This test verifies the click handler works; actual navigation depends on route setup
@@ -260,17 +260,25 @@ test.describe("Sidebar Navigation", () => {
         await expect(sidebar).toBeVisible();
 
         // Focus on a page item
+        // Wait for pages to be loaded
+        // Ensure app is fully hydrated before checking specific store state
+        await page.waitForLoadState("networkidle").catch(() => {});
+        await TestHelpers.waitForPagesList(page, 30000);
+
+        // Explicitly wait for the DOM to render the list items
+        await expect(page.locator(".page-item").first()).toBeVisible({ timeout: 20000 });
+
         const pageItem = page.locator(".page-item").first();
+        await pageItem.waitFor({ state: "visible", timeout: 10000 });
         await pageItem.focus();
 
+        const currentUrl = page.url();
         // Press Enter to activate
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
 
-        // Verify navigation occurred (URL should change or page should respond)
-        // This is a basic check that the keyboard event handler is attached
-        const currentUrl = page.url();
-        expect(currentUrl).toBeTruthy();
+        // Wait for navigation to occur (URL change)
+        await expect.poll(() => page.url()).not.toBe(currentUrl);
+        expect(page.url()).toBeTruthy();
     });
 
     test("should handle keyboard navigation on settings link", async ({ page }) => {
@@ -286,7 +294,7 @@ test.describe("Sidebar Navigation", () => {
 
         // Press Enter to activate
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
+        await expect(page).toHaveURL(/settings/i);
 
         // Verify navigation occurred
         const currentUrl = page.url();

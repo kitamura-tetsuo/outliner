@@ -23,7 +23,7 @@ test.describe("ITM-auto-add-sibling-item-on-edit-84442697: auto add sibling item
         await page.waitForSelector("textarea.global-textarea:focus");
 
         await page.keyboard.type(" hello");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const countAfter = await page.locator(".outliner-item").count();
         expect(countAfter).toBe(countBefore + 1);

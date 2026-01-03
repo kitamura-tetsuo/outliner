@@ -10,31 +10,19 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(300000);
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
-        await TestHelpers.createTestPageViaAPI(page, "second-page", ["second page text"]);
+        await TestHelpers.createAndSeedProject(page, null, ["second page text"], {
+            projectName: ids.projectName,
+            pageName: "second-page",
+        });
 
-        // Wait for the page to be created and available in the project
-        await page.waitForFunction(() => {
-            const gs = (window as any).generalStore || (window as any).appStore;
-            if (!gs?.project?.items) return false;
-            const items = gs.project.items;
-            let count = 0;
-            try {
-                if (typeof items[Symbol.iterator] === "function") {
-                    count = Array.from(items).length;
-                } else if (typeof items.length === "number") {
-                    count = items.length;
-                }
-            } catch {}
-            // We expect at least 2 pages: the initial page and "second-page"
-            return count >= 2;
-        }, { timeout: 10000 });
+        // Navigate to the second page and wait for it to sync, then navigate back
+        // This ensures the second page is synced to the Yjs document
+        await TestHelpers.navigateToProjectPage(page, ids.projectName, "second-page", ["second page text"]);
 
         // navigate back to first page to ensure SearchBox appears
-        await page.goto(`/${encodeURIComponent(ids.projectName)}/${encodeURIComponent(ids.pageName)}`);
-        // Wait for the page to be fully loaded and search box to be ready
-        await page.waitForLoadState("networkidle");
-        await page.waitForSelector(".page-search-box input", { state: "visible" });
+        await TestHelpers.navigateToProjectPage(page, ids.projectName, ids.pageName, []);
     });
 
     test("search box navigates to another page", async ({ page }) => {
@@ -42,49 +30,80 @@ test.describe("SEA-0001: page title search box", () => {
         const searchInput = page.locator(".page-search-box input");
         await expect(searchInput).toBeVisible();
 
+        // Verify accessible labels and icon
+        await expect(searchInput).toHaveAttribute("aria-label", "Search pages");
+        await expect(searchInput).toHaveAttribute("placeholder", "Search pages");
+        await expect(page.locator(".page-search-box .search-icon")).toBeVisible();
+
         // Focus the input first to ensure it's ready for interaction
         await searchInput.focus();
         await page.waitForTimeout(100);
 
-        // Type the search query
-        await searchInput.fill("second");
-
-        // Wait for the search to process and results to be computed
-        // Check that the results are available in the component state
+        // Explicitly wait for project items to be loaded from Yjs BEFORE typing
+        // This ensures the SearchBox has data to search against
         await page.waitForFunction(() => {
-            const input = document.querySelector(".page-search-box input") as HTMLInputElement;
-            if (!input || input.value !== "second") return false;
-
-            // Check if results are being computed
+            // eslint-disable-next-line no-restricted-globals
             const gs = (window as any).generalStore || (window as any).appStore;
-            if (!gs?.project?.items) return false;
+            const items = gs?.project?.items;
+            return items && items.length >= 2; // Should have at least current page + second page
+        }, { timeout: 30000 }).catch(() =>
+            console.log("[Test] Warning: Timeout waiting for project items to populate")
+        );
 
-            // Verify that we have pages to search
-            const items = gs.project.items;
-            let hasSecondPage = false;
-            try {
-                if (typeof items[Symbol.iterator] === "function") {
-                    for (const item of items) {
-                        const title = item?.text?.toString?.() ?? "";
-                        if (title.toLowerCase().includes("second")) {
-                            hasSecondPage = true;
-                            break;
-                        }
-                    }
-                }
-            } catch {}
+        // Type the search query
+        // Ensure the project items are loaded (at least 2 items: current page + search target)
+        await page.waitForTimeout(100);
 
-            return hasSecondPage;
-        }, { timeout: 10000 });
+        // Type the search query
+        // Ensure the project items are loaded (at least 2 items: current page + search target)
+        await page.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                const gs = (window as any).generalStore || (window as any).appStore;
+                const items = gs?.project?.items;
+                if (!items) return false;
+
+                // Robust array conversion for Y.Array or regular array
+                const arr = Array.from(items as any);
+                return arr.some((item: any) => {
+                    const text = item?.text?.toString?.() || String(item?.text ?? "");
+                    return text.toLowerCase().includes("second");
+                });
+            },
+            { timeout: 30000 },
+        ).catch(() => console.log("[Test] Warning: second page not found in project items store"));
+
+        await page.waitForTimeout(2000); // Give explicit time for indexing if any
 
         // Wait for search results to appear with a more specific selector
         // The results should contain a list item with the text "second-page"
-        const resultsList = page.locator(".page-search-box ul");
-        await expect(resultsList).toBeVisible({ timeout: 10000 });
-
-        // Wait for at least one list item to be present
         const firstResult = page.locator(".page-search-box li").first();
-        await expect(firstResult).toBeVisible({ timeout: 10000 });
+
+        // Retry mechanism
+        let found = false;
+        // Increase retries to handle very slow indexing in CI (up to ~60s total)
+        for (let i = 0; i < 6; i++) {
+            await searchInput.clear();
+            await searchInput.fill("second");
+            // Trigger events ensuring reactivity
+            await searchInput.press("Space");
+            await searchInput.press("Backspace");
+
+            try {
+                // Robustly wait for the result
+                await expect.poll(async () => {
+                    const count = await page.locator(".page-search-box li").count();
+                    if (count === 0) return false;
+                    return await firstResult.isVisible();
+                }, { timeout: 10000 }).toBe(true);
+                found = true;
+                break;
+            } catch {
+                console.log(`Search attempt ${i + 1} failed, retrying...`);
+                await page.waitForTimeout(1000);
+            }
+        }
+        expect(found).toBe(true);
 
         // Verify the result contains "second-page"
         await expect(firstResult).toContainText("second-page");
@@ -94,6 +113,6 @@ test.describe("SEA-0001: page title search box", () => {
         await page.keyboard.press("Enter");
 
         // Verify navigation
-        await expect(page).toHaveURL(/second-page/, { timeout: 10000 });
+        await expect(page).toHaveURL(/second-page/, { timeout: 30000 });
     });
 });

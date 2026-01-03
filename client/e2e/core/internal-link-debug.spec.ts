@@ -5,9 +5,11 @@ import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
 test("debug internal link html", async ({ page }, testInfo) => {
-    await TestHelpers.prepareTestEnvironment(page, testInfo);
+    await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2", "Item 3"]);
 
     const items = page.locator(".outliner-item");
+    // Wait for seeding to populate 4 items
+    await page.waitForFunction(() => document.querySelectorAll(".outliner-item").length >= 4, { timeout: 30000 });
     await expect(items).toHaveCount(4, { timeout: 10000 });
 
     const firstItem = items.nth(1);
@@ -23,7 +25,7 @@ test("debug internal link html", async ({ page }, testInfo) => {
     await TestHelpers.waitForCursorVisible(page);
     await page.keyboard.type("3つ目のアイテム");
 
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(500);
 
     const html = await firstItem.locator(".item-text").innerHTML();
     console.log("first item html", html);

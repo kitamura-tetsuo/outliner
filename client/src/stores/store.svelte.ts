@@ -47,11 +47,13 @@ export class GeneralStore {
                         break;
                     }
                 }
-                if (!next) {
-                    next = items?.addNode?.("tester");
-                    next?.updateText?.(title);
-                }
+                // REMOVED: Legacy browser-based auto-creation. Tests should use TestHelpers.createAndSeedProject for data seeding.
+                // If page doesn't exist, do not auto-create it here - let tests fail if seeding was missed.
+
                 // 子行の移植（先行シードを反映）
+                // DISABLED: Legacy browser-based auto-creation logic causes duplication in E2E tests
+                // with server-side seeding. Tests should rely on SeedClient and proper Yjs sync.
+                /*
                 try {
                     const prevItems = page?.items;
                     const nextItems = next?.items;
@@ -99,6 +101,7 @@ export class GeneralStore {
                 } catch {
                     // Ignore errors during child item migration
                 }
+                */
                 this._currentPage = next;
                 // 通知
                 this._currentPageSubscribers.forEach(fn => {
@@ -129,6 +132,18 @@ export class GeneralStore {
 
         console.log(`store: Setting project`, { projectExists: !!v, projectTitle: v?.title });
 
+        // Debug: Check items length immediately
+        try {
+            const items = v?.items;
+            console.log(`store: [DEBUG] Project items length on set: ${items?.length}`);
+            if (items && items.length > 0) {
+                const names = Array.from(items).map((i: any) => i.text || i.id);
+                console.log(`store: [DEBUG] Project item names:`, names);
+            }
+        } catch (e) {
+            console.log(`store: [DEBUG] Error checking items:`, e);
+        }
+
         this._project = v;
         console.log(`store: Setting up Yjs observe for pages`);
 
@@ -140,6 +155,10 @@ export class GeneralStore {
         const subscribe = createSubscriber((_update) => {
             const handler = (_events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
                 try {
+                    // Debug logging for tree updates
+                    console.log(`store: [DEBUG] orderedTree updated`);
+                    const currentItems = project?.items;
+                    console.log(`store: [DEBUG] Project items length after update: ${currentItems?.length}`);
                     saveProjectSnapshot(project);
                 } catch {
                     // Ignore errors during snapshot saving
@@ -176,6 +195,7 @@ if (typeof window !== "undefined") {
     (window as unknown as { generalStore: GeneralStore; }).generalStore = store; // TestHelpersとの互換性のため
 
     // 起動直後に仮プロジェクトを用意（本接続が来れば yjsStore が置換）
+    // This ensures tests and direct navigation work even before Yjs connection is established
     try {
         if (!store.project) {
             const parts = window.location.pathname.split("/").filter(Boolean);
@@ -187,3 +207,6 @@ if (typeof window !== "undefined") {
         // Ignore errors during initial project setup
     }
 }
+
+// NOTE: Projects are now created via HTTP seeding (SeedClient) for E2E tests,
+// and loaded via loadProjectAndPage in +page.svelte for proper synchronization.

@@ -1,5 +1,13 @@
 import { type FirebaseApp } from "firebase/app";
-import { connectFirestoreEmulator, doc, type Firestore, getDoc, getFirestore, onSnapshot } from "firebase/firestore";
+import {
+    connectFirestoreEmulator,
+    doc,
+    type Firestore,
+    getDoc,
+    getFirestore,
+    onSnapshot,
+    setDoc,
+} from "firebase/firestore";
 
 import { userManager } from "../auth/UserManager";
 import { getFirebaseApp } from "../lib/firebase-app";
@@ -17,56 +25,66 @@ export interface UserProject {
 }
 
 class GeneralStore {
-    // 直接公開フィールド（$state が追跡可能なプロパティ）
-    public userProject: UserProject | null = null;
+    // 直接公開フィールド
+    public userProject = $state<UserProject | null>(null);
 
-    // $state 再計算トリガ（CustomEvent 不要のためのトップレベル依存）
-    public ucVersion = 0;
+    // $state 再計算トリガ
+    public ucVersion = $state(0);
+
+    // Aliases for backwards compatibility
+    get userContainer() {
+        return this.userProject;
+    }
 
     // 明示 API で wrap + 新参照を適用
     setUserProject(value: UserProject | null) {
-        // $state が追跡する公開プロパティに直接代入
-        const self = firestoreStore as any;
-        const prevVersion = self.ucVersion ?? 0;
-        const prevLength = self.userProject?.accessibleProjectIds?.length ?? 0;
-        const prevDefault = self.userProject?.defaultProjectId;
+        const prevVersion = this.ucVersion;
+        const prevLength = this.userProject?.accessibleProjectIds?.length ?? 0;
+        const prevDefault = this.userProject?.defaultProjectId;
 
-        const nextProject = value ? self.wrapUserProject(value) : null;
-        self.userProject = nextProject;
+        const nextProject = value ? this.wrapUserProject(value) : null;
+        this.userProject = nextProject;
 
-        // $state 依存を更新（CustomEvent に頼らない）
-        self.ucVersion = prevVersion + 1;
-        // 追加通知（テスト環境限定）: UI への橋渡しとして軽量な DOM イベントを発火
+        this.ucVersion = prevVersion + 1;
+        // 追加通知（テスト環境限定）
         try {
             const __isTestEnv = import.meta.env.MODE === "test"
                 || process.env.NODE_ENV === "test"
-                || import.meta.env.VITE_IS_TEST === "true";
+                || import.meta.env.VITE_IS_TEST === "true"
+                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+                || (typeof window !== "undefined" && (window as any).__E2E__ === true);
             if (typeof window !== "undefined" && __isTestEnv) {
                 window.dispatchEvent(new CustomEvent("firestore-uc-changed"));
             }
         } catch {}
 
-        const nextLength = self.userProject?.accessibleProjectIds?.length ?? 0;
-        const nextDefault = self.userProject?.defaultProjectId;
+        const nextLength = this.userProject?.accessibleProjectIds?.length ?? 0;
+        const nextDefault = this.userProject?.defaultProjectId;
 
         if (typeof console !== "undefined" && typeof console.info === "function") {
-            try {
-                const payload = {
-                    prev: {
-                        ucVersion: prevVersion,
-                        accessibleProjectIdsLength: prevLength,
-                        defaultProjectId: prevDefault,
-                    },
-                    next: {
-                        ucVersion: self.ucVersion,
-                        accessibleProjectIdsLength: nextLength,
-                        defaultProjectId: nextDefault,
-                    },
-                };
-                console.info(
-                    `[firestoreStore.setUserProject] prev.ucVersion=${payload.prev.ucVersion} prev.len=${payload.prev.accessibleProjectIdsLength} prev.default=${payload.prev.defaultProjectId} -> next.ucVersion=${payload.next.ucVersion} next.len=${payload.next.accessibleProjectIdsLength} next.default=${payload.next.defaultProjectId}`,
-                );
-            } catch {}
+            console.info(
+                `[firestoreStore.setUserProject] prev.ucVersion=${prevVersion} prev.len=${prevLength} prev.default=${prevDefault} -> next.ucVersion=${this.ucVersion} next.len=${nextLength} next.default=${nextDefault}`,
+            );
+        }
+    }
+
+    setUserContainer(value: UserProject | null) {
+        this.setUserProject(value);
+    }
+    // テスト用: 現在の状態をFirestoreに保存する
+    async testSaveUserProject() {
+        const self = firestoreStore as any;
+        if (!self.userProject) return;
+        if (!db) return;
+
+        try {
+            const userId = self.userProject.userId;
+            const userProjectRef = doc(db, "userProjects", userId);
+            await setDoc(userProjectRef, self.userProject);
+            console.log(`[firestoreStore] Saved userProject to Firestore for ${userId}`);
+        } catch (e) {
+            console.error("[firestoreStore] Failed to save userProject to Firestore", e);
+            throw e;
         }
     }
 
@@ -107,13 +125,119 @@ class GeneralStore {
         const self = firestoreStore as any;
         self.userProject = null;
         self.ucVersion = 0;
+        this.stopFirestoreSync();
+    }
+
+    private unsubscribe: (() => void) | null = null;
+
+    public initFirestoreSync(): () => void {
+        // 以前のリスナーがあれば解除
+        if (this.unsubscribe) {
+            this.unsubscribe();
+            this.unsubscribe = null;
+        }
+
+        const currentUser = userManager.getCurrentUser();
+        // ユーザーがログインしていない場合は早期リターン
+        if (!currentUser) {
+            logger.info("ユーザーがログインしていないため、Firestoreの監視を開始しません");
+            return () => {}; // 空のクリーンアップ関数を返す
+        }
+
+        // ユーザーIDの存在確認を追加
+        if (!currentUser.id) {
+            logger.warn("ユーザーオブジェクトにIDがないため、Firestoreの監視を開始しません");
+            return () => {}; // 空のクリーンアップ関数を返す
+        }
+
+        const userId = currentUser.id;
+        logger.info(`ユーザー ${userId} の userProjects ドキュメントを監視します`);
+
+        try {
+            // ドキュメントへの参照を取得 (/userProjects/{userId})
+            if (!db) {
+                logger.error("Firestore db is not initialized in initFirestoreSync");
+                return () => {};
+            }
+            const userProjectRef = doc(db, "userProjects", userId);
+
+            // エラーハンドリングを強化したリアルタイム更新リスナー
+            this.unsubscribe = onSnapshot(
+                userProjectRef,
+                snapshot => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+
+                        const projectData: UserProject = {
+                            userId: data.userId || userId,
+                            defaultProjectId: data.defaultProjectId,
+                            accessibleProjectIds: data.accessibleProjectIds || [],
+                            createdAt: data.createdAt?.toDate() || new Date(),
+                            updatedAt: data.updatedAt?.toDate() || new Date(),
+                        };
+
+                        // E2E テストの安定化: すでにテストヘルパーにより userProject が投入されていて
+                        // incoming が空配列の場合は上書きを抑止する（初期同期で空→即時消去されるのを避ける）
+                        const isTestEnv = import.meta.env.MODE === "test"
+                            || process.env.NODE_ENV === "test"
+                            || import.meta.env.VITE_IS_TEST === "true"
+                            || (typeof window !== "undefined"
+                                && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+                            || (typeof window !== "undefined" && (window as any).__E2E__ === true);
+                        const hasSeeded = !!(firestoreStore.userProject?.accessibleProjectIds?.length);
+                        const incomingEmpty = !(projectData.accessibleProjectIds?.length);
+                        if (isTestEnv && hasSeeded && incomingEmpty) {
+                            logger.info(
+                                "FirestoreStore: keeping seeded userProject; ignoring empty snapshot in test env",
+                            );
+                        } else {
+                            firestoreStore.setUserProject(projectData);
+                            logger.info(`ユーザー ${userId} のコンテナ情報を読み込みました`);
+                            logger.info(`デフォルトコンテナID: ${projectData.defaultProjectId || "なし"}`);
+                        }
+                    } else {
+                        logger.info(`ユーザー ${userId} のコンテナ情報は存在しません`);
+                    }
+                },
+                error => {
+                    if (error.code === "permission-denied") {
+                        logger.warn(
+                            `Firestore permission denied for user ${userId}. This is expected if data isn't seeded yet.`,
+                        );
+                        return;
+                    }
+                    const err = error instanceof Error ? error : new Error(String(error));
+                    logger.error({ err }, "Firestoreのリスニングエラー");
+                },
+            );
+
+            // クリーンアップ関数を返す
+            return () => {
+                if (this.unsubscribe) {
+                    this.unsubscribe();
+                    this.unsubscribe = null;
+                }
+            };
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.error({ err }, "Firestore監視設定エラー");
+            return () => {}; // 空のクリーンアップ関数を返す
+        }
+    }
+
+    public stopFirestoreSync() {
+        if (this.unsubscribe) {
+            this.unsubscribe();
+            this.unsubscribe = null;
+        }
     }
 
     constructor() {
         // コンストラクタは空にする
     }
 }
-// 2重ロード対策: 既存のグローバルがあればそれを使う
+// Svelte 5 runes を使用してストアを作成
+// ファイルが .svelte.ts 拡張子を持つため、$state は常に利用可能
 const __tmpStore = $state(new GeneralStore());
 const existingCandidate = typeof window !== "undefined"
     ? (window as any).__FIRESTORE_STORE__
@@ -129,7 +253,9 @@ if (typeof window !== "undefined") {
     const isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
-        || window.location.hostname === "localhost";
+        || window.location.hostname === "localhost"
+        || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
+        || (window as any).__E2E__ === true;
     if (isTestEnv) {
         (window as any).__FIRESTORE_STORE__ = firestoreStore;
     }
@@ -152,7 +278,9 @@ try {
     const isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.mockFluidClient === false);
+        || (typeof window !== "undefined" && window.mockFluidClient === false)
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
     // プロダクション環境では絶対にエミュレータを使用しない
     const isProduction = process.env.NODE_ENV === "production"
@@ -190,95 +318,9 @@ try {
     const err = error instanceof Error ? error : new Error(String(error));
     logger.error({ err }, "Critical error initializing Firestore");
     // データベース接続に失敗した場合でもアプリが動作し続けられるように
-    // 最低限の初期化だけを行う
-    if (!db) {
-        db = getFirestore(app!);
-    }
-}
-
-// リスナーの解除関数
-let unsubscribe: (() => void) | null = null;
-
-// Firestoreとの同期を開始する関数
-function initFirestoreSync(): () => void {
-    // 以前のリスナーがあれば解除
-    if (unsubscribe) {
-        unsubscribe();
-        unsubscribe = null;
-    }
-
-    const currentUser = userManager.getCurrentUser();
-    // ユーザーがログインしていない場合は早期リターン
-    if (!currentUser) {
-        logger.info("ユーザーがログインしていないため、Firestoreの監視を開始しません");
-        return () => {}; // 空のクリーンアップ関数を返す
-    }
-
-    // ユーザーIDの存在確認を追加
-    if (!currentUser.id) {
-        logger.warn("ユーザーオブジェクトにIDがないため、Firestoreの監視を開始しません");
-        return () => {}; // 空のクリーンアップ関数を返す
-    }
-
-    const userId = currentUser.id;
-    logger.info(`ユーザー ${userId} の userProjects ドキュメントを監視します`);
-
-    try {
-        // ドキュメントへの参照を取得 (/userProjects/{userId})
-        const userProjectRef = doc(db!, "userProjects", userId);
-
-        // エラーハンドリングを強化したリアルタイム更新リスナー
-        unsubscribe = onSnapshot(
-            userProjectRef,
-            snapshot => {
-                if (snapshot.exists()) {
-                    const data = snapshot.data();
-
-                    const projectData: UserProject = {
-                        userId: data.userId,
-                        defaultProjectId: data.defaultProjectId,
-                        accessibleProjectIds: data.accessibleProjectIds || [],
-                        createdAt: data.createdAt?.toDate() || new Date(),
-                        updatedAt: data.updatedAt?.toDate() || new Date(),
-                    };
-
-                    // E2E テストの安定化: すでにテストヘルパーにより userProject が投入されていて
-                    // incoming が空配列の場合は上書きを抑止する（初期同期で空→即時消去されるのを避ける）
-                    const isTestEnv = import.meta.env.MODE === "test"
-                        || process.env.NODE_ENV === "test"
-                        || import.meta.env.VITE_IS_TEST === "true";
-                    const hasSeeded = !!(firestoreStore.userProject?.accessibleProjectIds?.length);
-                    const incomingEmpty = !(projectData.accessibleProjectIds?.length);
-                    if (isTestEnv && hasSeeded && incomingEmpty) {
-                        logger.info(
-                            "FirestoreStore: keeping seeded userProject; ignoring empty snapshot in test env",
-                        );
-                    } else {
-                        firestoreStore.setUserProject(projectData);
-                        logger.info(`ユーザー ${userId} のコンテナ情報を読み込みました`);
-                        logger.info(`デフォルトコンテナID: ${projectData.defaultProjectId || "なし"}`);
-                    }
-                } else {
-                    logger.info(`ユーザー ${userId} のコンテナ情報は存在しません`);
-                }
-            },
-            error => {
-                const err = error instanceof Error ? error : new Error(String(error));
-                logger.error({ err }, "Firestoreのリスニングエラー");
-            },
-        );
-
-        // クリーンアップ関数を返す
-        return () => {
-            if (unsubscribe) {
-                unsubscribe();
-                unsubscribe = null;
-            }
-        };
-    } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Firestore監視設定エラー");
-        return () => {}; // 空のクリーンアップ関数を返す
+    // appがundefinedの場合は何もしない（後続の処理で適切に処理される）
+    if (!db && app) {
+        db = getFirestore(app);
     }
 }
 
@@ -480,30 +522,22 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
 // Alias for backwards compatibility during containers -> projects migration
 export const saveContainerIdToServer = saveProjectIdToServer;
 
-// UserContainer type alias for backward compatibility
-export type UserContainer = UserProject;
-
-// Getter alias to access userProject as userContainer
-Object.defineProperty(firestoreStore, "userContainer", {
-    get() {
-        return (firestoreStore as any).userProject;
-    },
-    enumerable: true,
-    configurable: true,
-});
-
-// Method alias for setUserContainer -> setUserProject
-(firestoreStore as any).setUserContainer = function(value: UserProject | null) {
-    return (firestoreStore as any).setUserProject(value);
-};
+// Getter alias to access userProject as userContainer (deprecated, move to class)
+// Already handled in GeneralStore class
 
 // アプリ起動時に自動的に初期化
 if (typeof window !== "undefined") {
     const __isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
-        || import.meta.env.VITE_IS_TEST === "true";
+        || import.meta.env.VITE_IS_TEST === "true"
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
-    if (!__isTestEnv) {
+    // E2Eテスト環境でも、自動同期を有効にする（または手動で呼び出せるようにする）
+    // unitテストのみ除外したい
+    const shouldAutoSync = !__isTestEnv || (typeof window !== "undefined" && (window as any).__E2E__ === true);
+
+    if (shouldAutoSync) {
         let cleanup: (() => void) | null = null;
 
         // 認証状態が変更されたときに Firestore 同期を初期化/クリーンアップ
@@ -516,7 +550,7 @@ if (typeof window !== "undefined") {
 
             // 認証されていればリスナーを設定
             if (authResult) {
-                cleanup = initFirestoreSync();
+                cleanup = firestoreStore.initFirestoreSync();
             } else {
                 firestoreStore.setUserProject(null);
             }

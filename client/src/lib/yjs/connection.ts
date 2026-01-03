@@ -100,36 +100,6 @@ function getWsBase(): string {
  * - 本関数は判定の単一点（single source of truth）。呼び出し側はこの戻り値のみを信頼する。
  */
 
-function isWsEnabled(): boolean {
-    try {
-        // Test override: allow forcing WS via localStorage even if env disables it
-        const forceLS = typeof window !== "undefined"
-            && window.localStorage?.getItem?.("VITE_YJS_FORCE_WS") === "true";
-        if (forceLS) return true;
-
-        // Disable takes precedence over any enabling override (unless forced above)
-        const envDisabled = String(import.meta.env.VITE_YJS_DISABLE_WS || "") === "true";
-        const lsDisabled = typeof window !== "undefined"
-            && window.localStorage?.getItem?.("VITE_YJS_DISABLE_WS") === "true";
-        if (envDisabled || lsDisabled) return false;
-
-        // Optional override to enable WS when not explicitly disabled
-        const override = typeof window !== "undefined"
-            && window.localStorage?.getItem?.("VITE_YJS_ENABLE_WS") === "true";
-        if (override) return true;
-
-        // テスト環境ではデフォルトでWebSocketを有効にする（明示的な無効化がない場合）
-        const isTestEnv = import.meta.env.MODE === "test"
-            || import.meta.env.VITE_IS_TEST === "true"
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
-        if (isTestEnv) return true;
-
-        return true; // default: enabled when not disabled
-    } catch {
-        return true;
-    }
-}
-
 function isAuthRequired(): boolean {
     try {
         const envReq = String(import.meta.env.VITE_YJS_REQUIRE_AUTH || "") === "true";
@@ -144,7 +114,9 @@ function isAuthRequired(): boolean {
 async function getFreshIdToken(): Promise<string> {
     // Wait for auth and fetch a fresh ID token
     const auth = userManager.auth;
-    const isTestEnv = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
+    const isTestEnv = import.meta.env.MODE === "test"
+        || (typeof window !== "undefined"
+            && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true" || (window as any).__E2E__ === true));
     const mustAuth = isAuthRequired();
 
     // If auth is required (e.g., E2E talking to secured WS), wait until user is available
@@ -177,6 +149,7 @@ async function getFreshIdToken(): Promise<string> {
 export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: string): Promise<PageConnection> {
     const wsBase = getWsBase();
     const room = pageRoomPath(projectId, pageId);
+    console.log(`[connectPageDoc] Connecting to page room: ${room}, doc.guid=${doc.guid}`);
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
         try {
             const persistence = createPersistence(room, doc);
@@ -191,18 +164,78 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         // but local-only mode may still function for offline scenarios.
         token = "";
     }
-    const wsEnabled = isWsEnabled();
+
+    // Load the subdoc to ensure local state is ready
+    // Note: Data from the server is fetched via WebSocket sync, which we wait for below
+    try {
+        doc.load();
+        console.log(`[connectPageDoc] Loaded subdoc for room: ${room}`);
+    } catch (e) {
+        console.log(`[connectPageDoc] Subdoc load failed for room: ${room}, continuing anyway`, e);
+    }
+
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: wsEnabled,
     });
-    // Mark disabled state for downstream logic (e.g., token refresh) and hard-stop connect()
-    (provider as WebsocketProvider & { __wsDisabled?: boolean; }).__wsDisabled = !wsEnabled;
-    if (!wsEnabled) {
-        try {
-            (provider as WebsocketProvider & { connect: () => void; }).connect = () => {};
-        } catch {}
+
+    // Wait for initial sync to complete before returning
+    // This ensures seeded data is available immediately
+    await new Promise<void>((resolve) => {
+        if (provider.synced) {
+            console.log(`[connectPageDoc] Provider already synced for room: ${room}`);
+            resolve();
+        } else if (typeof provider.once === "function") {
+            provider.once("synced", () => {
+                console.log(`[connectPageDoc] Sync event fired for room: ${room}`);
+                resolve();
+            });
+            // Fallback timeout in case 'synced' event doesn't fire
+            setTimeout(() => {
+                console.log(`[connectPageDoc] Timeout waiting for sync, proceeding anyway for room: ${room}`);
+                resolve();
+            }, 15000);
+        } else {
+            // Provider doesn't support 'once' method (e.g., in some test environments)
+            // Proceed without waiting
+            console.log(
+                `[connectPageDoc] Provider doesn't support 'once', proceeding without sync wait for room: ${room}`,
+            );
+            resolve();
+        }
+    });
+
+    // CRITICAL: Wait for pageItems to be populated after WebSocket sync
+    // This ensures server-seeded data is available before returning
+    // The data from the server is synced via WebSocket, so we must wait after sync
+    try {
+        const pageItemsMap = doc.getMap("pageItems");
+        let waitCount = 0;
+        const maxWait = 200; // Wait up to 20 seconds for items to appear (increased from 5s)
+        const initialSize = pageItemsMap.size;
+        console.log(`[connectPageDoc] Initial pageItemsMap size: ${initialSize} for room: ${room}`);
+        while (pageItemsMap.size <= 1 && waitCount < maxWait) { // size <= 1 means only "initialized" key
+            await new Promise(resolve => setTimeout(resolve, 100));
+            waitCount++;
+        }
+        const finalSize = pageItemsMap.size;
+        console.log(
+            `[connectPageDoc] Waited ${waitCount} iterations for pageItems after sync, initialSize=${initialSize}, finalSize=${finalSize} for room: ${room}`,
+        );
+        // If still only has "initialized" key (size <= 1), log warning but continue
+        if (finalSize <= 1) {
+            console.warn(
+                `[connectPageDoc] WARNING: pageItems not fully populated for room: ${room}, size=${finalSize}`,
+            );
+            // Log the actual keys for debugging
+            const keys = Array.from(pageItemsMap.keys());
+            console.warn(`[connectPageDoc] pageItems keys: ${JSON.stringify(keys)}`);
+        }
+    } catch (e) {
+        console.log(`[connectPageDoc] Error waiting for pageItems after sync for room: ${room}, continuing anyway`, e);
     }
+
+    console.log(`[connectPageDoc] Connected to page room: ${room}, returning connection`);
+
     const awareness = provider.awareness;
     // Debug hook (guarded)
     attachConnDebug(room, provider, awareness, doc);
@@ -250,20 +283,33 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         // Tolerate missing token; provider will attempt reconnect later
         token = "";
     }
-    const wsEnabled = isWsEnabled();
-
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: wsEnabled,
     });
 
-    // Mark disabled state and prevent accidental connects
-    (provider as WebsocketProvider & { __wsDisabled?: boolean; }).__wsDisabled = !wsEnabled;
-    if (!wsEnabled) {
-        try {
-            (provider as WebsocketProvider & { connect: () => void; }).connect = () => {};
-        } catch {}
-    }
+    // Wait for initial project sync to complete before connecting pages
+    // This ensures the pagesMap is populated with all seeded pages
+    await new Promise<void>((resolve) => {
+        if (provider.synced) {
+            resolve();
+        } else if (typeof provider.once === "function") {
+            provider.once("synced", () => resolve());
+            // Fallback timeout in case 'synced' event doesn't fire
+            setTimeout(() => {
+                console.log(
+                    `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
+                );
+                resolve();
+            }, 15000);
+        } else {
+            // Provider doesn't support 'once' method (e.g., in some test environments)
+            // Proceed without waiting
+            console.log(
+                `[createProjectConnection] Provider doesn't support 'once', proceeding without sync wait for room: ${room}`,
+            );
+            resolve();
+        }
+    });
 
     // Awareness (presence)
     const awareness = provider.awareness;
@@ -298,13 +344,33 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Fallback: also observe direct changes to the pages map (helps in test env)
     try {
         const pagesMap = doc.getMap<Y.Doc>("pages");
-        pagesMap.observe((e: Y.YMapEvent<Y.Doc>) => {
+        // Track pending page connections for proper awaiting
+        // This is declared here so it can be accessed after the observer loop
+        const pendingPageConnections = new Map<string, Promise<void>>();
+        pagesMap.observe(async (e: Y.YMapEvent<Y.Doc>) => {
             const keysChanged = e.changes.keys;
             for (const key of keysChanged.keys()) {
                 const sub = pagesMap.get(key);
+                console.log(
+                    `[createProjectConnection] pagesMap observer: key=${key}, sub=${!!sub}, pages.has=${
+                        pages.has(key)
+                    }`,
+                );
                 if (sub && !pages.has(key)) {
-                    // Best-effort, non-blocking connection setup
-                    void connectPageDoc(sub, projectId, key).then(c => pages.set(key, c));
+                    // Explicitly load the subdoc to ensure server data is fetched before connecting
+                    // This is critical for seeded data to be available immediately
+                    try {
+                        sub.load();
+                        console.log(`[createProjectConnection] Called sub.load() for page: ${key}`);
+                    } catch {}
+                    console.log(`[createProjectConnection] Connecting page via observer: ${key}`);
+                    // Store the promise so we can track completion
+                    const pagePromise = connectPageDoc(sub, projectId, key).then(c => {
+                        pages.set(key, c);
+                        console.log(`[createProjectConnection] Page ${key} connected and added to pages Map`);
+                        pendingPageConnections.delete(key);
+                    });
+                    pendingPageConnections.set(key, pagePromise);
                 }
                 if (!sub && pages.has(key)) {
                     const c = pages.get(key);
@@ -313,7 +379,52 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                 }
             }
         });
-    } catch {}
+        // Connect any pages that were already in the map before the observer was attached
+        // This ensures pages seeded via HTTP API are properly connected
+        console.log(`[createProjectConnection] Connecting initial pages from pagesMap, count=${pagesMap.size}`);
+        const initialPagePromises: Promise<void>[] = [];
+        for (const key of pagesMap.keys()) {
+            const sub = pagesMap.get(key);
+            console.log(
+                `[createProjectConnection] Initial page: key=${key}, sub=${!!sub}, pages.has=${pages.has(key)}`,
+            );
+            if (sub && !pages.has(key)) {
+                // Explicitly load the subdoc to ensure server data is fetched before connecting
+                // This is critical for seeded data to be available immediately
+                try {
+                    sub.load();
+                    console.log(`[createProjectConnection] Called sub.load() for page: ${key}`);
+                } catch {}
+                console.log(`[createProjectConnection] Starting connectPageDoc for page: ${key}`);
+                const pagePromise = connectPageDoc(sub, projectId, key).then(c => {
+                    pages.set(key, c);
+                    console.log(`[createProjectConnection] Page ${key} connected and added to pages Map`);
+                });
+                initialPagePromises.push(pagePromise);
+            }
+        }
+        // Wait for all initial page connections to complete before returning
+        // This ensures seeded data is available immediately
+        if (initialPagePromises.length > 0) {
+            console.log(
+                `[createProjectConnection] Waiting for ${initialPagePromises.length} initial page connections...`,
+            );
+            await Promise.all(initialPagePromises);
+            console.log(`[createProjectConnection] All initial page connections completed, pages.size=${pages.size}`);
+        }
+
+        // Also wait for any pages that were added via observer during the initial wait
+        // This ensures all seeded pages are connected before returning
+        if (pendingPageConnections.size > 0) {
+            console.log(
+                `[createProjectConnection] Waiting for ${pendingPageConnections.size} pending page connections from observer...`,
+            );
+            await Promise.all(pendingPageConnections.values());
+            console.log(`[createProjectConnection] All pending page connections completed, pages.size=${pages.size}`);
+        }
+    } catch (e) {
+        console.error(`[createProjectConnection] Error in pagesMap setup: ${e}`);
+    }
 
     const dispose = () => {
         try {
@@ -351,24 +462,20 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         } catch { /* no-op in Node */ }
     }
     let token = "";
-    if (!(import.meta.env.MODE === "test" || process.env.NODE_ENV === "test")) {
+    const isTestEnv = import.meta.env.MODE === "test"
+        || process.env.NODE_ENV === "test"
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
+    if (!isTestEnv) {
         try {
             token = await getFreshIdToken();
         } catch {
             // Stay offline if auth is not ready; provider will attempt reconnect later.
         }
     }
-    const wsEnabled = isWsEnabled();
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: wsEnabled,
     });
-    (provider as WebsocketProvider & { __wsDisabled?: boolean; }).__wsDisabled = !wsEnabled;
-    if (!wsEnabled) {
-        try {
-            (provider as WebsocketProvider & { connect: () => void; }).connect = () => {};
-        } catch {}
-    }
     const awareness = provider.awareness;
     // Debug hook (guarded)
     attachConnDebug(room, provider, awareness, doc);
@@ -408,22 +515,13 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     } catch {
         token = "";
     }
-    const wsEnabled = isWsEnabled();
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
-        connect: wsEnabled,
     });
-    (provider as WebsocketProvider & { __wsDisabled?: boolean; }).__wsDisabled = !wsEnabled;
-    if (!wsEnabled) {
-        try {
-            (provider as WebsocketProvider & { connect: () => void; }).connect = () => {};
-        } catch {}
-    } else {
-        // 明示接続: 稀に connect: true が反映されないケースがあるため冪等に connect() を呼ぶ
-        try {
-            (provider as WebsocketProvider & { connect?: () => void; }).connect?.();
-        } catch {}
-    }
+    // 明示接続: 稀に connect: true が反映されないケースがあるため冪等に connect() を呼ぶ
+    try {
+        (provider as WebsocketProvider & { connect?: () => void; }).connect?.();
+    } catch {}
     // Debug hook (guarded)
     attachConnDebug(room, provider, provider.awareness, doc);
     const dispose = () => {

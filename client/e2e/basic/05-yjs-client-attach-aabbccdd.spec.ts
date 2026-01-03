@@ -7,7 +7,7 @@ import { TestHelpers } from "../utils/testHelpers";
 /**
  * 目的:
  * - Yjsプロジェクトが正しくアタッチされ、シードされた行がUIに反映されることを確認
- * - prepareTestEnvironmentのlines引数を使用して初期データを作成
+ * - createAndSeedProjectを使用してHTTPベースの初期データを作成
  */
 
 test.describe("Yjs client attach and DOM reflect", () => {
@@ -18,8 +18,10 @@ test.describe("Yjs client attach and DOM reflect", () => {
     ];
 
     test.beforeEach(async ({ page }, testInfo) => {
-        // linesを渡して初期データを作成
-        await TestHelpers.prepareTestEnvironment(page, testInfo, lines);
+        // Use HTTP-based seeding via SeedClient instead of legacy browser-based seeding
+        const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, lines);
+        // Navigate to the seeded page
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName, lines);
     });
 
     test("attaches Yjs project and renders seeded lines", async ({ page }) => {

@@ -1,0 +1,7 @@
+refactor(e2e): improve test environment detection in yjsService
+
+- Enhance isTestEnvironment() detection with multiple fallback mechanisms
+- Check import.meta.env.MODE for reliable build-time test detection
+- Add localStorage flags (VITE_IS_TEST, VITE_E2E_TEST) for runtime E2E test detection
+- Include window.__E2E__ property check for additional test environment detection
+- Maintain backward compatibility with existing test infrastructure

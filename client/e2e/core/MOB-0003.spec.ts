@@ -12,7 +12,7 @@ import { TreeValidator } from "../utils/treeValidation";
 test.describe("MOB-0003: Mobile action toolbar", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await page.setViewportSize({ width: 375, height: 700 });
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
 
         // Close sidebar on mobile to avoid layout issues
         const sidebarToggle = page.locator('button[aria-label*="sidebar"]').first();
@@ -22,8 +22,21 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
             await page.waitForTimeout(400); // Wait for transition
         }
 
-        const first = page.locator(".outliner-item").first();
-        await first.locator(".item-content").click({ force: true });
+        // Wait for items to be rendered
+        await TestHelpers.waitForOutlinerItems(page);
+
+        // Use the first content item (index 1), not the title (index 0)
+        const contentItem = page.locator(".outliner-item").nth(1);
+        await contentItem.waitFor({ state: "visible" });
+        // Small delay for UI stability
+        await page.waitForTimeout(500);
+
+        // Retry clicking until the textarea is focused
+        await expect.poll(async () => {
+            await contentItem.locator(".item-content").click({ force: true, position: { x: 10, y: 10 } });
+            return await page.evaluate(() => document.activeElement?.className.includes("global-textarea"));
+        }, { timeout: 15000 }).toBe(true);
+
         await page.waitForSelector("textarea.global-textarea:focus");
         await page.keyboard.type("One");
         await page.keyboard.press("Enter");
@@ -72,7 +85,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await indentButton.click();
         console.log("MOB-0003: Clicked indent button");
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         const rootItemsAfterIndentImmediate: unknown = await TreeValidator.getTreePathData(page, "items.0.items");
         console.log(
             "MOB-0003: root items immediate after indent",
@@ -106,7 +119,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(300);
 
         await toolbar.locator("button[aria-label='Outdent']").click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         await expect.poll(async () => {
             const rootItems: unknown = await TreeValidator.getTreePathData(page, "items.0.items");
@@ -167,7 +180,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(300);
 
         await toolbar.locator("button[aria-label='New Child']").click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // データ構造から子要素があることを確認
         const afterNewChildData = await TreeValidator.getTreeData(page) as {

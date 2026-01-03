@@ -6,7 +6,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * 目的:
- * - prepareTestEnvironment の lines に与えた配列が、UI に同順で描画されることを確認する
+ * - createAndSeedProject の lines に与えた配列が、UI に同順で描画されることを確認する
  * - DOM は data-item-id ベースで検証し、Page Title アイテムは除外する
  */
 
@@ -18,8 +18,10 @@ test.describe("YjsのデータがUIに反映される", () => {
     ];
 
     test.beforeEach(async ({ page }, testInfo) => {
-        // lines を渡して初期データを作成
-        await TestHelpers.prepareTestEnvironment(page, testInfo, lines);
+        // Use HTTP-based seeding via SeedClient instead of legacy browser-based seeding
+        const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, lines);
+        // Navigate to the seeded page
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName, lines);
     });
 
     test("lines が正しい順番で表示される", async ({ page }) => {
