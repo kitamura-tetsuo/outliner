@@ -16,6 +16,7 @@ test.describe("拡張フォーマット", () => {
 
     test("リンクが正しく表示される", async ({ page }) => {
         // 最初のアイテムを選択（ページタイトルではない最初のアイテム）
+        await TestHelpers.waitForOutlinerItems(page);
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
         expect(firstItemId).not.toBeNull();
 
@@ -50,6 +51,7 @@ test.describe("拡張フォーマット", () => {
 
     test("引用が正しく表示される", async ({ page }) => {
         // 最初のアイテムを選択（ページタイトルではない最初のアイテム）
+        await TestHelpers.waitForOutlinerItems(page);
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
         expect(firstItemId).not.toBeNull();
 
@@ -84,6 +86,7 @@ test.describe("拡張フォーマット", () => {
 
     test("複合フォーマットが正しく表示される", async ({ page }) => {
         // 最初のアイテムを選択（ページタイトルではない最初のアイテム）
+        await TestHelpers.waitForOutlinerItems(page);
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
         expect(firstItemId).not.toBeNull();
 

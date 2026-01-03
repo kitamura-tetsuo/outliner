@@ -63,7 +63,7 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
                 }, { timeout: 10000 }).toBe(true);
                 found = true;
                 break;
-            } catch (e) {
+            } catch {
                 console.log(`Search attempt ${i + 1} failed, retrying...`);
                 await page.waitForTimeout(1000);
             }

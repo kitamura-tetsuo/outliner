@@ -37,7 +37,10 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     };
 
     const createBlankItem = async (page: Page): Promise<string> => {
-        await ensureOutlinerReady(page);
+        // Ensure the app is fully loaded and items are partially visible before accessing the store
+        await TestHelpers.waitForOutlinerItems(page);
+
+        // Double check store availability just in case
         await page.waitForFunction(() => {
             const gs = (window as any).generalStore || (window as any).appStore;
             return !!(gs?.currentPage?.items);

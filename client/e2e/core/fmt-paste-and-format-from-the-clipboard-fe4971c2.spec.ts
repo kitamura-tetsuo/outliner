@@ -69,7 +69,9 @@ test.describe("フォーマット文字列の入力と表示", () => {
     test("複数行テキストの入力が正しく機能する", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
+        const content = item.locator(".item-content");
+        await content.waitFor({ state: "visible" });
+        await content.click();
 
         // 複数行テキストを直接入力
         // 1行目を入力
@@ -224,7 +226,9 @@ test.describe("フォーマット文字列の入力と表示", () => {
 
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
+        const content = item.locator(".item-content");
+        await content.waitFor({ state: "visible" });
+        await content.click();
         await TestHelpers.waitForCursorVisible(page);
         console.log("アイテムをクリックしました");
 

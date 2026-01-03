@@ -68,7 +68,7 @@ test.describe("SEA-0001: page title search box", () => {
                 }, { timeout: 10000 }).toBeGreaterThan(0);
                 found = true;
                 break;
-            } catch (e) {
+            } catch {
                 console.log(`Search attempt ${i + 1} failed, retrying...`);
                 await page.waitForTimeout(1000);
             }

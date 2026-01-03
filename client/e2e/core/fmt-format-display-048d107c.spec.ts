@@ -42,7 +42,9 @@ test.describe("フォーマット表示", () => {
     test("カーソルがあるアイテムではプレーンテキストの入力内容がそのまま表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
+        const content = item.locator(".item-content");
+        await content.waitFor({ state: "visible" });
+        await content.click();
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -68,7 +70,9 @@ test.describe("フォーマット表示", () => {
     test("太字フォーマット（[[text]]）が視覚的に太字で表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
+        const content = item.locator(".item-content");
+        await content.waitFor({ state: "visible" });
+        await content.click();
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -143,7 +147,9 @@ test.describe("フォーマット表示", () => {
     test("コードフォーマット（`text`）が視覚的にコードスタイルで表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
+        const content = item.locator(".item-content");
+        await content.waitFor({ state: "visible" });
+        await content.click();
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -168,7 +174,9 @@ test.describe("フォーマット表示", () => {
     test("アイテムをクリックするとプレーンテキストが表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
+        const content = item.locator(".item-content");
+        await content.waitFor({ state: "visible" });
+        await content.click();
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
