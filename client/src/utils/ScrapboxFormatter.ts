@@ -18,7 +18,7 @@ export class ScrapboxFormatter {
     /**
      * Map of characters to their HTML entity equivalents
      */
-    private static readonly ESCAPE_HTML_MAP: { [key: string]: string } = {
+    private static readonly ESCAPE_HTML_MAP: { [key: string]: string; } = {
         "&": "&amp;",
         "<": "&lt;",
         ">": "&gt;",

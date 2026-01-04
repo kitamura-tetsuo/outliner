@@ -1,28 +1,28 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ScrapboxFormatter } from "./ScrapboxFormatter";
 
 describe("ScrapboxFormatter", () => {
     // Mock window.appStore for getProjectPrefix
     beforeEach(() => {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
             (window as any).appStore = {
                 project: {
-                    title: "Untitled Project"
+                    title: "Untitled Project",
                 },
                 pages: {
-                    current: []
-                }
+                    current: [],
+                },
             };
         } else {
-             (global as any).window = {
+            (global as any).window = {
                 appStore: {
                     project: {
-                        title: "Untitled Project"
+                        title: "Untitled Project",
                     },
                     pages: {
-                        current: []
-                    }
-                }
+                        current: [],
+                    },
+                },
             };
         }
     });
