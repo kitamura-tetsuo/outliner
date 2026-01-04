@@ -3,7 +3,6 @@ import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Item, Items } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
-import type { ItemLike, PlainItemData } from "../types/yjs-types";
 
 export class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
