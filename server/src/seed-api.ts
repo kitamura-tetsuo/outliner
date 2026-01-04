@@ -124,9 +124,19 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
             // Persist the main project document
             const projectUpdate = Y.encodeStateAsUpdate(projectDoc);
             await persistence.storeUpdate(projectRoom, projectUpdate);
-            logger.info({ event: "seed_project_persisted", projectRoom, bytes: projectUpdate.byteLength });
 
-            logger.info({ event: "seed_complete", projectName });
+            // Debug: Verify the persisted state by reading it back
+            const verifyDoc = await persistence.getYDoc(projectRoom);
+            const orderedTree = verifyDoc.getMap("orderedTree");
+            logger.info({
+                event: "seed_project_persisted",
+                projectRoom,
+                bytes: projectUpdate.byteLength,
+                orderedTreeSize: orderedTree.size,
+                expectedPages: pages.length,
+            });
+
+            logger.info({ event: "seed_complete", projectName, pageCount: pages.length });
             res.json({ success: true, projectName, pageCount: pages.length });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);

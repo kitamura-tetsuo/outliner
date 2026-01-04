@@ -150,22 +150,52 @@ export default defineConfig({
             testMatch: ["**/slr*.spec.ts"],
         },
         {
-            // コアテスト5: n, o, p, s (excl slr)
+            // コアテスト5: n, o, p
             name: "core-5",
             testDir: "./e2e/core",
-            testMatch: ["**/[nops]*.spec.ts"],
-            testIgnore: ["**/slr*.spec.ts"],
+            testMatch: ["**/[nop]*.spec.ts"],
         },
         {
-            // コアテスト6: d, e, g, h, i, j, k, m, q, t, u, v, w, x, y, z, M
+            // コアテスト6: sbd, sch
             name: "core-6",
+            testDir: "./e2e/core",
+            testMatch: ["**/sbd*.spec.ts", "**/sch*.spec.ts"],
+        },
+        {
+            // コアテスト7: sea, sec, server, snapshot
+            name: "core-7",
+            testDir: "./e2e/core",
+            testMatch: ["**/sea*.spec.ts", "**/sec*.spec.ts", "**/server*.spec.ts", "**/snapshot*.spec.ts"],
+        },
+        {
+            // コアテスト8: d, e, g, h, i, j, k, m, q, t, u, v, w, x, y, z, M
+            name: "core-8",
             testDir: "./e2e/core",
             testMatch: ["**/[deghijkmtuvwxyzM]*.spec.ts"],
         },
         {
-            // 新機能テスト
-            name: "new",
+            // 新機能テスト1: a, b
+            name: "new-1",
             testDir: "./e2e/new",
+            testMatch: ["**/[ab]*.spec.ts"],
+        },
+        {
+            // 新機能テスト2: c
+            name: "new-2",
+            testDir: "./e2e/new",
+            testMatch: ["**/c*.spec.ts"],
+        },
+        {
+            // 新機能テスト3: d, e, f, g, h, i
+            name: "new-3",
+            testDir: "./e2e/new",
+            testMatch: ["**/[defghi]*.spec.ts"],
+        },
+        {
+            // 新機能テスト4: j-z
+            name: "new-4",
+            testDir: "./e2e/new",
+            testMatch: ["**/[j-z]*.spec.ts"],
         },
         {
             // 認証テスト: 本番環境でのみ実行
