@@ -204,16 +204,15 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         }
     });
 
-    // CRITICAL: Wait for pageItems to be populated after WebSocket sync
-    // This ensures server-seeded data is available before returning
-    // The data from the server is synced via WebSocket, so we must wait after sync
+    // Brief wait for pageItems to be populated after WebSocket sync
+    // This is a best-effort wait; for newly created pages, items may not be available immediately
     try {
         const pageItemsMap = doc.getMap("pageItems");
         let waitCount = 0;
-        const maxWait = 200; // Wait up to 20 seconds for items to appear (increased from 5s)
+        const maxWait = 50; // Wait up to 5 seconds (reduced from 20s for faster test execution)
         const initialSize = pageItemsMap.size;
         console.log(`[connectPageDoc] Initial pageItemsMap size: ${initialSize} for room: ${room}`);
-        while (pageItemsMap.size <= 1 && waitCount < maxWait) { // size <= 1 means only "initialized" key
+        while (pageItemsMap.size <= 1 && waitCount < maxWait) {
             await new Promise(resolve => setTimeout(resolve, 100));
             waitCount++;
         }
@@ -221,14 +220,11 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         console.log(
             `[connectPageDoc] Waited ${waitCount} iterations for pageItems after sync, initialSize=${initialSize}, finalSize=${finalSize} for room: ${room}`,
         );
-        // If still only has "initialized" key (size <= 1), log warning but continue
+        // Log warning if items not populated, but continue anyway
         if (finalSize <= 1) {
             console.warn(
                 `[connectPageDoc] WARNING: pageItems not fully populated for room: ${room}, size=${finalSize}`,
             );
-            // Log the actual keys for debugging
-            const keys = Array.from(pageItemsMap.keys());
-            console.warn(`[connectPageDoc] pageItems keys: ${JSON.stringify(keys)}`);
         }
     } catch (e) {
         console.log(`[connectPageDoc] Error waiting for pageItems after sync for room: ${room}, continuing anyway`, e);
@@ -330,9 +326,59 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
     const pages = new Map<string, PageConnection>();
 
+    // Track page connections being processed to avoid duplicates between subdocs and pagesMap observers
+    // Uses Map with promise values for atomic check-and-set pattern
+    const trackedConnections = new Map<string, Promise<void>>();
+    // Store resolvers for promises so they can be resolved when connection completes
+    const connectionResolvers = new Map<string, () => void>();
+
+    // Helper to get or create a connection promise atomically
+    // Returns true if we should proceed with connection, false if already being connected
+    const getOrCreateConnectionPromise = (key: string): { promise: Promise<void>; isNew: boolean; } => {
+        const existing = trackedConnections.get(key);
+        if (existing) {
+            return { promise: existing, isNew: false };
+        }
+        // Create a promise that can be resolved later
+        // Use a simple object to store the resolver, avoiding TypeScript's unassigned variable error
+        const resolverHolder: { resolve?: () => void; } = {};
+        const promise = new Promise<void>(r => {
+            resolverHolder.resolve = r;
+        });
+        trackedConnections.set(key, promise);
+        connectionResolvers.set(key, () => resolverHolder.resolve?.());
+        return { promise, isNew: true };
+    };
+
+    // Helper to resolve the connection promise when done
+    const resolveConnectionPromise = (key: string, connection: PageConnection) => {
+        pages.set(key, connection);
+        console.log(`[createProjectConnection] Page ${key} connected and added to pages Map`);
+        const resolver = connectionResolvers.get(key);
+        if (resolver) {
+            resolver();
+            trackedConnections.delete(key);
+            connectionResolvers.delete(key);
+        }
+    };
+
     doc.on("subdocs", (evt: { added: Set<Y.Doc>; removed: Set<Y.Doc>; }) => {
         evt.added.forEach((s: Y.Doc) => {
-            void connectPageDoc(s, projectId, s.guid).then(c => pages.set(s.guid, c));
+            // Skip if already being connected (avoid duplicate with pagesMap observer)
+            const pageId = s.guid;
+            if (trackedConnections.has(pageId)) {
+                console.log(
+                    `[createProjectConnection] subdocs handler: page ${pageId} already being connected, skipping`,
+                );
+                return;
+            }
+            void connectPageDoc(s, projectId, pageId).then(c => {
+                // Only set if not already set by pagesMap observer
+                if (!pages.has(pageId)) {
+                    resolveConnectionPromise(pageId, c);
+                    console.log(`[createProjectConnection] subdocs handler: page ${pageId} connected`);
+                }
+            });
         });
         evt.removed.forEach((s: Y.Doc) => {
             const c = pages.get(s.guid);
@@ -344,9 +390,6 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Fallback: also observe direct changes to the pages map (helps in test env)
     try {
         const pagesMap = doc.getMap<Y.Doc>("pages");
-        // Track pending page connections for proper awaiting
-        // This is declared here so it can be accessed after the observer loop
-        const pendingPageConnections = new Map<string, Promise<void>>();
         pagesMap.observe(async (e: Y.YMapEvent<Y.Doc>) => {
             const keysChanged = e.changes.keys;
             for (const key of keysChanged.keys()) {
@@ -357,6 +400,15 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                     }`,
                 );
                 if (sub && !pages.has(key)) {
+                    // Use atomic check-and-set to prevent race conditions
+                    const { promise, isNew } = getOrCreateConnectionPromise(key);
+                    if (!isNew) {
+                        console.log(
+                            `[createProjectConnection] Page ${key} already being connected, waiting for existing connection`,
+                        );
+                        await promise;
+                        continue;
+                    }
                     // Explicitly load the subdoc to ensure server data is fetched before connecting
                     // This is critical for seeded data to be available immediately
                     try {
@@ -364,13 +416,8 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                         console.log(`[createProjectConnection] Called sub.load() for page: ${key}`);
                     } catch {}
                     console.log(`[createProjectConnection] Connecting page via observer: ${key}`);
-                    // Store the promise so we can track completion
-                    const pagePromise = connectPageDoc(sub, projectId, key).then(c => {
-                        pages.set(key, c);
-                        console.log(`[createProjectConnection] Page ${key} connected and added to pages Map`);
-                        pendingPageConnections.delete(key);
-                    });
-                    pendingPageConnections.set(key, pagePromise);
+                    const connection = await connectPageDoc(sub, projectId, key);
+                    resolveConnectionPromise(key, connection);
                 }
                 if (!sub && pages.has(key)) {
                     const c = pages.get(key);
@@ -389,6 +436,13 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                 `[createProjectConnection] Initial page: key=${key}, sub=${!!sub}, pages.has=${pages.has(key)}`,
             );
             if (sub && !pages.has(key)) {
+                // Use atomic check-and-set to prevent race conditions with observer
+                const { promise, isNew } = getOrCreateConnectionPromise(key);
+                if (!isNew) {
+                    console.log(`[createProjectConnection] Page ${key} already being connected by observer, waiting`);
+                    initialPagePromises.push(promise);
+                    continue;
+                }
                 // Explicitly load the subdoc to ensure server data is fetched before connecting
                 // This is critical for seeded data to be available immediately
                 try {
@@ -396,11 +450,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                     console.log(`[createProjectConnection] Called sub.load() for page: ${key}`);
                 } catch {}
                 console.log(`[createProjectConnection] Starting connectPageDoc for page: ${key}`);
-                const pagePromise = connectPageDoc(sub, projectId, key).then(c => {
-                    pages.set(key, c);
-                    console.log(`[createProjectConnection] Page ${key} connected and added to pages Map`);
-                });
-                initialPagePromises.push(pagePromise);
+                const connection = await connectPageDoc(sub, projectId, key);
+                resolveConnectionPromise(key, connection);
+                initialPagePromises.push(promise);
             }
         }
         // Wait for all initial page connections to complete before returning
@@ -415,11 +467,11 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
         // Also wait for any pages that were added via observer during the initial wait
         // This ensures all seeded pages are connected before returning
-        if (pendingPageConnections.size > 0) {
+        if (trackedConnections.size > 0) {
             console.log(
-                `[createProjectConnection] Waiting for ${pendingPageConnections.size} pending page connections from observer...`,
+                `[createProjectConnection] Waiting for ${trackedConnections.size} pending page connections from observer...`,
             );
-            await Promise.all(pendingPageConnections.values());
+            await Promise.all(trackedConnections.values());
             console.log(`[createProjectConnection] All pending page connections completed, pages.size=${pages.size}`);
         }
     } catch (e) {
