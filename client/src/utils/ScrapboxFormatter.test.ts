@@ -1,7 +1,36 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { ScrapboxFormatter } from "./ScrapboxFormatter";
 
 describe("ScrapboxFormatter", () => {
+    // Mock window.appStore for getProjectPrefix
+    beforeEach(() => {
+        if (typeof window !== 'undefined') {
+            (window as any).appStore = {
+                project: {
+                    title: "Untitled Project"
+                },
+                pages: {
+                    current: []
+                }
+            };
+        } else {
+             (global as any).window = {
+                appStore: {
+                    project: {
+                        title: "Untitled Project"
+                    },
+                    pages: {
+                        current: []
+                    }
+                }
+            };
+        }
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     describe("bold", () => {
         it("should format text as bold", () => {
             expect(ScrapboxFormatter.bold("text")).toBe("[[text]]");
