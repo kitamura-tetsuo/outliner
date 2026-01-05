@@ -832,20 +832,16 @@ export class ScrapboxFormatter {
     // 5. Quote: > text
     private static readonly HAS_FORMATTING_PATTERN = new RegExp(
         // Basic formats (bold, italic, strikethrough, code, underline)
-        '\\[\\[(.*?)\\]\\]|\\[\\/(.*?)\\]|\\[-(.*?)\\]|`(.*?)`|<u>(.*?)<\\/u>|'
-            +
+        "\\[\\[(.*?)\\]\\]|\\[\\/(.*?)\\]|\\[-(.*?)\\]|`(.*?)`|<u>(.*?)<\\/u>|"
             // Link
-            '\\[(https?:\\/\\/[^\\s\\]]+)(?:\\s+[^\\]]+)?\\]|'
-            +
+            + "\\[(https?:\\/\\/[^\\s\\]]+)(?:\\s+[^\\]]+)?\\]|"
             // Project Link (specific pattern first)
-            '\\[\\/([\\w\\-\\/]+)\\]|'
-            +
+            + "\\[\\/([\\w\\-\\/]+)\\]|"
             // Internal Link (excluding / at start to separate from project link)
-            '\\[([^\\[\\]\\/][^\\[\\]]*?)\\]|'
-            +
+            + "\\[([^\\[\\]\\/][^\\[\\]]*?)\\]|"
             // Quote
-            '^>\\s(.*?)$',
-        'm',
+            + "^>\\s(.*?)$",
+        "m",
     );
 
     /**
