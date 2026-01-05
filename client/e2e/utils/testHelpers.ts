@@ -1201,10 +1201,15 @@ export class TestHelpers {
             let ensured = false;
 
             // Ensure Yjs is connected before counting items
-            const yjsConnected = await page.evaluate(() => {
-                const y = (window as any).__YJS_STORE__;
-                return !!(y && y.isConnected);
-            });
+            let yjsConnected = false;
+            try {
+                yjsConnected = await page.evaluate(() => {
+                    const y = (window as any).__YJS_STORE__;
+                    return !!(y && y.isConnected);
+                });
+            } catch {
+                // Ignore errors (navigation, page closed) and retry
+            }
             if (!yjsConnected) {
                 TestHelpers.slog("waitForOutlinerItems: Warning - Yjs not connected yet");
             }

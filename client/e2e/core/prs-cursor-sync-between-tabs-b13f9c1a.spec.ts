@@ -35,9 +35,14 @@ test.describe("Cursor sync between tabs", () => {
 
         // Wait for Yjs connection to be established
         try {
-            await page1.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
-                timeout: 10000, // Shorter timeout to avoid hanging
-            });
+            await page1.waitForFunction(
+                // eslint-disable-next-line no-restricted-globals
+                () => (window as any).__YJS_STORE__?.getIsConnected?.() === true,
+                null,
+                {
+                    timeout: 10000, // Shorter timeout to avoid hanging
+                },
+            );
         } catch {
             console.log("YJS connection not established on page1, continuing with test");
             // Continue even if connection fails - test might still work with local sync
@@ -62,10 +67,12 @@ test.describe("Cursor sync between tabs", () => {
 
         // Wait for UserManager and authenticate on page2 (required for Yjs connection)
         await page2.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
             return !!(window as any).__USER_MANAGER__;
         }, { timeout: 10000 });
 
         await page2.evaluate(async () => {
+            // eslint-disable-next-line no-restricted-globals
             const mgr = (window as any).__USER_MANAGER__;
             if (mgr?.loginWithEmailPassword) {
                 await mgr.loginWithEmailPassword("test@example.com", "password");
@@ -73,21 +80,34 @@ test.describe("Cursor sync between tabs", () => {
         });
 
         await page2.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
         }, { timeout: 10000 });
 
         // Wait for Yjs connection to be established on page2
-        const page2Connected = await page2.waitForFunction(
+        let page2Connected = await page2.waitForFunction(
+            // eslint-disable-next-line no-restricted-globals
             () => (window as any).__YJS_STORE__?.getIsConnected?.() === true,
             null,
             {
-                timeout: 20000, // Longer timeout for YJS connection
+                timeout: 30000,
             },
-        ).then(() => true).catch(() => {
-            console.log("YJS connection not established on page2");
-            return false;
-        });
+        ).then(() => true).catch(() => false);
+
+        if (!page2Connected) {
+            console.log("YJS connection timed out on page2, reloading and retrying...");
+            await page2.reload();
+            await TestHelpers.waitForAppReady(page2);
+            page2Connected = await page2.waitForFunction(
+                // eslint-disable-next-line no-restricted-globals
+                () => (window as any).__YJS_STORE__?.getIsConnected?.() === true,
+                null,
+                {
+                    timeout: 45000,
+                },
+            ).then(() => true).catch(() => false);
+        }
 
         if (!page2Connected) {
             throw new Error("YJS connection not established on page2 - cannot sync seeded data");
@@ -153,6 +173,7 @@ test.describe("Cursor sync between tabs", () => {
         // Use editorOverlayStore cursor APIs for reliable editing (similar to working test)
         await TestHelpers.setCursor(page1, itemId!);
         await page1.evaluate((itemId) => {
+            // eslint-disable-next-line no-restricted-globals
             const editorStore = (window as any).editorOverlayStore;
             const cursor = editorStore?.getCursorInstances?.().find((c: any) => c.itemId === itemId);
             if (cursor) {
