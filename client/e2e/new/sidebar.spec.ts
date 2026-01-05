@@ -266,6 +266,11 @@ test.describe("Sidebar Navigation", () => {
         await TestHelpers.waitForPagesList(page, 30000);
 
         // Explicitly wait for the DOM to render the list items
+        // First check that we actually have any page items to wait for
+        await expect.poll(async () => {
+            return await page.locator(".page-item").count();
+        }, { timeout: 20000 }).toBeGreaterThan(0);
+
         await expect(page.locator(".page-item").first()).toBeVisible({ timeout: 20000 });
 
         const pageItem = page.locator(".page-item").first();

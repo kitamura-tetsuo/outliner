@@ -27,23 +27,22 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         // Add timeout for the whole test
         test.setTimeout(30000);
 
-        await TestHelpers.waitForOutlinerItems(page, 10000);
-        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
-        const secondId = await TestHelpers.getItemIdByIndex(page, 1);
+        // Explicitly wait for the 1st and 2nd items to be rendered and have IDs
+        // This is more robust than just waiting for "any" items
+        await expect.poll(async () => {
+            const count = await page.locator(".outliner-item").count();
+            if (count < 2) return false;
+            const id1 = await page.locator(".outliner-item").nth(0).getAttribute("data-item-id");
+            const id2 = await page.locator(".outliner-item").nth(1).getAttribute("data-item-id");
+            return !!id1 && !!id2;
+        }, { timeout: 20000 }).toBe(true);
 
-        if (!firstId || !secondId) {
-            console.log("Retrying getItemIdByIndex due to sync delay");
-            if (!page.isClosed()) {
-                await page.waitForTimeout(2000);
-            }
-        }
-
-        const firstIdFinal = firstId || await TestHelpers.getItemIdByIndex(page, 0);
-        const secondIdFinal = secondId || await TestHelpers.getItemIdByIndex(page, 1);
+        const firstIdFinal = await page.locator(".outliner-item").nth(0).getAttribute("data-item-id");
+        const secondIdFinal = await page.locator(".outliner-item").nth(1).getAttribute("data-item-id");
 
         if (!firstIdFinal || !secondIdFinal) throw new Error("item ids not found after retry");
 
-        await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
+        await page.click(`.outliner-item[data-item-id="${firstIdFinal}"] .item-content`, { force: true });
         await TestHelpers.waitForUIStable(page);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;

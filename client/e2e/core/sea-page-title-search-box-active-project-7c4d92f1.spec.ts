@@ -54,6 +54,8 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
             // Trigger events ensuring reactivity
             await searchInput.press("Space");
             await searchInput.press("Backspace");
+            // Dispatch explicit input event
+            await searchInput.evaluate(el => el.dispatchEvent(new Event("input", { bubbles: true })));
             await page.waitForTimeout(1000); // Allow Svelte reactivity
 
             try {
@@ -66,7 +68,10 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
                 break;
             } catch {
                 console.log(`Search attempt ${i + 1} failed, retrying...`);
-                await page.waitForTimeout(1000);
+                // Force a blur/focus cycle
+                await searchInput.blur();
+                await page.waitForTimeout(500);
+                await searchInput.focus();
             }
         }
         expect(found).toBe(true); // Fail if still not found after retries

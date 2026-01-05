@@ -60,6 +60,8 @@ test.describe("SEA-0001: page title search box", () => {
             // Trigger events ensuring reactivity
             await inputAfterNav.press("Space");
             await inputAfterNav.press("Backspace");
+            // Dispatch explicit input event
+            await inputAfterNav.evaluate(el => el.dispatchEvent(new Event("input", { bubbles: true })));
             await page.waitForTimeout(1000); // Allow Svelte reactivity
 
             try {
@@ -71,7 +73,10 @@ test.describe("SEA-0001: page title search box", () => {
                 break;
             } catch {
                 console.log(`Search attempt ${i + 1} failed, retrying...`);
-                await page.waitForTimeout(1000);
+                // Force a blur/focus cycle
+                await inputAfterNav.blur();
+                await page.waitForTimeout(500);
+                await inputAfterNav.focus();
             }
         }
         expect(found).toBe(true);

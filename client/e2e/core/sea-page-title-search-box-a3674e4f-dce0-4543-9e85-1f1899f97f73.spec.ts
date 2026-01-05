@@ -89,18 +89,27 @@ test.describe("SEA-0001: page title search box", () => {
             await searchInput.press("Space");
             await searchInput.press("Backspace");
 
+            // Dispatch explicit input event to ensure Svelte store updates
+            await searchInput.evaluate(el => el.dispatchEvent(new Event("input", { bubbles: true })));
+
             try {
                 // Robustly wait for the result
                 await expect.poll(async () => {
                     const count = await page.locator(".page-search-box li").count();
+                    // Just check for count > 0 first to ensure list is populated
                     if (count === 0) return false;
+                    // Then check if the specific item is visible
                     return await firstResult.isVisible();
                 }, { timeout: 10000 }).toBe(true);
                 found = true;
                 break;
             } catch {
                 console.log(`Search attempt ${i + 1} failed, retrying...`);
-                await page.waitForTimeout(1000);
+                // Force a blur/focus cycle to re-trigger potential state updates
+                await searchInput.blur();
+                await page.waitForTimeout(500);
+                await searchInput.focus();
+                await page.waitForTimeout(500);
             }
         }
         expect(found).toBe(true);
