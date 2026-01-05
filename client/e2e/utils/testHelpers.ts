@@ -164,19 +164,13 @@ export class TestHelpers {
             // Skip the full waitForAppReady for E2E tests to avoid timeout issues
             // The page initialization happens asynchronously
             if (!options?.skipAppReady) {
-                try {
-                    // Wait for outliner base to be visible
-                    await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
-                    // Wait for items to be rendered (with seeded data)
-                    const expectedCount = (lines?.length ?? 0) + 1;
-                    await TestHelpers.waitForOutlinerItems(page, expectedCount, 60000);
-                    // Give extra time for store to be fully populated
-                    await page.waitForTimeout(1000);
-                } catch (e) {
-                    TestHelpers.slog("Warning: Page initialization not complete within timeout, continuing anyway", {
-                        error: e?.message,
-                    });
-                }
+                // Wait for outliner base to be visible
+                await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
+                // Wait for items to be rendered (with seeded data)
+                const expectedCount = (lines?.length ?? 0) + 1;
+                await TestHelpers.waitForOutlinerItems(page, expectedCount, 60000);
+                // Give extra time for store to be fully populated
+                await page.waitForTimeout(1000);
             }
         }
 
@@ -1252,21 +1246,20 @@ export class TestHelpers {
             }
 
             if (!ensured) {
-                // Log warning and continue - Yjs sync timing may vary in test environments
-                TestHelpers.slog("waitForOutlinerItems: Warning: Items not found within timeout, continuing anyway", {
-                    minRequiredItems,
-                });
-                // Don't throw - items may appear later or test can proceed with available items
+                throw new Error(
+                    `waitForOutlinerItems: Timeout waiting for ${minRequiredItems} items (found ${await page.locator(
+                        ".outliner-item[data-item-id]",
+                    ).count()})`,
+                );
             }
 
             const itemCount = await page.locator(".outliner-item[data-item-id]").count();
             console.log(`Found ${itemCount} outliner items with data-item-id`);
             TestHelpers.slog("waitForOutlinerItems: success", { itemCount, minRequiredItems });
         } catch (e) {
-            // Log warning and continue - Yjs sync timing may vary
-            console.warn("waitForOutlinerItems: Warning: Error waiting for items, continuing anyway", {
-                error: e instanceof Error ? e.message : String(e),
-            });
+            // Rethrow explicit errors (like timeout)
+            console.error("waitForOutlinerItems: Error waiting for items", e);
+            throw e;
         }
 
         // 少し待機して安定させる (ページが閉じている場合はスキップ)
