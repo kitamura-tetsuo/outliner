@@ -2172,6 +2172,15 @@ export class TestHelpers {
         const data: any = await response.json();
         return data.idToken;
     }
+
+    /**
+     * Waits for the search service to be initialized.
+     */
+    public static async waitForSearchService(page: Page, timeout = 30000): Promise<void> {
+        await page.waitForFunction(() => {
+            return typeof (window as any).__SEARCH_SERVICE__ !== "undefined";
+        }, { timeout }).catch(() => console.log("Warning: Search service not initialized within timeout"));
+    }
 }
 
 /**

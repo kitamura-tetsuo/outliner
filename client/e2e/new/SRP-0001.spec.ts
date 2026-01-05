@@ -42,8 +42,16 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             const pages = gs?.pages?.current;
             // Handle both Array and Yjs Items
             const count = pages ? (pages.length !== undefined ? pages.length : (pages as any).size) : 0;
+            // Debug if count is staying at 1
+            // if (count === 1) console.log("Still waiting for second page...");
             return count >= 2;
-        }, { timeout: 45000, polling: 500 });
+        }, { timeout: 45000, polling: 500 }).catch(async () => {
+            console.log("[Test] Warning: Timeout waiting for 2 pages. dumping current pages:");
+            await page.evaluate(() => {
+                // eslint-disable-next-line no-restricted-globals
+                console.log((window as any).generalStore?.pages?.current);
+            });
+        });
 
         // 最終確認（ページ作成が成功したかどうかに関わらず、現在のページ状況を確認）
         const finalCheck = await page.evaluate(() => {

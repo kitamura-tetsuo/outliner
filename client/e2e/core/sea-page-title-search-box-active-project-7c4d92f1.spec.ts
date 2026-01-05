@@ -30,20 +30,21 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         const searchInput = page.getByTestId("main-toolbar").getByRole("textbox", { name: "Search pages" });
         await searchInput.waitFor();
 
-        // Ensure the project items are loaded (at least 2 items: current page + search target)
+        // Explicitly wait for project items to be loaded from Yjs BEFORE typing
+        // This ensures the SearchBox has data to search against
+        await TestHelpers.waitForSearchService(page);
+
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
             const gs = (window as any).generalStore || (window as any).appStore;
             const items = gs?.project?.items;
-            if (!items) return false;
-            const arr = Array.from(items as any);
-            return arr.some((item: any) => {
-                const text = item?.text?.toString?.() || String(item?.text ?? "");
-                return text.toLowerCase().includes("second");
-            });
-        }, { timeout: 30000 }).catch(() => console.log("[Test] Warning: second page not found in project items store"));
+            return items && items.length >= 2; // Should have at least current page + second page
+        }, { timeout: 30000 }).catch(() =>
+            console.log("[Test] Warning: Timeout waiting for project items to populate")
+        );
 
-        await page.waitForTimeout(2000);
+        // Type the search query
+        await page.waitForTimeout(500);
 
         // Retry mechanism: Type and check for results, retry if not found (handling slow indexing)
         let found = false;

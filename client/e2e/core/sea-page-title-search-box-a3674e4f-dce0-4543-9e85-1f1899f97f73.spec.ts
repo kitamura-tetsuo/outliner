@@ -41,6 +41,8 @@ test.describe("SEA-0001: page title search box", () => {
 
         // Explicitly wait for project items to be loaded from Yjs BEFORE typing
         // This ensures the SearchBox has data to search against
+        await TestHelpers.waitForSearchService(page);
+
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
             const gs = (window as any).generalStore || (window as any).appStore;
@@ -52,7 +54,7 @@ test.describe("SEA-0001: page title search box", () => {
 
         // Type the search query
         // Ensure the project items are loaded (at least 2 items: current page + search target)
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(500);
 
         // Type the search query
         // Ensure the project items are loaded (at least 2 items: current page + search target)
@@ -65,13 +67,23 @@ test.describe("SEA-0001: page title search box", () => {
 
                 // Robust array conversion for Y.Array or regular array
                 const arr = Array.from(items as any);
+                // Debug log if needed
+                // console.log("Items available for search:", arr.length);
                 return arr.some((item: any) => {
                     const text = item?.text?.toString?.() || String(item?.text ?? "");
                     return text.toLowerCase().includes("second");
                 });
             },
             { timeout: 30000 },
-        ).catch(() => console.log("[Test] Warning: second page not found in project items store"));
+        ).catch(async () => {
+            console.log("[Test] Warning: second page not found in project items store");
+            // Dump state for debugging
+            await page.evaluate(() => {
+                // eslint-disable-next-line no-restricted-globals
+                const gs = (window as any).generalStore;
+                console.log("Current Project Items:", gs?.project?.items);
+            });
+        });
 
         await page.waitForTimeout(2000); // Give explicit time for indexing if any
 

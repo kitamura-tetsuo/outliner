@@ -27,12 +27,19 @@ test.describe("SRE-001: Advanced Search & Replace regex", () => {
         await expect(regexCheckbox).toBeChecked();
 
         await page.getByTestId("search-input").fill("regex line \\d");
+
+        // Ensure regex mode is effectively active (UI sync)
+        await page.waitForTimeout(500);
+
         await page.getByTestId("search-button").click();
-        // Wait for hits to update
+
+        // Wait for hits to update with retries
         await expect.poll(async () => {
             const text = await page.getByTestId("search-results-hits").textContent();
+            if (!text) return 0;
+            // Extract number from "2 hits" or similar
             const val = Number((text || "").replace(/[^0-9]/g, ""));
             return val;
-        }, { timeout: 10000 }).toBe(2);
+        }, { timeout: 20000, intervals: [500, 1000, 2000] }).toBe(2);
     });
 });

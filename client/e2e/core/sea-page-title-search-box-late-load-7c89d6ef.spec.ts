@@ -33,23 +33,21 @@ test.describe("SEA-0001: page title search box", () => {
         await inputAfterNav.waitFor();
         await inputAfterNav.focus();
 
-        // Ensure the project items are loaded (at least 2 items: current page + search target)
-        await page.waitForFunction(
-            () => {
-                // eslint-disable-next-line no-restricted-globals
-                const gs = (window as any).generalStore || (window as any).appStore;
-                const items = gs?.project?.items;
-                if (!items) return false;
-                const arr = Array.from(items as any);
-                return arr.some((item: any) => {
-                    const text = item?.text?.toString?.() || String(item?.text ?? "");
-                    return text.toLowerCase().includes("second");
-                });
-            },
-            { timeout: 30000 },
-        ).catch(() => console.log("[Test] Warning: second page not found in project items store"));
+        // Explicitly wait for project items to be loaded from Yjs BEFORE typing
+        // This ensures the SearchBox has data to search against
+        await TestHelpers.waitForSearchService(page);
 
-        await page.waitForTimeout(2000); // Give explicit time for indexing if any
+        await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const gs = (window as any).generalStore || (window as any).appStore;
+            const items = gs?.project?.items;
+            return items && items.length >= 2; // Should have at least current page + second page
+        }, { timeout: 30000 }).catch(() =>
+            console.log("[Test] Warning: Timeout waiting for project items to populate")
+        );
+
+        // Type the search query
+        await page.waitForTimeout(500);
 
         // Retry mechanism
         let found = false;

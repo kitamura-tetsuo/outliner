@@ -263,6 +263,14 @@ test.describe("Sidebar Navigation", () => {
         // Wait for pages to be loaded
         // Ensure app is fully hydrated before checking specific store state
         await page.waitForLoadState("networkidle").catch(() => {});
+
+        // Wait for the store to actually have pages populated
+        await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const gs = (window as any).generalStore || (window as any).appStore;
+            return gs?.pages?.current?.length > 0;
+        }, { timeout: 30000 });
+
         await TestHelpers.waitForPagesList(page, 30000);
 
         // Explicitly wait for the DOM to render the list items
