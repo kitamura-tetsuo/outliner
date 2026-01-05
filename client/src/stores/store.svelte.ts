@@ -4,6 +4,18 @@ import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Item, Items } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
 
+function createPagesObject(store: GeneralStore, project: Project): { readonly current: Items | undefined } {
+    return {
+        get current() {
+            // Register dependency on the signal to ensure reactivity
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+            store.pagesVersion;
+            // Return items (Sidebar should track pagesVersion)
+            return project.items;
+        },
+    };
+}
+
 export class GeneralStore {
     // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
     pages: { current: Items | undefined; } = { current: undefined };
@@ -171,16 +183,7 @@ export class GeneralStore {
             // Ignore errors during observation setup
         }
 
-        const self = this;
-        this.pages = {
-            get current() {
-                // Register dependency on the signal
-                // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                self.pagesVersion;
-                // Return items (Sidebar should track pagesVersion)
-                return project.items;
-            },
-        };
+        this.pages = createPagesObject(this, project);
     }
 }
 
@@ -191,10 +194,13 @@ if (typeof window !== "undefined") {
     (window as unknown as { appStore: GeneralStore; }).appStore = store;
     (window as unknown as { generalStore: GeneralStore; }).generalStore = store; // TestHelpersとの互換性のため
 
+    // E2Eテスト中はサーバーサイドのシーディングを信頼し、クライアントサイドでの仮プロジェクト生成を抑制
+    const isE2ETest = window.localStorage?.getItem("VITE_E2E_TEST") === "true";
+
     // 起動直後に仮プロジェクトを用意（本接続が来れば yjsStore が置換）
     // This ensures tests and direct navigation work even before Yjs connection is established
     try {
-        if (!store.project) {
+        if (!isE2ETest && !store.project) {
             const parts = window.location.pathname.split("/").filter(Boolean);
             const title = decodeURIComponent(parts[0] || "Untitled Project");
             (store as { project: Project; }).project = Project.createInstance(title);

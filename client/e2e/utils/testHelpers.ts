@@ -137,29 +137,27 @@ export class TestHelpers {
 
             // Wait for Yjs to connect before checking for items
             TestHelpers.slog("Waiting for __YJS_STORE__ to be connected...");
-            try {
-                await page.waitForFunction(
-                    () => {
-                        const y = (window as any).__YJS_STORE__;
-                        return y && y.isConnected;
-                    },
-                    { timeout: 30000 },
-                );
-                TestHelpers.slog("__YJS_STORE__ connected");
-            } catch (e) {
+            await page.waitForFunction(
+                () => {
+                    const y = (window as any).__YJS_STORE__;
+                    return y && y.isConnected;
+                },
+                { timeout: 30000 },
+            ).catch((e) => {
                 TestHelpers.slog("Warning: __YJS_STORE__ not connected within timeout", { error: e?.message });
-            }
+            });
+            TestHelpers.slog("__YJS_STORE__ connected");
 
-            // Wait for store initialization
-            try {
-                await page.waitForFunction(
-                    () => !!(window as any).generalStore?.project,
-                    { timeout: 30000 },
-                );
-                TestHelpers.slog("generalStore initialized");
-            } catch (e) {
-                TestHelpers.slog("Warning: generalStore not initialized within timeout", { error: e?.message });
-            }
+            // Wait for store initialization with retries
+            TestHelpers.slog("Waiting for generalStore to be initialized...");
+            await page.waitForFunction(
+                () => !!(window as any).generalStore?.project,
+                { timeout: 60000 },
+            ).catch((e) => {
+                TestHelpers.slog("CRITICAL: generalStore not initialized within timeout", { error: e?.message });
+                throw e; // Fail fast
+            });
+            TestHelpers.slog("generalStore initialized");
 
             // Skip the full waitForAppReady for E2E tests to avoid timeout issues
             // The page initialization happens asynchronously
@@ -374,29 +372,29 @@ export class TestHelpers {
         // This bypasses the retry logic in +page.svelte and provides a more direct wait
         TestHelpers.slog("Waiting for store.currentPage to be set...");
         const targetPageName = pageName; // Capture for closure
-        await page.waitForFunction(
-            (targetName) => {
-                const gs = (window as any).generalStore;
-                if (!gs?.project) {
-                    console.log(`[TestHelpers] Waiting for project... gs=${!!gs}`);
+        try {
+            await page.waitForFunction(
+                (targetName) => {
+                    const gs = (window as any).generalStore;
+                    if (!gs?.project) {
+                        console.log(`[TestHelpers] Waiting for project... gs=${!!gs}`);
+                        return false;
+                    }
+                    const cp = gs.currentPage;
+                    const cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
+                    if (cpText.toLowerCase() === targetName.toLowerCase()) {
+                        return true;
+                    }
+                    console.log(
+                        `[TestHelpers] Waiting for currentPage match... expected="${targetName}", actual="${cpText}", hasCp=${!!cp}`,
+                    );
                     return false;
-                }
-                const cp = gs.currentPage;
-                const cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
-                if (cpText.toLowerCase() === targetName.toLowerCase()) {
-                    return true;
-                }
-                console.log(
-                    `[TestHelpers] Waiting for currentPage match... expected="${targetName}", actual="${cpText}", hasCp=${!!cp}`,
-                );
-                return false;
-            },
-            targetPageName,
-            { timeout: 60000 },
-        ).catch(async (e) => {
-            // Fallback: log warning and continue - the +page.svelte retry logic will handle it
-            TestHelpers.slog("Warning: currentPage not set or mismatch within timeout", { error: e?.message });
-
+                },
+                targetPageName,
+                { timeout: 60000 },
+            );
+        } catch (e) {
+            TestHelpers.slog("CRITICAL: currentPage not set or mismatch within timeout", { error: e.message });
             // Extensive Debugging info
             try {
                 const debugState = await page.evaluate(() => {
@@ -413,7 +411,9 @@ export class TestHelpers {
             } catch (err) {
                 TestHelpers.slog("Failed to get debug state:", err);
             }
-        });
+            // Re-throw the error to fail the test immediately
+            throw e;
+        }
 
         await TestHelpers.waitForAppReady(page);
 
@@ -1235,8 +1235,6 @@ export class TestHelpers {
                         ensured = true;
                         break;
                     }
-
-                    // Items should be present due to seeding, not generated by this function.
                 } catch (innerErr: any) {
                     const msg = String(innerErr?.message ?? innerErr);
                     if (
