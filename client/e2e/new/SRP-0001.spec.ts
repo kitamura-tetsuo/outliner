@@ -49,11 +49,15 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             // Debug if count is staying at 1
             // if (count === 1) console.log("Still waiting for second page...");
             return count >= 2;
-        }, { timeout: 60000, polling: 500 }).catch(async () => {
-            console.log("[Test] Warning: Timeout waiting for 2 pages. dumping current pages:");
+        }, { timeout: 60000, polling: 1000 }).catch(async (e) => {
+            console.log("[Test] Warning: Timeout waiting for 2 pages. dumping current pages:", e);
             await page.evaluate(() => {
                 // eslint-disable-next-line no-restricted-globals
-                console.log((window as any).generalStore?.pages?.current);
+                const gs = (window as any).generalStore || (window as any).appStore;
+                console.log("Current pages in store:", gs?.pages?.current);
+                console.log("Pages length:", gs?.pages?.current?.length);
+                // eslint-disable-next-line no-restricted-globals
+                console.log("Is connected:", (window as any).__YJS_STORE__?.isConnected);
             });
         });
 

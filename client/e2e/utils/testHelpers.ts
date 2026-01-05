@@ -346,12 +346,20 @@ export class TestHelpers {
         pageName: string,
         seedLines: string[] | null = null, // Allow null to signal "use default", empty array for "expect nothing"
     ): Promise<void> {
+        console.log(`[DEBUG] navigateToProjectPage: Start navigating to ${projectName} / ${pageName}`);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
         const url = `/${encodedProject}/${encodedPage}?isTest=true`;
 
-        TestHelpers.slog("Navigating to project page", { url });
-        await page.goto(url, { timeout: 60000 });
+        this.slog(`navigateToProjectPage: Navigating to ${url}`);
+
+        try {
+            await page.goto(url, { timeout: 30000, waitUntil: "commit" });
+        } catch (e) {
+            console.error(`[TestHelpers] page.goto failed for ${url}`, e);
+            throw e;
+        }
+
         TestHelpers.slog("Navigation completed", { url });
 
         // Allow time for WebSocket connection and initial sync before checking app state
@@ -997,10 +1005,30 @@ export class TestHelpers {
         // Wait for project and page to be loaded in the store
         try {
             await page.waitForFunction(() => {
-                // eslint-disable-next-line no-restricted-globals
                 const gs = (window as any).generalStore;
-                return gs?.project && gs?.pages?.current?.length > 0 && gs?.currentPage;
-            }, { timeout: 30000 });
+                if (!gs) return false;
+                const hasProject = !!gs.project;
+                const hasPages = gs.pages?.current?.length > 0;
+                const hasCurrentPage = !!gs.currentPage;
+                // Debug log only occasionally to avoid spam (using timestamp check or similar if needed,
+                // but for now relying on browser console which might not show up unless we retrieve it)
+                return hasProject && hasPages && hasCurrentPage;
+            }, { timeout: 30000 }).catch(async (e) => {
+                // Dump state on timeout
+                console.log("waitForAppReady timed out. Dumping state:");
+                await page.evaluate(() => {
+                    const gs = (window as any).generalStore;
+                    console.log("GS:", !!gs);
+                    if (gs) {
+                        console.log("GS.project:", gs.project);
+                        console.log("GS.pages:", gs.pages);
+                        console.log("GS.pages.current:", gs.pages?.current);
+                        console.log("GS.currentPage:", gs.currentPage);
+                    }
+                    console.log("YJS.isConnected:", (window as any).__YJS_STORE__?.isConnected);
+                });
+                throw e;
+            });
         } catch (e: any) {
             const msg = e?.message || String(e);
             if (msg.includes("closed") || msg.includes("destroyed")) {
