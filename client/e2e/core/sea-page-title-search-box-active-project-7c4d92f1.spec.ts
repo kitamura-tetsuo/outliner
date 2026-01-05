@@ -55,7 +55,7 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         // Increase retries to handle very slow indexing in CI (up to ~60s total)
         for (let i = 0; i < 6; i++) {
             await searchInput.clear();
-            await searchInput.fill("second");
+            await searchInput.fill("Page2");
             // Trigger events ensuring reactivity
             await searchInput.press("Space");
             await searchInput.press("Backspace");

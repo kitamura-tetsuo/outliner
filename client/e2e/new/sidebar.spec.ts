@@ -275,7 +275,7 @@ test.describe("Sidebar Navigation", () => {
                 return count > 0;
             }, { timeout: 10000 });
             console.log("Pages found in store (initial check).");
-        } catch (e) {
+        } catch {
             console.log("Pages not found in store initially, attempting reload...");
             await page.reload();
             await page.waitForLoadState("load");

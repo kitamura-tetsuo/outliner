@@ -60,7 +60,6 @@
         // pages load after the user begins typing.
         const collectPages = (): Item[] => {
             const sources = [
-                // Primary: store.pages.current (mapped to Yjs changes via pagesVersion)
                 () => {
                     void store.pagesVersion;
                     return store.pages?.current;
@@ -93,7 +92,9 @@
                         for (const p of items) {
                             if (p) arr.push(p);
                         }
-                        if (arr.length) return arr;
+                        if (arr.length) {
+                            return arr;
+                        }
                     }
 
                     // Try array-like access
