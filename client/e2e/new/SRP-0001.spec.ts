@@ -21,38 +21,29 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         // 追加ページを作成
         console.log("Creating additional pages for search test using Yjs generalStore...");
-        // 2番目のページ (Reduced from 3 extra pages to 1 extra page to fix timeout)
+        // 2番目のページOnly create ONE extra page to minimize setup time and timeouts
+        // The functionality of "search across multiple pages" is verified with 2 pages total (initial + this one)
         await TestHelpers.createAndSeedProject(page, null, ["Second page line"], {
             projectName: projectName,
             pageName: "second-page",
         });
-        /*
-        // Reduced load: Skip 3rd and 4th pages to prevent timeouts in CI
-        // The test still verifies "search across pages" with just 2 pages total
-        await TestHelpers.createAndSeedProject(page, null, ["Third page line"], {
-            projectName: projectName,
-            pageName: "third-page",
-        });
-        await TestHelpers.createAndSeedProject(page, null, ["Different content here"], {
-            projectName: projectName,
-            pageName: "different-content",
-        });
-        */
+
         // Ensure store pages are ready
         // First wait for Yjs connection to be established
-        // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__YJS_STORE__?.isConnected, { timeout: 30000 }).catch(() => {
-            console.log("Yjs connection wait timed out, proceeding to check pages anyway...");
-        });
+        await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            return (window as any).__YJS_STORE__?.isConnected;
+        }, { timeout: 30000 }).catch(() => console.log("Yjs connection check timed out, proceeding anyway..."));
 
+        // Wait for pages to appear in store with a shorter polling interval
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
             const gs = (window as any).generalStore || (window as any).appStore;
             const pages = gs?.pages?.current;
-            // Handle both Array and Yjs Items (both have length or size)
+            // Handle both Array and Yjs Items
             const count = pages ? (pages.length !== undefined ? pages.length : (pages as any).size) : 0;
-            return count >= 2; // Reduced from 4 to 2 (initial + second-page)
-        }, { timeout: 60000 });
+            return count >= 2;
+        }, { timeout: 45000, polling: 500 });
 
         // 最終確認（ページ作成が成功したかどうかに関わらず、現在のページ状況を確認）
         const finalCheck = await page.evaluate(() => {
@@ -263,35 +254,10 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                 console.log("Mock pages available:", mockPages.length);
 
                 if (mockPages.length >= 2) {
-                    console.log("Setting up mock data for SearchPanel with", mockPages.length, "pages");
-
-                    // SearchPanelのプロジェクトデータを更新
-                    if (store.project) {
-                        // プロジェクトのitemsプロパティを更新してSearchPanelが正しいデータを参照できるようにする
-                        // Itemsクラスのような構造を模倣
-                        const mockItems = {
-                            [Symbol.iterator]: function*() {
-                                for (const page of mockPages) {
-                                    yield page;
-                                }
-                            },
-                            length: mockPages.length,
-                            ...mockPages,
-                        };
-
-                        // プロジェクトのitemsを更新
-                        Object.defineProperty(store.project, "items", {
-                            value: mockItems,
-                            writable: true,
-                            enumerable: true,
-                            configurable: true,
-                        });
-
-                        console.log("Updated project.items with mock pages, length:", mockPages.length);
-                        return { success: true, pagesCount: mockPages.length };
-                    } else {
-                        return { success: false, error: "Project not available" };
-                    }
+                    console.log("Skipping mock data setup - using real store data from seeded pages");
+                    // Mock injection removed to prevent conflict with real store updates
+                    // The test will rely on the actual project items populated by Yjs
+                    return { success: true, pagesCount: mockPages.length };
                 } else {
                     return { success: false, error: `Insufficient pages: ${mockPages.length}` };
                 }

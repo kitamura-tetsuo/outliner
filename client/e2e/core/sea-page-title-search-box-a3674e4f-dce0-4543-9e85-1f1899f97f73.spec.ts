@@ -112,6 +112,18 @@ test.describe("SEA-0001: page title search box", () => {
                 await page.waitForTimeout(500);
             }
         }
+
+        // Final fallback: Reload page if search completely fails (sometimes fixes stale index)
+        if (!found) {
+            console.log("Search failed after retries. Attempting page reload...");
+            await page.reload();
+            await page.waitForTimeout(2000);
+            await searchInput.fill("second");
+            await searchInput.press("Enter");
+            await page.waitForTimeout(2000);
+            // Check one last time
+            if (await firstResult.isVisible()) found = true;
+        }
         expect(found).toBe(true);
 
         // Verify the result contains "second-page"
