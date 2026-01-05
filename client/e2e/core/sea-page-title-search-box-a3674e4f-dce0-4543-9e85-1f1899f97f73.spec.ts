@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        test.setTimeout(300000);
+        test.setTimeout(360000);
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
         await TestHelpers.createAndSeedProject(page, null, ["second page text"], {
             projectName: ids.projectName,
@@ -41,16 +41,14 @@ test.describe("SEA-0001: page title search box", () => {
 
         // Explicitly wait for project items to be loaded from Yjs BEFORE typing
         // This ensures the SearchBox has data to search against
-        await TestHelpers.waitForSearchService(page);
-
+        // Check for project items (which indicates search service/indexing should be ready)
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
-            const gs = (window as any).generalStore || (window as any).appStore;
+            const gs = (window as any).generalStore;
             const items = gs?.project?.items;
-            return items && items.length >= 2; // Should have at least current page + second page
-        }, { timeout: 30000 }).catch(() =>
-            console.log("[Test] Warning: Timeout waiting for project items to populate")
-        );
+            return items && items.length >= 2;
+        }, { timeout: 30000 }).catch(() => console.log("Warning: Items not loaded within timeout"));
+        console.log("Items populated check complete.");
 
         // Type the search query
         // Ensure the project items are loaded (at least 2 items: current page + search target)

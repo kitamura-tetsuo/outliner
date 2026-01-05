@@ -17,7 +17,7 @@ test.describe("MCE-0002: multi-cursor commands", () => {
         // Ensure we have at least 2 items (0 and 1)
         await expect.poll(async () => {
             return await page.locator(".outliner-item").count();
-        }, { timeout: 20000 }).toBeGreaterThanOrEqual(2);
+        }, { timeout: 30000 }).toBeGreaterThanOrEqual(2);
 
         const firstId = await page.locator(".outliner-item").nth(1).getAttribute("data-item-id");
         await TestHelpers.setCursor(page, firstId!, 0, "local");

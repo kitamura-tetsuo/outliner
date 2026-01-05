@@ -123,6 +123,9 @@ export class GeneralStore {
     public get project(): Project | undefined {
         return this._project;
     }
+    // Explicit signal for pages updates to ensure Svelte 5 reactivity
+    pagesVersion = $state(0);
+
     public set project(v: Project) {
         if (v === this._project) {
             console.log(`store: Project is already set, skipping`);
@@ -151,35 +154,26 @@ export class GeneralStore {
         // Yjs observeDeep でルートツリーを監視し、Svelteの購読にブリッジ
         const project = v;
         const ymap = project?.ydoc?.getMap?.("orderedTree");
-        const subscribe = createSubscriber((_update) => {
-            const handler = (_events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-                try {
-                    // Debug logging for tree updates
-                    console.log(`store: [DEBUG] orderedTree updated`);
-                    const currentItems = project?.items;
-                    console.log(`store: [DEBUG] Project items length after update: ${currentItems?.length}`);
-                    saveProjectSnapshot(project);
-                } catch {
-                    // Ignore errors during snapshot saving
-                }
-                _update();
-            };
+
+        // Setup observer immediately on the project itself
+        const handler = (_events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
             try {
-                ymap?.observeDeep?.(handler);
+                saveProjectSnapshot(project);
             } catch {
-                // Ignore errors during observation setup
+                // Ignore errors during snapshot saving
             }
-            return () => {
-                try {
-                    ymap?.unobserveDeep?.(handler);
-                } catch {
-                    // Ignore errors during observation teardown
-                }
-            };
-        });
+            this.pagesVersion++; // Trigger signal
+        };
+
+        try {
+            ymap?.observeDeep?.(handler);
+        } catch {
+            // Ignore errors during observation setup
+        }
+
         this.pages = {
             get current() {
-                subscribe();
+                // Return items (Sidebar should track pagesVersion)
                 return project.items;
             },
         };

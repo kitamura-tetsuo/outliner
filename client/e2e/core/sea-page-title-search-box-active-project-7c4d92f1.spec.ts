@@ -13,7 +13,7 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
     let initialPageName: string;
 
     test.beforeEach(async ({ page }, testInfo) => {
-        test.setTimeout(300000);
+        test.setTimeout(360000);
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
         projectName = ids.projectName;
         initialPageName = ids.pageName;

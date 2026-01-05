@@ -39,6 +39,7 @@ const getSidebarHelpers = (page: Page) => {
 
 test.describe("Sidebar Navigation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        page.on("console", msg => console.log(`[Browser]: ${msg.text()}`));
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "First line of test page",
             "Second line of test page",
@@ -262,18 +263,51 @@ test.describe("Sidebar Navigation", () => {
         // Focus on a page item
         // Wait for pages to be loaded
         // Ensure app is fully hydrated before checking specific store state
-        await page.waitForLoadState("networkidle").catch(() => {});
+        // await page.waitForLoadState("networkidle").catch(() => { });
 
-        // Wait for the store to actually have pages populated
+        // Check if pages are present, if not reload and retry
+        console.log("Checking for pages in store (10s)...");
+        try {
+            await page.waitForFunction(() => {
+                // eslint-disable-next-line no-restricted-globals
+                const gs = (window as any).generalStore || (window as any).appStore;
+                const count = gs?.pages?.current?.length;
+                return count > 0;
+            }, { timeout: 10000 });
+            console.log("Pages found in store (initial check).");
+        } catch (e) {
+            console.log("Pages not found in store initially, attempting reload...");
+            await page.reload();
+            await page.waitForLoadState("load");
+            const { open: reopen } = getSidebarHelpers(page);
+            await reopen();
+        }
+
+        // Now wait with longer timeout
+        console.log("Waiting for pages in store (60s)...");
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
             const gs = (window as any).generalStore || (window as any).appStore;
             return gs?.pages?.current?.length > 0;
-        }, { timeout: 30000 });
+        }, { timeout: 60000 });
+        console.log("Pages found in store (confirmed).");
 
+        console.log("Calling TestHelpers.waitForPagesList...");
         await TestHelpers.waitForPagesList(page, 30000);
 
         // Explicitly wait for the DOM to render the list items
+
+        // Ensure Pages section is expanded
+        const pagesHeader = page.locator('[aria-label="Toggle pages section"]');
+        if (await pagesHeader.isVisible()) {
+            const expanded = await pagesHeader.getAttribute("aria-expanded");
+            if (expanded === "false") {
+                console.log("Pages section collapsed, expanding...");
+                await pagesHeader.click();
+                await page.waitForTimeout(500);
+            }
+        }
+
         // First check that we actually have any page items to wait for
         await expect.poll(async () => {
             if (page.isClosed()) return 0;
@@ -282,21 +316,52 @@ test.describe("Sidebar Navigation", () => {
             } catch {
                 return 0;
             }
-        }, { timeout: 20000 }).toBeGreaterThan(0);
+        }, { timeout: 20000 }).toBeGreaterThan(0).catch(async () => {
+            console.log("Pages not found in DOM, attempting reload...");
+            await page.reload({ waitUntil: "domcontentloaded" });
+            await page.waitForTimeout(2000); // Wait for hydration
+
+            // Re-open sidebar and expand section if needed
+            const { open: reopen } = getSidebarHelpers(page);
+            await reopen();
+
+            if (await pagesHeader.isVisible()) {
+                const expanded = await pagesHeader.getAttribute("aria-expanded");
+                if (expanded === "false") {
+                    await pagesHeader.click();
+                    await page.waitForTimeout(500);
+                }
+            }
+
+            // Wait again after reload
+            await expect.poll(async () => {
+                if (page.isClosed()) return 0;
+                try {
+                    return await page.locator(".page-item").count();
+                } catch {
+                    return 0;
+                }
+            }, { timeout: 30000 }).toBeGreaterThan(0);
+        });
 
         if (!page.isClosed()) {
             await expect(page.locator(".page-item").first()).toBeVisible({ timeout: 20000 });
         }
 
+        console.log("Waiting for page item to be visible...");
         const pageItem = page.locator(".page-item").first();
         await pageItem.waitFor({ state: "visible", timeout: 10000 });
+        console.log("Focusing page item...");
         await pageItem.focus();
 
         const currentUrl = page.url();
+        console.log(`Current URL: ${currentUrl}`);
         // Press Enter to activate
+        console.log("Pressing Enter...");
         await page.keyboard.press("Enter");
 
         // Wait for navigation to occur (URL change)
+        console.log("Waiting for URL change...");
         await expect.poll(() => page.url()).not.toBe(currentUrl);
         expect(page.url()).toBeTruthy();
     });

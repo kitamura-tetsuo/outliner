@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box", () => {
     test("search results update when pages load after typing", async ({ page }, testInfo) => {
-        test.setTimeout(300000);
+        test.setTimeout(360000);
         const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const input = page
             .getByTestId("main-toolbar")

@@ -60,8 +60,11 @@
         // pages load after the user begins typing.
         const collectPages = (): Item[] => {
             const sources = [
-                // Primary: store.pages.current (reactive to Yjs changes)
-                () => store.pages?.current,
+                // Primary: store.pages.current (mapped to Yjs changes via pagesVersion)
+                () => {
+                    void store.pagesVersion;
+                    return store.pages?.current;
+                },
                 // Fallback 1: effectiveProject.items
                 () => effectiveProject?.items,
                 // Fallback 2: projectToUse.items

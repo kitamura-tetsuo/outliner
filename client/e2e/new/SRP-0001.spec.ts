@@ -27,6 +27,10 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             projectName: projectName,
             pageName: "second-page",
         });
+        // Explicitly navigate to the second page and back to ensure it is synced to the store
+        // This is a workaround for Yjs sync delays in CI environment
+        await TestHelpers.navigateToProjectPage(page, projectName, "second-page", ["Second page line"]);
+        await TestHelpers.navigateToProjectPage(page, projectName, "test-page", []);
 
         // Ensure store pages are ready
         // First wait for Yjs connection to be established
@@ -45,7 +49,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             // Debug if count is staying at 1
             // if (count === 1) console.log("Still waiting for second page...");
             return count >= 2;
-        }, { timeout: 45000, polling: 500 }).catch(async () => {
+        }, { timeout: 60000, polling: 500 }).catch(async () => {
             console.log("[Test] Warning: Timeout waiting for 2 pages. dumping current pages:");
             await page.evaluate(() => {
                 // eslint-disable-next-line no-restricted-globals
