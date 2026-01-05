@@ -237,7 +237,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         // Add timeout for the whole test
         test.setTimeout(60000);
 
-        await TestHelpers.waitForOutlinerItems(page, 10000);
+        await TestHelpers.waitForOutlinerItems(page);
         const firstId = await TestHelpers.getItemIdByIndex(page, 0);
         if (!firstId) throw new Error("first item not found");
 
