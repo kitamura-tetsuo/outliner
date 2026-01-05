@@ -20,7 +20,7 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
         ]);
 
         // Wait for items to be stable
-        await TestHelpers.waitForOutlinerItems(page, 30000, 2);
+        await TestHelpers.waitForOutlinerItems(page, 2, 30000);
         let itemId = await TestHelpers.getItemIdByIndex(page, 1);
 
         // Robust retry for item ID

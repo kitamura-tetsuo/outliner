@@ -54,7 +54,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
 
     // Wait for outliner items to be loaded before checking content
     // This is necessary because Yjs sync may take time for seeded data to appear
-    await TestHelpers.waitForOutlinerItems(page1, 120000, 4);
+    await TestHelpers.waitForOutlinerItems(page1, 4, 120000);
 
     // Verify item count (accept >= 4 to handle potential duplicates/ghost items)
     if (page1.isClosed()) return;
@@ -114,7 +114,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         console.log("Page2 connection wait warning")
     );
 
-    await TestHelpers.waitForOutlinerItems(page2, 120000, 4);
+    await TestHelpers.waitForOutlinerItems(page2, 4, 120000);
 
     // Wait for both pages to load completely
     if (page1.isClosed() || page2.isClosed()) return;

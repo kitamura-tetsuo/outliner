@@ -14,7 +14,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("CLM-0007: 行頭へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line", "Third line"]);
-        await TestHelpers.waitForOutlinerItems(page, 30000, 3);
+        await TestHelpers.waitForOutlinerItems(page, 3, 30000);
         // Ensure all seeded items are visible
         await page.locator(".outliner-item[data-item-id] >> nth=2").waitFor();
 

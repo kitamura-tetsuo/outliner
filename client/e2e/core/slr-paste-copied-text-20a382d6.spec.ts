@@ -13,7 +13,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
             "Second item",
             "Third item text",
         ]);
-        await TestHelpers.waitForOutlinerItems(page, 10000, 4);
+        await TestHelpers.waitForOutlinerItems(page, 4, 10000);
     });
 
     test("コピーしたテキストを別の場所にペーストできる", async ({ page }) => {

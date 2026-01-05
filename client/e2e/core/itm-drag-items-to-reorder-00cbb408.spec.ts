@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("ITM-00cbb408: ドラッグでアイテムを移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2", "Item 3"]);
-        await TestHelpers.waitForOutlinerItems(page, 10000, 4); // Title + 3 seeded items
+        await TestHelpers.waitForOutlinerItems(page, 4, 10000); // Title + 3 seeded items
     });
 
     test("ドラッグでアイテムを移動できる", async ({ page }) => {

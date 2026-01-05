@@ -23,7 +23,7 @@ test.describe("SLR-0010: 選択範囲のフォーマット変更", () => {
             "This is another line for multi-item selection",
         ]);
         // Wait for Title + 2 items
-        await TestHelpers.waitForOutlinerItems(page, 10000, 3);
+        await TestHelpers.waitForOutlinerItems(page, 3, 10000);
 
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();

@@ -23,7 +23,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             "Fourth item text",
         ]);
         // Wait for Title + 4 items
-        await TestHelpers.waitForOutlinerItems(page, 10000, 5);
+        await TestHelpers.waitForOutlinerItems(page, 5, 10000);
 
         // 最初のアイテムを選択してカーソルを表示
         const item = page.locator(".outliner-item").first();

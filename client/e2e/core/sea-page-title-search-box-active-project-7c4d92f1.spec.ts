@@ -26,9 +26,9 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
             pageName: "Page2",
         });
 
-        // Now navigate to the initial page to start the test
-        // This triggers the Yjs connection which should pull down strict initial state
-        await TestHelpers.navigateToProjectPage(page, projectName, initialPageName, []);
+        // Reload to ensure Yjs connection pulls down strict initial state including Page2
+        await page.reload();
+        await TestHelpers.waitForAppReady(page);
     });
 
     test("navigates using the active project title even with spaces", async ({ page }) => {

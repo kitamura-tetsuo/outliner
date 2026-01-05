@@ -9,7 +9,7 @@ test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => 
     test.beforeEach(async ({ page }, testInfo) => {
         const longText = "A".repeat(80);
         await TestHelpers.prepareTestEnvironment(page, testInfo, [longText]);
-        await TestHelpers.waitForOutlinerItems(page, 30000, 2); // Title + 1 seeded item
+        await TestHelpers.waitForOutlinerItems(page, 2, 30000); // Title + 1 seeded item
 
         // Additional wait for items to be fully rendered with data-item-id
         await page.waitForSelector(".outliner-item[data-item-id]", { timeout: 30000 }).catch(() => {

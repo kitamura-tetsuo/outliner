@@ -8,7 +8,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SLR-3724726f: 選択範囲の方向切り替え", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First item text", "Second item text"]);
-        await TestHelpers.waitForOutlinerItems(page, 10000, 3);
+        await TestHelpers.waitForOutlinerItems(page, 3, 10000);
     });
 
     test("選択範囲の方向（正方向/逆方向）を切り替えることができる", async ({ page }) => {

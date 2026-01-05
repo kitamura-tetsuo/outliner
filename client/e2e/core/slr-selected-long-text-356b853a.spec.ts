@@ -13,7 +13,7 @@ test.describe("SLR-356b853a: 長いテキストの選択範囲", () => {
             + "We want to make sure that the selection range works correctly with long texts and that the text is properly selected and copied.";
 
         await TestHelpers.prepareTestEnvironment(page, testInfo, [longText, "Second item text"]);
-        await TestHelpers.waitForOutlinerItems(page, 10000, 3);
+        await TestHelpers.waitForOutlinerItems(page, 3, 10000);
     });
 
     test("長いテキストを含むアイテムの選択範囲を作成できる", async ({ page }) => {

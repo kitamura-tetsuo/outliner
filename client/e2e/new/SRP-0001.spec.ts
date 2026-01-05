@@ -27,10 +27,10 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             projectName: projectName,
             pageName: "second-page",
         });
-        // Explicitly navigate to the second page and back to ensure it is synced to the store
-        // This is a workaround for Yjs sync delays in CI environment
-        await TestHelpers.navigateToProjectPage(page, projectName, "second-page", ["Second page line"]);
-        await TestHelpers.navigateToProjectPage(page, projectName, "test-page", []);
+
+        // Reload to ensure project structure is synced
+        await page.reload();
+        await TestHelpers.waitForAppReady(page);
 
         // Ensure store pages are ready
         // First wait for Yjs connection to be established

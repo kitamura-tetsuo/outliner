@@ -13,7 +13,7 @@ test.describe("SLR-0004: マウスドラッグによる選択", () => {
         // Seed
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["This is a test text for mouse drag selection"]);
         // Wait for Title + 1 item
-        await TestHelpers.waitForOutlinerItems(page, 10000, 2);
+        await TestHelpers.waitForOutlinerItems(page, 2, 10000);
 
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();

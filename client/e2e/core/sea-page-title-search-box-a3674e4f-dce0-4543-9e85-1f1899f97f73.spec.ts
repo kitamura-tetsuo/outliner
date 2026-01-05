@@ -17,12 +17,9 @@ test.describe("SEA-0001: page title search box", () => {
             pageName: "second-page",
         });
 
-        // Navigate to the second page and wait for it to sync, then navigate back
-        // This ensures the second page is synced to the Yjs document
-        await TestHelpers.navigateToProjectPage(page, ids.projectName, "second-page", ["second page text"]);
-
-        // navigate back to first page to ensure SearchBox appears
-        await TestHelpers.navigateToProjectPage(page, ids.projectName, ids.pageName, []);
+        // Reload to ensure the second page is synced to the Yjs document
+        await page.reload();
+        await TestHelpers.waitForAppReady(page);
     });
 
     test("search box navigates to another page", async ({ page }) => {

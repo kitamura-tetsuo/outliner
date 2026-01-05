@@ -20,7 +20,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         ]);
         // Wait for outliner items to be visible with increased timeout
         // Wait for 4 items (page header + 3 seeded lines)
-        await TestHelpers.waitForOutlinerItems(page, 45000, 4);
+        await TestHelpers.waitForOutlinerItems(page, 4, 45000);
     });
 
     test("navigate alias picker with keyboard", async ({ page }) => {

@@ -12,7 +12,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("CLM-0003: 右へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["Test data", "Second item"]);
-        await TestHelpers.waitForOutlinerItems(page, 10000, 3); // Title + 2 seeded items
+        await TestHelpers.waitForOutlinerItems(page, 3, 10000); // Title + 2 seeded items
     });
 
     test("ArrowRightキーでカーソルが1文字右に移動する", async ({ page }) => {

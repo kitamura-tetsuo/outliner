@@ -23,9 +23,9 @@ test.describe("SEA-0001: page title search box", () => {
             projectName: projectName,
             pageName: "second-page",
         });
-        // Navigate to the new page and back to ensure sync, then focus the input again
-        await TestHelpers.navigateToProjectPage(page, projectName, "second-page", ["second page text"]);
-        await TestHelpers.navigateToProjectPage(page, projectName, pageName, []);
+        // Reload to ensure sync, then focus the input again
+        await page.reload();
+        await TestHelpers.waitForAppReady(page);
         // Focus the input again after navigating back
         const inputAfterNav = page
             .getByTestId("main-toolbar")

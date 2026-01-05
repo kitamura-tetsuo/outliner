@@ -14,7 +14,7 @@ test.describe("CLM-1cef29b1: ドラッグ後もカーソル数は変化しない
     });
 
     test("アイテムをドラッグして移動してもカーソル数が変化しない", async ({ page }) => {
-        await TestHelpers.waitForOutlinerItems(page, 10000, 4); // Title + 3 items
+        await TestHelpers.waitForOutlinerItems(page, 4, 10000); // Title + 3 items
 
         // Item 0 is Title. Item 1, 2, 3 are seeded items.
         // We want to drag Item 2 (Item B) to Item 3 (Item C).

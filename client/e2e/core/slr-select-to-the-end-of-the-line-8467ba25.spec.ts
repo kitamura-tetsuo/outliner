@@ -13,7 +13,7 @@ test.describe("SLR-0003: 行末まで選択", () => {
         // Seed with 3 lines
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line", "Third line"]);
         // Wait for Title + 3 items
-        await TestHelpers.waitForOutlinerItems(page, 10000, 4);
+        await TestHelpers.waitForOutlinerItems(page, 4, 10000);
 
         // 最初のアイテムを選択してカーソルを表示させる
         const item = page.locator(".outliner-item").first();

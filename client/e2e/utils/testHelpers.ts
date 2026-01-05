@@ -168,7 +168,8 @@ export class TestHelpers {
                     // Wait for outliner base to be visible
                     await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
                     // Wait for items to be rendered (with seeded data)
-                    await TestHelpers.waitForOutlinerItems(page, 60000, 1);
+                    const expectedCount = (lines?.length ?? 0) + 1;
+                    await TestHelpers.waitForOutlinerItems(page, expectedCount, 60000);
                     // Give extra time for store to be fully populated
                     await page.waitForTimeout(1000);
                 } catch (e) {
@@ -436,7 +437,7 @@ export class TestHelpers {
         // Wait for items to be present (Yjs sync indicator)
         const expectedItemCount = effectiveSeedLines.length + 1; // +1 for page title
         TestHelpers.slog("Waiting for outliner items to render...", { count: expectedItemCount });
-        await TestHelpers.waitForOutlinerItems(page, 30000, expectedItemCount);
+        await TestHelpers.waitForOutlinerItems(page, expectedItemCount, 30000);
 
         // Small delay to allow Svelte components to render
         // Use a safe delay that checks if page is still open

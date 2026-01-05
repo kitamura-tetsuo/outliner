@@ -25,7 +25,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         // Ensure items are loaded before navigating away
         // This prevents "Child item" from being missed in the export if sync is slow
         // Wait for at least 2 items (page header + "Child item")
-        await TestHelpers.waitForOutlinerItems(page, 45000, 2);
+        await TestHelpers.waitForOutlinerItems(page, 2, 45000);
 
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
