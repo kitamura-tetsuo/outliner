@@ -1,7 +1,10 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { tick } from "svelte";
 import ContainerSelector from "../components/ContainerSelector.svelte";
 import { getLogger } from "../lib/logger";
+import * as yjsHighService from "../lib/yjsService.svelte";
+import { saveContainerId } from "../stores/firestoreStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 
 // Import test helper in test environments only
@@ -71,6 +74,60 @@ async function handleContainerSelected(
         logger.error("Failed to switch container:", error);
     }
 }
+
+// Inline Project Creation State
+let isCreating = $state(false);
+let newProjectTitle = $state("");
+let isLoading = $state(false);
+let createError = $state("");
+let inputElement = $state<HTMLInputElement>();
+
+async function startCreate() {
+    isCreating = true;
+    newProjectTitle = "";
+    createError = "";
+    await tick();
+    if (inputElement) {
+        inputElement.focus();
+    }
+}
+
+function cancelCreate() {
+    isCreating = false;
+    newProjectTitle = "";
+    createError = "";
+}
+
+async function handleCreate(e?: Event) {
+    if (e) e.preventDefault();
+    if (!newProjectTitle.trim()) return;
+
+    isLoading = true;
+    createError = "";
+
+    try {
+        // Dispose current client if needed (similar to projects/containers/+page.svelte)
+        const client = yjsStore.yjsClient as any;
+        if (client) {
+            client.dispose?.();
+            yjsStore.yjsClient = undefined;
+        }
+
+        const newClient = await yjsHighService.createNewProject(newProjectTitle);
+        const createdContainerId = newClient.containerId;
+        yjsStore.yjsClient = newClient as any;
+
+        await saveContainerId(createdContainerId);
+
+        logger.info(`Created project: ${newProjectTitle} (${createdContainerId})`);
+        goto(`/${encodeURIComponent(newProjectTitle)}`);
+    } catch (e: any) {
+        logger.error("Failed to create project:", e);
+        createError = e.message || "Failed to create project";
+    } finally {
+        isLoading = false;
+    }
+}
 </script>
 
 <svelte:head>
@@ -93,9 +150,48 @@ async function handleContainerSelected(
 
     <!-- 新規コンテナ作成リンク -->
     <div class="action-buttons">
-        <a href="/projects" class="new-container-button">
-            <span class="icon">+</span> 新しいアウトライナーを作成
-        </a>
+        {#if !isCreating}
+            <button class="new-container-button" onclick={startCreate}>
+                <span class="icon">+</span> 新しいアウトライナーを作成
+            </button>
+        {:else}
+            <div class="creation-form" role="group" aria-label="Create new project">
+                <h3>新しいアウトライナーを作成</h3>
+                <form onsubmit={handleCreate}>
+                    <div class="input-group">
+                        <input
+                            bind:this={inputElement}
+                            type="text"
+                            placeholder="プロジェクト名 (例: マイプロジェクト)"
+                            bind:value={newProjectTitle}
+                            disabled={isLoading}
+                            class="project-input"
+                            aria-label="Project Title"
+                            required
+                        />
+                    </div>
+
+                    {#if createError}
+                        <div class="error-text" role="alert">
+                            {createError}
+                        </div>
+                    {/if}
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" onclick={cancelCreate} disabled={isLoading}>
+                            キャンセル
+                        </button>
+                        <button type="submit" class="btn-create" disabled={isLoading || !newProjectTitle.trim()}>
+                            {#if isLoading}
+                                <span class="spin">⏳</span> 作成中...
+                            {:else}
+                                作成する
+                            {/if}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        {/if}
     </div>
 </main>
 
@@ -155,6 +251,8 @@ h2 {
     font-weight: bold;
     transition: background-color 0.2s;
     font-size: 1.1rem;
+    border: none;
+    cursor: pointer;
 }
 
 .new-container-button:hover {
@@ -164,6 +262,110 @@ h2 {
 .new-container-button .icon {
     font-size: 1.2rem;
     margin-right: 0.5rem;
+}
+
+/* Creation Form Styles */
+.creation-form {
+    width: 100%;
+    max-width: 500px;
+    background: #f9f9f9;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #eee;
+    text-align: left;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.creation-form h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #444;
+    font-size: 1.2rem;
+}
+
+.input-group {
+    margin-bottom: 1rem;
+}
+
+.project-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.project-input:focus {
+    outline: none;
+    border-color: #4caf50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.btn-cancel {
+    padding: 0.75rem 1.5rem;
+    background: #e0e0e0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    color: #333;
+    transition: background 0.2s;
+}
+
+.btn-cancel:hover {
+    background: #d0d0d0;
+}
+
+.btn-create {
+    padding: 0.75rem 1.5rem;
+    background: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.2s;
+}
+
+.btn-create:hover {
+    background: #45a049;
+}
+
+.btn-create:disabled {
+    background: #a5d6a7;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.error-text {
+    color: #d32f2f;
+    margin-bottom: 1rem;
+    display: block;
+    background: #ffebee;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    border-left: 3px solid #d32f2f;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 </style>
 // test 1760075075
