@@ -997,9 +997,10 @@ export class TestHelpers {
         // Wait for project and page to be loaded in the store
         try {
             await page.waitForFunction(() => {
+                // eslint-disable-next-line no-restricted-globals
                 const gs = (window as any).generalStore;
-                return !!(gs && gs.project && gs.pages && gs.currentPage);
-            }, { timeout: 60000 });
+                return gs?.project && gs?.pages?.current?.length > 0 && gs?.currentPage;
+            }, { timeout: 30000 });
         } catch (e: any) {
             const msg = e?.message || String(e);
             if (msg.includes("closed") || msg.includes("destroyed")) {
@@ -2095,7 +2096,6 @@ export class TestHelpers {
         const authHost = process.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || "localhost:59099";
         // Ensure protocol
         const host = authHost.startsWith("http") ? authHost : `http://${authHost}`;
-        // eslint-disable-next-line no-restricted-globals
         const apiKey = "fake-api-key";
         const signInUrl = `${host}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
 

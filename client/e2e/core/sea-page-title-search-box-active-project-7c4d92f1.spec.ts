@@ -14,15 +14,20 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
 
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(360000);
+        // Prepare environment (creates Project and Page 1)
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
         projectName = ids.projectName;
         initialPageName = ids.pageName;
+
+        // Seed Page 2 via API immediately (before doing any client-side navigation/waiting)
+        // This ensures Yjs initial sync includes both pages, avoiding "live update" crash issues
         await TestHelpers.createAndSeedProject(page, null, ["search target"], {
-            projectName: ids.projectName,
-            pageName: "second page",
+            projectName: projectName,
+            pageName: "Page2",
         });
-        // Navigate to the second page and wait for it to sync, then navigate back
-        await TestHelpers.navigateToProjectPage(page, projectName, "second page", ["search target"]);
+
+        // Now navigate to the initial page to start the test
+        // This triggers the Yjs connection which should pull down strict initial state
         await TestHelpers.navigateToProjectPage(page, projectName, initialPageName, []);
     });
 
@@ -32,13 +37,12 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
 
         // Explicitly wait for project items to be loaded from Yjs BEFORE typing
         // This ensures the SearchBox has data to search against
-        await TestHelpers.waitForSearchService(page);
 
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
             const gs = (window as any).generalStore || (window as any).appStore;
             const items = gs?.project?.items;
-            return items && items.length >= 2; // Should have at least current page + second page
+            return items && items.length >= 2; // Should have at least current page + Page2
         }, { timeout: 30000 }).catch(() =>
             console.log("[Test] Warning: Timeout waiting for project items to populate")
         );
@@ -63,7 +67,7 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
                 // Explicitly wait for the option to be in the DOM
                 await expect.poll(async () => {
                     const buttons = page.locator(".page-search-box button");
-                    return await buttons.count() > 0 && await buttons.filter({ hasText: "second page" }).count() > 0;
+                    return await buttons.count() > 0 && await buttons.filter({ hasText: "Page2" }).count() > 0;
                 }, { timeout: 10000 }).toBe(true);
                 found = true;
                 break;
@@ -77,9 +81,9 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         }
         expect(found).toBe(true); // Fail if still not found after retries
 
-        const option = page.getByRole("button", { name: "second page" });
+        const option = page.getByRole("button", { name: "Page2" });
         await option.click();
-        const expectedPath = `/${encodeURIComponent(projectName)}/${encodeURIComponent("second page")}`;
+        const expectedPath = `/${encodeURIComponent(projectName)}/${encodeURIComponent("Page2")}`;
         await expect.poll(() => page.url()).toContain(expectedPath);
     });
 });

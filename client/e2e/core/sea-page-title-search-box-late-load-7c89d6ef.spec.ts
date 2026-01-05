@@ -35,7 +35,6 @@ test.describe("SEA-0001: page title search box", () => {
 
         // Explicitly wait for project items to be loaded from Yjs BEFORE typing
         // This ensures the SearchBox has data to search against
-        await TestHelpers.waitForSearchService(page);
 
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals

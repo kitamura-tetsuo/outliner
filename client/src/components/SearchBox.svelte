@@ -137,12 +137,6 @@
         };
 
         const pagesArr = collectPages();
-        // Debug logging for E2E
-        // if (typeof window !== "undefined" && (window as any).__E2E__) {
-        //     console.log(
-        //         `[SearchBox Debug] query="${query}", pages=${pagesArr.length}, project=${effectiveProject?.title ?? "null"}`,
-        //     );
-        // }
 
         if (!pagesArr.length) return [];
 
@@ -167,9 +161,6 @@
             if (page && title.toLowerCase().includes(query.toLowerCase())) {
                 searchResults.push(page);
             }
-        }
-        if (typeof window !== "undefined" && (window as any).__E2E__ && query) {
-            // console.log(`[SearchBox Debug] results=${searchResults.length}`);
         }
         return searchResults;
     });
