@@ -4,7 +4,7 @@ import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Item, Items } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
 
-function createPagesObject(store: GeneralStore, project: Project): { readonly current: Items | undefined } {
+function createPagesObject(store: GeneralStore, project: Project): { readonly current: Items | undefined; } {
     return {
         get current() {
             // Register dependency on the signal to ensure reactivity
