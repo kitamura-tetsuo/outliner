@@ -1,7 +1,8 @@
 import express from "express";
 import type { LeveldbPersistence } from "y-leveldb";
 import * as Y from "yjs";
-import { Project } from "./app-schema.js";
+import { YTree } from "yjs-orderedtree";
+import { Items, Project } from "./app-schema.js";
 import { logger } from "./logger.js";
 
 export interface PageSeedData {
@@ -79,26 +80,13 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
                         // Ensure subdoc is loaded before accessing its data
                         subdoc.load();
 
-                        // Create a pageItems map in the subdoc (same as client's addPage)
-                        const pageItems = subdoc.getMap<any>("pageItems");
-                        pageItems.set("initialized", Date.now());
+                        const orderedTree = subdoc.getMap("orderedTree");
+                        const tree = new YTree(orderedTree);
+                        const pageItems = new Items(subdoc, tree, "root");
 
-                        // Add each line as an item in the pageItems map
                         for (const line of pageData.lines) {
-                            const itemKey = `item-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-                            const itemValue = new Y.Map<any>();
-
-                            // Set item properties
-                            itemValue.set("id", itemKey);
-                            itemValue.set("text", line);
-                            itemValue.set("author", "seed-server");
-                            itemValue.set("created", Date.now());
-                            itemValue.set("lastChanged", Date.now());
-                            itemValue.set("componentType", undefined);
-                            itemValue.set("aliasTargetId", undefined);
-
-                            // Store the item in pageItems
-                            pageItems.set(itemKey, itemValue);
+                            const newItem = pageItems.addNode("seed-server");
+                            newItem.text = line;
                         }
 
                         // CRITICAL: Persist the subdocument to LevelDB

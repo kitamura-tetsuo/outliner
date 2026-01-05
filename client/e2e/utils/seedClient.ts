@@ -73,8 +73,12 @@ export class SeedClient {
             });
 
             if (!response.ok) {
-                const error = await response.json().catch(() => ({ error: response.statusText }));
-                throw new Error(`Seeding failed: ${error.error || response.statusText}`);
+                const error = await response.json().catch(() => ({
+                    error: response.statusText,
+                    message: "Could not parse error response JSON",
+                }));
+                const detail = error.message || error.error || response.statusText;
+                throw new Error(`Seeding failed: ${detail}`);
             }
 
             const result = await response.json();

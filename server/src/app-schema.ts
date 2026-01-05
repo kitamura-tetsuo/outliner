@@ -549,6 +549,10 @@ export class Project {
         page.updateText(title);
         const pages = this.ydoc.getMap<Y.Doc>("pages");
         const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as YDocOptions);
+        // Initialize the orderedTree in the subdoc (same as server-side seeder)
+        const orderedTree = subdoc.getMap("orderedTree");
+        const tree = new YTree(orderedTree);
+        tree.createNode("root", "root", new Y.Map());
         pages.set(page.id, subdoc);
         subdoc.load();
         return page;
