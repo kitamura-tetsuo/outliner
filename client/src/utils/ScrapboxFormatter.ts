@@ -823,11 +823,30 @@ export class ScrapboxFormatter {
     }
 
     // Cache compiled regexes
-    private static readonly BASIC_FORMAT_PATTERN = /\[\[(.*?)\]\]|\[\/(.*?)\]|\[-(.*?)\]|`(.*?)`|<u>(.*?)<\/u>/;
-    private static readonly LINK_PATTERN = /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/;
-    private static readonly INTERNAL_LINK_PATTERN = /\[([^[\]/][^[\]]*?)\]/;
-    private static readonly PROJECT_LINK_PATTERN = /\[\/([\w\-/]+)\]/;
-    private static readonly QUOTE_PATTERN = /^>\s(.*?)$/m;
+    // Combined regex for hasFormatting
+    // Parts:
+    // 1. Basic formats: [[...]] | [/...] | [-...] | `...` | <u>...</u>
+    // 2. Link: [http...]
+    // 3. Internal Link: [text] (excluding [, ], /)
+    // 4. Project Link: [/project]
+    // 5. Quote: > text
+    private static readonly HAS_FORMATTING_PATTERN = new RegExp(
+        // Basic formats (bold, italic, strikethrough, code, underline)
+        '\\[\\[(.*?)\\]\\]|\\[\\/(.*?)\\]|\\[-(.*?)\\]|`(.*?)`|<u>(.*?)<\\/u>|'
+            +
+            // Link
+            '\\[(https?:\\/\\/[^\\s\\]]+)(?:\\s+[^\\]]+)?\\]|'
+            +
+            // Project Link (specific pattern first)
+            '\\[\\/([\\w\\-\\/]+)\\]|'
+            +
+            // Internal Link (excluding / at start to separate from project link)
+            '\\[([^\\[\\]\\/][^\\[\\]]*?)\\]|'
+            +
+            // Quote
+            '^>\\s(.*?)$',
+        'm',
+    );
 
     /**
      * テキストにScrapbox構文のフォーマットが含まれているかチェックする
@@ -839,18 +858,12 @@ export class ScrapboxFormatter {
 
         // Fast path: check for format triggers
         // Most items are plain text, so this avoids expensive regex execution
-        const mightHaveFormat = text.includes("[")
-            || text.includes("`")
-            || text.includes("<")
-            || text.includes(">");
+        // Combined checking is faster than multiple checks
+        if (!text.includes("[") && !text.includes("`") && !text.includes("<") && !text.includes(">")) {
+            return false;
+        }
 
-        if (!mightHaveFormat) return false;
-
-        return ScrapboxFormatter.BASIC_FORMAT_PATTERN.test(text)
-            || ScrapboxFormatter.LINK_PATTERN.test(text)
-            || ScrapboxFormatter.INTERNAL_LINK_PATTERN.test(text)
-            || ScrapboxFormatter.PROJECT_LINK_PATTERN.test(text)
-            || ScrapboxFormatter.QUOTE_PATTERN.test(text);
+        return ScrapboxFormatter.HAS_FORMATTING_PATTERN.test(text);
     }
 
     /**
