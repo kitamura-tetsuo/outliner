@@ -825,24 +825,24 @@ export class ScrapboxFormatter {
     // Cache compiled regexes
     private static readonly HAS_FORMATTING_PATTERN = new RegExp(
         // Bold: [[...]]
-        "\\[\\[(.*?)\\]\\]" +
-        // Italic: [/ ...]
-        "|\\[\\/(.*?)\\]" +
-        // Strikethrough: [-...]
-        "|\\[-(.*?)\\]" +
-        // Code: `...`
-        "|`(.*?)`" +
-        // Underline: <u>...</u>
-        "|<u>(.*?)<\\/u>" +
-        // External Link: [url label] or [url]
-        "|\\[(https?:\\/\\/[^\\s\\]]+)(?:\\s+[^\\]]*)?\\]" +
-        // Project Link: [/project/page] or [/page]
-        "|\\[\\/([\\w\\-\\/]+)\\]" +
-        // Quote: > ...
-        "|^>\\s(.*?)$" +
-        // Internal Link: [page], excluding start with /, [, ], -
-        "|\\[([^[\\/\\-\\]][^[\\]]*?)\\]",
-        "m" // multiline for quote
+        "\\[\\[(.*?)\\]\\]"
+            // Italic: [/ ...]
+            + "|\\[\\/(.*?)\\]"
+            // Strikethrough: [-...]
+            + "|\\[-(.*?)\\]"
+            // Code: `...`
+            + "|`(.*?)`"
+            // Underline: <u>...</u>
+            + "|<u>(.*?)<\\/u>"
+            // External Link: [url label] or [url]
+            + "|\\[(https?:\\/\\/[^\\s\\]]+)(?:\\s+[^\\]]*)?\\]"
+            // Project Link: [/project/page] or [/page]
+            + "|\\[\\/([\\w\\-\\/]+)\\]"
+            // Quote: > ...
+            + "|^>\\s(.*?)$"
+            // Internal Link: [page], excluding start with /, [, ], -
+            + "|\\[([^[\\/\\-\\]][^[\\]]*?)\\]",
+        "m", // multiline for quote
     );
 
     /**
