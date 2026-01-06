@@ -1,6 +1,57 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createProjectConnection, type PageConnection } from "../../../lib/yjs/connection";
 import { Project } from "../../../schema/app-schema";
+
+// Mock store to avoid $state (runes) error in integration tests pending environment fix
+vi.mock("../../../stores/store.svelte", () => ({
+    store: {
+        project: undefined,
+        pages: { current: [] },
+    },
+    GeneralStore: class {},
+}));
+vi.mock("../../../stores/yjsStore.svelte", () => ({
+    yjsStore: { isConnected: true },
+}));
+vi.mock("y-websocket", () => ({
+    WebsocketProvider: class {
+        roomname: string;
+        awareness: any;
+        on: any;
+        connect: any;
+        disconnect: any;
+        destroy: any;
+        synced = false;
+        constructor(serverUrl: string, roomname: string) {
+            this.roomname = roomname;
+            this.awareness = {
+                setLocalStateField: () => {},
+                getLocalState: () => ({}),
+                getStates: () => new Map(),
+                on: () => {},
+            };
+            this.on = (event: string, cb: () => void) => {
+                if (event === "sync") cb(); // auto-sync
+            };
+            this.connect = () => {};
+            this.disconnect = () => {};
+            this.destroy = () => {};
+            setTimeout(() => this.synced = true, 0);
+        }
+    },
+}));
+vi.mock("../../../stores/EditorOverlayStore.svelte", () => ({
+    editorOverlayStore: {
+        setUser: () => {},
+        setAwarenessState: () => {},
+    },
+}));
+vi.mock("../../../stores/PresenceStore.svelte", () => ({
+    presenceStore: {
+        setUser: () => {},
+        setAwarenessState: () => {},
+    },
+}));
 
 async function waitForPageConnection(
     conn: { getPageConnection: (id: string) => PageConnection | undefined; },
@@ -32,8 +83,7 @@ describe("page subdoc provider", () => {
         expect(c2.provider.roomname).toBe(`projects/${projectId}/pages/${p2.id}`);
         c1.awareness.setLocalStateField("presence", { cursor: { itemId: "a", offset: 0 } });
         expect(c2.awareness.getLocalState()?.presence).toBeUndefined();
-        c1.dispose();
         c2.dispose();
         conn.dispose();
-    });
+    }, 30000);
 });

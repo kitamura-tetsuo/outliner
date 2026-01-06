@@ -9,8 +9,6 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box", () => {
-    let projectName: string;
-
     test.beforeEach(async ({ page }, testInfo) => {
         // Manually forward console logs since we bypassed the fixture
         page.on("console", msg => console.log(`[BROWSER] ${msg.text()}`));
@@ -25,7 +23,6 @@ test.describe("SEA-0001: page title search box", () => {
             skipAppReady: true,
             doNotSeed: true,
         });
-        projectName = ids.projectName;
 
         await TestHelpers.createAndSeedProject(page, null, ["second page text"], {
             projectName: ids.projectName,

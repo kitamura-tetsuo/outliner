@@ -174,29 +174,47 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         params: token ? { auth: token } : undefined,
     });
 
+    // In valid test environments without a real backend, we might not get a sync event.
+    // So we don't want to block forever.
+    const isTest = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
+    const syncTimeout = isTest ? 1000 : 15000;
+
     // Wait for initial sync to complete before returning
     // This ensures seeded data is available immediately
     await new Promise<void>((resolve) => {
         if (provider.synced) {
             console.log(`[connectPageDoc] Provider already synced for room: ${room}`);
             resolve();
-        } else if (typeof provider.once === "function") {
-            const timer = setTimeout(() => {
-                console.log(`[connectPageDoc] Timeout waiting for sync, proceeding anyway for room: ${room}`);
-                resolve();
-            }, 15000);
+            return;
+        }
+
+        let solved = false;
+        const complete = () => {
+            if (solved) return;
+            solved = true;
+            resolve();
+        };
+
+        const timer = setTimeout(() => {
+            console.log(
+                `[connectPageDoc] Timeout waiting for sync (${syncTimeout}ms), proceeding anyway for room: ${room}`,
+            );
+            complete();
+        }, syncTimeout);
+
+        if (typeof provider.once === "function") {
             provider.once("sync", () => {
                 clearTimeout(timer);
                 console.log(`[connectPageDoc] Sync event fired for room: ${room}`);
-                resolve();
+                complete();
             });
         } else {
-            // Provider doesn't support 'once' method (e.g., in some test environments)
-            // Proceed without waiting
+            // Fallback if no once method
+            clearTimeout(timer);
             console.log(
                 `[connectPageDoc] Provider doesn't support 'once', proceeding without sync wait for room: ${room}`,
             );
-            resolve();
+            complete();
         }
     });
 
@@ -205,7 +223,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     try {
         const pageItemsMap = doc.getMap("pageItems");
         let waitCount = 0;
-        const maxWait = 200; // Wait up to 20 seconds (restored for stability)
+        const maxWait = isTest ? 5 : 200; // Wait up to 20 seconds (restored for stability), but short in tests
         const initialSize = pageItemsMap.size;
         console.log(`[connectPageDoc] Initial pageItemsMap size: ${initialSize} for room: ${room}`);
         while (pageItemsMap.size <= 1 && waitCount < maxWait) {

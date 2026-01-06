@@ -1272,9 +1272,8 @@
         selection: any,
         targetItemId: string,
         position: string,
-        _dropEffect: string,
+        _dropEffect: string, // eslint-disable-line @typescript-eslint/no-unused-vars
     ) {
-        // eslint-disable-line @typescript-eslint/no-unused-vars
         // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(

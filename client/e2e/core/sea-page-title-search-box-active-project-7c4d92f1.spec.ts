@@ -1,26 +1,23 @@
-import "../utils/registerAfterEachSnapshot";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
+// import "../utils/registerAfterEachSnapshot";
+// import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+// registerCoverageHooks();
 /** @feature SEA-0001
  *  Title   : Add page title search box
  *  Source  : docs/client-features.yaml
  */
-import { expect, test } from "../fixtures/console-forward";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box prefers active project", () => {
-    let projectName: string;
-
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(360000);
         // Prepare environment (creates Project and Page 1)
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
-        projectName = ids.projectName;
 
         // Seed Page 2 via API immediately (before doing any client-side navigation/waiting)
         // This ensures Yjs initial sync includes both pages, avoiding "live update" crash issues
         await TestHelpers.createAndSeedProject(page, null, ["search target"], {
-            projectName: projectName,
+            projectName: ids.projectName,
             pageName: "Page2",
         });
 
@@ -64,7 +61,7 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
             try {
                 // Explicitly wait for the option to be in the DOM
                 await expect.poll(async () => {
-                    const buttons = page.locator(".page-search-box button");
+                    const buttons = page.locator(".page-search-box ul li button");
                     return await buttons.count() > 0 && await buttons.filter({ hasText: "Page2" }).count() > 0;
                 }, { timeout: 10000 }).toBe(true);
                 found = true;

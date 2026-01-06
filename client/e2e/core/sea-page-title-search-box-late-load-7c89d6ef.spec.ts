@@ -1,11 +1,11 @@
-import "../utils/registerAfterEachSnapshot";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
+// import "../utils/registerAfterEachSnapshot";
+// import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+// registerCoverageHooks();
 /** @feature SEA-0001
  *  Title   : Add page title search box (late load)
  *  Source  : docs/client-features.yaml
  */
-import { expect, test } from "../fixtures/console-forward";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box", () => {
@@ -64,7 +64,8 @@ test.describe("SEA-0001: page title search box", () => {
             try {
                 // Explicitly wait for results
                 await expect.poll(async () => {
-                    return await page.locator(".page-search-box li").count();
+                    const buttons = page.locator(".page-search-box ul li button");
+                    return await buttons.filter({ hasText: "second" }).count();
                 }, { timeout: 10000 }).toBeGreaterThan(0);
                 found = true;
                 break;

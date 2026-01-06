@@ -157,7 +157,7 @@ export class GeneralStore {
             // Ignore errors during observation setup
         }
 
-        const self = this; // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const self = this; // eslint-disable-line @typescript-eslint/no-this-alias
         this.pages = {
             get current() {
                 // Register dependency on the signal
