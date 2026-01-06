@@ -1,5 +1,6 @@
 Read AGENTS.temp.md if exists.
-Follow it as guideline.
+Read files in client/docs/guide if exists.
+Follow them as guideline.
 
 # Outliner Project Guidelines
 

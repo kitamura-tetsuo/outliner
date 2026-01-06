@@ -1,6 +1,6 @@
-import "../utils/registerAfterEachSnapshot";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
+// import "../utils/registerAfterEachSnapshot";
+// import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+// registerCoverageHooks();
 /** @feature LNK-0007
  *  Title   : バックリンク機能
  *  Source  : docs/client-features.yaml
@@ -16,6 +16,7 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 test.describe("LNK-0007: バックリンク機能", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        page.on("console", msg => console.log(`[BROWSER] ${msg.text()}`));
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 

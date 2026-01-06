@@ -103,6 +103,7 @@
         "lint": "npx dprint fmt && eslint . --max-warnings=-1",
         "lint:diff-lines": "node ../scripts/lint-changed-lines.js",
         "paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide",
+        "postinstall": "patch-package",
         "prepare": "svelte-kit sync || echo ''",
         "preview": "vite preview",
         "preview:host": "vite preview --host 0.0.0.0",

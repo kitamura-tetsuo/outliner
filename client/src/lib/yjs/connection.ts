@@ -10,14 +10,8 @@ import { attachTokenRefresh } from "./tokenRefresh";
 // Minimal guarded debug logging for initial sync progress (disabled in production by default)
 function isConnDebugEnabled(): boolean {
     try {
-        const mode = import.meta.env.MODE as string | undefined;
-        const envDebugFlag = import.meta.env.VITE_YJS_CONN_DEBUG;
-        const envFlag = String(envDebugFlag || "") === "true";
-        const lsFlag = typeof window !== "undefined"
-            && window.localStorage?.getItem?.("VITE_YJS_CONN_DEBUG") === "true";
-        // Only enable when explicitly opted-in and not on production builds
-        const notProd = mode !== "production";
-        return notProd && (envFlag || lsFlag);
+        if (typeof window === "undefined") return false;
+        return window.localStorage?.getItem?.("VITE_YJS_DEBUG") === "true";
     } catch {
         return false;
     }
@@ -57,9 +51,10 @@ function attachConnDebug(label: string, provider: WebsocketProvider, awareness: 
 
 function isIndexedDBEnabled(): boolean {
     try {
+        const envDisabled = String(import.meta.env.VITE_DISABLE_YJS_INDEXEDDB || "") === "true";
         const lsDisabled = typeof window !== "undefined"
             && window.localStorage?.getItem?.("VITE_DISABLE_YJS_INDEXEDDB") === "true";
-        return !lsDisabled;
+        return !(envDisabled || lsDisabled);
     } catch {
         return true;
     }
@@ -103,9 +98,10 @@ function getWsBase(): string {
 function isAuthRequired(): boolean {
     try {
         const envReq = String(import.meta.env.VITE_YJS_REQUIRE_AUTH || "") === "true";
-        const lsReq = typeof window !== "undefined"
-            && window.localStorage?.getItem?.("VITE_YJS_REQUIRE_AUTH") === "true";
-        return envReq || lsReq;
+        const lsVal = typeof window !== "undefined" ? window.localStorage?.getItem?.("VITE_YJS_REQUIRE_AUTH") : null;
+        if (lsVal === "false") return false;
+        if (lsVal === "true") return true;
+        return envReq;
     } catch {
         return false;
     }
@@ -185,15 +181,15 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
             console.log(`[connectPageDoc] Provider already synced for room: ${room}`);
             resolve();
         } else if (typeof provider.once === "function") {
-            provider.once("synced", () => {
-                console.log(`[connectPageDoc] Sync event fired for room: ${room}`);
-                resolve();
-            });
-            // Fallback timeout in case 'synced' event doesn't fire
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 console.log(`[connectPageDoc] Timeout waiting for sync, proceeding anyway for room: ${room}`);
                 resolve();
             }, 15000);
+            provider.once("sync", () => {
+                clearTimeout(timer);
+                console.log(`[connectPageDoc] Sync event fired for room: ${room}`);
+                resolve();
+            });
         } else {
             // Provider doesn't support 'once' method (e.g., in some test environments)
             // Proceed without waiting
@@ -209,7 +205,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     try {
         const pageItemsMap = doc.getMap("pageItems");
         let waitCount = 0;
-        const maxWait = 50; // Wait up to 5 seconds (reduced from 20s for faster test execution)
+        const maxWait = 200; // Wait up to 20 seconds (restored for stability)
         const initialSize = pageItemsMap.size;
         console.log(`[connectPageDoc] Initial pageItemsMap size: ${initialSize} for room: ${room}`);
         while (pageItemsMap.size <= 1 && waitCount < maxWait) {
@@ -289,14 +285,16 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         if (provider.synced) {
             resolve();
         } else if (typeof provider.once === "function") {
-            provider.once("synced", () => resolve());
-            // Fallback timeout in case 'synced' event doesn't fire
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 console.log(
                     `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
                 );
                 resolve();
             }, 15000);
+            provider.once("sync", () => {
+                clearTimeout(timer);
+                resolve();
+            });
         } else {
             // Provider doesn't support 'once' method (e.g., in some test environments)
             // Proceed without waiting

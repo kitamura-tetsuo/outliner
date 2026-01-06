@@ -128,26 +128,10 @@ export class GeneralStore {
 
     public set project(v: Project) {
         if (v === this._project) {
-            console.log(`store: Project is already set, skipping`);
             return;
         }
 
-        console.log(`store: Setting project`, { projectExists: !!v, projectTitle: v?.title });
-
-        // Debug: Check items length immediately
-        try {
-            const items = v?.items;
-            console.log(`store: [DEBUG] Project items length on set: ${items?.length}`);
-            if (items && items.length > 0) {
-                const names = Array.from(items).map((i: any) => i.text || i.id);
-                console.log(`store: [DEBUG] Project item names:`, names);
-            }
-        } catch (e) {
-            console.log(`store: [DEBUG] Error checking items:`, e);
-        }
-
         this._project = v;
-        console.log(`store: Setting up Yjs observe for pages`);
 
         saveProjectSnapshot(v);
 
@@ -165,13 +149,15 @@ export class GeneralStore {
             this.pagesVersion++; // Trigger signal
         };
 
+        // Monitor both the orderedTree (content) and items (page list) for changes
         try {
             ymap?.observeDeep?.(handler);
+            (project?.items as any)?.observeDeep?.(handler);
         } catch {
             // Ignore errors during observation setup
         }
 
-        const self = this;
+        const self = this; // eslint-disable-next-line @typescript-eslint/no-this-alias
         this.pages = {
             get current() {
                 // Register dependency on the signal
