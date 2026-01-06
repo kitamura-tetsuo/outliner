@@ -223,7 +223,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     try {
         const pageItemsMap = doc.getMap("pageItems");
         let waitCount = 0;
-        const maxWait = isTest ? 5 : 200; // Wait up to 20 seconds (restored for stability), but short in tests
+        const maxWait = isTest ? 50 : 200; // Wait up to 20 seconds (restored for stability), 5s in tests
         const initialSize = pageItemsMap.size;
         console.log(`[connectPageDoc] Initial pageItemsMap size: ${initialSize} for room: ${room}`);
         while (pageItemsMap.size <= 1 && waitCount < maxWait) {

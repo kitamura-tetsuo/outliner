@@ -9,10 +9,13 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box prefers active project", () => {
+    let projectName: string;
+
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(360000);
         // Prepare environment (creates Project and Page 1)
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        projectName = ids.projectName;
 
         // Seed Page 2 via API immediately (before doing any client-side navigation/waiting)
         // This ensures Yjs initial sync includes both pages, avoiding "live update" crash issues
