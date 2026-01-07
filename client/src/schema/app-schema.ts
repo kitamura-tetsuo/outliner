@@ -429,11 +429,16 @@ export class Items implements Iterable<Item> {
     }
 
     [Symbol.iterator](): Iterator<Item> {
+        const keys = this.childrenKeys();
+        const len = keys.length;
         let index = 0;
         return {
             next: (): IteratorResult<Item> => {
-                const it = this.at(index++);
-                if (it) return { value: it, done: false };
+                if (index < len) {
+                    const key = keys[index++];
+                    // key is guaranteed to be string by type definition of childrenKeys
+                    return { value: new Item(this.ydoc, this.tree, key!), done: false };
+                }
                 return { value: undefined!, done: true };
             },
         };
