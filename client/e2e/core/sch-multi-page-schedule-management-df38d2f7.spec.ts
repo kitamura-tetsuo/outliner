@@ -232,7 +232,8 @@ test.describe("Multi-Page Schedule Management", () => {
         await page.locator('button:has-text("Back")').click();
 
         // Navigate to the other page using navigateToProjectPage for reliable sync
-        await TestHelpers.navigateToProjectPage(page, projectName, pageName2);
+        // Pass the actual seed lines to ensure correct item count expectation (1 line + title = 2 items)
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName2, ["Second page content"]);
         await ensureConnectedPage();
 
         const currentPageId = await page.evaluate(() => {
