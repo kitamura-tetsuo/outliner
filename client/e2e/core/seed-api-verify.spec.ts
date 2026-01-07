@@ -32,7 +32,7 @@ test.describe("Server-side Seeding Verification", () => {
         console.log(`Seeded project "${projectName}" page "${pageName}"`);
 
         // 3. Navigate to the page
-        const yjsPort = process.env.VITE_YJS_PORT || "7082";
+        const yjsPort = process.env.VITE_YJS_PORT || "7093";
         await page.addInitScript((port) => {
             // eslint-disable-next-line no-restricted-globals
             window.localStorage.setItem("VITE_YJS_PORT", port);
