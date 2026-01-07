@@ -13,6 +13,7 @@ export class GeneralStore {
     private readonly _currentPageSubscribers = new SvelteSet<() => void>();
 
     constructor() {
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
         this.pages = {
             get current(): Items | undefined {

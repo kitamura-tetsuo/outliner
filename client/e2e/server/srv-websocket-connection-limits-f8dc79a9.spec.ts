@@ -48,7 +48,7 @@ test.describe("WebSocket connection limits", () => {
             MAX_SOCKETS_PER_ROOM: "1",
             LEVELDB_PATH: dir,
         });
-        const { server } = startServer(cfg);
+        const { server } = await startServer(cfg);
         await new Promise(resolve => server.on("listening", resolve));
 
         const ws1 = new WebSocket(`ws://localhost:${port}/projects/testproj?auth=a`);

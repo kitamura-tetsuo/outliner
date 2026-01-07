@@ -81,7 +81,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait on settings failed"));
 
         await page.selectOption("select[data-testid='import-format-select']", "markdown");
-        const md = "- ImportedPage\n  - Child";
+        const md = "- ImportedPage\n  - Child\n    - Grand";
         await page.fill("textarea[data-testid='import-input']", md);
 
         // インポート前の状態を確認
@@ -140,8 +140,41 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
 
         const firstItemText = await page.locator(".outliner-item .item-content").first().innerText();
         expect(firstItemText).toBe("ImportedPage");
-        const hasChild = await page.locator(".outliner-item", { hasText: "Child" }).count();
-        expect(hasChild).toBeGreaterThan(0);
+        // Check if Child item exists and try to expand it if collapsed
+        const childItem = page.locator(".outliner-item", { hasText: "Child" });
+        try {
+            await expect(childItem).toBeVisible({ timeout: 10000 });
+        } catch (e) {
+            console.log("Child item not visible, checking logs and tree");
+            // Dump current tree state
+            const debugTree = await TreeValidator.getTreeData(page);
+            console.log("Debug Tree:", JSON.stringify(debugTree, null, 2));
+            throw e;
+        }
+
+        const childCount = await childItem.count();
+        console.log("Child item count:", childCount);
+
+        if (childCount > 0) {
+            // Check if there's a collapse button and click it to expand
+            const collapseBtn = childItem.locator(".collapse-btn").first();
+            const collapseBtnCount = await collapseBtn.count();
+            console.log("Collapse button count:", collapseBtnCount);
+
+            if (collapseBtnCount > 0) {
+                const btnText = await collapseBtn.textContent();
+                console.log("Collapse button text:", btnText);
+                if (btnText === "▶") {
+                    console.log("Expanding Child item");
+                    await collapseBtn.click();
+                    await TestHelpers.waitForUIStable(page);
+                }
+            }
+        }
+
+        const grandCount = await page.locator(".outliner-item", { hasText: "Grand" }).count();
+        console.log("Grand item count:", grandCount);
+        expect(grandCount).toBeGreaterThan(0);
     });
 
     test("import opml", async ({ page }, testInfo) => {

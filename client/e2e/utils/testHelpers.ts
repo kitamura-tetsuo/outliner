@@ -1297,14 +1297,17 @@ export class TestHelpers {
         } catch (e) {
             // Rethrow explicit errors (like timeout)
             console.error("waitForOutlinerItems: Error waiting for items", e);
+
+            // Try to capture useful debug info before failing
             try {
-                const bodyHtml = await page.content();
-                console.log("DEBUG: Page content at timeout (first 500 chars):", bodyHtml.substring(0, 500));
+                const count = await page.locator(".outliner-item[data-item-id]").count();
+                const visible = await page.getByTestId("outliner-base").isVisible().catch(() => false);
+                const pageClosed = page.isClosed();
                 console.log(
-                    "DEBUG: Outliner base visible?",
-                    await page.getByTestId("outliner-base").isVisible().catch(() => "check failed"),
+                    `[Debug] waitForOutlinerItems failed. Current count: ${count}, Base visible: ${visible}, Page closed: ${pageClosed}`,
                 );
             } catch {}
+
             throw e;
         }
 

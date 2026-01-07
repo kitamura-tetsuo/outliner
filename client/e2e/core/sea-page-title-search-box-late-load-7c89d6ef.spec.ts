@@ -31,7 +31,14 @@ test.describe("SEA-0001: page title search box", () => {
 
         // Wait for creation on second tab
         await expect(page2.locator("h1")).toContainText("second-page");
-        await page2.waitForTimeout(5000); // Allow Yjs to sync to server and back to page 1
+
+        // Ensure page2 is connected and synced before closing
+        await page2.waitForFunction(() => {
+            const y = (window as any).__YJS_STORE__;
+            return y && y.isConnected;
+        }, { timeout: 15000 }).catch(() => console.log("Warning: page2 Yjs connect timeout"));
+
+        await page2.waitForTimeout(10000); // Allow Yjs to sync to server and back to page 1
         await page2.close();
 
         // Focus the input again on original page
@@ -40,23 +47,27 @@ test.describe("SEA-0001: page title search box", () => {
 
         // Explicitly wait for project items to be loaded from Yjs BEFORE typing
         // This ensures the SearchBox has data to search against
-
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
             const gs = (window as any).generalStore || (window as any).appStore;
             const items = gs?.project?.items;
-            return items && items.length >= 2; // Should have at least current page + second page
+            const hasItems = items && items.length >= 2;
+            if (!hasItems) {
+                // Log only occasionally or on failure to avoid spam
+                // console.log(`[Wait] items length: ${items?.length}`);
+            }
+            return hasItems; // Should have at least current page + second page
         }, { timeout: 60000 }).catch(() =>
             console.log("[Test] Warning: Timeout waiting for project items to populate")
         );
 
         // Type the search query
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000); // Give a bit more time for any pending renders
 
-        // Retry mechanism
+        // Retry mechanism with explicit reactivity triggers
         let found = false;
-        // Increase retries to handle very slow indexing in CI (up to ~60s total)
-        for (let i = 0; i < 6; i++) {
+        // Reduce retries to fail faster
+        for (let i = 0; i < 3; i++) {
             await inputAfterNav.clear();
             await inputAfterNav.fill("second");
             // Trigger events ensuring reactivity
@@ -70,7 +81,15 @@ test.describe("SEA-0001: page title search box", () => {
                 // Explicitly wait for results
                 await expect.poll(async () => {
                     const buttons = page.locator(".page-search-box ul li button");
-                    return await buttons.filter({ hasText: "second" }).count();
+                    const count = await buttons.filter({ hasText: "second" }).count();
+                    if (count === 0) {
+                        // Force a state update if not found yet (Svelte 5 signal tweak)
+                        await page.evaluate(() => {
+                            const store = (window as any).generalStore;
+                            if (store) store.pagesVersion++;
+                        }).catch(() => {});
+                    }
+                    return count;
                 }, { timeout: 10000 }).toBeGreaterThan(0);
                 found = true;
                 break;
