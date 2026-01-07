@@ -16,6 +16,8 @@ test.describe("Server-side Seeding Verification", () => {
     });
 
     test("should correctly seed a page via API using shared schema", async ({ page }, testInfo) => {
+        page.on("console", msg => console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`));
+        page.on("pageerror", err => console.log(`[BROWSER ERROR] ${err}`));
         // 1. Define seed data
         const workerIndex = testInfo.workerIndex;
         const timestamp = Date.now();
@@ -30,13 +32,23 @@ test.describe("Server-side Seeding Verification", () => {
         console.log(`Seeded project "${projectName}" page "${pageName}"`);
 
         // 3. Navigate to the page
+        const yjsPort = process.env.VITE_YJS_PORT || "7082";
+        await page.addInitScript((port) => {
+            // eslint-disable-next-line no-restricted-globals
+            window.localStorage.setItem("VITE_YJS_PORT", port);
+        }, yjsPort);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
         await page.goto(`/${encodedProject}/${encodedPage}?isTest=true`);
 
         // 4. Wait for app readiness
-        await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
-
+        try {
+            await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
+        } catch (e) {
+            console.log("FAILED to find outliner-base. Page content:");
+            console.log(await page.locator("body").innerHTML());
+            throw e;
+        }
         // 5. Verify Content
         // The page title should be visible
         await expect(page.locator("h1")).toContainText(pageName, { timeout: 10000 });

@@ -123,8 +123,11 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
             }
 
             // Persist the main project document MANUALLY only if not using live doc binding
+            // Persist the main project document MANUALLY to ensure LevelDB is populated.
+            // This is critical because if no WebSocket client is connected yet, the live doc
+            // is not bound to persistence, so edits remain memory-only until a client connects.
             let projectUpdate: Uint8Array | undefined;
-            if (!getYDoc) {
+            {
                 projectUpdate = Y.encodeStateAsUpdate(projectDoc);
                 await persistence.storeUpdate(projectRoom, projectUpdate);
             }
