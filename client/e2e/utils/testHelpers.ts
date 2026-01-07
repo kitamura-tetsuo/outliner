@@ -161,13 +161,18 @@ export class TestHelpers {
                 TestHelpers.slog("Warning: generalStore not initialized within timeout", { error: e?.message });
             }
 
+            // UI-based Page Creation Removed - we rely on server-side seeding now
+            // if (!options?.doNotSeed && !options?.skipSeed) { ... }
+
             // Skip the full waitForAppReady for E2E tests to avoid timeout issues
             // The page initialization happens asynchronously
             if (!options?.skipAppReady) {
                 // Wait for outliner base to be visible
                 await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
                 // Wait for items to be rendered (with seeded data)
-                const expectedCount = (lines?.length ?? 0) + 1;
+                // With UI creation, we expect at least 1 item (the one we just added)
+                // If lines were provided, we unfortunately don't have them, but count matches (0 lines -> 1 item blank)
+                const expectedCount = Math.max(1, (lines?.length ?? 0) + 1);
                 await TestHelpers.waitForOutlinerItems(page, expectedCount, 60000);
                 // Give extra time for store to be fully populated
                 await page.waitForTimeout(1000);

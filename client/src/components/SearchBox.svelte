@@ -93,6 +93,15 @@
                             if (p) arr.push(p);
                         }
                         if (arr.length) {
+                            if (
+                                typeof window !== "undefined" &&
+                                (window as any).__E2E__
+                            ) {
+                                console.log(
+                                    "[SearchBox Debug] Source found items:",
+                                    arr.map((p) => p.text),
+                                );
+                            }
                             return arr;
                         }
                     }
@@ -134,6 +143,17 @@
                 }
             }
 
+            if (typeof window !== "undefined" && (window as any).__E2E__) {
+                console.log(
+                    "[SearchBox Debug] collectPages found NO items. Sources tried:",
+                    sources.length,
+                );
+                console.log("[SearchBox Debug] Store state:", {
+                    project: !!store.project,
+                    projectItems: store.project?.items?.length,
+                    pagesCurrent: store.pages?.current?.length,
+                });
+            }
             return [];
         };
 

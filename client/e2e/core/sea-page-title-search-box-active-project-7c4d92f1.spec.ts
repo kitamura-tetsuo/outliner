@@ -17,8 +17,8 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
         projectName = ids.projectName;
 
-        // Seed Page 2 via API immediately (before doing any client-side navigation/waiting)
-        // This ensures Yjs initial sync includes both pages, avoiding "live update" crash issues
+        // Seed Page 2 via API
+        // This relies on the server-side seeding fix (shared schema)
         await TestHelpers.createAndSeedProject(page, null, ["search target"], {
             projectName: ids.projectName,
             pageName: "Page2",
@@ -70,7 +70,14 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
                 found = true;
                 break;
             } catch {
-                console.log(`Search attempt ${i + 1} failed, retrying...`);
+                try {
+                    const listText = await page.evaluate(() =>
+                        document.querySelector(".page-search-box ul")?.textContent
+                    );
+                    console.log(`[Search Debug] Attempt ${i + 1} failed. Found text: ${listText}`);
+                } catch {
+                    console.log(`[Search Debug] Attempt ${i + 1} failed. Could not read list text.`);
+                }
                 // Force a blur/focus cycle
                 await searchInput.blur();
                 await page.waitForTimeout(500);

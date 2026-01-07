@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SEA-0001: page title search box", () => {
-    test("search results update when pages load after typing", async ({ page }, testInfo) => {
+    test("search results update when pages load after typing", async ({ page, context }, testInfo) => {
         test.setTimeout(360000);
         const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const input = page
@@ -18,20 +18,25 @@ test.describe("SEA-0001: page title search box", () => {
         await input.waitFor();
         await input.focus();
         await input.fill("second");
-        // Create page after user types to simulate late data availability
-        await TestHelpers.createAndSeedProject(page, null, ["second page text"], {
-            projectName: projectName,
-            pageName: "second-page",
-        });
-        // Reload to ensure sync, then focus the input again
-        await page.reload();
-        await TestHelpers.waitForAppReady(page);
-        // Focus the input again after navigating back
-        const inputAfterNav = page
-            .getByTestId("main-toolbar")
-            .getByRole("textbox", { name: "Search pages" });
-        await inputAfterNav.waitFor();
-        await inputAfterNav.focus();
+
+        // Create page in a separate tab to simulate another user/process adding data
+        // This tests live updates and bypasses SeedClient issues
+        const page2 = await context.newPage();
+        await page2.goto(`/${projectName}/second-page`);
+
+        // Use "Add Item" button to create the page
+        const addButton = page2.getByRole("button", { name: "アイテム追加" });
+        await addButton.waitFor();
+        await addButton.click({ force: true });
+
+        // Wait for creation on second tab
+        await expect(page2.locator("h1")).toContainText("second-page");
+        await page2.waitForTimeout(2000); // Allow Yjs to sync to server and back to page 1
+        await page2.close();
+
+        // Focus the input again on original page
+        await input.focus();
+        const inputAfterNav = input; // Input is still valid as we didn't reload
 
         // Explicitly wait for project items to be loaded from Yjs BEFORE typing
         // This ensures the SearchBox has data to search against

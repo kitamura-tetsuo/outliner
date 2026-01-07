@@ -165,7 +165,13 @@ export default defineConfig({
             // コアテスト7: sea, sec, server, snapshot
             name: "core-7",
             testDir: "./e2e/core",
-            testMatch: ["**/sea*.spec.ts", "**/sec*.spec.ts", "**/server*.spec.ts", "**/snapshot*.spec.ts"],
+            testMatch: [
+                "**/sea*.spec.ts",
+                "**/sec*.spec.ts",
+                "**/seed*.spec.ts",
+                "**/server*.spec.ts",
+                "**/snapshot*.spec.ts",
+            ],
         },
         {
             // コアテスト8: d, e, g, h, i, j, k, m, q, t, u, v, w, x, y, z, M

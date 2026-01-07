@@ -1,8 +1,8 @@
 import express from "express";
 import type { LeveldbPersistence } from "y-leveldb";
 import * as Y from "yjs";
-import { Project } from "./app-schema.js";
 import { logger } from "./logger.js";
+import { Project } from "./schema/app-schema.js";
 
 export interface PageSeedData {
     name: string;
@@ -14,12 +14,16 @@ export interface SeedRequest {
     pages: PageSeedData[];
 }
 
+interface GetYDoc {
+    (docname: string, gc?: boolean): Y.Doc;
+}
+
 /**
  * Server-side seeding endpoint that directly manipulates Yjs documents
  * This bypasses WebSocket synchronization timing issues by using the exact
  * same schema as the client.
  */
-export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
+export function createSeedRouter(persistence: LeveldbPersistence | undefined, getYDoc?: GetYDoc) {
     const router = express.Router();
 
     router.post("/seed", async (req, res): Promise<void> => {
@@ -52,7 +56,19 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
             // Get or create the project document using stable ID (same as client)
             const projectId = stableIdFromTitle(projectName);
             const projectRoom = `projects/${projectId}`;
-            const projectDoc = await persistence.getYDoc(projectRoom);
+
+            let projectDoc: Y.Doc;
+            if (getYDoc) {
+                // Use live doc from y-websocket memory cache!
+                projectDoc = getYDoc(projectRoom);
+                // Wait for initialization if needed (WSSharedDoc pattern)
+                if ((projectDoc as any).whenInitialized) {
+                    await (projectDoc as any).whenInitialized;
+                }
+            } else {
+                // Fallback (risk of desync)
+                projectDoc = await persistence.getYDoc(projectRoom);
+            }
 
             // Use the actual Project schema from client
             const project = Project.fromDoc(projectDoc);
@@ -67,63 +83,51 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
                 logger.info({ event: "seed_page", pageName: pageData.name });
 
                 // Add page to project using the real schema
+                // project.addPage creates the page node in the main tree and manages the subdoc entry
                 const page = project.addPage(pageData.name, "seed-server");
 
-                // Store items in the page subdocument's pageItems map
-                // This matches how the client schema expects items to be stored
+                // Add content items (lines) to the page
+                // We use page.items.addNode() effectively adding children in the main OrderTree
                 if (pageData.lines && pageData.lines.length > 0) {
-                    const pagesMap = projectDoc.getMap<Y.Doc>("pages");
-                    const subdoc = pagesMap.get(page.id);
+                    const items = page.items; // Items wrapper for this page
 
-                    if (subdoc) {
-                        // Ensure subdoc is loaded before accessing its data
-                        subdoc.load();
-
-                        // Create a pageItems map in the subdoc (same as client's addPage)
-                        const pageItems = subdoc.getMap<any>("pageItems");
-                        pageItems.set("initialized", Date.now());
-
-                        // Add each line as an item in the pageItems map
-                        for (const line of pageData.lines) {
-                            const itemKey = `item-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-                            const itemValue = new Y.Map<any>();
-
-                            // Set item properties
-                            itemValue.set("id", itemKey);
-                            itemValue.set("text", line);
-                            itemValue.set("author", "seed-server");
-                            itemValue.set("created", Date.now());
-                            itemValue.set("lastChanged", Date.now());
-                            itemValue.set("componentType", undefined);
-                            itemValue.set("aliasTargetId", undefined);
-
-                            // Store the item in pageItems
-                            pageItems.set(itemKey, itemValue);
-                        }
-
-                        // CRITICAL: Persist the subdocument to LevelDB
-                        const pageRoom = `projects/${projectId}/pages/${page.id}`;
-                        const subdocUpdate = Y.encodeStateAsUpdate(subdoc);
-                        await persistence.storeUpdate(pageRoom, subdocUpdate);
-                        logger.info({
-                            event: "seed_items_persisted",
-                            pageRoom,
-                            bytes: subdocUpdate.byteLength,
-                            itemCount: pageData.lines.length,
-                        });
-                    } else {
-                        logger.warn({
-                            event: "seed_subdoc_not_found",
-                            pageId: page.id,
-                            pageName: pageData.name,
-                        });
+                    for (const line of pageData.lines) {
+                        const item = items.addNode("seed-server");
+                        item.text = line;
                     }
+
+                    logger.info({
+                        event: "seed_items_added",
+                        pageName: pageData.name,
+                        itemCount: pageData.lines.length,
+                    });
+                }
+
+                // If project.addPage creates a subdoc, we might want to fail-safe persist it or ignore if empty
+                // The shared app-schema addPage puts a subdoc in the 'pages' map.
+                // We'll persist that subdoc just in case, though content is now in the main doc.
+                // (Optional: inspect if app-schema puts anything critical in subdoc)
+                // App-schema:
+                //   const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as YDocOptions);
+                //   pages.set(page.id, subdoc);
+                // It's mostly a placeholder for now.
+
+                // We should ensure the subdoc is persisted if it exists, to match system expectations
+                const pagesMap = projectDoc.getMap<Y.Doc>("pages");
+                const subdoc = pagesMap.get(page.id);
+                if (subdoc) {
+                    const pageRoom = `projects/${projectId}/pages/${page.id}`;
+                    const subdocUpdate = Y.encodeStateAsUpdate(subdoc);
+                    await persistence.storeUpdate(pageRoom, subdocUpdate);
                 }
             }
 
-            // Persist the main project document
-            const projectUpdate = Y.encodeStateAsUpdate(projectDoc);
-            await persistence.storeUpdate(projectRoom, projectUpdate);
+            // Persist the main project document MANUALLY only if not using live doc binding
+            let projectUpdate: Uint8Array | undefined;
+            if (!getYDoc) {
+                projectUpdate = Y.encodeStateAsUpdate(projectDoc);
+                await persistence.storeUpdate(projectRoom, projectUpdate);
+            }
 
             // Debug: Verify the persisted state by reading it back
             const verifyDoc = await persistence.getYDoc(projectRoom);
@@ -131,7 +135,7 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined) {
             logger.info({
                 event: "seed_project_persisted",
                 projectRoom,
-                bytes: projectUpdate.byteLength,
+                bytes: projectUpdate?.byteLength ?? 0,
                 orderedTreeSize: orderedTree.size,
                 expectedPages: pages.length,
             });

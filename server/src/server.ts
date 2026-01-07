@@ -13,9 +13,9 @@ import { createSeedRouter } from "./seed-api.js";
 import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners.js";
 import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth.js";
 
-// Import setupWSConnection from @y/websocket-server
+// Import setupWSConnection and getYDoc from @y/websocket-server/utils
 // @ts-ignore - Optional dependency, may not be available
-import { setupWSConnection as wsSetup } from "@y/websocket-server/utils";
+import { getYDoc, setupWSConnection as wsSetup } from "@y/websocket-server/utils";
 const setupWSConnection: any = wsSetup || (() => undefined);
 import { checkContainerAccess } from "./access-control.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
@@ -83,8 +83,8 @@ export function startServer(config: Config, logger = defaultLogger) {
         delete process.env.YPERSISTENCE;
     }
 
-    // Add seed API router
-    app.use("/api", createSeedRouter(persistence));
+    // Add seed API router with live doc access
+    app.use("/api", createSeedRouter(persistence, getYDoc));
 
     // Metrics endpoint
     app.get("/metrics", (_req: any, res: any) => {
