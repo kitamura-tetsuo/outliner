@@ -63,7 +63,24 @@ vi.mock("../stores/store.svelte", () => {
     return {
         store: {
             project: mockProject,
+            pages: {
+                current: [
+                    {
+                        id: "page-1",
+                        text: "Test Page 1",
+                        lastChanged: new Date("2024-01-01").getTime(),
+                        items: { length: 0 },
+                    },
+                    {
+                        id: "page-2",
+                        text: "Test Page 2",
+                        lastChanged: new Date("2024-01-02").getTime(),
+                        items: { length: 0 },
+                    },
+                ],
+            },
             currentPage: null,
+            pagesVersion: 0,
         },
     };
 });
@@ -78,6 +95,27 @@ vi.mock("$app/navigation", () => {
 describe("Sidebar", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // Reset store state
+        store.project = {
+            title: "Test Project",
+        } as any;
+        store.pages = {
+            current: [
+                {
+                    id: "page-1",
+                    text: "Test Page 1",
+                    lastChanged: new Date("2024-01-01").getTime(),
+                    items: { length: 0 },
+                },
+                {
+                    id: "page-2",
+                    text: "Test Page 2",
+                    lastChanged: new Date("2024-01-02").getTime(),
+                    items: { length: 0 },
+                },
+            ],
+        };
+        store.pagesVersion = 0;
     });
 
     afterEach(() => {
@@ -160,7 +198,10 @@ describe("Sidebar", () => {
         it("should render 'No pages available' when project has no items", () => {
             // Temporarily override the mock
             const originalProject = store.project;
+            const originalPages = store.pages;
+
             store.project = Project.createInstance("Empty Project");
+            store.pages = { current: [] };
 
             const { rerender } = render(Sidebar, { isOpen: true });
 
@@ -169,6 +210,9 @@ describe("Sidebar", () => {
             // Restore
             if (originalProject) {
                 store.project = originalProject;
+            }
+            if (originalPages) {
+                store.pages = originalPages;
             }
             rerender({ isOpen: true });
         });

@@ -6,9 +6,9 @@ category: admin
 status: implemented
 components:
 - functions/index.js (deleteAllProductionData endpoint)
-- scripts/backup-production-data.js
-- scripts/check-production-environment.js
-- scripts/delete-production-data.js
+- scripts/backup-production-data.cjs
+- scripts/check-production-environment.cjs
+- scripts/delete-production-data.cjs
 - scripts/production-data-manager.js
 services:
 - Firebase Functions API endpoint

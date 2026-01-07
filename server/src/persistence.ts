@@ -2,8 +2,12 @@ import type { Logger } from "pino";
 import { LeveldbPersistence } from "y-leveldb";
 import * as Y from "yjs";
 
-export function createPersistence(path: string) {
-    return new LeveldbPersistence(path);
+export async function createPersistence(path: string): Promise<LeveldbPersistence> {
+    const persistence = new LeveldbPersistence(path);
+    // Wait for the underlying database to open
+    // The tr property is a promise that resolves when the database transaction system is ready
+    await persistence.tr;
+    return persistence;
 }
 
 export async function warnIfRoomTooLarge(

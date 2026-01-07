@@ -2,7 +2,7 @@ import { v4 as uuid } from "uuid";
 import WebSocket from "ws";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
-import { Project } from "../client/src/schema/app-schema";
+import { Project } from "../client/src/schema/app-schema.ts";
 
 // Since we're in Node.js, we need to polyfill WebSocket
 const ws = WebSocket as any;

@@ -22,7 +22,7 @@ test.describe("LNK-0004: 仮ページ通知ボタン", () => {
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(300);
         }
 
         const createButton = page.locator(".temporary-page-notice button:has-text('ページを作成')");
@@ -32,14 +32,14 @@ test.describe("LNK-0004: 仮ページ通知ボタン", () => {
             return;
         }
         await createButton.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
         await page.reload();
         await page.waitForSelector("body", { timeout: 10000 });
 
         const loginButton2 = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton2.isVisible()) {
             await loginButton2.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(300);
         }
 
         const noticeElement = page.locator(".temporary-page-notice");
@@ -52,12 +52,12 @@ test.describe("LNK-0004: 仮ページ通知ボタン", () => {
         const loginButton3 = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton3.isVisible()) {
             await loginButton3.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(300);
         }
 
         const cancelButton = page.locator(".temporary-page-notice button:has-text('キャンセル')");
         await cancelButton.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
         const currentUrl = page.url();
         expect(currentUrl).not.toContain(anotherNonExistentPage);
     });

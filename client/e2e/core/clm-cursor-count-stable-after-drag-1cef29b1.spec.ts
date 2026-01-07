@@ -10,25 +10,19 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-1cef29b1: ドラッグ後もカーソル数は変化しない", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item A", "Item B", "Item C"]);
     });
 
     test("アイテムをドラッグして移動してもカーソル数が変化しない", async ({ page }) => {
-        await TestHelpers.waitForOutlinerItems(page);
-        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
-        await TestHelpers.setCursor(page, firstId!);
-        await TestHelpers.insertText(page, firstId!, "Item A");
-        await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
-        const secondId = await TestHelpers.getItemIdByIndex(page, 1);
-        await TestHelpers.setCursor(page, secondId!);
-        await TestHelpers.insertText(page, secondId!, "Item B");
-        await page.keyboard.press("Enter");
-        await TestHelpers.waitForCursorVisible(page);
-        const thirdId = await TestHelpers.getItemIdByIndex(page, 2);
-        await TestHelpers.setCursor(page, thirdId!);
-        await TestHelpers.insertText(page, thirdId!, "Item C");
-        await page.waitForTimeout(300);
+        await TestHelpers.waitForOutlinerItems(page, 4, 10000); // Title + 3 items
+
+        // Item 0 is Title. Item 1, 2, 3 are seeded items.
+        // We want to drag Item 2 (Item B) to Item 3 (Item C).
+        const firstId = await TestHelpers.getItemIdByIndex(page, 1); // Item A
+        await TestHelpers.setCursor(page, firstId!); // Set cursor explicitly
+
+        const secondId = await TestHelpers.getItemIdByIndex(page, 2);
+        const thirdId = await TestHelpers.getItemIdByIndex(page, 3);
 
         const cursorCountBefore = await page.evaluate(() => {
             return (window as { editorOverlayStore?: { getCursorInstances: () => any[]; }; }).editorOverlayStore!
@@ -45,7 +39,7 @@ test.describe("CLM-1cef29b1: ドラッグ後もカーソル数は変化しない
             await page.mouse.move(thirdBox.x + thirdBox.width / 2, thirdBox.y + thirdBox.height / 2, { steps: 10 });
             await page.mouse.up();
         }
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const cursorCountAfter = await page.evaluate(() => {
             return (window as { editorOverlayStore?: { getCursorInstances: () => any[]; }; }).editorOverlayStore!

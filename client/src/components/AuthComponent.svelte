@@ -66,9 +66,16 @@ onMount(() => {
     }
     else {
         // 短時間後にローディング状態解除（認証状態が不明の場合）
+        // E2Eテスト対応: 2秒後に再度認証状態を確認し、ユーザーがいればコールバックを呼び出す
+        // これはFirebase Authエミュレータへの接続とテストユーザーのログインに時間がかかる場合があるため
         setTimeout(() => {
             isLoading = false;
-        }, 1000);
+            // 再度ユーザーを確認（E2Eテストでユーザーがまだ初期化されていない場合があるため）
+            currentUser = userManager.getCurrentUser();
+            if (currentUser && onAuthSuccess) {
+                onAuthSuccess({ user: currentUser });
+            }
+        }, 2000);
     }
 
     // テスト用: カスタム認証イベントリスナー

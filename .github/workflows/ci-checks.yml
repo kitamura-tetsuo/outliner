@@ -1,0 +1,103 @@
+name: Checks
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          clean: true
+          # When called from another workflow, we inherit the ref context
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Test Environment
+        uses: ./.github/actions/setup-test-env
+
+
+
+      - name: Create .setup-installed
+        run: touch .setup-installed
+
+      - name: Lint functions
+        run: |
+          cd functions
+          npm run lint -- --fix
+
+  firebase-validation:
+    needs: lint
+    if: success()
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Test Environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Firebase deployment dry run
+        if: |
+          !(
+            github.actor == 'dependabot[bot]' ||
+            (github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]') ||
+            startsWith(github.head_ref, 'dependabot/') ||
+            startsWith(github.ref_name, 'dependabot/')
+          )
+        run: |
+          # Create temporary env file
+          cat > functions/.env <<EOF
+          AZURE_TENANT_ID=test-tenant-id
+          AZURE_ENDPOINT=https://test.fluidrelay.azure.com
+          AZURE_PRIMARY_KEY=test-primary-key
+          AZURE_SECONDARY_KEY=test-secondary-key
+          AZURE_ACTIVE_KEY=primary
+          NODE_ENV=test
+          EOF
+
+          # Set Firebase project
+          firebase use outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}"
+
+          # Validate
+          echo "Validating Firebase configuration..."
+          firebase functions:config:get --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" || echo "No config found"
+
+          echo "Checking functions source code..."
+          cd functions
+          # Dependencies restored by setup-test-env
+          node -c index.js
+          cd ..
+
+          echo "Validating Firebase project configuration..."
+          firebase projects:list --token "${{ secrets.FIREBASE_TOKEN }}" | grep outliner-d57b0
+
+          echo "Performing Firebase Functions deployment validation..."
+          firebase deploy --only functions --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --dry-run
+        env:
+          CI: true

@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    name: Format Check and Auto-Fix
+    uses: ./.github/workflows/ci-format.yml
+    secrets: inherit
+
+  checks:
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-checks.yml
+    secrets: inherit
+
+  unit-test:
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-test-unit.yml
+    secrets: inherit
+
+  integration-test:
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-test-integration.yml
+    secrets: inherit
+
+  e2e-test:
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-test-e2e.yml
+    secrets: inherit
+
+  eslint-client:
+    name: Lint Code with ESLint
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-eslint.yml
+    secrets: inherit
+
+  lint-diff-lines:
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-lint-diff-lines.yml
+    secrets: inherit
