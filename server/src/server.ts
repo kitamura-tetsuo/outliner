@@ -62,7 +62,7 @@ function parseYProtocolFrame(data: unknown): {
     return {};
 }
 
-export function startServer(config: Config, logger = defaultLogger) {
+export async function startServer(config: Config, logger = defaultLogger) {
     // Create Express app for API endpoints
     const app = express();
 
@@ -74,7 +74,7 @@ export function startServer(config: Config, logger = defaultLogger) {
 
     const wss = new WebSocketServer({ server });
     const disableLeveldb = process.env.DISABLE_Y_LEVELDB === "true";
-    const persistence = disableLeveldb ? undefined : createPersistence(config.LEVELDB_PATH);
+    const persistence = disableLeveldb ? undefined : await createPersistence(config.LEVELDB_PATH);
 
     // Configure y-websocket persistence via environment variable
     if (!disableLeveldb) {

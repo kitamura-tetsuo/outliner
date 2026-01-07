@@ -5,10 +5,21 @@ import type { Item, Items } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
 
 export class GeneralStore {
-    // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
-    pages: { current: Items | undefined; } = { current: undefined };
+    // Use $state for pages to ensure proper Svelte reactivity
+    private _pagesData = $state<{ items: Items | undefined; }>({ items: undefined });
+    // Getter for pages.current that tracks reactivity - set in constructor for proper closure
+    pages!: { current: Items | undefined; };
     private _currentPage: Item | undefined;
     private readonly _currentPageSubscribers = new SvelteSet<() => void>();
+
+    constructor() {
+        const self = this;
+        this.pages = {
+            get current(): Items | undefined {
+                return self._pagesData.items;
+            },
+        };
+    }
     // 現在開いているコメントスレッドのアイテムID（同時に1つのみ表示）
     openCommentItemId: string | null = null;
     // Fallback: 接続切替時などIDが変わるケースに備えてインデックスも保持
@@ -157,16 +168,8 @@ export class GeneralStore {
             // Ignore errors during observation setup
         }
 
-        const self = this; // eslint-disable-line @typescript-eslint/no-this-alias
-        this.pages = {
-            get current() {
-                // Register dependency on the signal
-                // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                self.pagesVersion;
-                // Return items (Sidebar should track pagesVersion)
-                return project.items;
-            },
-        };
+        // Update the $state for pages to trigger Svelte reactivity
+        this._pagesData.items = project.items;
     }
 }
 

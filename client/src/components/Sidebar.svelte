@@ -10,9 +10,23 @@
     // Collapsible state for Pages section
     let isPagesCollapsed = $state(false);
     // Use $derived.by to track explicit version signal from store
+    // Also triggers when pagesVersion changes OR when pages.current changes directly
     let pages = $derived.by(() => {
+        // Subscribe to pagesVersion signal
         void store.pagesVersion;
-        return store.pages?.current ?? [];
+        // Direct access to pages.current as fallback for when pagesVersion=0
+        const current = store.pages?.current;
+        // Convert Items to array if it has length property (Y.Array like)
+        if (!current) return [];
+        if (Array.isArray(current)) return current;
+        // For Y.Array/Items, iterate and collect
+        const result: any[] = [];
+        const len = (current as any).length ?? 0;
+        for (let i = 0; i < len; i++) {
+            const item = (current as any).at?.(i);
+            if (item) result.push(item);
+        }
+        return result;
     });
 </script>
 

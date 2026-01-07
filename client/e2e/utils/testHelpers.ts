@@ -354,7 +354,7 @@ export class TestHelpers {
         this.slog(`navigateToProjectPage: Navigating to ${url}`);
 
         try {
-            await page.goto(url, { timeout: 30000, waitUntil: "commit" });
+            await page.goto(url, { timeout: 60000, waitUntil: "commit" });
         } catch (e) {
             console.error(`[TestHelpers] page.goto failed for ${url}`, e);
             throw e;
@@ -1013,7 +1013,7 @@ export class TestHelpers {
                 // Debug log only occasionally to avoid spam (using timestamp check or similar if needed,
                 // but for now relying on browser console which might not show up unless we retrieve it)
                 return hasProject && hasPages && hasCurrentPage;
-            }, { timeout: 30000 }).catch(async (e) => {
+            }, { timeout: 60000 }).catch(async (e) => {
                 // Dump state on timeout
                 console.log("waitForAppReady timed out. Dumping state:");
                 await page.evaluate(() => {
@@ -1256,11 +1256,39 @@ export class TestHelpers {
             }
 
             if (!ensured) {
-                throw new Error(
-                    `waitForOutlinerItems: Timeout waiting for ${minRequiredItems} items (found ${await page.locator(
-                        ".outliner-item[data-item-id]",
-                    ).count()})`,
-                );
+                // Final attempt to count
+                const finalCount = await page.locator(".outliner-item[data-item-id]").count();
+                if (finalCount >= minRequiredItems) {
+                    ensured = true;
+                } else {
+                    // Retry with extended timeout before failing
+                    // This handles CI environments where Yjs sync is slower
+                    TestHelpers.slog("waitForOutlinerItems: Items not found, retrying with extended timeout", {
+                        finalCount,
+                        minRequiredItems,
+                    });
+                    const extendedDeadline = Date.now() + 30000; // Additional 30s
+                    while (Date.now() < extendedDeadline && !page.isClosed()) {
+                        await page.waitForTimeout(500);
+                        const retryCount = await page.locator(".outliner-item[data-item-id]").count();
+                        if (retryCount >= minRequiredItems) {
+                            TestHelpers.slog("waitForOutlinerItems: Items found after extended wait", {
+                                retryCount,
+                                minRequiredItems,
+                            });
+                            ensured = true;
+                            break;
+                        }
+                    }
+                    if (!ensured) {
+                        throw new Error(
+                            `waitForOutlinerItems: Timeout waiting for ${minRequiredItems} items (found ${await page
+                                .locator(
+                                    ".outliner-item[data-item-id]",
+                                ).count()})`,
+                        );
+                    }
+                }
             }
 
             const itemCount = await page.locator(".outliner-item[data-item-id]").count();

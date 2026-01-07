@@ -55,10 +55,12 @@ test.describe("Server-side Seeding Verification", () => {
 
         // The lines should be visible as items
         // We expect "Line 1", "Line 2", "Line 3"
-        // Note: waitForOutlinerItems waits for *any* items.
-        // We can check specific text.
+        // First wait for the expected number of items to appear (page title + 3 lines)
+        await TestHelpers.waitForOutlinerItems(page, 4, 60000);
+
+        // Now check specific text
         for (const line of lines) {
-            await expect(page.locator(`text=${line}`)).toBeVisible();
+            await expect(page.locator(`text=${line}`)).toBeVisible({ timeout: 30000 });
         }
     });
 });

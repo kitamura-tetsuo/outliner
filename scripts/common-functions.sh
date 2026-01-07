@@ -535,12 +535,12 @@ start_yjs_server() {
     npm run build --silent || npm run build
   fi
   
-  # Clean LevelDB database for fresh test state
-  if [ -d "${ROOT_DIR}/server/ydb" ]; then
-    echo "Cleaning LevelDB database for fresh test state..."
-    rm -rf "${ROOT_DIR}/server/ydb"
-    mkdir -p "${ROOT_DIR}/server/ydb"
-  fi
+  
+  # Clean LevelDB database for fresh test state (always run to prevent schema conflicts)
+  echo "Cleaning LevelDB database for fresh test state..."
+  rm -rf "${ROOT_DIR}/server/ydb" "${ROOT_DIR}/ydb" 2>/dev/null || true
+  mkdir -p "${ROOT_DIR}/server/ydb"
+  echo "LevelDB database cleaned successfully"
   
   echo "Launching compiled server..."
   npx dotenvx run --env-file=.env.test -- bash -lc "PORT=${TEST_YJS_PORT} npm start --silent" \

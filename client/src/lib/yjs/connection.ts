@@ -577,10 +577,6 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         } catch { /* no-op in Node */ }
     }
     let token = "";
-    const isTestEnv = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test"
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
     try {
         token = await getFreshIdToken();

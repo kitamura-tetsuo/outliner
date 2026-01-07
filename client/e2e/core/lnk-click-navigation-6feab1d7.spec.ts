@@ -50,8 +50,8 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // Verify navigation to target page URL
         await expect(page).toHaveURL(new RegExp(`/${encodedProject}/target-page`));
 
-        // Navigate back to source page to verify content
-        await TestHelpers.navigateToProjectPage(page, projectName, "target-page");
+        // Wait for target page content to be visible after navigation
+        await TestHelpers.waitForOutlinerItems(page, 2, 30000); // page title + 1 seeded item
 
         // Verify the target page loaded with correct title
         const pageTitle = page.locator(".page-title-content .item-text");

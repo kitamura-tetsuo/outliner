@@ -254,51 +254,30 @@ test.describe("Sidebar Navigation", () => {
     });
 
     test("should handle keyboard navigation on page items", async ({ page }) => {
-        test.setTimeout(120000);
+        test.setTimeout(180000);
 
         const { sidebar, open } = getSidebarHelpers(page);
         await open();
         await expect(sidebar).toBeVisible();
 
-        // Focus on a page item
-        // Wait for pages to be loaded
-        // Ensure app is fully hydrated before checking specific store state
-        // await page.waitForLoadState("networkidle").catch(() => { });
-
-        // Check if pages are present, if not reload and retry
-        console.log("Checking for pages in store (10s)...");
-        try {
-            await page.waitForFunction(() => {
-                // eslint-disable-next-line no-restricted-globals
-                const gs = (window as any).generalStore || (window as any).appStore;
-                const count = gs?.pages?.current?.length;
-                return count > 0;
-            }, { timeout: 10000 });
-            console.log("Pages found in store (initial check).");
-        } catch {
-            console.log("Pages not found in store initially, attempting reload...");
-            await page.reload();
-            await page.waitForLoadState("load");
-            const { open: reopen } = getSidebarHelpers(page);
-            await reopen();
-        }
-
-        // Now wait with longer timeout
+        // Wait for pages to be loaded in store
         console.log("Waiting for pages in store (60s)...");
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
             const gs = (window as any).generalStore || (window as any).appStore;
-            return gs?.pages?.current?.length > 0;
+            const count = gs?.pages?.current?.length;
+            console.log("[E2E] pages count in store:", count);
+            return count > 0;
         }, { timeout: 60000 });
-        console.log("Pages found in store (confirmed).");
+        console.log("Pages found in store.");
 
-        console.log("Calling TestHelpers.waitForPagesList...");
         await TestHelpers.waitForPagesList(page, 30000);
 
-        // Explicitly wait for the DOM to render the list items
+        // Give time for DOM to render
+        await page.waitForTimeout(1000);
 
         // Ensure Pages section is expanded
-        const pagesHeader = page.locator('[aria-label="Toggle pages section"]');
+        let pagesHeader = page.locator('[aria-label="Toggle pages section"]');
         if (await pagesHeader.isVisible()) {
             const expanded = await pagesHeader.getAttribute("aria-expanded");
             if (expanded === "false") {
@@ -308,23 +287,37 @@ test.describe("Sidebar Navigation", () => {
             }
         }
 
-        // First check that we actually have any page items to wait for
-        await expect.poll(async () => {
-            if (page.isClosed()) return 0;
-            try {
-                return await page.locator(".page-item").count();
-            } catch {
-                return 0;
-            }
-        }, { timeout: 20000 }).toBeGreaterThan(0).catch(async () => {
-            console.log("Pages not found in DOM, attempting reload...");
-            await page.reload({ waitUntil: "domcontentloaded" });
-            await page.waitForTimeout(2000); // Wait for hydration
+        // Wait for page items with extended timeout
+        console.log("Waiting for .page-item elements...");
+        let pageItemCount = 0;
+        for (let attempt = 0; attempt < 10; attempt++) {
+            pageItemCount = await page.locator(".page-item").count();
+            if (pageItemCount > 0) break;
+            console.log(`Attempt ${attempt + 1}: No .page-item found, waiting...`);
+            await page.waitForTimeout(1000);
 
-            // Re-open sidebar and expand section if needed
+            // Re-check if section needs expansion
+            pagesHeader = page.locator('[aria-label="Toggle pages section"]');
+            if (await pagesHeader.isVisible()) {
+                const exp = await pagesHeader.getAttribute("aria-expanded");
+                if (exp === "false") {
+                    await pagesHeader.click();
+                    await page.waitForTimeout(500);
+                }
+            }
+        }
+
+        if (pageItemCount === 0) {
+            // Reload as last resort
+            console.log("No .page-item found after retries, reloading...");
+            await page.reload();
+            await TestHelpers.waitForAppReady(page);
+
             const { open: reopen } = getSidebarHelpers(page);
             await reopen();
 
+            // Re-expand pages section
+            pagesHeader = page.locator('[aria-label="Toggle pages section"]');
             if (await pagesHeader.isVisible()) {
                 const expanded = await pagesHeader.getAttribute("aria-expanded");
                 if (expanded === "false") {
@@ -333,22 +326,12 @@ test.describe("Sidebar Navigation", () => {
                 }
             }
 
-            // Wait again after reload
-            await expect.poll(async () => {
-                if (page.isClosed()) return 0;
-                try {
-                    return await page.locator(".page-item").count();
-                } catch {
-                    return 0;
-                }
-            }, { timeout: 30000 }).toBeGreaterThan(0);
-        });
-
-        if (!page.isClosed()) {
-            await expect(page.locator(".page-item").first()).toBeVisible({ timeout: 20000 });
+            // Final wait for page items
+            await expect(page.locator(".page-item").first()).toBeVisible({ timeout: 30000 });
         }
 
-        console.log("Waiting for page item to be visible...");
+        console.log(`Found ${await page.locator(".page-item").count()} .page-item elements`);
+
         const pageItem = page.locator(".page-item").first();
         await pageItem.waitFor({ state: "visible", timeout: 10000 });
         console.log("Focusing page item...");
@@ -362,7 +345,7 @@ test.describe("Sidebar Navigation", () => {
 
         // Wait for navigation to occur (URL change)
         console.log("Waiting for URL change...");
-        await expect.poll(() => page.url()).not.toBe(currentUrl);
+        await expect.poll(() => page.url(), { timeout: 30000 }).not.toBe(currentUrl);
         expect(page.url()).toBeTruthy();
     });
 

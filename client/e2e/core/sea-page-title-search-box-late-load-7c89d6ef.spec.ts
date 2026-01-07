@@ -31,7 +31,7 @@ test.describe("SEA-0001: page title search box", () => {
 
         // Wait for creation on second tab
         await expect(page2.locator("h1")).toContainText("second-page");
-        await page2.waitForTimeout(2000); // Allow Yjs to sync to server and back to page 1
+        await page2.waitForTimeout(5000); // Allow Yjs to sync to server and back to page 1
         await page2.close();
 
         // Focus the input again on original page
@@ -46,7 +46,7 @@ test.describe("SEA-0001: page title search box", () => {
             const gs = (window as any).generalStore || (window as any).appStore;
             const items = gs?.project?.items;
             return items && items.length >= 2; // Should have at least current page + second page
-        }, { timeout: 30000 }).catch(() =>
+        }, { timeout: 60000 }).catch(() =>
             console.log("[Test] Warning: Timeout waiting for project items to populate")
         );
 

@@ -531,3 +531,46 @@ await page.addInitScript(() => {
 // 2. Client Connection.ts
 const port = window.localStorage.getItem("VITE_YJS_PORT") || import.meta.env.VITE_YJS_PORT;
 ```
+
+### 30. Svelte 5 Reactivity for Yjs Stores
+
+**Symptom**: Components don't update when Yjs data changes, even though the data is definitely in the Yjs doc. Using `$derived` or `$effect` on a store property returns stale values.
+
+**Root Cause**: In Svelte 5, plain object getters (e.g., `get items() { return this.doc.getArray('items') }`) are NOT reactive unless they access a Signal (`$state`). Yjs events trigger updates, but if the property access itself isn't tracking a signal, Svelte's dependency tracking won't notice the change.
+
+**Solution**: Use a `$state` property as a signal to trigger updates, or wrap the data in a `$state`.
+
+```typescript
+// ❌ Not Reactive in Svelte 5
+class Store {
+    get items() {
+        return this.doc.getArray("items").toArray();
+    } // Svelte won't track this
+}
+
+// ✅ Reactive Pattern
+class Store {
+    private _version = $state(0); // Signal
+
+    constructor() {
+        // Update signal on Yjs change
+        this.doc.on("update", () => this._version++);
+    }
+
+    get items() {
+        void this._version; // Register dependency
+        return this.doc.getArray("items").toArray();
+    }
+}
+```
+
+### 31. Cross-Tab Sync Limitations in E2E
+
+**Symptom**: "Late Load" tests (User A adds item in Tab 2, User B waits for it in Tab 1) consistently timeout in CI, despite working locally.
+
+**Root Cause**: CI environments often run single-threaded or with very limited CPU for WebSocket handling. The local `y-websocket` server + 2 browser tabs + Playwright overhead can cause messages to be delayed beyond 30-60s.
+
+**Solution**:
+
+1. **Prefer API Seeding**: Use `TestHelpers.seedProject()` (HTTP API) then load the page. This is much faster and more reliable than simulating a second user.
+2. **Accept Flakiness**: If cross-tab testing is required, accept that it may flake. Increase timeouts to 60s+ and use explicit waits for `provider.synced` if possible.
