@@ -128,6 +128,23 @@ async function getFreshIdToken(): Promise<string> {
     const isTestEnv = import.meta.env.MODE === "test"
         || (typeof window !== "undefined"
             && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true" || (window as any).__E2E__ === true));
+    console.log(`[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth.currentUser}`);
+
+    const generateMockToken = () => {
+        // Generate mock token for E2E tests (server accepts alg:none in test mode)
+        // Safe to use simple generation here matching server expectations
+        const header = JSON.stringify({ alg: "none", typ: "JWT" });
+        const payload = JSON.stringify({
+            uid: "test-user",
+            sub: "test-user",
+            aud: "outliner-d57b0",
+            exp: Math.floor(Date.now() / 1000) + 3600,
+            iss: "https://securetoken.google.com/outliner-d57b0",
+        });
+        const b64 = (str: string) =>
+            typeof window !== "undefined" ? window.btoa(str) : Buffer.from(str).toString("base64");
+        return `${b64(header)}.${b64(payload)}.`;
+    };
 
     const mustAuth = isAuthRequired();
 
@@ -141,50 +158,25 @@ async function getFreshIdToken(): Promise<string> {
 
     if (!auth.currentUser) {
         if (isTestEnv) {
-            // Generate mock token for E2E tests (server accepts alg:none in test mode)
-            const header = JSON.stringify({ alg: "none", typ: "JWT" });
-            const payload = JSON.stringify({
-                uid: "test-user",
-                sub: "test-user",
-                aud: "test-project",
-                exp: Math.floor(Date.now() / 1000) + 3600,
-                iss: "https://securetoken.google.com/test-project",
-            });
-            const b64 = (str: string) =>
-                typeof window !== "undefined" ? window.btoa(str) : Buffer.from(str).toString("base64");
-            return `${b64(header)}.${b64(payload)}.`;
+            return generateMockToken();
         }
         if (!mustAuth) {
             return "";
         }
-        if (isTestEnv) {
-            // E2E Fallback: If Firebase Emulator is offline/unreachable, use a self-signed mock token
-            // that the server accepts in test mode (alg:none). This allows Yjs to connect without full Firebase Auth.
-            console.warn("[yjs-conn] Test mode: Generating mock offline token for Yjs auth");
-            const header = btoa(JSON.stringify({ alg: "none", typ: "JWT" })).replace(/=/g, "");
-            const payload = btoa(JSON.stringify({
-                user_id: "test-user",
-                sub: "test-user",
-                aud: "outliner-d57b0", // Should match process.env.VITE_FIREBASE_PROJECT_ID if possible
-                exp: Math.floor(Date.now() / 1000) + 3600,
-                iat: Math.floor(Date.now() / 1000),
-                iss: "https://securetoken.google.com/outliner-d57b0",
-                firebase: { identities: {}, sign_in_provider: "custom" },
-            })).replace(/=/g, "");
-            return `${header}.${payload}.`;
-        }
-        // If we reach here, auth is required but not available
         throw new Error("No Firebase user available for Yjs auth");
     }
 
-    const token = await auth.currentUser.getIdToken(true);
-    if (!token) {
-        if (isTestEnv && !mustAuth) {
-            return "";
+    try {
+        const token = await auth.currentUser.getIdToken(true);
+        if (!token) throw new Error("Token is empty");
+        return token;
+    } catch (e) {
+        if (isTestEnv) {
+            console.warn("[getFreshIdToken] Auth failed in test mode, using mock token:", e);
+            return generateMockToken();
         }
-        throw new Error("No Firebase ID token available");
+        throw e;
     }
-    return token;
 }
 
 export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: string): Promise<PageConnection> {
@@ -222,7 +214,10 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     // In valid test environments without a real backend, we might not get a sync event.
     // So we don't want to block forever.
     const isTest = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
-    const syncTimeout = isTest ? 1000 : 15000;
+    const syncTimeout = isTest ? 5000 : 15000;
+    provider.on("sync", (isSynced: boolean) => {
+        console.log(`[connectPageDoc] Sync event received for ${room}, isSynced=${isSynced}`);
+    });
 
     // Wait for initial sync to complete before returning
     // This ensures seeded data is available immediately
@@ -338,19 +333,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         // Tolerate missing token; provider will attempt reconnect later
         token = "";
     }
-    if (!token && (typeof window !== "undefined")) {
-        console.warn("[createProjectConnection] Token empty, forcing mock token generation.");
-        const header = JSON.stringify({ alg: "none", typ: "JWT" });
-        const payload = JSON.stringify({
-            uid: "test-user",
-            sub: "test-user",
-            aud: "test-project",
-            exp: Math.floor(Date.now() / 1000) + 3600,
-            iss: "https://securetoken.google.com/test-project",
-        });
-        const b64 = (str: string) => window.btoa(str);
-        token = `${b64(header)}.${b64(payload)}.`;
-    }
+
     const provider = new WebsocketProvider(wsBase, room, doc, {
         params: token ? { auth: token } : undefined,
     });

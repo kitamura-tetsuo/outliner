@@ -472,3 +472,62 @@ await TestHelpers.waitForPagesList(page);
 **Root Cause**: Creating too many pages or items (heavy seeding) in the `beforeEach` hook overwhelms the CI environment, causing subsequent tests to drift or fail.
 
 **Solution**: Reduce dataset size. Use strictly necessary data for the test case. Avoid "stress tests" in the main E2E suite unless isolated.
+
+### 27. Test-Mode Authentication (Mock Tokens)
+
+**Symptom**: Yjs connection fails (`ws_connection_denied`) or `firebase.auth()` throws network errors in test environments, especially when the Firebase Emulator is flaky.
+
+**Root Cause**: E2E tests often run in environments (like limited CI containers) where the Firebase Auth Emulator is offline or unreachable via standard `getIdToken()`, yet the server requires a token for the WebSocket handshake.
+
+**Solution**:
+
+1. **Client**: Implement a fallback in `getFreshIdToken` to generate a self-signed "Mock Token" (`alg:none`) when `VITE_IS_TEST` is true and standard auth fails.
+2. **Server**: Update `server/src/websocket-auth.ts` to explicitly allow `alg:none` tokens when running in `TEST_ENV`.
+
+```typescript
+// Connection.ts (Conceptual)
+try {
+    token = await auth.currentUser.getIdToken(true);
+} catch (e) {
+    if (isTestEnv) {
+        // Fallback: Generate mock token accepted by server in test mode
+        token = generateMockToken({ uid: "test-user", alg: "none" });
+    }
+}
+```
+
+### 28. Ensuring Seeding Persistence
+
+**Symptom**: `seed-api-verify` passes the HTTP seed request, but when the test client connects slightly later, it sees an empty document (0 items). Server logs show `bytes: 0` for the persisted update.
+
+**Root Cause**: The seeding API modifies an in-memory Yjs doc. If no WebSocket clients are connected at that exact moment, `y-leveldb` might not automatically flush these changes to disk immediately. When the test client connects later, it gets the stale (empty) state from disk.
+
+**Solution**: Force manual persistence in the seeding logic.
+
+```typescript
+// Server seed-api.ts
+const update = Y.encodeStateAsUpdate(doc);
+// FORCE storage even if using in-memory doc
+await persistence.storeUpdate(roomName, update);
+```
+
+### 29. Dynamic Port Configuration (LocalStorage)
+
+**Symptom**: E2E tests fail to connect to Yjs (`ECONNREFUSED` on port 1234) because the server launched on a different ephemeral port (e.g., 7082).
+
+**Root Cause**: Hardcoding ports in `.env.test` is brittle if the test runner or parallel workers choose different ports. `import.meta.env` values are baked in at build time.
+
+**Solution**:
+
+1. **Test Runner**: Write the desired port to `localStorage` in `beforeEach`.
+2. **Client Code**: Prioritize `localStorage` over environment variables for port selection.
+
+```typescript
+// 1. Playwright Setup
+await page.addInitScript(() => {
+    window.localStorage.setItem("VITE_YJS_PORT", "7082");
+});
+
+// 2. Client Connection.ts
+const port = window.localStorage.getItem("VITE_YJS_PORT") || import.meta.env.VITE_YJS_PORT;
+```
