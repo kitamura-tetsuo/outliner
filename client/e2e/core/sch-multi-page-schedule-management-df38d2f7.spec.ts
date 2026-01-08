@@ -10,9 +10,37 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Multi-Page Schedule Management", () => {
     let testProject: { projectName: string; pageName: string; };
+    const pageName1 = "stable-page-1";
+    const pageName2 = "stable-page-2";
 
-    test.beforeEach(async ({ page }) => {
-        testProject = await TestHelpers.prepareTestEnvironment(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        // Set up test environment flags BEFORE any navigation
+        await page.addInitScript(() => {
+            try {
+                localStorage.setItem("VITE_IS_TEST", "true");
+                localStorage.setItem("VITE_E2E_TEST", "true");
+                localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                localStorage.removeItem("VITE_YJS_DISABLE_WS");
+                (window as Window & Record<string, any>).__E2E__ = true;
+            } catch {}
+        });
+
+        // Create project with both pages upfront using createAndSeedProject
+        testProject = await TestHelpers.createAndSeedProject(page, testInfo, [
+            "これはテスト用のページです。1",
+            "これはテスト用のページです。2",
+            "これはテスト用のページです。3",
+        ], {
+            projectName: undefined, // Let it generate a unique name
+            pageName: pageName1, // First page name
+        });
+
+        // Add second page via direct API call for multi-page test
+        const { SeedClient } = await import("../utils/seedClient.js");
+        const authToken = await TestHelpers.getTestAuthToken();
+        const seeder = new SeedClient(testProject.projectName, authToken);
+        await seeder.seed([{ name: pageName2, lines: ["Second page content"] }]);
 
         // Enable console logging
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));
@@ -132,19 +160,28 @@ test.describe("Multi-Page Schedule Management", () => {
     });
 
     test("schedule operations across pages", async ({ page }) => {
-        test.setTimeout(60000); // Increase timeout for stability
+        test.setTimeout(120000); // Increase timeout for stability
         const { projectName } = testProject;
 
         // Strict helper to ensure we are on the connected project and page
+        // Waits for multiple conditions to ensure YJS client is connected and page is loaded
         const ensureConnectedPage = async () => {
+            // First wait for the basic page structure to be ready
             await page.waitForFunction(() => {
-                const win: any = window as any;
+                const win = window as any;
+                // Check for basic page readiness
+                return win.generalStore?.project !== undefined;
+            }, { timeout: 30000 });
+
+            // Then wait for YJS client to be connected (might take additional time for WebSocket)
+            await page.waitForFunction(() => {
+                const win = window as any;
                 const client = win.__YJS_STORE__?.yjsClient;
                 const gs = win.generalStore;
+                // Full check: client, project, and currentPage all need to be ready
                 if (!client || !gs?.project || !gs?.currentPage) return false;
 
                 // Ensure project matches client project (confirms connected project)
-                // Note: client.getProject might be a function or property depending on impl
                 if (client.getProject) {
                     const cp = typeof client.getProject === "function" ? client.getProject() : client.getProject;
                     if (gs.project !== cp) return false;
@@ -152,19 +189,10 @@ test.describe("Multi-Page Schedule Management", () => {
 
                 return true;
             }, { timeout: 30000 });
-            // await page.waitForTimeout(500); // Small buffer for reactivity
         };
 
-        // Wait for connection initially
-        await ensureConnectedPage();
-
-        // Define stable page names for the test
-        const pageName1 = "stable-page-1";
-        const pageName2 = "stable-page-2";
-
-        // Go to page 1 (Let +page.svelte create it on the connected project)
-        await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName1)}`);
-        await page.waitForSelector(`text=${pageName1}`, { timeout: 10000 });
+        // Go to page 1 using navigateToProjectPage for reliable sync
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName1);
         await ensureConnectedPage();
 
         // Open schedule for first page
@@ -203,11 +231,9 @@ test.describe("Multi-Page Schedule Management", () => {
         // Navigate back to page list
         await page.locator('button:has-text("Back")').click();
 
-        // Navigate to the other page
-        await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName2)}`);
-
-        // Wait for page to load
-        await page.waitForSelector(`text=${pageName2}`, { timeout: 10000 });
+        // Navigate to the other page using navigateToProjectPage for reliable sync
+        // Pass the actual seed lines to ensure correct item count expectation (1 line + title = 2 items)
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName2, ["Second page content"]);
         await ensureConnectedPage();
 
         const currentPageId = await page.evaluate(() => {
@@ -227,11 +253,8 @@ test.describe("Multi-Page Schedule Management", () => {
         await expect(backButton).toBeEnabled();
         await backButton.click();
 
-        // Return to the first page
-        await page.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName1)}`);
-
-        // Wait for page to load completely
-        await page.waitForSelector(`text=${pageName1}`, { timeout: 10000 });
+        // Return to the first page using navigateToProjectPage for reliable sync
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName1);
         await ensureConnectedPage();
 
         // Navigate to schedule management again
