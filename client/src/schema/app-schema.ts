@@ -424,16 +424,16 @@ export class Items implements Iterable<Item> {
     }
 
     [Symbol.iterator](): Iterator<Item> {
-        // Optimizing iteration: fetch keys once to avoid calling childrenKeys() repeatedly.
-        // childrenKeys() triggers a sort, making naive iteration O(N^2).
-        // By fetching keys once, we make iteration O(N).
         const keys = this.childrenKeys();
         let index = 0;
         return {
             next: (): IteratorResult<Item> => {
                 if (index < keys.length) {
                     const key = keys[index++];
-                    return { value: new Item(this.ydoc, this.tree, key!), done: false };
+                    return {
+                        value: new Item(this.ydoc, this.tree, key!),
+                        done: false,
+                    };
                 }
                 return { value: undefined!, done: true };
             },
