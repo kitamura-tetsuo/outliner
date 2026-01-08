@@ -35,11 +35,11 @@ test.describe("ITM-ea76cd92: Backspace merge previous item", () => {
 
         // カーソルを行の先頭に移動
         await page.keyboard.press("Home");
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(300);
 
         // Backspaceを押して前のアイテムと結合
         await page.keyboard.press("Backspace");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // アクティブなアイテムが最初のアイテム（"First"）になっていることを確認
         const activeId = await TestHelpers.getActiveItemId(page);

@@ -29,21 +29,21 @@ test.describe("SLR-0009: アイテムドラッグ＆ドロップ", () => {
         const firstId = await firstItem.getAttribute("data-item-id");
         await TestHelpers.setCursor(page, firstId!);
         await TestHelpers.insertText(page, firstId!, "First item text");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
         const secondItem = page.locator(".outliner-item").nth(1);
         const secondId = await secondItem.getAttribute("data-item-id");
         await TestHelpers.setCursor(page, secondId!);
         await TestHelpers.insertText(page, secondId!, "Second item text");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
         const thirdItem = page.locator(".outliner-item").nth(2);
         const thirdId = await thirdItem.getAttribute("data-item-id");
         await TestHelpers.setCursor(page, thirdId!);
         await TestHelpers.insertText(page, thirdId!, "Third item text");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
@@ -70,7 +70,7 @@ test.describe("SLR-0009: アイテムドラッグ＆ドロップ", () => {
         await page.keyboard.press("Enter");
         await page.waitForTimeout(300);
         await page.keyboard.press("Control+v");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         const firstItemAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent() || "";
         if (await page.locator(".outliner-item").count() > 1) {
             await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();

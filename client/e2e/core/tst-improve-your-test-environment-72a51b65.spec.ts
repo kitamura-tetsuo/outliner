@@ -68,15 +68,15 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         // 内部リンクを強制的に表示
         console.log("内部リンクを強制的に表示します。");
         await LinkTestHelpers.forceRenderInternalLinks(page);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // リンク要素が存在するか確認
         const linkExists = await page.locator(linkSelector).count() > 0;
         if (!linkExists) {
             console.log(`Link element not found: ${linkSelector}, trying again with more wait time`);
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
             await LinkTestHelpers.forceRenderInternalLinks(page);
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
         }
 
         // リンク要素が存在するか再確認
@@ -187,15 +187,15 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         // 内部リンクを強制的に表示
         console.log("内部リンクを強制的に表示します。");
         await LinkTestHelpers.forceRenderInternalLinks(page);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // リンク要素が存在するか確認
         const linkExists = await page.locator(linkSelector).count() > 0;
         if (!linkExists) {
             console.log(`Link element not found: ${linkSelector}, trying again with more wait time`);
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
             await LinkTestHelpers.forceRenderInternalLinks(page);
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
         }
 
         // リンク要素が存在するか再確認
@@ -304,15 +304,15 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         // 内部リンクを強制的に表示
         console.log("内部リンクを強制的に表示します。");
         await LinkTestHelpers.forceRenderInternalLinks(page);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // リンク要素が存在するか確認
         const linkExists = await page.locator(linkSelector).count() > 0;
         if (!linkExists) {
             console.log(`Link element not found: ${linkSelector}, trying again with more wait time`);
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
             await LinkTestHelpers.forceRenderInternalLinks(page);
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
         }
 
         // リンク要素が存在するか再確認
@@ -414,15 +414,15 @@ test.describe("LNK-0005: リンクプレビュー機能", () => {
         // 内部リンクを強制的に表示
         console.log("内部リンクを強制的に表示します。");
         await LinkTestHelpers.forceRenderInternalLinks(page);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // リンク要素が存在するか確認
         const linkExists = await page.locator(linkSelector).count() > 0;
         if (!linkExists) {
             console.log(`Link element not found: ${linkSelector}, trying again with more wait time`);
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
             await LinkTestHelpers.forceRenderInternalLinks(page);
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
         }
 
         // リンク要素が存在するか再確認

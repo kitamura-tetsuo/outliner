@@ -75,4 +75,33 @@ try {
     // no-op: if import fails here, module will still set __YJS_STORE__ on first import
 }
 
+// ---- Vitest bootstrap: set up localStorage for test environment detection ----
+// This is needed by ScrapboxFormatter.getProjectPrefix() to return a default project prefix
+try {
+    if (typeof globalThis.localStorage === "undefined") {
+        // Polyfill localStorage for jsdom
+        const localStorageMock: NonNullable<typeof globalThis.localStorage> = {
+            _data: {} as Record<string, string>,
+            getItem(key: string): string | null {
+                return this._data[key] ?? null;
+            },
+            setItem(key: string, value: string): void {
+                this._data[key] = String(value);
+            },
+            removeItem(key: string): void {
+                delete this._data[key];
+            },
+            clear(): void {
+                this._data = {};
+            },
+        };
+        (globalThis as { localStorage?: typeof localStorageMock; }).localStorage = localStorageMock;
+    }
+    // Set test environment flags
+    globalThis.localStorage.setItem("VITE_IS_TEST", "true");
+    globalThis.localStorage.setItem("VITE_E2E_TEST", "true");
+} catch {
+    // no-op: if localStorage setup fails
+}
+
 // add more mocks here if you need them

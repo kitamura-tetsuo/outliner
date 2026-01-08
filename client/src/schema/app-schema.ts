@@ -3,7 +3,9 @@
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
-import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types";
+import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types.js";
+
+console.log("HELLO WORLD APP SCHEMA LOADED");
 
 export type Comment = {
     id: string;
@@ -15,7 +17,10 @@ export type Comment = {
 
 // コメントコレクション（Y.Array<Y.Map>）用ラッパ
 export class Comments {
-    constructor(private readonly yArray: Y.Array<Y.Map<CommentValueType>>) {}
+    private readonly yArray: Y.Array<Y.Map<CommentValueType>>;
+    constructor(yArray: Y.Array<Y.Map<CommentValueType>>) {
+        this.yArray = yArray;
+    }
 
     addComment(author: string, text: string) {
         const time = Date.now();
@@ -36,26 +41,9 @@ export class Comments {
     }
 
     deleteComment(commentId: string) {
-        try {
-            console.info("[Comments.deleteComment] called with id=", commentId);
-        } catch {}
-        const ids = this.yArray.toArray().map((m) => m.get("id"));
-        try {
-            console.info("[Comments.deleteComment] current ids=", ids);
-        } catch {}
-        const idx = ids.findIndex((id) => id === commentId);
-        try {
-            console.info("[Comments.deleteComment] found idx=", idx);
-        } catch {}
+        const idx = this.yArray.toArray().findIndex((m) => m.get("id") === commentId);
         if (idx >= 0) {
             this.yArray.delete(idx, 1);
-            try {
-                console.info("[Comments.deleteComment] deleted idx=", idx);
-            } catch {}
-        } else {
-            try {
-                console.info("[Comments.deleteComment] not found, skip");
-            } catch {}
         }
     }
 
@@ -408,11 +396,18 @@ export class Item {
 
 // 子ノード集合ラッパ
 export class Items implements Iterable<Item> {
+    public readonly ydoc: Y.Doc;
+    public readonly tree: YTree;
+    public readonly parentKey: string;
     constructor(
-        public readonly ydoc: Y.Doc,
-        public readonly tree: YTree,
-        public readonly parentKey: string,
-    ) {}
+        ydoc: Y.Doc,
+        tree: YTree,
+        parentKey: string,
+    ) {
+        this.ydoc = ydoc;
+        this.tree = tree;
+        this.parentKey = parentKey;
+    }
 
     private childrenKeys(): string[] {
         const children = this.tree.getNodeChildrenFromKey(this.parentKey);
@@ -429,11 +424,17 @@ export class Items implements Iterable<Item> {
     }
 
     [Symbol.iterator](): Iterator<Item> {
+        // Optimizing iteration: fetch keys once to avoid calling childrenKeys() repeatedly.
+        // childrenKeys() triggers a sort, making naive iteration O(N^2).
+        // By fetching keys once, we make iteration O(N).
+        const keys = this.childrenKeys();
         let index = 0;
         return {
             next: (): IteratorResult<Item> => {
-                const it = this.at(index++);
-                if (it) return { value: it, done: false };
+                if (index < keys.length) {
+                    const key = keys[index++];
+                    return { value: new Item(this.ydoc, this.tree, key!), done: false };
+                }
                 return { value: undefined!, done: true };
             },
         };
@@ -453,6 +454,7 @@ export class Items implements Iterable<Item> {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
         const existingKeys = this.childrenKeys();
+
         const value = new Y.Map<ItemValueType>();
         value.set("id", nodeKey);
         value.set("author", author);
@@ -497,7 +499,12 @@ export class Items implements Iterable<Item> {
 
 // プロジェクト（Y.Doc）全体のラッパ
 export class Project {
-    constructor(public readonly ydoc: Y.Doc, public readonly tree: YTree) {}
+    public readonly ydoc: Y.Doc;
+    public readonly tree: YTree;
+    constructor(ydoc: Y.Doc, tree: YTree) {
+        this.ydoc = ydoc;
+        this.tree = tree;
+    }
 
     static createInstance(title: string): Project {
         const doc = new Y.Doc();

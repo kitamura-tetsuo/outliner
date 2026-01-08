@@ -12,8 +12,11 @@ import {
     updateSchedule,
 } from "../../../../services";
 import { store } from "../../../../stores/store.svelte";
+import { yjsStore } from "../../../../stores/yjsStore.svelte";
 import type { Item } from "../../../../schema/app-schema";
 
+// Import the load function from parent scope
+// We'll trigger it if the store is not properly initialized
 let project = $state("");
 let pageTitle = $state("");
 let pageId = $state("");
@@ -23,10 +26,155 @@ let editingId = $state("");
 let editingTime = $state("");
 let isDownloading = $state(false);
 
+// Function to trigger parent page load
+async function triggerParentPageLoad() {
+    // Access the parent page's loadProjectAndPage via window if available
+    const win = window as any;
+    if (win.loadProjectAndPage) {
+        // Set loading in progress to prevent duplicate calls
+        const loadInProgressKey = "__loadingInProgress";
+        if (!win[loadInProgressKey]) {
+            win[loadInProgressKey] = true;
+            try {
+                await win.loadProjectAndPage();
+            } finally {
+                win[loadInProgressKey] = false;
+            }
+        }
+    }
+}
+
+// Track navigation state for debugging
+let navState = $state({
+    onMountCount: 0,
+    needsNavigation: false,
+    navigationDone: false,
+    pageIdResolved: false,
+});
+
 onMount(async () => {
+    navState.onMountCount++;
+    console.log("Schedule page: onMount started", {
+        count: navState.onMountCount,
+        project,
+        pageTitle,
+        storeProjectItems: store.project?.items?.length ?? 0,
+    });
+
     const params = $page.params as { project: string; page: string; };
     project = decodeURIComponent(params.project || "");
     pageTitle = decodeURIComponent(params.page || "");
+
+    // E2E stability: Check if project data is already loaded
+    // IMPORTANT: Also check if the loaded project has the correct title (handles store reset during navigation)
+    const currentProjectTitle = store.project?.title ?? "";
+    const isCorrectProject = currentProjectTitle === project;
+    const hasProjectData = store.project?.items?.length > 0 && isCorrectProject;
+
+    // Check if we have a saved pageId in session storage
+    const sessionKey = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
+    const savedPageId = typeof window !== "undefined" ? window.sessionStorage?.getItem(sessionKey) : null;
+
+    console.log("Schedule page: Initial check", {
+        hasProjectData,
+        itemsLength: store.project?.items?.length ?? 0,
+        isCorrectProject,
+        currentProjectTitle,
+        expectedProject: project,
+        hasSavedPageId: !!savedPageId,
+        savedPageId: savedPageId ?? "null"
+    });
+
+    // If project data is not loaded OR we don't have a saved pageId, we need to navigate to main page first
+    // Only navigate if store is empty or project title doesn't match
+    if (!hasProjectData || !savedPageId) {
+        console.log("Schedule page: Project data not loaded or no saved pageId, navigating to main page first", {
+            hasProjectData,
+            hasSavedPageId: !!savedPageId,
+            storeProjectItems: store.project?.items?.length ?? 0,
+            storeProjectTitle: store.project?.title ?? "null"
+        });
+
+        // Navigate to main page to trigger loadProjectAndPage
+        const mainPageUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}`;
+        console.log("Schedule page: Navigating to main page:", mainPageUrl);
+        await goto(mainPageUrl, { waitUntil: "networkidle" });
+        console.log("Schedule page: Back from main page, waiting for store.project to be populated...");
+
+        // Wait for store.project to be populated after navigation
+        for (let i = 0; i < 50; i++) {
+            if (store.project?.items?.length > 0) {
+                console.log("Schedule page: store.project populated after", i * 100, "ms");
+                break;
+            }
+            await new Promise(r => setTimeout(r, 100));
+        }
+        console.log("Schedule page: store.project?.items?.length =", store.project?.items?.length ?? 0);
+
+        // Navigate back to schedule page
+        const scheduleUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}/schedule`;
+        console.log("Schedule page: Navigating back to schedule:", scheduleUrl);
+        await goto(scheduleUrl, { waitUntil: "networkidle" });
+        console.log("Schedule page: Back on schedule page, store.project?.items?.length =", store.project?.items?.length ?? 0);
+    } else {
+        console.log("Schedule page: Using saved pageId, no navigation needed");
+    }
+
+    // E2E安定化: 親ページのloadProjectAndPageが完了するのを待つ
+    // 親ページが完全にロードされるまで待機
+    let parentLoadWaitAttempts = 0;
+    const maxParentLoadWaitAttempts = 200; // 20秒
+    while (parentLoadWaitAttempts < maxParentLoadWaitAttempts) {
+        // Check if yjsStore.yjsClient is set (indicates main page loadProjectAndPage has completed)
+        // We check both the global window reference and the imported yjsStore
+        const win = window as any;
+        const yjsClientExists = (win.loadProjectAndPage !== undefined) &&
+                               (yjsStore.yjsClient !== undefined || win.loadProjectAndPage?.yjsClient !== undefined);
+
+        // Check if the parent page has finished loading
+        // We check multiple conditions to determine if loading is complete
+        const gs = (window as any).generalStore;
+        const hasProject = !!gs?.project;
+        const hasCurrentPage = !!gs?.currentPage;
+        const projectItems = gs?.project?.items;
+        const projectItemsLength = projectItems?.length ?? 0;
+        const projectHasItems = projectItemsLength > 0;
+
+        if (hasProject && hasCurrentPage && projectHasItems) {
+            console.log("Schedule page: Parent page loading complete", {
+                hasProject,
+                hasCurrentPage,
+                projectHasItems,
+                currentPageTitle: gs?.currentPage?.text?.toString?.() ?? "",
+            });
+            break;
+        }
+
+        // Wait for yjsStore.yjsClient to be set (indicates main page loadProjectAndPage has completed)
+        if (!yjsClientExists) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            parentLoadWaitAttempts++;
+            continue;
+        }
+
+        // If project exists but has no items, try to trigger parent load
+        if (hasProject && !projectHasItems) {
+            console.log("Schedule page: Project exists but has no items, triggering parent load");
+            await triggerParentPageLoad();
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+        parentLoadWaitAttempts++;
+    }
+
+    // After waiting, check store.project directly for debugging
+    console.log("Schedule page: Final store state", {
+        storeProjectTitle: store.project?.title ?? "null",
+        storeProjectItemsLength: store.project?.items?.length ?? 0,
+        storeCurrentPageTitle: store.currentPage?.text?.toString?.() ?? "null",
+        gsProjectTitle: ((window as any).generalStore?.project?.title) ?? "null",
+        gsProjectItemsLength: ((window as any).generalStore?.project?.items?.length) ?? 0,
+    });
 
     let sessionPinnedPageId: string | undefined;
     // 0) セッションに固定されたpageIdを候補として読み出す（ただし即returnせず、現在ページと一致するかを確認する）
@@ -41,18 +189,172 @@ onMount(async () => {
         }
     } catch {}
     // セッションに保存されている pageId がある場合は最優先で採用する。
-    // 一度解決した pageId を後続の currentPage などで上書きしてしまうと
-    // リロード後に別のページIDを指してしまうことがあるため、
-    // ここで先に固定しておく。
+    // ただし、pageIdが現在のpageTitleに対応するページのものであるかを検証する
     if (sessionPinnedPageId) {
-        pageId = sessionPinnedPageId;
+        // Validate that sessionPinnedPageId actually belongs to current pageTitle
+        // Also check store.project.items as store.pages?.current might not be populated yet
+        let isValid = false;
+        let validatedPageId: string | undefined;
+
+        // First check store.project.items (more reliable after reload)
+        try {
+            const projAny = store.project as any;
+            if (projAny?.items) {
+                const projItems = projAny.items;
+                const projLen = projItems?.length ?? 0;
+                console.log("Schedule page: Checking session pageId in store.project.items", {
+                    sessionPageId: sessionPinnedPageId,
+                    projectItemsCount: projLen
+                });
+                for (let i = 0; i < projLen; i++) {
+                    const p = projItems?.at ? projItems.at(i) : projItems[i];
+                    if (!p) continue;
+                    const pId = String(p.id);
+                    const match = pId === String(sessionPinnedPageId);
+                    console.log("Schedule page:   Item", i, "id=", pId, "title=", p.text?.toString?.() ?? "", "match=", match);
+                    if (match) {
+                        const title = p.text?.toString?.() ?? "";
+                        if (title.toLowerCase() === pageTitle.toLowerCase()) {
+                            isValid = true;
+                            validatedPageId = sessionPinnedPageId;
+                            console.log("Schedule page: Session pageId validated in project.items");
+                            break;
+                        }
+                    }
+                }
+            } else {
+                console.log("Schedule page: store.project.items is empty or undefined");
+            }
+        } catch (e) {
+            console.log("Schedule page: Error checking project.items:", e);
+        }
+
+        // If not found in project.items, check store.pages?.current
+        if (!isValid) {
+            try {
+                const items = store.pages?.current;
+                const len = items?.length ?? 0;
+                console.log("Schedule page: Checking session pageId in store.pages.current", {
+                    sessionPageId: sessionPinnedPageId,
+                    pagesCurrentCount: len
+                });
+                for (let i = 0; i < len; i++) {
+                    const p = items?.at(i);
+                    if (!p) continue;
+                    const pId = String(p.id);
+                    const match = pId === String(sessionPinnedPageId);
+                    console.log("Schedule page:   Page", i, "id=", pId, "title=", p.text?.toString?.() ?? "", "match=", match);
+                    if (match) {
+                        const title = p.text?.toString?.() ?? "";
+                        if (title.toLowerCase() === pageTitle.toLowerCase()) {
+                            isValid = true;
+                            validatedPageId = sessionPinnedPageId;
+                            console.log("Schedule page: Session pageId validated in pages.current");
+                            break;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log("Schedule page: Error checking pages.current:", e);
+            }
+        }
+
+        if (isValid && validatedPageId) {
+            pageId = validatedPageId;
+            console.log("Schedule page: Using validated session pinned pageId=", pageId);
+        } else {
+            console.log("Schedule page: Session pinned pageId NOT found, will resolve fresh", {
+                sessionPinnedPageId,
+                pageTitle,
+                storeProjectItemsLength: store.project?.items?.length ?? 0,
+                storePagesCurrentLength: store.pages?.current?.length ?? 0
+            });
+            sessionPinnedPageId = undefined; // Clear so we don't use stale value
+        }
     }
 
-    // store.currentPage が設定されるまで最大5秒待機
-    let attempts = 0;
-    while (!store.currentPage && attempts < 50) {
+    // store.currentPage が設定され、正しいページを指すまで最大20秒待機
+    // E2E安定化: 親ページのloadProjectAndPageが完了するのを待つ
+    let waitAttempts = 0;
+    const maxWaitAttempts = 200; // 20秒
+    let foundPageRef: Item | undefined;
+
+    while (waitAttempts < maxWaitAttempts) {
+        // Check if we already found the page
+        if (foundPageRef) {
+            break;
+        }
+
+        // Check store.currentPage first
+        const current = store.currentPage;
+        if (current) {
+            const currentTitle = current?.text?.toString?.() ?? "";
+            if (currentTitle.toLowerCase() === pageTitle.toLowerCase()) {
+                foundPageRef = current;
+                break;
+            }
+        }
+
+        // Check store.pages?.current
+        try {
+            const items = store.pages?.current;
+            const len = items?.length ?? 0;
+            for (let i = 0; i < len; i++) {
+                const p = items?.at(i);
+                if (!p) continue;
+                const title = p.text?.toString?.() ?? "";
+                if (title.toLowerCase() === pageTitle.toLowerCase()) {
+                    foundPageRef = p;
+                    break;
+                }
+            }
+        } catch {}
+
+        // Also check store.project.items directly
+        if (!foundPageRef) {
+            try {
+                const projAny = store.project as any;
+                if (projAny && typeof projAny.findPage === "function") {
+                    // Try to find page by iterating through project items
+                    const projItems = projAny.items;
+                    const projLen = projItems?.length ?? 0;
+                    for (let i = 0; i < projLen; i++) {
+                        const p = projItems?.at ? projItems.at(i) : projItems[i];
+                        if (!p) continue;
+                        const title = p.text?.toString?.() ?? "";
+                        if (title.toLowerCase() === pageTitle.toLowerCase()) {
+                            foundPageRef = p;
+                            break;
+                        }
+                    }
+                }
+            } catch {}
+        }
+
+        if (foundPageRef) {
+            break;
+        }
+
         await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
+        waitAttempts++;
+    }
+    console.log("Schedule page: After wait", {
+        waitAttempts,
+        hasFoundPage: !!foundPageRef,
+        foundPageTitle: foundPageRef?.text?.toString?.() ?? "",
+        hasCurrentPage: !!store.currentPage,
+        currentPageTitle: store.currentPage?.text?.toString?.() ?? "",
+        hasProject: !!store.project,
+        projectItemsLength: store.project?.items?.length ?? 0,
+        pageTitle,
+        hasPages: !!store.pages?.current,
+        pagesLength: store.pages?.current?.length ?? 0,
+    });
+
+    // If we found the page during the wait, use it
+    if (foundPageRef && !pageId) {
+        pageId = String(foundPageRef.id ?? "");
+        console.log("Schedule page: Found page during wait", { pageId, title: foundPageRef.text?.toString?.() });
     }
 
     // 1) 最優先: currentPage が現在のページを指している場合に使用（別ページの値が残っているケースを除外）
@@ -95,21 +397,80 @@ onMount(async () => {
         console.log("Schedule page: Using session fallback pageId=", sessionPinnedPageId);
     }
 
+    // Wait for page subdocument to be connected before proceeding (E2E stability)
+    if (pageId) {
+        try {
+            const yjsClient = yjsStore.yjsClient;
+            if (yjsClient) {
+                for (let waitIter = 0; waitIter < 50; waitIter++) {
+                    const pageConn = yjsClient.getPageConnection?.(pageId);
+                    if (pageConn) {
+                        // Get the page reference to check if items are synced
+                        const currentItems = store.pages?.current;
+                        const len = currentItems?.length ?? 0;
+                        let pageRef: Item | undefined;
+                        for (let i = 0; i < len; i++) {
+                            const p = currentItems?.at(i);
+                            if (!p) continue;
+                            if (String(p.id) === String(pageId)) {
+                                pageRef = p;
+                                break;
+                            }
+                        }
+                        if (pageRef) {
+                            const itemCount = pageRef?.items?.length ?? 0;
+                            if (itemCount > 0) {
+                                console.log("Schedule page: Page subdocument connected with items", { pageId, itemCount });
+                                break;
+                            }
+                        }
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+        } catch (e) {
+            console.warn("Schedule page: Error waiting for page connection:", e);
+        }
+    }
+
     if (!pageId) {
         console.error("Schedule page: pageId is empty, cannot load schedules");
         return;
     }
 
-    // 安定化: 解決したpageIdをセッションに保存し、リロード時に同一IDを再利用
+    // Save pageId to session storage for stability across reloads
     try {
         if (typeof window !== "undefined") {
             const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
             window.sessionStorage?.setItem(key, String(pageId));
-            console.log("Schedule page: Saved session pageId=", pageId);
+            console.log("Schedule page: Saved pageId to sessionStorage:", pageId);
         }
     } catch {}
 
+    console.log("Schedule page: Final pageId before refresh:", pageId);
     await refresh();
+
+    // E2E stability: Export refresh function to window for test access
+    if (typeof window !== "undefined") {
+        (window as any).refreshSchedules = async (pid?: string) => {
+            console.log("Schedule page: E2E refreshSchedules called with pid=", pid);
+            if (pid) {
+                pageId = pid;
+            }
+            await refresh();
+        };
+    }
+});
+
+// E2E stability: Re-call refresh when pageId changes (handles race conditions during navigation)
+$effect(() => {
+    if (pageId) {
+        console.log("Schedule page: $effect triggered with pageId:", pageId, "schedules.length:", schedules.length);
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+            refresh();
+        }, 100);
+    }
 });
 
 async function refresh() {
@@ -255,6 +616,14 @@ function toLocalISOString(timestamp: number): string {
     </div>
     <div data-testid="schedule-debug" class="text-xs text-gray-500 mb-2">
         ScheduleDebug:{pageId}:{schedules.length}
+    </div>
+    <!-- Debug info for E2E troubleshooting -->
+    <div class="text-xs text-gray-400 mb-2" data-testid="schedule-debug-info">
+        Debug: currentPage={store.currentPage?.text?.toString?.() ?? "null"},
+        pages={store.pages?.current?.length ?? 0},
+        project={store.project?.title ?? "null"},
+        projectItems={store.project?.items?.length ?? 0},
+        pageTitle={pageTitle}
     </div>
     <ul data-testid="schedule-list">
         {#each schedules as sch (sch.id)}
