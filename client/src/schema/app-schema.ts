@@ -430,10 +430,7 @@ export class Items implements Iterable<Item> {
             next: (): IteratorResult<Item> => {
                 if (index < keys.length) {
                     const key = keys[index++];
-                    return {
-                        value: new Item(this.ydoc, this.tree, key!),
-                        done: false,
-                    };
+                    return { value: new Item(this.ydoc, this.tree, key), done: false };
                 }
                 return { value: undefined!, done: true };
             },

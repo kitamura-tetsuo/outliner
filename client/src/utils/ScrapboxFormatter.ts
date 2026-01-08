@@ -26,9 +26,6 @@ export class ScrapboxFormatter {
         "'": "&#039;",
     };
 
-    /**
-     * Helper to escape HTML characters
-     */
     public static escapeHtml(str: string): string {
         return str.replace(/[&<>"']/g, (match) => ScrapboxFormatter.ESCAPE_MAP[match]);
     }
