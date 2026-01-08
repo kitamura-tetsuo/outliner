@@ -1131,9 +1131,7 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
     // Check container access
     const hasAccess = await checkContainerAccess(uid, pageId);
     if (!hasAccess) {
-      logger.warn(
-        `createSchedule: Access denied for user ${uid} to page ${pageId}`,
-      );
+      logger.warn(`createSchedule: Access denied for user ${uid} to page ${pageId}`);
       return res.status(403).json({ error: "Access denied to container" });
     }
 
@@ -1185,12 +1183,6 @@ exports.executePublish = onRequest({ cors: true }, async (req, res) => {
       .doc(pageId)
       .collection("schedules")
       .doc(scheduleId);
-    // Check container access
-    // executePublish is triggered by Cloud Tasks, so we might not have a user context in the same way.
-    // However, the current code tries to check access using `uid` which is undefined here.
-    // We should skip container access check for executePublish as it is an internal system function
-    // (though ideally it should verify a service account token).
-    // Reverting the checkContainerAccess call here to fix the ReferenceError and Logic Error.
     const scheduleSnap = await scheduleRef.get();
     if (!scheduleSnap.exists) {
       return res.status(404).json({ error: "Schedule not found" });
@@ -1216,8 +1208,9 @@ exports.updateSchedule = onRequest({ cors: true }, async (req, res) => {
   if (!idToken || !pageId || !scheduleId || !schedule) {
     return res.status(400).json({ error: "Invalid request" });
   }
-  let uid;
   try {
+    let uid;
+
     // Firebase Admin SDKでトークンを検証
     // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
     const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
@@ -1255,6 +1248,14 @@ exports.updateSchedule = onRequest({ cors: true }, async (req, res) => {
         throw new Error(`Authentication failed: ${tokenError.message}`);
       }
     }
+
+    // Check container access
+    const hasAccess = await checkContainerAccess(uid, pageId);
+    if (!hasAccess) {
+      logger.warn(`updateSchedule: Access denied for user ${uid} to page ${pageId}`);
+      return res.status(403).json({ error: "Access denied to container" });
+    }
+
     const scheduleRef = db
       .collection("pages")
       .doc(pageId)
@@ -1311,7 +1312,6 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
   }
 
   try {
-    let uid;
     // Firebase Admin SDKでトークンを検証
     // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
     const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
@@ -1326,10 +1326,9 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
     try {
       // エミュレーター環境では checkRevoked: false を設定
       const decoded = await admin.auth().verifyIdToken(idToken, !isEmulatorEnv);
-      uid = decoded.uid;
 
       logger.info(
-        `listSchedules: Token verified successfully for user: ${uid} (emulator: ${isEmulatorEnv})`,
+        `listSchedules: Token verified successfully for user: ${decoded.uid} (emulator: ${isEmulatorEnv})`,
       );
     } catch (tokenError) {
       logger.error(
@@ -1344,21 +1343,10 @@ exports.listSchedules = onRequest({ cors: true }, async (req, res) => {
         logger.warn(
           "listSchedules: Using fallback emulator token verification",
         );
-        uid = "emulator-test-user";
       } else {
         throw new Error(`Authentication failed: ${tokenError.message}`);
       }
     }
-
-    // Check container access
-    const hasAccess = await checkContainerAccess(uid, pageId);
-    if (!hasAccess) {
-      logger.warn(
-        `listSchedules: Access denied for user ${uid} to page ${pageId}`,
-      );
-      return res.status(403).json({ error: "Access denied to container" });
-    }
-
     logger.info(`listSchedules: pageId=${pageId}`);
     const snapshot = await db
       .collection("pages")
@@ -1439,9 +1427,7 @@ exports.exportSchedulesIcal = onRequest({ cors: true }, async (req, res) => {
     // Check container access
     const hasAccess = await checkContainerAccess(uid, pageId);
     if (!hasAccess) {
-      logger.warn(
-        `exportSchedulesIcal: Access denied for user ${uid} to page ${pageId}`,
-      );
+      logger.warn(`exportSchedulesIcal: Access denied for user ${uid} to page ${pageId}`);
       return res.status(403).json({ error: "Access denied to container" });
     }
 
@@ -1555,16 +1541,6 @@ exports.cancelSchedule = onRequest({ cors: true }, async (req, res) => {
         throw new Error(`Authentication failed: ${tokenError.message}`);
       }
     }
-
-    // Check container access
-    const hasAccess = await checkContainerAccess(uid, pageId);
-    if (!hasAccess) {
-      logger.warn(
-        `cancelSchedule: Access denied for user ${uid} to page ${pageId}`,
-      );
-      return res.status(403).json({ error: "Access denied to container" });
-    }
-
     const scheduleRef = db
       .collection("pages")
       .doc(pageId)
