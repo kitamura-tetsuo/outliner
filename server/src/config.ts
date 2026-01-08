@@ -13,6 +13,8 @@ const ConfigSchema = z.object({
     IDLE_TIMEOUT_MS: z.coerce.number().default(60_000),
     MAX_MESSAGE_SIZE_BYTES: z.coerce.number().default(1_000_000),
     ORIGIN_ALLOWLIST: z.string().default(""),
+    RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60_000),
+    RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(30),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
