@@ -16,15 +16,18 @@ interface FormatToken {
  */
 export class ScrapboxFormatter {
     /**
-     * Helper to escape HTML characters
+     * Map of characters to their HTML entity equivalents
      */
+    private static readonly ESCAPE_MAP: Record<string, string> = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+    };
+
     public static escapeHtml(str: string): string {
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+        return str.replace(/[&<>"']/g, (match) => ScrapboxFormatter.ESCAPE_MAP[match]);
     }
 
     /**
