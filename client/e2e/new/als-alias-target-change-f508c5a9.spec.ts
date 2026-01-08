@@ -6,24 +6,45 @@ registerCoverageHooks();
 
 test.describe("ALS-0001: Alias change target", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "これはテスト用のページです。1",
+            "これはテスト用のページです。2",
+            "これはテスト用のページです。3",
+        ]);
     });
 
     test("change alias target and update path", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
-        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
-        const secondId = await TestHelpers.getItemIdByIndex(page, 1);
-        const thirdId = await TestHelpers.getItemIdByIndex(page, 2);
+
+        // Retry logic for fetching IDs
+        let firstId = await TestHelpers.getItemIdByIndex(page, 0);
+        if (!firstId) {
+            await page.waitForTimeout(1000);
+            firstId = await TestHelpers.getItemIdByIndex(page, 0);
+        }
+
+        let secondId = await TestHelpers.getItemIdByIndex(page, 1);
+        if (!secondId) {
+            await page.waitForTimeout(1000);
+            secondId = await TestHelpers.getItemIdByIndex(page, 1);
+        }
+
+        let thirdId = await TestHelpers.getItemIdByIndex(page, 2);
+        if (!thirdId) {
+            await page.waitForTimeout(1000);
+            thirdId = await TestHelpers.getItemIdByIndex(page, 2);
+        }
+
         if (!firstId || !secondId || !thirdId) throw new Error("item ids not found");
 
         // create alias of first item
         await page.locator(`.outliner-item[data-item-id="${firstId}"] .item-content`).click({ force: true });
-        await page.waitForTimeout(1000);
+        await TestHelpers.waitForUIStable(page);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             textarea?.focus();
         });
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
         await page.keyboard.type("/");
         await page.keyboard.type("alias");
         await page.keyboard.press("Enter");
@@ -45,7 +66,7 @@ test.describe("ALS-0001: Alias change target", () => {
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
         // Yjsモデルへの反映を待機（ポーリングで確認）
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // 最初のaliasTargetIdが正しく設定されていることを確認
         let deadline = Date.now() + 5000;
@@ -71,7 +92,7 @@ test.describe("ALS-0001: Alias change target", () => {
         }, { aliasId, thirdId });
 
         // Yjsモデルへの反映を待機（ポーリングで確認）
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForUIStable(page);
 
         // 変更後のaliasTargetIdが正しく設定されていることを確認
         deadline = Date.now() + 5000;

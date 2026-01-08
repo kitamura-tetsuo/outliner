@@ -326,7 +326,7 @@ test.describe("コンテナタイトルの永続化テスト", () => {
         // Container 2を作成
         const projectName2 = `TestProject2-${Date.now()}`;
         const pageName2 = `page-${Date.now()}`;
-        await TestHelpers.createTestProjectAndPageViaAPI(page, projectName2, pageName2);
+        await TestHelpers.createAndSeedProject(page, null, [], { projectName: projectName2, pageName: pageName2 });
 
         const encodedProject2 = encodeURIComponent(projectName2);
         const encodedPage2 = encodeURIComponent(pageName2);

@@ -212,6 +212,7 @@ export default ts.config(
         files: ["e2e/utils/testHelpers.ts"],
         rules: {
             "no-restricted-syntax": "off", // Allow internal store access in helpers
+            "no-restricted-globals": "off", // Allow internal store access in helpers
         },
     },
 );
