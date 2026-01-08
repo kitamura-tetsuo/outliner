@@ -1,0 +1,11 @@
+id: ENV-0001
+title: Setup script is executable
+description: Ensure scripts/setup.sh has execute permission and is referenced consistently.
+category: environment
+status: implemented
+components:
+- .github/workflows/pr-test.yml
+- scripts/setup.sh
+tests:
+- scripts/tests/env-setup-script-executable-90408b00.spec.ts
+title-ja: Setup script is executable

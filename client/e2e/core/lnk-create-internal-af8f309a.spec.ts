@@ -6,7 +6,6 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
-import { waitForCursorVisible } from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
@@ -18,7 +17,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // 最初のアイテムを選択
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
-        await waitForCursorVisible(page);
+        await TestHelpers.waitForCursorVisible(page);
 
         // フォーカス状態を確認
         const focusState = await page.evaluate(() => {

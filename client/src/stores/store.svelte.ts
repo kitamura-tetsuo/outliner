@@ -3,13 +3,24 @@ import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Item, Items } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
-import type { ItemLike, PlainItemData } from "../types/yjs-types";
 
 export class GeneralStore {
-    // 初期はプレースホルダー（tests: truthy 判定を満たし、後で置換される）
-    pages: { current: Items | undefined; } = { current: undefined };
+    // Use $state for pages to ensure proper Svelte reactivity
+    private _pagesData = $state<{ items: Items | undefined; }>({ items: undefined });
+    // Getter for pages.current that tracks reactivity - set in constructor for proper closure
+    pages!: { current: Items | undefined; };
     private _currentPage: Item | undefined;
     private readonly _currentPageSubscribers = new SvelteSet<() => void>();
+
+    constructor() {
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const self = this;
+        this.pages = {
+            get current(): Items | undefined {
+                return self._pagesData.items;
+            },
+        };
+    }
     // 現在開いているコメントスレッドのアイテムID（同時に1つのみ表示）
     openCommentItemId: string | null = null;
     // Fallback: 接続切替時などIDが変わるケースに備えてインデックスも保持
@@ -47,11 +58,13 @@ export class GeneralStore {
                         break;
                     }
                 }
-                if (!next) {
-                    next = items?.addNode?.("tester");
-                    next?.updateText?.(title);
-                }
+                // REMOVED: Legacy browser-based auto-creation. Tests should use TestHelpers.createAndSeedProject for data seeding.
+                // If page doesn't exist, do not auto-create it here - let tests fail if seeding was missed.
+
                 // 子行の移植（先行シードを反映）
+                // DISABLED: Legacy browser-based auto-creation logic causes duplication in E2E tests
+                // with server-side seeding. Tests should rely on SeedClient and proper Yjs sync.
+                /*
                 try {
                     const prevItems = page?.items;
                     const nextItems = next?.items;
@@ -99,6 +112,7 @@ export class GeneralStore {
                 } catch {
                     // Ignore errors during child item migration
                 }
+                */
                 this._currentPage = next;
                 // 通知
                 this._currentPageSubscribers.forEach(fn => {
@@ -121,50 +135,42 @@ export class GeneralStore {
     public get project(): Project | undefined {
         return this._project;
     }
+    // Explicit signal for pages updates to ensure Svelte 5 reactivity
+    pagesVersion = $state(0);
+
     public set project(v: Project) {
         if (v === this._project) {
-            console.log(`store: Project is already set, skipping`);
             return;
         }
 
-        console.log(`store: Setting project`, { projectExists: !!v, projectTitle: v?.title });
-
         this._project = v;
-        console.log(`store: Setting up Yjs observe for pages`);
 
         saveProjectSnapshot(v);
 
         // Yjs observeDeep でルートツリーを監視し、Svelteの購読にブリッジ
         const project = v;
         const ymap = project?.ydoc?.getMap?.("orderedTree");
-        const subscribe = createSubscriber((_update) => {
-            const handler = (_events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-                try {
-                    saveProjectSnapshot(project);
-                } catch {
-                    // Ignore errors during snapshot saving
-                }
-                _update();
-            };
+
+        // Setup observer immediately on the project itself
+        const handler = (_events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
             try {
-                ymap?.observeDeep?.(handler);
+                saveProjectSnapshot(project);
             } catch {
-                // Ignore errors during observation setup
+                // Ignore errors during snapshot saving
             }
-            return () => {
-                try {
-                    ymap?.unobserveDeep?.(handler);
-                } catch {
-                    // Ignore errors during observation teardown
-                }
-            };
-        });
-        this.pages = {
-            get current() {
-                subscribe();
-                return project.items;
-            },
+            this.pagesVersion++; // Trigger signal
         };
+
+        // Monitor both the orderedTree (content) and items (page list) for changes
+        try {
+            ymap?.observeDeep?.(handler);
+            (project?.items as any)?.observeDeep?.(handler);
+        } catch {
+            // Ignore errors during observation setup
+        }
+
+        // Update the $state for pages to trigger Svelte reactivity
+        this._pagesData.items = project.items;
     }
 }
 
@@ -176,6 +182,7 @@ if (typeof window !== "undefined") {
     (window as unknown as { generalStore: GeneralStore; }).generalStore = store; // TestHelpersとの互換性のため
 
     // 起動直後に仮プロジェクトを用意（本接続が来れば yjsStore が置換）
+    // This ensures tests and direct navigation work even before Yjs connection is established
     try {
         if (!store.project) {
             const parts = window.location.pathname.split("/").filter(Boolean);
@@ -187,3 +194,6 @@ if (typeof window !== "undefined") {
         // Ignore errors during initial project setup
     }
 }
+
+// NOTE: Projects are now created via HTTP seeding (SeedClient) for E2E tests,
+// and loaded via loadProjectAndPage in +page.svelte for proper synchronization.

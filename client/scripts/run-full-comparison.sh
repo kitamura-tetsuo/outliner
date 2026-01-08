@@ -73,7 +73,7 @@ start_server(){
   section "Starting $name server"
   cd "$dir"
   if [ -f scripts/setup.sh ]; then
-    info "Running codex-setup for $name..."
+    info "Running setup for $name..."
     bash scripts/setup.sh >/dev/null 2>&1 || true
   fi
   cd "$dir/client"

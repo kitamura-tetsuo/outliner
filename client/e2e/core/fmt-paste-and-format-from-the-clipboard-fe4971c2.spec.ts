@@ -37,7 +37,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
         ]);
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(500);
+        await TestHelpers.waitForOutlinerItems(page);
 
         // 最初のアイテム（ページタイトルではない）を取得
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
@@ -69,7 +69,9 @@ test.describe("フォーマット文字列の入力と表示", () => {
     test("複数行テキストの入力が正しく機能する", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
+        const content = item.locator(".item-content");
+        await content.waitFor({ state: "visible" });
+        await content.click();
 
         // 複数行テキストを直接入力
         // 1行目を入力
@@ -149,7 +151,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
         console.log("コピーボタンをクリックしました");
 
         // 少し待機してコピー操作が完了するのを待つ
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
         console.log("クリップボードにテキストをセットしました:", textToPaste);
 
         // クリップボードページを閉じる
@@ -197,7 +199,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
         }
 
         // 少し待機してペーストが完了するのを待つ
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // テキストを取得
         const actualText = await item.locator(".item-text").textContent() || "";
@@ -224,7 +226,9 @@ test.describe("フォーマット文字列の入力と表示", () => {
 
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        await item.locator(".item-content").click();
+        const content = item.locator(".item-content");
+        await content.waitFor({ state: "visible" });
+        await content.click();
         await TestHelpers.waitForCursorVisible(page);
         console.log("アイテムをクリックしました");
 
@@ -316,7 +320,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
         }
 
         // 少し待機してペーストが完了するのを待つ
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // ペーストされたテキストを確認
         const itemText = await item.locator(".item-text").textContent() || "";
