@@ -38,6 +38,23 @@ const admin = require("firebase-admin");
 const { FieldValue } = require("firebase-admin/firestore");
 const { generateSchedulesIcs } = require("./ical");
 
+// Validation helper for schedule object
+function validateSchedule(schedule) {
+  if (!schedule || typeof schedule !== "object") {
+    return "Schedule must be an object";
+  }
+  if (!schedule.strategy || typeof schedule.strategy !== "string") {
+    return "Schedule strategy must be a non-empty string";
+  }
+  if (typeof schedule.nextRunAt !== "number") {
+    return "Schedule nextRunAt must be a number (timestamp)";
+  }
+  if (schedule.params && typeof schedule.params !== "object") {
+    return "Schedule params must be an object";
+  }
+  return null;
+}
+
 // CORS設定を共通化する関数
 function setCorsHeaders(req, res) {
   const allowedOrigins = [
@@ -326,7 +343,9 @@ exports.saveProject = onRequest({ cors: true }, async (req, res) => {
           const accessibleUserIds = projectData.accessibleUserIds || [];
 
           if (!accessibleUserIds.includes(userId)) {
-            accessibleUserIds.push(userId);
+            // SECURITY: Prevent users from adding themselves to existing projects
+            // Users must be the creator or already have access
+            throw new Error("Access denied: Cannot join existing project");
           }
 
           transaction.update(projectDocRef, {
@@ -468,7 +487,8 @@ exports.saveContainer = onRequest({ cors: true }, async (req, res) => {
           const accessibleUserIds = containerData.accessibleUserIds || [];
 
           if (!accessibleUserIds.includes(userId)) {
-            accessibleUserIds.push(userId);
+            // SECURITY: Prevent users from adding themselves to existing containers
+            throw new Error("Access denied: Cannot join existing container");
           }
 
           transaction.update(containerDocRef, {
@@ -1067,6 +1087,14 @@ exports.createSchedule = onRequest({ cors: true }, async (req, res) => {
   if (!idToken || !pageId || !schedule) {
     return res.status(400).json({ error: "Invalid request" });
   }
+
+  // Validate schedule object
+  const validationError = validateSchedule(schedule);
+  if (validationError) {
+    logger.warn(`createSchedule validation failed: ${validationError}`);
+    return res.status(400).json({ error: validationError });
+  }
+
   try {
     // エミュレーター環境の確認
     logger.info(
@@ -1201,6 +1229,14 @@ exports.updateSchedule = onRequest({ cors: true }, async (req, res) => {
   if (!idToken || !pageId || !scheduleId || !schedule) {
     return res.status(400).json({ error: "Invalid request" });
   }
+
+  // Validate schedule object
+  const validationError = validateSchedule(schedule);
+  if (validationError) {
+    logger.warn(`updateSchedule validation failed: ${validationError}`);
+    return res.status(400).json({ error: validationError });
+  }
+
   try {
     let uid;
 
@@ -1614,6 +1650,18 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
   ) {
     logger.warn(`uploadAttachment invalid fileName detected: ${fileName}`);
     return res.status(400).json({ error: "Invalid file name" });
+  }
+
+  // Validate file size (limit to ~5MB)
+  // 5MB = 5 * 1024 * 1024 = 5,242,880 bytes
+  // Base64 encoding increases size by ~33% (4/3)
+  // 5,242,880 * 1.34 ≈ 7,025,459 characters
+  const MAX_FILE_SIZE_B64 = 7000000;
+  if (fileData.length > MAX_FILE_SIZE_B64) {
+    logger.warn(
+      `uploadAttachment file too large: ${fileData.length} > ${MAX_FILE_SIZE_B64}`,
+    );
+    return res.status(413).json({ error: "File too large (max 5MB)" });
   }
 
   try {

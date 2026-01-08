@@ -172,7 +172,7 @@ test.describe("Box selection feedback", () => {
         console.log("Selection info:", JSON.stringify(selectionInfo, null, 2));
 
         // Wait a bit for Svelte to render
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         // Wait for the .selection-box elements to appear first
         await expect.poll(async () => {

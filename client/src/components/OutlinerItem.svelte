@@ -2,6 +2,26 @@
     // ドラッグ開始位置（全アイテムで共有）
     let dragStartClientX = 0;
     let dragStartClientY = 0;
+
+    // Measurement span singleton (lazy initialized)
+    let _measurementSpan: HTMLSpanElement | null = null;
+    function getMeasurementSpan(): HTMLSpanElement {
+        if (typeof document === 'undefined') return null as any;
+        if (!_measurementSpan) {
+            _measurementSpan = document.createElement("span");
+            _measurementSpan.id = "outliner-measurement-span";
+            _measurementSpan.style.whiteSpace = "pre";
+            _measurementSpan.style.visibility = "hidden";
+            _measurementSpan.style.position = "absolute";
+            _measurementSpan.style.top = "-9999px";
+            _measurementSpan.style.left = "-9999px";
+            // Ensure it is attached
+            document.body.appendChild(_measurementSpan);
+        } else if (!_measurementSpan.isConnected) {
+            document.body.appendChild(_measurementSpan);
+        }
+        return _measurementSpan;
+    }
 </script>
 
 <script lang="ts">
@@ -682,20 +702,23 @@ function getClickPosition(event: MouseEvent, content: string): number {
         return 0; // テキストの左側をクリックした場合は先頭
     }
 
-    const span = document.createElement("span");
+    const span = getMeasurementSpan();
     const style = window.getComputedStyle(targetElement);
-    span.style.fontFamily = style.fontFamily;
-    span.style.fontSize = style.fontSize;
-    span.style.fontWeight = style.fontWeight;
-    span.style.letterSpacing = style.letterSpacing;
-    span.style.whiteSpace = "pre";
-    span.style.visibility = "hidden";
-    span.style.position = "absolute";
-    document.body.appendChild(span);
+
+    // Only update styles if they differ (avoid unnecessary property writes)
+    if (span.style.fontSize !== style.fontSize ||
+        span.style.fontFamily !== style.fontFamily ||
+        span.style.fontWeight !== style.fontWeight ||
+        span.style.letterSpacing !== style.letterSpacing) {
+
+        span.style.fontFamily = style.fontFamily;
+        span.style.fontSize = style.fontSize;
+        span.style.fontWeight = style.fontWeight;
+        span.style.letterSpacing = style.letterSpacing;
+    }
 
     const best = findBestOffsetBinary(content, relX, span);
-
-    document.body.removeChild(span);
+    // Span remains in DOM for reuse
 
     return best;
 }
@@ -1235,69 +1258,69 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
     }> = [];
 
     // 計測用スパンを一度だけ作成して再利用（DOM操作の最適化）
-    const span = document.createElement("span");
-    span.style.whiteSpace = "pre";
-    span.style.visibility = "hidden";
-    span.style.position = "absolute";
-    document.body.appendChild(span);
+    const span = getMeasurementSpan();
 
-    try {
-        // 各アイテムについて、選択範囲を計算
-        itemsInRange.forEach(item => {
-            const textElement = item.element.querySelector(".item-text") as HTMLElement;
-            if (!textElement) return;
+    // 各アイテムについて、選択範囲を計算
+    itemsInRange.forEach(item => {
+        const textElement = item.element.querySelector(".item-text") as HTMLElement;
+        if (!textElement) return;
 
-            const textContent = textElement.textContent || "";
+        const textContent = textElement.textContent || "";
 
-            // 選択範囲の開始位置と終了位置を計算
-            const rect = textElement.getBoundingClientRect();
+        // 選択範囲の開始位置と終了位置を計算
+        const rect = textElement.getBoundingClientRect();
 
-            // 矩形選択の左端と右端の相対X座標（テキスト要素基準）
-            const relStartX = startPixelX - rect.left;
-            const relEndX = endPixelX - rect.left;
+        // 矩形選択の左端と右端の相対X座標（テキスト要素基準）
+        const relStartX = startPixelX - rect.left;
+        const relEndX = endPixelX - rect.left;
 
-            // 文字単位での位置を計算
-            const style = window.getComputedStyle(textElement);
+        // 文字単位での位置を計算
+        const style = window.getComputedStyle(textElement);
+
+        // Only update styles if they differ
+        if (span.style.fontSize !== style.fontSize ||
+            span.style.fontFamily !== style.fontFamily ||
+            span.style.fontWeight !== style.fontWeight ||
+            span.style.letterSpacing !== style.letterSpacing) {
+
             span.style.fontFamily = style.fontFamily;
             span.style.fontSize = style.fontSize;
             span.style.fontWeight = style.fontWeight;
             span.style.letterSpacing = style.letterSpacing;
+        }
 
-            // 開始位置（オフセット）を計算
-            const startPos = findBestOffsetBinary(textContent, relStartX, span);
+        // 開始位置（オフセット）を計算
+        const startPos = findBestOffsetBinary(textContent, relStartX, span);
 
-            // 終了位置（オフセット）を計算
-            const endPos = findBestOffsetBinary(textContent, relEndX, span);
+        // 終了位置（オフセット）を計算
+        const endPos = findBestOffsetBinary(textContent, relEndX, span);
 
-            // 計算した位置を使用
-            let itemStartOffset = Math.min(startPos, endPos);
-            let itemEndOffset = Math.max(startPos, endPos);
+        // 計算した位置を使用
+        let itemStartOffset = Math.min(startPos, endPos);
+        let itemEndOffset = Math.max(startPos, endPos);
 
-            // 範囲外の場合は修正
-            if (itemStartOffset < 0) itemStartOffset = 0;
-            if (itemEndOffset > textContent.length) itemEndOffset = textContent.length;
+        // 範囲外の場合は修正
+        if (itemStartOffset < 0) itemStartOffset = 0;
+        if (itemEndOffset > textContent.length) itemEndOffset = textContent.length;
 
-            // 最低1文字は選択されるように調整（極端に狭いドラッグ対策）
-            if (itemStartOffset === itemEndOffset) {
-                if (itemEndOffset < textContent.length) {
-                    itemEndOffset += 1;
-                } else if (itemStartOffset > 0) {
-                    itemStartOffset -= 1;
-                }
+        // 最低1文字は選択されるように調整（極端に狭いドラッグ対策）
+        if (itemStartOffset === itemEndOffset) {
+            if (itemEndOffset < textContent.length) {
+                itemEndOffset += 1;
+            } else if (itemStartOffset > 0) {
+                itemStartOffset -= 1;
             }
+        }
 
-            // 選択範囲が有効な場合のみ追加
-            if (itemStartOffset < itemEndOffset) {
-                boxSelectionRanges.push({
-                    itemId: item.itemId,
-                    startOffset: itemStartOffset,
-                    endOffset: itemEndOffset,
-                });
-            }
-        });
-    } finally {
-        document.body.removeChild(span);
-    }
+        // 選択範囲が有効な場合のみ追加
+        if (itemStartOffset < itemEndOffset) {
+            boxSelectionRanges.push({
+                itemId: item.itemId,
+                startOffset: itemStartOffset,
+                endOffset: itemEndOffset,
+            });
+        }
+    });
 
     // 矩形選択を設定
     if (boxSelectionRanges.length > 0) {

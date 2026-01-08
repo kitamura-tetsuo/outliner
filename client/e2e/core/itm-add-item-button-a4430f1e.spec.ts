@@ -25,7 +25,7 @@ test.describe("ITM-0002: Add item via button", () => {
         await page.click('button:has-text("アイテム追加")');
 
         // 新しいアイテムが追加されるまで待機
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(300);
 
         // アイテム追加後のアイテム数を取得
         const itemCountAfter = await page.locator(".outliner-item").count();

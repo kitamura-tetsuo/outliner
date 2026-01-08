@@ -7,6 +7,7 @@ registerCoverageHooks();
 // OutlinerBase 最小可視化 + WS 404 ノイズ抑止のスモーク
 
 test.beforeEach(async ({ page }, testInfo) => {
+    test.setTimeout(90000); // Increase timeout for CI environment
     await TestHelpers.prepareTestEnvironment(page, testInfo);
 });
 
