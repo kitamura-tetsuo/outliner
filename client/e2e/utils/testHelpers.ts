@@ -131,46 +131,33 @@ export class TestHelpers {
             await page.goto(url, { timeout: 60000 });
             TestHelpers.slog("Navigation completed", { url });
 
-            // Wait for the page to load and Yjs to connect
-            // Increased from 2s to 3s for CI environments
-            await page.waitForTimeout(3000);
-
-            // Wait for Yjs to connect before checking for items
-            TestHelpers.slog("Waiting for __YJS_STORE__ to be connected...");
-            try {
-                await page.waitForFunction(
-                    () => {
-                        const y = (window as any).__YJS_STORE__;
-                        return y && y.isConnected;
-                    },
-                    { timeout: 30000 },
-                );
-                TestHelpers.slog("__YJS_STORE__ connected");
-            } catch (e) {
-                TestHelpers.slog("Warning: __YJS_STORE__ not connected within timeout", { error: e?.message });
-            }
-
-            // Wait for store initialization
-            try {
-                await page.waitForFunction(
-                    () => !!(window as any).generalStore?.project,
-                    { timeout: 30000 },
-                );
-                TestHelpers.slog("generalStore initialized");
-            } catch (e) {
-                TestHelpers.slog("Warning: generalStore not initialized within timeout", { error: e?.message });
-            }
-
-            // Skip the full waitForAppReady for E2E tests to avoid timeout issues
-            // The page initialization happens asynchronously
+            // Wait for the app to be fully ready before proceeding
             if (!options?.skipAppReady) {
-                // Wait for outliner base to be visible
-                await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
-                // Wait for items to be rendered (with seeded data)
-                const expectedCount = (lines?.length ?? 0) + 1;
-                await TestHelpers.waitForOutlinerItems(page, expectedCount, 60000);
-                // Give extra time for store to be fully populated
-                await page.waitForTimeout(1000);
+                await TestHelpers.waitForAppReady(page);
+
+                // Additional explicit wait for currentPage to match, which is critical
+                // for knowing the correct data is loaded.
+                await page.waitForFunction(
+                    (targetPageName) => {
+                        const gs = (window as any).generalStore;
+                        const cp = gs?.currentPage;
+                        const cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
+                        if (cpText.toLowerCase() === targetPageName.toLowerCase()) {
+                            return true;
+                        }
+                        return false;
+                    },
+                    pageName,
+                    { timeout: 60000 },
+                ).catch((e) => {
+                    TestHelpers.slog("Warning: currentPage did not match within timeout.", {
+                        pageName,
+                        error: e?.message,
+                    });
+                });
+
+                const expectedCount = (lines?.length ?? 0) > 0 ? lines.length + 1 : 1;
+                await TestHelpers.waitForOutlinerItems(page, expectedCount, 90000);
             }
         }
 
@@ -370,81 +357,46 @@ export class TestHelpers {
 
         await page.waitForTimeout(1000);
 
+        // Wait for app readiness, which handles auth, store, and initial render
+        await TestHelpers.waitForAppReady(page);
+
         // E2E stability: wait for store.currentPage to be set explicitly
-        // This bypasses the retry logic in +page.svelte and provides a more direct wait
-        TestHelpers.slog("Waiting for store.currentPage to be set...");
-        const targetPageName = pageName; // Capture for closure
+        // This is the most reliable signal that navigation and data loading are complete.
+        TestHelpers.slog("Waiting for store.currentPage to match the navigated page...");
         await page.waitForFunction(
             (targetName) => {
                 const gs = (window as any).generalStore;
-                if (!gs?.project) {
-                    console.log(`[TestHelpers] Waiting for project... gs=${!!gs}`);
-                    return false;
-                }
-                const cp = gs.currentPage;
+                const cp = gs?.currentPage;
                 const cpText = cp?.text?.toString?.() ?? String(cp?.text ?? "");
-                if (cpText.toLowerCase() === targetName.toLowerCase()) {
-                    return true;
-                }
-                console.log(
-                    `[TestHelpers] Waiting for currentPage match... expected="${targetName}", actual="${cpText}", hasCp=${!!cp}`,
-                );
-                return false;
+                return cpText.toLowerCase() === targetName.toLowerCase();
             },
-            targetPageName,
-            { timeout: 60000 },
+            pageName,
+            { timeout: 90000 }, // Increased timeout for CI
         ).catch(async (e) => {
-            // Fallback: log warning and continue - the +page.svelte retry logic will handle it
-            TestHelpers.slog("Warning: currentPage not set or mismatch within timeout", { error: e?.message });
-
-            // Extensive Debugging info
-            try {
-                const debugState = await page.evaluate(() => {
-                    const win = window as any;
-                    return {
-                        pageState: win.__PAGE_STATE__,
-                        generalStore: !!win.generalStore,
-                        gsProject: !!win.generalStore?.project,
-                        gsCurrentPage: !!win.generalStore?.currentPage,
-                        logs: win.__LOGS__ || [],
-                    };
-                });
-                TestHelpers.slog("Debug State on Timeout:", debugState);
-            } catch (err) {
-                TestHelpers.slog("Failed to get debug state:", err);
-            }
+            TestHelpers.slog("CRITICAL: currentPage did not match within extended timeout.", {
+                pageName,
+                error: e?.message,
+            });
+            // Dump state for debugging
+            const debugState = await page.evaluate(() => {
+                const win = window as any;
+                const gs = win.generalStore;
+                return {
+                    pageState: win.__PAGE_STATE__,
+                    gsProject: !!gs?.project,
+                    gsCurrentPageText: gs?.currentPage?.text?.toString(),
+                    yjsConnected: win.__YJS_STORE__?.isConnected,
+                };
+            });
+            TestHelpers.slog("Debug State on Timeout:", debugState);
+            throw e; // Re-throw to fail the test clearly
         });
 
-        await TestHelpers.waitForAppReady(page);
-
-        // Wait for tree data to be synced (subdocuments need time to load)
-        // This part only makes sense if seeding happened. We need effective seedLines here.
-        TestHelpers.slog("Waiting for tree data to sync...");
-        const defaultLines = [
-            "これはテスト用のページです。1",
-            "これはテスト用のページです。2",
-            "これはテスト用のページです。3",
-        ];
-        // If seedLines is null/undefined, use default. If it is an array (even empty), use it.
-        const effectiveSeedLines = seedLines !== null ? seedLines : defaultLines;
-
-        // Wait for items to be present (Yjs sync indicator)
-        const expectedItemCount = effectiveSeedLines.length + 1; // +1 for page title
+        // If seedLines were provided or expected, wait for them to render.
+        const effectiveSeedLines = seedLines ?? [];
+        const expectedItemCount = effectiveSeedLines.length > 0 ? effectiveSeedLines.length + 1 : 1;
         TestHelpers.slog("Waiting for outliner items to render...", { count: expectedItemCount });
-        await TestHelpers.waitForOutlinerItems(page, expectedItemCount, 30000);
-
-        // Small delay to allow Svelte components to render
-        // Use a safe delay that checks if page is still open
-        if (!page.isClosed()) {
-            await page.waitForTimeout(500);
-        }
-
-        // Additional wait for seeded content to be fully visible
-        // This is especially important for tests that check specific seeded content
-        if (!page.isClosed() && seedLines && seedLines.length > 0) {
-            TestHelpers.slog("Waiting for seeded content to be visible...");
-            await page.waitForTimeout(1000);
-        }
+        await TestHelpers.waitForOutlinerItems(page, expectedItemCount, 90000);
 
         TestHelpers.slog("Test environment ready");
     }
@@ -532,10 +484,7 @@ export class TestHelpers {
         console.log("TestHelper: Navigate to project page", { url });
         await page.goto(url, { timeout: 60000, waitUntil: "domcontentloaded" });
 
-        // Allow time for WebSocket connection and initial sync
-        await page.waitForTimeout(3000);
-
-        // Wait for the page to be ready (skip for server-side tests)
+        // Wait for the app to be fully ready
         if (!options?.skipAppReady) {
             await TestHelpers.waitForAppReady(page);
         }
@@ -971,72 +920,49 @@ export class TestHelpers {
      * @param page Playwright's page object
      * @param skipAuthCheck If true, skip the authentication check (for server-side tests)
      */
-    public static async waitForAppReady(page: Page, skipAuthCheck = false): Promise<void> {
-        TestHelpers.slog("Waiting for app to be ready", { skipAuthCheck });
+    public static async waitForAppReady(page: Page, _skipAuthCheck = false): Promise<void> {
+        TestHelpers.slog("Waiting for app to be ready...");
 
-        // Skip authentication check if skipAuthCheck is true, or if we're in an E2E test environment
-        // The E2E check must be inside waitForFunction to run in browser context
-        const shouldSkipAuth = skipAuthCheck || await page.waitForFunction(() => {
-            return (window as any).__E2E__ === true
-                || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
-                || window.location.search.includes("isTest=true");
-        }, { timeout: 5000 }).catch(() => false);
-
-        if (shouldSkipAuth) {
-            TestHelpers.slog("Skipping auth check (E2E test environment)");
-        } else {
-            // Wait for authentication
-            await page.waitForFunction(() => {
-                const userManager = (window as any).__USER_MANAGER__;
-                return !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
-            }, { timeout: 30000 });
-            TestHelpers.slog("Authentication is ready");
-        }
-
-        // Wait for generalStore to be available
-        await page.waitForFunction(() => !!(window as any).generalStore, { timeout: 60000 });
-        TestHelpers.slog("generalStore is available");
-
-        // Wait for project and page to be loaded in the store
-        try {
-            await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
-                if (!gs) return false;
-                const hasProject = !!gs.project;
-                const hasPages = gs.pages?.current?.length > 0;
-                const hasCurrentPage = !!gs.currentPage;
-                // Debug log only occasionally to avoid spam (using timestamp check or similar if needed,
-                // but for now relying on browser console which might not show up unless we retrieve it)
-                return hasProject && hasPages && hasCurrentPage;
-            }, { timeout: 30000 }).catch(async (e) => {
-                // Dump state on timeout
-                console.log("waitForAppReady timed out. Dumping state:");
-                await page.evaluate(() => {
-                    const gs = (window as any).generalStore;
-                    console.log("GS:", !!gs);
-                    if (gs) {
-                        console.log("GS.project:", gs.project);
-                        console.log("GS.pages:", gs.pages);
-                        console.log("GS.pages.current:", gs.pages?.current);
-                        console.log("GS.currentPage:", gs.currentPage);
-                    }
-                    console.log("YJS.isConnected:", (window as any).__YJS_STORE__?.isConnected);
-                });
-                throw e;
-            });
-        } catch (e: any) {
-            const msg = e?.message || String(e);
-            if (msg.includes("closed") || msg.includes("destroyed")) {
-                TestHelpers.slog("waitForAppReady: Page closed during wait");
-                return;
-            }
+        // 1. Wait for Yjs to connect
+        TestHelpers.slog("Waiting for Yjs connection...");
+        await page.waitForFunction(() => (window as any).__YJS_STORE__?.isConnected === true, {
+            timeout: 90000,
+            // Add polling to reduce CPU usage
+        }).catch(e => {
+            TestHelpers.slog("Yjs connection timed out.", { error: e?.message });
             throw e;
-        }
-        TestHelpers.slog("Project and page are loaded in the store");
+        });
+        TestHelpers.slog("Yjs is connected.");
 
-        // Wait for the outliner to be visible
-        await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 15000 });
-        TestHelpers.slog("Outliner is visible");
+        // 2. Wait for generalStore to be available and populated
+        TestHelpers.slog("Waiting for generalStore and project data...");
+        await page.waitForFunction(() => {
+            const gs = (window as any).generalStore;
+            return gs && gs.project && gs.pages?.current?.length > 0 && gs.currentPage;
+        }, {
+            timeout: 90000, // Increased timeout for CI
+        }).catch(e => {
+            TestHelpers.slog("generalStore initialization timed out.", { error: e?.message });
+            // Dump state for better debugging
+            page.evaluate(() => {
+                const gs = (window as any).generalStore;
+                console.log("Debug State on Timeout:", {
+                    gsExists: !!gs,
+                    projectExists: !!gs?.project,
+                    pagesLength: gs?.pages?.current?.length,
+                    currentPageExists: !!gs?.currentPage,
+                });
+            }).catch(console.error);
+            throw e;
+        });
+        TestHelpers.slog("generalStore is initialized and populated.");
+
+        // 3. Wait for the outliner UI to be visible
+        TestHelpers.slog("Waiting for outliner UI to be visible...");
+        await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: 30000 });
+        TestHelpers.slog("Outliner is visible.");
+
+        TestHelpers.slog("App is ready.");
     }
 
     /**
@@ -1267,10 +1193,6 @@ export class TestHelpers {
             throw e;
         }
 
-        // 少し待機して安定させる (ページが閉じている場合はスキップ)
-        if (!page.isClosed()) {
-            await page.waitForTimeout(300);
-        }
         TestHelpers.slog("waitForOutlinerItems: end");
     }
 

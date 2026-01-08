@@ -1,12 +1,9 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
-/** @feature SEA-0001
- *  Title   : Add page title search box
- *  Source  : docs/client-features.yaml
- */
 import { expect, test } from "../fixtures/console-forward";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 test.describe("SEA-0001: page title search box prefers active project", () => {
     let projectName: string;
@@ -14,74 +11,40 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(360000);
         // Prepare environment (creates Project and Page 1)
-        const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const ids = await TestHelpers.prepareTestEnvironment(page, testInfo, ["Page 1 content"]);
         projectName = ids.projectName;
 
-        // Seed Page 2 via API immediately (before doing any client-side navigation/waiting)
-        // This ensures Yjs initial sync includes both pages, avoiding "live update" crash issues
-        await TestHelpers.createAndSeedProject(page, null, ["search target"], {
+        // Seed Page 2 via API
+        await TestHelpers.createAndSeedProject(page, testInfo, ["search target"], {
             projectName: projectName,
             pageName: "Page2",
         });
 
-        // Reload to ensure Yjs connection pulls down strict initial state including Page2
-        await page.reload();
-        await TestHelpers.waitForAppReady(page);
+        // Navigate back to the original page to ensure our context for searching is correct
+        await TestHelpers.navigateToProjectPage(page, projectName, ids.pageName);
     });
 
     test("navigates using the active project title even with spaces", async ({ page }) => {
         const searchInput = page.getByTestId("main-toolbar").getByRole("textbox", { name: "Search pages" });
-        await searchInput.waitFor();
+        await expect(searchInput).toBeVisible();
 
-        // Explicitly wait for project items to be loaded from Yjs BEFORE typing
-        // This ensures the SearchBox has data to search against
-
+        // Wait for the search service to be aware of both pages
         await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const gs = (window as any).generalStore || (window as any).appStore;
-            const items = gs?.project?.items;
-            return items && items.length >= 2; // Should have at least current page + Page2
-        }, { timeout: 30000 }).catch(() =>
-            console.log("[Test] Warning: Timeout waiting for project items to populate")
-        );
+            const gs = (window as any).generalStore;
+            const pages = gs?.project?.items;
+            return pages && (pages.length >= 2 || Array.from(pages as any).length >= 2);
+        }, { timeout: 30000 });
 
         // Type the search query
-        await page.waitForTimeout(500);
+        await searchInput.fill("Page2");
 
-        // Retry mechanism: Type and check for results, retry if not found (handling slow indexing)
-        let found = false;
-        // Increase retries to handle very slow indexing in CI (up to ~60s total)
-        for (let i = 0; i < 6; i++) {
-            await searchInput.clear();
-            await searchInput.fill("Page2");
-            // Trigger events ensuring reactivity
-            await searchInput.press("Space");
-            await searchInput.press("Backspace");
-            // Dispatch explicit input event
-            await searchInput.evaluate(el => el.dispatchEvent(new Event("input", { bubbles: true })));
-            await page.waitForTimeout(1000); // Allow Svelte reactivity
-
-            try {
-                // Explicitly wait for the option to be in the DOM
-                await expect.poll(async () => {
-                    const buttons = page.locator(".page-search-box button");
-                    return await buttons.count() > 0 && await buttons.filter({ hasText: "Page2" }).count() > 0;
-                }, { timeout: 10000 }).toBe(true);
-                found = true;
-                break;
-            } catch {
-                console.log(`Search attempt ${i + 1} failed, retrying...`);
-                // Force a blur/focus cycle
-                await searchInput.blur();
-                await page.waitForTimeout(500);
-                await searchInput.focus();
-            }
-        }
-        expect(found).toBe(true); // Fail if still not found after retries
-
+        // Wait for the search result and click it
         const option = page.getByRole("button", { name: "Page2" });
+        await expect(option).toBeVisible({ timeout: 20000 });
         await option.click();
+
+        // Verify the URL after navigation
         const expectedPath = `/${encodeURIComponent(projectName)}/${encodeURIComponent("Page2")}`;
-        await expect.poll(() => page.url()).toContain(expectedPath);
+        await expect(page).toHaveURL(new RegExp(expectedPath), { timeout: 30000 });
     });
 });

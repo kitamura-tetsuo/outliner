@@ -171,12 +171,11 @@ export class GeneralStore {
             // Ignore errors during observation setup
         }
 
-        const self = this;
         this.pages = {
             get current() {
                 // Register dependency on the signal
                 // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                self.pagesVersion;
+                this.pagesVersion;
                 // Return items (Sidebar should track pagesVersion)
                 return project.items;
             },

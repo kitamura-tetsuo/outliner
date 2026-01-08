@@ -1,84 +1,41 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
-/** @feature SEA-0001
- *  Title   : Add page title search box (late load)
- *  Source  : docs/client-features.yaml
- */
 import { expect, test } from "../fixtures/console-forward";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SEA-0001: page title search box", () => {
-    test("search results update when pages load after typing", async ({ page }, testInfo) => {
+registerCoverageHooks();
+
+test.describe("SEA-0001: search box updates with late-loading pages", () => {
+    test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(360000);
-        const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
-        const input = page
-            .getByTestId("main-toolbar")
-            .getByRole("textbox", { name: "Search pages" });
-        await input.waitFor();
-        await input.focus();
-        await input.fill("second");
-        // Create page after user types to simulate late data availability
-        await TestHelpers.createAndSeedProject(page, null, ["second page text"], {
-            projectName: projectName,
+        // Start with an empty project
+        await TestHelpers.prepareTestEnvironment(page, testInfo, []);
+    });
+
+    test("search results update when pages load after typing", async ({ page }) => {
+        const searchInput = page.locator(".page-search-box input");
+        await expect(searchInput).toBeVisible();
+
+        // Start typing before the target page exists
+        await searchInput.fill("second");
+
+        // Now, create the page that matches the search query
+        const { projectName } = await page.evaluate(() => (window as any).generalStore.project);
+        await TestHelpers.createAndSeedProject(page, null, ["second page content"], {
+            projectName,
             pageName: "second-page",
         });
-        // Reload to ensure sync, then focus the input again
-        await page.reload();
-        await TestHelpers.waitForAppReady(page);
-        // Focus the input again after navigating back
-        const inputAfterNav = page
-            .getByTestId("main-toolbar")
-            .getByRole("textbox", { name: "Search pages" });
-        await inputAfterNav.waitFor();
-        await inputAfterNav.focus();
 
-        // Explicitly wait for project items to be loaded from Yjs BEFORE typing
-        // This ensures the SearchBox has data to search against
+        // The search results should reactively update to include the new page
+        const firstResult = page.locator(".page-search-box li").first();
+        await expect(firstResult).toBeVisible({ timeout: 30000 });
+        await expect(firstResult).toContainText("second-page");
 
-        await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const gs = (window as any).generalStore || (window as any).appStore;
-            const items = gs?.project?.items;
-            return items && items.length >= 2; // Should have at least current page + second page
-        }, { timeout: 30000 }).catch(() =>
-            console.log("[Test] Warning: Timeout waiting for project items to populate")
-        );
-
-        // Type the search query
-        await page.waitForTimeout(500);
-
-        // Retry mechanism
-        let found = false;
-        // Increase retries to handle very slow indexing in CI (up to ~60s total)
-        for (let i = 0; i < 6; i++) {
-            await inputAfterNav.clear();
-            await inputAfterNav.fill("second");
-            // Trigger events ensuring reactivity
-            await inputAfterNav.press("Space");
-            await inputAfterNav.press("Backspace");
-            // Dispatch explicit input event
-            await inputAfterNav.evaluate(el => el.dispatchEvent(new Event("input", { bubbles: true })));
-            await page.waitForTimeout(1000); // Allow Svelte reactivity
-
-            try {
-                // Explicitly wait for results
-                await expect.poll(async () => {
-                    return await page.locator(".page-search-box li").count();
-                }, { timeout: 10000 }).toBeGreaterThan(0);
-                found = true;
-                break;
-            } catch {
-                console.log(`Search attempt ${i + 1} failed, retrying...`);
-                // Force a blur/focus cycle
-                await inputAfterNav.blur();
-                await page.waitForTimeout(500);
-                await inputAfterNav.focus();
-            }
-        }
-        expect(found).toBe(true);
+        // Navigate using keyboard
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Enter");
-        await expect(page).toHaveURL(/second-page/);
+
+        // Verify navigation
+        await expect(page).toHaveURL(/second-page/, { timeout: 30000 });
     });
 });
