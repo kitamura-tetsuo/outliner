@@ -1652,6 +1652,18 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
     return res.status(400).json({ error: "Invalid file name" });
   }
 
+  // Validate file size (limit to ~5MB)
+  // 5MB = 5 * 1024 * 1024 = 5,242,880 bytes
+  // Base64 encoding increases size by ~33% (4/3)
+  // 5,242,880 * 1.34 ≈ 7,025,459 characters
+  const MAX_FILE_SIZE_B64 = 7000000;
+  if (fileData.length > MAX_FILE_SIZE_B64) {
+    logger.warn(
+      `uploadAttachment file too large: ${fileData.length} > ${MAX_FILE_SIZE_B64}`,
+    );
+    return res.status(413).json({ error: "File too large (max 5MB)" });
+  }
+
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
     const uid = decoded.uid;
