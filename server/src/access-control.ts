@@ -1,5 +1,5 @@
 import admin from "firebase-admin";
-import { logger } from "./logger";
+import { logger } from "./logger.js";
 
 // Ensure admin is initialized (idempotent)
 if (!admin.apps.length) {

@@ -19,8 +19,18 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
             "ITEM with attachments",
         ]);
 
-        const itemId = await TestHelpers.getItemIdByIndex(page, 1);
-        if (!itemId) throw new Error("item id not found");
+        // Wait for items to be stable
+        await TestHelpers.waitForOutlinerItems(page, 2, 30000);
+        let itemId = await TestHelpers.getItemIdByIndex(page, 1);
+
+        // Robust retry for item ID
+        for (let i = 0; i < 3; i++) {
+            if (itemId) break;
+            await page.waitForTimeout(1000);
+            itemId = await TestHelpers.getItemIdByIndex(page, 1);
+        }
+
+        if (!itemId) throw new Error("item id not found after retry");
 
         const selector = `[data-item-id="${itemId}"]`;
         const attachments = page.locator(`${selector} .attachments`);

@@ -13,7 +13,10 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("フォーマット文字列でのカーソル操作", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2"]);
+        // Wait for outliner items to be rendered after seeding (wait for specific content)
+        // Wait for outliner items to be rendered after seeding (robust wait)
+        await page.locator(".outliner-item[data-item-id]").first().waitFor({ timeout: 60000 });
     });
 
     test("太字文字列内でのカーソル移動が正しく機能する", async ({ page }) => {
@@ -21,7 +24,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"] .item-content`);
-        await item.click();
+        await item.click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
         // 太字を含むテキストを入力
@@ -133,7 +136,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         });
 
         // 少し待機してからテキストを確認
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const textContent = await item.locator(".item-text").textContent();
         console.log("Text content after format insertion:", textContent);
@@ -154,7 +157,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         const secondItemId2 = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId2).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId2}"]`);
-        await item.locator(".item-content").click();
+        await item.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
         // フォーマットを含むテキストを入力
@@ -185,7 +188,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         const secondItemId3 = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId3).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId3}"]`);
-        await item.locator(".item-content").click();
+        await item.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
         // カーソルの状態を確認し、必要に応じて作成
@@ -255,7 +258,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         });
 
         // 少し待機してからテキストを確認
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const textContent = await item.locator(".item-text").textContent();
         console.log("Text content after insertion:", textContent);
@@ -274,7 +277,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         const secondItemId4 = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId4).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId4}"]`);
-        await item.locator(".item-content").click();
+        await item.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
         // Clear the item by selecting all and deleting

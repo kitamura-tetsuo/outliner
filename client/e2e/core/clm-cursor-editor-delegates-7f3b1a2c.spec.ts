@@ -104,7 +104,7 @@ test.describe("CLM-7f3b1a2c: Cursor editing flows through CursorEditor", () => {
         expect(typeof newItemId === "string" && newItemId.length > 0, "insertLineBreak should return new itemId").toBe(
             true,
         );
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         await expect(itemLocator).toContainText("Cursor");
 

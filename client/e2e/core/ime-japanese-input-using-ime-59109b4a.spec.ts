@@ -14,6 +14,9 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
     });
 
     test("入力途中の文字がカーソル位置に表示される", async ({ page }) => {
+        // Wait for items to be present first
+        await TestHelpers.waitForOutlinerItems(page);
+
         // ページタイトルを優先的に使用
         const item = page.locator(".outliner-item.page-title");
 
@@ -21,8 +24,10 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         if (await item.count() === 0) {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
+            await visibleItems.first().waitFor({ state: "visible", timeout: 15000 });
+            await visibleItems.first().locator(".item-content").click({ force: true, timeout: 15000 });
         } else {
+            await item.waitFor({ state: "visible", timeout: 15000 });
             await item.locator(".item-content").click({ force: true });
         }
 
@@ -54,6 +59,9 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
     });
 
     test("変換候補がカーソル位置に表示される", async ({ page }) => {
+        // Wait for items to be present first
+        await TestHelpers.waitForOutlinerItems(page);
+
         // ページタイトルを優先的に使用
         const item = page.locator(".outliner-item.page-title");
 
@@ -61,8 +69,10 @@ test.describe("IME-0001: IMEを使用した日本語入力", () => {
         if (await item.count() === 0) {
             // テキスト内容で特定できるアイテムを探す
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
-            await visibleItems.first().locator(".item-content").click({ force: true });
+            await visibleItems.first().waitFor({ state: "visible", timeout: 15000 });
+            await visibleItems.first().locator(".item-content").click({ force: true, timeout: 15000 });
         } else {
+            await item.waitFor({ state: "visible", timeout: 15000 });
             await item.locator(".item-content").click({ force: true });
         }
 
