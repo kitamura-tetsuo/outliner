@@ -1,16 +1,24 @@
+import express from "express";
 import http from "http";
+import * as decoding from "lib0/decoding";
+import * as enc from "lib0/encoding";
 import { WebSocketServer } from "ws";
-import { checkContainerAccess } from "./access-control";
-import { type Config } from "./config";
-import { logger as defaultLogger } from "./logger";
-import { getMetrics, recordMessage } from "./metrics";
-import { createPersistence, logTotalSize, warnIfRoomTooLarge } from "./persistence";
-import { parseRoom } from "./room-validator";
-import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners";
-import { sanitizeUrl } from "./utils/sanitize";
-import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let setupWSConnection: any;
+import * as Ylib from "yjs";
+import { type Config } from "./config.js";
+import { logger as defaultLogger } from "./logger.js";
+import { getMetrics, recordMessage } from "./metrics.js";
+import { createPersistence, logTotalSize, warnIfRoomTooLarge } from "./persistence.js";
+import { parseRoom } from "./room-validator.js";
+import { createSeedRouter } from "./seed-api.js";
+import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners.js";
+import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth.js";
+
+// Import setupWSConnection and getYDoc from @y/websocket-server/utils
+// @ts-ignore - Optional dependency, may not be available
+import { getYDoc, setupWSConnection as wsSetup } from "@y/websocket-server/utils";
+const setupWSConnection: any = wsSetup || (() => undefined);
+import { checkContainerAccess } from "./access-control.js";
+import { sanitizeUrl } from "./utils/sanitize.js";
 
 // --- Yjs protocol debug helpers (best-effort decode for logging) ---
 function parseYProtocolFrame(data: unknown): {
@@ -20,8 +28,6 @@ function parseYProtocolFrame(data: unknown): {
 } {
     try {
         // lazy requires to avoid hard deps in typings
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const decoding = require("lib0/decoding");
         const toUint8 = (d: any): Uint8Array => {
             if (typeof d === "string") return new TextEncoder().encode(d);
             if (Buffer.isBuffer(d)) return new Uint8Array(d);
@@ -56,39 +62,49 @@ function parseYProtocolFrame(data: unknown): {
     return {};
 }
 
-export function startServer(config: Config, logger = defaultLogger) {
-    const server = http.createServer((req, res) => {
-        if (req.url === "/metrics") {
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify(getMetrics(wss)));
-            return;
-        }
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        res.end("ok");
-    });
+export async function startServer(config: Config, logger = defaultLogger) {
+    // Create Express app for API endpoints
+    const app = express();
+
+    // Add JSON body parser middleware
+    app.use(express.json());
+
+    // Create HTTP server from Express app
+    const server = http.createServer(app);
+
     const wss = new WebSocketServer({ server });
     const disableLeveldb = process.env.DISABLE_Y_LEVELDB === "true";
-    const persistence = disableLeveldb ? undefined : createPersistence(config.LEVELDB_PATH);
-    // Configure y-websocket utils: prefer y-websocket's own utils (to match client lib), fallback to @y/websocket-server
-    try {
-        // y-websocket/@y/websocket-server のデフォルト永続化は YPERSISTENCE で有効化される。
-        // 明示的に永続化を無効化したい場合は環境変数を設定しない。
-        if (!disableLeveldb) {
-            process.env.YPERSISTENCE = config.LEVELDB_PATH;
-        } else {
-            delete process.env.YPERSISTENCE;
-        }
-        ({ setupWSConnection } = require("y-websocket/bin/utils"));
-    } catch {
-        try {
-            ({ setupWSConnection } = require("@y/websocket-server/dist/utils.cjs"));
-        } catch {
-            setupWSConnection = () => undefined;
-        }
+    const persistence = disableLeveldb ? undefined : await createPersistence(config.LEVELDB_PATH);
+
+    // Configure y-websocket persistence via environment variable
+    if (!disableLeveldb) {
+        process.env.YPERSISTENCE = config.LEVELDB_PATH;
+    } else {
+        delete process.env.YPERSISTENCE;
+    }
+
+    // Add seed API router with live doc access
+    app.use("/api", createSeedRouter(persistence, getYDoc));
+
+    // Metrics endpoint
+    app.get("/metrics", (_req: any, res: any) => {
+        res.json(getMetrics(wss));
+    });
+
+    // Health check endpoint
+    app.get("/", (_req: any, res: any) => {
+        res.send("ok");
+    });
+    // Configure y-websocket persistence
+    if (!disableLeveldb) {
+        process.env.YPERSISTENCE = config.LEVELDB_PATH;
+    } else {
+        delete process.env.YPERSISTENCE;
     }
 
     const ipCounts = new Map<string, number>();
     const roomCounts = new Map<string, number>();
+    const connectionRateLimits = new Map<string, number[]>();
     let totalSockets = 0;
     const allowedOrigins = new Set(
         config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
@@ -100,9 +116,39 @@ export function startServer(config: Config, logger = defaultLogger) {
         }, config.LEVELDB_LOG_INTERVAL_MS);
     }
 
+    // Rate limiter cleanup interval
+    setInterval(() => {
+        const now = Date.now();
+        const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
+        for (const [ip, timestamps] of connectionRateLimits) {
+            const valid = timestamps.filter(t => t > windowStart);
+            if (valid.length === 0) {
+                connectionRateLimits.delete(ip);
+            } else if (valid.length < timestamps.length) {
+                connectionRateLimits.set(ip, valid);
+            }
+        }
+    }, config.RATE_LIMIT_WINDOW_MS * 5);
+
     wss.on("connection", async (ws, req) => {
         const ip = req.socket.remoteAddress ?? "";
         const origin = req.headers.origin ?? "";
+
+        // Rate Limiting Check
+        const now = Date.now();
+        const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
+        let timestamps = connectionRateLimits.get(ip) || [];
+        timestamps = timestamps.filter(t => t > windowStart);
+
+        if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
+            logger.warn({ event: "ws_connection_denied", reason: "rate_limit_exceeded", ip });
+            // 4029: Too Many Requests (Private Use Code)
+            ws.close(4029, "RATE_LIMIT_EXCEEDED");
+            return;
+        }
+        timestamps.push(now);
+        connectionRateLimits.set(ip, timestamps);
+
         if (allowedOrigins.size && !allowedOrigins.has(origin)) {
             logger.warn({ event: "ws_connection_denied", reason: "invalid_origin", origin });
             ws.close(4003, "ORIGIN_NOT_ALLOWED");
@@ -139,9 +185,31 @@ export function startServer(config: Config, logger = defaultLogger) {
             ws.close(4006, "MAX_SOCKETS_PER_ROOM");
             return;
         }
-        totalSockets++;
-        ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
-        roomCounts.set(docName, (roomCounts.get(docName) ?? 0) + 1);
+        // Connection counter management with leak prevention
+        let counted = false;
+        const incrementCounters = () => {
+            if (counted) return;
+            counted = true;
+            totalSockets++;
+            ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
+            roomCounts.set(docName, (roomCounts.get(docName) ?? 0) + 1);
+        };
+        const decrementCounters = () => {
+            if (!counted) return;
+            counted = false;
+            totalSockets--;
+            ipCounts.set(ip, (ipCounts.get(ip) ?? 1) - 1);
+            if (ipCounts.get(ip)! <= 0) ipCounts.delete(ip);
+            roomCounts.set(docName, (roomCounts.get(docName) ?? 1) - 1);
+            if (roomCounts.get(docName)! <= 0) roomCounts.delete(docName);
+        };
+
+        // Register close handler BEFORE async operations to ensure cleanup
+        ws.on("close", decrementCounters);
+
+        // Increment counters
+        incrementCounters();
+
         // Buffer messages while waiting for async auth verification
         const msgBuffer: any[] = [];
         const bufferListener = (data: any) => {
@@ -173,6 +241,8 @@ export function startServer(config: Config, logger = defaultLogger) {
                     ws.close(4004, "IDLE_TIMEOUT");
                 }, config.IDLE_TIMEOUT_MS);
             };
+            logger.info({ event: "ws_connection_accepted", uid: decoded.uid, room: docName });
+            const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
             let msgCount = 0;
             let ydocRef: any | undefined = undefined;
             ws.on("message", data => {
@@ -236,76 +306,6 @@ export function startServer(config: Config, logger = defaultLogger) {
                 }
             });
 
-            // Replay buffered messages
-            for (const data of msgBuffer) {
-                ws.emit("message", data);
-            }
-            // ws.send パッチで送信フレームを可視化（setupWSConnection より前に適用）
-            try {
-                const origSend = ws.send.bind(ws) as any;
-                (ws as any).send = (data: any, ...rest: any[]) => {
-                    let size = 0;
-                    let firstByte: number | undefined;
-                    let isBinary = false;
-                    if (typeof data === "string") {
-                        size = Buffer.byteLength(data);
-                    } else if (Buffer.isBuffer(data)) {
-                        size = data.length;
-                        isBinary = true;
-                        firstByte = data[0];
-                    } else if (data instanceof ArrayBuffer) {
-                        size = data.byteLength;
-                        isBinary = true;
-                        firstByte = new Uint8Array(data)[0];
-                    } else if (Array.isArray(data)) {
-                        const buf = Buffer.concat(data);
-                        size = buf.length;
-                        isBinary = true;
-                        firstByte = buf[0];
-                    } else if (data) {
-                        const buf = Buffer.from(data as Uint8Array);
-                        size = buf.length;
-                        isBinary = true;
-                        firstByte = buf[0];
-                    }
-                    const parsed = parseYProtocolFrame(data);
-                    let docBytes: number | undefined = undefined;
-                    try {
-                        if (
-                            parsed.topType === "sync"
-                            && (parsed.syncSubtype === "step2" || parsed.syncSubtype === "update") && (ydocRef as any)
-                        ) {
-                            // eslint-disable-next-line @typescript-eslint/no-var-requires
-                            const Ylib = require("yjs");
-                            const enc: Uint8Array = Ylib.encodeStateAsUpdate(ydocRef);
-                            docBytes = enc?.length ?? undefined;
-                        }
-                    } catch { /* ignore */ }
-                    logger.info({
-                        event: "ws_send",
-                        room: docName,
-                        size,
-                        isBinary,
-                        firstByte,
-                        y_type: parsed.topType,
-                        y_sync_step: parsed.syncSubtype,
-                        y_payload_bytes: parsed.payloadBytes,
-                        doc_bytes: docBytes,
-                    });
-                    return origSend(data, ...rest);
-                };
-            } catch { /* noop */ }
-
-            ws.on("close", () => {
-                clearTimeout(idleTimer);
-                totalSockets--;
-                ipCounts.set(ip, (ipCounts.get(ip) ?? 1) - 1);
-                if (ipCounts.get(ip)! <= 0) ipCounts.delete(ip);
-                roomCounts.set(docName, (roomCounts.get(docName) ?? 1) - 1);
-                if (roomCounts.get(docName)! <= 0) roomCounts.delete(docName);
-            });
-            logger.info({ event: "ws_connection_accepted", uid: decoded.uid, room: docName });
-            const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
             if (persistence) {
                 await addRoomSizeListener(persistence, docName, limitBytes, logger);
                 await warnIfRoomTooLarge(persistence, docName, limitBytes, logger);
@@ -319,10 +319,6 @@ export function startServer(config: Config, logger = defaultLogger) {
                     });
                     // Fallback for initial sync (v2 handshake differences): proactively send current doc update once
                     try {
-                        // eslint-disable-next-line @typescript-eslint/no-var-requires
-                        const Ylib = require("yjs");
-                        // eslint-disable-next-line @typescript-eslint/no-var-requires
-                        const enc = require("lib0/encoding");
                         const update: Uint8Array = Ylib.encodeStateAsUpdate(ydoc);
                         if (update && update.length > 0) {
                             const e = enc.createEncoder();
@@ -346,18 +342,21 @@ export function startServer(config: Config, logger = defaultLogger) {
             } else {
                 setupWSConnection(ws, req, { docName, gc: false });
             }
+
+            // Replay buffered messages AFTER setupWSConnection has attached listeners
+            for (const data of msgBuffer) {
+                ws.emit("message", data);
+            }
+
             ws.on("message", () => recordMessage());
         } catch (err) {
-            totalSockets--;
-            ipCounts.set(ip, (ipCounts.get(ip) ?? 1) - 1);
-            if (ipCounts.get(ip)! <= 0) ipCounts.delete(ip);
-            roomCounts.set(docName, (roomCounts.get(docName) ?? 1) - 1);
-            if (roomCounts.get(docName)! <= 0) roomCounts.delete(docName);
             const message = err instanceof Error ? err.message : String(err);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const code = (err as any)?.code || (err as any)?.errorInfo?.code || undefined;
             logger.warn({ event: "ws_connection_denied", reason: "invalid_token", code, message });
             ws.close(4001, "UNAUTHORIZED");
+            // Ensure counters are decremented if close event doesn't fire synchronously
+            decrementCounters();
         }
     });
 
