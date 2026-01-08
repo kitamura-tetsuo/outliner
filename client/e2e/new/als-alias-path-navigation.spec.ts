@@ -6,8 +6,7 @@ registerCoverageHooks();
 
 test.describe("ALS-0001: Alias path navigation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        test.setTimeout(90000);
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["first item", "second item"]);
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("alias path shows clickable links", async ({ page }) => {
@@ -17,7 +16,7 @@ test.describe("ALS-0001: Alias path navigation", () => {
         if (!firstId || !secondId) throw new Error("item ids not found");
 
         await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             textarea?.focus();

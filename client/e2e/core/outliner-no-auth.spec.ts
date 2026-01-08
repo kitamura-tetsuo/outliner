@@ -33,7 +33,7 @@ test.describe("Outliner No Auth Test", () => {
         console.log("Debug: Pressed Escape key");
 
         // 少し待機してエラーを収集
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(2000);
 
         // エラーレポート
         if (errors.length > 0) {
@@ -131,7 +131,7 @@ test.describe("Outliner No Auth Test", () => {
         console.log("Debug: Typed test input");
 
         // 少し待機
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
         // ページの状態が安定していることを確認
         const finalUrl = page.url();

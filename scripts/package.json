@@ -3,31 +3,22 @@
     "version": "1.0.0",
     "type": "module",
     "description": "VSCodeのlaunch.jsonで定義されているLocalhost設定をbashで実行するためのスクリプト集です。",
-    "main": "backup-production-data.cjs",
+    "main": "backup-production-data.js",
     "directories": {
         "test": "tests"
     },
     "scripts": {
         "test": "vitest run",
         "test:watch": "vitest",
-        "test:coverage": "vitest run --coverage",
-        "seed": "ts-node test-data-seeder.ts"
+        "test:coverage": "vitest run --coverage"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "devDependencies": {
-        "@types/node": "^25.0.3",
-        "@types/uuid": "^10.0.0",
-        "@types/ws": "^8.18.1",
-        "ts-node": "^10.9.2",
         "vitest": "^3.2.4"
     },
     "dependencies": {
-        "firebase-admin": "^13.4.0",
-        "uuid": "^13.0.0",
-        "ws": "^8.18.3",
-        "y-websocket": "^3.0.0",
-        "yjs": "^13.6.28"
+        "firebase-admin": "^13.4.0"
     }
 }

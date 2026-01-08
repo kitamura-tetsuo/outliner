@@ -3,9 +3,7 @@
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
-import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types.js";
-
-console.log("HELLO WORLD APP SCHEMA LOADED");
+import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types";
 
 export type Comment = {
     id: string;
@@ -17,10 +15,7 @@ export type Comment = {
 
 // コメントコレクション（Y.Array<Y.Map>）用ラッパ
 export class Comments {
-    private readonly yArray: Y.Array<Y.Map<CommentValueType>>;
-    constructor(yArray: Y.Array<Y.Map<CommentValueType>>) {
-        this.yArray = yArray;
-    }
+    constructor(private readonly yArray: Y.Array<Y.Map<CommentValueType>>) {}
 
     addComment(author: string, text: string) {
         const time = Date.now();
@@ -41,9 +36,26 @@ export class Comments {
     }
 
     deleteComment(commentId: string) {
-        const idx = this.yArray.toArray().findIndex((m) => m.get("id") === commentId);
+        try {
+            console.info("[Comments.deleteComment] called with id=", commentId);
+        } catch {}
+        const ids = this.yArray.toArray().map((m) => m.get("id"));
+        try {
+            console.info("[Comments.deleteComment] current ids=", ids);
+        } catch {}
+        const idx = ids.findIndex((id) => id === commentId);
+        try {
+            console.info("[Comments.deleteComment] found idx=", idx);
+        } catch {}
         if (idx >= 0) {
             this.yArray.delete(idx, 1);
+            try {
+                console.info("[Comments.deleteComment] deleted idx=", idx);
+            } catch {}
+        } else {
+            try {
+                console.info("[Comments.deleteComment] not found, skip");
+            } catch {}
         }
     }
 
@@ -396,18 +408,11 @@ export class Item {
 
 // 子ノード集合ラッパ
 export class Items implements Iterable<Item> {
-    public readonly ydoc: Y.Doc;
-    public readonly tree: YTree;
-    public readonly parentKey: string;
     constructor(
-        ydoc: Y.Doc,
-        tree: YTree,
-        parentKey: string,
-    ) {
-        this.ydoc = ydoc;
-        this.tree = tree;
-        this.parentKey = parentKey;
-    }
+        public readonly ydoc: Y.Doc,
+        public readonly tree: YTree,
+        public readonly parentKey: string,
+    ) {}
 
     private childrenKeys(): string[] {
         const children = this.tree.getNodeChildrenFromKey(this.parentKey);
@@ -453,7 +458,6 @@ export class Items implements Iterable<Item> {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
         const existingKeys = this.childrenKeys();
-
         const value = new Y.Map<ItemValueType>();
         value.set("id", nodeKey);
         value.set("author", author);
@@ -498,12 +502,7 @@ export class Items implements Iterable<Item> {
 
 // プロジェクト（Y.Doc）全体のラッパ
 export class Project {
-    public readonly ydoc: Y.Doc;
-    public readonly tree: YTree;
-    constructor(ydoc: Y.Doc, tree: YTree) {
-        this.ydoc = ydoc;
-        this.tree = tree;
-    }
+    constructor(public readonly ydoc: Y.Doc, public readonly tree: YTree) {}
 
     static createInstance(title: string): Project {
         const doc = new Y.Doc();

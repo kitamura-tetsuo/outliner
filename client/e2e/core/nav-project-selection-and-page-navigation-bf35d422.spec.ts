@@ -22,7 +22,7 @@ test.describe("NAV-0001: プロジェクト選択とページナビゲーショ�
 
         // 1. プロジェクトページへの遷移確認
         await page.goto(`/${projectName}`, { waitUntil: "load" });
-        await page.waitForTimeout(500); // Wait for hydration and rendering
+        await page.waitForTimeout(1000); // Wait for hydration and rendering
         await expect(page).toHaveURL(new RegExp(`.*/${encodeURIComponent(projectName)}$`), { timeout: 10000 });
         const projectUrl = page.url();
         expect(projectUrl).toContain(encodeURIComponent(projectName));

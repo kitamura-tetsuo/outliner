@@ -14,12 +14,12 @@ test.describe("CLM-0002: 左へ移動", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // ページタイトルを優先的に使用
-        const item = page.locator(".outliner-item.page-title[data-item-id]");
+        const item = page.locator(".outliner-item.page-title");
 
         // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
         if (await item.count() === 0) {
             // テキスト内容で特定できるアイテムを探す
-            const visibleItems = page.locator(".outliner-item[data-item-id]").filter({ hasText: /.*/ });
+            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
         } else {
             await item.locator(".item-content").click({ force: true });

@@ -27,7 +27,7 @@ test.describe("LNK-0004: 仮ページ通知非表示", () => {
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(300);
+            await page.waitForTimeout(1000);
         }
 
         const outlinerBase = page.locator("[data-testid='outliner-base']");

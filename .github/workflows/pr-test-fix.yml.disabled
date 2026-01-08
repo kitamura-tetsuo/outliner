@@ -76,7 +76,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Run setup script (start emulators and servers)
+      - name: Run codex setup script (start emulators and servers)
         run: |
           bash scripts/setup.sh
         env:

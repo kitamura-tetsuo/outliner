@@ -19,7 +19,7 @@ test.describe("SLR-0006: Copy and paste multiple item selection ranges", () => {
         const clipboardText = "line1\nline2\nline3";
         await page.evaluate(async text => await navigator.clipboard.writeText(text), clipboardText);
         await page.keyboard.press("Control+V");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
         const items = page.locator(".outliner-item");
         expect(await items.count()).toBeGreaterThan(1);
     });

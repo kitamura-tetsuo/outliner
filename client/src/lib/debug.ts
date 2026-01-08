@@ -68,7 +68,9 @@ if (process.env.NODE_ENV === "test") {
         // SharedTreeのデータ構造を取得するデバッグ関数
         window.getFluidTreeDebugData = function(): Record<string, unknown> {
             if (!yjsStore.yjsClient) {
-                return { error: "YjsClient not initialized", items: [] };
+                throw new Error(
+                    "YjsClient is not initialized. Please wait for the client to be ready.",
+                );
             }
             return (yjsStore.yjsClient as { getAllData: () => Record<string, unknown>; }).getAllData();
         };
@@ -76,7 +78,9 @@ if (process.env.NODE_ENV === "test") {
         // 特定のパスのデータを取得するデバッグ関数
         window.getFluidTreePathData = function(path?: string): Record<string, unknown> {
             if (!yjsStore.yjsClient) {
-                return { error: "YjsClient not initialized", items: [] };
+                throw new Error(
+                    "YjsClient is not initialized. Please wait for the client to be ready.",
+                );
             }
             return (yjsStore.yjsClient as { getTreeAsJson: (path?: string) => Record<string, unknown>; }).getTreeAsJson(
                 path,
@@ -85,13 +89,9 @@ if (process.env.NODE_ENV === "test") {
 
         // Yjs tree structure debug helpers
         window.getYjsTreeDebugData = function(): Record<string, unknown> {
-            const client = yjsStore.yjsClient;
-            if (!client) {
-                return { error: "YjsClient not initialized", items: [] };
-            }
-            const fc = client as { project?: { ydoc: unknown; tree: unknown; items: unknown; }; };
+            const fc = yjsStore.yjsClient as { project?: { ydoc: unknown; tree: unknown; items: unknown; }; };
             if (!fc?.project) {
-                return { error: "FluidClient project not initialized", items: [] };
+                throw new Error("FluidClient project not initialized");
             }
             const project = fc.project;
             const toPlain = (

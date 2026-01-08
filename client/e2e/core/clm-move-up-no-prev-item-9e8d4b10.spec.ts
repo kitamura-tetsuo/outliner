@@ -18,10 +18,10 @@ test.describe("CLM-0004: Move up", () => {
         await page.keyboard.press("Escape");
 
         // 最初のアイテム（ページタイトルまたは最初のアイテム）を特定
-        const itemLocator = page.locator(".outliner-item.page-title[data-item-id]");
+        const itemLocator = page.locator(".outliner-item.page-title");
         let firstItem;
         if ((await itemLocator.count()) === 0) {
-            const visibleItems = page.locator(".outliner-item[data-item-id]").filter({ hasText: /.*/ });
+            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             firstItem = visibleItems.first();
         } else {
             firstItem = itemLocator;

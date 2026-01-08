@@ -5,15 +5,13 @@ import { DataValidationHelpers } from "./dataValidationHelpers";
 // Can be disabled by setting E2E_DISABLE_AUTO_SNAPSHOT=1 to minimize side effects.
 if (process.env.E2E_DISABLE_AUTO_SNAPSHOT !== "1") {
     test.afterEach(async ({ page }, testInfo) => {
-        // Skip snapshot saving for API tests and non-UI tests that don't involve UI interactions
+        // Skip snapshot saving for API tests that don't involve UI interactions
         // Check based on filename as well since API tests might not have "API" in the title
-        const isNonUiTest = testInfo.file.includes("api-") || testInfo.title.includes("API-")
-            || testInfo.title.includes("管理者チェック") || testInfo.title.includes("admin")
-            || testInfo.file.includes("log-rotate") || testInfo.file.includes("server-backup")
-            || testInfo.file.includes("-script-") || testInfo.file.includes("-endpoint-");
+        const isApiTest = testInfo.file.includes("api-") || testInfo.title.includes("API-")
+            || testInfo.title.includes("管理者チェック") || testInfo.title.includes("admin");
 
-        if (isNonUiTest) {
-            console.log(`[afterEach] Skipping snapshot for non-UI test: ${testInfo.title} in ${testInfo.file}`);
+        if (isApiTest) {
+            console.log(`[afterEach] Skipping snapshot for API test: ${testInfo.title} in ${testInfo.file}`);
             return;
         }
 

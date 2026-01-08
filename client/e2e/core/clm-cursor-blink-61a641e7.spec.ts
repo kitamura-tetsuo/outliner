@@ -15,15 +15,15 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
 
     test("カーソルが点滅する", async ({ page }) => {
         await page.screenshot({ path: "client/test-results/CLM-0001-blink-start.png" });
-        const item = page.locator(".outliner-item.page-title[data-item-id]");
+        const item = page.locator(".outliner-item.page-title");
         if (await item.count() === 0) {
-            const visibleItems = page.locator(".outliner-item[data-item-id]").filter({ hasText: /.*/ });
+            const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
         } else {
             await item.locator(".item-content").click({ force: true });
         }
         await TestHelpers.waitForCursorVisible(page);
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
         await page.screenshot({ path: "client/test-results/CLM-0001-blink-end.png" });
     });
 });

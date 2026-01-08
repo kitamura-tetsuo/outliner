@@ -28,14 +28,10 @@ class YjsStore {
             const existingGuid: string | undefined = (globalStore.project as any)?.ydoc?.guid;
 
             // If the currently connected project refers to the same Y.Doc (GUID), skip
-            // However, if store.project is a provisional/empty project, we want to update
-            // to ensure we have the real connected project with seeded data
             if (
                 (existingGuid && newGuid && existingGuid === newGuid)
-                && globalStore.project === (connectedProject as any)
+                || globalStore.project === (connectedProject as any)
             ) {
-                // Still update to ensure reactivity is triggered
-                globalStore.project = connectedProject as any;
                 return;
             }
             // さらに、自身が直前に設定した GUID とも比較して冪等性を高める
@@ -46,16 +42,6 @@ class YjsStore {
             globalStore.project = connectedProject as any;
             this._lastProjectGuid = newGuid ?? null;
 
-            // Attach listeners to update isConnected state reactively
-            if (v.wsProvider) {
-                const updateConnected = () => {
-                    this.isConnected = v.isContainerConnected;
-                };
-                v.wsProvider.on("status", updateConnected);
-                v.wsProvider.on("sync", updateConnected);
-                // Initial check
-                updateConnected();
-            }
             // In headless E2E runs, pages can be created on a provisional project
             // before the live Yjs project is connected. When the connection arrives,
             // the store switches to the connected project, which would otherwise
@@ -159,7 +145,7 @@ class YjsStore {
     get connectionState() {
         return this._client?.getConnectionStateString() ?? "未接続";
     }
-    get currentProjectId() {
+    get currentContainerId() {
         return this._client?.containerId ?? null;
     }
     get currentUser() {
@@ -178,8 +164,8 @@ class YjsStore {
     getConnectionState() {
         return this.connectionState;
     }
-    getCurrentProjectId() {
-        return this.currentProjectId;
+    getCurrentContainerId() {
+        return this.currentContainerId;
     }
     getCurrentUser() {
         return this.currentUser;

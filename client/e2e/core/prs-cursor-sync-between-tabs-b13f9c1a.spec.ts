@@ -10,7 +10,6 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Cursor sync between tabs", () => {
     test("typing in one tab shows in another", async ({ browser }, testInfo) => {
-        test.setTimeout(60000);
         // Use a fixed project name to ensure both contexts connect to the same Yjs document
         const projectName = `Test Project Sync ${Date.now()}`;
         const pageName = `sync-test-page-${Date.now()}`;
@@ -19,130 +18,62 @@ test.describe("Cursor sync between tabs", () => {
         const context1 = await browser.newContext();
         const page1 = await context1.newPage();
 
+        // Enable Yjs WebSocket before page initialization using addInitScript
+        await page1.addInitScript(() => {
+            localStorage.removeItem("VITE_YJS_DISABLE_WS"); // Remove disable flag
+            localStorage.setItem("VITE_YJS_ENABLE_WS", "true"); // Set enable flag
+        });
+
         // Prepare the environment after enabling WS
-        await TestHelpers.prepareTestEnvironment(
-            page1,
-            testInfo,
-            [
-                "一行目: テスト",
-                "二行目: Yjs 反映",
-                "三行目: 並び順チェック",
-            ],
-            undefined,
-            { projectName, pageName, ws: "force" },
-        );
-        // page1 is already navigated to the project page by prepareTestEnvironment
+        await TestHelpers.prepareTestEnvironment(page1, testInfo, [
+            "一行目: テスト",
+            "二行目: Yjs 反映",
+            "三行目: 並び順チェック",
+        ], undefined);
+        await page1.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
 
         // Wait for Yjs connection to be established
         try {
-            await page1.waitForFunction(
-                // eslint-disable-next-line no-restricted-globals
-                () => (window as any).__YJS_STORE__?.getIsConnected?.() === true,
-                null,
-                {
-                    timeout: 10000, // Shorter timeout to avoid hanging
-                },
-            );
+            await page1.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
+                timeout: 10000, // Shorter timeout to avoid hanging
+            });
         } catch {
             console.log("YJS connection not established on page1, continuing with test");
             // Continue even if connection fails - test might still work with local sync
         }
 
-        // Create the second browser context and page with proper storage state for test environment
-        const context2 = await browser.newContext({
-            storageState: TestHelpers.createTestStorageState() as any,
-        });
+        // Create the second browser context and page
+        const context2 = await browser.newContext();
         const page2 = await context2.newPage();
 
-        // Set up localStorage flags for page2 (in addition to storageState)
+        // Also enable Yjs WebSocket for the second page
         await page2.addInitScript(() => {
-            localStorage.setItem("VITE_IS_TEST", "true");
-            localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-            (window as any).__E2E__ = true;
+            localStorage.removeItem("VITE_YJS_DISABLE_WS"); // Remove disable flag
+            localStorage.setItem("VITE_YJS_ENABLE_WS", "true"); // Set enable flag
         });
 
-        // Navigate page2 to the same URL as page1
-        await page2.goto(page1.url(), { waitUntil: "domcontentloaded" });
-
-        // Wait for UserManager and authenticate on page2 (required for Yjs connection)
-        await page2.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            return !!(window as any).__USER_MANAGER__;
-        }, { timeout: 10000 });
-
-        await page2.evaluate(async () => {
-            // eslint-disable-next-line no-restricted-globals
-            const mgr = (window as any).__USER_MANAGER__;
-            if (mgr?.loginWithEmailPassword) {
-                await mgr.loginWithEmailPassword("test@example.com", "password");
-            }
-        });
-
-        await page2.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const mgr = (window as any).__USER_MANAGER__;
-            return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
-        }, { timeout: 10000 });
+        // Prepare the environment for the second page using the same project
+        // Use the same initial content to ensure both pages start with identical content
+        await TestHelpers.prepareTestEnvironment(page2, testInfo, [
+            "一行目: テスト",
+            "二行目: Yjs 反映",
+            "三行目: 並び順チェック",
+        ], undefined);
+        await page2.goto(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
 
         // Wait for Yjs connection to be established on page2
-        let page2Connected = await page2.waitForFunction(
-            // eslint-disable-next-line no-restricted-globals
-            () => (window as any).__YJS_STORE__?.getIsConnected?.() === true,
-            null,
-            {
-                timeout: 30000,
-            },
-        ).then(() => true).catch(() => false);
-
-        if (!page2Connected) {
-            console.log("YJS connection timed out on page2, reloading and retrying...");
-            await page2.reload();
-            await TestHelpers.waitForAppReady(page2);
-            page2Connected = await page2.waitForFunction(
-                // eslint-disable-next-line no-restricted-globals
-                () => (window as any).__YJS_STORE__?.getIsConnected?.() === true,
-                null,
-                {
-                    timeout: 45000,
-                },
-            ).then(() => true).catch(() => false);
-        }
-
-        if (!page2Connected) {
-            throw new Error("YJS connection not established on page2 - cannot sync seeded data");
-        }
-
-        // Wait for page data to be fully loaded on page2 (seeds are in page subdocument)
-        // This ensures the seeded content is available before checking
-        await TestHelpers.waitForPageData(page2, pageName, 30000);
-
-        // Wait for outliner items to be visible on page2
-        await expect(page2.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
-
-        // Also verify page1 has the seeded content (the seed might not have completed before page1 loaded)
-        await TestHelpers.waitForPageData(page1, pageName, 30000);
-
-        // Additional wait for text content to be rendered on both pages
-        // Items might exist in DOM but text not yet populated
-        const waitForTextContent = async (page: typeof page1) => {
-            await page.waitForFunction(() => {
-                const items = document.querySelectorAll(".outliner-item .item-text");
-                if (items.length < 4) return false; // Need 4 items (page title + 3 seeded)
-                for (const item of items) {
-                    const text = item.textContent?.trim();
-                    if (text && text.length > 0 && text !== "Loading...") {
-                        return true;
-                    }
-                }
-                return false;
-            }, { timeout: 15000 }).catch(() => {
-                console.log("Warning: Text content not fully rendered, continuing anyway");
+        try {
+            await page2.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
+                timeout: 10000, // Shorter timeout to avoid hanging
             });
-        };
+        } catch {
+            console.log("YJS connection not established on page2, continuing with test");
+            // Continue even if connection fails - test might still work with local sync
+        }
 
-        await waitForTextContent(page1);
-        await waitForTextContent(page2);
+        // Wait for both pages to load completely with a shorter timeout
+        await expect(page1.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
+        await expect(page2.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
 
         // Verify both pages have the same initial content
         const page1InitialTexts = await page1.locator(".outliner-item .item-text").allTextContents();
@@ -150,30 +81,17 @@ test.describe("Cursor sync between tabs", () => {
         const page2InitialTexts = await page2.locator(".outliner-item .item-text").allTextContents();
         const page2InitialContent = page2InitialTexts.join("\n");
 
-        console.log("Page1 content:", page1InitialContent.substring(0, 100));
-        console.log("Page2 content:", page2InitialContent.substring(0, 100));
-
         expect(page1InitialContent).toContain("テスト");
         expect(page2InitialContent).toContain("テスト");
 
         // Get the second item to modify (to avoid page title) using the same approach as the working test
-        // Wait for items to be present - we expect at least 4 items (page title + 3 from initial content)
-        // but there may be more due to trailing empty items or other UI elements
-        await expect(page1.locator(".outliner-item")).toHaveCount(4, { timeout: 10000 }).catch(async () => {
-            // If not exactly 4, check if we have at least 4
-            const actualCount = await page1.locator(".outliner-item").count();
-            console.log(`Expected 4 items, found ${actualCount} items`);
-            if (actualCount < 4) {
-                throw new Error(`Expected at least 4 items, but found ${actualCount}`);
-            }
-        });
+        await expect(page1.locator(".outliner-item")).toHaveCount(4, { timeout: 10000 }); // We expect 4 items (page title + 3 from initial content)
         const itemId = await page1.locator(".outliner-item").nth(1).getAttribute("data-item-id"); // Get second item
         expect(itemId).toBeTruthy();
 
         // Use editorOverlayStore cursor APIs for reliable editing (similar to working test)
         await TestHelpers.setCursor(page1, itemId!);
         await page1.evaluate((itemId) => {
-            // eslint-disable-next-line no-restricted-globals
             const editorStore = (window as any).editorOverlayStore;
             const cursor = editorStore?.getCursorInstances?.().find((c: any) => c.itemId === itemId);
             if (cursor) {

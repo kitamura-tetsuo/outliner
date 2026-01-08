@@ -50,14 +50,17 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
     });
 
     test("assertTreeData: 期待値と比較できる（部分比較モード）", async ({ page }) => {
-        // ページの基本構造を検証（子アイテムはpageItemsマップに格納されるため、TreeValidatorでは直接検証しない）
+        // 実際のデータ構造に合わせた期待値を定義（itemsはオブジェクト）
         const expectedData = {
             itemCount: 1,
             items: [
                 {
                     text: actualPageTitle, // 実際のページタイトルを使用
-                    // 注：子アイテムはpageItemsマップに格納されるため、TreeValidatorでは検証しない
-                    // 子アイテムの検証が必要な場合は、TreeValidator.getPageItems()を使用すること
+                    items: {
+                        "0": { text: "First item" },
+                        "1": { text: "Second item" },
+                        "2": { text: "Third item" },
+                    },
                 },
             ],
         };
@@ -79,8 +82,18 @@ test.describe("TreeValidator: SharedTreeデータ検証ユーティリティ", (
         await TreeValidator.assertTreePath(page, "itemCount", 1);
         await TreeValidator.assertTreePath(page, "items.0.text", actualPageTitle); // 実際のページタイトルを使用
 
-        // 注：子アイテムはpageItemsマップに格納されるため、TreeValidatorのgetTreePathでは検証しない
-        // 子アイテムの検証が必要な場合は、TreeValidator.getPageItems()を使用すること
+        // itemsがオブジェクトの場合のパス（実際のデータ構造）
+        // まず、items.0.itemsが存在することを確認
+        const itemsObject = await TreeValidator.getTreePathData(page, "items.0.items");
+        if (itemsObject && typeof itemsObject === "object") {
+            // オブジェクトのキーを使用してアクセス
+            const keys = Object.keys(itemsObject);
+            if (keys.length >= 3) {
+                await TreeValidator.assertTreePath(page, `items.0.items.${keys[0]}.text`, "First item");
+                await TreeValidator.assertTreePath(page, `items.0.items.${keys[1]}.text`, "Second item");
+                await TreeValidator.assertTreePath(page, `items.0.items.${keys[2]}.text`, "Third item");
+            }
+        }
 
         // 存在しないパスの検証（undefinedが返されるはず）
         const nonExistentPath = await TreeValidator.getTreePathData(page, "items.0.nonexistent");

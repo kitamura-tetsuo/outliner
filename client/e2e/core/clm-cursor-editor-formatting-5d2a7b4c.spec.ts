@@ -87,8 +87,7 @@ async function callFormatting(page: Page, itemId: string, method: FormattingMeth
 test.describe("CLM-5d2a7b4c: Cursor formatting delegates to CursorEditor", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
-        // Wait for outliner items to be rendered using robust selector
-        await page.locator(".outliner-item[data-item-id]").first().waitFor({ timeout: 60000 });
+        await TestHelpers.waitForOutlinerItems(page);
     });
 
     test("applies Scrapbox formatting via CursorEditor", async ({ page }) => {

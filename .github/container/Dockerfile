@@ -14,18 +14,15 @@ WORKDIR /cache
 # Copy package files
 # We use a pattern to avoid errors if directories don't exist, though we know they do.
 # But COPY requires explicit paths.
-# Copy scripts and package files
-COPY scripts/ scripts/
-COPY firebase.json .firebaserc ./
 COPY client/package.json client/package-lock.json ./client/
 COPY server/package.json server/package-lock.json ./server/
 COPY functions/package.json functions/package-lock.json ./functions/
 
-# Install dependencies via setup.sh
-ENV SKIP_SERVER_START=1
-ENV SKIP_PORT_WAIT=1
-ENV SKIP_INSTALL=0
-RUN bash scripts/setup.sh
+# Install dependencies
+# We ignore scripts to speed up install and avoid issues with missing tools in the minimal build env
+RUN cd client && npm install --ignore-scripts
+RUN cd server && npm install --ignore-scripts
+RUN cd functions && npm install --ignore-scripts
 
 # Rebuild client dependencies that might need it (like esbuild)
 RUN cd client && npm rebuild
