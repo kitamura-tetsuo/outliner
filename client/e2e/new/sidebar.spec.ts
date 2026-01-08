@@ -56,6 +56,7 @@ test.describe("Sidebar Navigation", () => {
         const { sidebar, toggleButton, open, close, isOpen } = getSidebarHelpers(page);
 
         // Sidebar starts closed (to avoid covering other UI)
+        // Updated to expect hidden (visibility: hidden) due to a11y fix
         await expect(sidebar).not.toBeVisible();
         expect(await isOpen()).toBe(false);
 
