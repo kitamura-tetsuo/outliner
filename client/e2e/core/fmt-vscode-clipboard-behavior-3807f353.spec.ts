@@ -39,7 +39,7 @@ test.describe("VS Code clipboard behavior", () => {
             await handler.handlePaste(evt);
         });
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         const last = await page.evaluate(() => (window as any).lastPastedText);
         expect(last).toBe("AAA\nBBB");
     });
@@ -60,7 +60,7 @@ test.describe("VS Code clipboard behavior", () => {
             await handler.handlePaste(evt);
         });
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         const last = await page.evaluate(() => (window as any).lastPastedText);
         expect(last).toBe("111\n222");
     });
