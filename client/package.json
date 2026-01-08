@@ -32,7 +32,7 @@
         "@inlang/plugin-m-function-matcher": "^2.0.10",
         "@inlang/plugin-message-format": "^4.0.0",
         "@modelcontextprotocol/sdk": "^1.22.0",
-        "@playwright/mcp": "^0.0.48",
+        "@playwright/mcp": "^0.0.54",
         "@playwright/test": "^1.56.1",
         "@stryker-mutator/core": "^9.2.0",
         "@stryker-mutator/typescript-checker": "^9.2.0",
