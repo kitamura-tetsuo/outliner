@@ -60,7 +60,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
                 }, itemId);
 
                 // 少し待機
-                await page.waitForTimeout(300);
+                await page.waitForTimeout(500);
             }
         } else {
             // カーソルが表示されている場合もデバッグモードを有効にする
@@ -105,7 +105,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
                 }, firstItemId);
 
                 // 少し待機
-                await page.waitForTimeout(300);
+                await page.waitForTimeout(500);
 
                 // カーソルが正しく設定されたかを再確認
                 hasValidCursor = await page.evaluate(() => {
@@ -125,7 +125,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
         });
 
         // 実装側でtextarea位置が自動更新されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // $effectが動作しているかを確認
         const effectDebugInfo = await page.evaluate(() => {

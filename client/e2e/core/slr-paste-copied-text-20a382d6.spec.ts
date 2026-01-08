@@ -7,13 +7,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // Seed with default content to ensure items exist
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "First item",
-            "Second item",
-            "Third item text",
-        ]);
-        await TestHelpers.waitForOutlinerItems(page, 4, 10000);
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("コピーしたテキストを別の場所にペーストできる", async ({ page }) => {
@@ -58,7 +52,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
         // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
@@ -177,7 +171,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
         }, selectedText);
 
         // 少し待機してペーストが反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
         // ペーストされたアイテムのテキストを確認
         const items = page.locator(".outliner-item");

@@ -84,3 +84,20 @@ export function logDebugInfo(): void {
 }
 
 // Export test utilities for global access in test environments only
+if (typeof window !== "undefined") {
+    const isTestEnv = import.meta.env.MODE === "test"
+        || import.meta.env.VITE_IS_TEST === "true"
+        || process.env.NODE_ENV === "test"
+        || window.location.hostname === "localhost";
+
+    if (isTestEnv) {
+        (window as any).__TEST_DATA_HELPER__ = {
+            createTestUserData,
+            clearTestData,
+            setupTestEnvironment,
+            performTestLogin,
+            logDebugInfo,
+        };
+        console.log("Test data helper registered globally");
+    }
+}

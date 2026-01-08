@@ -17,26 +17,23 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 
 test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         // ブラウザコンソールの出力を取得
         page.on("console", msg => {
             if (msg.type() === "log" || msg.type() === "error") {
                 console.log(`Browser ${msg.type()}: ${msg.text()}`);
             }
         });
+
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
     /**
      * @testcase 内部リンクのURLが正しく生成される
      * @description 内部リンクのURLが正しく生成されることを確認するテスト
      */
-    /**
-     * @testcase テキスト入力が正しく反映される
-     * @description テキスト入力が正しく反映されることを確認するテスト
-     */
-    test("テキスト入力が正しく反映される", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
-        // アウトライナーアイテムが表示されるのを待つ (最低2つ: ページタイトル + 1つ目のアイテム)
-        await TestHelpers.waitForItemCount(page, 2, 30000);
+    test("内部リンクのURLが正しく生成される", async ({ page }) => {
+        // アウトライナーアイテムが表示されるのを待つ
+        await page.waitForSelector(".outliner-item", { timeout: 30000 });
 
         // デバッグ: アイテム数を確認
         const itemCount = await page.locator(".outliner-item").count();
@@ -63,7 +60,6 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         // 実際のページ名を取得（より確実な方法）
         const actualPageName = await page.evaluate(() => {
             // まずストアから取得を試す
-            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).store;
             if (store && store.currentPage && store.currentPage.text) {
                 return store.currentPage.text;
@@ -81,8 +77,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         await page.keyboard.press("Control+a");
         await page.waitForTimeout(100);
         await page.keyboard.type(`[${actualPageName}]`);
-        // Yjsの同期を待つために少し待機
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // テキスト入力が成功したかを確認
         console.log("Checking if text input was successful...");
@@ -102,60 +97,27 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         if (!inputSuccess.success) {
             throw new Error(`Text input failed - [${actualPageName}] not found in any item`);
         }
-    });
 
-    /**
-     * @testcase 内部リンクのURLが正しく生成される
-     * @description 内部リンクのURLが正しく生成されることを確認するテスト
-     */
-    test("内部リンクのURLが正しく生成される", async ({ page }, testInfo) => {
         // プロジェクト内部リンクを含むテストデータをAPI経由で作成
-        // ページ名は自動生成されるので、後で取得する
-        const { pageName: currentPageName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        // 実際のページ名を取得
+        const currentPageName = await page.evaluate(() => {
+            const store = (window as any).store;
+            if (store && store.currentPage && store.currentPage.text) {
+                return store.currentPage.text;
+            }
+
+            const pageTitle = document.querySelector(".page-title-content .item-text");
+            return pageTitle ? pageTitle.textContent?.trim() : "test-page";
+        });
+
+        await TestHelpers.prepareTestEnvironment(page, test.info(), [
             "一行目: テスト",
-            `[PLACEHOLDER_PAGE_NAME]`, // 後で置換する
+            `[${currentPageName}]`, // This will be formatted as an internal link to the current page
             "[/project-name/page-name]", // This will be formatted as a project internal link
             "3つ目のアイテム",
             "二行目: Yjs 反映",
             "三行目: 並び順チェック",
         ]);
-
-        // アイテムが表示されていることを確認
-        await TestHelpers.waitForItemCount(page, 7, 30000); // Title + 6 seeded lines
-
-        // PLACEHOLDERを実際のページ名に置換（prepareTestEnvironmentでページ名が確定してから）
-        await page.evaluate(() => {
-            const items = document.querySelectorAll(".outliner-item");
-            for (const item of items) {
-                if (item.textContent?.includes("[PLACEHOLDER_PAGE_NAME]")) {
-                    // const textEl = item.querySelector(".item-text");
-                    // 簡易的にDOMを書き換えるのではなく、ストア経由か入力でやるのが正しいが、
-                    // ここでは既に表示されているアイテムのテキスト置換をシミュレート
-                    // Yjsの更新が必要なので、実際には入力操作を行うのがベストだが、
-                    // テストの安定性のためにDOM操作+Yjs反映を待つか、再度シードする方が良い。
-                    // 今回はprepareTestEnvironmentの戻り値を使えない構造だったので、
-                    // ここではAPIでシードする際にページ名を指定できない制約がある。
-                    // したがって、既存のロジックに合わせて、アイテムのテキストを更新する。
-
-                    // しかし、prepareTestEnvironmentはページ名を返すので、それを使って
-                    // 2行目のテキストを更新するアクションを実行するのが確実。
-                }
-            }
-        }, { pageName: currentPageName });
-
-        // NOTE: 上記のevaluateでの置換は不完全なので、
-        // 実際には updateText を使って更新する。
-        await page.evaluate(({ pageName }) => {
-            // eslint-disable-next-line no-restricted-globals
-            const store = (window as any).generalStore || (window as any).appStore;
-            const items = store?.currentPage?.items;
-            if (!items) return;
-            // 2番目のアイテム（インデックス1）を取得
-            const targetItem = items.at ? items.at(1) : (items as any)[1];
-            if (targetItem && typeof targetItem.updateText === "function") {
-                targetItem.updateText(`[${pageName}]`);
-            }
-        }, { pageName: currentPageName });
 
         // We need to ensure the page is loaded and formatted, so wait a bit
         await page.waitForTimeout(1000);
@@ -167,20 +129,19 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
                 (activeElement as HTMLElement).blur();
             }
         });
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
-        const actualPageName = currentPageName;
+        // アイテムが表示されていることを確認
+        await page.waitForSelector(".outliner-item", { timeout: 5000 });
 
         // ScrapboxFormatterの動作をテスト
         const formatterTest = await page.evaluate(pageName => {
             // ScrapboxFormatterが利用可能かチェック
-            // eslint-disable-next-line no-restricted-globals
             if (typeof window.ScrapboxFormatter === "undefined") {
                 return { error: "ScrapboxFormatter not available" };
             }
 
             const testText = `[${pageName}]`;
-            // eslint-disable-next-line no-restricted-globals
             const result = window.ScrapboxFormatter.formatToHtml(testText);
 
             return {
@@ -194,13 +155,11 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
 
         // プロジェクト内部リンクのテスト
         const projectLinkTestResult = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
             if (typeof window.ScrapboxFormatter === "undefined") {
                 return { error: "ScrapboxFormatter not available" };
             }
 
             const testText = `[/project-name/page-name]`;
-            // eslint-disable-next-line no-restricted-globals
             const result = window.ScrapboxFormatter.formatToHtml(testText);
 
             return {
@@ -286,11 +245,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
             // 内部リンクが見つからない場合、詳細情報を表示
             const itemsWithTestPage = linkCheckResult.filter(r => r.hasTestPageText);
             console.log("Items with test page text but no internal link:", itemsWithTestPage);
-            // 失敗しても即座にエラーにせず、次のアサーションで落ちるようにするか、ここでエラーにする
-            // ここではエラーにする
-            // throw new Error(`No item found with internal link for [${actualPageName}]`);
-            // NOTE: リンク生成が非同期で遅れる場合があるので、ここで失敗させる
-            expect(linkItemResult, `No internal link found for [${actualPageName}]`).toBeDefined();
+            throw new Error(`No item found with internal link for [${actualPageName}]`);
         }
 
         // 2番目のアイテムで内部リンクが正しく生成されているかを確認
@@ -327,10 +282,9 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
             "3つ目のアイテム",
         ]);
 
-        await TestHelpers.waitForItemCount(page, 4, 30000); // Title + 3 seeded lines
+        await page.waitForSelector(".outliner-item", { timeout: 30000 });
 
         await page.evaluate(dynamicPageName => {
-            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).generalStore || (window as any).appStore;
             const items = store?.currentPage?.items;
             if (!items) return;
@@ -340,9 +294,9 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
             }
         }, pageName);
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
         await page.locator("body").click({ position: { x: 5, y: 5 } });
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(300);
 
         const internalLink = page.locator(".item-text a.internal-link").filter({ hasText: pageName }).first();
         await expect(internalLink).toBeVisible({ timeout: 5000 });

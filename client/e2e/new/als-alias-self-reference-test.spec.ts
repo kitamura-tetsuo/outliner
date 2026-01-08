@@ -10,32 +10,21 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias self-reference prevention", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["first item", "second item"]);
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("prevent self-reference alias creation", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
-
-        let firstId: string | null = null;
-        for (let i = 0; i < 5; i++) {
-            firstId = await TestHelpers.getItemIdByIndex(page, 0);
-            if (firstId) break;
-            await page.waitForTimeout(1000);
-        }
-        if (!firstId) {
-            // Debugging info
-            const count = await page.locator(".outliner-item").count();
-            console.error(`Failed to find first item ID. Visible items: ${count}`);
-            throw new Error("first item not found after retries");
-        }
+        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
+        if (!firstId) throw new Error("first item not found");
 
         await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(1000);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             textarea?.focus();
         });
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(500);
         await page.waitForSelector("textarea.global-textarea:focus");
 
         await page.keyboard.type("/");

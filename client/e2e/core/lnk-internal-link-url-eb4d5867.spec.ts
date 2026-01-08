@@ -18,10 +18,6 @@ test.describe("LNK-0002: 内部リンクURL生成", () => {
     });
 
     test("内部リンクのURLが正しく生成される", async ({ page }) => {
-        // Wait for all seeded items to be present (Title + 3 lines = 4 items)
-        await TestHelpers.waitForItemCount(page, 4);
-
-        await page.waitForSelector("a.internal-link", { timeout: 30000 });
         const links = await page.locator("a.internal-link").all();
         const hrefs = [] as string[];
         for (const link of links) {

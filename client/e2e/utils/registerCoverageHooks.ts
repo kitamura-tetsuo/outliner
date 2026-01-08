@@ -15,10 +15,6 @@ import path from "path";
  * - デフォルトは Best-effort Coverage モードです
  */
 export function registerCoverageHooks(): void {
-    if (process.env.E2E_DISABLE_COVERAGE === "1") {
-        console.log("[Coverage] Disabled by E2E_DISABLE_COVERAGE environment variable");
-        return;
-    }
     const usePreciseCoverage = process.env.PRECISE_COVERAGE === "true";
 
     if (usePreciseCoverage) {

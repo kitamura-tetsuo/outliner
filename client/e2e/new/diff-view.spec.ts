@@ -14,46 +14,15 @@ test.describe("snapshot diff viewer", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("display diff and revert", async ({ page }) => {
-        // Get project/page names from beforeEach's setup to avoid creating a new project
-        // Wait for store to be populated
-        // Wait for store to be populated
-        // Ensure Yjs is connected first to avoid premature store checks
-        // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__YJS_STORE__?.isConnected, { timeout: 30000 }).catch(
-            () => {},
-        );
-
-        await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const gs = (window as any).generalStore;
-            return gs && gs.currentPage;
-        }, { timeout: 30000 });
-
-        const projectData = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const gs = (window as any).generalStore;
-            return {
-                projectName: gs?.project?.title || gs?.project?.text || "",
-                pageName: gs?.currentPage?.text || gs?.currentPage?.title || "",
-                hasProject: !!gs?.project,
-                hasCurrentPage: !!gs?.currentPage,
-            };
-        });
-        console.log("Project data from store:", projectData);
-        const { projectName, pageName } = projectData;
-        if (!projectName || !pageName) {
-            throw new Error(`Failed to get project/page names from store: ${JSON.stringify(projectData)}`);
-        }
+    test("display diff and revert", async ({ page }, testInfo) => {
+        const { projectName, pageName } = await TestHelpers.navigateToTestProjectPage(page, testInfo, []);
         await page.evaluate(
             ({ projectName, pageName }) => {
-                // eslint-disable-next-line no-restricted-globals
                 (window as any).__SNAPSHOT_SERVICE__.setCurrentContent(
                     projectName,
                     pageName,
                     "second",
                 );
-                // eslint-disable-next-line no-restricted-globals
                 (window as any).__SNAPSHOT_SERVICE__.addSnapshot(
                     projectName,
                     pageName,
@@ -64,23 +33,13 @@ test.describe("snapshot diff viewer", () => {
             { projectName, pageName },
         );
         await page.goto(`/${projectName}/${pageName}/diff`);
-
-        // Wait for the diff page to load without waiting for cursor (diff page may not have cursor)
-        try {
-            // eslint-disable-next-line no-restricted-globals
-            await page.waitForFunction(() => (window as any).generalStore?.currentPage !== null, null, {
-                timeout: 30000,
-            });
-        } catch {
-            console.log("Warning: currentPage not set on diff page, continuing anyway");
-        }
+        await page.waitForTimeout(1000);
 
         // ページの状態をデバッグ
         const pageContent = await page.content();
         console.log("Page content length:", pageContent.length);
 
         const snapshotServiceExists = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
             return !!(window as any).__SNAPSHOT_SERVICE__;
         });
         console.log("Snapshot service exists:", snapshotServiceExists);
@@ -88,11 +47,8 @@ test.describe("snapshot diff viewer", () => {
         // ページのパラメータを確認
         const pageParams = await page.evaluate(() => {
             return {
-                // eslint-disable-next-line no-restricted-globals
                 url: window.location.href,
-                // eslint-disable-next-line no-restricted-globals
                 pathname: window.location.pathname,
-                // eslint-disable-next-line no-restricted-globals
                 params: (window as any).$page?.params,
             };
         });
@@ -118,7 +74,6 @@ test.describe("snapshot diff viewer", () => {
         await page.waitForSelector("li");
         const count = await page.evaluate(
             ({ projectName, pageName }) => {
-                // eslint-disable-next-line no-restricted-globals
                 const { listSnapshots } = (window as any).__SNAPSHOT_SERVICE__;
                 return listSnapshots(projectName, pageName).length;
             },
@@ -141,7 +96,6 @@ test.describe("snapshot diff viewer", () => {
         await page.getByText("Revert").click();
         const current = await page.evaluate(
             ({ projectName, pageName }) => {
-                // eslint-disable-next-line no-restricted-globals
                 const { getCurrentContent } = (window as any).__SNAPSHOT_SERVICE__;
                 return getCurrentContent(projectName, pageName);
             },

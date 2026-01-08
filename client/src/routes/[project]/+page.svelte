@@ -1,68 +1,65 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
-    import { page } from "$app/stores";
-    import { onDestroy, onMount } from "svelte";
-    import { userManager } from "../../auth/UserManager";
-    import AuthComponent from "../../components/AuthComponent.svelte";
-    import PageList from "../../components/PageList.svelte";
-    import { getLogger } from "../../lib/logger";
-    import { store } from "../../stores/store.svelte";
+import { goto } from "$app/navigation";
+import { page } from "$app/stores";
+import {
+    onDestroy,
+    onMount,
+} from "svelte";
+import { userManager } from "../../auth/UserManager";
+import AuthComponent from "../../components/AuthComponent.svelte";
+import PageList from "../../components/PageList.svelte";
+import { getLogger } from "../../lib/logger";
+import { store } from "../../stores/store.svelte";
 
-    const logger = getLogger("ProjectIndex");
+const logger = getLogger("ProjectIndex");
 
-    // URLパラメータを取得（リアクティブに）
-    let projectName = $derived($page.params.project || "");
+// URLパラメータを取得（リアクティブに）
+let projectName = $derived($page.params.project || "");
 
-    // 反応的なページリスト（store.pagesVersionに依存）
-    let pages = $derived.by(() => {
-        void store.pagesVersion;
-        return store.pages?.current;
-    });
+// ページの状態
+let error: string | undefined = $state(undefined);
+let isAuthenticated = $state(false);
+let projectNotFound = $state(false);
 
-    // ページの状態
-    let error: string | undefined = $state(undefined);
-    let isAuthenticated = $state(false);
-    let projectNotFound = $state(false);
-
-    // 認証成功時の処理
-    async function handleAuthSuccess(authResult: any) {
-        if (import.meta.env.DEV) {
-            logger.info("認証成功:", authResult);
-        }
-        isAuthenticated = true;
+// 認証成功時の処理
+async function handleAuthSuccess(authResult: any) {
+    if (import.meta.env.DEV) {
+        logger.info("認証成功:", authResult);
     }
+    isAuthenticated = true;
+}
 
-    // 認証ログアウト時の処理
-    function handleAuthLogout() {
-        if (import.meta.env.DEV) {
-            logger.info("ログアウトしました");
-        }
-        isAuthenticated = false;
+// 認証ログアウト時の処理
+function handleAuthLogout() {
+    if (import.meta.env.DEV) {
+        logger.info("ログアウトしました");
     }
+    isAuthenticated = false;
+}
 
-    // ページを選択したときの処理
-    function handlePageSelected(event: CustomEvent) {
-        const pageName = event.detail.pageName;
+// ページを選択したときの処理
+function handlePageSelected(event: CustomEvent) {
+    const pageName = event.detail.pageName;
 
-        if (pageName) {
-            goto(`/${projectName}/${pageName}`);
-        }
+    if (pageName) {
+        goto(`/${projectName}/${pageName}`);
     }
+}
 
-    // ホームに戻る
-    function goHome() {
-        goto("/");
-    }
+// ホームに戻る
+function goHome() {
+    goto("/");
+}
 
-    onMount(() => {
-        // UserManagerの認証状態を確認
+onMount(() => {
+    // UserManagerの認証状態を確認
 
-        isAuthenticated = userManager.getCurrentUser() !== null;
-    });
+    isAuthenticated = userManager.getCurrentUser() !== null;
+});
 
-    onDestroy(() => {
-        // クリーンアップコード
-    });
+onDestroy(() => {
+    // クリーンアップコード
+});
 </script>
 
 <svelte:head>
@@ -99,10 +96,9 @@
             <h2 class="mb-4 text-xl font-semibold">ページ一覧</h2>
             <div class="rounded-lg bg-white p-4 shadow-md">
                 <PageList
-                    currentUser={userManager.getCurrentUser()?.id ||
-                        "anonymous"}
+                    currentUser={userManager.getCurrentUser()?.id || "anonymous"}
                     project={store.project!}
-                    rootItems={pages}
+                    rootItems={store.pages.current}
                     onPageSelected={handlePageSelected}
                 />
             </div>
@@ -177,8 +173,8 @@
 </main>
 
 <style>
-    /* .loader {  未使用のため削除 */
-    /* .loader {
+/* .loader {  未使用のため削除 */
+/* .loader {
     border: 4px solid #f3f3f3;
     border-top: 4px solid #3498db;
     border-radius: 50%;
@@ -188,12 +184,12 @@
     margin: 0 auto;
 } */
 
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
     }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 </style>

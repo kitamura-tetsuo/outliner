@@ -139,14 +139,9 @@ npm_ci_if_needed() {
   
   if [ ! -d node_modules ] || ! npm ls >/dev/null 2>&1; then
     if [ -f package-lock.json ]; then
-      echo "Running npm ci for dependencies in $(pwd)..."
-      if ! npm_config_proxy="" npm_config_https_proxy="" npm ci; then
-        echo "Warning: npm ci failed. Retrying with npm install in $(pwd)..."
-        npm_config_proxy="" npm_config_https_proxy="" npm install
-      fi
+      npm --proxy='' --https-proxy='' ci
     else
-      echo "Running npm install for dependencies in $(pwd)..."
-      npm_config_proxy="" npm_config_https_proxy="" npm install
+      npm --proxy='' --https-proxy='' install
     fi
   fi
 }
@@ -162,8 +157,7 @@ kill_ports() {
 # Install global packages if needed
 install_global_packages() {
   if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
-    echo "Installing global packages (firebase-tools, tinylicious)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install -g firebase-tools tinylicious dotenv-cli @dotenvx/dotenvx || true
+    npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli @dotenvx/dotenvx || true
   fi
 
   # if ! command -v dprint >/dev/null; then
@@ -242,9 +236,7 @@ install_os_utilities() {
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"
-  echo "Installing Playwright chromium..."
   npx --yes playwright install chromium || echo "Playwright install failed, continuing..."
-  echo "Installing Playwright dependencies..."
   npx --yes playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
 
   cd "${ROOT_DIR}"
@@ -331,26 +323,22 @@ EOV
 install_all_dependencies() {
   echo "Installing dependencies..."
 
-  # Fix permissions before installing, but only if not in a CI environment
-  if [ -z "${CI:-}" ]; then
-    echo "Fixing permissions before installing dependencies..."
-    for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
-      if [ -d "$dir" ]; then
-        # Fix node_modules ownership if needed
-        if [ -d "${dir}/node_modules" ] && [ "$(stat -c %U ${dir}/node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
-          echo "Fixing node_modules ownership in $dir..."
-          sudo chown -R node:node "${dir}/node_modules" || true
-        fi
-        # Ensure directory is owned by node user
-        if [ "$(stat -c %U $dir)" = "root" ]; then
-          echo "Fixing ownership for $dir..."
-          sudo chown -R node:node "$dir" || true
-        fi
+  # Fix permissions before installing
+  echo "Fixing permissions before installing dependencies..."
+  for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
+    if [ -d "$dir" ]; then
+      # Fix node_modules ownership if needed
+      if [ -d "${dir}/node_modules" ] && [ "$(stat -c %U ${dir}/node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
+        echo "Fixing node_modules ownership in $dir..."
+        sudo chown -R node:node "${dir}/node_modules" || true
       fi
-    done
-  else
-    echo "Skipping permission fixes in CI environment."
-  fi
+      # Ensure directory is owned by node user
+      if [ "$(stat -c %U $dir)" = "root" ]; then
+        echo "Fixing ownership for $dir..."
+        sudo chown -R node:node "$dir" || true
+      fi
+    fi
+  done
 
   # Server dependencies
   cd "${ROOT_DIR}/server"
@@ -411,50 +399,23 @@ EOF
 
   cd "${ROOT_DIR}"
 
-  # Wait for Firebase emulator to start (concurrently)
-  echo "Waiting for Firebase emulator services to start (max 60s)..."
-  local timeout=60
-  local elapsed=0
-  local auth_ready=false
-  local functions_ready=false
-  local hosting_ready=false
-
-  while [ $elapsed -lt $timeout ]; do
-    if [ "$auth_ready" = false ]; then
-        if port_is_open ${FIREBASE_AUTH_PORT}; then auth_ready=true; fi
-    fi
-    if [ "$functions_ready" = false ]; then
-        if port_is_open ${FIREBASE_FUNCTIONS_PORT}; then functions_ready=true; fi
-    fi
-    if [ "$hosting_ready" = false ]; then
-        if port_is_open ${FIREBASE_HOSTING_PORT}; then hosting_ready=true; fi
-    fi
-
-    if [ "$auth_ready" = true ] && [ "$functions_ready" = true ] && [ "$hosting_ready" = true ]; then
-        echo "All Firebase emulator services are ready."
-        break
-    fi
-
-    sleep 1
-    elapsed=$((elapsed + 1))
-    if [ $((elapsed % 10)) -eq 0 ]; then
-        echo "Still waiting for Firebase services... ($((timeout - elapsed))s remaining)"
-    fi
-  done
-
-  if [ "$auth_ready" = true ]; then
+  # Wait for Firebase emulator to start and verify it's working
+  echo "Waiting for Firebase emulator to start..."
+  if wait_for_port ${FIREBASE_AUTH_PORT}; then
     echo "Firebase Auth emulator is running on port ${FIREBASE_AUTH_PORT}"
   else
     echo "Warning: Firebase Auth emulator may not be ready on port ${FIREBASE_AUTH_PORT}"
   fi
 
-  if [ "$functions_ready" = true ]; then
+  # Check if Firebase Functions emulator is running
+  if wait_for_port ${FIREBASE_FUNCTIONS_PORT}; then
     echo "Firebase Functions emulator is running on port ${FIREBASE_FUNCTIONS_PORT}"
   else
     echo "Warning: Firebase Functions emulator may not be ready on port ${FIREBASE_FUNCTIONS_PORT}"
   fi
 
-  if [ "$hosting_ready" = true ]; then
+  # Check if Firebase Hosting emulator is running
+  if wait_for_port ${FIREBASE_HOSTING_PORT}; then
     echo "Firebase Hosting emulator is running on port ${FIREBASE_HOSTING_PORT}"
   else
     echo "Warning: Firebase Hosting emulator may not be ready on port ${FIREBASE_HOSTING_PORT}"
@@ -535,23 +496,15 @@ start_yjs_server() {
   # Ensure dependencies
   if [ ! -d node_modules ]; then
     echo "Installing server dependencies (npm ci) ..."
-    npm_config_proxy="" npm_config_https_proxy="" npm ci
+    npm --proxy='' --https-proxy='' ci
   fi
   # Build TypeScript and start compiled server to avoid ts-node dependency issues
   echo "Building server..."
   if npm run | grep -q " build"; then
     npm run build --silent || npm run build
   fi
-  
-  
-  # Clean LevelDB database for fresh test state (always run to prevent schema conflicts)
-  echo "Cleaning LevelDB database for fresh test state..."
-  rm -rf "${ROOT_DIR}/server/ydb" "${ROOT_DIR}/ydb" 2>/dev/null || true
-  mkdir -p "${ROOT_DIR}/server/ydb"
-  echo "LevelDB database cleaned successfully"
-  
   echo "Launching compiled server..."
-  npx dotenvx run --env-file=.env.test -- bash -lc "PORT=${TEST_YJS_PORT} npm start --silent" \
+  npx dotenvx run --env-file=.env.test -- bash -lc "DISABLE_Y_LEVELDB=true PORT=${TEST_YJS_PORT} npm start --silent" \
     </dev/null > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &
   local yjs_pid=$!
   echo "Yjs WebSocket server started with PID: ${yjs_pid}"

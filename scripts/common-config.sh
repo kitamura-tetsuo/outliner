@@ -22,8 +22,8 @@ fi
 # Check if we're running in a test context before setting defaults
 # If VITE_IS_TEST is already set, we're in test environment
 if [ "${VITE_IS_TEST:-}" = "true" ] || [ "${NODE_ENV:-}" = "test" ]; then
-    # For test environment, standardization on outliner-d57b0 to match emulator
-    : "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
+    # For test environment, use test-project-id as default if not already set by .env files
+    : "${FIREBASE_PROJECT_ID:=test-project-id}"
 else
     # For non-test environments, use the default production project ID
     : "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
@@ -83,7 +83,6 @@ LOG_DIRS=(
 
 # Ports to monitor for readiness
 REQUIRED_PORTS=(
-  ${TEST_API_PORT}
   ${TEST_YJS_PORT}
   ${VITE_PORT}
   ${FIREBASE_FUNCTIONS_PORT}

@@ -98,6 +98,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
         const selections = await page.locator(".editor-overlay .selection").count();
         expect(selections).toBe(0);
 
+        // Shift + 左矢印キーを押下
         await page.keyboard.press("Shift+ArrowLeft");
         await page.waitForTimeout(300);
 
@@ -158,7 +159,7 @@ test.describe("SLR-0001: Shift + 上下左右", () => {
 
         // Shift + 下矢印キーを押下
         await page.keyboard.press("Shift+ArrowDown");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(3000);
 
         // 選択範囲が作成されたことを確認
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();

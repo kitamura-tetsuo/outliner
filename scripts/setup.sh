@@ -79,8 +79,8 @@ echo "=== Outliner Test Environment Setup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
 
 # In CI/self-hosted environments, always run full setup to ensure clean state
-if ([ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]) && [ "${PREINSTALLED_ENV:-}" != "true" ]; then
-  echo "CI environment detected (and PREINSTALLED_ENV not set), removing setup sentinel to ensure full setup..."
+if [ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
+  echo "CI environment detected, removing setup sentinel to ensure full setup..."
   rm -f "$SETUP_SENTINEL"
 fi
 
@@ -146,8 +146,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
       echo "Fixing node_modules ownership before installing vitest/playwright..."
       sudo chown -R node:node "node_modules" || true
     fi
-    echo "STEP: Installing vitest playwright for testing (client)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install --no-save vitest playwright
+    npm --proxy='' --https-proxy='' install --no-save vitest playwright
     cd "${ROOT_DIR}"
   fi
 
@@ -155,8 +154,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   if [ ! -f "${ROOT_DIR}/scripts/tests/node_modules/.bin/vitest" ]; then
     echo "Installing vitest for environment tests..."
     cd "${ROOT_DIR}/scripts/tests"
-    echo "STEP: Installing vitest for environment tests (tests)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install --no-save vitest
+    npm --proxy='' --https-proxy='' install --no-save vitest
     cd "${ROOT_DIR}"
   fi
   touch "$SETUP_SENTINEL"
@@ -173,15 +171,13 @@ else
   if [ ! -f "${ROOT_DIR}/client/node_modules/.bin/vitest" ] || [ ! -f "${ROOT_DIR}/client/node_modules/.bin/playwright" ]; then
     echo "Required test packages missing; installing vitest playwright..."
     cd "${ROOT_DIR}/client"
-    echo "STEP: Re-installing vitest playwright (missing packages)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install --no-save vitest playwright
+    npm --proxy='' --https-proxy='' install --no-save vitest playwright
     cd "${ROOT_DIR}"
   fi
   if [ ! -f "${ROOT_DIR}/scripts/tests/node_modules/.bin/vitest" ]; then
     echo "Required vitest missing for environment tests; installing..."
     cd "${ROOT_DIR}/scripts/tests"
-    echo "STEP: Re-installing vitest (missing packages)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install --no-save vitest
+    npm --proxy='' --https-proxy='' install --no-save vitest
     cd "${ROOT_DIR}"
   fi
 fi
@@ -198,8 +194,7 @@ if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "un
 fi
 if [ ! -f node_modules/.bin/paraglide-js ] || [ ! -f node_modules/.bin/dotenvx ]; then
   echo "Missing client CLI tools; reinstalling client dependencies..."
-  echo "STEP: Reinstalling client dependencies (npm ci)..."
-  npm_config_proxy="" npm_config_https_proxy="" npm ci
+  npm --proxy='' --https-proxy='' ci
 fi
 cd "${ROOT_DIR}"
 

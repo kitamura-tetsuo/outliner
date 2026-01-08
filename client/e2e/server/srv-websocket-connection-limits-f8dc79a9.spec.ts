@@ -12,8 +12,7 @@ const require = createRequire(import.meta.url);
 
 test.describe("WebSocket connection limits", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // Server-side test: skip page navigation entirely as we only need WebSocket connections
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, { doNotNavigate: true });
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("rejects second connection when per-room limit reached", async () => {
@@ -48,7 +47,7 @@ test.describe("WebSocket connection limits", () => {
             MAX_SOCKETS_PER_ROOM: "1",
             LEVELDB_PATH: dir,
         });
-        const { server } = await startServer(cfg);
+        const { server } = startServer(cfg);
         await new Promise(resolve => server.on("listening", resolve));
 
         const ws1 = new WebSocket(`ws://localhost:${port}/projects/testproj?auth=a`);

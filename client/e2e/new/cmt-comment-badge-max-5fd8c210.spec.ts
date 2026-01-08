@@ -52,18 +52,6 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
             "COMMENT TARGET",
         ]);
 
-        // Wait for outliner items to be loaded before querying for items
-        // This is necessary because Yjs sync may take time for seeded data to appear
-        await page.waitForSelector(".outliner-item[data-item-id]", { timeout: 30000 }).catch(() => {
-            console.log("Warning: Outliner items not found within timeout, continuing anyway");
-        });
-
-        // Wait for the specific "COMMENT TARGET" text to appear
-        await page.waitForSelector(".outliner-item .item-text", { hasText: "COMMENT TARGET" }, { timeout: 30000 })
-            .catch(() => {
-                console.log("Warning: 'COMMENT TARGET' text not found within timeout, continuing anyway");
-            });
-
         const itemId = await page.evaluate(() => {
             const nodes = Array.from(document.querySelectorAll<HTMLElement>(".outliner-item[data-item-id] .item-text"));
             for (const n of nodes) {
@@ -139,41 +127,33 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
         // 1件削除
         await page.evaluate(([id, cid]) => {
             const gs: any = (window as any).generalStore;
-            // Helper to delete comment from item
-            const deleteFromItem = (it: any) => {
-                if (typeof it.deleteComment === "function") {
-                    it.deleteComment(cid);
-                    return true;
-                }
-                // Fallback: items from current page might be proxies/POJOs missing prototype methods.
-                // Try accessing comments property directly.
-                if (it.comments && typeof it.comments.deleteComment === "function") {
-                    it.comments.deleteComment(cid);
-                    return true;
-                }
-                return false;
-            };
 
-            // Try current page first
+            // Same approach for delete - try current page first
             if (gs?.currentPage) {
                 const items = gs.currentPage.items;
                 for (let i = 0; i < items.length; i++) {
                     const it = items.at(i);
                     if (it && String(it.id) === String(id)) {
-                        deleteFromItem(it);
-                        return;
+                        if (typeof it.deleteComment === "function") {
+                            it.deleteComment(cid);
+                        } else {
+                            console.error("Item does not have deleteComment method");
+                        }
+                        break;
                     }
                 }
-            }
-
-            // Fallback to project items
-            if (gs?.project) {
+            } // Fallback to project items
+            else if (gs?.project) {
                 const items = gs.project.items;
                 for (let i = 0; i < items.length; i++) {
                     const it = items.at(i);
                     if (it && String(it.id) === String(id)) {
-                        deleteFromItem(it);
-                        return;
+                        if (typeof it.deleteComment === "function") {
+                            it.deleteComment(cid);
+                        } else {
+                            console.error("Item does not have deleteComment method");
+                        }
+                        break;
                     }
                 }
             }

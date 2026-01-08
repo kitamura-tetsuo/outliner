@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { waitForCursorVisible } from "../helpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
@@ -17,7 +18,7 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
         // 最初のアイテムを選択
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
-        await TestHelpers.waitForCursorVisible(page);
+        await waitForCursorVisible(page);
 
         // プロジェクトリンク作成処理をシミュレート（詳細は省略）
         console.log("Creating project link");

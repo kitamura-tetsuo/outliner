@@ -10,7 +10,6 @@ on:
       - 'client/package-lock.json'
       - 'server/package-lock.json'
       - 'functions/package-lock.json'
-      - 'scripts/**'
   workflow_dispatch:
 
 env:
