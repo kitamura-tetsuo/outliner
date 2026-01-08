@@ -32,7 +32,7 @@ setTimeout(() => {
 }, 3000).unref();' "$port" >/dev/null 2>&1
 }
 
-ensure_codex_services() {
+ensure_services() {
   if [ "${SKIP_AUTO_SETUP:-0}" = "1" ]; then
     return
   fi
@@ -88,11 +88,12 @@ if [ $# -eq 0 ]; then
   fi
   echo "✅ ESLint check passed!"
 
-  ensure_codex_services
+  ensure_services
   npm run test:unit
   npm run test:integration
   cleanup_e2e_coverage
-  npm run test:e2e --
+  export PLAYWRIGHT_JSON_OUTPUT_NAME="${LOGS_DIR}/e2e-all-${TIMESTAMP}.json"
+  NODE_ENV=test TEST_ENV=localhost ./node_modules/.bin/dotenvx run --overload --env-file=.env.test -- ./node_modules/.bin/playwright test
   exit 0
 fi
 
@@ -136,6 +137,10 @@ normalize_to_client() {
       local without_client="${trimmed#client/}"
       attempts+=("$CLIENT_DIR/$without_client")
     fi
+
+    # Also try e2e/ prefixed paths for E2E tests
+    attempts+=("$CLIENT_DIR/e2e/$raw")
+    attempts+=("$CLIENT_DIR/e2e/$trimmed")
   fi
 
   local candidate
@@ -228,13 +233,14 @@ case "$detected_type" in
     npm run test:production -- "${normalized_paths[@]}" "${pass_through[@]}" --reporter=default --reporter=json --outputFile="${LOGS_DIR}/production-${TIMESTAMP}.json"
     ;;
   e2e)
-    ensure_codex_services
+    ensure_services
     cleanup_e2e_coverage
     for spec in "${normalized_paths[@]}"; do
       # Sanitize spec path for filename
       SAFE_SPEC_NAME=$(echo "$spec" | sed 's/[^a-zA-Z0-9]/_/g')
       export PLAYWRIGHT_JSON_OUTPUT_NAME="${LOGS_DIR}/e2e-${SAFE_SPEC_NAME}-${TIMESTAMP}.json"
-      npm run test:e2e -- "$spec" "${pass_through[@]}" --reporter=list,json
+      # Executing directly to avoid duplicate reporters from npm script
+      NODE_ENV=test TEST_ENV=localhost ./node_modules/.bin/dotenvx run --overload --env-file=.env.test -- ./node_modules/.bin/playwright test "$spec" "${pass_through[@]}"
     done
     ;;
   *)

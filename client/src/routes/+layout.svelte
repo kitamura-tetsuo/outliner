@@ -1,11 +1,8 @@
 <script lang="ts">
 import { browser } from "$app/environment";
 import { getEnv } from "$lib/env";
-import { page } from "$app/stores";
 import { getLogger } from "$lib/logger";
 import { store as appStore } from "../stores/store.svelte";
-import { Project } from "../schema/app-schema";
-import type { Item } from "../schema/app-schema";
 import type { GeneralStore } from "../stores/store.svelte";
 import {
     onDestroy,
@@ -24,18 +21,7 @@ import Sidebar from "../components/Sidebar.svelte";
 // Defer services import; it depends on UserManager
 import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 
-// Load test data helper globally in test environments so E2E can seed data on any route
-if (browser && (
-    import.meta.env.MODE === "test" ||
-    import.meta.env.VITE_IS_TEST === "true" ||
-    process.env.NODE_ENV === "test"
-)) {
-    import("../tests/utils/testDataHelper").then(() => {
-        console.log("Test data helper loaded (layout)");
-    }).catch(err => {
-        console.error("Failed to load test data helper in layout:", err);
-    });
-}
+
 
 let { children } = $props();
 const logger = getLogger("AppLayout");
@@ -53,61 +39,7 @@ if (browser) {
     (window as Window & typeof globalThis & { generalStore?: GeneralStore; appStore?: GeneralStore }).appStore =
         (window as Window & typeof globalThis & { generalStore?: GeneralStore; appStore?: GeneralStore }).appStore || appStore;
 }
-// URL からプロジェクト/ページを初期化して window.generalStore.project と currentPage を満たす
-if (browser) {
-    try {
-        const parts = window.location.pathname.split("/").filter(Boolean);
-        const projectTitle = decodeURIComponent(parts[0] || "Untitled Project");
-        const pageTitle = decodeURIComponent(parts[1] || "");
 
-        if (!appStore.project) {
-            appStore.project = Project.createInstance(projectTitle);
-            console.log("INIT: Provisional Project set in +layout.svelte", { projectTitle, pageTitle });
-        }
-
-        // currentPage が未設定で、URL に pageTitle がある場合は準備
-        if (pageTitle && !appStore.currentPage && appStore.project) {
-            try {
-                const items = appStore.project.items;
-                // 既存ページにタイトル一致があるかチェック
-                let found: Item | null = null;
-                const len = items?.length ?? 0;
-                for (let i = 0; i < len; i++) {
-                    const p = items.at ? items.at(i) : items[i];
-                    const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-                    if (String(t).toLowerCase() === String(pageTitle).toLowerCase()) { found = p; break; }
-                }
-                if (!found) {
-                    found = items?.addNode?.("tester");
-                    found?.updateText?.(pageTitle);
-                }
-                if (found) appStore.currentPage = found;
-            } catch {}
-        }
-    } catch {}
-}
-
-// ルート変化を購読して currentPage を補完（runes準拠）
-function ensureCurrentPageByRoute(pj: string, pg: string) {
-    try {
-        if (!browser || !pg) return;
-        const gs = appStore;
-        if (!gs?.project) return;
-        const items = gs.project.items;
-        let found: Item | null = null;
-        const len = items?.length ?? 0;
-        for (let i = 0; i < len; i++) {
-            const p = items.at ? items.at(i) : items[i];
-            const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-            if (String(t).toLowerCase() === String(pg).toLowerCase()) { found = p; break; }
-        }
-        if (!found) {
-            found = items?.addNode?.("tester");
-            found?.updateText?.(pg);
-        }
-        if (found) gs.currentPage = found;
-    } catch {}
-}
 
 
 
@@ -244,20 +176,14 @@ onMount(async () => {
         if (import.meta.env.DEV) {
             logger.info("アプリケーションがマウントされました");
         }
-        // ルート変化に追従（currentPage補完）
-        try {
-            const unsub = page.subscribe(($p) => ensureCurrentPageByRoute($p.params.project ?? "", $p.params.page ?? ""));
-            onDestroy(unsub);
-        } catch {}
+
 
 
 
         // Service WorkerはE2Eテストでは無効化して、ナビゲーションやページクローズ干渉を防ぐ
-        const isE2e = (
-            import.meta.env.MODE === "test"
-            || import.meta.env.VITE_IS_TEST === "true"
+        const isE2e = import.meta.env.MODE === "test"
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        );
+            || (typeof window !== "undefined" && (window as any).__E2E__ === true);
         if (!isE2e && "serviceWorker" in navigator) {
             navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
                 .then(reg => {
@@ -287,39 +213,6 @@ onMount(async () => {
                 isAuthenticated = authResult !== null;
                 if (isAuthenticated && browser) {
                     setupGlobalDebugFunctions(yjsService?.yjsHighService);
-                    const isTestEnv = import.meta.env.MODE === "test" ||
-                        process.env.NODE_ENV === "test" ||
-                        import.meta.env.VITE_IS_TEST === "true";
-                    if (isTestEnv) {
-                        // テストデータ自動投入をスキップするフラグ
-                        const skipSeed = window.localStorage.getItem("SKIP_TEST_CONTAINER_SEED") === "true";
-                        if (!skipSeed) {
-                            // テスト環境では、既存のコンテナを削除してからテスト用のコンテナを作成する
-                            (async () => {
-                                try {
-                                    // 新しいテスト用コンテナを作成
-                                    const pageName = "test-page";
-                                    const lines = [
-                                        "これはテスト用のページです。1",
-                                        "これはテスト用のページです。2",
-                                        "内部リンクのテスト: [test-link]",
-                                    ];
-                                    (await yjsService.createNewProject("test-1")).createPage(pageName, lines);
-                                    (await yjsService.createNewProject("test-2")).createPage(pageName, lines);
-                                }
-                                catch (error) {
-                                    logger.error(
-                                        "テスト環境のコンテナ準備中にエラーが発生しました",
-                                        error,
-                                    );
-                                }
-                            })();
-                        } else {
-                            if (import.meta.env.DEV) {
-                                logger.info("SKIP_TEST_CONTAINER_SEED=true のため、テスト用コンテナの自動生成をスキップします");
-                            }
-                        }
-                    }
                 }
             });
         }
@@ -327,11 +220,9 @@ onMount(async () => {
         // Yjs: no auth-coupled init hook required
 
         // E2E ではページ遷移に干渉しないようにクリーンアップ系のリスナーを無効化
-        const isE2eCleanup = (
-            import.meta.env.MODE === "test"
-            || import.meta.env.VITE_IS_TEST === "true"
+        const isE2eCleanup = import.meta.env.MODE === "test"
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        );
+            || (typeof window !== "undefined" && (window as any).__E2E__ === true);
         if (!isE2eCleanup) {
             // ブラウザ終了時のイベントリスナーを登録
             window.addEventListener("beforeunload", handleBeforeUnload);

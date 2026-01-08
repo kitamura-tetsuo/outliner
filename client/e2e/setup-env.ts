@@ -4,6 +4,30 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// Svelte 5 runes shim for E2E tests
+// When running E2E tests, Svelte 5 runes are not available at module load time.
+// This shim provides a minimal fallback that allows the stores to initialize.
+if (typeof (globalThis as any).$state === "undefined") {
+    (globalThis as any).$state = function<T>(value: T): T {
+        return value;
+    };
+    (globalThis as any).$derived = function<T>(value: T): T {
+        return value;
+    };
+    (globalThis as any).$effect = function(): void {
+        // No-op for E2E tests
+    };
+    (globalThis as any).$props = function(): any {
+        return {};
+    };
+    (globalThis as any).$bindable = function<T>(value?: T): any {
+        return value;
+    };
+    (globalThis as any).$inspect = function<T>(value: T): T {
+        return value;
+    };
+}
+
 if (!process.env.CI) {
     // ES Modulesで__dirnameの代わりに現在のファイルのディレクトリを取得
     const __filename = fileURLToPath(import.meta.url);

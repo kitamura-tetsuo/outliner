@@ -48,7 +48,7 @@ runs:
         # Wait for ports to be freed
         sleep 5
 
-    - name: Run codex setup script
+    - name: Run setup script
       shell: bash
       env:
         CI: true
@@ -57,7 +57,34 @@ runs:
         DISPLAY: :99
         DISABLE_POSTHOG: true
         VITE_DISABLE_FLUID_TELEMETRY: true
+        PREINSTALLED_ENV: true
+        SKIP_SERVER_START: "0"
+        SKIP_PORT_WAIT: "0"
       run: |
         # Create sentinel file to skip dependency installation in setup.sh
         touch .setup-installed
-        bash scripts/setup.sh
+        
+        # Retry setup.sh up to 3 times
+        MAX_RETRIES=3
+        RETRY_DELAY=10
+        count=0
+        success=false
+        
+        while [ $count -lt $MAX_RETRIES ]; do
+          if bash scripts/setup.sh; then
+            success=true
+            break
+          else
+            count=$((count + 1))
+            if [ $count -lt $MAX_RETRIES ]; then
+              echo "Setup failed. Retrying in $RETRY_DELAY seconds... (Attempt $count/$MAX_RETRIES)"
+              sleep $RETRY_DELAY
+            else
+              echo "Setup failed after $MAX_RETRIES attempts."
+            fi
+          fi
+        done
+        
+        if [ "$success" = "false" ]; then
+          exit 1
+        fi
