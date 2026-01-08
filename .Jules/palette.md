@@ -12,3 +12,8 @@
 
 **Learning:** The application has a mix of English and Japanese UI text, despite documentation claiming full localization. Changing core component labels to Japanese can be seen as a regression if surrounding components remain in English.
 **Action:** When adding UX improvements to core components in a mixed-language codebase, prioritize visual enhancements (like icons) and maintain existing language unless explicitly instructed to localize. Verify consistency with immediate neighbors (e.g., Toolbar vs Sidebar).
+
+## 2026-01-08 - Absolute Positioning in Responsive Containers
+
+**Learning:** When adding absolutely positioned interactive elements (like a clear button) inside an input container, hardcoded dimensions on the input (`width: 340px`) can conflict with responsive container widths (`width: 100%`), causing misalignment.
+**Action:** Ensure the input width matches the container width (`width: 100%`) so that absolute positioning relative to the container remains visually correct across different viewport sizes.
