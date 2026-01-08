@@ -110,9 +110,8 @@ export class OutlinerViewModel {
     ): void {
         if (!items) return;
 
-        for (let i = 0; i < items.length; i++) {
-            const child = items.at(i);
-            if (child) this.ensureViewModelsItemExist(child, parentId);
+        for (const child of items) {
+            this.ensureViewModelsItemExist(child, parentId);
         }
     }
 
@@ -183,9 +182,8 @@ export class OutlinerViewModel {
             this.visibleOrder = [];
         }
 
-        for (let i = 0; i < items.length; i++) {
-            const child = items.at(i);
-            if (child) this.recalculateOrderAndDepthItem(child, depth, parentId);
+        for (const child of items) {
+            this.recalculateOrderAndDepthItem(child, depth, parentId);
         }
     }
     /**
@@ -233,9 +231,8 @@ export class OutlinerViewModel {
             debugLog(
                 `OutlinerViewModel: Processing ${children.length} children for "${item.text.toString()}"`,
             );
-            for (let i = 0; i < children.length; i++) {
-                const child = children.at(i);
-                if (child) this.recalculateOrderAndDepthItem(child, depth + 1, item.id);
+            for (const child of children) {
+                this.recalculateOrderAndDepthItem(child, depth + 1, item.id);
             }
         } else if (hasChildren && isCollapsed) {
             debugLog(
