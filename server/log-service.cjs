@@ -171,7 +171,10 @@ function startLogService() {
                     // テストユーザーかどうかを確認
                     const userRecord = await admin.auth().getUserByEmail(email);
 
-                    if (email === "test@example.com" && password === "password123") {
+                    if (
+                        email === "test@example.com" && process.env.TEST_USER_PASSWORD
+                        && password === process.env.TEST_USER_PASSWORD
+                    ) {
                         // 開発環境用のカスタムトークンを生成
                         const customToken = await admin.auth().createCustomToken(userRecord.uid, {
                             devUser: true,
