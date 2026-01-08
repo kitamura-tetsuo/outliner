@@ -18,13 +18,18 @@ export class ScrapboxFormatter {
     /**
      * Helper to escape HTML characters
      */
+    private static readonly ESCAPE_MAP: { [key: string]: string; } = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+    };
+
+    private static readonly ESCAPE_REGEX = /[&<>"']/g;
+
     public static escapeHtml(str: string): string {
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+        return str.replace(ScrapboxFormatter.ESCAPE_REGEX, (m) => ScrapboxFormatter.ESCAPE_MAP[m]);
     }
 
     /**
