@@ -139,10 +139,10 @@ npm_ci_if_needed() {
   
   if [ ! -d node_modules ] || ! npm ls >/dev/null 2>&1; then
     if [ -f package-lock.json ]; then
-      echo "Running npm ci for dependencies..."
+      echo "Running npm ci for dependencies in $(pwd)..."
       npm_config_proxy="" npm_config_https_proxy="" npm ci
     else
-      echo "Running npm install for dependencies..."
+      echo "Running npm install for dependencies in $(pwd)..."
       npm_config_proxy="" npm_config_https_proxy="" npm install
     fi
   fi
