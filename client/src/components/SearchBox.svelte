@@ -296,8 +296,12 @@
                     opacity: cs.opacity,
                     transform: cs.transform,
                     clipPath:
-                        (cs as { [key: string]: unknown })["clipPath"] ??
-                        (cs as { [key: string]: unknown })["clip-path"],
+                        (cs as unknown as { [key: string]: unknown })[
+                            "clipPath"
+                        ] ??
+                        (cs as unknown as { [key: string]: unknown })[
+                            "clip-path"
+                        ],
                     pointerEvents: cs.pointerEvents,
                 };
             };
