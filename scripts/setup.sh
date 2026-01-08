@@ -146,7 +146,8 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
       echo "Fixing node_modules ownership before installing vitest/playwright..."
       sudo chown -R node:node "node_modules" || true
     fi
-    npm --proxy='' --https-proxy='' install --no-save vitest playwright
+    echo "STEP: Installing vitest playwright for testing (client)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install --no-save vitest playwright
     cd "${ROOT_DIR}"
   fi
 
@@ -154,7 +155,8 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   if [ ! -f "${ROOT_DIR}/scripts/tests/node_modules/.bin/vitest" ]; then
     echo "Installing vitest for environment tests..."
     cd "${ROOT_DIR}/scripts/tests"
-    npm --proxy='' --https-proxy='' install --no-save vitest
+    echo "STEP: Installing vitest for environment tests (tests)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install --no-save vitest
     cd "${ROOT_DIR}"
   fi
   touch "$SETUP_SENTINEL"
@@ -171,13 +173,15 @@ else
   if [ ! -f "${ROOT_DIR}/client/node_modules/.bin/vitest" ] || [ ! -f "${ROOT_DIR}/client/node_modules/.bin/playwright" ]; then
     echo "Required test packages missing; installing vitest playwright..."
     cd "${ROOT_DIR}/client"
-    npm --proxy='' --https-proxy='' install --no-save vitest playwright
+    echo "STEP: Re-installing vitest playwright (missing packages)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install --no-save vitest playwright
     cd "${ROOT_DIR}"
   fi
   if [ ! -f "${ROOT_DIR}/scripts/tests/node_modules/.bin/vitest" ]; then
     echo "Required vitest missing for environment tests; installing..."
     cd "${ROOT_DIR}/scripts/tests"
-    npm --proxy='' --https-proxy='' install --no-save vitest
+    echo "STEP: Re-installing vitest (missing packages)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install --no-save vitest
     cd "${ROOT_DIR}"
   fi
 fi
@@ -194,7 +198,8 @@ if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "un
 fi
 if [ ! -f node_modules/.bin/paraglide-js ] || [ ! -f node_modules/.bin/dotenvx ]; then
   echo "Missing client CLI tools; reinstalling client dependencies..."
-  npm --proxy='' --https-proxy='' ci
+  echo "STEP: Reinstalling client dependencies (npm ci)..."
+  npm_config_proxy="" npm_config_https_proxy="" npm ci
 fi
 cd "${ROOT_DIR}"
 

@@ -139,9 +139,11 @@ npm_ci_if_needed() {
   
   if [ ! -d node_modules ] || ! npm ls >/dev/null 2>&1; then
     if [ -f package-lock.json ]; then
-      npm --proxy='' --https-proxy='' ci
+      echo "Running npm ci for dependencies..."
+      npm_config_proxy="" npm_config_https_proxy="" npm ci
     else
-      npm --proxy='' --https-proxy='' install
+      echo "Running npm install for dependencies..."
+      npm_config_proxy="" npm_config_https_proxy="" npm install
     fi
   fi
 }
@@ -157,7 +159,8 @@ kill_ports() {
 # Install global packages if needed
 install_global_packages() {
   if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
-    npm --proxy='' --https-proxy='' install -g firebase-tools tinylicious dotenv-cli @dotenvx/dotenvx || true
+    echo "Installing global packages (firebase-tools, tinylicious)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install -g firebase-tools tinylicious dotenv-cli @dotenvx/dotenvx || true
   fi
 
   # if ! command -v dprint >/dev/null; then
@@ -236,7 +239,9 @@ install_os_utilities() {
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"
+  echo "Installing Playwright chromium..."
   npx --yes playwright install chromium || echo "Playwright install failed, continuing..."
+  echo "Installing Playwright dependencies..."
   npx --yes playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
 
   cd "${ROOT_DIR}"
@@ -527,7 +532,7 @@ start_yjs_server() {
   # Ensure dependencies
   if [ ! -d node_modules ]; then
     echo "Installing server dependencies (npm ci) ..."
-    npm --proxy='' --https-proxy='' ci
+    npm_config_proxy="" npm_config_https_proxy="" npm ci
   fi
   # Build TypeScript and start compiled server to avoid ts-node dependency issues
   echo "Building server..."
