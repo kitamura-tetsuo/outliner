@@ -327,9 +327,25 @@ onMount(() => {
             type="button"
             class="clear-button"
             aria-label="Clear search"
-            onclick={() => { query = ''; }}
+            title="Clear search"
+            onclick={() => {
+                query = "";
+                inputEl?.focus();
+            }}
         >
-            &times;
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="clear-icon"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+            >
+                <path
+                    fill-rule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clip-rule="evenodd"
+                />
+            </svg>
         </button>
     {/if}
     {#if query.length > 0 && results.length === 0}
@@ -365,19 +381,19 @@ onMount(() => {
     z-index: 10;
 }
 
-.page-search-box input {
-    width: 340px;
-    padding: 0.5rem 0.75rem 0.5rem 2.25rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    background: white;
-    /* place naturally within toolbar content for stable visibility */
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-}
+    .page-search-box input {
+        width: 100%;
+        padding: 0.5rem 2.25rem 0.5rem 2.25rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        background: white;
+        /* place naturally within toolbar content for stable visibility */
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
 
 .page-search-box input:focus {
     outline: none;
@@ -443,23 +459,37 @@ onMount(() => {
     border: 0 !important;
 }
 
-.clear-button {
-    position: absolute;
-    right: 60px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.25rem;
-    color: #9ca3af;
-    padding: 0.25rem;
-    line-height: 1;
-}
+    .clear-button {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #9ca3af;
+        padding: 0.25rem;
+        border-radius: 9999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+    }
 
-.clear-button:hover {
-    color: #6b7280;
-}
+    .clear-button:hover {
+        color: #4b5563;
+        background-color: #f3f4f6;
+    }
+
+    .clear-button:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+    }
+
+    .clear-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
 
 .no-results {
     padding: 0.5rem 0.75rem;

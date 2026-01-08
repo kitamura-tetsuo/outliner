@@ -17,3 +17,8 @@
 
 **Learning:** Slide-out panels using `transform: translateX(-100%)` remain in the accessibility tree and keyboard tab order, confusing users.
 **Action:** Use `visibility: hidden` (with transition delay) or `inert` on the container when it is in the closed state.
+
+## 2026-01-08 - Absolute Positioning in Responsive Containers
+
+**Learning:** When adding absolutely positioned interactive elements (like a clear button) inside an input container, hardcoded dimensions on the input (`width: 340px`) can conflict with responsive container widths (`width: 100%`), causing misalignment.
+**Action:** Ensure the input width matches the container width (`width: 100%`) so that absolute positioning relative to the container remains visually correct across different viewport sizes.
