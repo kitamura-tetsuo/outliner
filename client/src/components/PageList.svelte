@@ -85,7 +85,23 @@ onMount(() => {
 
     <div class="page-create">
         <input type="text" bind:value={pageTitle} placeholder="新しいページ名" aria-label="新しいページ名" />
-        <button type="button" onclick={handleCreatePage}>作成</button>
+        <button type="button" onclick={handleCreatePage} aria-label="新しいページを作成">
+            <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+            >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>作成</span>
+        </button>
     </div>
 
     <ul>
@@ -99,7 +115,29 @@ onMount(() => {
         {/each}
 
         {#if rootItems.length === 0}
-            <li class="empty">ページがありません。新しいページを作成してください。</li>
+            <li class="empty">
+                <div class="empty-state-content">
+                    <svg
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="empty-icon"
+                        aria-hidden="true"
+                    >
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="12" y1="18" x2="12" y2="12"></line>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                    </svg>
+                    <p>ページがありません。</p>
+                    <p class="empty-hint">新しいページを作成して始めましょう。</p>
+                </div>
+            </li>
         {/if}
     </ul>
 </div>
@@ -139,6 +177,15 @@ input {
     border-radius: 4px;
     padding: 0 15px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.page-create button:hover {
+    background: #3367d6;
 }
 
 ul {
@@ -178,9 +225,37 @@ li {
 }
 
 .empty {
-    padding: 8px 10px;
+    padding: 24px 10px;
     color: #888;
     text-align: center;
     cursor: default;
+    background: #f9f9f9;
+    border-radius: 4px;
+    border: 1px dashed #ddd;
+    border-bottom: 1px dashed #ddd; /* Override li border */
+    margin-top: 10px;
+}
+
+.empty-state-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.empty-icon {
+    color: #ccc;
+    margin-bottom: 4px;
+}
+
+.empty p {
+    margin: 0;
+    font-weight: 500;
+}
+
+.empty .empty-hint {
+    font-size: 13px;
+    color: #999;
+    font-weight: normal;
 }
 </style>
