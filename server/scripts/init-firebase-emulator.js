@@ -1,4 +1,4 @@
-const { initializeFirebase } = require("../firebase-init");
+import { initializeFirebase } from "../firebase-init.js";
 
 initializeFirebase().then(() => {
     console.log("Firebase emulator initialization completed");
