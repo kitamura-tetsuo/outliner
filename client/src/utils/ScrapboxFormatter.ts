@@ -16,7 +16,7 @@ interface FormatToken {
  */
 export class ScrapboxFormatter {
     /**
-     * Helper to escape HTML characters
+     * Map of characters to their HTML entity equivalents
      */
     private static readonly ESCAPE_MAP: { [key: string]: string; } = {
         "&": "&amp;",
