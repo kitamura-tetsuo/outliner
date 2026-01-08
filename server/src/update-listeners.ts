@@ -1,6 +1,6 @@
 import type { Logger } from "pino";
 import type { LeveldbPersistence } from "y-leveldb";
-import { warnIfRoomTooLarge } from "./persistence.js";
+import { warnIfRoomTooLarge } from "./persistence";
 
 interface ListenerInfo {
     warn: () => void;

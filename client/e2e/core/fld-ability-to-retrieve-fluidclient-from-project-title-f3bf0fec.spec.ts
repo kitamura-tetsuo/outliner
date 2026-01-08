@@ -6,7 +6,6 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * YJS-0001: プロジェクトとページの取得・検証（Yjs）
@@ -17,9 +16,19 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("YJS-0001: プロジェクトとページの取得・検証", () => {
     const testPageTitle = `test-page-${Date.now()}`;
 
-    test.beforeEach(async ({ page }, testInfo) => {
-        // Use standard test environment initialization
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+    test.beforeEach(async ({ page }) => {
+        // 軽量なYjsルートへ移動
+        try {
+            await page.goto("/yjs-outliner");
+        } catch {
+            await page.goto("/");
+        }
+        await expect(page.locator('[data-testid="outliner-base"]').first()).toBeVisible();
+        // generalStore.project の初期化完了を待機
+        await page.waitForFunction(() => {
+            const gs: any = (window as any).generalStore;
+            return !!(gs && gs.project);
+        }, { timeout: 15000 });
     });
 
     test("Yjsプロジェクトが存在しページを作成・検索できる", async ({ page }) => {
@@ -80,14 +89,8 @@ test.describe("YJS-0001: プロジェクトとページの取得・検証", () =
     });
 
     test("generalStore からプロジェクトデータへアクセスできる", async ({ page }) => {
-        const info = await page.evaluate(async () => {
+        const info = await page.evaluate(() => {
             const gs: any = (window as any).generalStore;
-            // Wait for items to be populated
-            const start = Date.now();
-            while (Date.now() - start < 10000) {
-                if (gs?.project?.items?.length > 0) break;
-                await new Promise(r => setTimeout(r, 100));
-            }
             const pages: any = gs?.project?.items;
             const len = pages?.length ?? 0;
             const titles: string[] = [];

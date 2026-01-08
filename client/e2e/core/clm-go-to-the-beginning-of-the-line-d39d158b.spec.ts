@@ -13,16 +13,11 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0007: 行頭へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line", "Third line"]);
-        await TestHelpers.waitForOutlinerItems(page, 3, 30000);
-        // Ensure all seeded items are visible
-        await page.locator(".outliner-item[data-item-id] >> nth=2").waitFor();
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // 2番目のアイテム（Second line）を取得してクリック
-        const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
-        expect(secondItemId).not.toBeNull();
-        const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"] .item-content`);
-        await item.click({ force: true });
+        // 最初のアイテムをクリック
+        const item = page.locator(".outliner-item").first();
+        await item.locator(".item-content").click({ force: true });
 
         // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus");
@@ -30,7 +25,16 @@ test.describe("CLM-0007: 行頭へ移動", () => {
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
-        // カーソルを少し右に移動させておく（Homeキーの効果を確認するため）
+        // テスト用のテキストを入力（改行を明示的に入力）
+        await page.keyboard.type("First line");
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Second line");
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Third line");
+
+        // カーソルを2行目の途中に移動
+        await page.keyboard.press("Home");
+        await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");

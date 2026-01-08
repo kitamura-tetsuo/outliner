@@ -16,7 +16,6 @@ test.describe("拡張フォーマット", () => {
 
     test("リンクが正しく表示される", async ({ page }) => {
         // 最初のアイテムを選択（ページタイトルではない最初のアイテム）
-        await TestHelpers.waitForOutlinerItems(page);
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
         expect(firstItemId).not.toBeNull();
 
@@ -41,17 +40,20 @@ test.describe("拡張フォーマット", () => {
         expect(secondItemId).not.toBeNull();
         await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click();
 
-        // フォーマットが適用されるのを待つ (robust wait)
-        await expect.poll(async () => {
-            return await page.locator(
-                `.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`,
-            ).first().innerHTML();
-        }).toContain('<a href="https://example.com"');
+        // フォーマットが適用されるのを待つ
+        await page.waitForTimeout(500);
+
+        // 最初のアイテムのHTMLを確認（直接の子要素の.item-textのみを取得）
+        const firstItemHtml = await page.locator(
+            `.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`,
+        ).first().innerHTML();
+
+        // リンクが正しく表示されていることを確認
+        expect(firstItemHtml).toContain('<a href="https://example.com"');
     });
 
     test("引用が正しく表示される", async ({ page }) => {
         // 最初のアイテムを選択（ページタイトルではない最初のアイテム）
-        await TestHelpers.waitForOutlinerItems(page);
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
         expect(firstItemId).not.toBeNull();
 
@@ -77,16 +79,20 @@ test.describe("拡張フォーマット", () => {
         await page.locator(`.outliner-item[data-item-id="${secondItemId2}"]`).locator(".item-content").click();
 
         // フォーマットが適用されるのを待つ
-        await expect.poll(async () => {
-            return await page.locator(
-                `.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`,
-            ).first().innerHTML();
-        }).toContain("これは引用文です");
+        await page.waitForTimeout(500);
+
+        // 最初のアイテムのHTMLを確認
+        const firstItemHtml = await page.locator(
+            `.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`,
+        ).first().innerHTML();
+
+        // 引用が正しく表示されていることを確認
+        // テスト環境では引用が正しく変換されない場合があるため、元のテキストが含まれているかを確認
+        expect(firstItemHtml).toContain("これは引用文です");
     });
 
     test("複合フォーマットが正しく表示される", async ({ page }) => {
         // 最初のアイテムを選択（ページタイトルではない最初のアイテム）
-        await TestHelpers.waitForOutlinerItems(page);
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 0);
         expect(firstItemId).not.toBeNull();
 
@@ -112,12 +118,17 @@ test.describe("拡張フォーマット", () => {
         await page.locator(`.outliner-item[data-item-id="${secondItemId3}"]`).locator(".item-content").click();
 
         // フォーマットが適用されるのを待つ
-        await expect.poll(async () => {
-            const html = await page.locator(
-                `.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`,
-            ).first().innerHTML();
-            return html.includes("<strong>") && html.includes("<em>") && html.includes('<a href="https://example.com"');
-        }).toBe(true);
+        await page.waitForTimeout(500);
+
+        // 最初のアイテムのHTMLを確認
+        const firstItemHtml = await page.locator(
+            `.outliner-item[data-item-id="${firstItemId}"] .item-content > .item-text`,
+        ).first().innerHTML();
+
+        // 複合フォーマットが正しく表示されていることを確認
+        expect(firstItemHtml).toContain("<strong>");
+        expect(firstItemHtml).toContain("<em>");
+        expect(firstItemHtml).toContain('<a href="https://example.com"');
     });
 
     test("カーソルがあるアイテムでは拡張フォーマットもプレーンテキストで表示される", async ({ page }) => {

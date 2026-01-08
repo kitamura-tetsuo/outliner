@@ -98,7 +98,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
         // TestHelpersクラスが正しくインポートされているかを確認
         console.log("TestHelpers:", TestHelpers);
@@ -158,7 +158,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
         }, selectionText);
 
         // 少し待機してペーストが反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
         // ペーストされたアイテムのテキストを確認
         const items = page.locator(".outliner-item");

@@ -13,7 +13,7 @@ test.describe("Outliner Basic Test (No Auth)", () => {
         });
 
         // ページが読み込まれるまで待機
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(3000);
 
         console.log("Debug: Page loaded, checking for outliner elements");
 
@@ -43,7 +43,7 @@ test.describe("Outliner Basic Test (No Auth)", () => {
         });
 
         // 少し待機してエラーを収集
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(2000);
 
         if (errors.length > 0) {
             console.log("Debug: JavaScript errors found:", errors);

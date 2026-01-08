@@ -19,7 +19,7 @@ function removeNodeModules(dir: string) {
     }
 }
 
-test.skip("setup script installs vitest and playwright", () => {
+test.skip("codex-setup installs vitest and playwright", () => {
     const clientModules = path.join(repoRoot, "client", "node_modules");
     removeNodeModules(clientModules);
 

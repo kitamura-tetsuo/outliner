@@ -111,8 +111,6 @@ NEXT_SESSION_PROMPT.txt
 
 .gemini/settings.json
 
+.codex-setup-installed
 server/ydb
 
-.leveldb/
-.aider.tags.cache.v4/
-client/.eslintcache

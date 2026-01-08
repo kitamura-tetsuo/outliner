@@ -9,39 +9,18 @@
     let isProjectsCollapsed = $state(false);
     // Collapsible state for Pages section
     let isPagesCollapsed = $state(false);
-    // Use $derived.by to track explicit version signal from store
-    // Also triggers when pagesVersion changes OR when pages.current changes directly
-    let pages = $derived.by(() => {
-        // Subscribe to pagesVersion signal
-        void store.pagesVersion;
-        // Direct access to pages.current as fallback for when pagesVersion=0
-        const current = store.pages?.current;
-        // Convert Items to array if it has length property (Y.Array like)
-        if (!current) return [];
-        if (Array.isArray(current)) return current;
-        // For Y.Array/Items, iterate and collect
-        const result: any[] = [];
-        const len = (current as any).length ?? 0;
-        for (let i = 0; i < len; i++) {
-            const item = (current as any).at?.(i);
-            if (item) result.push(item);
-        }
-        return result;
-    });
 </script>
 
 <aside class="sidebar" class:open={isOpen}>
     <div class="sidebar-content">
         <h2 class="sidebar-title">Sidebar</h2>
-        <p class="sidebar-description">
-            This is a placeholder sidebar component.
-        </p>
+        <p class="sidebar-description">This is a placeholder sidebar component.</p>
 
         <!-- Projects section -->
         <div class="sidebar-section">
             <button
                 class="section-header"
-                onclick={() => (isProjectsCollapsed = !isProjectsCollapsed)}
+                onclick={() => isProjectsCollapsed = !isProjectsCollapsed}
                 aria-expanded={!isProjectsCollapsed}
                 aria-label="Toggle projects section"
             >
@@ -87,7 +66,7 @@
         <div class="sidebar-section">
             <button
                 class="section-header"
-                onclick={() => (isPagesCollapsed = !isPagesCollapsed)}
+                onclick={() => isPagesCollapsed = !isPagesCollapsed}
                 aria-expanded={!isPagesCollapsed}
                 aria-label="Toggle pages section"
             >
@@ -113,24 +92,16 @@
 
             {#if !isPagesCollapsed}
                 <div class="page-list">
-                    {#if !pages || pages.length === 0}
+                    {#if !store.project || store.project.items.length === 0}
                         <p class="sidebar-placeholder">No pages available</p>
                     {:else}
-                        {#each pages as page (page.id)}
+                        {#each store.project.items as page (page.id)}
                             <a
                                 class="page-item"
-                                href={resolve(
-                                    `/${encodeURIComponent(store.project?.title || "Untitled Project")}/${encodeURIComponent(page.text)}`,
-                                )}
+                                href={resolve(`/${encodeURIComponent(store.project?.title || "Untitled Project")}/${encodeURIComponent(page.text)}`)}
                             >
-                                <span class="page-title"
-                                    >{page.text || "Untitled page"}</span
-                                >
-                                <span class="page-date"
-                                    >{new Date(
-                                        page.lastChanged,
-                                    ).toLocaleDateString()}</span
-                                >
+                                <span class="page-title">{page.text || "Untitled page"}</span>
+                                <span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
                             </a>
                         {/each}
                     {/if}
@@ -140,7 +111,10 @@
 
         <div class="sidebar-section">
             <h3 class="sidebar-section-title">Settings</h3>
-            <a class="settings-link" href={resolve("/settings")}>
+            <a
+                class="settings-link"
+                href={resolve("/settings")}
+            >
                 <span class="settings-text">Settings</span>
             </a>
         </div>

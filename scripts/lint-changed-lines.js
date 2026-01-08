@@ -26,30 +26,15 @@ function run(cmd) {
 }
 
 // 1) Get list of changed target files (extension filter)
-const checkStaged = process.env.CHECK_STAGED === "1";
-let nameCmd;
-if (checkStaged) {
-    // Check staged changes against HEAD
-    nameCmd = `git diff --name-only --cached --relative`;
-} else {
-    // Check changes between BASE and HEAD
-    nameCmd = `git diff --name-only --relative ${BASE}...HEAD`;
-}
-
+const nameCmd = `git diff --name-only ${BASE}...HEAD -- ${EXT_GLOB.map(e => "*." + e).join(" ")}`;
 const filesRaw = run(nameCmd).trim().split(/\r?\n/).filter(Boolean);
 if (filesRaw.length === 0) {
-    console.log("No changed files.");
+    console.log("No changed JS/TS/Svelte files.");
     process.exit(0);
 }
-
-// Filter by extension
-const files = filesRaw.filter(f => {
-    const ext = path.extname(f).slice(1);
-    return EXT_GLOB.includes(ext) && fs.existsSync(f);
-});
-
+const files = filesRaw.filter(f => fs.existsSync(f));
 if (files.length === 0) {
-    console.log("No changed JS/TS/Svelte files.");
+    console.log("No existing files matched (maybe deleted).");
     process.exit(0);
 }
 
@@ -59,13 +44,7 @@ if (files.length === 0) {
 const fileRanges = {};
 for (const file of files) {
     // --unified=0 gets line ranges clearly without hunk context
-    let diffCmd;
-    if (checkStaged) {
-        diffCmd = `git diff --unified=0 --cached --relative -- ${file}`;
-    } else {
-        diffCmd = `git diff --unified=0 --relative ${BASE}...HEAD -- ${file}`;
-    }
-    const diff = run(diffCmd);
+    const diff = run(`git diff --unified=0 ${BASE}...HEAD -- ${file}`);
     const ranges = [];
     const hunkRe = /@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/g;
     let m;

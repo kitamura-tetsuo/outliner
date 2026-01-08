@@ -1,6 +1,6 @@
-// import "../utils/registerAfterEachSnapshot";
-// import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-// registerCoverageHooks();
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 /** @feature LNK-0007
  *  Title   : バックリンク機能
  *  Source  : docs/client-features.yaml
@@ -16,7 +16,6 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 test.describe("LNK-0007: バックリンク機能", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        page.on("console", msg => console.log(`[BROWSER] ${msg.text()}`));
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
@@ -49,13 +48,13 @@ test.describe("LNK-0007: バックリンク機能", () => {
             return;
         }
         await link.click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(1000);
         }
 
         // 新しいページにテキストを入力
@@ -102,13 +101,13 @@ test.describe("LNK-0007: バックリンク機能", () => {
             return;
         }
         await link2.click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(1000);
         }
 
         // 新しいページにテキストを入力
@@ -194,13 +193,13 @@ test.describe("LNK-0007: バックリンク機能", () => {
             return;
         }
         await link3.click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(1000);
         }
 
         // 新しいページにテキストを入力
@@ -249,13 +248,13 @@ test.describe("LNK-0007: バックリンク機能", () => {
             return;
         }
         await link4.click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(1000);
         }
 
         // 新しいページにテキストを入力
@@ -317,13 +316,13 @@ test.describe("LNK-0007: バックリンク機能", () => {
             return;
         }
         await link5.click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
         // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(1000);
         }
 
         // 新しいページにテキストを入力
@@ -352,7 +351,7 @@ test.describe("LNK-0007: バックリンク機能", () => {
         const sourcePageLink = backlinkList.locator(".source-page-link").first();
         // リンクをクリック
         await sourcePageLink.click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
         // 元のページに戻ったことを確認
         const currentUrl = page.url();

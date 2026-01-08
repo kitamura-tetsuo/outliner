@@ -26,7 +26,7 @@ test.describe("FMT-0008: multiple internal links", () => {
         ]);
 
         // wait for formatting
-        await TestHelpers.waitForOutlinerItems(page);
+        await page.waitForTimeout(500);
 
         // get first item (not page title)
         const firstId = await TestHelpers.getItemIdByIndex(page, 1);

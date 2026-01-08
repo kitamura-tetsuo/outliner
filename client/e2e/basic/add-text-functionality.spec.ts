@@ -15,13 +15,8 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 
 test.describe("テキスト追加機能テスト", () => {
-    const seedLines = ["既存のテストアイテム1", "既存のテストアイテム2", "既存のテストアイテム3"];
-
     test.beforeEach(async ({ page }, testInfo) => {
-        // Use HTTP-based seeding via SeedClient instead of legacy browser-based seeding
-        const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, seedLines);
-        // Navigate to the seeded page
-        await TestHelpers.navigateToProjectPage(page, projectName, pageName, seedLines);
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     /**

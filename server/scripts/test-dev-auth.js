@@ -9,7 +9,7 @@ const API_BASE_URL = process.env.API_BASE_URL || `http://${LOCAL_HOST}:7071`;
 // テスト用認証情報
 const testCredentials = {
     email: "test@example.com",
-    password: process.env.TEST_USER_PASSWORD || "password123",
+    password: "password123",
 };
 
 // カラー出力用ヘルパー

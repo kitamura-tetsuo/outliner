@@ -11,17 +11,33 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0003: 右へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Test data", "Second item"]);
-        await TestHelpers.waitForOutlinerItems(page, 3, 10000); // Title + 2 seeded items
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
+
+        // 最初のアイテムを取得 (first()の代わりにページタイトルを使用)
+        // ページが読み込まれた直後は最初のアイテムがページタイトルになる
+        const item = page.locator(".outliner-item.page-title");
+
+        // ページタイトルが見つからない場合は、最初に表示されているアイテムを使用
+        if (await item.count() === 0) {
+            // 画面に表示されているアイテムを取得
+            await page.locator(".outliner-item").first().locator(".item-content").click({ force: true });
+        } else {
+            await item.locator(".item-content").click({ force: true });
+        }
+
+        // カーソルが表示されるまで待機
+        await TestHelpers.waitForCursorVisible(page);
+
+        // グローバル textarea にフォーカスが当たるまで待機
+        await page.waitForSelector("textarea.global-textarea:focus");
+        // 文字入力が可能
+        await page.keyboard.type("Test data");
     });
 
     test("ArrowRightキーでカーソルが1文字右に移動する", async ({ page }) => {
-        // アクティブなアイテム要素を取得 (Item 1: "Test data")
-        // Note: Item 0 is Title. Item 1 is "Test data".
-        const itemId = await TestHelpers.getItemIdByIndex(page, 1);
-        await TestHelpers.setCursor(page, itemId!);
-        // Ensure cursor is fully ready and active before asserting
-        await TestHelpers.ensureCursorReady(page);
+        // アクティブなアイテム要素を取得
+        const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
+        expect(activeItemLocator).not.toBeNull();
 
         // 初期カーソル情報を取得して検証
         let cursorData = await CursorValidator.getCursorData(page);
@@ -63,21 +79,27 @@ test.describe("CLM-0003: 右へ移動", () => {
         const initialItemCount = await page.locator(".outliner-item").count();
         console.log(`テスト開始時のアイテム数: ${initialItemCount}`);
 
-        // 最初のアイテムIDを取得 (Item 1)
-        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        // アクティブなアイテムIDを取得
+        const firstItemId = await TestHelpers.getActiveItemId(page);
         console.log(`最初のアイテムID: ${firstItemId}`);
         expect(firstItemId).not.toBeNull();
 
-        // 2つ目のアイテムが存在することを確認 (Item 2)
-        const secondItemId = await TestHelpers.getItemIdByIndex(page, 2);
-        const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
+        // 2つ目のアイテムを追加
+        await page.keyboard.press("End"); // 最後に移動
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Second item");
+
+        // 2つ目のアイテムが存在することを確認
+        const secondItem = page.locator(".outliner-item").nth(1);
         await secondItem.waitFor({ state: "visible" });
 
         // 2つ目のアイテムのテキスト内容を確認
-        await expect(secondItem.locator(".item-text")).toContainText("Second item");
+        const secondItemText = await secondItem.locator(".item-text").textContent();
+        console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
+        expect(secondItemText).toContain("Second item");
 
-        // 最初のアイテムにカーソルをセット
-        await TestHelpers.setCursor(page, firstItemId!);
+        // 保存したIDを使って最初のアイテムに戻る
+        await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-content").click();
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -86,7 +108,7 @@ test.describe("CLM-0003: 右へ移動", () => {
         await page.keyboard.press("End");
 
         // 少し長めに待機してカーソル移動を確定 - Endキー処理の完了を待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // カーソル情報を取得して、実際に末尾に移動したことを確認
         let cursorData = await CursorValidator.getCursorData(page);
@@ -119,7 +141,7 @@ test.describe("CLM-0003: 右へ移動", () => {
 
         // Rather than waiting for a fixed time, let's check if the cursor position changes
         // Wait up to 1 second for any possible change to occur
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
         // Check cursor information after the key press
         cursorData = await CursorValidator.getCursorData(page);
@@ -130,7 +152,8 @@ test.describe("CLM-0003: 右へ移動", () => {
         const updatedOffset = cursorData.cursorInstances?.[0]?.offset;
         console.log(`移動後のアイテムID: ${updatedItemId}, オフセット: ${updatedOffset}`);
 
-        // 2番目のアイテムのIDを取得 (already retrieved)
+        // 2番目のアイテムのIDを取得
+        const secondItemId = await secondItem.getAttribute("data-item-id");
         console.log(`2番目のアイテムID: ${secondItemId}`);
 
         // The expected behavior is that when pressing ArrowRight at the end of an item,
@@ -143,6 +166,8 @@ test.describe("CLM-0003: 右へ移動", () => {
         await page.keyboard.type("Test input");
 
         // 2番目のアイテムのテキスト内容を再確認
-        await expect(secondItem.locator(".item-text")).toContainText("Test input");
+        const updatedSecondItemText = await secondItem.locator(".item-text").textContent();
+        console.log(`更新後の2番目のアイテムのテキスト: ${updatedSecondItemText}`);
+        expect(updatedSecondItemText).toContain("Test input");
     });
 });

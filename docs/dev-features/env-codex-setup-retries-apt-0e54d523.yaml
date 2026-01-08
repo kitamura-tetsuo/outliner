@@ -1,0 +1,11 @@
+id: ENV-0e54d523
+title: Codex setup retries apt installs
+description: scripts/setup.sh uses retry_apt_get and dpkg --configure -a to recover from interrupted apt operations.
+category: environment
+status: implemented
+components:
+- scripts/common-functions.sh
+- scripts/setup.sh
+tests:
+- scripts/tests/env-codex-setup-retries-apt-0e54d523.spec.ts
+title-ja: Codex setup retries apt installs

@@ -45,7 +45,7 @@ test.describe("Page Route Debug", () => {
         const projectName = `Debug Project ${Date.now()}`;
         const pageName = `debug-page-${Date.now()}`;
 
-        await TestHelpers.createAndSeedProject(page, null, [], { projectName, pageName });
+        await TestHelpers.createTestProjectAndPageViaAPI(page, projectName, pageName);
 
         // ページルートに移動
         const encodedProject = encodeURIComponent(projectName);

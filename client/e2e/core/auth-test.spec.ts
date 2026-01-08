@@ -85,7 +85,7 @@ test.describe("Authentication Test", () => {
         console.log("Debug: Authentication result:", authResult);
 
         // 認証後の状態を確認
-        await page.waitForTimeout(500); // 認証完了待機（カーソル不使用）
+        await page.waitForTimeout(2000); // 少し待機
 
         const afterAuth = await page.evaluate(() => {
             const win = window as { __USER_MANAGER__?: { currentUser?: any; }; __SVELTE_GOTO__?: any; };

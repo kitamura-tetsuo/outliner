@@ -37,25 +37,13 @@ type AuthEventListener = (result: IAuthResult | null) => void;
 export class UserManager {
     // Firebase 設定
     private firebaseConfig = {
-        apiKey: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_API_KEY) || "demo-api-key",
-        authDomain: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN)
-            || "demo-project.firebaseapp.com",
-        projectId: (() => {
-            if (typeof window !== "undefined") {
-                const stored = window.localStorage?.getItem?.("VITE_FIREBASE_PROJECT_ID");
-                if (stored) return stored;
-            }
-            return (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_PROJECT_ID)
-                || "outliner-d57b0";
-        })(),
-        storageBucket: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET)
-            || "demo-project.appspot.com",
-        messagingSenderId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID)
-            || "123456789",
-        appId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_APP_ID)
-            || "1:123456789:web:abcdef",
-        measurementId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID)
-            || "G-XXXXXXXXXX",
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
     };
 
     private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57000");
@@ -66,7 +54,7 @@ export class UserManager {
     private unsubscribeAuth: (() => void) | null = null;
 
     // 開発環境かどうかの判定
-    private isDevelopment = (typeof import.meta !== "undefined" && import.meta.env?.DEV) || false;
+    private isDevelopment = import.meta.env.DEV;
 
     /**
      * Firebaseアプリインスタンスを遅延初期化で取得
@@ -108,21 +96,17 @@ export class UserManager {
         this.initAuthListenerAsync();
 
         // テスト環境の検出
-        const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
-            || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
-            || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            || (typeof window !== "undefined" && (window as any).__E2E__ === true);
+        const isTestEnv = import.meta.env.MODE === "test"
+            || process.env.NODE_ENV === "test"
+            || import.meta.env.VITE_IS_TEST === "true";
 
         // プロダクション環境では絶対にエミュレータを使用しない
-        const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
-            && (typeof import.meta !== "undefined" && import.meta.env?.MODE) === "production";
+        const isProduction = !import.meta.env.DEV && import.meta.env.MODE === "production";
         const useEmulatorInLocalStorage = typeof window !== "undefined"
             && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true";
 
         // isTestEnv のいずれかが true の場合は useEmulator を true にする
-        const useEmulator = isTestEnv
-            || (typeof import.meta !== "undefined" && import.meta.env?.VITE_USE_FIREBASE_EMULATOR === "true")
+        const useEmulator = isTestEnv || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
             || useEmulatorInLocalStorage;
 
         if (isProduction && useEmulator) {
@@ -150,14 +134,7 @@ export class UserManager {
 
                     // SSR環境ではエラーをスローしない（クライアント側でリトライできるように）
                     if (!isSSR) {
-                        if (isTestEnv) {
-                            logger.warn(
-                                "[UserManager] Emulator connection failed in Test mode. Continuing in offline/mock mode.",
-                            );
-                            this.isMockMode = true;
-                        } else {
-                            throw error;
-                        }
+                        throw error;
                     } else {
                         logger.info("Running in SSR environment, will retry connection on client side");
                     }
@@ -168,14 +145,7 @@ export class UserManager {
 
                 // SSR環境ではエラーをスローしない
                 if (!isSSR) {
-                    if (isTestEnv) {
-                        logger.warn(
-                            "[UserManager] Emulator connection failed in Test mode. Continuing in offline/mock mode.",
-                        );
-                        this.isMockMode = true;
-                    } else {
-                        throw err;
-                    }
+                    throw err;
                 } else {
                     logger.info("Running in SSR environment, will retry connection on client side");
                 }
@@ -187,12 +157,8 @@ export class UserManager {
     private connectToFirebaseEmulator(): boolean {
         try {
             // 環境変数から接続情報を取得（デフォルトはlocalhost:59099）
-            const host = (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_EMULATOR_HOST)
-                || "localhost";
-            const port = parseInt(
-                (typeof import.meta !== "undefined" && import.meta.env?.VITE_AUTH_EMULATOR_PORT) || "59099",
-                10,
-            );
+            const host = import.meta.env.VITE_FIREBASE_EMULATOR_HOST || "localhost";
+            const port = parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT || "59099", 10);
 
             logger.info(`Connecting to Firebase Auth emulator at ${host}:${port}`);
             connectAuthEmulator(this.auth, `http://${host}:${port}`, { disableWarnings: true });
@@ -206,13 +172,9 @@ export class UserManager {
 
     // テスト環境用のユーザーをセットアップ
     private async _setupMockUser() {
-        const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
-            || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
-            || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            || (typeof window !== "undefined" && (window as any).__E2E__ === true);
-        const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
-            && (typeof import.meta !== "undefined" && import.meta.env?.MODE) === "production";
+        const isTestEnv = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test"
+            || import.meta.env.VITE_IS_TEST === "true";
+        const isProduction = !import.meta.env.DEV && import.meta.env.MODE === "production";
 
         // E2Eテスト用にFirebaseメール/パスワード認証を使う
         if (isTestEnv && !isProduction) {
@@ -238,6 +200,42 @@ export class UserManager {
         } else if (isProduction) {
             logger.warn("[UserManager] _setupMockUser called in production. This should not happen.");
         }
+    }
+
+    // Firebase認証状態の監視（非同期初期化）
+    private async initAuthListenerAsync(): Promise<void> {
+        try {
+            // Firebase appとauthの初期化を確実に行う
+            const auth = this.auth;
+            logger.debug("Firebase Auth initialized, setting up listener");
+
+            this.unsubscribeAuth = onAuthStateChanged(auth, async firebaseUser => {
+                logger.debug("onAuthStateChanged triggered", {
+                    hasUser: !!firebaseUser,
+                    userId: firebaseUser?.uid,
+                    email: firebaseUser?.email,
+                });
+
+                if (firebaseUser) {
+                    logger.info("User signed in via onAuthStateChanged", { userId: firebaseUser.uid });
+                    await this.handleUserSignedIn(firebaseUser);
+                } else {
+                    logger.info("User signed out via onAuthStateChanged");
+                    this.handleUserSignedOut();
+                }
+            });
+        } catch (error) {
+            logger.error({ error }, "Failed to initialize auth listener");
+            // エラーが発生した場合は少し待ってからリトライ
+            setTimeout(() => {
+                this.initAuthListenerAsync();
+            }, 1000);
+        }
+    }
+
+    // Firebase認証状態の監視（同期版 - 後方互換性のため）
+    private initAuthListener(): void {
+        this.initAuthListenerAsync();
     }
 
     // ユーザーサインイン処理
@@ -285,20 +283,11 @@ export class UserManager {
         this.notifyListeners(null);
     }
 
-    private isMockMode = false;
-
-    // Update getCurrentUser
+    // ユーザー情報を取得する関数
     public getCurrentUser(): IUser | null {
-        if (this.isMockMode) {
-            return {
-                id: "test-user",
-                name: "Test User",
-                email: "test@example.com",
-            };
-        }
         const firebaseUser = this.auth.currentUser;
         if (!firebaseUser) return null;
-        // ... existing logic ...
+
         const providerIds = firebaseUser.providerData
             .map(info => info?.providerId)
             .filter((id): id is string => !!id);
@@ -315,55 +304,6 @@ export class UserManager {
         };
     }
 
-    // Update initAuthListenerAsync
-    private async initAuthListenerAsync(): Promise<void> {
-        if (this.isMockMode) {
-            logger.info("[UserManager] Mock Mode: Simulating user sign-in");
-            // Simulate async delay
-            setTimeout(() => {
-                const mockUser: IUser = {
-                    id: "test-user",
-                    name: "Test User",
-                    email: "test@example.com",
-                };
-                this.notifyListeners({ user: mockUser });
-            }, 100);
-            return;
-        }
-
-        try {
-            // Firebase appとauthの初期化を確実に行う
-            const auth = this.auth;
-            // ... existing logic ...
-            logger.debug("Firebase Auth initialized, setting up listener");
-
-            this.unsubscribeAuth = onAuthStateChanged(auth, async firebaseUser => {
-                // ... existing logic ...
-                logger.debug("onAuthStateChanged triggered", {
-                    hasUser: !!firebaseUser,
-                    userId: firebaseUser?.uid,
-                    email: firebaseUser?.email,
-                });
-
-                if (firebaseUser) {
-                    logger.info("User signed in via onAuthStateChanged", { userId: firebaseUser.uid });
-                    await this.handleUserSignedIn(firebaseUser);
-                } else {
-                    logger.info("User signed out via onAuthStateChanged");
-                    this.handleUserSignedOut();
-                }
-            });
-        } catch (error) {
-            // ... existing catch ...
-            // If invalid-api-key happens here, catch it?
-            // But I'm preventing it by checking isMockMode first.
-            logger.error({ error }, "Failed to initialize auth listener");
-            setTimeout(() => {
-                this.initAuthListenerAsync();
-            }, 1000);
-        }
-    }
-
     // Googleでログイン
     public async loginWithGoogle(): Promise<void> {
         try {
@@ -378,12 +318,6 @@ export class UserManager {
 
     // メールアドレスとパスワードでログイン（開発環境用）
     public async loginWithEmailPassword(email: string, password: string): Promise<void> {
-        if (this.isMockMode) {
-            logger.info("[UserManager] Mock Mode: Simulating email/password login");
-            const user: IUser = { id: "test-user", name: "Test User", email };
-            this.notifyListeners({ user });
-            return;
-        }
         try {
             logger.info(`[UserManager] Attempting email/password login for: ${email}`);
             logger.debug(
@@ -433,10 +367,6 @@ export class UserManager {
 
     // ログアウト
     public async logout(): Promise<void> {
-        if (this.isMockMode) {
-            this.notifyListeners(null);
-            return;
-        }
         try {
             await signOut(this.auth);
             // ログアウト処理はonAuthStateChangedで検知される
@@ -451,10 +381,7 @@ export class UserManager {
         this.listeners.push(listener);
 
         // 既に認証済みの場合は即座に通知（FluidTokenは不要）
-        if (this.isMockMode) {
-            const user = this.getCurrentUser();
-            if (user) listener({ user });
-        } else if (this.auth.currentUser) {
+        if (this.auth.currentUser) {
             const user = this.getCurrentUser();
             if (user) {
                 logger.debug("addEventListener: User already authenticated, notifying immediately", {
@@ -486,11 +413,13 @@ export class UserManager {
     public manualNotifyListeners(authResult: IAuthResult | null): void {
         this.notifyListeners(authResult);
     }
+
+    // Firebaseに認証済みかどうかを確認
     public isAuthenticated(): boolean {
-        return this.isMockMode || !!this.auth.currentUser;
+        return !!this.auth.currentUser;
     }
 
-    // Dispose
+    // クリーンアップ
     public dispose(): void {
         if (this.unsubscribeAuth) {
             this.unsubscribeAuth();

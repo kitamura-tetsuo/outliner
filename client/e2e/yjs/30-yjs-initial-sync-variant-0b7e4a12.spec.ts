@@ -15,7 +15,9 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
     p1.on("console", m => console.log("[p1 console]", m.text().slice(0, 100)));
     await p1.addInitScript(() => {
         localStorage.setItem("VITE_IS_TEST", "true");
-        localStorage.setItem("VITE_IS_TEST", "true");
+        localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+        // Force-enable WS in tests even if env disables it
+        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
         localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
@@ -58,7 +60,9 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
 
     await p2.addInitScript(() => {
         localStorage.setItem("VITE_IS_TEST", "true");
-        localStorage.setItem("VITE_IS_TEST", "true");
+        localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+        // Force-enable WS in tests even if env disables it
+        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
         localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });

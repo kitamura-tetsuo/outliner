@@ -27,7 +27,7 @@ test.describe("ITM-0001: Enterで新規アイテム追加", () => {
             await page.keyboard.press("ArrowRight");
         }
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
         await TreeValidator.waitForProjectReady(page);
         const treeData = await TreeValidator.getTreeData(page);
         expect(treeData.items[0].text).toBe("First part of text.");

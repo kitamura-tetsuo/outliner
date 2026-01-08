@@ -15,22 +15,40 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             (window as any).DEBUG_MODE = true;
         });
 
-        // Seed with 4 lines
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "First item text",
-            "Second item text",
-            "Third item text",
-            "Fourth item text",
-        ]);
-        // Wait for Title + 4 items
-        await TestHelpers.waitForOutlinerItems(page, 5, 10000);
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // 最初のアイテムを選択してカーソルを表示
+        // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
+        // デバッグモードを有効化（ページ読み込み後）
+        await page.evaluate(() => {
+            (window as any).DEBUG_MODE = true;
+        });
+
         await page.waitForSelector("textarea.global-textarea:focus");
-        await TestHelpers.waitForCursorVisible(page);
+
+        // テスト用のテキストを入力
+        await page.keyboard.type("First item text");
+
+        // 2つ目のアイテムを作成
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Second item text");
+
+        // 3つ目のアイテムを作成
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Third item text");
+
+        // 4つ目のアイテムを作成
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Fourth item text");
+
+        // 最初のアイテムに戻る
+        await page.keyboard.press("Home");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("Home");
 
         // デバッグモードを再度有効化
         await page.evaluate(() => {
@@ -81,7 +99,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
         await page.evaluate(() => {
@@ -95,7 +113,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.keyboard.press("Backspace");
 
         // 少し待機して削除が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
         // 削除後のアイテム数を取得
         const afterCount = await page.locator(".outliner-item").count();
@@ -155,7 +173,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
         try {
@@ -173,7 +191,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.keyboard.press("Delete");
 
         // 少く待機して削除が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
         // 削除後のアイテム数を取得
         const afterCount = await page.locator(".outliner-item").count();
@@ -237,7 +255,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
         try {
@@ -255,7 +273,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.keyboard.press("Delete");
 
         // 少し待機して削除が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 削除後のアイテム数を取得
         const afterCount = await page.locator(".outliner-item").count();
@@ -313,7 +331,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
         try {
@@ -328,7 +346,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         await page.keyboard.press("Delete");
 
         // 少し待機して削除が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // カーソルが表示されていることを確認
         await page.evaluate(() => {

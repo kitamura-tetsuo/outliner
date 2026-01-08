@@ -6,25 +6,19 @@ export interface RoomInfo {
 }
 
 export function parseRoom(path: string): RoomInfo | undefined {
-    // Basic path traversal protection
-    if (path.includes("..")) return undefined;
-
     const [pathname] = path.split("?");
     const parts = pathname.split("/").filter(Boolean);
-
-    if (parts.length === 2 && parts[0] === "projects") {
-        const project = decodeURIComponent(parts[1]);
-        if (project.length > 0 && project.length <= 128) {
-            return { project };
-        }
+    if (parts.length === 2 && parts[0] === "projects" && SEGMENT_RE.test(parts[1])) {
+        return { project: parts[1] };
     }
-
-    if (parts.length === 4 && parts[0] === "projects" && parts[2] === "pages") {
-        const project = decodeURIComponent(parts[1]);
-        const page = decodeURIComponent(parts[3]);
-        if (project.length > 0 && project.length <= 128 && page.length > 0 && page.length <= 128) {
-            return { project, page };
-        }
+    if (
+        parts.length === 4
+        && parts[0] === "projects"
+        && SEGMENT_RE.test(parts[1])
+        && parts[2] === "pages"
+        && SEGMENT_RE.test(parts[3])
+    ) {
+        return { project: parts[1], page: parts[3] };
     }
     return undefined;
 }
