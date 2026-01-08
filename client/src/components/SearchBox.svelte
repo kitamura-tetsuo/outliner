@@ -423,12 +423,20 @@
     </svg>
     <input
         type="text"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={results.length > 0 && query.length > 0}
+        aria-controls="search-results-listbox"
+        aria-activedescendant={selected >= 0
+            ? `search-result-option-${selected}`
+            : ""}
         aria-hidden="false"
         aria-label="Search pages"
         aria-labelledby="search-pages-label"
         placeholder="Search pages"
         data-testid="search-pages-input"
         id="search-pages-input"
+        autocomplete="off"
         bind:this={inputEl}
         bind:value={query}
         onkeydown={handleKeydown}
@@ -455,18 +463,36 @@
             aria-label="Clear search"
             onclick={() => {
                 query = "";
+                inputEl?.focus();
             }}
         >
-            &times;
+            <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
         </button>
     {/if}
     {#if query.length > 0 && results.length === 0}
         <div class="no-results" role="status">No results found</div>
     {/if}
     {#if results.length && query.length > 0}
-        <ul>
+        <ul id="search-results-listbox" role="listbox">
             {#each results as page, i (page.id)}
-                <li class:selected={i === selected}>
+                <li
+                    role="option"
+                    id={`search-result-option-${i}`}
+                    aria-selected={i === selected}
+                    class:selected={i === selected}
+                >
                     <button type="button" onclick={() => handlePageClick(page)}
                         >{page.text}</button
                     >
@@ -581,14 +607,18 @@
         background: none;
         border: none;
         cursor: pointer;
-        font-size: 1.25rem;
         color: #9ca3af;
         padding: 0.25rem;
         line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
     }
 
     .clear-button:hover {
         color: #6b7280;
+        background-color: rgba(0, 0, 0, 0.05);
     }
 
     .no-results {
