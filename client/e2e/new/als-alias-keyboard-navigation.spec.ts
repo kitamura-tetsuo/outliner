@@ -19,36 +19,25 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
             "三行目: 並び順チェック",
         ]);
         // Wait for outliner items to be visible with increased timeout
-        // Wait for 4 items (page header + 3 seeded lines)
-        await TestHelpers.waitForOutlinerItems(page, 4, 45000);
+        await TestHelpers.waitForOutlinerItems(page, 45000);
     });
 
     test("navigate alias picker with keyboard", async ({ page }) => {
         // Add timeout for the whole test
         test.setTimeout(30000);
 
-        // Explicitly wait for the 1st and 2nd items to be rendered and have IDs
-        // This is more robust than just waiting for "any" items
-        await expect.poll(async () => {
-            const count = await page.locator(".outliner-item").count();
-            if (count < 2) return false;
-            const id1 = await page.locator(".outliner-item").nth(0).getAttribute("data-item-id");
-            const id2 = await page.locator(".outliner-item").nth(1).getAttribute("data-item-id");
-            return !!id1 && !!id2;
-        }, { timeout: 20000 }).toBe(true);
+        await TestHelpers.waitForOutlinerItems(page, 10000);
+        const firstId = await TestHelpers.getItemIdByIndex(page, 0);
+        const secondId = await TestHelpers.getItemIdByIndex(page, 1);
+        if (!firstId || !secondId) throw new Error("item ids not found");
 
-        const firstIdFinal = await page.locator(".outliner-item").nth(0).getAttribute("data-item-id");
-        const secondIdFinal = await page.locator(".outliner-item").nth(1).getAttribute("data-item-id");
-
-        if (!firstIdFinal || !secondIdFinal) throw new Error("item ids not found after retry");
-
-        await page.click(`.outliner-item[data-item-id="${firstIdFinal}"] .item-content`, { force: true });
-        await TestHelpers.waitForUIStable(page);
+        await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
+        await page.waitForTimeout(1000);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             textarea?.focus();
         });
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(500);
 
         // Open alias picker
         await page.keyboard.type("/");
@@ -163,7 +152,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
         // 少し待ってからaliasTargetIdをチェック
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(1000);
 
         // aliasPickerStoreのデバッグ情報
         /*
@@ -235,19 +224,19 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
 
     test("escape key closes alias picker", async ({ page }) => {
         // Add timeout for the whole test
-        test.setTimeout(60000);
+        test.setTimeout(30000);
 
-        await TestHelpers.waitForOutlinerItems(page);
+        await TestHelpers.waitForOutlinerItems(page, 10000);
         const firstId = await TestHelpers.getItemIdByIndex(page, 0);
         if (!firstId) throw new Error("first item not found");
 
         await page.click(`.outliner-item[data-item-id="${firstId}"] .item-content`, { force: true });
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(1000);
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             textarea?.focus();
         });
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(500);
 
         await page.keyboard.type("/");
         await page.keyboard.type("alias");

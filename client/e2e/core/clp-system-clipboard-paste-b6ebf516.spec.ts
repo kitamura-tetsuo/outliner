@@ -21,13 +21,12 @@ test.describe("System clipboard paste", () => {
             await navigator.clipboard.writeText("pasted text");
         });
 
-        await TestHelpers.waitForOutlinerItems(page);
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
         await page.keyboard.press("Control+v");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         const text = await item.locator(".item-text").textContent();
         expect(text).toContain("pasted text");

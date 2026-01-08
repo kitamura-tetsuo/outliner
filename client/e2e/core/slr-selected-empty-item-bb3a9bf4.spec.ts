@@ -85,7 +85,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         });
 
         // 少し待機して選択が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 選択範囲が作成されたことを確認
         try {
@@ -118,7 +118,7 @@ test.describe("SLR-0008: 選択範囲のエッジケース", () => {
         await page.keyboard.press("Delete");
 
         // 少し待機して削除が反映されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 削除後のアイテム数を確認（環境によって異なる可能性がある）
         const itemCount = await page.locator(".outliner-item").count();

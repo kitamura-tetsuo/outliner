@@ -1,1 +1,0 @@
-../../../client/src/schema/app-schema.ts

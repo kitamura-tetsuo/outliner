@@ -2,11 +2,6 @@ import type { Page } from "@playwright/test";
 import { TestHelpers } from "./utils/testHelpers";
 
 /**
- * @deprecated Use TestHelpers in ./utils/testHelpers instead.
- * This file is kept for backward compatibility and type definitions.
- */
-
-/**
  * 指定数のアウトライナーアイテムが表示されるまで待機
  */
 export async function waitForOutlinerItems(page: Page, count: number, timeout = 10000): Promise<void> {

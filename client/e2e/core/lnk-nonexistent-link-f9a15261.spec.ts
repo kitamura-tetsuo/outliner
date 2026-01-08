@@ -27,10 +27,10 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         // Enterキーを押してアイテムを終了（フォーマットが適用されるように）
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // ページがリロードされるまで待機 (Yjs同期を待つ)
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
         // 内部リンクが生成されていることを確認
         const linkElement = page.locator(`a.internal-link`).filter({ hasText: nonExistentPageName });

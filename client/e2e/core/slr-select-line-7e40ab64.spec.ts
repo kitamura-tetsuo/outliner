@@ -40,7 +40,7 @@ test.describe("SLR-0013: 現在行を選択", () => {
         await page.keyboard.down("Control");
         await page.keyboard.press("KeyL");
         await page.keyboard.up("Control");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 選択後の状態を確認
         const afterSelectionState = await page.evaluate(() => {

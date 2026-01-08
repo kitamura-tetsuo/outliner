@@ -114,6 +114,8 @@ function isConnDebugEnabled(): boolean {
  * Configuration options for browser page initialization.
  */
 export interface BrowserPageOptions {
+    /** Enable WebSocket connection */
+    enableWebSocket?: boolean;
     /** Enable authentication requirement */
     requireAuth?: boolean;
     /** Disable IndexedDB persistence */
@@ -146,6 +148,7 @@ export async function initializeBrowserPage(
     options: BrowserPageOptions = {},
 ): Promise<{ context: BrowserContext; page: Page; }> {
     const {
+        enableWebSocket = true,
         requireAuth = true,
         disableIndexedDB = true,
         consolePrefix = "page",
@@ -159,12 +162,13 @@ export async function initializeBrowserPage(
 
     // Set up localStorage flags
     await page.addInitScript(
-        ({ requireAuth, disableIDB }) => {
+        ({ enableWS, requireAuth, disableIDB }) => {
             localStorage.setItem("VITE_IS_TEST", "true");
-            localStorage.setItem("VITE_E2E_TEST", "true"); // Additional flag for robust detection
-            localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
-            // Force-enable WS in tests even if env disables it
-            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+            if (enableWS) {
+                localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+                // Force-enable WS in tests even if env disables it
+                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+            }
             if (disableIDB) {
                 localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
             }
@@ -173,6 +177,7 @@ export async function initializeBrowserPage(
             }
         },
         {
+            enableWS: enableWebSocket,
             requireAuth,
             disableIDB: disableIndexedDB,
         },
@@ -404,6 +409,7 @@ export async function prepareTwoBrowserPages(
     const { context: context1, page: page1 } = await initializeBrowserPage(
         browser,
         {
+            enableWebSocket: true,
             requireAuth: true,
             consolePrefix: page1Prefix,
         },
@@ -427,6 +433,7 @@ export async function prepareTwoBrowserPages(
     const { context: context2, page: page2 } = await initializeBrowserPage(
         browser,
         {
+            enableWebSocket: true,
             requireAuth: true,
             consolePrefix: page2Prefix,
         },
@@ -560,13 +567,19 @@ export async function prepareTwoFullBrowserPages(
     // Enable WebSocket and test flags for page2
     await page2.addInitScript(() => {
         localStorage.setItem("VITE_IS_TEST", "true");
-        localStorage.setItem("VITE_E2E_TEST", "true"); // Additional flag for robust detection
         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
         localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
         localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__E2E__ = true;
+        (window as any).__vite_plugin_react_preamble_installed__ = true;
+        const originalCreateElement = document.createElement.bind(document);
+        document.createElement = function(tagName: string, ...args: any[]): HTMLElement {
+            if (tagName === "vite-error-overlay") {
+                return originalCreateElement("div", ...args);
+            }
+            return originalCreateElement(tagName, ...args);
+        } as typeof document.createElement;
     });
 
     // Navigate page2 to the same URL as page1

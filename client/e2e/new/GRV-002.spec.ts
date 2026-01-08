@@ -29,7 +29,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
             const pages = gs?.pages?.current;
             // Yjs Items は Array ではないが length を持つ
             return !!(pages && typeof (pages as any).length === "number" && (pages as any).length >= 1);
-        }, { timeout: 30000 });
+        }, { timeout: 15000 });
     });
 
     test("ECharts library initialization", async ({ page }) => {

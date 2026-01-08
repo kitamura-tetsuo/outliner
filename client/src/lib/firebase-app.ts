@@ -14,8 +14,7 @@ function validateFirebaseConfig() {
         "VITE_FIREBASE_APP_ID",
     ];
 
-    const metaEnv = ((typeof import.meta !== "undefined" && import.meta.env) || {}) as any;
-    const missingVars = requiredEnvVars.filter(varName => !metaEnv[varName]);
+    const missingVars = requiredEnvVars.filter(varName => !import.meta.env[varName]);
 
     if (missingVars.length > 0) {
         const errorMessage = `Missing required Firebase environment variables: ${missingVars.join(", ")}`;
@@ -28,24 +27,14 @@ function validateFirebaseConfig() {
 function getFirebaseConfig() {
     validateFirebaseConfig();
 
-    const metaEnv = ((typeof import.meta !== "undefined" && import.meta.env) || {}) as any;
-
-    const getProjectId = () => {
-        if (typeof window !== "undefined") {
-            const stored = window.localStorage?.getItem?.("VITE_FIREBASE_PROJECT_ID");
-            if (stored) return stored;
-        }
-        return metaEnv.VITE_FIREBASE_PROJECT_ID || "outliner-d57b0";
-    };
-
     return {
-        apiKey: metaEnv.VITE_FIREBASE_API_KEY || "demo-api-key",
-        authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || "outliner-d57b0.firebaseapp.com",
-        projectId: getProjectId(),
-        storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || "outliner-d57b0.appspot.com",
-        messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-        appId: metaEnv.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef",
-        measurementId: metaEnv.VITE_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
     };
 }
 

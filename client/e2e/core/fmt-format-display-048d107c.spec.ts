@@ -30,7 +30,7 @@ test.describe("フォーマット表示", () => {
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 最初のアイテムのHTMLを確認
         const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
@@ -42,9 +42,7 @@ test.describe("フォーマット表示", () => {
     test("カーソルがあるアイテムではプレーンテキストの入力内容がそのまま表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        const content = item.locator(".item-content");
-        await content.waitFor({ state: "visible" });
-        await content.click();
+        await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -70,9 +68,7 @@ test.describe("フォーマット表示", () => {
     test("太字フォーマット（[[text]]）が視覚的に太字で表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        const content = item.locator(".item-content");
-        await content.waitFor({ state: "visible" });
-        await content.click();
+        await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -85,7 +81,7 @@ test.describe("フォーマット表示", () => {
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 最初のアイテムのHTMLを確認
         const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
@@ -100,27 +96,21 @@ test.describe("フォーマット表示", () => {
             "これは[/ 斜体]のテキストです",
         ]);
 
-        // アイテムが読み込まれるまで待機
-        await page.waitForTimeout(2000);
+        // 少し待機してフォーマットが適用されるのを待つ
+        await page.waitForTimeout(500);
 
-        // seededされたアイテムのHTMLを確認（index 0またはindex 1）
-        const allItems = await page.locator(".outliner-item[data-item-id] .item-text").all();
-        let foundItalic = false;
-        for (const item of allItems) {
-            const html = await item.innerHTML();
-            if (html.includes("<em>斜体</em>")) {
-                foundItalic = true;
-                break;
-            }
-        }
+        // 最初のアイテム（ページタイトルではない）のHTMLを確認
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(firstItemId).not.toBeNull();
+        const firstItemHtml = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
+            .innerHTML();
 
-        // 斜体フォーマットが適用されているアイテムが存在することを確認
-        expect(foundItalic).toBe(true);
+        // 斜体フォーマットが適用されていることを確認
+        expect(firstItemHtml).toContain("<em>斜体</em>");
     });
 
     test("取り消し線フォーマット（[- text]）が視覚的に取り消し線付きで表示される", async ({ page }) => {
         // 最初のアイテムを選択
-        await TestHelpers.waitForOutlinerItems(page);
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click();
 
@@ -135,7 +125,7 @@ test.describe("フォーマット表示", () => {
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 最初のアイテムのHTMLを確認
         const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
@@ -147,9 +137,7 @@ test.describe("フォーマット表示", () => {
     test("コードフォーマット（`text`）が視覚的にコードスタイルで表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        const content = item.locator(".item-content");
-        await content.waitFor({ state: "visible" });
-        await content.click();
+        await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -162,7 +150,7 @@ test.describe("フォーマット表示", () => {
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 最初のアイテムのHTMLを確認
         const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
@@ -174,9 +162,7 @@ test.describe("フォーマット表示", () => {
     test("アイテムをクリックするとプレーンテキストが表示される", async ({ page }) => {
         // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
-        const content = item.locator(".item-content");
-        await content.waitFor({ state: "visible" });
-        await content.click();
+        await item.locator(".item-content").click();
 
         // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
@@ -189,7 +175,7 @@ test.describe("フォーマット表示", () => {
         await page.keyboard.type("別のアイテム");
 
         // 少し待機してフォーマットが適用されるのを待つ
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // 最初のアイテムのHTMLを確認（フォーマットされている）
         const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();

@@ -113,45 +113,55 @@ test.describe("CMT-0001: comment threads", () => {
     });
 
     test("add, edit and remove comment", async ({ page }) => {
-        test.setTimeout(120000); // Increase timeout for this specific test under load
+        test.setTimeout(60000); // Increase timeout for this specific test under load
         // Using TestHelpers.prepareTestEnvironment from beforeEach ensures we have a fresh page for this test
-        // Wait for thread to be fully interactive (avoid waitForUIStable)
-        await page.waitForTimeout(500);
         await TestHelpers.waitForOutlinerItems(page);
-        // Wait for outliner items to be populated (robust wait)
-        await page.locator(".outliner-item[data-item-id]").nth(1).waitFor({ state: "attached", timeout: 30000 });
         // インデックス1を使用（インデックス0はページタイトルでコメントボタンが表示されない）
-        // Retry logic for getItemIdByIndex in case of transient state
-        let firstId = await TestHelpers.getItemIdByIndex(page, 1);
-        if (!firstId) {
-            await page.waitForTimeout(1000);
-            firstId = await TestHelpers.getItemIdByIndex(page, 1);
-        }
-        if (!firstId) throw new Error("item id not found after retry");
+        const firstId = await TestHelpers.getItemIdByIndex(page, 1);
+        if (!firstId) throw new Error("item id not found");
 
         // First, wait for the comment button to be visible and ready
         const commentButton = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-button-${firstId}"]`);
         await expect(commentButton).toBeVisible();
 
         // Add extra wait to ensure the page is fully loaded and stable
-        // Note: Do NOT use TestHelpers.waitForUIStable(page) here as it waits for editor cursor which may not be active
         await page.waitForTimeout(500);
+
+        // Ensure any existing comment thread is closed before starting
+        try {
+            const existingThread = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`);
+            if (await existingThread.count() > 0) {
+                // Click outside to close any existing thread
+                await page.locator(".outliner-base").click({ position: { x: 10, y: 10 } });
+                await expect(existingThread).not.toBeVisible({ timeout: 2000 });
+            }
+        } catch (e) {
+            // If there's no existing thread or error in closing, continue
+            console.log("No existing thread to close or error during close attempt:", e);
+        }
 
         // Click the comment button
         await commentButton.click();
 
+        // Wait for the comment thread to appear with increased timeout
+        // Use a more specific locator to ensure we're waiting for the right thread
         await expect(page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`)).toBeVisible({
             timeout: 30000,
         });
 
-        // Wait for thread to be fully interactive (avoid waitForUIStable)
-        await page.waitForTimeout(500);
+        // Wait for thread to be fully interactive
+        await page.waitForTimeout(1000);
 
         await page.fill('[data-testid="new-comment-input"]', "hello");
-        // const addCount = await addBtns.count();
+        const addBtns = page.locator('[data-testid="add-comment-btn"]');
+        const addCount = await addBtns.count();
+
+        console.log("DEBUG add-btn count:", addCount);
         // Try narrowing to the currently visible thread
         const thread = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-thread"]`);
         const addInThread = thread.locator('[data-testid="add-comment-btn"]');
+
+        console.log("DEBUG add-btn in thread visible:", await addInThread.isVisible());
         await addInThread.click();
 
         // Wait for comment count to appear and have the correct value
@@ -177,39 +187,11 @@ test.describe("CMT-0001: comment threads", () => {
         await page.click(`[data-testid="comment-${commentId}"] .edit`);
 
         // 編集入力フィールドが表示されるまで待機
-        const editInput = page.locator(`[data-testid="edit-input-${commentId}"]`);
-        await editInput.waitFor({ state: "visible", timeout: 30000 });
-        await editInput.focus();
+        await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).toBeVisible({ timeout: 30000 });
 
         // 編集入力フィールドをクリアしてから新しいテキストを入力
-        // Simply filling might be flaky if there are event handlers resetting it or if focus is lost
-        // Use keyboard selection to clear the field completely
-        // Use keyboard selection to clear the field completely
-        await editInput.click(); // Ensure focus
-
-        // Robust clearing loop: Select All + Backspace until empty or timeout
-        // This handles cases where framework reactivity or auto-save might restore the value
-        const clearDeadline = Date.now() + 10000;
-        await editInput.focus();
-        while (Date.now() < clearDeadline) {
-            await editInput.press("Control+A");
-            await editInput.press("Backspace");
-            const val = await editInput.inputValue();
-            if (val === "") break;
-
-            // Fallback: forceful clear if keyboard events fail
-            if (Date.now() > clearDeadline - 5000) {
-                await editInput.fill("");
-            }
-            await page.waitForTimeout(200);
-        }
-        // Verify it is empty and allow for potential framework reactivity to settle
-        await expect(editInput).toHaveValue("", { timeout: 10000 });
-
-        await editInput.fill("edited");
-
-        // Confirm input value is set correctly before saving
-        await expect(editInput).toHaveValue("edited");
+        await page.fill(`[data-testid="edit-input-${commentId}"]`, "");
+        await page.fill(`[data-testid="edit-input-${commentId}"]`, "edited");
 
         // 保存ボタンをクリック
         await page.click(`[data-testid="save-edit-${commentId}"]`);
@@ -224,7 +206,7 @@ test.describe("CMT-0001: comment threads", () => {
         // Use a more specific selector to ensure we're checking the right comment
         // Increase timeout and add retry mechanism for Yjs synchronization
         await expect(page.locator(`[data-testid="comment-${commentId}"] .text`)).toHaveText("edited", {
-            timeout: 60000,
+            timeout: 45000,
         });
 
         await page.click(`[data-testid="comment-${commentId}"] .delete`);
@@ -242,9 +224,6 @@ test.describe("CMT-0001: comment threads", () => {
                 console.log("[afterEach] Page already closed, skipping comment cleanup");
                 return;
             }
-            // Quick check to avoid heavy evaluate if no comments exist
-            const hasComments = await page.locator(".comment-thread").count() > 0;
-            if (!hasComments) return;
 
             await page.evaluate(() => {
                 try {

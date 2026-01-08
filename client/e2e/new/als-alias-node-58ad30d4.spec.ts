@@ -10,8 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ALS-0001: Alias node", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        test.setTimeout(90000);
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["first item", "second item"]);
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test("create and edit alias", async ({ page }) => {
@@ -56,7 +55,7 @@ test.describe("ALS-0001: Alias node", () => {
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
         // Yjsモデルへの反映を待機（ポーリングで確認）
-        await TestHelpers.waitForUIStable(page);
+        await page.waitForTimeout(500);
 
         // aliasTargetIdが正しく設定されていることを確認（Yjsモデルから取得）
         const deadline = Date.now() + 5000;

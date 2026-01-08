@@ -16,20 +16,15 @@ interface FormatToken {
  */
 export class ScrapboxFormatter {
     /**
-     * Map of characters to their HTML entity equivalents
+     * Helper to escape HTML characters
      */
-    private static readonly ESCAPE_MAP: { [key: string]: string; } = {
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;",
-    };
-
-    private static readonly ESCAPE_REGEX = /[&<>"']/g;
-
     public static escapeHtml(str: string): string {
-        return str.replace(ScrapboxFormatter.ESCAPE_REGEX, (m) => ScrapboxFormatter.ESCAPE_MAP[m]);
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     /**
@@ -828,19 +823,11 @@ export class ScrapboxFormatter {
     }
 
     // Cache compiled regexes
-    private static readonly HAS_FORMATTING_PATTERN = new RegExp(
-        [
-            /\[\[(.*?)\]\]/.source, // Bold
-            /\[\/(.*?)\]/.source, // Italic or Project link
-            /\[-(.*?)\]/.source, // Strikethrough
-            /`(.*?)`/.source, // Code
-            /<u>(.*?)<\/u>/.source, // Underline
-            /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/.source, // External link
-            /\[([^[\]/][^[\]]*?)\]/.source, // Internal link
-            /^>\s(.*?)$/m.source, // Quote
-        ].join("|"),
-        "m",
-    );
+    private static readonly BASIC_FORMAT_PATTERN = /\[\[(.*?)\]\]|\[\/(.*?)\]|\[-(.*?)\]|`(.*?)`|<u>(.*?)<\/u>/;
+    private static readonly LINK_PATTERN = /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/;
+    private static readonly INTERNAL_LINK_PATTERN = /\[([^[\]/][^[\]]*?)\]/;
+    private static readonly PROJECT_LINK_PATTERN = /\[\/([\w\-/]+)\]/;
+    private static readonly QUOTE_PATTERN = /^>\s(.*?)$/m;
 
     /**
      * テキストにScrapbox構文のフォーマットが含まれているかチェックする
@@ -859,27 +846,21 @@ export class ScrapboxFormatter {
 
         if (!mightHaveFormat) return false;
 
-        return ScrapboxFormatter.HAS_FORMATTING_PATTERN.test(text);
+        return ScrapboxFormatter.BASIC_FORMAT_PATTERN.test(text)
+            || ScrapboxFormatter.LINK_PATTERN.test(text)
+            || ScrapboxFormatter.INTERNAL_LINK_PATTERN.test(text)
+            || ScrapboxFormatter.PROJECT_LINK_PATTERN.test(text)
+            || ScrapboxFormatter.QUOTE_PATTERN.test(text);
     }
 
     /**
      * 現在のプロジェクトURLプレフィックスを取得する
-     * テスト環境ではデフォルト値 "Untitled Project" を使用
      */
     private static getProjectPrefix(): string {
         if (typeof window !== "undefined") {
             const store = (window as any).appStore || (window as any).generalStore;
             if (store?.project?.title) {
                 return "/" + encodeURIComponent(store.project.title);
-            }
-            // For test environment, return default project prefix
-            // This is needed because unit tests don't set up the full store
-            if (
-                typeof window.localStorage !== "undefined"
-                && (window.localStorage.getItem("VITE_IS_TEST") === "true"
-                    || window.localStorage.getItem("VITE_E2E_TEST") === "true")
-            ) {
-                return "/Untitled%20Project";
             }
         }
         return "";

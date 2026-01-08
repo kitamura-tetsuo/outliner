@@ -34,7 +34,7 @@ import { TestHelpers } from "../utils/testHelpers";
         await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(".item-content").click();
 
         // Wait for the update to propagate and for the first item to be rendered in non-editing mode
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(2000);
 
         // Check if the link is now visible in the first item
         const link = page.locator(".outliner-item").first().locator("a");

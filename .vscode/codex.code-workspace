@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"name": "workspace",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"window.title": "codex web${separator}${activeEditorShort}${separator}${remoteName}",
+	}
+}
