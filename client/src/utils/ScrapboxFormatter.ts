@@ -19,12 +19,22 @@ export class ScrapboxFormatter {
      * Helper to escape HTML characters
      */
     public static escapeHtml(str: string): string {
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+        return str.replace(/[&<>"']/g, match => {
+            switch (match) {
+                case "&":
+                    return "&amp;";
+                case "<":
+                    return "&lt;";
+                case ">":
+                    return "&gt;";
+                case '"':
+                    return "&quot;";
+                case "'":
+                    return "&#039;";
+                default:
+                    return match;
+            }
+        });
     }
 
     /**
