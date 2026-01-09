@@ -30,7 +30,7 @@ module.exports = {
         },
         {
             name: "log-service",
-            script: "log-service.js",
+            script: "log-service.cjs",
             cwd: "./server",
             watch: false,
             env: {

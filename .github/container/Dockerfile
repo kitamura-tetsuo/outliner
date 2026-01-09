@@ -17,6 +17,7 @@ WORKDIR /cache
 # Copy scripts and package files
 COPY scripts/ scripts/
 COPY firebase.json .firebaserc ./
+COPY package.json package-lock.json ./
 COPY client/package.json client/package-lock.json ./client/
 COPY server/package.json server/package-lock.json ./server/
 COPY functions/package.json functions/package-lock.json ./functions/
