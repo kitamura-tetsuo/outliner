@@ -132,8 +132,8 @@ export class TestHelpers {
             TestHelpers.slog("Navigation completed", { url });
 
             // Wait for the page to load and Yjs to connect
-        // Increased from 3s to 10s for CI environments
-        await page.waitForTimeout(10000);
+            // Increased from 3s to 10s for CI environments
+            await page.waitForTimeout(10000);
 
             // Wait for Yjs to connect before checking for items
             TestHelpers.slog("Waiting for __YJS_STORE__ to be connected...");
