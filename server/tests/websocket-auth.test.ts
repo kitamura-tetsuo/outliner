@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import sinon from "sinon";
 import admin from "firebase-admin";
-import { extractAuthToken, verifyIdTokenCached, clearTokenCache, getTokenCacheSize } from "../src/websocket-auth.js";
+import sinon from "sinon";
+import { clearTokenCache, extractAuthToken, getTokenCacheSize, verifyIdTokenCached } from "../src/websocket-auth.js";
 
 describe("websocket auth helpers", () => {
     let originalNodeEnv: string | undefined;
@@ -15,8 +15,8 @@ describe("websocket auth helpers", () => {
 
         // Ensure admin app is initialized (if not already)
         if (!admin.apps.length) {
-             // Mock app if needed
-             // admin.initializeApp();
+            // Mock app if needed
+            // admin.initializeApp();
         }
 
         // Create the stub
@@ -24,7 +24,7 @@ describe("websocket auth helpers", () => {
 
         // Stub the auth() method
         const authStub = {
-            verifyIdToken: verifyIdTokenStub
+            verifyIdToken: verifyIdTokenStub,
         };
         sinon.stub(admin, "auth").returns(authStub as any);
     });
@@ -53,7 +53,7 @@ describe("websocket auth helpers", () => {
             iss: "https://securetoken.google.com/test-project",
             sub: "u1",
             iat: Math.floor(Date.now() / 1000),
-            exp: Math.floor(Date.now() / 1000) + 3600
+            exp: Math.floor(Date.now() / 1000) + 3600,
         })).toString("base64").replace(/=/g, "");
         return `${header}.${payload}.`;
     };
@@ -91,7 +91,7 @@ describe("websocket auth helpers", () => {
             iss: "https://securetoken.google.com/test-project",
             sub: "u1",
             iat: Math.floor(Date.now() / 1000),
-            exp: Math.floor(Date.now() / 1000) + 1
+            exp: Math.floor(Date.now() / 1000) + 1,
         })).toString("base64").replace(/=/g, "");
         const token = `${header}.${payload}.`;
 

@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import sinon from "sinon";
 import admin from "firebase-admin";
-import { verifyIdTokenCached, clearTokenCache } from "../src/websocket-auth.js";
+import sinon from "sinon";
+import { clearTokenCache, verifyIdTokenCached } from "../src/websocket-auth.js";
 
 describe("websocket auth security (regression)", () => {
     let originalNodeEnv: string | undefined;
@@ -19,7 +19,7 @@ describe("websocket auth security (regression)", () => {
 
         verifyIdTokenStub = sinon.stub().rejects(new Error("Invalid token signature"));
         sinon.stub(admin, "auth").returns({
-            verifyIdToken: verifyIdTokenStub
+            verifyIdToken: verifyIdTokenStub,
         } as any);
 
         clearTokenCache();
@@ -39,7 +39,7 @@ describe("websocket auth security (regression)", () => {
             iss: "https://securetoken.google.com/test-project",
             sub: "hacker",
             iat: Math.floor(Date.now() / 1000),
-            exp: Math.floor(Date.now() / 1000) + 3600
+            exp: Math.floor(Date.now() / 1000) + 3600,
         })).toString("base64").replace(/=/g, "");
         return `${header}.${payload}.`;
     };
@@ -126,10 +126,10 @@ describe("websocket auth security (regression)", () => {
                     throw new Error("alg:none tokens are not allowed in this environment");
                 }
             */
-           // But this is inside the `try` block.
-           // And the `catch` block swallows it.
+            // But this is inside the `try` block.
+            // And the `catch` block swallows it.
 
-           // I must re-throw if it's that specific error.
+            // I must re-throw if it's that specific error.
         }
     });
 
