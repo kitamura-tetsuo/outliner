@@ -93,7 +93,6 @@ jest.mock("firebase-admin", () => {
         auth: () => authObj,
         firestore,
         FieldValue: { serverTimestamp: () => "server-timestamp" },
-        apps: [],
     };
 });
 
@@ -227,8 +226,8 @@ describe("認証サービスのテスト", () => {
                 .post("/api/get-container-users")
                 .send({ idToken: "valid-token", containerId: "cont-1" });
 
-            expect(res.status).to.equal(403);
-            expect(res.body).to.have.property("error", "Admin privileges required");
+            expect(res.status).toBe(403);
+            expect(res.body).toHaveProperty("error", "Admin privileges required");
         });
 
         test("管理者はユーザー一覧を取得できる", async () => {
@@ -237,9 +236,9 @@ describe("認証サービスのテスト", () => {
                 .send({ idToken: "admin-token", containerId: "cont-1" })
                 .expect(200);
 
-            expect(res.body).to.have.property("users");
-            expect(Array.isArray(res.body.users)).to.equal(true);
-            expect(res.body.users).to.deep.equal(["user1", "user2"]);
+            expect(res.body).toHaveProperty("users");
+            expect(Array.isArray(res.body.users)).toBe(true);
+            expect(res.body.users).toEqual(["user1", "user2"]);
         });
 
         test("存在しないコンテナIDで404を返す", async () => {
@@ -252,7 +251,7 @@ describe("認証サービスのテスト", () => {
 
             // 現在のモック設定では200が返される可能性があるため、
             // このテストは実装に依存する
-            expect([200, 404]).to.include(res.status);
+            expect([200, 404]).toContain(res.status);
         });
 
         test("containerIdが無い場合400を返す", async () => {
@@ -260,8 +259,8 @@ describe("認証サービスのテスト", () => {
                 .post("/api/get-container-users")
                 .send({ idToken: "admin-token" });
 
-            expect(res.status).to.equal(400);
-            expect(res.body).to.have.property("error", "Container ID is required");
+            expect(res.status).toBe(400);
+            expect(res.body).toHaveProperty("error", "Container ID is required");
         });
     });
 });

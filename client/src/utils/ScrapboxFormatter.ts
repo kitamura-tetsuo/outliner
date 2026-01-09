@@ -16,21 +16,15 @@ interface FormatToken {
  */
 export class ScrapboxFormatter {
     /**
-     * Map of characters to their HTML entity equivalents
-     */
-    private static readonly ESCAPE_MAP: { [key: string]: string; } = {
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;",
-    };
-
-    /**
      * Helper to escape HTML characters
      */
     public static escapeHtml(str: string): string {
-        return str.replace(/[&<>"']/g, (m) => ScrapboxFormatter.ESCAPE_MAP[m]);
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     /**
@@ -829,19 +823,11 @@ export class ScrapboxFormatter {
     }
 
     // Cache compiled regexes
-    private static readonly HAS_FORMATTING_PATTERN = new RegExp(
-        [
-            /\[\[(.*?)\]\]/.source, // Bold
-            /\[\/(.*?)\]/.source, // Italic or Project link
-            /\[-(.*?)\]/.source, // Strikethrough
-            /`(.*?)`/.source, // Code
-            /<u>(.*?)<\/u>/.source, // Underline
-            /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/.source, // External link
-            /\[([^[\]/][^[\]]*?)\]/.source, // Internal link
-            /^>\s(.*?)$/m.source, // Quote
-        ].join("|"),
-        "m",
-    );
+    private static readonly BASIC_FORMAT_PATTERN = /\[\[(.*?)\]\]|\[\/(.*?)\]|\[-(.*?)\]|`(.*?)`|<u>(.*?)<\/u>/;
+    private static readonly LINK_PATTERN = /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/;
+    private static readonly INTERNAL_LINK_PATTERN = /\[([^[\]/][^[\]]*?)\]/;
+    private static readonly PROJECT_LINK_PATTERN = /\[\/([\w\-/]+)\]/;
+    private static readonly QUOTE_PATTERN = /^>\s(.*?)$/m;
 
     /**
      * テキストにScrapbox構文のフォーマットが含まれているかチェックする
@@ -860,7 +846,11 @@ export class ScrapboxFormatter {
 
         if (!mightHaveFormat) return false;
 
-        return ScrapboxFormatter.HAS_FORMATTING_PATTERN.test(text);
+        return ScrapboxFormatter.BASIC_FORMAT_PATTERN.test(text)
+            || ScrapboxFormatter.LINK_PATTERN.test(text)
+            || ScrapboxFormatter.INTERNAL_LINK_PATTERN.test(text)
+            || ScrapboxFormatter.PROJECT_LINK_PATTERN.test(text)
+            || ScrapboxFormatter.QUOTE_PATTERN.test(text);
     }
 
     /**
