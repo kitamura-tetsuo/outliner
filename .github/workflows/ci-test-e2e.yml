@@ -25,7 +25,7 @@ jobs:
       - name: Check for Dockerfile changes
         id: check_changes
         run: |
-          if git diff --name-only HEAD^ HEAD | grep -E "(\.github/container/Dockerfile|.*/package-lock.json|scripts/setup.sh|scripts/requirements.txt)"; then
+          if git diff --name-only HEAD^ HEAD | grep -E "(\.github/container/Dockerfile|.*/package-lock.json|scripts/setup.sh|scripts/requirements.txt|ecosystem.config.js)"; then
             echo "dockerfile_changed=true" >> $GITHUB_OUTPUT
             echo "Dockerfile changed, will rebuild container."
           else
