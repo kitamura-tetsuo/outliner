@@ -19,6 +19,7 @@ COPY scripts/ scripts/
 COPY firebase.json .firebaserc ./
 COPY package.json package-lock.json ./
 COPY client/package.json client/package-lock.json ./client/
+COPY client/src ./client/src
 COPY server/package.json server/package-lock.json server/tsconfig.json ./server/
 COPY server/src ./server/src
 COPY functions/package.json functions/package-lock.json ./functions/
