@@ -363,9 +363,7 @@ install_all_dependencies() {
   # Server dependencies
   cd "${ROOT_DIR}/server"
   npm_ci_if_needed
-  if [ -z "${IS_DOCKER_BUILD:-}" ]; then
-    npm run build
-  fi
+  npm run build
 
 
   # Firebase Functions dependencies
