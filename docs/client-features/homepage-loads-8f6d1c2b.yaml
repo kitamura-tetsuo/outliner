@@ -1,0 +1,11 @@
+id: APP-8f6d1c2b
+title: Home page loads after setup
+title-ja: セットアップ後にホームページが表示される
+description: The application shows the outliner page once the test environment is prepared.
+category: core
+status: experimental
+acceptance:
+- At least one outliner item is rendered
+- Outliner base element becomes visible after setup
+tests:
+- client/e2e/core/out-outline-page-visible-3f2d8a9c.spec.ts

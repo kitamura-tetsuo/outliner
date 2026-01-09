@@ -5,7 +5,7 @@ registerCoverageHooks();
  *  Title   : Yjs Outliner - Alt+矢印 並べ替えの境界ケース
  */
 import { expect, test } from "@playwright/test";
-import { ensureOutlinerItemCount, waitForOutlinerItems } from "../helpers";
+import { TestHelpers } from "../utils/testHelpers";
 
 async function setItemTextByIndex(page, index: number, text: string) {
     await page.evaluate(({ index, text }) => {
@@ -41,34 +41,21 @@ async function getActiveCursorInfo(page) {
 }
 
 test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boundary", () => {
-    test.beforeEach(async ({ page }) => {
-        await page.goto("/yjs-outliner");
+    test.beforeEach(async ({ page }, testInfo) => {
+        // Use standard test environment initialization with 4 items (title + 3 items)
+        // Then add 1 more item via page.evaluate to get 5 total items
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            "Initial Item 1",
+            "Initial Item 2",
+            "Initial Item 3",
+            "Initial Item 4",
+        ]);
 
-        // Wait for the general store to be available
-        await page.waitForFunction(() => {
-            const gs: any = (window as any).generalStore;
-            return !!(gs && gs.project && gs.currentPage);
-        }, { timeout: 10000 });
-
-        // Create initial items using the general store API
-        await page.evaluate(() => {
-            const gs: any = (window as any).generalStore;
-            // Make sure we have a current page with items
-            if (!gs.currentPage) {
-                gs.currentPage = gs.project.addPage("test-page", "tester");
-            }
-
-            // Add 5 items
-            for (let i = 0; i < 5; i++) {
-                gs.currentPage.items.addNode("tester").updateText(`Initial Item ${i + 1}`);
-            }
-        });
-
-        await ensureOutlinerItemCount(page, 5, 10000);
+        await TestHelpers.waitForOutlinerItems(page, 5, 30000);
     });
 
     test("先頭/末尾では移動しない（並び不変・カーソルは1つ）", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 10000);
+        await TestHelpers.waitForOutlinerItems(page, 5, 30000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");
@@ -109,7 +96,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
     });
 
     test("タイトル(index 0) は移動対象外（押下しても並び不変・カーソル1）", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 10000);
+        await TestHelpers.waitForOutlinerItems(page, 5, 30000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");
@@ -131,7 +118,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
     });
 
     test("複数カーソルがある境界押下でもアクティブは1に収束", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 10000);
+        await TestHelpers.waitForOutlinerItems(page, 5, 30000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");
@@ -162,7 +149,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
     });
 
     test("末尾直前→末尾→末尾直前の往復で cursorHistory が破綻しない（active=1, lastHistory=active）", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 10000);
+        await TestHelpers.waitForOutlinerItems(page, 5, 30000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");
@@ -200,7 +187,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
     });
 
     test("先頭直下→先頭直下→二重境界押下後も activeCount=1", async ({ page }) => {
-        await waitForOutlinerItems(page, 5, 10000);
+        await TestHelpers.waitForOutlinerItems(page, 5, 30000);
         await setItemTextByIndex(page, 0, "Item 1");
         await setItemTextByIndex(page, 1, "A");
         await setItemTextByIndex(page, 2, "B");

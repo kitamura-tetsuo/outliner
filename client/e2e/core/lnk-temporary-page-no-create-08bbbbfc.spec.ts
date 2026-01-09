@@ -22,7 +22,7 @@ test.describe("LNK-0004: 仮ページ未編集確認", () => {
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(300);
         }
 
         await page.goto(sourceUrl);
@@ -34,7 +34,7 @@ test.describe("LNK-0004: 仮ページ未編集確認", () => {
         const loginButton2 = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton2.isVisible()) {
             await loginButton2.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(300);
         }
 
         const currentUrl = page.url();

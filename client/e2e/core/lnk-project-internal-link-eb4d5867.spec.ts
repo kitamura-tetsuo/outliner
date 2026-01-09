@@ -18,8 +18,8 @@ test.describe("LNK-0002: プロジェクト内部リンク", () => {
     });
 
     test("プロジェクト内部リンクが正しく機能する", async ({ page }) => {
-        await page.waitForTimeout(500);
         const projectLink = page.locator('a.internal-link.project-link[href="/project-name/page-name"]');
+        await projectLink.waitFor({ state: "visible", timeout: 10000 });
         await expect(projectLink).toHaveCount(1);
 
         const target = await projectLink.getAttribute("target");

@@ -7,3 +7,13 @@
 
 **Learning:** `ScrapboxFormatter` was running expensive regex replacements for every item render, even for plain text. Also, `OutlinerItem` was using `{#key}` with a frequently updating store property (`overlayPulse`), causing full DOM destruction/recreation on every cursor move.
 **Action:** Use `$derived` to memoize expensive computations in Svelte 5. Avoid `{#key}` wrappers around lightweight updates; rely on fine-grained reactivity instead. Add fast-path checks (like `hasFormatting`) before running expensive parsing logic.
+
+## 2025-05-20 - [ScrapboxFormatter Regex Caching and Fast Path]
+
+**Learning:** `ScrapboxFormatter.hasFormatting` was creating new RegExp objects on every call and checking them even for plain text. Implementing a fast path using `String.prototype.includes` for format trigger characters (`[`, `]`, `` ` ``, `<`, `>`) and caching regexes as static constants improved performance by ~36% in synthetic benchmarks.
+**Action:** Always verify if expensive operations like Regex checks can be skipped with cheap string checks (fast path) and cache compiled regexes where possible.
+
+## 2025-06-03 - [Items Iteration O(N^2)]
+
+**Learning:** The `Items` class in `app-schema.ts` had an iteration complexity of O(N^2) because `at(index)` called `childrenKeys()` which sorted keys on every call. Changing the iterator to sort once and iterate improved performance by ~500x.
+**Action:** When implementing iterators or indexed access on sorted collections, ensure that the sort operation is cached or performed once per iteration, rather than per element access.

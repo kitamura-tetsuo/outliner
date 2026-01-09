@@ -13,18 +13,22 @@
         "uuid": "^11.1.0",
         "ws": "^8.18.1",
         "y-leveldb": "^0.2.0",
-        "y-websocket": "^2.1.0",
+        "y-websocket": "^3.0.0",
         "yjs": "^13.6.27",
+        "yjs-orderedtree": "^1.0.1-beta.3",
         "zod": "^4.1.13"
     },
     "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
+        "@types/express": "^5.0.6",
+        "@types/uuid": "^10.0.0",
         "@types/ws": "^8.18.1",
         "chai": "^6.2.1",
         "dotenv": "^17.2.0",
         "jest": "^30.0.5",
         "mocha": "^11.7.5",
         "nodemon": "^3.1.11",
+        "patch-package": "^8.0.1",
         "sinon": "^21.0.0",
         "supertest": "^7.1.4",
         "ts-node": "^10.9.2",
@@ -39,14 +43,19 @@
     },
     "main": "dist/index.js",
     "name": "fluid-outliner-server",
+    "type": "module",
     "scripts": {
         "build": "tsc",
         "create-test-user": "node utils/create-test-user.js",
-        "dev": "nodemon log-service.js",
+        "dev": "nodemon log-service.cjs",
         "start": "node dist/index.js",
-        "start:log-service": "node log-service.js",
+        "start:log-service": "node log-service.cjs",
         "test": "bash ../scripts/run-server-tests.sh",
-        "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000"
+        "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000",
+        "postinstall": "patch-package"
     },
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "resolutions": {
+        "yjs": "^13.6.27"
+    }
 }
