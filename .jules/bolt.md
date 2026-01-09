@@ -13,7 +13,7 @@
 **Learning:** `ScrapboxFormatter.hasFormatting` was creating new RegExp objects on every call and checking them even for plain text. Implementing a fast path using `String.prototype.includes` for format trigger characters (`[`, `]`, `` ` ``, `<`, `>`) and caching regexes as static constants improved performance by ~36% in synthetic benchmarks.
 **Action:** Always verify if expensive operations like Regex checks can be skipped with cheap string checks (fast path) and cache compiled regexes where possible.
 
-## 2025-05-24 - [Items Iterator Optimization]
+## 2025-06-03 - [Items Iteration O(N^2)]
 
-**Learning:** The `Items` class iterator was calling `childrenKeys()` (which sorts keys) on every step via `at(index)`, resulting in O(N^2) complexity for iteration. This caused massive slowdowns (28s for 2000 items) when rendering lists or checking existence.
-**Action:** When implementing iterators for sorted collections, ensure the sorted key list is fetched once (snapshot) at the start of iteration to achieve O(N) performance.
+**Learning:** The `Items` class in `app-schema.ts` had an iteration complexity of O(N^2) because `at(index)` called `childrenKeys()` which sorted keys on every call. Changing the iterator to sort once and iterate improved performance by ~500x.
+**Action:** When implementing iterators or indexed access on sorted collections, ensure that the sort operation is cached or performed once per iteration, rather than per element access.

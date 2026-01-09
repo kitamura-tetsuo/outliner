@@ -18,7 +18,7 @@ export class ScrapboxFormatter {
     /**
      * Map of characters to their HTML entity equivalents
      */
-    private static readonly ESCAPE_MAP: { [key: string]: string; } = {
+    private static readonly ESCAPE_MAP: Record<string, string> = {
         "&": "&amp;",
         "<": "&lt;",
         ">": "&gt;",
@@ -26,11 +26,8 @@ export class ScrapboxFormatter {
         "'": "&#039;",
     };
 
-    /**
-     * Helper to escape HTML characters
-     */
     public static escapeHtml(str: string): string {
-        return str.replace(/[&<>"']/g, (m) => ScrapboxFormatter.ESCAPE_MAP[m]);
+        return str.replace(/[&<>"']/g, (match) => ScrapboxFormatter.ESCAPE_MAP[match]);
     }
 
     /**
