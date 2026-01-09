@@ -91,7 +91,10 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
             tokenCache.set(token, { decoded, exp: expKey });
             return decoded;
         }
-    } catch (e) {
+    } catch (e: any) {
+        if (e.message && e.message.includes("alg:none tokens are not allowed")) {
+            throw e;
+        }
         console.warn("[Auth] Test mode: failed to parse alg:none token", e);
     }
 
