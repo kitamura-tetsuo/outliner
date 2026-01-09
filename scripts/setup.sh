@@ -215,9 +215,11 @@ cd "${ROOT_DIR}"
 npm_ci_if_needed
 
 # Stop any existing servers to ensure clean restart
-echo "Stopping any existing servers..."
-"${ROOT_DIR}/node_modules/.bin/pm2" delete all || true
-npx --yes kill-port 7091 || true
+if [ -z "${IS_DOCKER_BUILD:-}" ]; then
+  echo "Stopping any existing servers..."
+  "${ROOT_DIR}/node_modules/.bin/pm2" delete all || true
+  npx --yes kill-port 7091 || true
+fi
 
 # Start all test servers unless skipped
 if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then
