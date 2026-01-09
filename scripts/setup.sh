@@ -138,6 +138,14 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   echo "Installing all dependencies..."
   install_all_dependencies
 
+  # Build server to generate dist for Docker build
+  if [ -n "${IS_DOCKER_BUILD:-}" ]; then
+    echo "Building server for Docker..."
+    cd "${ROOT_DIR}/server"
+    npm run build
+    cd "${ROOT_DIR}"
+  fi
+
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"
   npx --yes playwright install chromium
@@ -217,7 +225,12 @@ npm_ci_if_needed
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
 "${ROOT_DIR}/node_modules/.bin/pm2" delete all || true
-npx --yes kill-port 7091 || true
+
+echo "Freeing up ports for test environment..."
+# Kill processes on all ports used by the test environment
+for port in 59099 58080 57070 57000 59200 54000 7091 7093 7090; do
+  npx --yes kill-port "$port" || true
+done
 
 # Start all test servers unless skipped
 if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then
