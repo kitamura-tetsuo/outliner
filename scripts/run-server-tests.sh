@@ -9,4 +9,4 @@ SKIP_SERVER_START=1 SKIP_PORT_WAIT=1 bash "$ROOT_DIR/scripts/setup.sh"
 
 cd "$ROOT_DIR/server"
 
-npx mocha tests/**/*.test.js --timeout 10000
+npx mocha --loader ts-node/esm tests/**/*.test.js --timeout 10000

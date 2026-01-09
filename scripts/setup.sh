@@ -138,6 +138,14 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   echo "Installing all dependencies..."
   install_all_dependencies
 
+  # Build server for Docker container
+  if [ -n "${IS_DOCKER_BUILD:-}" ]; then
+    echo "Building server for Docker container..."
+    cd "${ROOT_DIR}/server"
+    npm run build
+    cd "${ROOT_DIR}"
+  fi
+
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"
   npx --yes playwright install chromium
