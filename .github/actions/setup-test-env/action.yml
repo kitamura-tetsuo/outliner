@@ -20,6 +20,9 @@ runs:
         if [ -d "/cache/server/node_modules" ]; then
           cp -r /cache/server/node_modules server/
         fi
+        if [ -d "/cache/server/dist" ]; then
+          cp -r /cache/server/dist server/
+        fi
         if [ -d "/cache/functions/node_modules" ]; then
           cp -r /cache/functions/node_modules functions/
         fi
