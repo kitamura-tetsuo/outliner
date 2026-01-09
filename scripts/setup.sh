@@ -52,8 +52,8 @@ fix_permissions() {
   done
 }
 
-# Fix permissions before proceeding, but not in CI environments where it can fail
-if [ -z "${CI:-}" ]; then
+# Fix permissions before proceeding, but not in Docker builds where it can fail
+if [ -z "${IS_DOCKER_BUILD:-}" ]; then
   fix_permissions
 fi
 
@@ -90,8 +90,8 @@ fi
 # start_tinylicious (disabled on Yjs branch)
 # start_api_server   (deprecated; handled by SvelteKit APIs)
 
-# Setup pre-push hook, but not in CI environments
-if [ -z "${CI:-}" ]; then
+# Setup pre-push hook, but not in Docker builds
+if [ -z "${IS_DOCKER_BUILD:-}" ]; then
   rm ${ROOT_DIR}/.git/hooks/pre-push || true
   ln -s ${ROOT_DIR}/scripts/pre_push.sh ${ROOT_DIR}/.git/hooks/pre-push || true
 fi
@@ -127,8 +127,8 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   # Create Python virtual environment if it doesn't exist
   ensure_python_env
 
-  # Install pre-commit via pip, but not in CI environments
-  if [ -z "${CI:-}" ]; then
+  # Install pre-commit via pip, but not in Docker builds
+  if [ -z "${IS_DOCKER_BUILD:-}" ]; then
     if pip install --no-cache-dir pre-commit; then
       pre-commit install --hook-type pre-commit || echo "Warning: Failed to install pre-commit hook"
     else

@@ -131,8 +131,8 @@ clear_log_files() {
 
 # Install npm dependencies if needed
 npm_ci_if_needed() {
-  # Fix permissions before installing, but not in CI environments
-  if [ -z "${CI:-}" ] && [ "$(id -u)" = "0" ] && [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
+  # Fix permissions before installing, but not in Docker builds
+  if [ -z "${IS_DOCKER_BUILD:-}" ] && [ "$(id -u)" = "0" ] && [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
     echo "Fixing node_modules ownership before npm install..."
     chown -R node:node "node_modules" || true
   fi
@@ -337,8 +337,8 @@ EOV
 install_all_dependencies() {
   echo "Installing dependencies..."
 
-  # Fix permissions before installing, but not in CI environments
-  if [ -z "${CI:-}" ] && [ "$(id -u)" = "0" ]; then
+  # Fix permissions before installing, but not in Docker builds
+  if [ -z "${IS_DOCKER_BUILD:-}" ] && [ "$(id -u)" = "0" ]; then
     echo "Fixing permissions before installing dependencies..."
     for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
       if [ -d "$dir" ]; then

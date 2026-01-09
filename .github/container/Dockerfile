@@ -26,6 +26,7 @@ COPY functions/package.json functions/package-lock.json ./functions/
 ENV SKIP_SERVER_START=1
 ENV SKIP_PORT_WAIT=1
 ENV SKIP_INSTALL=0
+ENV IS_DOCKER_BUILD=true
 RUN bash scripts/setup.sh
 
 # Rebuild client dependencies that might need it (like esbuild)
