@@ -36,12 +36,25 @@
     });
 
     let query = $state("");
+    let debouncedQuery = $state("");
     let selected = $state(-1);
     let inputEl: HTMLInputElement | null = null;
     // Preserve focus across reactive project changes to keep dropdown stable in tests
     let shouldRefocus = $state(false);
     // Micro-sync tick to retrigger results during early init so that fallback pages populate
     let refreshTick = $state(0);
+
+    // Debounce query updates to avoid blocking the main thread on every keystroke
+    $effect(() => {
+        if (!query) {
+            debouncedQuery = "";
+            return;
+        }
+        const handler = setTimeout(() => {
+            debouncedQuery = query;
+        }, 200);
+        return () => clearTimeout(handler);
+    });
 
     // リアクティブに結果を計算
     let results = $derived.by(() => {
@@ -161,7 +174,7 @@
 
         if (!pagesArr.length) return [];
 
-        if (!query) {
+        if (!debouncedQuery) {
             const historyResults = searchHistoryStore.history
                 .map((h) => {
                     for (let i = 0; i < pagesArr.length; i++) {
@@ -176,10 +189,11 @@
         }
 
         const searchResults: Item[] = [];
+        const lowerQuery = debouncedQuery.toLowerCase();
         for (let i = 0; i < pagesArr.length; i++) {
             const page = pagesArr[i];
             const title = page?.text?.toString?.() ?? "";
-            if (page && title.toLowerCase().includes(query.toLowerCase())) {
+            if (page && title.toLowerCase().includes(lowerQuery)) {
                 searchResults.push(page);
             }
         }
@@ -240,9 +254,14 @@
     }
 
     function navigateToPage(page?: Item) {
+        // If query has changed but results haven't updated yet, treat results as stale
+        const isStale = query !== debouncedQuery;
+
         const targetPage =
             page ||
-            (selected >= 0 && results[selected] ? results[selected] : null);
+            (!isStale && selected >= 0 && results[selected]
+                ? results[selected]
+                : null);
         if (targetPage) {
             const title = targetPage.text ?? "";
             searchHistoryStore.add(title);
