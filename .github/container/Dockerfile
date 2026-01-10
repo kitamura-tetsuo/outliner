@@ -27,7 +27,7 @@ COPY functions/package.json functions/package-lock.json ./functions/
 # Install dependencies
 RUN npm install
 RUN cd client && npm install
-RUN cd server && npm install
+RUN cd server && npm install && npm run build
 RUN cd functions && npm install
 
 # Rebuild client dependencies that might need it (like esbuild)
