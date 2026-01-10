@@ -37,7 +37,21 @@ ensure_services() {
     return
   fi
 
-  # Ports that setup.sh is responsible for. If any are missing we trigger setup.
+  # Check if PM2 is available and all services are running
+  if command -v pm2 >/dev/null 2>&1; then
+    if pm2 list 2>/dev/null | grep -q "firebase-emulator.*online" && \
+       pm2 list 2>/dev/null | grep -q "yjs-server.*online" && \
+       pm2 list 2>/dev/null | grep -q "sveltekit-server.*online" && \
+       pm2 list 2>/dev/null | grep -q "api-server.*online"; then
+      echo "All PM2 services are running"
+      return 0
+    fi
+    echo "Some PM2 services are not running, restarting..."
+    "${SCRIPT_DIR}/setup.sh"
+    return
+  fi
+
+  # Fallback: check ports directly if PM2 is not available
   local required_ports=(
     "${TEST_API_PORT:-7091}"
     "${VITE_PORT:-7090}"

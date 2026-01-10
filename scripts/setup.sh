@@ -114,6 +114,13 @@ setup_environment_files
 if [ "$SKIP_INSTALL" -eq 0 ]; then
   echo "Installing global packages..."
   install_global_packages
+
+  # Register PM2 startup script for automatic restart on system boot
+  if command -v pm2 >/dev/null 2>&1; then
+    echo "Setting up PM2 startup script..."
+    pm2 startup 2>/dev/null || echo "Note: PM2 startup setup requires sudo. Run 'sudo env PATH=\$PATH:\$(which npm | xargs dirname) pm2 startup' manually if needed."
+    pm2 save 2>/dev/null || true
+  fi
   echo "Installing OS utilities..."
   install_os_utilities
   echo "Installing Python packages..."
@@ -205,6 +212,15 @@ cd "${ROOT_DIR}"
 
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
+
+# First try PM2 kill if available
+if command -v pm2 >/dev/null 2>&1; then
+  echo "Stopping all PM2 processes..."
+  pm2 kill 2>/dev/null || true
+  sleep 2
+fi
+
+# Fallback to port-based cleanup for any remaining processes
 kill_ports || echo "Warning: Some ports could not be killed"
 # Additional cleanup: kill any stuck Firebase processes
 pkill -9 -f "firebase emulators:start" 2>/dev/null || true

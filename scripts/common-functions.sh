@@ -151,9 +151,134 @@ npm_ci_if_needed() {
   fi
 }
 
-# Kill processes on specified ports using the JavaScript script
+# PM2 Helper Functions for Test Environment Management
+
+# Ensure PM2 is installed
+ensure_pm2() {
+  if ! command -v pm2 >/dev/null 2>&1; then
+    echo "Installing PM2 globally..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install -g pm2
+  fi
+}
+
+# Start all PM2 processes (idempotent - ensures processes are running)
+pm2_start_all() {
+  echo "Starting PM2 processes..."
+  ensure_pm2
+
+  cd "${ROOT_DIR}"
+
+  # Start Firebase emulator first (it's the foundational service)
+  if ! pm2 list | grep -q "firebase-emulator"; then
+    echo "Starting Firebase emulator..."
+    pm2 start ecosystem.firebase.config.js
+  else
+    echo "Firebase emulator already running, ensuring it's started..."
+    pm2 restart firebase-emulator || pm2 start firebase-emulator
+  fi
+
+  # Start Node.js services
+  if ! pm2 list | grep -q "yjs-server"; then
+    echo "Starting Yjs server..."
+    pm2 start ecosystem.config.js --only yjs-server
+  else
+    echo "Yjs server already running, ensuring it's started..."
+    pm2 restart yjs-server || pm2 start yjs-server
+  fi
+
+  if ! pm2 list | grep -q "sveltekit-server"; then
+    echo "Starting SvelteKit server..."
+    pm2 start ecosystem.config.js --only sveltekit-server
+  else
+    echo "SvelteKit server already running, ensuring it's started..."
+    pm2 restart sveltekit-server || pm2 start sveltekit-server
+  fi
+
+  if ! pm2 list | grep -q "api-server"; then
+    echo "Starting API server..."
+    pm2 start ecosystem.config.js --only api-server
+  else
+    echo "API server already running, ensuring it's started..."
+    pm2 restart api-server || pm2 start api-server
+  fi
+
+  # Save PM2 process list for resurrection
+  pm2 save
+
+  echo "All PM2 processes started"
+}
+
+# Stop all PM2 processes
+pm2_stop_all() {
+  echo "Stopping all PM2 processes..."
+  cd "${ROOT_DIR}"
+  if command -v pm2 >/dev/null 2>&1; then
+    pm2 kill 2>/dev/null || true
+    echo "All PM2 processes stopped"
+  fi
+}
+
+# Restart all PM2 processes
+pm2_restart_all() {
+  echo "Restarting all PM2 processes..."
+  cd "${ROOT_DIR}"
+  if command -v pm2 >/dev/null 2>&1; then
+    pm2 restart all
+    pm2 save
+    echo "All PM2 processes restarted"
+  fi
+}
+
+# Check PM2 status for all services
+pm2_status() {
+  echo "PM2 Process Status:"
+  cd "${ROOT_DIR}"
+  if command -v pm2 >/dev/null 2>&1; then
+    pm2 list
+  else
+    echo "PM2 is not installed"
+  fi
+}
+
+# Check if all required services are running via PM2
+pm2_all_running() {
+  local all_running=true
+  local services=("firebase-emulator" "yjs-server" "sveltekit-server" "api-server")
+
+  for service in "${services[@]}"; do
+    if ! pm2 list | grep -q "${service}.*online"; then
+      echo "Service not running: ${service}"
+      all_running=false
+    fi
+  done
+
+  if [ "$all_running" = true ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Get PM2 logs for a specific service
+pm2_logs() {
+  local service="${1:-all}"
+  cd "${ROOT_DIR}"
+  if command -v pm2 >/dev/null 2>&1; then
+    pm2 logs "$service" --lines 50 --nostream
+  fi
+}
+
+# Kill processes on specified ports using the JavaScript script (legacy fallback)
 kill_ports() {
   echo "Starting cleanup of development processes..."
+
+  # First try PM2 kill if available
+  if command -v pm2 >/dev/null 2>&1; then
+    echo "Stopping all PM2 processes..."
+    pm2 kill 2>/dev/null || true
+  fi
+
+  # Fallback to port-based cleanup for any remaining processes
   cd "${ROOT_DIR}"
   node scripts/kill-tinylicious.js
   return 0
@@ -161,9 +286,9 @@ kill_ports() {
 
 # Install global packages if needed
 install_global_packages() {
-  if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
-    echo "Installing global packages (firebase-tools, tinylicious)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install -g firebase-tools tinylicious dotenv-cli @dotenvx/dotenvx || true
+  if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null || ! command -v pm2 >/dev/null; then
+    echo "Installing global packages (firebase-tools, tinylicious, pm2)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install -g firebase-tools tinylicious dotenv-cli @dotenvx/dotenvx pm2 || true
   fi
 
   # if ! command -v dprint >/dev/null; then
@@ -376,192 +501,139 @@ install_all_dependencies() {
   cd "${ROOT_DIR}"
 }
 
-# Start Firebase emulator
+# Start Firebase emulator using PM2
 start_firebase_emulator() {
-  if port_is_open ${FIREBASE_AUTH_PORT}; then
-    echo "Firebase emulator already running, stopping it first..."
-    kill_ports
+  echo "Starting Firebase emulator via PM2..."
+
+  # Check if Firebase emulator is already running via PM2
+  if pm2 list 2>/dev/null | grep -q "firebase-emulator.*online"; then
+    echo "Firebase emulator already running via PM2, restarting to ensure clean state..."
+    pm2 restart firebase-emulator
+  else
+    # Ensure PM2 is installed
+    ensure_pm2
+
+    # Kill any existing emulator processes first
+    pkill -9 -f "firebase emulators:start" 2>/dev/null || true
     sleep 2
+
+    echo "Starting Firebase emulator..."
+    cd "${ROOT_DIR}"
+    pm2 start ecosystem.firebase.config.js
   fi
 
-  echo "Starting Firebase emulator..."
-  cd "${ROOT_DIR}"
-
-  # Create .env file for Firebase Functions (without reserved environment variables)
-  echo "Creating .env file for Firebase Functions..."
-  cat > "${ROOT_DIR}/functions/.env" << EOF
-AZURE_TENANT_ID=test-tenant-id
-AZURE_ENDPOINT=https://test.fluidrelay.azure.com
-AZURE_PRIMARY_KEY=test-primary-key
-AZURE_SECONDARY_KEY=test-secondary-key
-AZURE_ACTIVE_KEY=primary
-EOF
-
-  echo "Firebase Functions .env file contents:"
-  cat "${ROOT_DIR}/functions/.env" || echo "Failed to read .env file"
-
-  # Start Firebase emulator with detailed logging
-  echo "Firebase emulator starting with project: ${FIREBASE_PROJECT_ID}"
-  echo "Using config file: firebase.emulator.json"
-  echo "Starting emulators: auth,firestore,functions,hosting,storage"
-  firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
-  FIREBASE_PID=$!
-  echo "Firebase emulator started with PID: ${FIREBASE_PID}"
-  echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
-
-  cd "${ROOT_DIR}"
-
-  # Wait for Firebase emulator to start (concurrently)
-  echo "Waiting for Firebase emulator services to start (max 60s)..."
-  local timeout=60
+  # Wait for Firebase emulator to be ready
+  echo "Waiting for Firebase emulator services to start..."
+  local timeout=90
   local elapsed=0
   local auth_ready=false
   local functions_ready=false
   local hosting_ready=false
 
   while [ $elapsed -lt $timeout ]; do
-    if [ "$auth_ready" = false ]; then
-        if port_is_open ${FIREBASE_AUTH_PORT}; then auth_ready=true; fi
+    if [ "$auth_ready" = false ] && port_is_open ${FIREBASE_AUTH_PORT}; then
+      auth_ready=true
+      echo "Firebase Auth emulator is ready on port ${FIREBASE_AUTH_PORT}"
     fi
-    if [ "$functions_ready" = false ]; then
-        if port_is_open ${FIREBASE_FUNCTIONS_PORT}; then functions_ready=true; fi
+    if [ "$functions_ready" = false ] && port_is_open ${FIREBASE_FUNCTIONS_PORT}; then
+      functions_ready=true
+      echo "Firebase Functions emulator is ready on port ${FIREBASE_FUNCTIONS_PORT}"
     fi
-    if [ "$hosting_ready" = false ]; then
-        if port_is_open ${FIREBASE_HOSTING_PORT}; then hosting_ready=true; fi
+    if [ "$hosting_ready" = false ] && port_is_open ${FIREBASE_HOSTING_PORT}; then
+      hosting_ready=true
+      echo "Firebase Hosting emulator is ready on port ${FIREBASE_HOSTING_PORT}"
     fi
 
     if [ "$auth_ready" = true ] && [ "$functions_ready" = true ] && [ "$hosting_ready" = true ]; then
-        echo "All Firebase emulator services are ready."
-        break
+      echo "All Firebase emulator core services are ready."
+      break
     fi
 
-    sleep 1
-    elapsed=$((elapsed + 1))
-    if [ $((elapsed % 10)) -eq 0 ]; then
-        echo "Still waiting for Firebase services... ($((timeout - elapsed))s remaining)"
+    sleep 2
+    elapsed=$((elapsed + 2))
+    if [ $((elapsed % 20)) -eq 0 ]; then
+      echo "Still waiting for Firebase services... ($((timeout - elapsed))s remaining)"
     fi
   done
 
-  if [ "$auth_ready" = true ]; then
-    echo "Firebase Auth emulator is running on port ${FIREBASE_AUTH_PORT}"
-  else
-    echo "Warning: Firebase Auth emulator may not be ready on port ${FIREBASE_AUTH_PORT}"
-  fi
-
-  if [ "$functions_ready" = true ]; then
-    echo "Firebase Functions emulator is running on port ${FIREBASE_FUNCTIONS_PORT}"
-  else
-    echo "Warning: Firebase Functions emulator may not be ready on port ${FIREBASE_FUNCTIONS_PORT}"
-  fi
-
-  if [ "$hosting_ready" = true ]; then
-    echo "Firebase Hosting emulator is running on port ${FIREBASE_HOSTING_PORT}"
-  else
-    echo "Warning: Firebase Hosting emulator may not be ready on port ${FIREBASE_HOSTING_PORT}"
-  fi
-
   # Additional wait for Firebase Functions to fully initialize
-  # In CI environments, emulators may need more time to be fully ready
-  echo "Waiting additional 30 seconds for Firebase Functions to fully initialize..."
-  sleep 30
+  echo "Waiting additional 20 seconds for Firebase Functions to fully initialize..."
+  sleep 20
 
-  # Now that emulators are listening, initialize admin and test user
-  echo "Launching Firebase emulator initializer (admin + test user) ..."
-  # Force-correct emulator env for the initializer to avoid external drift
+  # Initialize Firebase emulator (admin + test user)
+  echo "Launching Firebase emulator initializer (admin + test user)..."
   export FIREBASE_AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
   export AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
   export FIRESTORE_EMULATOR_HOST="localhost:${FIREBASE_FIRESTORE_PORT}"
   export FIREBASE_EMULATOR_HOST="localhost:${FIREBASE_FUNCTIONS_PORT}"
-  echo "Using env: FIREBASE_AUTH_EMULATOR_HOST=${FIREBASE_AUTH_EMULATOR_HOST} FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST} FIREBASE_EMULATOR_HOST=${FIREBASE_EMULATOR_HOST}"
-  FIREBASE_AUTH_EMULATOR_HOST="${FIREBASE_AUTH_EMULATOR_HOST}" \
-  FIRESTORE_EMULATOR_HOST="${FIRESTORE_EMULATOR_HOST}" \
-  FIREBASE_EMULATOR_HOST="${FIREBASE_EMULATOR_HOST}" \
   node "${ROOT_DIR}/server/scripts/init-firebase-emulator.js"
 
-  # Test Firebase Functions endpoint directly
-  echo "Testing Firebase Functions endpoint directly..."
-  if curl -s -f "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/health" >/dev/null 2>&1; then
-    echo "Firebase Functions health endpoint is responding directly"
-  else
-    echo "WARNING: Firebase Functions health endpoint is not responding directly"
-  fi
+  # Save PM2 state
+  pm2 save
 
-  # Test Firebase Hosting endpoint
-  echo "Testing Firebase Hosting endpoint..."
-  if curl -s -f "http://localhost:${FIREBASE_HOSTING_PORT}/api/health" >/dev/null 2>&1; then
-    echo "Firebase Hosting health endpoint is responding"
-  else
-    echo "WARNING: Firebase Hosting health endpoint is not responding"
-  fi
+  # Verify Firebase Functions endpoints
+  echo "Verifying Firebase Functions endpoints..."
 
   # Test get-container-users endpoint
-  echo "Testing get-container-users endpoint..."
   response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/get-container-users")
-  echo "get-container-users endpoint returned HTTP status: $response"
   if [ "$response" = "401" ]; then
-    echo "✅ get-container-users endpoint is working correctly (401 for invalid token)"
+    echo "✅ get-container-users endpoint is working correctly"
   else
-    echo "❌ get-container-users endpoint returned unexpected status: $response"
-    echo "Checking Firebase emulator log..."
-    tail -30 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
+    echo "⚠️ get-container-users endpoint returned status: $response"
   fi
 
   # Test adminCheckForContainerUserListing endpoint
-  echo "Testing adminCheckForContainerUserListing endpoint..."
   response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/adminCheckForContainerUserListing")
-  echo "adminCheckForContainerUserListing endpoint returned HTTP status: $response"
   if [ "$response" = "401" ]; then
-    echo "✅ adminCheckForContainerUserListing endpoint is working correctly (401 for invalid token)"
+    echo "✅ adminCheckForContainerUserListing endpoint is working correctly"
   else
-    echo "❌ adminCheckForContainerUserListing endpoint returned unexpected status: $response"
-    echo "Response body:"
-    curl -s -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/adminCheckForContainerUserListing" || echo "Failed to get response body"
-
-    echo "Checking if Firebase Functions are loaded..."
-    echo "Firebase emulator log (last 50 lines):"
-    tail -50 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
-
-    echo "Checking Firebase Functions directly..."
-    direct_response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/adminCheckForContainerUserListing")
-    echo "Direct Firebase Functions call returned HTTP status: $direct_response"
+    echo "⚠️ adminCheckForContainerUserListing endpoint returned status: $response"
   fi
+
+  echo "Firebase emulator started via PM2"
 }
 
-# Start Yjs WebSocket server (auth + persistence)
+# Start Yjs WebSocket server (auth + persistence) using PM2
 start_yjs_server() {
   echo "Starting Yjs WebSocket server on port ${TEST_YJS_PORT}..."
-  cd "${ROOT_DIR}/server"
-  mkdir -p "${ROOT_DIR}/yjs-data"
-  # Ensure dependencies
-  if [ ! -d node_modules ]; then
-    echo "Installing server dependencies (npm ci) ..."
-    npm_config_proxy="" npm_config_https_proxy="" npm ci
-  fi
-  # Build TypeScript and start compiled server to avoid ts-node dependency issues
-  echo "Building server..."
-  if npm run | grep -q " build"; then
-    npm run build --silent || npm run build
-  fi
-  
-  
-  # Clean LevelDB database for fresh test state (always run to prevent schema conflicts)
+
+  # Clean LevelDB database for fresh test state
   echo "Cleaning LevelDB database for fresh test state..."
   rm -rf "${ROOT_DIR}/server/ydb" "${ROOT_DIR}/ydb" 2>/dev/null || true
   mkdir -p "${ROOT_DIR}/server/ydb"
   echo "LevelDB database cleaned successfully"
-  
-  echo "Launching compiled server..."
-  npx dotenvx run --env-file=.env.test -- bash -lc "PORT=${TEST_YJS_PORT} npm start --silent" \
-    </dev/null > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &
-  local yjs_pid=$!
-  echo "Yjs WebSocket server started with PID: ${yjs_pid}"
+
+  # Ensure server is built
+  cd "${ROOT_DIR}/server"
+  if [ ! -d node_modules ]; then
+    echo "Installing server dependencies..."
+    npm_config_proxy="" npm_config_https_proxy="" npm ci
+  fi
+  echo "Building server..."
+  npm run build --silent 2>/dev/null || npm run build
   cd "${ROOT_DIR}"
+
+  # Ensure PM2 is installed
+  ensure_pm2
+
+  # Check if Yjs server is already running via PM2
+  if pm2 list 2>/dev/null | grep -q "yjs-server.*online"; then
+    echo "Yjs server already running via PM2, restarting..."
+    pm2 restart yjs-server
+  else
+    echo "Starting Yjs server via PM2..."
+    pm2 start ecosystem.config.js --only yjs-server
+  fi
+
+  # Save PM2 state
+  pm2 save
 
   # Wait for the Yjs server to be ready
   if ! wait_for_port ${TEST_YJS_PORT}; then
     echo "Warning: Yjs WebSocket server may not be ready on port ${TEST_YJS_PORT}"
-    echo "Last 50 lines of Yjs server log:"
-    tail -50 "${ROOT_DIR}/server/logs/yjs-websocket.log" || echo "No Yjs log found"
+    echo "Check logs with: pm2 logs yjs-server"
+  else
+    echo "Yjs WebSocket server is ready on port ${TEST_YJS_PORT}"
   fi
 }
 
@@ -570,20 +642,48 @@ start_tinylicious() {
   echo "Tinylicious is disabled on the Yjs branch. Skipping."
 }
 
-# Start API server
+# Start API server using PM2
 start_api_server() {
   echo "Starting API server on port ${TEST_API_PORT}..."
-  cd "${ROOT_DIR}/server"
-  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} </dev/null > "${ROOT_DIR}/server/logs/test-log-service-tee.log" 2>&1 &
-  cd "${ROOT_DIR}"
+
+  # Ensure PM2 is installed
+  ensure_pm2
+
+  # Check if API server is already running via PM2
+  if pm2 list 2>/dev/null | grep -q "api-server.*online"; then
+    echo "API server already running via PM2, restarting..."
+    pm2 restart api-server
+  else
+    echo "Starting API server via PM2..."
+    pm2 start ecosystem.config.js --only api-server
+  fi
+
+  # Save PM2 state
+  pm2 save
+
+  echo "API server started on port ${TEST_API_PORT}"
 }
 
-# Start SvelteKit server
+# Start SvelteKit server using PM2
 start_sveltekit_server() {
   echo "Starting SvelteKit server on port ${VITE_PORT}..."
-  cd "${ROOT_DIR}/client"
-  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${VITE_PORT} </dev/null > "${ROOT_DIR}/server/logs/test-svelte-kit.log" 2>&1 &
-  cd "${ROOT_DIR}"
+
+  # Ensure PM2 is installed
+  ensure_pm2
+
+  # Check if SvelteKit server is already running via PM2
+  if pm2 list 2>/dev/null | grep -q "sveltekit-server.*online"; then
+    echo "SvelteKit server already running via PM2, restarting..."
+    pm2 restart sveltekit-server
+  else
+    echo "Starting SvelteKit server via PM2..."
+    pm2 start ecosystem.config.js --only sveltekit-server
+  fi
+
+  # Save PM2 state
+  pm2 save
+
+  echo "SvelteKit server started on port ${VITE_PORT}"
 }
 
 # Wait for all required ports
