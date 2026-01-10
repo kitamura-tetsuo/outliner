@@ -8,12 +8,9 @@ RUN apt-get update && \
 # Install global npm packages
 RUN npm install -g firebase-tools tinylicious dotenv-cli cross-env @dotenvx/dotenvx dprint
 
-# Create cache directories
-WORKDIR /cache
+# Set working directory
+WORKDIR /github/workspace
 
-# Copy package files
-# We use a pattern to avoid errors if directories don't exist, though we know they do.
-# But COPY requires explicit paths.
 # Copy scripts and package files
 COPY scripts/ scripts/
 COPY firebase.json .firebaserc ./
@@ -29,13 +26,10 @@ ENV SKIP_SERVER_START=1
 ENV SKIP_PORT_WAIT=1
 ENV SKIP_INSTALL=0
 ENV IS_DOCKER_BUILD=true
-RUN bash scripts/setup.sh
+RUN --mount=type=cache,target=/root/.npm bash scripts/setup.sh
 
 # Build server
 RUN cd server && npm run build
 
 # Rebuild client dependencies that might need it (like esbuild)
 RUN cd client && npm rebuild
-
-# Set working directory back to default
-WORKDIR /github/workspace
