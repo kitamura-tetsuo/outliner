@@ -25,7 +25,8 @@
         "resolveJsonModule": true
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "../client/src/schema/**/*"
     ],
     "exclude": [
         "node_modules",
