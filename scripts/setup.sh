@@ -26,7 +26,7 @@ handle_error() {
   fi
 }
 
-trap 'handle_error ${LINENO} $?' ERR
+# trap 'handle_error ${LINENO} $?' ERR
 
 # Load common configuration and functions
 source "${SCRIPT_DIR}/common-config.sh"
