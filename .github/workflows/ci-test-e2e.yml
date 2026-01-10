@@ -25,16 +25,26 @@ jobs:
       - name: Check for Dockerfile changes
         id: check_changes
         run: |
-          DIFF_TARGET=""
+          DIFF_COMMAND=""
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            DIFF_TARGET=$(git merge-base HEAD ${{ github.base_ref }})
-            echo "Pull request detected. Comparing HEAD against merge base $DIFF_TARGET"
+            # For PRs, compare against the merge base with the target branch
+            MERGE_BASE=$(git merge-base HEAD ${{ github.base_ref }})
+            echo "Pull request detected. Comparing HEAD against merge base $MERGE_BASE"
+            DIFF_COMMAND="git diff --name-only $MERGE_BASE HEAD"
           else
-            DIFF_TARGET=HEAD^
-            echo "Push event detected. Comparing HEAD against $DIFF_TARGET"
+            # For pushes, compare against the previous commit
+            # Handle the case of the first push to a new branch
+            if [ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]; then
+              echo "New branch detected. Checking all files in the first push."
+              DIFF_COMMAND="git ls-tree --name-only -r HEAD"
+            else
+              echo "Push event detected. Comparing HEAD against ${{ github.event.before }}"
+              DIFF_COMMAND="git diff --name-only ${{ github.event.before }} HEAD"
+            fi
           fi
 
-          if git diff --name-only $DIFF_TARGET HEAD | grep -E "(\.github/container/Dockerfile|.*/package-lock.json|scripts/setup.sh|scripts/requirements.txt|ecosystem.config.js)"; then
+          echo "Running diff: $DIFF_COMMAND"
+          if $DIFF_COMMAND | grep -E "(\.github/container/Dockerfile|.*/package-lock.json|scripts/setup.sh|scripts/requirements.txt|ecosystem.config.js)"; then
             echo "dockerfile_changed=true" >> $GITHUB_OUTPUT
             echo "Dockerfile or related files changed, will rebuild container."
           else
