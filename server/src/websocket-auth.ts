@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import type { IncomingMessage } from "http";
+import { sanitizeUrl } from "./utils/sanitize.js";
 
 if (!admin.apps.length) {
     if (process.env.FIREBASE_PROJECT_ID) {
@@ -38,7 +39,7 @@ export function extractAuthToken(req: IncomingMessage): string | undefined {
     try {
         const url = new URL(req.url ?? "", "http://localhost");
         const token = url.searchParams.get("auth");
-        console.log(`[Auth] req.url=${req.url}, token=${token ? "FOUND" : "MISSING"}`);
+        console.log(`[Auth] req.url=${sanitizeUrl(req.url)}, token=${token ? "FOUND" : "MISSING"}`);
         return token || undefined;
     } catch {
         console.error("[Auth] URL parse error");
