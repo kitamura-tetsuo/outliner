@@ -33,7 +33,6 @@ RUN bash scripts/setup.sh
 
 # Rebuild client dependencies that might need it (like esbuild)
 RUN cd client && npm rebuild
-COPY server/dist /cache/server/dist
 
-# Set working directory back to default
+# Set working directory for the final image
 WORKDIR /github/workspace
