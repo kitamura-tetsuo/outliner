@@ -32,7 +32,7 @@ ENV IS_DOCKER_BUILD=true
 RUN bash scripts/setup.sh
 
 # Build the server
-RUN cd server && npm run build
+RUN npx tsc --build server
 
 # Rebuild client dependencies that might need it (like esbuild)
 RUN cd client && npm rebuild
