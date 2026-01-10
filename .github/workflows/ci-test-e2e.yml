@@ -18,7 +18,7 @@ jobs:
       image: ${{ steps.set-image.outputs.image }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@vv4
         with:
           fetch-depth: 2
 
@@ -88,6 +88,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           clean: true
+
+      - name: Copy server build from cache
+        run: |
+          if [ -d "/cache/server/dist" ]; then
+            echo "Copying server build from cache..."
+            cp -r /cache/server/dist ./server/
+          else
+            echo "Cache not found, proceeding without cached server build."
+          fi
 
       - name: Setup Test Environment
         uses: ./.github/actions/setup-test-env
