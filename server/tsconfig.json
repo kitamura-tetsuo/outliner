@@ -22,13 +22,20 @@
         "allowSyntheticDefaultImports": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "composite": true
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "../client/src/schema/app-schema.ts"
     ],
     "exclude": [
         "node_modules",
         "dist"
+    ],
+    "references": [
+        {
+            "path": "../client"
+        }
     ]
 }
