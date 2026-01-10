@@ -117,6 +117,14 @@ jobs:
             grep -E -A1 -B0 "FAIL|FAILED" "job_logs/e2e-${{ matrix.project }}.log" >> $GITHUB_STEP_SUMMARY || true
           fi
 
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          echo "Dumping PM2 logs..."
+          npx pm2 logs --nostream
+          echo "Dumping log files..."
+          find logs -type f -name "*.log" -exec sh -c 'echo "==> {} <==\n" && cat "{}"' \;
+
       - name: Upload Logs & Artifacts
         if: failure()
         uses: actions/upload-artifact@v4
