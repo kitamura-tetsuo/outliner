@@ -16,7 +16,7 @@
         "y-websocket": "^3.0.0",
         "yjs": "^13.6.27",
         "yjs-orderedtree": "^1.0.1-beta.3",
-        "zod": "^4.1.13"
+        "zod": "^4.3.5"
     },
     "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
