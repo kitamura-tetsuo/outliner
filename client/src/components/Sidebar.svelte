@@ -54,6 +54,7 @@
                     viewBox="0 0 16 16"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
                 >
                     <path
                         d="M4 6L8 10L12 6"
@@ -66,20 +67,27 @@
             </button>
 
             {#if !isProjectsCollapsed}
-                <div class="project-list">
+                <ul class="project-list">
                     {#if projectStore.projects.length === 0}
-                        <p class="sidebar-placeholder">No projects available</p>
+                        <li class="sidebar-placeholder">No projects available</li>
                     {:else}
                         {#each projectStore.projects as project (project.id)}
-                            <a href={`/${project.id}`} class="project-item">
-                                <span class="project-name">{project.name}</span>
-                                {#if project.isDefault}
-                                    <span class="default-badge">Default</span>
-                                {/if}
-                            </a>
+                            <li>
+                                <a href={`/${project.id}`} class="project-item">
+                                    <span class="item-content-wrapper">
+                                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
+                                            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+                                        </svg>
+                                        <span class="project-name">{project.name}</span>
+                                    </span>
+                                    {#if project.isDefault}
+                                        <span class="default-badge">Default</span>
+                                    {/if}
+                                </a>
+                            </li>
                         {/each}
                     {/if}
-                </div>
+                </ul>
             {/if}
         </div>
 
@@ -100,6 +108,7 @@
                     viewBox="0 0 16 16"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
                 >
                     <path
                         d="M4 6L8 10L12 6"
@@ -112,36 +121,53 @@
             </button>
 
             {#if !isPagesCollapsed}
-                <div class="page-list">
+                <ul class="page-list">
                     {#if !pages || pages.length === 0}
-                        <p class="sidebar-placeholder">No pages available</p>
+                        <li class="sidebar-placeholder">No pages available</li>
                     {:else}
                         {#each pages as page (page.id)}
-                            <a
-                                class="page-item"
-                                href={resolve(
-                                    `/${encodeURIComponent(store.project?.title || "Untitled Project")}/${encodeURIComponent(page.text)}`,
-                                )}
-                            >
-                                <span class="page-title"
-                                    >{page.text || "Untitled page"}</span
+                            <li>
+                                <a
+                                    class="page-item"
+                                    href={resolve(
+                                        `/${encodeURIComponent(store.project?.title || "Untitled Project")}/${encodeURIComponent(page.text)}`,
+                                    )}
                                 >
-                                <span class="page-date"
-                                    >{new Date(
-                                        page.lastChanged,
-                                    ).toLocaleDateString()}</span
-                                >
-                            </a>
+                                    <span class="item-content-wrapper">
+                                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
+                                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                                            <polyline points="14 2 14 8 20 8"/>
+                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                            <line x1="10" y1="9" x2="8" y2="9"/>
+                                        </svg>
+                                        <span class="page-title"
+                                            >{page.text || "Untitled page"}</span
+                                        >
+                                    </span>
+                                    <span class="page-date"
+                                        >{new Date(
+                                            page.lastChanged,
+                                        ).toLocaleDateString()}</span
+                                    >
+                                </a>
+                            </li>
                         {/each}
                     {/if}
-                </div>
+                </ul>
             {/if}
         </div>
 
         <div class="sidebar-section">
             <h3 class="sidebar-section-title">Settings</h3>
             <a class="settings-link" href={resolve("/settings")}>
-                <span class="settings-text">Settings</span>
+                <span class="item-content-wrapper">
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.72l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <span class="settings-text">Settings</span>
+                </span>
             </a>
         </div>
     </div>
@@ -203,6 +229,7 @@
         color: #9ca3af;
         font-size: 0.875rem;
         font-style: italic;
+        list-style: none; /* Ensure no bullet for placeholder li */
     }
 
     .section-header {
@@ -246,6 +273,9 @@
 
     .project-list {
         margin-top: 0.5rem;
+        list-style: none; /* Remove bullets */
+        padding: 0;
+        margin: 0.5rem 0 0 0;
     }
 
     .project-item {
@@ -266,7 +296,7 @@
         background-color: rgba(0, 0, 0, 0.05);
     }
 
-    .project-item:last-child {
+    .project-list li:last-child .project-item {
         margin-bottom: 0;
     }
 
@@ -280,6 +310,9 @@
 
     .page-list {
         margin-top: 0.5rem;
+        list-style: none; /* Remove bullets */
+        padding: 0;
+        margin: 0.5rem 0 0 0;
     }
 
     .page-item {
@@ -300,7 +333,7 @@
         background-color: rgba(0, 0, 0, 0.05);
     }
 
-    .page-item:last-child {
+    .page-list li:last-child .page-item {
         margin-bottom: 0;
     }
 
@@ -310,7 +343,6 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        flex: 1;
         margin-right: 0.5rem;
     }
 
@@ -350,6 +382,27 @@
 
     .settings-text {
         font-size: 0.875rem;
+        color: #374151;
+    }
+
+    .item-content-wrapper {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .item-icon {
+        flex-shrink: 0;
+        margin-right: 0.5rem;
+        color: #6b7280;
+    }
+
+    /* Hover effect for icon */
+    .project-item:hover .item-icon,
+    .page-item:hover .item-icon,
+    .settings-link:hover .item-icon {
         color: #374151;
     }
 
@@ -412,6 +465,16 @@
     }
 
     :global(html.dark) .settings-text {
+        color: #e5e7eb;
+    }
+
+    :global(html.dark) .item-icon {
+        color: #9ca3af;
+    }
+
+    :global(html.dark) .project-item:hover .item-icon,
+    :global(html.dark) .page-item:hover .item-icon,
+    :global(html.dark) .settings-link:hover .item-icon {
         color: #e5e7eb;
     }
 </style>

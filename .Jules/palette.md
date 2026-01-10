@@ -17,3 +17,8 @@
 
 **Learning:** When adding absolutely positioned interactive elements (like a clear button) inside an input container, hardcoded dimensions on the input (`width: 340px`) can conflict with responsive container widths (`width: 100%`), causing misalignment.
 **Action:** Ensure the input width matches the container width (`width: 100%`) so that absolute positioning relative to the container remains visually correct across different viewport sizes.
+
+## 2026-01-09 - Semantic List Structure for Sidebar Navigation
+
+**Learning:** Sidebar navigation lists implemented as `<div>`s lose the semantic benefit of list items (e.g., "List of X items") for screen readers.
+**Action:** Use `<ul>` and `<li>` structure for lists of navigation links (like projects or pages) to provide better context for assistive technologies.
