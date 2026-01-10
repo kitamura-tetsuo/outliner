@@ -19,6 +19,7 @@ COPY scripts/ scripts/
 COPY firebase.json .firebaserc ./
 COPY package.json package-lock.json ./
 COPY client/package.json client/package-lock.json ./client/
+COPY client/tsconfig.json ./client/
 COPY client/src ./client/src
 COPY server/package.json server/package-lock.json server/tsconfig.json ./server/
 COPY server/src ./server/src
@@ -33,7 +34,6 @@ RUN bash scripts/setup.sh
 
 # Rebuild client dependencies that might need it (like esbuild)
 RUN cd client && npm rebuild
-COPY server/dist /cache/server/dist
 
 # Set working directory back to default
 WORKDIR /github/workspace
