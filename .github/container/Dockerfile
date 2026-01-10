@@ -29,6 +29,7 @@ ENV SKIP_SERVER_START=1
 ENV SKIP_PORT_WAIT=1
 ENV SKIP_INSTALL=0
 ENV IS_DOCKER_BUILD=true
+ENV CI=true
 RUN bash scripts/setup.sh
 
 # Rebuild client dependencies that might need it (like esbuild)
