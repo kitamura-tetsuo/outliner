@@ -33,6 +33,7 @@ RUN bash scripts/setup.sh
 
 # Rebuild client dependencies that might need it (like esbuild)
 RUN cd client && npm rebuild
+RUN cd client && npm ci
 RUN cd server && npm run build
 RUN cp -r server/dist /cache/server/
 
