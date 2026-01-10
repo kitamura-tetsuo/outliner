@@ -9,4 +9,5 @@ SKIP_SERVER_START=1 SKIP_PORT_WAIT=1 bash "$ROOT_DIR/scripts/setup.sh"
 
 cd "$ROOT_DIR/server"
 
-npx mocha tests/**/*.test.js --timeout 10000
+# Use ts-node/esm loader to handle TypeScript imports in ESM environment
+NODE_OPTIONS="--loader ts-node/esm --no-warnings" npx mocha "tests/**/*.test.{js,cjs,ts}" --timeout 10000
