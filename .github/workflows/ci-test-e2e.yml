@@ -20,14 +20,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0 # Fetch all history for accurate diff
 
       - name: Check for Dockerfile changes
         id: check_changes
         run: |
-          if git diff --name-only HEAD^ HEAD | grep -E "(\.github/container/Dockerfile|.*/package-lock.json|scripts/setup.sh|scripts/requirements.txt)"; then
+          # For PRs, compare against the base of the PR. For pushes, compare against the previous commit.
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            # Use merge-base to find the common ancestor
+            diff_target=$(git merge-base HEAD ${{ github.base_ref }})
+            echo "Running diff against merge-base $diff_target"
+            diff_command="git diff --name-only $diff_target HEAD"
+          else
+            echo "Running diff against previous commit"
+            diff_command="git diff --name-only HEAD^ HEAD"
+          fi
+
+          if $diff_command | grep -E "(\.github/container/Dockerfile|.*/package-lock.json|scripts/setup.sh|scripts/requirements.txt|ecosystem.config.js)"; then
             echo "dockerfile_changed=true" >> $GITHUB_OUTPUT
-            echo "Dockerfile changed, will rebuild container."
+            echo "Dockerfile or critical setup files changed, will rebuild container."
           else
             echo "dockerfile_changed=false" >> $GITHUB_OUTPUT
             echo "Dockerfile unchanged, using latest."
