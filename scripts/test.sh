@@ -9,6 +9,14 @@ mkdir -p "$LOGS_DIR"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 
+# In the CI container, server build artifacts are in /cache. Copy them to the workspace.
+if [ -d "/cache/server/dist" ]; then
+  echo "CI environment detected. Copying server build artifacts..."
+  mkdir -p "${PROJECT_ROOT}/server"
+  cp -r "/cache/server/dist" "${PROJECT_ROOT}/server/"
+fi
+
+
 # Ensure shared configuration (ports, environment) is available for auxiliary helpers.
 # The scripts/common-config.sh file expects ROOT_DIR to be defined.
 ROOT_DIR="${PROJECT_ROOT}"
