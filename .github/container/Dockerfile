@@ -39,3 +39,6 @@ RUN cd server && npm run build
 
 # Set working directory back to default
 WORKDIR /github/workspace
+
+# Copy cached dependencies and build artifacts to the workspace
+RUN cp -a /cache/. .
