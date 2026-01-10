@@ -34,5 +34,9 @@ RUN bash scripts/setup.sh
 # Rebuild client dependencies that might need it (like esbuild)
 RUN cd client && npm rebuild
 
+# Build server and cache the dist directory
+RUN cd server && npm run build
+RUN cp -r server/dist /cache/server/dist
+
 # Set working directory back to default
 WORKDIR /github/workspace
