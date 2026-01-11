@@ -29,6 +29,12 @@ runs:
         chmod +x server/node_modules/.bin/* || true
         chmod +x functions/node_modules/.bin/* || true
 
+    - name: Install scripts dependencies
+      shell: bash
+      run: |
+        cd scripts
+        npm ci
+
     - name: Setup test environment
       shell: bash
       run: |
