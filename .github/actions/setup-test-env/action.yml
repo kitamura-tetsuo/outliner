@@ -35,6 +35,11 @@ runs:
         cd scripts
         npm ci
 
+    - name: Install pm2
+      shell: bash
+      run: |
+        npm install -g pm2
+
     - name: Setup test environment
       shell: bash
       run: |
