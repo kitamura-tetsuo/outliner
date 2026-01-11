@@ -15,6 +15,8 @@ WORKDIR /cache
 # We use a pattern to avoid errors if directories don't exist, though we know they do.
 # But COPY requires explicit paths.
 # Copy scripts and package files
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY scripts/ scripts/
 COPY firebase.json .firebaserc ./
 COPY client/package.json client/package-lock.json ./client/
