@@ -138,14 +138,16 @@ export class ServiceManager {
     }
 
     static async monitorServices(services: ServiceConfig[], interval: number = 5000): Promise<void> {
-        const serviceStatus: { [key: string]: boolean } = {};
+        const serviceStatus: { [key: string]: boolean; } = {};
 
         console.log("Starting service monitor...");
 
         for (const service of services) {
             const isActive = await this.isPortActive(service.port);
             serviceStatus[service.name] = isActive;
-            console.log(`[${new Date().toISOString()}] Initial status for ${service.name}: ${isActive ? "UP" : "DOWN"}`);
+            console.log(
+                `[${new Date().toISOString()}] Initial status for ${service.name}: ${isActive ? "UP" : "DOWN"}`,
+            );
             if (!isActive) {
                 try {
                     await this.startService(service.name, service.command, service.args, service.port, service.cwd);
@@ -167,7 +169,13 @@ export class ServiceManager {
 
                     if (!isCurrentlyActive) {
                         try {
-                            await this.startService(service.name, service.command, service.args, service.port, service.cwd);
+                            await this.startService(
+                                service.name,
+                                service.command,
+                                service.args,
+                                service.port,
+                                service.cwd,
+                            );
                         } catch (error) {
                             console.error(`[${new Date().toISOString()}] Failed to restart ${service.name}:`, error);
                         }
