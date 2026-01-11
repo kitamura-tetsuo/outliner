@@ -331,10 +331,6 @@ EOV
 install_all_dependencies() {
   echo "Installing dependencies..."
 
-  # Root dependencies
-  cd "${ROOT_DIR}"
-  npm_ci_if_needed
-
   # Fix permissions before installing, but only if not in a CI environment
   if [ -z "${CI:-}" ]; then
     echo "Fixing permissions before installing dependencies..."
@@ -356,8 +352,8 @@ install_all_dependencies() {
     echo "Skipping permission fixes in CI environment."
   fi
 
-  # Root dependencies
-  cd "${ROOT_DIR}"
+  # Server dependencies
+  cd "${ROOT_DIR}/server"
   npm_ci_if_needed
 
   # Firebase Functions dependencies
