@@ -450,7 +450,6 @@ export class Items implements Iterable<Item> {
     addNode(author: string, index?: number): Item {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
-        const existingKeys = this.childrenKeys();
 
         const value = new Y.Map<ItemValueType>();
         value.set("id", nodeKey);
@@ -470,6 +469,9 @@ export class Items implements Iterable<Item> {
         if (index === undefined) {
             this.tree.setNodeOrderToEnd(nodeKey);
         } else {
+            // Lazy load keys only when index insertion is needed
+            // This prevents O(N^2) complexity during bulk appends where index is undefined
+            const existingKeys = this.childrenKeys();
             const normalized = Math.max(0, index);
 
             if (existingKeys.length === 0) {
