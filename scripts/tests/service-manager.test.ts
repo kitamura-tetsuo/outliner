@@ -1,51 +1,66 @@
-import * as http from "http";
-import type { Server } from "http";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { spawn } from "child_process";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceManager } from "../service-manager";
 
+// Mock child_process
+vi.mock("child_process", () => ({
+    exec: vi.fn(),
+    spawn: vi.fn(() => ({
+        unref: vi.fn(),
+    })),
+}));
+
 describe("ServiceManager", () => {
-    let server: Server;
-    let port: number;
+    beforeEach(() => {
+        vi.restoreAllMocks();
+    });
 
-    beforeAll(async () => {
-        await new Promise<void>((resolve) => {
-            server = http.createServer((_req, res) => {
-                res.writeHead(200);
-                res.end("ok");
-            });
-            server.listen(0, () => {
-                const address = server.address();
-                if (address && typeof address === "object") {
-                    port = address.port;
-                }
-                resolve();
-            });
+    describe("startService", () => {
+        it("should log a message and return if the service is already running", async () => {
+            const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+            vi.spyOn(ServiceManager, "isPortActive").mockResolvedValue(true);
+
+            await ServiceManager.startService("test-service", "test-command", [], 1234);
+
+            expect(consoleLogSpy).toHaveBeenCalledWith("test-service is already running on port 1234.");
+            expect(spawn).not.toHaveBeenCalled();
+            consoleLogSpy.mockRestore();
         });
-    });
 
-    afterAll(() => {
-        server.close();
-    });
+        it("should start the service and resolve when the port becomes active", async () => {
+            const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+            const isPortActiveSpy = vi.spyOn(ServiceManager, "isPortActive")
+                .mockResolvedValueOnce(false)
+                .mockResolvedValueOnce(false)
+                .mockResolvedValueOnce(true);
 
-    it("isPortActive should return true for an active port", async () => {
-        const isActive = await ServiceManager.isPortActive(port);
-        expect(isActive).toBe(true);
-    });
+            await ServiceManager.startService("test-service", "test-command", ["with-args"], 1234);
 
-    it("findPidByPort should return a PID for an active port", async () => {
-        const pid = await ServiceManager.findPidByPort(port);
-        expect(pid).toBeTypeOf("number");
-    });
+            expect(spawn).toHaveBeenCalledWith("test-command", ["with-args"], {
+                detached: true,
+                stdio: "ignore",
+            });
+            expect(consoleLogSpy).toHaveBeenCalledWith("Starting test-service...");
+            expect(consoleLogSpy).toHaveBeenCalledWith("test-service started successfully on port 1234.");
+            expect(isPortActiveSpy).toHaveBeenCalledTimes(3);
+            consoleLogSpy.mockRestore();
+        });
 
-    it("isPortActive should return false for an inactive port", async () => {
-        const inactivePort = port + 1000; // A port that is likely inactive
-        const isActive = await ServiceManager.isPortActive(inactivePort);
-        expect(isActive).toBe(false);
-    });
+        it("should throw an error if the service fails to start within the timeout", async () => {
+            const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+            vi.spyOn(ServiceManager, "isPortActive").mockResolvedValue(false);
 
-    it("findPidByPort should return null for an inactive port", async () => {
-        const inactivePort = port + 1000; // A port that is likely inactive
-        const pid = await ServiceManager.findPidByPort(inactivePort);
-        expect(pid).toBeNull();
+            // To avoid waiting for the real timeout, we can use fake timers
+            vi.useFakeTimers();
+            const promise = ServiceManager.startService("test-service", "test-command", [], 1234, 4000);
+            vi.advanceTimersByTime(4100);
+
+            await expect(promise).rejects.toThrow(
+                "Timeout waiting for test-service to start on port 1234.",
+            );
+
+            consoleLogSpy.mockRestore();
+            vi.useRealTimers();
+        }, 6000);
     });
 });
