@@ -18,7 +18,7 @@ test.describe("管理者チェック (API-0003)", () => {
     test("無効なトークンでは認証エラーが返る", async ({ page }) => {
         // Firebase Hostingエミュレーターのヘルスチェック
         try {
-            const healthResponse = await page.request.get("http://localhost:57000/api/health");
+            const healthResponse = await page.request.get("http://127.0.0.1:57000/api/health");
             console.log(`Health check status: ${healthResponse.status()}`);
             if (healthResponse.status() !== 200) {
                 console.log("Health check failed, Firebase Hosting emulator may not be running properly");
@@ -28,7 +28,7 @@ test.describe("管理者チェック (API-0003)", () => {
         }
 
         // まずFirebase Hostingエミュレーター経由でアクセスを試行
-        let response = await page.request.post("http://localhost:57000/api/adminCheckForProjectUserListing", {
+        let response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
             data: { idToken: "invalid-token", projectId: "test-project" },
         });
 
@@ -43,7 +43,7 @@ test.describe("管理者チェック (API-0003)", () => {
             // まずFunctions エミュレーターのヘルスチェック
             try {
                 const functionsHealthResponse = await page.request.get(
-                    "http://localhost:57070/outliner-d57b0/us-central1/health",
+                    "http://127.0.0.1:57070/outliner-d57b0/us-central1/health",
                 );
                 console.log(`Functions health check status: ${functionsHealthResponse.status()}`);
             } catch (error) {
@@ -51,7 +51,7 @@ test.describe("管理者チェック (API-0003)", () => {
             }
 
             response = await page.request.post(
-                "http://localhost:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing",
+                "http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing",
                 {
                     data: { idToken: "invalid-token", projectId: "test-project" },
                 },
@@ -78,7 +78,7 @@ test.describe("管理者チェック (API-0003)", () => {
 
     test("projectId未指定では400が返る", async ({ page }) => {
         // projectIdを指定せずにFirebase Functions APIを呼び出し、400エラーが返ることを確認
-        const response = await page.request.post("http://localhost:57000/api/adminCheckForProjectUserListing", {
+        const response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
             data: { idToken: "any-token" },
         });
 
@@ -90,7 +90,7 @@ test.describe("管理者チェック (API-0003)", () => {
 
     test("IDトークンが未指定では400が返る", async ({ page }) => {
         // IDトークンを指定せずにFirebase Functions APIを呼び出し、400エラーが返ることを確認
-        const response = await page.request.post("http://localhost:57000/api/adminCheckForProjectUserListing", {
+        const response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
             data: { projectId: "test-project" },
         });
 
@@ -102,7 +102,7 @@ test.describe("管理者チェック (API-0003)", () => {
 
     test("空のIDトークンでは400が返る", async ({ page }) => {
         // 空のIDトークンでFirebase Functions APIを呼び出し、400エラーが返ることを確認
-        const response = await page.request.post("http://localhost:57000/api/adminCheckForProjectUserListing", {
+        const response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
             data: { idToken: "", projectId: "test-project" },
         });
 

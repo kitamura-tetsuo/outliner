@@ -11,7 +11,7 @@ import { expect, test } from "@playwright/test";
 async function waitForHealth(request: import("@playwright/test").APIRequestContext, attempts = 10) {
     for (let i = 0; i < attempts; i++) {
         try {
-            const response = await request.get("http://localhost:57000/health");
+            const response = await request.get("http://127.0.0.1:57000/health");
             if (response.ok()) {
                 return response;
             }

@@ -11,14 +11,14 @@ test.describe("API-0001: Firebase Functions CORS and token validation", () => {
     // API tests don't need page preparation
 
     test("OPTIONS preflight returns 204", async ({ request }) => {
-        const response = await request.fetch("http://localhost:57000/api/save-container", {
+        const response = await request.fetch("http://127.0.0.1:57000/api/save-container", {
             method: "OPTIONS",
         });
         expect(response.status()).toBe(204);
     });
 
     test("save-container with invalid token returns error", async ({ request }) => {
-        const response = await request.post("http://localhost:57000/api/save-container", {
+        const response = await request.post("http://127.0.0.1:57000/api/save-container", {
             data: { idToken: "invalid", containerId: "test" },
         });
         expect(response.status()).toBe(500);

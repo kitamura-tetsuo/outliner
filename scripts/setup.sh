@@ -286,7 +286,7 @@ else
   API_READY=false
   for i in {1..36}; do
     # Check through Hosting emulator which is what the tests use
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${FIREBASE_HOSTING_PORT}/api/health" 2>/dev/null || echo "000")
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${FIREBASE_HOSTING_PORT}/api/health" 2>/dev/null || echo "000")
     if [ "$HTTP_CODE" = "200" ]; then
       echo "Firebase Functions API is ready (via Hosting)"
       API_READY=true
@@ -304,10 +304,10 @@ else
 
   # Initialize Firebase emulator (creates test users, etc.)
   echo "Initializing Firebase emulator..."
-  export FIREBASE_AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
-  export AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
-  export FIRESTORE_EMULATOR_HOST="localhost:${FIREBASE_FIRESTORE_PORT}"
-  export FIREBASE_EMULATOR_HOST="localhost:${FIREBASE_FUNCTIONS_PORT}"
+  export FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:${FIREBASE_AUTH_PORT}"
+  export AUTH_EMULATOR_HOST="127.0.0.1:${FIREBASE_AUTH_PORT}"
+  export FIRESTORE_EMULATOR_HOST="127.0.0.1:${FIREBASE_FIRESTORE_PORT}"
+  export FIREBASE_EMULATOR_HOST="127.0.0.1:${FIREBASE_FUNCTIONS_PORT}"
   cd "${ROOT_DIR}/server/scripts"
   node init-firebase-emulator.js || echo "Warning: Firebase emulator initialization had issues"
   cd "${ROOT_DIR}"
@@ -317,10 +317,10 @@ else
   YJS_READY=false
   for i in {1..24}; do
     # Check if the Yjs WebSocket port is open and responding
-    if nc -z localhost ${TEST_YJS_PORT} 2>/dev/null; then
+    if nc -z 127.0.0.1 ${TEST_YJS_PORT} 2>/dev/null; then
       # Additional check: verify it's actually a WebSocket by checking the response
-      WS_CHECK=$(curl -s --connect-timeout 2 --max-time 5 "http://localhost:${TEST_YJS_PORT}/" 2>/dev/null || echo "")
-      if [ -n "$WS_CHECK" ] || nc -z localhost ${TEST_YJS_PORT} 2>/dev/null; then
+      WS_CHECK=$(curl -s --connect-timeout 2 --max-time 5 "http://127.0.0.1:${TEST_YJS_PORT}/" 2>/dev/null || echo "")
+      if [ -n "$WS_CHECK" ] || nc -z 127.0.0.1 ${TEST_YJS_PORT} 2>/dev/null; then
         echo "Yjs WebSocket server is ready on port ${TEST_YJS_PORT}"
         YJS_READY=true
         break
@@ -355,9 +355,9 @@ fi
 sleep 10
 
 echo "Available services:"
-echo "- SvelteKit Server: http://localhost:${VITE_PORT}"
+echo "- SvelteKit Server: http://127.0.0.1:${VITE_PORT}"
 echo "- API Server: (disabled; using SvelteKit APIs)"
-echo "- Yjs WebSocket: ws://localhost:${TEST_YJS_PORT}"
-echo "- Firebase Auth: http://localhost:${FIREBASE_AUTH_PORT}"
-echo "- Firebase Firestore: http://localhost:${FIREBASE_FIRESTORE_PORT}"
-echo "- Firebase Functions: http://localhost:${FIREBASE_FUNCTIONS_PORT}"
+echo "- Yjs WebSocket: ws://127.0.0.1:${TEST_YJS_PORT}"
+echo "- Firebase Auth: http://127.0.0.1:${FIREBASE_AUTH_PORT}"
+echo "- Firebase Firestore: http://127.0.0.1:${FIREBASE_FIRESTORE_PORT}"
+echo "- Firebase Functions: http://127.0.0.1:${FIREBASE_FUNCTIONS_PORT}"
