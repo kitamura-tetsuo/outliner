@@ -114,7 +114,8 @@ describe("Attachment Security", () => {
 
   it("should NOT leak internal error details on upload failure", async () => {
     // Simulate a failure with sensitive internal details
-    const sensitiveError = "Internal path /var/www/uploads/ failed. Database ID: db-prod-123";
+    const sensitiveError =
+      "Internal path /var/www/uploads/ failed. Database ID: db-prod-123";
     mockFile.save.mockRejectedValueOnce(new Error(sensitiveError));
 
     const req = {
@@ -134,11 +135,11 @@ describe("Attachment Security", () => {
 
     const res = {
       set: jest.fn(),
-      status: jest.fn().mockImplementation((code) => {
+      status: jest.fn().mockImplementation(code => {
         statusCode = code;
         return res;
       }),
-      json: jest.fn().mockImplementation((data) => {
+      json: jest.fn().mockImplementation(data => {
         responseData = data;
         return res;
       }),
