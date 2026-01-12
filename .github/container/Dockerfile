@@ -18,7 +18,7 @@ WORKDIR /cache
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY scripts/ scripts/
-COPY firebase.json .firebaserc ecosystem.config.cjs ./
+COPY firebase.json firebase.emulator.json .firebaserc ecosystem.config.cjs ./
 COPY client/package.json client/package-lock.json ./client/
 COPY server/package.json server/package-lock.json ./server/
 COPY functions/package.json functions/package-lock.json ./functions/
