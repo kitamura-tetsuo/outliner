@@ -250,6 +250,42 @@ else
     fi
   fi
 
+  # Wait additional time for Firebase Functions to fully load their definitions
+  # The port may be open but Functions need time to register their routes
+  echo "Waiting for Firebase Functions to fully initialize..."
+  sleep 15
+
+  # Verify Firebase Functions are working by checking API endpoint
+  echo "Verifying Firebase Functions API..."
+  API_READY=false
+  for i in {1..12}; do
+    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${FIREBASE_FUNCTIONS_PORT}/outliner-d57b0/us-central1/health" 2>/dev/null | grep -q "200"; then
+      echo "Firebase Functions API is ready"
+      API_READY=true
+      break
+    fi
+    echo "Waiting for Firebase Functions API... (attempt ${i}/12)"
+    sleep 5
+  done
+
+  if [ "$API_READY" = false ]; then
+    echo "Warning: Firebase Functions API may not be fully ready"
+    echo "Checking emulator logs..."
+    if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
+      tail -100 "${ROOT_DIR}/logs/firebase-emulators.log" | tail -30 || true
+    fi
+  fi
+
+  # Initialize Firebase emulator (creates test users, etc.)
+  echo "Initializing Firebase emulator..."
+  export FIREBASE_AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
+  export AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
+  export FIRESTORE_EMULATOR_HOST="localhost:${FIREBASE_FIRESTORE_PORT}"
+  export FIREBASE_EMULATOR_HOST="localhost:${FIREBASE_FUNCTIONS_PORT}"
+  cd "${ROOT_DIR}/server/scripts"
+  node init-firebase-emulator.js || echo "Warning: Firebase emulator initialization had issues"
+  cd "${ROOT_DIR}"
+
   # Verify emulators are actually running by checking for firebase processes
   sleep 2
   if ! pgrep -f "firebase.*emulators" > /dev/null 2>&1; then
