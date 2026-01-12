@@ -1727,7 +1727,6 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
     }
     return res.status(500).json({
       error: "Failed to upload attachment",
-      details: err.message,
     });
   }
 });

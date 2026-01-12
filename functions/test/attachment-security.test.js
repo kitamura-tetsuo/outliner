@@ -111,4 +111,54 @@ describe("Attachment Security", () => {
     expect(saveOptions.metadata.contentDisposition).toBe("inline");
     expect(saveOptions.metadata.contentType).toBe("image/png");
   });
+
+  it("should NOT leak internal error details on upload failure", async () => {
+    // Simulate a failure with sensitive internal details
+    const sensitiveError =
+      "Internal path /var/www/uploads/ failed. Database ID: db-prod-123";
+    mockFile.save.mockRejectedValueOnce(new Error(sensitiveError));
+
+    const req = {
+      method: "POST",
+      headers: { origin: "http://localhost:7090" },
+      body: {
+        idToken: "test-token",
+        containerId: "c1",
+        itemId: "i1",
+        fileName: "test.txt",
+        fileData: "dGVzdA==",
+      },
+    };
+
+    let responseData = {};
+    let statusCode = 0;
+
+    const res = {
+      set: jest.fn(),
+      status: jest.fn().mockImplementation(code => {
+        statusCode = code;
+        return res;
+      }),
+      json: jest.fn().mockImplementation(data => {
+        responseData = data;
+        return res;
+      }),
+      on: jest.fn(),
+      emit: jest.fn(),
+      setHeader: jest.fn(),
+      getHeader: jest.fn(),
+    };
+
+    await myFunctions.uploadAttachment(req, res);
+
+    expect(statusCode).toBe(500);
+    expect(responseData.error).toBe("Failed to upload attachment");
+
+    // The security fix: verify details are NOT present
+    expect(responseData.details).toBeUndefined();
+
+    // Verify we didn't accidentally include the sensitive string anywhere in the response
+    expect(JSON.stringify(responseData)).not.toContain("Internal path");
+    expect(JSON.stringify(responseData)).not.toContain("db-prod-123");
+  });
 });
