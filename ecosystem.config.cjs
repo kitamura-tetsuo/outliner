@@ -26,7 +26,7 @@ module.exports = {
         {
             name: "vite-server",
             script: "npm",
-            args: "run dev -- --host 0.0.0.0 --port 7090",
+            args: "run dev -- --host 0.0.0.0 --port 7090 --mode test",
             cwd: "./client",
             env: {
                 ...process.env,

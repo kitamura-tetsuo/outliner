@@ -1849,6 +1849,7 @@ exports.deleteAttachment = onRequest({ cors: true }, async (req, res) => {
 
 // 管理者チェック API
 exports.adminCheckForProjectUserListing = onRequest(
+  { cors: true },
   async (req, res) => {
     logger.info("adminCheckForProjectUserListing called");
     setCorsHeaders(req, res);
@@ -1929,6 +1930,7 @@ exports.adminCheckForProjectUserListing = onRequest(
 
 // 管理者ユーザーリスト API
 exports.adminUserList = onRequest(
+  { cors: true },
   async (req, res) => {
     setCorsHeaders(req, res);
 
