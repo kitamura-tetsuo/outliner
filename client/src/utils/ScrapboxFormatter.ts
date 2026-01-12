@@ -26,8 +26,10 @@ export class ScrapboxFormatter {
         "'": "&#039;",
     };
 
+    private static readonly RX_ESCAPE = /[&<>"']/g;
+
     public static escapeHtml(str: string): string {
-        return str.replace(/[&<>"']/g, (match) => ScrapboxFormatter.ESCAPE_MAP[match]);
+        return str.replace(ScrapboxFormatter.RX_ESCAPE, (match) => ScrapboxFormatter.ESCAPE_MAP[match]);
     }
 
     /**
@@ -376,6 +378,14 @@ export class ScrapboxFormatter {
         return this.formatToHtmlAdvanced(text);
     }
 
+    // Regex patterns for formatToHtmlAdvanced
+    private static readonly RX_HTML_UNDERLINE = /<u>(.*?)<\/u>/g;
+    private static readonly RX_HTML_PROJECT_LINK = /\[\/([^\s\]]+)\]/g;
+    private static readonly RX_HTML_STRIKETHROUGH = /\[-(.*?)\]/g;
+    private static readonly RX_HTML_CODE = /`(.*?)`/g;
+    private static readonly RX_HTML_EXT_LINK = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
+    private static readonly RX_HTML_INT_LINK = /\[([^[\]]+?)\]/g;
+
     /**
      * 組み合わせフォーマットに対応した高度な変換（再帰的に処理）
      * @param text 変換するテキスト
@@ -386,7 +396,7 @@ export class ScrapboxFormatter {
 
         // 下線タグを一時的にプレースホルダーに置換
         const underlinePlaceholders: string[] = [];
-        const tempText = text.replace(/<u>(.*?)<\/u>/g, (match, content) => {
+        const tempText = text.replace(ScrapboxFormatter.RX_HTML_UNDERLINE, (match, content) => {
             const placeholder = `__UNDERLINE_${underlinePlaceholders.length}__`;
             underlinePlaceholders.push(content);
             return placeholder;
@@ -547,8 +557,7 @@ export class ScrapboxFormatter {
 
             // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
             // スラッシュの後にスペースがない場合のみマッチ
-            const projectLinkRegex = /\[\/([^\s\]]+)\]/g;
-            input = input.replace(projectLinkRegex, (match, path) => {
+            input = input.replace(ScrapboxFormatter.RX_HTML_PROJECT_LINK, (match, path) => {
                 // パスを分解してプロジェクト名とページ名を取得
                 const parts = path.split("/").filter((p: string) => p);
                 let html: string;
@@ -586,22 +595,19 @@ export class ScrapboxFormatter {
             });
 
             // 取り消し線
-            const strikethroughRegex = /\[-(.*?)\]/g;
-            input = input.replace(strikethroughRegex, (match, content) => {
+            input = input.replace(ScrapboxFormatter.RX_HTML_STRIKETHROUGH, (match, content) => {
                 const html = `<s>${processFormat(content)}</s>`;
                 return createPlaceholder(html);
             });
 
             // コード (コード内部は再帰処理しない)
-            const codeRegex = /`(.*?)`/g;
-            input = input.replace(codeRegex, (match, content) => {
+            input = input.replace(ScrapboxFormatter.RX_HTML_CODE, (match, content) => {
                 const html = `<code>${this.escapeHtml(content)}</code>`;
                 return createPlaceholder(html);
             });
 
             // 外部リンク（ラベルが空白のみの場合も許可）
-            const linkRegex = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
-            input = input.replace(linkRegex, (match, url, label) => {
+            input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
                 const trimmedLabel = label?.trim();
                 const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
                 const html = `<a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
@@ -612,8 +618,7 @@ export class ScrapboxFormatter {
 
             // 通常の内部リンク - 外部リンクの後に処理する必要がある
             // [text] 形式で、text が [ または ] を含まないもの
-            const internalLinkRegex = /\[([^[\]]+?)\]/g;
-            input = input.replace(internalLinkRegex, (match, text) => {
+            input = input.replace(ScrapboxFormatter.RX_HTML_INT_LINK, (match, text) => {
                 // ページの存在確認用のクラスを追加
                 const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
 
@@ -683,6 +688,16 @@ export class ScrapboxFormatter {
         return result;
     }
 
+    // Regex patterns for formatWithControlChars
+    private static readonly RX_CTRL_CODE = /(`)(.*?)(`)/g;
+    private static readonly RX_CTRL_STRIKE = /(\[)(-)(.*?)(\])/g;
+    private static readonly RX_CTRL_UNDERLINE = /(&lt;u&gt;)(.*?)(&lt;\/u&gt;)/g;
+    private static readonly RX_CTRL_ITALIC = /(\[)(\/)(\s+)([^\]]*)(\])/g;
+    private static readonly RX_CTRL_PROJECT_LINK = /(\[\/)([^\s\]]+)(\])/g;
+    private static readonly RX_CTRL_EXT_LINK = /(\[)(https?:\/\/[^\s\]]+)(?:\s+([^\]]+))?(\])/g;
+    private static readonly RX_CTRL_INT_LINK = /(\[)([^[\]/-][^[\]]*?)(\])/g;
+    private static readonly RX_CTRL_QUOTE = /(^>\s)(.*?)$/gm;
+
     /**
      * 制御文字を表示しながらフォーマットを適用する（フォーカスがある場合用）
      * @param text 変換するテキスト
@@ -706,37 +721,37 @@ export class ScrapboxFormatter {
 
         // コード
         html = html.replace(
-            /(`)(.*?)(`)/g,
+            ScrapboxFormatter.RX_CTRL_CODE,
             '<span class="control-char">$1</span><code>$2</code><span class="control-char">$3</span>',
         );
 
         // 取り消し線
         html = html.replace(
-            /(\[)(-)(.*?)(\])/g,
+            ScrapboxFormatter.RX_CTRL_STRIKE,
             '<span class="control-char">$1</span><span class="control-char">$2</span><s>$3</s><span class="control-char">$4</span>',
         );
 
         // 下線 (HTML escaped version)
         html = html.replace(
-            /(&lt;u&gt;)(.*?)(&lt;\/u&gt;)/g,
+            ScrapboxFormatter.RX_CTRL_UNDERLINE,
             '<span class="control-char">&lt;u&gt;</span><u>$2</u><span class="control-char">&lt;/u&gt;</span>',
         );
 
         // 斜体 - スペース必須: [/ テキスト]
         html = html.replace(
-            /(\[)(\/)(\s+)([^\]]*)(\])/g,
+            ScrapboxFormatter.RX_CTRL_ITALIC,
             '<span class="control-char">$1</span><span class="control-char">$2</span>$3<em>$4</em><span class="control-char">$5</span>',
         );
 
         // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
         html = html.replace(
-            /(\[\/)([^\s\]]+)(\])/g,
+            ScrapboxFormatter.RX_CTRL_PROJECT_LINK,
             '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 
         // 外部リンク - カーソルがある時は制御文字のみ表示
         html = html.replace(
-            /(\[)(https?:\/\/[^\s\]]+)(?:\s+([^\]]+))?(\])/g,
+            ScrapboxFormatter.RX_CTRL_EXT_LINK,
             (match, open, url, label, close) => {
                 const content = label ? `${url} ${label}` : url;
                 return `<span class="control-char">${open}</span>${content}<span class="control-char">${close}</span>`;
@@ -745,12 +760,15 @@ export class ScrapboxFormatter {
 
         // 通常の内部リンク - カーソルがある時は制御文字のみ表示
         html = html.replace(
-            /(\[)([^[\]/-][^[\]]*?)(\])/g,
+            ScrapboxFormatter.RX_CTRL_INT_LINK,
             '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 
         // 引用
-        html = html.replace(/(^>\s)(.*?)$/gm, '<span class="control-char">$1</span><blockquote>$2</blockquote>');
+        html = html.replace(
+            ScrapboxFormatter.RX_CTRL_QUOTE,
+            '<span class="control-char">$1</span><blockquote>$2</blockquote>',
+        );
 
         return html;
     }
