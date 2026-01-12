@@ -240,14 +240,23 @@ else
 
   # Wait for Firebase emulators to be ready with better error detection
   echo "Waiting for Firebase emulators to be ready..."
+
+  # First wait for Functions emulator (backend)
   if wait_for_port ${FIREBASE_FUNCTIONS_PORT}; then
-    echo "Firebase emulators are ready"
+    echo "Firebase Functions emulator is ready"
   else
-    echo "Warning: Firebase emulators may not have started correctly"
+    echo "Warning: Firebase Functions emulator may not have started correctly"
     echo "Checking emulator logs for errors..."
     if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
       tail -50 "${ROOT_DIR}/logs/firebase-emulators.log" || true
     fi
+  fi
+
+  # Also wait for Hosting emulator (frontend - required for /api/ rewrites)
+  if wait_for_port ${FIREBASE_HOSTING_PORT}; then
+    echo "Firebase Hosting emulator is ready"
+  else
+    echo "Warning: Firebase Hosting emulator may not have started correctly"
   fi
 
   # Wait additional time for Firebase Functions to fully load their definitions
@@ -255,16 +264,19 @@ else
   echo "Waiting for Firebase Functions to fully initialize..."
   sleep 15
 
-  # Verify Firebase Functions are working by checking API endpoint
-  echo "Verifying Firebase Functions API..."
+  # Verify Firebase Functions are working by checking API endpoint through Hosting emulator
+  # Tests access Functions through Hosting at http://localhost:57000/api/...
+  echo "Verifying Firebase Functions API through Hosting emulator..."
   API_READY=false
   for i in {1..12}; do
-    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${FIREBASE_FUNCTIONS_PORT}/outliner-d57b0/us-central1/health" 2>/dev/null | grep -q "200"; then
-      echo "Firebase Functions API is ready"
+    # Check through Hosting emulator which is what the tests use
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${FIREBASE_HOSTING_PORT}/api/health" 2>/dev/null || echo "000")
+    if [ "$HTTP_CODE" = "200" ]; then
+      echo "Firebase Functions API is ready (via Hosting)"
       API_READY=true
       break
     fi
-    echo "Waiting for Firebase Functions API... (attempt ${i}/12)"
+    echo "Waiting for Firebase Functions API... (attempt ${i}/12, got $HTTP_CODE)"
     sleep 5
   done
 
@@ -300,8 +312,31 @@ else
   # Only start the non-Firebase services via PM2
   pm2 start ecosystem.config.cjs --only yjs-server,vite-server
 
+  # Wait for Yjs server WebSocket to be ready (critical for Yjs sync tests)
+  echo "Waiting for Yjs WebSocket server to be ready..."
+  YJS_READY=false
+  for i in {1..24}; do
+    # Check if the Yjs WebSocket port is open and responding
+    if nc -z localhost ${TEST_YJS_PORT} 2>/dev/null; then
+      # Additional check: verify it's actually a WebSocket by checking the response
+      WS_CHECK=$(curl -s --connect-timeout 2 --max-time 5 "http://localhost:${TEST_YJS_PORT}/" 2>/dev/null || echo "")
+      if [ -n "$WS_CHECK" ] || nc -z localhost ${TEST_YJS_PORT} 2>/dev/null; then
+        echo "Yjs WebSocket server is ready on port ${TEST_YJS_PORT}"
+        YJS_READY=true
+        break
+      fi
+    fi
+    echo "Waiting for Yjs WebSocket... (attempt ${i}/24)"
+    sleep 5
+  done
+
+  if [ "$YJS_READY" = false ]; then
+    echo "Warning: Yjs WebSocket server may not be fully ready"
+    echo "Checking PM2 logs..."
+    pm2 logs yjs-server --lines 50 --nostream 2>/dev/null || true
+  fi
+
   # Verify PM2 services started successfully
-  sleep 5
   pm2 list
 fi
 
