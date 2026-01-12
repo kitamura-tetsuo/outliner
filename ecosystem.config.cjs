@@ -1,6 +1,5 @@
-const { config } = require("@dotenvx/dotenvx");
-
-config({ path: "./.env.test" });
+// Environment variables are loaded via common-config.sh before PM2 starts
+// and passed through the 'env' section in each app configuration.
 
 module.exports = {
     apps: [
