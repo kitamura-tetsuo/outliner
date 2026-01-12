@@ -257,7 +257,7 @@ else
   # Use nohup and setsid to properly daemonize the process
   # Firebase emulators use Java and may fork, so we need to ensure they stay running
   cd "${ROOT_DIR}"
-  nohup firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0 \
+  setsid nohup firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0 \
     > "${ROOT_DIR}/logs/firebase-emulators.log" 2>&1 &
   FIREBASE_PID=$!
   echo "Firebase emulators start command issued (PID: $FIREBASE_PID)"
@@ -327,7 +327,7 @@ else
   if ! pgrep -f "firebase.*emulators" > /dev/null 2>&1; then
     echo "ERROR: Firebase emulators process not found after start command"
     echo "Attempting direct start..."
-    firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0 \
+    setsid nohup firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0 \
       > "${ROOT_DIR}/logs/firebase-emulators.log" 2>&1 &
     sleep 10
   fi
