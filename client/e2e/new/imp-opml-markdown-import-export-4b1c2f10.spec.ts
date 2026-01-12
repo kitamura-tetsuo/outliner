@@ -208,30 +208,33 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         await expect(importButton).toBeVisible();
         await importButton.click();
         console.log("Import button clicked");
-        await page.waitForTimeout(2000);
 
-        console.log("Browser console logs:", consoleLogs);
+        // Wait for automatic navigation to the Imported page (like the settings page does)
+        // This ensures the page is properly initialized with store.currentPage set
+        await page.waitForURL(url => url.pathname.includes("/Imported"), { timeout: 10000 }).catch(async () => {
+            console.log("Auto-navigation did not happen, manually navigating to Imported page");
+            await page.goto(`/${encoded}/Imported`);
+        });
 
-        await page.goto(`/${encoded}/Imported`);
-
-        // Wait for Yjs connection and page items to be loaded
+        // Wait for Yjs to be connected on the new page
         await page.waitForFunction(
             () => {
                 const yjsStore = (window as any).__YJS_STORE__;
-                const isConnected = yjsStore?.getIsConnected?.() === true;
-                if (!isConnected) return false;
-
-                // Check if page items exist
-                const items = document.querySelectorAll(".outliner-item[data-item-id]");
-                return items.length >= 2; // Imported + Child
+                return yjsStore?.getIsConnected?.() === true;
             },
-            null,
             { timeout: 30000 },
-        ).catch(() => {
-            console.log("Warning: Yjs not connected or page items not loaded within timeout");
+        ).catch(() => console.log("Warning: Yjs not connected on Imported page"));
+
+        // Wait for the outliner base to be visible
+        await page.getByTestId("outliner-base").waitFor({ timeout: 15000 }).catch(() => {
+            console.log("Warning: outliner-base not visible, continuing anyway");
         });
 
-        await TestHelpers.waitForOutlinerItems(page);
+        // Wait for items with extended timeout for CI environments
+        // This ensures we give enough time for the page to be found and items to render
+        await TestHelpers.waitForOutlinerItems(page, 2, 60000);
+
+        console.log("Browser console logs:", consoleLogs);
 
         // Wait for the "Child" item to appear
         await page.locator(".outliner-item", { hasText: "Child" }).waitFor({ timeout: 15000 }).catch(() => {
