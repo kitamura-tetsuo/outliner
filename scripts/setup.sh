@@ -225,12 +225,48 @@ echo "Stopping any existing servers..."
 pm2 delete all || true
 sleep 3
 
-# Start all test servers unless skipped
+# Start Firebase emulators directly (not via PM2) - Firebase emulators don't work well under PM2
 if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then
   echo "Skipping server start as requested"
 else
-  echo "Starting test servers with PM2..."
-  pm2 start ecosystem.config.cjs
+  echo "Starting Firebase emulators directly..."
+  # Use nohup and setsid to properly daemonize the process
+  # Firebase emulators use Java and may fork, so we need to ensure they stay running
+  cd "${ROOT_DIR}"
+  setsid nohup firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0 \
+    > "${ROOT_DIR}/logs/firebase-emulators.log" 2>&1 &
+  FIREBASE_PID=$!
+  echo "Firebase emulators start command issued (PID: $FIREBASE_PID)"
+
+  # Wait for Firebase emulators to be ready with better error detection
+  echo "Waiting for Firebase emulators to be ready..."
+  if wait_for_port ${FIREBASE_FUNCTIONS_PORT}; then
+    echo "Firebase emulators are ready"
+  else
+    echo "Warning: Firebase emulators may not have started correctly"
+    echo "Checking emulator logs for errors..."
+    if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
+      tail -50 "${ROOT_DIR}/logs/firebase-emulators.log" || true
+    fi
+  fi
+
+  # Verify emulators are actually running by checking for firebase processes
+  sleep 2
+  if ! pgrep -f "firebase.*emulators" > /dev/null 2>&1; then
+    echo "ERROR: Firebase emulators process not found after start command"
+    echo "Attempting direct start..."
+    firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0 \
+      > "${ROOT_DIR}/logs/firebase-emulators.log" 2>&1 &
+    sleep 10
+  fi
+
+  echo "Starting PM2-managed services (yjs-server, vite-server)..."
+  # Only start the non-Firebase services via PM2
+  pm2 start ecosystem.config.cjs --only yjs-server,vite-server
+
+  # Verify PM2 services started successfully
+  sleep 5
+  pm2 list
 fi
 
 # Wait for all services to be ready
