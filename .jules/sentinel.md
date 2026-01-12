@@ -33,3 +33,9 @@
 **Vulnerability:** The `saveProject` and `saveContainer` endpoints allowed any authenticated user to add themselves to any existing project/container simply by knowing its ID, without any authorization or invitation check.
 **Learning:** "Save" or "Join" endpoints often assume the user is creating a new resource or has already been vetted client-side. Server-side checks must strictly differentiate between "creating new" (allowed) and "joining existing" (restricted).
 **Prevention:** In functions that associate users with resources, always check if the resource already exists. If it does, deny the association unless the user is already a member or provides a valid invitation token.
+
+## 2025-05-24 - Production Authentication Bypass via Test Tokens
+
+**Vulnerability:** The WebSocket server's token verification logic (`verifyIdTokenCached`) accepted JWTs signed with `alg: none` if they had a specific structure, intended for testing. This logic was not guarded by an environment check, potentially allowing authentication bypass in production.
+**Learning:** Test-specific authentication bypasses (like mocking tokens) must be strictly isolated. Code that "looks like" it handles a specific edge case (like `alg: none`) can inadvertently become a backdoor if not explicitly gated.
+**Prevention:** Always wrap test-only logic in strict `process.env.NODE_ENV === 'test'` blocks. Avoid implementing "mock" logic in production-capable code paths; prefer dependency injection or separate test helpers.
