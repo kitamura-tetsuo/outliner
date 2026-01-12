@@ -21,7 +21,8 @@ jobs:
         with:
           clean: true
           # Workflow_call uses the caller's context, so secrets.GITHUB_TOKEN is available if inherited
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use GH_PAT if available to trigger subsequent workflows
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
           ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Setup Node.js
