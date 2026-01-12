@@ -115,7 +115,7 @@ test.describe("snapshot diff viewer", () => {
         }
 
         await page.getByText("Add Snapshot").click();
-        await page.waitForSelector("li");
+        await page.waitForSelector(".bg-white.rounded.shadow-lg li");
         const count = await page.evaluate(
             ({ projectName, pageName }) => {
                 // eslint-disable-next-line no-restricted-globals
@@ -124,10 +124,10 @@ test.describe("snapshot diff viewer", () => {
             },
             { projectName, pageName },
         );
-        await expect(page.locator("li")).toHaveCount(count);
+        await expect(page.locator(".bg-white.rounded.shadow-lg li")).toHaveCount(count);
 
         // Click the button inside the first list item to show the diff
-        await page.locator("li button").first().click();
+        await page.locator(".bg-white.rounded.shadow-lg li button").first().click();
 
         // Wait for the diff to be calculated and rendered
         await page.waitForFunction(() => {
