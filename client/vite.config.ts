@@ -49,6 +49,14 @@ export default defineConfig(async ({ mode }) => {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,
             host: process.env.VITE_HOST || "localhost",
+            proxy: {
+                "/api": {
+                    target: `http://${process.env.VITE_HOST || "localhost"}:${
+                        process.env.FIREBASE_HOSTING_PORT || "57000"
+                    }`,
+                    changeOrigin: true,
+                },
+            },
             // E2E 実行時は HMR を無効化してテスト中の再読込によるページクローズを抑止
             hmr: process.env.E2E_DISABLE_HMR === "1" ? false : undefined,
             // E2E 実行時はファイル監視を全面無効化して SSR/dev の再起動を抑止
