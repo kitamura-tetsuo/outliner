@@ -234,6 +234,19 @@ fi
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
 pm2 delete all || true
+
+# Kill existing firebase emulators running in background (not managed by PM2)
+if pgrep -f "firebase.*emulators" > /dev/null; then
+  echo "Stopping existing Firebase emulators..."
+  pkill -f "firebase.*emulators" || true
+fi
+
+# Kill existing yjs-server running in background (might be left over)
+if pgrep -f "node dist/index.js" > /dev/null; then
+  echo "Stopping existing yjs-server..."
+  pkill -f "node dist/index.js" || true
+fi
+
 sleep 3
 
 # Start Firebase emulators directly (not via PM2) - Firebase emulators don't work well under PM2
