@@ -24,12 +24,10 @@ COPY server/package.json server/package-lock.json ./server/
 COPY functions/package.json functions/package-lock.json ./functions/
 
 # Install dependencies via setup.sh
-ENV SKIP_SERVER_START=1
-ENV SKIP_PORT_WAIT=1
 ENV SKIP_INSTALL=0
 ENV CI=true
 ENV SKIP_BUILD=1
-RUN bash scripts/setup.sh
+RUN SKIP_SERVER_START=1 SKIP_PORT_WAIT=1 bash scripts/setup.sh
 
 # Rebuild client dependencies that might need it (like esbuild)
 RUN cd client && npm rebuild
