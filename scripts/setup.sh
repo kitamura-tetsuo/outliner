@@ -249,18 +249,12 @@ fi
 
 sleep 3
 
-# Start Firebase emulators directly (not via PM2) - Firebase emulators don't work well under PM2
+# Start PM2-managed services
 if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then
   echo "Skipping server start as requested"
 else
-  echo "Starting Firebase emulators directly..."
-  # Use nohup and setsid to properly daemonize the process
-  # Firebase emulators use Java and may fork, so we need to ensure they stay running
-  cd "${ROOT_DIR}"
-  setsid nohup firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0 \
-    > "${ROOT_DIR}/logs/firebase-emulators.log" 2>&1 &
-  FIREBASE_PID=$!
-  echo "Firebase emulators start command issued (PID: $FIREBASE_PID)"
+  echo "Starting PM2-managed services (yjs-server, vite-server, firebase-emulators)..."
+  pm2 start ecosystem.config.cjs
 
   # Wait for Firebase emulators to be ready with better error detection
   echo "Waiting for Firebase emulators to be ready..."
@@ -271,9 +265,7 @@ else
   else
     echo "Warning: Firebase Functions emulator may not have started correctly"
     echo "Checking emulator logs for errors..."
-    if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
-      tail -50 "${ROOT_DIR}/logs/firebase-emulators.log" || true
-    fi
+    pm2 logs firebase-emulators --lines 50 --nostream 2>/dev/null || true
   fi
 
   # Also wait for Hosting emulator (frontend - required for /api/ rewrites)
@@ -306,12 +298,8 @@ else
 
   if [ "$API_READY" = false ]; then
     echo "Warning: Firebase Functions API may not be fully ready"
-    echo "Checking emulator logs..."
-    if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
-      echo "=== Firebase Emulator Logs (Last 200 lines) ==="
-      tail -200 "${ROOT_DIR}/logs/firebase-emulators.log" || true
-      echo "=============================================="
-    fi
+    echo "Checking PM2 logs..."
+    pm2 logs firebase-emulators --lines 200 --nostream 2>/dev/null || true
   fi
 
   # Initialize Firebase emulator (creates test users, etc.)
@@ -323,20 +311,6 @@ else
   cd "${ROOT_DIR}/server/scripts"
   node init-firebase-emulator.js || echo "Warning: Firebase emulator initialization had issues"
   cd "${ROOT_DIR}"
-
-  # Verify emulators are actually running by checking for firebase processes
-  sleep 2
-  if ! pgrep -f "firebase.*emulators" > /dev/null 2>&1; then
-    echo "ERROR: Firebase emulators process not found after start command"
-    echo "Attempting direct start..."
-    setsid nohup firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0 \
-      > "${ROOT_DIR}/logs/firebase-emulators.log" 2>&1 &
-    sleep 10
-  fi
-
-  echo "Starting PM2-managed services (yjs-server, vite-server)..."
-  # Only start the non-Firebase services via PM2
-  pm2 start ecosystem.config.cjs --only yjs-server,vite-server
 
   # Wait for Yjs server WebSocket to be ready (critical for Yjs sync tests)
   echo "Waiting for Yjs WebSocket server to be ready..."

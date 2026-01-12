@@ -39,5 +39,20 @@ module.exports = {
             error_file: "../logs/vite-server.log",
             log_date_format: "YYYY-MM-DD HH:mm:ss",
         },
+        {
+            name: "firebase-emulators",
+            script: "firebase",
+            args:
+                "emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0",
+            cwd: ".",
+            env: {
+                ...process.env,
+                NODE_ENV: "test",
+            },
+            log_file: "./logs/firebase-emulators.log",
+            out_file: "./logs/firebase-emulators.log",
+            error_file: "./logs/firebase-emulators.log",
+            log_date_format: "YYYY-MM-DD HH:mm:ss",
+        },
     ],
 };
