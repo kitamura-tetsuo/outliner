@@ -5,7 +5,10 @@ try {
     process.env.CI === "true" || process.env.NODE_ENV === "test" ||
     process.env.FUNCTIONS_EMULATOR === "true"
   ) {
-    require("@dotenvx/dotenvx").config({ path: ".env.test" });
+    const path = require("path");
+    require("@dotenvx/dotenvx").config({
+      path: path.join(__dirname, ".env.test"),
+    });
   }
 } catch {
   // dotenvx が無くても処理継続（本番はSecretsを使用）

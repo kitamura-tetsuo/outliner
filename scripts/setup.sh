@@ -286,13 +286,13 @@ else
   # Wait additional time for Firebase Functions to fully load their definitions
   # The port may be open but Functions need time to register their routes
   echo "Waiting for Firebase Functions to fully initialize..."
-  sleep 15
+  sleep 20
 
   # Verify Firebase Functions are working by checking API endpoint through Hosting emulator
   # Tests access Functions through Hosting at http://localhost:57000/api/...
   echo "Verifying Firebase Functions API through Hosting emulator..."
   API_READY=false
-  for i in {1..12}; do
+  for i in {1..36}; do
     # Check through Hosting emulator which is what the tests use
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${FIREBASE_HOSTING_PORT}/api/health" 2>/dev/null || echo "000")
     if [ "$HTTP_CODE" = "200" ]; then
