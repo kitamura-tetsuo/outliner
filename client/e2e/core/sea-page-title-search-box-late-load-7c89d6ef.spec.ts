@@ -14,7 +14,7 @@ test.describe("SEA-0001: page title search box", () => {
         const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const input = page
             .getByTestId("main-toolbar")
-            .getByRole("textbox", { name: "Search pages" });
+            .getByRole("combobox", { name: "Search pages" });
         await input.waitFor();
         await input.focus();
         await input.fill("second");

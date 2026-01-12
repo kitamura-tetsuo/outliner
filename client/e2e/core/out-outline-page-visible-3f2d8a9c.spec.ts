@@ -28,7 +28,7 @@ test("shows search box and at least one outliner item", async () => {
     // verify search box in main toolbar is visible
     const searchInput = page
         .getByTestId("main-toolbar")
-        .getByRole("textbox", { name: "Search pages" });
+        .getByRole("combobox", { name: "Search pages" });
     await expect(searchInput).toBeVisible();
 
     // ensure at least one outliner item is rendered
