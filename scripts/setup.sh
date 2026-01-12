@@ -209,6 +209,17 @@ if [ ! -f node_modules/.bin/paraglide-js ] || [ ! -f node_modules/.bin/dotenvx ]
 fi
 cd "${ROOT_DIR}"
 
+# Ensure pm2 is available before managing processes
+if ! command -v pm2 >/dev/null 2>&1; then
+  echo "pm2 not found. Installing pm2..."
+  npm_config_proxy="" npm_config_https_proxy="" npm install -g pm2
+  # Refresh PATH to include newly installed pm2
+  NPM_GLOBAL_BIN="$(npm bin -g 2>/dev/null || true)"
+  if [ -n "$NPM_GLOBAL_BIN" ] && [[ ":$PATH:" != *":$NPM_GLOBAL_BIN:"* ]]; then
+    export PATH="$NPM_GLOBAL_BIN:$PATH"
+  fi
+fi
+
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
 pm2 delete all || true

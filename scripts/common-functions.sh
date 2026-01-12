@@ -157,6 +157,11 @@ install_global_packages() {
   if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null || ! command -v pm2 >/dev/null; then
     echo "Installing global packages (firebase-tools, tinylicious, pm2)..."
     npm_config_proxy="" npm_config_https_proxy="" npm install -g firebase-tools tinylicious pm2 dotenv-cli @dotenvx/dotenvx || true
+    # Refresh PATH to include newly installed global packages
+    NPM_GLOBAL_BIN="$(npm bin -g 2>/dev/null || true)"
+    if [ -n "$NPM_GLOBAL_BIN" ] && [[ ":$PATH:" != *":$NPM_GLOBAL_BIN:"* ]]; then
+      export PATH="$NPM_GLOBAL_BIN:$PATH"
+    fi
   fi
 
   # if ! command -v dprint >/dev/null; then
