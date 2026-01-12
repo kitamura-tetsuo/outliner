@@ -300,7 +300,7 @@ else
       API_READY=true
       break
     fi
-    echo "Waiting for Firebase Functions API... (attempt ${i}/12, got $HTTP_CODE)"
+    echo "Waiting for Firebase Functions API... (attempt ${i}/36, got $HTTP_CODE)"
     sleep 5
   done
 
@@ -308,7 +308,9 @@ else
     echo "Warning: Firebase Functions API may not be fully ready"
     echo "Checking emulator logs..."
     if [ -f "${ROOT_DIR}/logs/firebase-emulators.log" ]; then
-      tail -100 "${ROOT_DIR}/logs/firebase-emulators.log" | tail -30 || true
+      echo "=== Firebase Emulator Logs (Last 200 lines) ==="
+      tail -200 "${ROOT_DIR}/logs/firebase-emulators.log" || true
+      echo "=============================================="
     fi
   fi
 
