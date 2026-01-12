@@ -91,8 +91,10 @@ fi
 # start_api_server   (deprecated; handled by SvelteKit APIs)
 
 # Setup pre-push hook
-rm ${ROOT_DIR}/.git/hooks/pre-push || true
-ln -s ${ROOT_DIR}/scripts/pre_push.sh ${ROOT_DIR}/.git/hooks/pre-push || true
+if [ -d "${ROOT_DIR}/.git/hooks" ]; then
+  rm "${ROOT_DIR}/.git/hooks/pre-push" 2>/dev/null || true
+  ln -s "${ROOT_DIR}/scripts/pre_push.sh" "${ROOT_DIR}/.git/hooks/pre-push" || true
+fi
 
 # Generate emulator-specific Firebase configuration
 echo "Generating emulator-specific Firebase configuration..."
