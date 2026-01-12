@@ -53,7 +53,9 @@ fix_permissions() {
 }
 
 # Fix permissions before proceeding
-fix_permissions
+if [ -z "${CI:-}" ]; then
+  fix_permissions
+fi
 
 ensure_python_env() {
   echo "Ensuring Python virtual environment..."
@@ -142,9 +144,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
     echo "Installing vitest playwright for testing..."
     cd "${ROOT_DIR}/client"
     # Fix permissions before installing
-    if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
-      echo "Fixing node_modules ownership before installing vitest/playwright..."
-      sudo chown -R node:node "node_modules" || true
+    if [ -z "${CI:-}" ]; then
+      if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
+        echo "Fixing node_modules ownership before installing vitest/playwright..."
+        sudo chown -R node:node "node_modules" || true
+      fi
     fi
     echo "STEP: Installing vitest playwright for testing (client)..."
     npm_config_proxy="" npm_config_https_proxy="" npm install --no-save vitest playwright
@@ -192,9 +196,11 @@ ensure_canvas_native_deps
 # Ensure essential client CLI tools are available
 cd "${ROOT_DIR}/client"
 # Fix permissions before checking/installing client CLI tools
-if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
-  echo "Fixing node_modules ownership before checking client CLI tools..."
-  sudo chown -R node:node "node_modules" || true
+if [ -z "${CI:-}" ]; then
+  if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
+    echo "Fixing node_modules ownership before checking client CLI tools..."
+    sudo chown -R node:node "node_modules" || true
+  fi
 fi
 if [ ! -f node_modules/.bin/paraglide-js ] || [ ! -f node_modules/.bin/dotenvx ]; then
   echo "Missing client CLI tools; reinstalling client dependencies..."
@@ -213,7 +219,7 @@ if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then
   echo "Skipping server start as requested"
 else
   echo "Starting test servers with PM2..."
-  pm2 start ecosystem.config.js
+  pm2 start ecosystem.config.cjs
 fi
 
 # Wait for all services to be ready

@@ -14,5 +14,5 @@ const setupScript = path.join(repoRoot, "scripts", "setup.sh");
 
 test("setup script contains service startup commands", async () => {
     const content = fs.readFileSync(setupScript, "utf-8");
-    expect(content.includes("pm2 start ecosystem.config.js")).toBe(true);
+    expect(content.includes("pm2 start ecosystem.config.cjs")).toBe(true);
 });
