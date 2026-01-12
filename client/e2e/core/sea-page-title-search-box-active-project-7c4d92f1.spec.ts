@@ -30,7 +30,7 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
     });
 
     test("navigates using the active project title even with spaces", async ({ page }) => {
-        const searchInput = page.getByTestId("main-toolbar").getByRole("textbox", { name: "Search pages" });
+        const searchInput = page.getByTestId("main-toolbar").getByRole("combobox", { name: "Search pages" });
         await searchInput.waitFor();
 
         // Explicitly wait for project items to be loaded from Yjs BEFORE typing

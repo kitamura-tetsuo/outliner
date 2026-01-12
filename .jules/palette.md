@@ -9,3 +9,8 @@
 
 **Learning:** Complex visibility logic used in templates (like `{#if ...}`) should be extracted to `$derived` variables. This not only cleans up the template but makes it trivial to reuse the logic for ARIA attributes like `aria-expanded` and `aria-label`.
 **Action:** Extract conditional logic into `$derived` state before adding ARIA attributes.
+
+## 2025-05-20 - [ARIA Combobox Discrepancy]
+
+**Learning:** The `AGENTS.md` documentation claimed the `SearchBox` implemented the ARIA Combobox pattern, but the actual code used a simple input with a list of buttons. E2E tests verified visibility but not the specific ARIA roles, leading to a drift between documentation/expected accessibility standards and implementation.
+**Action:** When `AGENTS.md` claims an accessibility pattern exists, verify it with `getByRole` in tests rather than generic selectors. If missing, implement the full pattern (combobox, listbox, option, activedescendant) to match the documentation and improve screen reader experience.

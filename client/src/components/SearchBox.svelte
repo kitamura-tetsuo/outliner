@@ -442,6 +442,11 @@
     </svg>
     <input
         type="text"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={query.length > 0 && results.length > 0}
+        aria-controls="search-results-listbox"
+        aria-activedescendant={selected >= 0 ? `search-result-item-${selected}` : undefined}
         aria-hidden="false"
         aria-label="Search pages"
         aria-labelledby="search-pages-label"
@@ -497,10 +502,18 @@
         <div class="no-results" role="status">No results found</div>
     {/if}
     {#if results.length && query.length > 0}
-        <ul>
+        <ul id="search-results-listbox" role="listbox">
             {#each results as page, i (page.id)}
-                <li class:selected={i === selected}>
-                    <button type="button" onclick={() => handlePageClick(page)}
+                <li
+                    id="search-result-item-{i}"
+                    role="option"
+                    aria-selected={i === selected}
+                    class:selected={i === selected}
+                >
+                    <button
+                        type="button"
+                        onclick={() => handlePageClick(page)}
+                        tabindex="-1"
                         >{page.text}</button
                     >
                 </li>
