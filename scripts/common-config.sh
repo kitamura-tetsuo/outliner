@@ -83,7 +83,6 @@ LOG_DIRS=(
 
 # Ports to monitor for readiness
 REQUIRED_PORTS=(
-  ${TEST_API_PORT}
   ${TEST_YJS_PORT}
   ${VITE_PORT}
   ${FIREBASE_FUNCTIONS_PORT}

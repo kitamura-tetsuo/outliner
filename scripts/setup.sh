@@ -190,6 +190,15 @@ else
     npm_config_proxy="" npm_config_https_proxy="" npm install --no-save vitest
     cd "${ROOT_DIR}"
   fi
+
+  # Ensure server is built if dist is missing (critical for Yjs server)
+  if [ ! -d "${ROOT_DIR}/server/dist" ]; then
+    echo "Server build missing. Building server..."
+    cd "${ROOT_DIR}/server"
+    npm_ci_if_needed
+    npm run build
+    cd "${ROOT_DIR}"
+  fi
 fi
 
 echo "Ensuring node-canvas native dependencies..."
@@ -235,7 +244,7 @@ else
   # Use nohup and setsid to properly daemonize the process
   # Firebase emulators use Java and may fork, so we need to ensure they stay running
   cd "${ROOT_DIR}"
-  setsid nohup firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0 \
+  nohup firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0 \
     > "${ROOT_DIR}/logs/firebase-emulators.log" 2>&1 &
   FIREBASE_PID=$!
   echo "Firebase emulators start command issued (PID: $FIREBASE_PID)"
