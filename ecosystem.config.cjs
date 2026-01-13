@@ -1,8 +1,16 @@
 // Environment variables are loaded via common-config.sh before PM2 starts
 // and passed through the 'env' section in each app configuration.
 //
-// Note: Firebase emulators are started directly by setup.sh (not via PM2) because
-// they don't work well under process managers due to their multi-process architecture.
+const { execSync } = require("child_process");
+
+let firebasePath = "firebase";
+try {
+    // Find absolute path to firebase binary to avoid confusion with local "firebase" directory
+    // which causes PM2 to fail with ERR_UNSUPPORTED_DIR_IMPORT
+    firebasePath = execSync("which firebase").toString().trim();
+} catch (error) {
+    console.warn("Could not find firebase binary via 'which', falling back to 'firebase'");
+}
 
 module.exports = {
     apps: [
@@ -41,7 +49,7 @@ module.exports = {
         },
         {
             name: "firebase-emulators",
-            script: "firebase",
+            script: firebasePath,
             args:
                 "emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0",
             cwd: ".",
