@@ -1,7 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { ScrapboxFormatter } from "./ScrapboxFormatter";
 
 describe("ScrapboxFormatter", () => {
+    beforeAll(() => {
+        // Mock localStorage for test environment detection
+        // This ensures getProjectPrefix() returns "/Untitled%20Project"
+        if (typeof window !== "undefined") {
+            Object.defineProperty(window, "localStorage", {
+                value: {
+                    getItem: (key: string) => {
+                        if (key === "VITE_IS_TEST") return "true";
+                        return null;
+                    },
+                    setItem: () => {},
+                    removeItem: () => {},
+                    clear: () => {},
+                },
+                writable: true,
+            });
+        }
+    });
+
     describe("bold", () => {
         it("should format text as bold", () => {
             expect(ScrapboxFormatter.bold("text")).toBe("[[text]]");
