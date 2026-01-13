@@ -62,5 +62,19 @@ module.exports = {
             error_file: "./logs/firebase-emulators.log",
             log_date_format: "YYYY-MM-DD HH:mm:ss",
         },
+        {
+            name: "log-service",
+            script: "node",
+            args: "log-service.cjs --host 0.0.0.0 --port 7091",
+            cwd: "./server",
+            env: {
+                ...process.env,
+                NODE_ENV: "test",
+            },
+            log_file: "./logs/log-service.log",
+            out_file: "../logs/log-service.log",
+            error_file: "../logs/log-service.log",
+            log_date_format: "YYYY-MM-DD HH:mm:ss",
+        },
     ],
 };
