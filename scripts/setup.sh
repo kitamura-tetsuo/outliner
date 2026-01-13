@@ -256,51 +256,103 @@ else
   echo "Starting PM2-managed services (yjs-server, vite-server, firebase-emulators)..."
   pm2 start ecosystem.config.cjs
 
-  # Wait for Firebase emulators to be ready with better error detection
-  echo "Waiting for Firebase emulators to be ready..."
+  # Loop to check services and ports in parallel
+  echo "Waiting for services to be ready (checking PM2 status and ports in parallel)..."
+  MAX_WAIT_SECONDS=180
+  START_TIME=$(date +%s)
+  
+  check_pm2_status() {
+    # Check if key PM2 processes are running
+    # Returns 0 if all good, 1 if any failed
+    node -e '
+      try {
+        const exec = require("child_process").execSync;
+        const list = JSON.parse(exec("pm2 jlist").toString());
+        const apps = ["yjs-server", "vite-server", "firebase-emulators"];
+        const failed = list.filter(p => apps.includes(p.name) && 
+                                     p.pm2_env.status !== "online" && 
+                                     p.pm2_env.status !== "launching");
+        if (failed.length > 0) {
+          console.log("Error: One or more PM2 services are not running:");
+          failed.forEach(p => console.log(`- ${p.name}: ${p.pm2_env.status}`));
+          process.exit(1);
+        }
+      } catch (e) {
+        console.error("Failed to check PM2 status:", e.message);
+        // If we cant check PM2, we process to port check assuming it might be fine or we fail later
+        // But if pm2 command failed, likely something is wrong.
+      }
+    '
+  }
 
-  # First wait for Functions emulator (backend)
-  if wait_for_port ${FIREBASE_FUNCTIONS_PORT}; then
-    echo "Firebase Functions emulator is ready"
-  else
-    echo "Warning: Firebase Functions emulator may not have started correctly"
-    echo "Checking emulator logs for errors..."
-    pm2 logs firebase-emulators --lines 50 --nostream 2>/dev/null || true
-  fi
+  is_service_ready() {
+    local all_ready=true
+    local missing_services=()
 
-  # Also wait for Hosting emulator (frontend - required for /api/ rewrites)
-  if wait_for_port ${FIREBASE_HOSTING_PORT}; then
-    echo "Firebase Hosting emulator is ready"
-  else
-    echo "Warning: Firebase Hosting emulator may not have started correctly"
-  fi
+    # Check all required ports
+    for port in "${REQUIRED_PORTS[@]}"; do
+      if ! port_is_open "${port}"; then
+        all_ready=false
+        missing_services+=("Port ${port}")
+      fi
+    done
 
-  # Wait additional time for Firebase Functions to fully load their definitions
-  # The port may be open but Functions need time to register their routes
-  echo "Waiting for Firebase Functions to fully initialize..."
-  sleep 20
+    # Check Firebase Functions API Health (if ports are open)
+    # Only check if hosting port is open to avoid immediate fail
+    if port_is_open "${FIREBASE_HOSTING_PORT}"; then
+       HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${FIREBASE_HOSTING_PORT}/api/health" 2>/dev/null || echo "000")
+       if [ "$HTTP_CODE" != "200" ]; then
+         all_ready=false
+         missing_services+=("Firebase API (/api/health)")
+       fi
+    fi
 
-  # Verify Firebase Functions are working by checking API endpoint through Hosting emulator
-  # Tests access Functions through Hosting at http://localhost:57000/api/...
-  echo "Verifying Firebase Functions API through Hosting emulator..."
-  API_READY=false
-  for i in {1..36}; do
-    # Check through Hosting emulator which is what the tests use
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${FIREBASE_HOSTING_PORT}/api/health" 2>/dev/null || echo "000")
-    if [ "$HTTP_CODE" = "200" ]; then
-      echo "Firebase Functions API is ready (via Hosting)"
-      API_READY=true
+    # Check Yjs WebSocket (if port is open)
+    if port_is_open "${TEST_YJS_PORT}"; then
+       if ! curl -s --connect-timeout 2 --max-time 5 "http://127.0.0.1:${TEST_YJS_PORT}/" >/dev/null 2>&1 && ! nc -z 127.0.0.1 ${TEST_YJS_PORT} 2>/dev/null; then
+          all_ready=false
+          missing_services+=("Yjs WebSocket")
+       fi
+    fi
+    
+    if [ "$all_ready" = true ]; then
+      return 0
+    else
+      # Only print missing periodically in main loop to reduce noise, or just return 1
+      return 1
+    fi
+  }
+
+  while true; do
+    CURRENT_TIME=$(date +%s)
+    ELAPSED=$((CURRENT_TIME - START_TIME))
+    
+    if [ $ELAPSED -gt $MAX_WAIT_SECONDS ]; then
+      echo "Timeout waiting for services after ${MAX_WAIT_SECONDS} seconds."
+      echo "State of services:"
+      pm2 list
+      exit 1
+    fi
+
+    # 1. Check PM2 status - Fail fast if crashed
+    if ! check_pm2_status; then
+      echo "Detected crashed services via PM2. Exiting setup."
+      pm2 logs --lines 50 --nostream
+      exit 1
+    fi
+
+    # 2. Check if services are ready
+    if is_service_ready; then
+      echo "=== All test services are ready! ==="
       break
     fi
-    echo "Waiting for Firebase Functions API... (attempt ${i}/36, got $HTTP_CODE)"
-    sleep 5
-  done
 
-  if [ "$API_READY" = false ]; then
-    echo "Warning: Firebase Functions API may not be fully ready"
-    echo "Checking PM2 logs..."
-    pm2 logs firebase-emulators --lines 200 --nostream 2>/dev/null || true
-  fi
+    if [ $((ELAPSED % 10)) -eq 0 ]; then
+       echo "Waiting for services... (${ELAPSED}s / ${MAX_WAIT_SECONDS}s)"
+    fi
+    
+    sleep 2
+  done
 
   # Initialize Firebase emulator (creates test users, etc.)
   echo "Initializing Firebase emulator..."
@@ -311,46 +363,6 @@ else
   cd "${ROOT_DIR}/server/scripts"
   node init-firebase-emulator.js || echo "Warning: Firebase emulator initialization had issues"
   cd "${ROOT_DIR}"
-
-  # Wait for Yjs server WebSocket to be ready (critical for Yjs sync tests)
-  echo "Waiting for Yjs WebSocket server to be ready..."
-  YJS_READY=false
-  for i in {1..24}; do
-    # Check if the Yjs WebSocket port is open and responding
-    if nc -z 127.0.0.1 ${TEST_YJS_PORT} 2>/dev/null; then
-      # Additional check: verify it's actually a WebSocket by checking the response
-      WS_CHECK=$(curl -s --connect-timeout 2 --max-time 5 "http://127.0.0.1:${TEST_YJS_PORT}/" 2>/dev/null || echo "")
-      if [ -n "$WS_CHECK" ] || nc -z 127.0.0.1 ${TEST_YJS_PORT} 2>/dev/null; then
-        echo "Yjs WebSocket server is ready on port ${TEST_YJS_PORT}"
-        YJS_READY=true
-        break
-      fi
-    fi
-    echo "Waiting for Yjs WebSocket... (attempt ${i}/24)"
-    sleep 5
-  done
-
-  if [ "$YJS_READY" = false ]; then
-    echo "Warning: Yjs WebSocket server may not be fully ready"
-    echo "Checking PM2 logs..."
-    pm2 logs yjs-server --lines 50 --nostream 2>/dev/null || true
-  fi
-
-  # Verify PM2 services started successfully
-  pm2 list
-fi
-
-# Wait for all services to be ready
-if [ "${SKIP_PORT_WAIT:-0}" -eq 1 ]; then
-  echo "Skipping port wait as requested"
-else
-  echo "Waiting for all services to be ready..."
-  if wait_for_all_ports; then
-    echo "=== All test services are ready! ==="
-  else
-    echo "=== Test environment setup completed with warnings ==="
-    echo "Some services may not be fully ready, but the environment is usable"
-  fi
 fi
 sleep 10
 
