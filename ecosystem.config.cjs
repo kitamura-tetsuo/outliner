@@ -49,9 +49,9 @@ module.exports = {
         },
         {
             name: "firebase-emulators",
-            script: firebasePath,
-            args:
-                "emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project outliner-d57b0",
+            script: "./scripts/start-firebase-emulators.sh",
+            interpreter: "bash",
+            // args are handled inside the wrapper script
             cwd: ".",
             env: {
                 ...process.env,
