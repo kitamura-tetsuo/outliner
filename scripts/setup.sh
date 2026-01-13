@@ -298,16 +298,21 @@ else
       fi
     done
 
-    # Check Firebase Functions API Health (if ports are open)
-    # Only check if hosting port is open to avoid immediate fail
-    if port_is_open "${FIREBASE_HOSTING_PORT}"; then
-       HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${FIREBASE_HOSTING_PORT}/api/health" 2>/dev/null || echo "000")
+    # Check Firebase Functions API Health (Directly via Functions Emulator)
+    # Checks http://127.0.0.1:57070/outliner-d57b0/us-central1/health
+    # We use direct URL because Hosting Emulator rewrite sometimes duplicates paths causing 404
+    if port_is_open "${FIREBASE_FUNCTIONS_PORT}"; then
+       # Default project ID if not set
+       PROJECT_ID="${FIREBASE_PROJECT_ID:-outliner-d57b0}"
+       FUNC_URL="http://127.0.0.1:${FIREBASE_FUNCTIONS_PORT}/${PROJECT_ID}/us-central1/health"
+       
+       HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$FUNC_URL" 2>/dev/null || echo "000")
        if [ "$HTTP_CODE" != "200" ]; then
          all_ready=false
-         MSG="Firebase API (/api/health) [Code: $HTTP_CODE]"
+         MSG="Firebase Function Health [Code: $HTTP_CODE]"
          if [ "$verbose" = "true" ]; then
             # Capture start of body for debugging
-            BODY=$(curl -s "http://127.0.0.1:${FIREBASE_HOSTING_PORT}/api/health" | head -c 200)
+            BODY=$(curl -s "$FUNC_URL" | head -c 200)
             MSG="$MSG [Body: $BODY]"
          fi
          missing_services+=("$MSG")
