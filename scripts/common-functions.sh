@@ -313,10 +313,12 @@ AZURE_ACTIVE_KEY=primary
 EOV
     echo "Created functions/.env.test"
   fi
-  if [ ! -f "${ROOT_DIR}/functions/.env" ]; then
-    cp "${ROOT_DIR}/functions/.env.test" "${ROOT_DIR}/functions/.env"
-    echo "Created functions/.env"
-  fi
+  # Do not copy to .env for functions, as firebase-functions tries to load it automatically
+  # and might fail or conflict with index.js manual loading of .env.test
+  # if [ ! -f "${ROOT_DIR}/functions/.env" ]; then
+  #   cp "${ROOT_DIR}/functions/.env.test" "${ROOT_DIR}/functions/.env"
+  #   echo "Created functions/.env"
+  # fi
 
   # Export for this session
   set -a

@@ -113,6 +113,9 @@ echo "Clearing old log files..."
 clear_log_files
 echo "Setting up environment files..."
 setup_environment_files
+# Remove functions/.env to prevent firebase-functions from failing to load it
+# (in CI/test we use .env.test loaded via index.js)
+rm -f "${ROOT_DIR}/functions/.env"
 
 # Install required tools and dependencies on first run
 if [ "$SKIP_INSTALL" -eq 0 ]; then
