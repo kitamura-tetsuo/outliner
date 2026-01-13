@@ -304,7 +304,13 @@ else
        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${FIREBASE_HOSTING_PORT}/api/health" 2>/dev/null || echo "000")
        if [ "$HTTP_CODE" != "200" ]; then
          all_ready=false
-         missing_services+=("Firebase API (/api/health)")
+         MSG="Firebase API (/api/health) [Code: $HTTP_CODE]"
+         if [ "$verbose" = "true" ]; then
+            # Capture start of body for debugging
+            BODY=$(curl -s "http://127.0.0.1:${FIREBASE_HOSTING_PORT}/api/health" | head -c 200)
+            MSG="$MSG [Body: $BODY]"
+         fi
+         missing_services+=("$MSG")
        fi
     fi
 
