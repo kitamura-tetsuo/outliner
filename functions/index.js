@@ -5,7 +5,10 @@ try {
     process.env.CI === "true" || process.env.NODE_ENV === "test" ||
     process.env.FUNCTIONS_EMULATOR === "true"
   ) {
-    require("@dotenvx/dotenvx").config({ path: ".env.test" });
+    const path = require("path");
+    require("@dotenvx/dotenvx").config({
+      path: path.join(__dirname, ".env.test"),
+    });
   }
 } catch {
   // dotenvx が無くても処理継続（本番はSecretsを使用）
@@ -1849,6 +1852,7 @@ exports.deleteAttachment = onRequest({ cors: true }, async (req, res) => {
 
 // 管理者チェック API
 exports.adminCheckForProjectUserListing = onRequest(
+  { cors: true },
   async (req, res) => {
     logger.info("adminCheckForProjectUserListing called");
     setCorsHeaders(req, res);
@@ -1929,6 +1933,7 @@ exports.adminCheckForProjectUserListing = onRequest(
 
 // 管理者ユーザーリスト API
 exports.adminUserList = onRequest(
+  { cors: true },
   async (req, res) => {
     setCorsHeaders(req, res);
 

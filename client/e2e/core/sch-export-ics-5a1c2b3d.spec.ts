@@ -56,7 +56,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         const nextRunAt = Date.now() + 10 * 60 * 1000;
 
         // まずスケジュールページへ遷移して、実際に使用される pageId を取得する
-        const scheduleUrl = `http://localhost:7090/${encodeURIComponent(projectName)}/${
+        const scheduleUrl = `http://127.0.0.1:7090/${encodeURIComponent(projectName)}/${
             encodeURIComponent(pageName)
         }/schedule`;
         await page.goto(scheduleUrl, { waitUntil: "domcontentloaded" });
@@ -85,7 +85,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         // The pageId is already stable after the navigation flow in onMount.
 
         // 取得した pageId でスケジュールを作成
-        const resp = await page.request.post("http://localhost:57000/api/create-schedule", {
+        const resp = await page.request.post("http://127.0.0.1:57000/api/create-schedule", {
             data: {
                 idToken,
                 pageId: resolvedPageId,

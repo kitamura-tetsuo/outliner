@@ -20,7 +20,7 @@ test.describe("Schedule Management", () => {
             const userManager = (window as any).__USER_MANAGER__;
             return await userManager?.auth?.currentUser?.getIdToken();
         });
-        await page.request.post("http://localhost:57000/api/create-schedule", {
+        await page.request.post("http://127.0.0.1:57000/api/create-schedule", {
             data: {
                 idToken,
                 pageId,
@@ -29,7 +29,7 @@ test.describe("Schedule Management", () => {
         });
 
         const res = await page.request.post(
-            `http://localhost:57000/api/list-schedules`,
+            `http://127.0.0.1:57000/api/list-schedules`,
             {
                 data: { idToken, pageId },
             },
