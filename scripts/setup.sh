@@ -309,7 +309,7 @@ else
        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$FUNC_URL" 2>/dev/null || echo "000")
        if [ "$HTTP_CODE" != "200" ]; then
          all_ready=false
-         MSG="Firebase Function Health [Code: $HTTP_CODE]"
+         MSG="Firebase Function Health [Code: $HTTP_CODE] (URL: $FUNC_URL)"
          if [ "$verbose" = "true" ]; then
             # Capture start of body for debugging
             BODY=$(curl -s "$FUNC_URL" | head -c 200)

@@ -17,5 +17,4 @@ echo "Starting Firebase Emulators..."
 exec $FIREBASE_BIN emulators:start \
     --only auth,firestore,functions,hosting,storage \
     --config firebase.emulator.json \
-    --project outliner-d57b0 \
-    --debug
+    --project outliner-d57b0
