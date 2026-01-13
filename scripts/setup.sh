@@ -258,7 +258,7 @@ else
 
   # Loop to check services and ports in parallel
   echo "Waiting for services to be ready (checking PM2 status and ports in parallel)..."
-  MAX_WAIT_SECONDS=180
+  MAX_WAIT_SECONDS=300
   START_TIME=$(date +%s)
   
   check_pm2_status() {
@@ -286,6 +286,7 @@ else
   }
 
   is_service_ready() {
+    local verbose="${1:-false}"
     local all_ready=true
     local missing_services=()
 
@@ -318,7 +319,9 @@ else
     if [ "$all_ready" = true ]; then
       return 0
     else
-      # Only print missing periodically in main loop to reduce noise, or just return 1
+      if [ "$verbose" = "true" ] && [ ${#missing_services[@]} -gt 0 ]; then
+        echo "Still waiting for: ${missing_services[*]}"
+      fi
       return 1
     fi
   }
@@ -331,6 +334,8 @@ else
       echo "Timeout waiting for services after ${MAX_WAIT_SECONDS} seconds."
       echo "State of services:"
       pm2 list
+      echo "--- PM2 Logs (tail) ---"
+      pm2 logs --lines 50 --nostream
       exit 1
     fi
 
@@ -342,13 +347,16 @@ else
     fi
 
     # 2. Check if services are ready
-    if is_service_ready; then
-      echo "=== All test services are ready! ==="
-      break
-    fi
-
+    # Check with verbose logging every 10 seconds
+    log_status=false
     if [ $((ELAPSED % 10)) -eq 0 ]; then
        echo "Waiting for services... (${ELAPSED}s / ${MAX_WAIT_SECONDS}s)"
+       log_status=true
+    fi
+    
+    if is_service_ready "$log_status"; then
+      echo "=== All test services are ready! ==="
+      break
     fi
     
     sleep 2
