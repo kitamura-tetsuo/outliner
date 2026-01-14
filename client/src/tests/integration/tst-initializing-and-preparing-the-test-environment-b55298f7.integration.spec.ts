@@ -8,8 +8,8 @@ import AuthSectionWrapper from "./AuthSectionWrapper.svelte";
 
 describe("basic home page and auth component", () => {
     it("renders home page title", () => {
-        const { getByText } = render(HomePage);
-        expect(getByText(/Outliner/)).toBeTruthy();
+        const { getByRole } = render(HomePage);
+        expect(getByRole("heading", { name: /Outliner/ })).toBeTruthy();
     });
 
     it("renders auth section with Google login button", async () => {
