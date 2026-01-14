@@ -11,7 +11,7 @@ try {
     const expectedFsPort = process.env.FIREBASE_FIRESTORE_PORT;
     const expectedFnPort = process.env.FIREBASE_FUNCTIONS_PORT;
     if (expectedAuthPort) {
-        const expected = `localhost:${expectedAuthPort}`;
+        const expected = `127.0.0.1:${expectedAuthPort}`;
         if (process.env.FIREBASE_AUTH_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST !== expected) {
             logger.warn(
                 `Overriding FIREBASE_AUTH_EMULATOR_HOST ${process.env.FIREBASE_AUTH_EMULATOR_HOST} -> ${expected}`,
@@ -21,14 +21,14 @@ try {
         process.env.AUTH_EMULATOR_HOST = expected; // legacy
     }
     if (expectedFsPort) {
-        const expected = `localhost:${expectedFsPort}`;
+        const expected = `127.0.0.1:${expectedFsPort}`;
         if (process.env.FIRESTORE_EMULATOR_HOST && process.env.FIRESTORE_EMULATOR_HOST !== expected) {
             logger.warn(`Overriding FIRESTORE_EMULATOR_HOST ${process.env.FIRESTORE_EMULATOR_HOST} -> ${expected}`);
         }
         process.env.FIRESTORE_EMULATOR_HOST = expected;
     }
     if (expectedFnPort) {
-        const expected = `localhost:${expectedFnPort}`;
+        const expected = `127.0.0.1:${expectedFnPort}`;
         if (process.env.FIREBASE_EMULATOR_HOST && process.env.FIREBASE_EMULATOR_HOST !== expected) {
             logger.warn(`Overriding FIREBASE_EMULATOR_HOST ${process.env.FIREBASE_EMULATOR_HOST} -> ${expected}`);
         }
@@ -162,7 +162,7 @@ async function clearFirestoreEmulatorData() {
 
         // Firebase Admin REST APIを使用してデータを消去（より効率的）
         const projectId = process.env.FIREBASE_PROJECT_ID || "test-project-id";
-        const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST || "localhost:58080";
+        const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:58080";
 
         // REST APIでデータベース全体をクリア
         const clearUrl = `http://${emulatorHost}/emulator/v1/projects/${projectId}/databases/(default)/documents`;

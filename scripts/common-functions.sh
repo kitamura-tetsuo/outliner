@@ -151,19 +151,17 @@ npm_ci_if_needed() {
   fi
 }
 
-# Kill processes on specified ports using the JavaScript script
-kill_ports() {
-  echo "Starting cleanup of development processes..."
-  cd "${ROOT_DIR}"
-  node scripts/kill-tinylicious.js
-  return 0
-}
 
 # Install global packages if needed
 install_global_packages() {
-  if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null; then
-    echo "Installing global packages (firebase-tools, tinylicious)..."
-    npm_config_proxy="" npm_config_https_proxy="" npm install -g firebase-tools tinylicious dotenv-cli @dotenvx/dotenvx || true
+  if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null || ! command -v pm2 >/dev/null; then
+    echo "Installing global packages (firebase-tools, tinylicious, pm2)..."
+    npm_config_proxy="" npm_config_https_proxy="" npm install -g firebase-tools tinylicious pm2 dotenv-cli @dotenvx/dotenvx || true
+    # Refresh PATH to include newly installed global packages
+    NPM_GLOBAL_BIN="$(npm bin -g 2>/dev/null || true)"
+    if [ -n "$NPM_GLOBAL_BIN" ] && [[ ":$PATH:" != *":$NPM_GLOBAL_BIN:"* ]]; then
+      export PATH="$NPM_GLOBAL_BIN:$PATH"
+    fi
   fi
 
   # if ! command -v dprint >/dev/null; then
@@ -282,8 +280,9 @@ EOV
     cat >> "${ROOT_DIR}/client/.env.test" <<'EOV'
 VITE_IS_TEST=true
 VITE_USE_FIREBASE_EMULATOR=true
-VITE_FIREBASE_EMULATOR_HOST=localhost
+VITE_FIREBASE_EMULATOR_HOST=127.0.0.1
 VITE_USE_TINYLICIOUS=true
+VITE_HOST=127.0.0.1
 EOV
     echo "Created client/.env.test"
   fi
@@ -314,10 +313,12 @@ AZURE_ACTIVE_KEY=primary
 EOV
     echo "Created functions/.env.test"
   fi
-  if [ ! -f "${ROOT_DIR}/functions/.env" ]; then
-    cp "${ROOT_DIR}/functions/.env.test" "${ROOT_DIR}/functions/.env"
-    echo "Created functions/.env"
-  fi
+  # Do not copy to .env for functions, as firebase-functions tries to load it automatically
+  # and might fail or conflict with index.js manual loading of .env.test
+  # if [ ! -f "${ROOT_DIR}/functions/.env" ]; then
+  #   cp "${ROOT_DIR}/functions/.env.test" "${ROOT_DIR}/functions/.env"
+  #   echo "Created functions/.env"
+  # fi
 
   # Export for this session
   set -a
@@ -355,6 +356,12 @@ install_all_dependencies() {
   # Server dependencies
   cd "${ROOT_DIR}/server"
   npm_ci_if_needed
+  if [ "${SKIP_BUILD:-0}" -eq 0 ]; then
+    echo "Building server..."
+    npm run build
+  else
+    echo "Skipping server build..."
+  fi
 
   # Firebase Functions dependencies
   cd "${ROOT_DIR}/functions"
@@ -373,216 +380,6 @@ install_all_dependencies() {
   #   npx -y @inlang/paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
   # fi
 
-  cd "${ROOT_DIR}"
-}
-
-# Start Firebase emulator
-start_firebase_emulator() {
-  if port_is_open ${FIREBASE_AUTH_PORT}; then
-    echo "Firebase emulator already running, stopping it first..."
-    kill_ports
-    sleep 2
-  fi
-
-  echo "Starting Firebase emulator..."
-  cd "${ROOT_DIR}"
-
-  # Create .env file for Firebase Functions (without reserved environment variables)
-  echo "Creating .env file for Firebase Functions..."
-  cat > "${ROOT_DIR}/functions/.env" << EOF
-AZURE_TENANT_ID=test-tenant-id
-AZURE_ENDPOINT=https://test.fluidrelay.azure.com
-AZURE_PRIMARY_KEY=test-primary-key
-AZURE_SECONDARY_KEY=test-secondary-key
-AZURE_ACTIVE_KEY=primary
-EOF
-
-  echo "Firebase Functions .env file contents:"
-  cat "${ROOT_DIR}/functions/.env" || echo "Failed to read .env file"
-
-  # Start Firebase emulator with detailed logging
-  echo "Firebase emulator starting with project: ${FIREBASE_PROJECT_ID}"
-  echo "Using config file: firebase.emulator.json"
-  echo "Starting emulators: auth,firestore,functions,hosting,storage"
-  firebase emulators:start --only auth,firestore,functions,hosting,storage --config firebase.emulator.json --project ${FIREBASE_PROJECT_ID} > "${ROOT_DIR}/server/logs/firebase-emulator.log" 2>&1 &
-  FIREBASE_PID=$!
-  echo "Firebase emulator started with PID: ${FIREBASE_PID}"
-  echo "Firebase emulator log will be written to: ${ROOT_DIR}/server/logs/firebase-emulator.log"
-
-  cd "${ROOT_DIR}"
-
-  # Wait for Firebase emulator to start (concurrently)
-  echo "Waiting for Firebase emulator services to start (max 60s)..."
-  local timeout=60
-  local elapsed=0
-  local auth_ready=false
-  local functions_ready=false
-  local hosting_ready=false
-
-  while [ $elapsed -lt $timeout ]; do
-    if [ "$auth_ready" = false ]; then
-        if port_is_open ${FIREBASE_AUTH_PORT}; then auth_ready=true; fi
-    fi
-    if [ "$functions_ready" = false ]; then
-        if port_is_open ${FIREBASE_FUNCTIONS_PORT}; then functions_ready=true; fi
-    fi
-    if [ "$hosting_ready" = false ]; then
-        if port_is_open ${FIREBASE_HOSTING_PORT}; then hosting_ready=true; fi
-    fi
-
-    if [ "$auth_ready" = true ] && [ "$functions_ready" = true ] && [ "$hosting_ready" = true ]; then
-        echo "All Firebase emulator services are ready."
-        break
-    fi
-
-    sleep 1
-    elapsed=$((elapsed + 1))
-    if [ $((elapsed % 10)) -eq 0 ]; then
-        echo "Still waiting for Firebase services... ($((timeout - elapsed))s remaining)"
-    fi
-  done
-
-  if [ "$auth_ready" = true ]; then
-    echo "Firebase Auth emulator is running on port ${FIREBASE_AUTH_PORT}"
-  else
-    echo "Warning: Firebase Auth emulator may not be ready on port ${FIREBASE_AUTH_PORT}"
-  fi
-
-  if [ "$functions_ready" = true ]; then
-    echo "Firebase Functions emulator is running on port ${FIREBASE_FUNCTIONS_PORT}"
-  else
-    echo "Warning: Firebase Functions emulator may not be ready on port ${FIREBASE_FUNCTIONS_PORT}"
-  fi
-
-  if [ "$hosting_ready" = true ]; then
-    echo "Firebase Hosting emulator is running on port ${FIREBASE_HOSTING_PORT}"
-  else
-    echo "Warning: Firebase Hosting emulator may not be ready on port ${FIREBASE_HOSTING_PORT}"
-  fi
-
-  # Additional wait for Firebase Functions to fully initialize
-  # In CI environments, emulators may need more time to be fully ready
-  echo "Waiting additional 30 seconds for Firebase Functions to fully initialize..."
-  sleep 30
-
-  # Now that emulators are listening, initialize admin and test user
-  echo "Launching Firebase emulator initializer (admin + test user) ..."
-  # Force-correct emulator env for the initializer to avoid external drift
-  export FIREBASE_AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
-  export AUTH_EMULATOR_HOST="localhost:${FIREBASE_AUTH_PORT}"
-  export FIRESTORE_EMULATOR_HOST="localhost:${FIREBASE_FIRESTORE_PORT}"
-  export FIREBASE_EMULATOR_HOST="localhost:${FIREBASE_FUNCTIONS_PORT}"
-  echo "Using env: FIREBASE_AUTH_EMULATOR_HOST=${FIREBASE_AUTH_EMULATOR_HOST} FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST} FIREBASE_EMULATOR_HOST=${FIREBASE_EMULATOR_HOST}"
-  FIREBASE_AUTH_EMULATOR_HOST="${FIREBASE_AUTH_EMULATOR_HOST}" \
-  FIRESTORE_EMULATOR_HOST="${FIRESTORE_EMULATOR_HOST}" \
-  FIREBASE_EMULATOR_HOST="${FIREBASE_EMULATOR_HOST}" \
-  node "${ROOT_DIR}/server/scripts/init-firebase-emulator.js"
-
-  # Test Firebase Functions endpoint directly
-  echo "Testing Firebase Functions endpoint directly..."
-  if curl -s -f "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/health" >/dev/null 2>&1; then
-    echo "Firebase Functions health endpoint is responding directly"
-  else
-    echo "WARNING: Firebase Functions health endpoint is not responding directly"
-  fi
-
-  # Test Firebase Hosting endpoint
-  echo "Testing Firebase Hosting endpoint..."
-  if curl -s -f "http://localhost:${FIREBASE_HOSTING_PORT}/api/health" >/dev/null 2>&1; then
-    echo "Firebase Hosting health endpoint is responding"
-  else
-    echo "WARNING: Firebase Hosting health endpoint is not responding"
-  fi
-
-  # Test get-container-users endpoint
-  echo "Testing get-container-users endpoint..."
-  response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/get-container-users")
-  echo "get-container-users endpoint returned HTTP status: $response"
-  if [ "$response" = "401" ]; then
-    echo "✅ get-container-users endpoint is working correctly (401 for invalid token)"
-  else
-    echo "❌ get-container-users endpoint returned unexpected status: $response"
-    echo "Checking Firebase emulator log..."
-    tail -30 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
-  fi
-
-  # Test adminCheckForContainerUserListing endpoint
-  echo "Testing adminCheckForContainerUserListing endpoint..."
-  response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/adminCheckForContainerUserListing")
-  echo "adminCheckForContainerUserListing endpoint returned HTTP status: $response"
-  if [ "$response" = "401" ]; then
-    echo "✅ adminCheckForContainerUserListing endpoint is working correctly (401 for invalid token)"
-  else
-    echo "❌ adminCheckForContainerUserListing endpoint returned unexpected status: $response"
-    echo "Response body:"
-    curl -s -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_HOSTING_PORT}/api/adminCheckForContainerUserListing" || echo "Failed to get response body"
-
-    echo "Checking if Firebase Functions are loaded..."
-    echo "Firebase emulator log (last 50 lines):"
-    tail -50 "${ROOT_DIR}/server/logs/firebase-emulator.log" || echo "No Firebase emulator log found"
-
-    echo "Checking Firebase Functions directly..."
-    direct_response=$(curl -s -w "%{http_code}" -o /dev/null -X POST -H "Content-Type: application/json" -d '{"idToken":"invalid-token","containerId":"test-container"}' "http://localhost:${FIREBASE_FUNCTIONS_PORT}/${FIREBASE_PROJECT_ID}/us-central1/adminCheckForContainerUserListing")
-    echo "Direct Firebase Functions call returned HTTP status: $direct_response"
-  fi
-}
-
-# Start Yjs WebSocket server (auth + persistence)
-start_yjs_server() {
-  echo "Starting Yjs WebSocket server on port ${TEST_YJS_PORT}..."
-  cd "${ROOT_DIR}/server"
-  mkdir -p "${ROOT_DIR}/yjs-data"
-  # Ensure dependencies
-  if [ ! -d node_modules ]; then
-    echo "Installing server dependencies (npm ci) ..."
-    npm_config_proxy="" npm_config_https_proxy="" npm ci
-  fi
-  # Build TypeScript and start compiled server to avoid ts-node dependency issues
-  echo "Building server..."
-  if npm run | grep -q " build"; then
-    npm run build --silent || npm run build
-  fi
-  
-  
-  # Clean LevelDB database for fresh test state (always run to prevent schema conflicts)
-  echo "Cleaning LevelDB database for fresh test state..."
-  rm -rf "${ROOT_DIR}/server/ydb" "${ROOT_DIR}/ydb" 2>/dev/null || true
-  mkdir -p "${ROOT_DIR}/server/ydb"
-  echo "LevelDB database cleaned successfully"
-  
-  echo "Launching compiled server..."
-  npx dotenvx run --env-file=.env.test -- bash -lc "PORT=${TEST_YJS_PORT} npm start --silent" \
-    </dev/null > "${ROOT_DIR}/server/logs/yjs-websocket.log" 2>&1 &
-  local yjs_pid=$!
-  echo "Yjs WebSocket server started with PID: ${yjs_pid}"
-  cd "${ROOT_DIR}"
-
-  # Wait for the Yjs server to be ready
-  if ! wait_for_port ${TEST_YJS_PORT}; then
-    echo "Warning: Yjs WebSocket server may not be ready on port ${TEST_YJS_PORT}"
-    echo "Last 50 lines of Yjs server log:"
-    tail -50 "${ROOT_DIR}/server/logs/yjs-websocket.log" || echo "No Yjs log found"
-  fi
-}
-
-# Start Tinylicious server
-start_tinylicious() {
-  echo "Tinylicious is disabled on the Yjs branch. Skipping."
-}
-
-# Start API server
-start_api_server() {
-  echo "Starting API server on port ${TEST_API_PORT}..."
-  cd "${ROOT_DIR}/server"
-  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${TEST_API_PORT} </dev/null > "${ROOT_DIR}/server/logs/test-log-service-tee.log" 2>&1 &
-  cd "${ROOT_DIR}"
-}
-
-# Start SvelteKit server
-start_sveltekit_server() {
-  echo "Starting SvelteKit server on port ${VITE_PORT}..."
-  cd "${ROOT_DIR}/client"
-  npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection run dev -- --host 0.0.0.0 --port ${VITE_PORT} </dev/null > "${ROOT_DIR}/server/logs/test-svelte-kit.log" 2>&1 &
   cd "${ROOT_DIR}"
 }
 

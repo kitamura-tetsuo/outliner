@@ -1,0 +1,177 @@
+{
+    "functions": [
+        {
+            "source": "functions",
+            "codebase": "default",
+            "ignore": [
+                "node_modules",
+                ".git",
+                "firebase-debug.log",
+                "firebase-debug.*.log",
+                "*.local"
+            ],
+            "runtime": "nodejs22"
+        }
+    ],
+    "hosting": {
+        "public": "build",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "headers": [
+            {
+                "source": "/service-worker.js",
+                "headers": [
+                    {
+                        "key": "Cache-Control",
+                        "value": "no-cache, no-store, must-revalidate"
+                    },
+                    {
+                        "key": "Service-Worker-Allowed",
+                        "value": "/"
+                    }
+                ]
+            }
+        ],
+        "rewrites": [
+            {
+                "source": "/api/save-container",
+                "function": "saveContainer"
+            },
+            {
+                "source": "/api/get-user-containers",
+                "function": "getUserContainers"
+            },
+            {
+                "source": "/api/delete-user",
+                "function": "deleteUser"
+            },
+            {
+                "source": "/api/list-users",
+                "function": "listUsers"
+            },
+            {
+                "source": "/api/create-test-user",
+                "function": "createTestUser"
+            },
+            {
+                "source": "/api/delete-container",
+                "function": "deleteProject"
+            },
+            {
+                "source": "/api/update-schedule",
+                "function": "updateSchedule"
+            },
+            {
+                "source": "/api/create-schedule",
+                "function": "createSchedule"
+            },
+            {
+                "source": "/api/execute-publish",
+                "function": "executePublish"
+            },
+            {
+                "source": "/api/list-schedules",
+                "function": "listSchedules"
+            },
+            {
+                "source": "/api/cancel-schedule",
+                "function": "cancelSchedule"
+            },
+            {
+                "source": "/api/export-schedules-ical",
+                "function": "exportSchedulesIcal"
+            },
+            {
+                "source": "/api/upload-attachment",
+                "function": "uploadAttachment"
+            },
+            {
+                "source": "/api/list-attachments",
+                "function": "listAttachments"
+            },
+            {
+                "source": "/api/delete-attachment",
+                "function": "deleteAttachment"
+            },
+            {
+                "source": "/api/adminCheckForContainerUserListing",
+                "function": "adminCheckForProjectUserListing"
+            },
+            {
+                "source": "/api/adminCheckForProjectUserListing",
+                "function": "adminCheckForProjectUserListing"
+            },
+            {
+                "source": "/api/get-container-users",
+                "function": "adminCheckForProjectUserListing"
+            },
+            {
+                "source": "/api/get-project-users",
+                "function": "getProjectUsers"
+            },
+            {
+                "source": "/api/adminUserList",
+                "function": "adminUserList"
+            },
+            {
+                "source": "/health",
+                "function": "health"
+            },
+            {
+                "source": "/api/health",
+                "function": "health"
+            },
+            {
+                "source": "/api/azure-health-check",
+                "function": "azureHealthCheck"
+            },
+            {
+                "source": "/api/debug-user-containers",
+                "function": "debugUserContainers"
+            },
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
+    },
+    "firestore": {
+        "rules": "firestore.rules",
+        "indexes": "firestore.indexes.json"
+    },
+    "storage": {
+        "rules": "storage.rules"
+    },
+    "emulators": {
+        "auth": {
+            "port": 59099,
+            "host": "0.0.0.0"
+        },
+        "firestore": {
+            "port": 58080,
+            "host": "0.0.0.0"
+        },
+        "functions": {
+            "port": 57070,
+            "host": "0.0.0.0"
+        },
+        "hosting": {
+            "port": 57000,
+            "host": "0.0.0.0"
+        },
+        "storage": {
+            "port": 59200,
+            "host": "0.0.0.0"
+        },
+        "ui": {
+            "port": 54000,
+            "host": "0.0.0.0",
+            "enabled": false
+        },
+        "singleProjectMode": false
+    },
+    "projectId": "outliner-d57b0"
+}

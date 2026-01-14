@@ -179,7 +179,7 @@ export async function initializeBrowserPage(
     );
 
     // Navigate to the app
-    await page.goto("http://localhost:7090/", {
+    await page.goto("http://127.0.0.1:7090/", {
         waitUntil: "domcontentloaded",
     });
 
