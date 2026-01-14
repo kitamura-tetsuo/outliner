@@ -1,6 +1,4 @@
-import { defineConfig } from "@stryker-mutator/core";
-
-export default defineConfig({
+export default {
     mutate: [
         "src/**/*.{ts,tsx}",
         "!src/**/*.{test,spec}.{ts,tsx}",
@@ -9,11 +7,6 @@ export default defineConfig({
         "!src/lib/paraglide/**",
     ],
     testRunner: "vitest",
-    vitest: {
-        configFile: "vite.config.ts",
-        project: "unit",
-        enableFindRelatedTests: true,
-    },
     reporters: ["progress", "clear-text", "html", "json"],
     coverageAnalysis: "perTest",
     checkers: ["typescript"],
@@ -25,4 +18,4 @@ export default defineConfig({
         low: 75,
         break: 60,
     },
-});
+};
