@@ -3,6 +3,7 @@ import type { LeveldbPersistence } from "y-leveldb";
 import * as Y from "yjs";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
+import { verifyIdTokenCached } from "./websocket-auth.js";
 
 export interface PageSeedData {
     name: string;
@@ -29,6 +30,27 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
     router.post("/seed", async (req, res): Promise<void> => {
         if (!persistence) {
             res.status(503).json({ error: "Persistence not enabled" });
+            return;
+        }
+
+        // Authentication Check
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            logger.warn({ event: "seed_unauthorized", reason: "missing_token" });
+            res.status(401).json({ error: "Unauthorized" });
+            return;
+        }
+
+        try {
+            const token = authHeader.split(" ")[1];
+            await verifyIdTokenCached(token);
+        } catch (e) {
+            logger.warn({
+                event: "seed_unauthorized",
+                reason: "invalid_token",
+                error: e instanceof Error ? e.message : String(e),
+            });
+            res.status(401).json({ error: "Unauthorized" });
             return;
         }
 
