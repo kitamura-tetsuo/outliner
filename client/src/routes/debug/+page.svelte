@@ -67,6 +67,21 @@ async function retryConnection() {
     await initializeFluidClient();
 }
 
+let healthStatus: any = $state(null);
+let healthError: string | undefined = $state(undefined);
+
+async function checkHealth() {
+    healthStatus = null;
+    healthError = undefined;
+    try {
+        const res = await fetch("https://outliner-yjs-ws-mutsurao.duckdns.org/health");
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        healthStatus = await res.json();
+    } catch (e) {
+        healthError = e instanceof Error ? e.message : String(e);
+    }
+}
+
 // 接続状態の更新
 function updateConnectionStatus() {
     const client = yjsStore.yjsClient as any;
@@ -174,6 +189,26 @@ onDestroy(() => {
                     <p>接続URL: {hostInfo}</p>
                     <p>ポート: {portInfo}</p>
                 </div>
+            </div>
+
+            <div class="debug-card">
+                <h2>サーバーヘルスチェック</h2>
+                <button onclick={checkHealth} class="action-button">
+                    ヘルスチェック実行 (GET /health)
+                </button>
+                {#if healthError}
+                    <div class="error" style="margin-top: 1rem;">
+                        <p>エラー: {healthError}</p>
+                    </div>
+                {:else if healthStatus}
+                    <div class="result" style="margin-top: 1rem;">
+                        <p>ステータス: {healthStatus.status}</p>
+                        <details open>
+                            <summary>詳細 (ヘッダー含む)</summary>
+                            <pre>{JSON.stringify(healthStatus, null, 2)}</pre>
+                        </details>
+                    </div>
+                {/if}
             </div>
 
             <div class="debug-card">

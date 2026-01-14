@@ -95,6 +95,18 @@ export async function startServer(config: Config, logger = defaultLogger) {
     app.get("/", (_req: any, res: any) => {
         res.send("ok");
     });
+
+    // Detailed Health/Debug endpoint
+    app.get("/health", (req: any, res: any) => {
+        const headers = { ...req.headers };
+        // Redact sensible headers if necessary, but for now we want to see them all
+        res.json({
+            status: "ok",
+            env: process.env.NODE_ENV,
+            timestamp: new Date().toISOString(),
+            headers: headers,
+        });
+    });
     // Configure y-websocket persistence
     if (!disableLeveldb) {
         process.env.YPERSISTENCE = config.LEVELDB_PATH;
