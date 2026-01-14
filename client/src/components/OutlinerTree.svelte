@@ -1,6 +1,7 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     import { onDestroy, onMount } from "svelte";
+    import { fade } from "svelte/transition";
     import { getLogger } from "../lib/logger";
     import { Item, Items } from "../schema/app-schema";
     import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
@@ -53,6 +54,28 @@
 
     // ビューストアを作成
     const viewModel = new OutlinerViewModel();
+
+    let treeContainer = $state<HTMLDivElement | null>(null);
+    let showScrollTop = $state(false);
+
+    // Throttle scroll event to improve performance
+    let scrollTimeout: number | null = null;
+    function handleScroll() {
+        if (!treeContainer || scrollTimeout) return;
+
+        scrollTimeout = requestAnimationFrame(() => {
+            if (treeContainer) {
+                showScrollTop = treeContainer.scrollTop > 300;
+            }
+            scrollTimeout = null;
+        });
+    }
+
+    function scrollToTop() {
+        treeContainer?.scrollTo({ top: 0, behavior: "smooth" });
+        // Move focus back to the tree container or first item for accessibility
+        // For now, keeping focus management simple as scrolling doesn't change context significantly
+    }
 
     // ドラッグ選択関連の状態
     let isDragging = $state(false);
@@ -1777,6 +1800,8 @@
             class="tree-container"
             role="region"
             aria-label="アウトライナーツリー"
+            bind:this={treeContainer}
+            onscroll={handleScroll}
         >
             <!-- フラット表示の各アイテム（静的配置） -->
             {#each displayItems as display, index (display.model.id)}
@@ -1819,6 +1844,21 @@
                 <EditorOverlay on:paste-multi-item={handlePasteMultiItem} />
             </div>
         </div>
+
+        {#if showScrollTop}
+            <button
+                class="scroll-top-btn"
+                onclick={scrollToTop}
+                aria-label="Scroll to top"
+                transition:fade={{ duration: 200 }}
+                title="Scroll to top"
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5"></line>
+                    <polyline points="5 12 12 5 19 12"></polyline>
+                </svg>
+            </button>
+        {/if}
     </div>
 {/key}
 
@@ -1962,6 +2002,7 @@
         height: calc(100vh - 40px); /* ブラウザの高さから余白を引いた値 */
         display: flex;
         flex-direction: column;
+        position: relative;
     }
 
     .toolbar {
@@ -2023,5 +2064,34 @@
         pointer-events: none !important; /* クリックイベントを下のレイヤーに確実に透過 */
         z-index: 100;
         transform: none !important; /* 変形を防止 */
+    }
+
+    .scroll-top-btn {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: white;
+        border: 1px solid #ddd;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 200;
+        color: #666;
+        transition: background-color 0.2s, color 0.2s;
+    }
+
+    .scroll-top-btn:hover {
+        background-color: #f0f0f0;
+        color: #333;
+    }
+
+    .scroll-top-btn:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 2px;
     }
 </style>
