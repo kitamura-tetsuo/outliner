@@ -29,7 +29,7 @@
         "@inlang/message-lint-rule-valid-js-identifier": "^1.0.8",
         "@inlang/message-lint-rule-without-source": "^1.4.8",
         "@inlang/paraglide-js": "2.2.0",
-        "@inlang/plugin-m-function-matcher": "^2.0.10",
+        "@inlang/plugin-m-function-matcher": "^2.1.2",
         "@inlang/plugin-message-format": "^4.0.0",
         "@modelcontextprotocol/sdk": "^1.22.0",
         "@playwright/mcp": "^0.0.54",
