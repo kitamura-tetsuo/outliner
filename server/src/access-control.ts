@@ -24,10 +24,13 @@ export async function checkContainerAccess(
     if (
         process.env.FUNCTIONS_EMULATOR === "true"
         || process.env.NODE_ENV === "test"
-        || process.env.NODE_ENV === "development"
         || process.env.ALLOW_TEST_ACCESS === "true"
     ) {
-        logger.debug({ event: "access_check_bypass", userId, containerId });
+        if (process.env.ALLOW_TEST_ACCESS === "true") {
+            logger.warn({ event: "access_check_bypass", userId, containerId, reason: "ALLOW_TEST_ACCESS_ENABLED" });
+        } else {
+            logger.debug({ event: "access_check_bypass", userId, containerId });
+        }
         return true;
     }
 

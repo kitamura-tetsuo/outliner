@@ -1,18 +1,18 @@
+
 process.env.FIREBASE_PROJECT_ID = "test-project";
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080"; // Dummy port
 
-const { expect } = require("chai");
-const sinon = require("sinon");
-const admin = require("firebase-admin");
-require("ts-node/register");
-const { checkContainerAccess } = require("../src/access-control");
+import { expect } from "chai";
+import sinon from "sinon";
+import admin from "firebase-admin";
+import { checkContainerAccess } from "../src/access-control.js";
 
 describe("access-control", () => {
-    let mockFirestore;
-    let collectionStub;
-    let docStub;
-    let getStub;
-    let originalEnv;
+    let mockFirestore: any;
+    let collectionStub: any;
+    let docStub: any;
+    let getStub: any;
+    let originalEnv: NodeJS.ProcessEnv;
 
     beforeEach(() => {
         originalEnv = { ...process.env };
@@ -46,7 +46,7 @@ describe("access-control", () => {
             data: () => ({ accessibleUserIds: ["u1"] }),
         });
 
-        collectionStub.callsFake((name) => {
+        collectionStub.callsFake((name: string) => {
             if (name === "containerUsers") {
                 return {
                     doc: sinon.stub().withArgs("c1").returns({ get: containerGetStub }),
@@ -65,7 +65,7 @@ describe("access-control", () => {
             data: () => ({ accessibleContainerIds: ["c1"] }),
         });
 
-        collectionStub.callsFake((name) => {
+        collectionStub.callsFake((name: string) => {
             if (name === "userContainers") {
                 return {
                     doc: sinon.stub().withArgs("u1").returns({ get: userGetStub }),
@@ -88,7 +88,7 @@ describe("access-control", () => {
             data: () => ({ accessibleContainerIds: ["other"] }),
         });
 
-        collectionStub.callsFake((name) => {
+        collectionStub.callsFake((name: string) => {
             if (name === "containerUsers") return { doc: sinon.stub().returns({ get: containerGetStub }) };
             if (name === "userContainers") return { doc: sinon.stub().returns({ get: userGetStub }) };
             return { doc: docStub };
@@ -119,5 +119,32 @@ describe("access-control", () => {
 
         const result = await checkContainerAccess("u1", "c1", throwingMock);
         expect(result).to.be.true;
+    });
+
+    it("should NOT bypass check in development environment (SECURITY)", async () => {
+        process.env.NODE_ENV = "development";
+        process.env.ALLOW_TEST_ACCESS = "false";
+        process.env.FUNCTIONS_EMULATOR = "false";
+
+        // Mock Firestore to ensure it IS called (proving bypass is OFF)
+        // We simulate a denial scenario where neither containerUsers nor userContainers grant access
+        const containerGetStub = sinon.stub().resolves({
+            exists: true,
+            data: () => ({ accessibleUserIds: ["other"] }),
+        });
+        const userGetStub = sinon.stub().resolves({
+            exists: true,
+            data: () => ({ accessibleContainerIds: ["other"] }),
+        });
+
+        collectionStub.callsFake((name: string) => {
+            if (name === "containerUsers") return { doc: sinon.stub().returns({ get: containerGetStub }) };
+            if (name === "userContainers") return { doc: sinon.stub().returns({ get: userGetStub }) };
+            return { doc: docStub };
+        });
+
+        const result = await checkContainerAccess("u1", "c1", mockFirestore);
+        // DESIRED BEHAVIOR: Returns false (access denied because bypass is OFF)
+        expect(result).to.be.false;
     });
 });
