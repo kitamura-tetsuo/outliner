@@ -17,48 +17,31 @@ if [ -f "${SCRIPT_DIR}/common-config.sh" ]; then
   source "${SCRIPT_DIR}/common-config.sh"
 fi
 
-port_is_ready() {
-  local port="$1"
-  node -e 'const net=require("net");
-const port=Number(process.argv[1]);
-const socket=net.createConnection({ port, host: "127.0.0.1" }, () => {
-  socket.end();
-  process.exit(0);
-});
-socket.once("error", () => process.exit(1));
-setTimeout(() => {
-  socket.destroy();
-  process.exit(1);
-}, 3000).unref();' "$port" >/dev/null 2>&1
-}
-
 ensure_services() {
   if [ "${SKIP_AUTO_SETUP:-0}" = "1" ]; then
     return
   fi
 
-  # Ports that setup.sh is responsible for. If any are missing we trigger setup.
-  local required_ports=(
-    "${TEST_API_PORT:-7091}"
-    "${VITE_PORT:-7090}"
-    "${TEST_YJS_PORT:-7093}"
-    "${FIREBASE_FUNCTIONS_PORT:-57070}"
-    "${FIREBASE_AUTH_PORT:-59099}"
-    "${FIREBASE_FIRESTORE_PORT:-58080}"
-    "${FIREBASE_HOSTING_PORT:-57000}"
-    "${FIREBASE_STORAGE_PORT:-59200}"
-  )
-
-  local need_setup=0
-  local port
-  for port in "${required_ports[@]}"; do
-    if ! port_is_ready "$port"; then
-      need_setup=1
-      break
-    fi
-  done
-
-  if [ "$need_setup" -eq 1 ]; then
+  # Check if PM2 is running and all required services are online.
+  # If not, run setup.sh to (re)start everything.
+  if ! node -e '
+    const required = ["yjs-server", "vite-server", "firebase-emulators", "log-service"];
+    try {
+      const list = JSON.parse(require("child_process").execSync("pm2 jlist", { stdio: "pipe" }).toString());
+      const online = list.filter(p => p.pm2_env.status === "online").map(p => p.name);
+      const missing = required.filter(name => !online.includes(name));
+      if (missing.length > 0) {
+        console.error(`Missing PM2 services: ${missing.join(", ")}`);
+        process.exit(1);
+      }
+      console.log("All required PM2 services are online.");
+      process.exit(0);
+    } catch (e) {
+      console.error("Failed to get PM2 status. Assuming services need to be started.");
+      process.exit(1); // Needs setup
+    }
+  ' >&2; then
+    echo "Service check failed. Running setup..."
     "${SCRIPT_DIR}/setup.sh"
   fi
 }
