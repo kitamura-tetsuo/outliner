@@ -24,8 +24,8 @@ test.describe("PRS-0001: presence indicators", () => {
         // プレゼンス要素が表示されるまで待つ
         await expect(page.locator('[data-testid="presence-row"]')).toBeVisible({ timeout: 10000 });
 
-        // FluidClientが初期化されるまで待つ
-        await page.waitForTimeout(3000);
+        // ユーザーが認証済みになるまで待つ
+        await expect(page.locator('[data-testid="login-status-indicator"]')).toHaveAttribute("data-status", "authenticated", { timeout: 10000 });
 
         // プレゼンスストアの状態をデバッグ
         const presenceDebug = await page.evaluate(() => {
