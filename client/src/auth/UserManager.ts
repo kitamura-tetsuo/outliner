@@ -142,7 +142,7 @@ export class UserManager {
                 if (connected) {
                     logger.info("Successfully connected to Auth emulator");
                     // テスト環境では自動的にテストユーザーでログイン
-                    this._setupMockUser();
+                    this._setupMockUser(useEmulator);
                 } else {
                     // エミュレーター接続に失敗した場合
                     const error = new Error("Failed to connect to Firebase Auth emulator");
@@ -205,7 +205,7 @@ export class UserManager {
     }
 
     // テスト環境用のユーザーをセットアップ
-    private async _setupMockUser() {
+    private async _setupMockUser(useEmulator: boolean) {
         const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
             || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
             || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
@@ -215,7 +215,7 @@ export class UserManager {
             && (typeof import.meta !== "undefined" && import.meta.env?.MODE) === "production";
 
         // E2Eテスト用にFirebaseメール/パスワード認証を使う
-        if (isTestEnv && !isProduction) {
+        if (isTestEnv && !isProduction && useEmulator) {
             logger.info("[UserManager] E2E test environment detected, using Firebase auth emulator with test account");
             logger.info("[UserManager] Attempting E2E test login with test@example.com");
 
