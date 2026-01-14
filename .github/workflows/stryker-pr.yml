@@ -74,14 +74,18 @@ jobs:
             /^@@/ {
               if (file ~ /^client\/src\/.*\.(ts|tsx|js|jsx|svelte)$/) {
                 sub(/^client\//, "", file)
-                if (match($0, /\+([0-9]+),?([0-9]*)/, m)) {
-                  start=m[1]; count=m[2]; if (count=="") count=1;
-                  end=start+count-1;
+                val = $3
+                sub(/^\+/, "", val)
+                n = split(val, parts, ",")
+                start = parts[1]
+                count = (n >= 2) ? parts[2] : 1
+                if (count > 0) {
+                  end = start + count - 1
                   print file ":" start "-" end
                 }
               }
             }
-          ' > mutate_ranges.txt || true
+          ' > mutate_ranges.txt
           if [ -s mutate_ranges.txt ]; then
             MUTATE=$(paste -sd, mutate_ranges.txt)
             echo "args=--mutate $MUTATE" >> "$GITHUB_OUTPUT"
