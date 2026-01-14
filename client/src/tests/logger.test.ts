@@ -129,12 +129,12 @@ describe("Logger", () => {
 
         // テスト環境で必要な環境変数を設定
         // @ts-expect-error - テスト用にimport.meta.envを直接設定
-        import.meta.env = {
+        Object.assign(import.meta.env, {
             DEV: true,
             NODE_ENV: "test",
             VITEST: "true",
             VITE_API_SERVER_URL: "http://localhost:7071",
-        };
+        });
     });
 
     afterEach(() => {
