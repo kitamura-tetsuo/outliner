@@ -21,7 +21,7 @@ vi.mock("y-indexeddb", () => {
     };
 
     return {
-        IndexeddbPersistence: vi.fn().mockImplementation((dbName: string, doc: Y.Doc) => {
+        IndexeddbPersistence: vi.fn().mockImplementation(function(dbName: string, doc: Y.Doc) {
             expect(dbName).toMatch(/^container-/);
             expect(doc).toBeInstanceOf(Y.Doc);
             return mockPersistence;
@@ -70,9 +70,9 @@ describe("yjsPersistence", () => {
                 destroy: vi.fn(),
             };
 
-            vi.mocked(IndexeddbPersistence).mockImplementationOnce(
-                () => mockPersistenceImpl as unknown as IndexeddbPersistence,
-            );
+            vi.mocked(IndexeddbPersistence).mockImplementationOnce(function() {
+                return mockPersistenceImpl as unknown as IndexeddbPersistence;
+            });
 
             createPersistence(containerId, doc);
 

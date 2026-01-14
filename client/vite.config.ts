@@ -134,7 +134,6 @@ export default defineConfig(async ({ mode }) => {
                     "src/global.d.ts",
                     "src/app.d.ts",
                 ],
-                all: true,
                 clean: true,
             },
             projects: [
