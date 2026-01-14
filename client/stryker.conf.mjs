@@ -1,6 +1,4 @@
-import { defineConfig } from "@stryker-mutator/core";
-
-export default defineConfig({
+export default {
     mutate: [
         "src/**/*.{ts,tsx}",
         "!src/**/*.{test,spec}.{ts,tsx}",
@@ -25,4 +23,4 @@ export default defineConfig({
         low: 75,
         break: 60,
     },
-});
+};
