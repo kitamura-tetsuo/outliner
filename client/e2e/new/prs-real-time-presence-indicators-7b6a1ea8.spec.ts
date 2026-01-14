@@ -25,7 +25,11 @@ test.describe("PRS-0001: presence indicators", () => {
         await expect(page.locator('[data-testid="presence-row"]')).toBeVisible({ timeout: 10000 });
 
         // ユーザーが認証済みになるまで待つ
-        await expect(page.locator('[data-testid="login-status-indicator"]')).toHaveAttribute("data-status", "authenticated", { timeout: 10000 });
+        await expect(page.locator('[data-testid="login-status-indicator"]')).toHaveAttribute(
+            "data-status",
+            "authenticated",
+            { timeout: 10000 },
+        );
 
         // プレゼンスストアの状態をデバッグ
         const presenceDebug = await page.evaluate(() => {

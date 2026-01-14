@@ -1,4 +1,4 @@
-import { userManager, type IUser } from "../auth/UserManager";
+import { type IUser, userManager } from "../auth/UserManager";
 
 class AuthStore {
     #user = $state<IUser | null>(null);
