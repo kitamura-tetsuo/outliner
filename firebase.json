@@ -132,6 +132,14 @@
                 "function": "azureHealthCheck"
             },
             {
+                "source": "/api/save-project",
+                "function": "saveProject"
+            },
+            {
+                "source": "/api/get-user-projects",
+                "function": "getUserProjects"
+            },
+            {
                 "source": "/api/debug-user-containers",
                 "function": "debugUserContainers"
             },
