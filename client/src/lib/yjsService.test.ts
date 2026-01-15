@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Project } from "../schema/yjs-schema";
-import {
-    createNewProject,
-    getClientByProjectTitle,
-    stableIdFromTitle,
-} from "./yjsService.svelte";
+import { createNewProject, getClientByProjectTitle, stableIdFromTitle } from "./yjsService.svelte";
 
 // Define a type for the window object to avoid using 'any'
 interface TestWindow extends Window {
@@ -18,7 +14,7 @@ interface TestWindow extends Window {
 // Mock the YjsClient to prevent network connections during tests.
 vi.mock("../yjs/YjsClient", () => ({
     YjsClient: class {
-        doc: { guid: string };
+        doc: { guid: string; };
         project: Project;
 
         constructor(projectId: string, project: Project) {
