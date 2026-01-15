@@ -25,6 +25,7 @@ describe("Admin Authorization Consistency", () => {
       status: statusMock,
       json: jsonMock,
       end: jest.fn(),
+      on: jest.fn(),
     };
 
     // Spy on admin.auth()

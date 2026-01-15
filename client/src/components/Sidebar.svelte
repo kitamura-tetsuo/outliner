@@ -75,10 +75,10 @@
                         {#each projectStore.projects as project (project.id)}
                             <li>
                                 <a
-                                    href={`/${project.id}`}
+                                    href={`/${encodeURIComponent(project.name)}`}
                                     class="project-item"
-                                    aria-current={$pageStore.url.pathname === `/${project.id}` ? "page" : undefined}
-                                    class:active={$pageStore.url.pathname === `/${project.id}`}
+                                    aria-current={$pageStore.url.pathname === `/${encodeURIComponent(project.name)}` ? "page" : undefined}
+                                    class:active={$pageStore.url.pathname === `/${encodeURIComponent(project.name)}`}
                                 >
                                     <span class="item-content-wrapper">
                                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
