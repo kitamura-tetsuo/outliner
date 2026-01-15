@@ -1694,8 +1694,37 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
     const file = bucket.file(filePath);
     logger.info(`uploadAttachment saving file: ${filePath}`);
 
+    // Verify file content matches extension
+    // We use file-type v14 (CJS compatible) to check magic numbers
+    const fileType = require("file-type");
+    const buffer = Buffer.from(fileData, "base64");
+    const type = await fileType.fromBuffer(buffer);
+
+    // Extensions that we consider "safe" if their magic numbers match
+    const safeExtensions = [".png", ".jpg", ".jpeg", ".gif", ".webp"];
+    const lowerFileName = fileName.toLowerCase();
+
+    // Check if the file claims to be an image
+    const claimsToBeImage = safeExtensions.some(ext => lowerFileName.endsWith(ext));
+
     const uploadOptions = getUploadOptions(fileName);
-    await file.save(Buffer.from(fileData, "base64"), uploadOptions);
+
+    if (claimsToBeImage) {
+      // If it claims to be an image, the magic number MUST match an image type
+      if (!type || !type.mime.startsWith("image/")) {
+        logger.warn(`uploadAttachment security check failed: File ${fileName} claims to be an image but detected as ${type?.mime || "unknown"}`);
+        return res.status(400).json({ error: "File content does not match extension" });
+      }
+
+      // Additional check: detected extension should roughly match declared extension
+      // (e.g. don't allow a gif renamed to png if we are being strict, but mime check is usually enough for safety)
+    } else {
+      // For non-image files, we might not care as much about exact type
+      // because we force Content-Disposition: attachment in getUploadOptions
+      // But we could still log a warning if type is detected as executable
+    }
+
+    await file.save(buffer, uploadOptions);
     logger.info(`uploadAttachment file saved successfully: ${filePath}`);
 
     let url;

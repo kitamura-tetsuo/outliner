@@ -55,7 +55,7 @@ describe("Attachment Security", () => {
         containerId: "c1",
         itemId: "i1",
         fileName: "evil.html",
-        fileData: "PGh0bWw+PC9odG1sPg==",
+        fileData: "PGh0bWw+PC9odG1sPg==", // <html></html>
       },
     };
     const res = {
@@ -87,6 +87,7 @@ describe("Attachment Security", () => {
         containerId: "c1",
         itemId: "i1",
         fileName: "nice.png",
+        // Valid 1x1 PNG
         fileData:
           "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
       },
@@ -110,6 +111,49 @@ describe("Attachment Security", () => {
     expect(saveOptions.metadata).toBeDefined();
     expect(saveOptions.metadata.contentDisposition).toBe("inline");
     expect(saveOptions.metadata.contentType).toBe("image/png");
+  });
+
+  it("should REJECT spoofed files (e.g. PNG extension but HTML content)", async () => {
+    const req = {
+      method: "POST",
+      headers: { origin: "http://localhost:7090" },
+      body: {
+        idToken: "test-token",
+        containerId: "c1",
+        itemId: "i1",
+        fileName: "malicious.png",
+        // <html><script>alert(1)</script></html>
+        fileData: "PGh0bWw+PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0PjwvaHRtbD4=",
+      },
+    };
+
+    let statusCode;
+    let responseData;
+
+    const res = {
+      set: jest.fn(),
+      status: jest.fn().mockImplementation(code => {
+        statusCode = code;
+        return res;
+      }),
+      json: jest.fn().mockImplementation(data => {
+        responseData = data;
+        return res;
+      }),
+      on: jest.fn(),
+      emit: jest.fn(),
+      setHeader: jest.fn(),
+      getHeader: jest.fn(),
+    };
+
+    await myFunctions.uploadAttachment(req, res);
+
+    // Should be rejected with 400 Bad Request
+    expect(statusCode).toBe(400);
+    expect(responseData.error).toContain("File content does not match extension");
+
+    // Should NOT have saved the file
+    expect(mockFile.save).not.toHaveBeenCalled();
   });
 
   it("should NOT leak internal error details on upload failure", async () => {
