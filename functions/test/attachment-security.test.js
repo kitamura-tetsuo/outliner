@@ -150,7 +150,9 @@ describe("Attachment Security", () => {
 
     // Should be rejected with 400 Bad Request
     expect(statusCode).toBe(400);
-    expect(responseData.error).toContain("File content does not match extension");
+    expect(responseData.error).toContain(
+      "File content does not match extension",
+    );
 
     // Should NOT have saved the file
     expect(mockFile.save).not.toHaveBeenCalled();

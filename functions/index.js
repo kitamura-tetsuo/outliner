@@ -1705,15 +1705,23 @@ exports.uploadAttachment = onRequest({ cors: true }, async (req, res) => {
     const lowerFileName = fileName.toLowerCase();
 
     // Check if the file claims to be an image
-    const claimsToBeImage = safeExtensions.some(ext => lowerFileName.endsWith(ext));
+    const claimsToBeImage = safeExtensions.some(ext =>
+      lowerFileName.endsWith(ext)
+    );
 
     const uploadOptions = getUploadOptions(fileName);
 
     if (claimsToBeImage) {
       // If it claims to be an image, the magic number MUST match an image type
       if (!type || !type.mime.startsWith("image/")) {
-        logger.warn(`uploadAttachment security check failed: File ${fileName} claims to be an image but detected as ${type?.mime || "unknown"}`);
-        return res.status(400).json({ error: "File content does not match extension" });
+        logger.warn(
+          `uploadAttachment security check failed: File ${fileName} claims to be an image but detected as ${
+            type?.mime || "unknown"
+          }`,
+        );
+        return res.status(400).json({
+          error: "File content does not match extension",
+        });
       }
 
       // Additional check: detected extension should roughly match declared extension
