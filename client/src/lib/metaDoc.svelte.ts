@@ -67,6 +67,20 @@ export function getLastOpenedAt(containerId: string): number | undefined {
     return containerData?.lastOpenedAt;
 }
 
+/**
+ * Get project ID by title from metadata Y.Doc
+ * @param title The project title to look up
+ * @returns The project ID or undefined if not found
+ */
+export function getProjectIdByTitle(title: string): string | undefined {
+    for (const [containerId, containerData] of containersMap.entries()) {
+        if ((containerData as ContainerMetadata).title === title) {
+            return containerId;
+        }
+    }
+    return undefined;
+}
+
 // Log initialization status
 if (typeof window !== "undefined") {
     console.log("[metaDoc] Initialized metadata Y.Doc with IndexedDB persistence");

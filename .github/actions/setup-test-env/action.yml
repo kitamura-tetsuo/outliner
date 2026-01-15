@@ -33,7 +33,30 @@ runs:
       shell: bash
       run: |
         cd scripts
-        npm ci
+        # Retry npm ci up to 3 times
+        count=0
+        MAX_RETRIES=3
+        RETRY_DELAY=5
+        success=false
+        
+        while [ $count -lt $MAX_RETRIES ]; do
+          if npm ci; then
+            success=true
+            break
+          else
+            count=$((count + 1))
+            if [ $count -lt $MAX_RETRIES ]; then
+              echo "npm ci failed. Retrying in $RETRY_DELAY seconds... (Attempt $count/$MAX_RETRIES)"
+              sleep $RETRY_DELAY
+            else
+              echo "npm ci failed after $MAX_RETRIES attempts."
+            fi
+          fi
+        done
+        
+        if [ "$success" = "false" ]; then
+          exit 1
+        fi
 
     - name: Setup test environment
       shell: bash

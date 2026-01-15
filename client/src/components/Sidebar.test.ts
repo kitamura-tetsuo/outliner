@@ -92,6 +92,18 @@ vi.mock("$app/navigation", () => {
     };
 });
 
+// Mock $app/stores
+vi.mock("$app/stores", async () => {
+    const { readable } = await import("svelte/store");
+    return {
+        page: readable({
+            url: {
+                pathname: "/Test%20Project/Test%20Page%201",
+            },
+        }),
+    };
+});
+
 describe("Sidebar", () => {
     beforeEach(() => {
         vi.clearAllMocks();

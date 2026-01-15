@@ -17,3 +17,8 @@
 
 **Learning:** The `Items` class in `app-schema.ts` had an iteration complexity of O(N^2) because `at(index)` called `childrenKeys()` which sorted keys on every call. Changing the iterator to sort once and iterate improved performance by ~500x.
 **Action:** When implementing iterators or indexed access on sorted collections, ensure that the sort operation is cached or performed once per iteration, rather than per element access.
+
+## 2025-10-27 - [Page Existence Check Optimization]
+
+**Learning:** `ScrapboxFormatter.checkPageExists` was performing O(N) iteration over all pages for every internal link in every item, resulting in O(M*N) complexity. Replacing this with a cached `Set<string>` in `GeneralStore` reduces lookup to O(1) and eliminates the iteration overhead during rendering.
+**Action:** When performing frequent existence checks in rendering loops, prefer caching with O(1) lookup structures (Set/Map) and maintain them via event listeners (e.g., Yjs observers) rather than iterating arrays on every render.

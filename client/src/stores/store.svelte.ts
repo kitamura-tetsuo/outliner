@@ -138,12 +138,57 @@ export class GeneralStore {
     // Explicit signal for pages updates to ensure Svelte 5 reactivity
     pagesVersion = $state(0);
 
+    // Cache of page names (normalized to lowercase) for O(1) lookup
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
+    private _pageNamesCache = new Set<string>();
+
+    private _rebuildPageNamesCache() {
+        try {
+            this._pageNamesCache.clear();
+            const items = this._project?.items;
+            if (items) {
+                // Items is iterable
+                for (const page of items) {
+                    try {
+                        const text = page.text;
+                        if (text) {
+                            this._pageNamesCache.add(text.toLowerCase());
+                        }
+                    } catch {
+                        // Ignore individual item errors during cache rebuild
+                    }
+                }
+            }
+        } catch {
+            // Fallback: clear cache to avoid stale state if rebuild fails totally
+            this._pageNamesCache.clear();
+        }
+    }
+
+    /**
+     * Checks if a page with the given name exists in the current project.
+     * Uses a cached Set for O(1) performance.
+     */
+    public pageExists(name: string): boolean {
+        try {
+            // Access pagesVersion to ensure reactivity
+            void this.pagesVersion;
+            if (!name) return false;
+            return this._pageNamesCache.has(name.toLowerCase());
+        } catch {
+            return false;
+        }
+    }
+
     public set project(v: Project) {
         if (v === this._project) {
             return;
         }
 
         this._project = v;
+
+        // Build initial cache
+        this._rebuildPageNamesCache();
 
         saveProjectSnapshot(v);
 
@@ -152,13 +197,57 @@ export class GeneralStore {
         const ymap = project?.ydoc?.getMap?.("orderedTree");
 
         // Setup observer immediately on the project itself
-        const handler = (_events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+        const handler = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
             try {
                 saveProjectSnapshot(project);
             } catch {
                 // Ignore errors during snapshot saving
             }
             this.pagesVersion++; // Trigger signal
+
+            // Check if we need to rebuild the page name cache
+            let shouldRebuild = false;
+            try {
+                // Check if any event affects page existence or page titles
+                for (const event of events) {
+                    // Check for node additions/removals in orderedTree
+                    if (event.path.length === 0) {
+                        // Change on orderedTree itself
+                        if (event.changes.keys.size > 0) {
+                            // Check if any added key is a page
+                            for (const [key, change] of event.changes.keys) {
+                                if (change.action === "add") {
+                                    try {
+                                        if (project.tree.getNodeParentFromKey(key) === "root") {
+                                            shouldRebuild = true;
+                                            break;
+                                        }
+                                    } catch {}
+                                } else if (change.action === "delete") {
+                                    // Conservative approach: rebuild on delete as we can't easily check parent
+                                    shouldRebuild = true;
+                                    break;
+                                }
+                            }
+                        }
+                    } else if (event.path.length === 1 && event.keys.has("text")) {
+                        // Change on a node's property (text)
+                        // path[0] is the node ID
+                        const nodeId = String(event.path[0]);
+                        try {
+                            if (project.tree.getNodeParentFromKey(nodeId) === "root") {
+                                // It is a page title change
+                                shouldRebuild = true;
+                            }
+                        } catch {}
+                    }
+                    if (shouldRebuild) break;
+                }
+            } catch {}
+
+            if (shouldRebuild) {
+                this._rebuildPageNamesCache();
+            }
         };
 
         // Monitor both the orderedTree (content) and items (page list) for changes
