@@ -1,14 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-    createNewProject,
-    getClientByProjectTitle,
-    stableIdFromTitle,
-} from "./yjsService.svelte";
+import { createNewProject, getClientByProjectTitle, stableIdFromTitle } from "./yjsService.svelte";
 
 // Mock the YjsClient to prevent network connections during tests.
 vi.mock("../yjs/YjsClient", () => ({
     YjsClient: class {
-        doc: { guid: string };
+        doc: { guid: string; };
         project: any;
 
         constructor(projectId: string, project: any) {
