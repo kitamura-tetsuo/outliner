@@ -31,6 +31,31 @@ export class ScrapboxFormatter {
     }
 
     /**
+     * URLが許可されたプロトコルを使用しているかチェックする
+     * セキュリティ対策（XSS防止）のために使用
+     */
+    private static isValidUrl(url: string): boolean {
+        try {
+            const trimmed = url.trim();
+            // URLとして解析可能かチェック
+            // 相対URLの場合はプロトコルチェック不要（内部リンクとみなす）
+            // ただし、javascript: などの危険なスキームが紛れ込まないように注意が必要
+            if (!trimmed.includes(":")) return true; // プロトコルがない場合は相対パスとみなす
+
+            // プロトコル部分を抽出
+            const protocolMatch = trimmed.match(/^([a-zA-Z0-9+.-]+):/);
+            if (!protocolMatch) return true; // プロトコルが見つからない場合も安全とみなす（ブラウザ依存だが、通常は相対パス）
+
+            const protocol = protocolMatch[1].toLowerCase();
+            const allowedProtocols = ["http", "https", "mailto", "tel"];
+
+            return allowedProtocols.includes(protocol);
+        } catch {
+            return false;
+        }
+    }
+
+    /**
      * テキストを太字にフォーマットする
      * @param text フォーマットするテキスト
      * @returns 太字にフォーマットされたテキスト
@@ -304,11 +329,18 @@ export class ScrapboxFormatter {
                 case "code":
                     html += `<code>${content}</code>`;
                     break;
-                case "link":
-                    html += `<a href="${
-                        this.escapeHtml(token.url ?? "")
-                    }" target="_blank" rel="noopener noreferrer">${content}</a>`;
+                case "link": {
+                    const url = token.url ?? "";
+                    if (ScrapboxFormatter.isValidUrl(url)) {
+                        html += `<a href="${
+                            this.escapeHtml(url)
+                        }" target="_blank" rel="noopener noreferrer">${content}</a>`;
+                    } else {
+                        // 危険なURLの場合はプレーンテキストとして表示
+                        html += content;
+                    }
                     break;
+                }
                 case "internalLink": {
                     const isProjectLink = token.isProjectLink === true || rawContent.startsWith("/");
                     if (isProjectLink) {
@@ -602,6 +634,11 @@ export class ScrapboxFormatter {
             // 外部リンク（ラベルが空白のみの場合も許可）
             const linkRegex = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
             input = input.replace(linkRegex, (match, url, label) => {
+                // 明示的なプロトコルチェック（正規表現でも制限しているが、二重防御）
+                if (!ScrapboxFormatter.isValidUrl(url)) {
+                    return this.escapeHtml(match);
+                }
+
                 const trimmedLabel = label?.trim();
                 const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
                 const html = `<a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
