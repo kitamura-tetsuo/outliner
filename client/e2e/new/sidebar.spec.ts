@@ -372,6 +372,7 @@ test.describe("Sidebar Navigation", () => {
     // TODO: This test is skipped because it's flaky. The project list in the sidebar
     // doesn't reliably update when a new project is created in the test environment.
     // This needs to be investigated and fixed.
+    // eslint-disable-next-line no-restricted-syntax
     test.skip("should use project name in project links", async ({ page }, testInfo) => {
         test.setTimeout(120000);
 
