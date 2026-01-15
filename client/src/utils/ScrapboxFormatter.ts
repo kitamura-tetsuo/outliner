@@ -931,12 +931,19 @@ export class ScrapboxFormatter {
                 return false;
             }
 
-            // ページ名が一致するページを検索
-            for (const page of store.pages.current) {
-                // Ensure page.text is a string before calling toLowerCase
-                const pageText = String(page?.text ?? "");
-                if (pageText.toLowerCase() === pageName.toLowerCase()) {
-                    return true;
+            // Use the O(1) page existence check if available
+            if (typeof store.pageExists === "function") {
+                return store.pageExists(pageName);
+            }
+
+            // Fallback: ページ名が一致するページを検索 (O(N))
+            if (store.pages?.current) {
+                for (const page of store.pages.current) {
+                    // Ensure page.text is a string before calling toLowerCase
+                    const pageText = String(page?.text ?? "");
+                    if (pageText.toLowerCase() === pageName.toLowerCase()) {
+                        return true;
+                    }
                 }
             }
 
