@@ -1,6 +1,8 @@
-import { defineConfig } from "@stryker-mutator/core";
-
-export default defineConfig({
+// @ts-check
+/**
+ * @type {import('@stryker-mutator/api/core').PartialStrykerOptions}
+ */
+export default {
     mutate: [
         "src/**/*.{ts,tsx}",
         "!src/**/*.{test,spec}.{ts,tsx}",
@@ -11,12 +13,9 @@ export default defineConfig({
     testRunner: "vitest",
     vitest: {
         configFile: "vite.config.ts",
-        project: "unit",
-        enableFindRelatedTests: true,
     },
     reporters: ["progress", "clear-text", "html", "json"],
     coverageAnalysis: "perTest",
-    checkers: ["typescript"],
     tsconfigFile: "tsconfig.json",
     tempDirName: "node_modules/.cache/stryker",
     incremental: true,
@@ -25,4 +24,4 @@ export default defineConfig({
         low: 75,
         break: 60,
     },
-});
+};
