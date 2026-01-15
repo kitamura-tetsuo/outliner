@@ -1913,10 +1913,28 @@ export function setSelectionPosition(start: number, end: number = start) {
     class="outliner-item"
     class:page-title={isPageTitle}
     style={"margin-left: " + (depth <= 1 ? 0 : (depth - 1) * 20) + "px"}
+    role="treeitem"
+    id={"item-" + model.id}
+    aria-selected={isItemActive}
+    aria-level={depth + 1}
+    aria-expanded={hasChildren ? !isCollapsed : undefined}
+    tabindex={isItemActive ? 0 : -1}
     onclick={handleClick}
     onmousedown={handleMouseDown}
     onmousemove={handleMouseMove}
     onmouseup={handleMouseUp}
+    onkeydown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            // Simulate click for keyboard activation
+            const mouseEvent = new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true
+            });
+            e.currentTarget.dispatchEvent(mouseEvent);
+        }
+    }}
     oncomment-count-changed={handleCommentCountChanged}
     bind:this={itemRef}
     data-item-id={model.id}

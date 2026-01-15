@@ -1775,13 +1775,14 @@
 
         <div
             class="tree-container"
-            role="region"
-            aria-label="アウトライナーツリー"
+            role="tree"
+            aria-label="Outliner Tree"
         >
             <!-- フラット表示の各アイテム（静的配置） -->
             {#each displayItems as display, index (display.model.id)}
                 <div
                     class="item-container"
+                    role="presentation"
                     style="--item-depth: {display.depth}"
                 >
                     <OutlinerItem

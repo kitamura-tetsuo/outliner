@@ -15,6 +15,9 @@ let isComposing = false; // eslint-disable-line @typescript-eslint/no-unused-var
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureCtx: CanvasRenderingContext2D | null = null;
 
+// Derive active descendant ID for accessibility
+const activeDescendantId = $derived(store.activeItemId ? "item-" + store.activeItemId : undefined);
+
 // Note: Removed reactive effect on activeItemId to avoid potential
 // update-depth loops during E2E when alias picker and focus logic interact.
 // Focus management is handled in onMount and OutlinerItem.startEditing().
@@ -415,6 +418,7 @@ function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-esl
 <textarea
     bind:this={textareaRef}
     class="global-textarea"
+    aria-activedescendant={activeDescendantId}
     onkeydown={handleKeyDown}
     oninput={handleInput}
     oncompositionstart={handleCompositionStart}
