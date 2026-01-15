@@ -1,22 +1,36 @@
 import { describe, expect, it, vi } from "vitest";
-import { createNewProject, getClientByProjectTitle, stableIdFromTitle } from "./yjsService.svelte";
+import { Project } from "../schema/yjs-schema";
+import {
+    createNewProject,
+    getClientByProjectTitle,
+    stableIdFromTitle,
+} from "./yjsService.svelte";
+
+// Define a type for the window object to avoid using 'any'
+interface TestWindow extends Window {
+    __YJS_CLIENT_REGISTRY__?: {
+        map: {
+            clear: () => void;
+        };
+    };
+}
 
 // Mock the YjsClient to prevent network connections during tests.
 vi.mock("../yjs/YjsClient", () => ({
     YjsClient: class {
-        doc: { guid: string; };
-        project: any;
+        doc: { guid: string };
+        project: Project;
 
-        constructor(projectId: string, project: any) {
+        constructor(projectId: string, project: Project) {
             this.doc = { guid: projectId };
             this.project = project;
         }
 
-        getProject() {
+        getProject(): Project {
             return this.project;
         }
 
-        static async connect(projectId: string, project: any) {
+        static async connect(projectId: string, project: Project) {
             // Return a mock client instance that satisfies the test's assertions.
             return Promise.resolve({
                 doc: {
@@ -37,8 +51,9 @@ describe("yjsService", () => {
 
             // 2. Clear in-memory registry to simulate a refresh.
             // The registry is stored on the window object for persistence across module reloads.
-            if ((window as any).__YJS_CLIENT_REGISTRY__) {
-                (window as any).__YJS_CLIENT_REGISTRY__.map.clear();
+            const testWindow = window as TestWindow;
+            if (testWindow.__YJS_CLIENT_REGISTRY__) {
+                testWindow.__YJS_CLIENT_REGISTRY__.map.clear();
             }
 
             // 3. Call getClientByProjectTitle("TestProject").
