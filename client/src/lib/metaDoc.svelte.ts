@@ -81,7 +81,6 @@ export function getProjectIdByTitle(title: string): string | undefined {
     return undefined;
 }
 
-
 // Log initialization status
 if (typeof window !== "undefined") {
     console.log("[metaDoc] Initialized metadata Y.Doc with IndexedDB persistence");
