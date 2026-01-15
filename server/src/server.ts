@@ -18,6 +18,7 @@ import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth.js";
 import { getYDoc, setupWSConnection as wsSetup } from "@y/websocket-server/utils";
 const setupWSConnection: any = wsSetup || (() => undefined);
 import { checkContainerAccess } from "./access-control.js";
+import { hocuspocus } from "./hocuspocus-server.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 
 // --- Yjs protocol debug helpers (best-effort decode for logging) ---
@@ -377,7 +378,11 @@ export async function startServer(config: Config, logger = defaultLogger) {
         logger.info({ port: config.PORT }, "y-websocket server listening");
     });
 
+    // Start Hocuspocus server
+    hocuspocus.listen();
+
     const shutdown = () => {
+        hocuspocus.destroy();
         wss.close();
         server.close(() => process.exit(0));
     };
