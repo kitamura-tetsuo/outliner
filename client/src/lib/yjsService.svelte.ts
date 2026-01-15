@@ -5,7 +5,7 @@ import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
-import { getContainerTitleFromMetaDoc, setContainerTitleInMetaDoc } from "./metaDoc.svelte";
+import { getContainerTitleFromMetaDoc, getProjectIdByTitle, setContainerTitleInMetaDoc } from "./metaDoc.svelte";
 
 interface ClientKey {
     type: "container" | "user";
@@ -151,10 +151,31 @@ export async function createNewProject(projectName: string): Promise<YjsClient> 
 // Debug helper for E2E tests
 
 export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
+    // First, check the registry for a matching client
     for (const [, [client, project]] of registry.entries()) {
         if (project?.title === projectTitle && client) {
             return client;
         }
+    }
+
+    // If not in registry, try to find the projectId by title in metaDoc
+    const projectId = getProjectIdByTitle(projectTitle);
+
+    if (projectId) {
+        const user = userManager.getCurrentUser();
+        let userId = user?.id;
+        const isTest = isTestEnvironment();
+
+        if (!userId && isTest) userId = "test-user-id";
+        if (!userId) {
+            // Cannot create a new client without a user ID
+            return undefined;
+        }
+
+        const project = Project.createInstance(projectTitle);
+        const client = await YjsClient.connect(projectId, project);
+        registry.set(keyFor(userId, projectId), [client, project]);
+        return client;
     }
 
     // In test environment, attempt to auto-connect if we can derive the ID
