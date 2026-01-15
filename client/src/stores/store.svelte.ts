@@ -143,16 +143,25 @@ export class GeneralStore {
     private _pageNamesCache = new Set<string>();
 
     private _rebuildPageNamesCache() {
-        this._pageNamesCache.clear();
-        const items = this._project?.items;
-        if (items) {
-            // Items is iterable
-            for (const page of items) {
-                const text = page.text;
-                if (text) {
-                    this._pageNamesCache.add(text.toLowerCase());
+        try {
+            this._pageNamesCache.clear();
+            const items = this._project?.items;
+            if (items) {
+                // Items is iterable
+                for (const page of items) {
+                    try {
+                        const text = page.text;
+                        if (text) {
+                            this._pageNamesCache.add(text.toLowerCase());
+                        }
+                    } catch {
+                        // Ignore individual item errors during cache rebuild
+                    }
                 }
             }
+        } catch {
+            // Fallback: clear cache to avoid stale state if rebuild fails totally
+            this._pageNamesCache.clear();
         }
     }
 
@@ -161,9 +170,14 @@ export class GeneralStore {
      * Uses a cached Set for O(1) performance.
      */
     public pageExists(name: string): boolean {
-        // Access pagesVersion to ensure reactivity
-        void this.pagesVersion;
-        return this._pageNamesCache.has(name.toLowerCase());
+        try {
+            // Access pagesVersion to ensure reactivity
+            void this.pagesVersion;
+            if (!name) return false;
+            return this._pageNamesCache.has(name.toLowerCase());
+        } catch {
+            return false;
+        }
     }
 
     public set project(v: Project) {
