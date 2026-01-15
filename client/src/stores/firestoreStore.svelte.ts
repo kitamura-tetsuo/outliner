@@ -342,7 +342,7 @@ export async function saveProjectId(projectId: string): Promise<boolean> {
         logger.info(`Saving project ID via /api/saveProject`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
+
         // Use helper to get correct URL for environment
         // Note: getFirebaseFunctionUrl handles the path construction based on environment
         const url = getFirebaseFunctionUrl("saveProject");
