@@ -43,7 +43,7 @@ describe("access-control", () => {
             bundle: sinon.stub(),
             recursiveDelete: sinon.stub(),
             terminate: sinon.stub(),
-        };
+        } as any;
     });
 
     afterEach(() => {

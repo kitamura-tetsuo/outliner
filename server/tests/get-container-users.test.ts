@@ -39,7 +39,7 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
             bundle: sinon.stub(),
             recursiveDelete: sinon.stub(),
             terminate: sinon.stub(),
-        };
+        } as any;
 
         collectionStub = mockFirestore.collection;
         docStub = sinon.stub();
