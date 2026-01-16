@@ -51,6 +51,7 @@
     "name": "fluid-outliner-server",
     "type": "module",
     "scripts": {
+        "prebuild": "rm -rf dist",
         "build": "tsc",
         "create-test-user": "node utils/create-test-user.js",
         "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/log-service.ts",
@@ -60,7 +61,8 @@
         "test:jest": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
         "test:hocuspocus": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.js",
         "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000",
-        "postinstall": "patch-package"
+        "postinstall": "patch-package",
+        "postbuild": "ls -la dist"
     },
     "version": "1.0.0",
     "resolutions": {
