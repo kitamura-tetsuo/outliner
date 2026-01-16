@@ -1,24 +1,25 @@
-const { expect } = require("chai");
-const fs = require("fs-extra");
-const os = require("os");
-const path = require("path");
-const WebSocket = require("ws");
-const Y = require("yjs");
-const { WebsocketProvider } = require("y-websocket");
-const sinon = require("sinon");
-require("ts-node/register");
-const admin = require("firebase-admin");
-const { loadConfig } = require("../src/config");
-const { startServer } = require("../src/server");
-const { clearTokenCache } = require("../src/websocket-auth");
+import { expect } from "chai";
+import fs from "fs-extra";
+import os from "os";
+import path from "path";
+import WebSocket from "ws";
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
+import sinon from "sinon";
+import "ts-node/register";
+import admin from "firebase-admin";
+import { loadConfig } from "../src/config.js";
+import { startServer } from "../src/server.js";
+import { clearTokenCache } from "../src/websocket-auth.js";
+import { Server } from "http";
 
-function waitListening(server) {
+function waitListening(server: Server) {
     return new Promise(resolve => server.on("listening", resolve));
 }
 
-function waitConnected(provider) {
-    return new Promise(resolve => {
-        provider.on("status", event => {
+function waitConnected(provider: WebsocketProvider) {
+    return new Promise<void>(resolve => {
+        provider.on("status", (event: { status: string }) => {
             if (event.status === "connected") {
                 resolve();
             }
@@ -51,8 +52,8 @@ describe("idle timeout", () => {
             WebSocketPolyfill: WebSocket,
         });
         await waitConnected(provider1);
-        const closed = new Promise(resolve => {
-            provider1.ws.on("close", code => {
+        const closed = new Promise<void>(resolve => {
+            provider1.ws.on("close", (code: any) => {
                 expect(code).to.equal(4004);
                 provider1.destroy();
                 resolve();

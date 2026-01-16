@@ -1,13 +1,12 @@
-require("dotenv").config();
-const { spawn } = require("child_process");
-const path = require("path");
-const { setupNgrokUrl } = require("./utils/ngrok-helper.cjs");
+import "dotenv/config";
+import { spawn, ChildProcess } from "child_process";
+import { setupNgrokUrl } from "./utils/ngrok-helper.js";
 
 // Local host configuration
 const LOCAL_HOST = process.env.LOCAL_HOST || "localhost";
 
 // サーバーとngrokのプロセスを格納するオブジェクト
-const processes = {
+const processes: { ngrok: ChildProcess | null; server: ChildProcess | null } = {
     ngrok: null,
     server: null,
 };
@@ -39,7 +38,7 @@ process.on("SIGTERM", cleanup);
  * @param {number} port トンネリングするポート番号
  * @returns {Promise<boolean>} 起動が成功したかどうか
  */
-function startNgrok(port) {
+function startNgrok(port: number): Promise<boolean> {
     return new Promise(resolve => {
         console.log(`ngrokを起動しています（ポート: ${port})...`);
 
@@ -49,8 +48,7 @@ function startNgrok(port) {
 
         processes.ngrok = ngrok;
 
-        let ngrokOutput = "";
-        let timeout = null;
+        let timeout: NodeJS.Timeout | null = null;
 
         // 3秒経過してもURL取得できなかったらAPIから取得を試みる
         timeout = setTimeout(async () => {
@@ -59,7 +57,6 @@ function startNgrok(port) {
         }, 7071);
 
         ngrok.stdout.on("data", data => {
-            ngrokOutput += data.toString();
             console.log(`[ngrok] ${data.toString().trim()}`);
         });
 
@@ -78,7 +75,7 @@ function startNgrok(port) {
         });
 
         ngrok.on("error", err => {
-            clearTimeout(timeout);
+            if (timeout) clearTimeout(timeout);
             console.error("ngrokの起動中にエラーが発生しました:", err);
             resolve(false);
         });
@@ -89,11 +86,11 @@ function startNgrok(port) {
  * バックエンドサーバーを起動する
  * @returns {Promise<boolean>} 起動が成功したかどうか
  */
-function startServer() {
+function startServer(): Promise<boolean> {
     return new Promise(resolve => {
         console.log("バックエンドサーバーを起動しています...");
 
-        const server = spawn("node", ["log-service.cjs"], {
+        const server = spawn("node", ["log-service.js"], {
             stdio: ["ignore", "pipe", "pipe"],
         });
 
@@ -132,7 +129,7 @@ function startServer() {
  */
 async function start() {
     try {
-        const port = process.env.PORT || 7071;
+        const port = parseInt(process.env.PORT || "7071", 10);
 
         // ngrokを起動
         const ngrokStarted = await startNgrok(port);

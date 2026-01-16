@@ -22,10 +22,17 @@
         "allowSyntheticDefaultImports": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "typeRoots": [
+            "./node_modules/@types",
+            "./types"
+        ]
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "tests/**/*.ts",
+        "types/**/*.d.ts"
     ],
     "exclude": [
         "node_modules",

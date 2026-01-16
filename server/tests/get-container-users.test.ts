@@ -1,8 +1,8 @@
-const { describe, it, beforeEach, afterEach } = require("mocha");
-const { expect } = require("chai");
-const sinon = require("sinon");
-const request = require("supertest");
-const admin = require("firebase-admin");
+import { describe, it, beforeEach, afterEach } from "mocha";
+import { expect } from "chai";
+import sinon from "sinon";
+import request from "supertest";
+import admin from "firebase-admin";
 
 // テスト環境の設定
 process.env.NODE_ENV = "test";
@@ -10,14 +10,14 @@ process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
 process.env.GCLOUD_PROJECT = "test-project";
 
 // Use the Express app defined for testing
-const app = require("./log-service-test-helper");
+import { app } from "./log-service-test-helper.js";
 
 describe("/api/get-container-users admin role check (API-0003)", function() {
-    let verifyStub;
-    let firestoreStub;
-    let collectionStub;
-    let docStub;
-    let getStub;
+    let verifyStub: sinon.SinonStub;
+    let firestoreStub: sinon.SinonStub;
+    let collectionStub: sinon.SinonStub;
+    let docStub: sinon.SinonStub;
+    let getStub: sinon.SinonStub;
 
     beforeEach(function() {
         // Firebase Auth のモック

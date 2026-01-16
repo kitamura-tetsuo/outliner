@@ -22,7 +22,14 @@
     },
     "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
+        "@hocuspocus/provider": "^3.4.3",
+        "@jest/globals": "^30.2.0",
+        "@types/chai": "^5.2.3",
         "@types/express": "^5.0.6",
+        "@types/fs-extra": "^11.0.4",
+        "@types/jest": "^30.0.0",
+        "@types/mocha": "^10.0.10",
+        "@types/sinon": "^21.0.0",
         "@types/uuid": "^10.0.0",
         "@types/ws": "^8.18.1",
         "chai": "^6.2.2",
@@ -33,15 +40,10 @@
         "patch-package": "^8.0.1",
         "sinon": "^21.0.1",
         "supertest": "^7.2.2",
+        "testdouble": "^3.20.2",
+        "ts-jest": "^29.4.6",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3"
-    },
-    "jest": {
-        "clearMocks": true,
-        "testEnvironment": "node",
-        "testMatch": [
-            "**/tests/**/*.test.js"
-        ]
     },
     "main": "dist/index.js",
     "name": "fluid-outliner-server",
@@ -53,6 +55,8 @@
         "start": "node dist/index.js",
         "start:log-service": "node log-service.cjs",
         "test": "bash ../scripts/run-server-tests.sh",
+        "test:jest": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+        "test:hocuspocus": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.js",
         "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000",
         "postinstall": "patch-package"
     },
