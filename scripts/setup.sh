@@ -69,14 +69,6 @@ ensure_python_env() {
   fi
 }
 
-# Bypass heavy setup steps if sentinel file exists
-if [ -f "$SETUP_SENTINEL" ]; then
-  echo "Setup already completed, skipping installation steps"
-  SKIP_INSTALL=1
-else
-  SKIP_INSTALL=0
-fi
-
 echo "=== Outliner Test Environment Setup ==="
 echo "ROOT_DIR: ${ROOT_DIR}"
 
@@ -84,6 +76,14 @@ echo "ROOT_DIR: ${ROOT_DIR}"
 if ([ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]) && [ "${PREINSTALLED_ENV:-}" != "true" ]; then
   echo "CI environment detected (and PREINSTALLED_ENV not set), removing setup sentinel to ensure full setup..."
   rm -f "$SETUP_SENTINEL"
+fi
+
+# Bypass heavy setup steps if sentinel file exists
+if [ -f "$SETUP_SENTINEL" ]; then
+  echo "Setup already completed, skipping installation steps"
+  SKIP_INSTALL=1
+else
+  SKIP_INSTALL=0
 fi
 
 # Note for env tests: keep tokens for discovery
@@ -195,8 +195,8 @@ else
   fi
 
   # Ensure server is built if dist is missing (critical for Yjs server)
-  if [ ! -d "${ROOT_DIR}/server/dist" ]; then
-    echo "Server build missing. Building server..."
+  if [ ! -f "${ROOT_DIR}/server/dist/index.js" ]; then
+    echo "Server build artifacts missing. Building server..."
     cd "${ROOT_DIR}/server"
     npm_ci_if_needed
     npm run build
