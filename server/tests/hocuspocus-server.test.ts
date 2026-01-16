@@ -14,9 +14,9 @@ jest.unstable_mockModule("../src/websocket-auth", () => ({
 }));
 
 // Import the modules *after* the mocks are defined
-const { hocuspocus } = await import("../src/hocuspocus-server");
-const accessControl = await import("../src/access-control");
-const auth = await import("../src/websocket-auth");
+const { hocuspocus } = await import("../src/hocuspocus-server.js");
+const accessControl = await import("../src/access-control.js");
+const auth = await import("../src/websocket-auth.js");
 
 const mockedAuth = auth as jest.Mocked<typeof auth>;
 const mockedAccessControl = accessControl as jest.Mocked<typeof accessControl>;
@@ -60,7 +60,6 @@ describe("Hocuspocus Server", () => {
             name: "projects/123",
             document: new Y.Doc(),
             token,
-            maxAttempts: 1,
             connectTimeout: 2000,
         });
     };

@@ -36,37 +36,48 @@ describe("idle timeout", () => {
     it("disconnects idle clients and preserves state on reconnect", async () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ydb-"));
         const port = 15000 + Math.floor(Math.random() * 1000);
-        sinon.stub(admin.auth(), "verifyIdToken").resolves({ uid: "user", exp: Math.floor(Date.now() / 1000) + 60 });
+        sinon.stub(admin.auth(), "verifyIdToken").resolves({
+            uid: "user",
+            exp: Math.floor(Date.now() / 1000) + 60,
+            aud: "your-firebase-project-id",
+            auth_time: 1620000000,
+            firebase: { identities: {}, sign_in_provider: "custom" },
+            iat: 1620000000,
+            iss: "https://securetoken.google.com/your-firebase-project-id",
+            sub: "test-uid",
+        });
         const cfg = loadConfig({
             PORT: String(port),
             LOG_LEVEL: "silent",
             LEVELDB_PATH: dir,
             IDLE_TIMEOUT_MS: "100",
         });
-        const { server } = startServer(cfg);
+        const { server } = await startServer(cfg);
         await waitListening(server);
 
         const doc1 = new Y.Doc();
         const provider1 = new WebsocketProvider(`ws://localhost:${port}`, "projects/testproj", doc1, {
             params: { auth: "token" },
-            WebSocketPolyfill: WebSocket,
+            WebSocketPolyfill: WebSocket as any,
         });
         await waitConnected(provider1);
         const closed = new Promise<void>(resolve => {
-            provider1.ws.on("close", (code: any) => {
-                expect(code).to.equal(4004);
-                provider1.destroy();
-                resolve();
-            });
+            if (provider1.ws) {
+                (provider1.ws as any).on("close", (code: any) => {
+                    expect(code).to.equal(4004);
+                    provider1.destroy();
+                    resolve();
+                });
+            }
         });
-        const synced1 = new Promise(resolve => {
-            const handler = state => {
+        const synced1 = new Promise<void>(resolve => {
+            const handler = (state: any) => {
                 if (state) {
-                    provider1.off("synced", handler);
+                    provider1.off("sync", handler);
                     resolve();
                 }
             };
-            provider1.on("synced", handler);
+            provider1.on("sync", handler);
         });
         doc1.getText("t").insert(0, "hello");
         await synced1;
@@ -80,14 +91,14 @@ describe("idle timeout", () => {
         });
         await waitConnected(provider2);
         if (!provider2.synced) {
-            await new Promise(resolve => {
-                const handler = state => {
+            await new Promise<void>(resolve => {
+                const handler = (state: any) => {
                     if (state) {
-                        provider2.off("synced", handler);
+                        provider2.off("sync", handler);
                         resolve();
                     }
                 };
-                provider2.on("synced", handler);
+                provider2.on("sync", handler);
             });
         }
         expect(doc2.getText("t").toString()).to.equal("hello");

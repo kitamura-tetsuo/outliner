@@ -15,7 +15,7 @@ import {
     rotateClientLogs,
     rotateServerLogs,
     rotateTelemetryLogs,
-} from "../utils/logger.js";
+} from "../src/utils/logger.js";
 
 // Firebase initialization (minimal configuration for testing)
 if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
@@ -84,7 +84,7 @@ app.use(cors({
 app.use(express.json());
 
 app.get("/health", (req, res) => {
-    res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
+    return res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
 app.post("/api/save-container", async (req, res) => {
@@ -107,7 +107,7 @@ app.post("/api/save-container", async (req, res) => {
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 operation: "updated",
                 containerId: containerId,
@@ -120,7 +120,7 @@ app.post("/api/save-container", async (req, res) => {
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 operation: "created",
                 containerId: containerId,
@@ -128,10 +128,10 @@ app.post("/api/save-container", async (req, res) => {
         }
     } catch (error: any) {
         if (error.message === "Invalid token") {
-            res.status(401).json({ error: "Authentication failed", details: error.message });
+            return res.status(401).json({ error: "Authentication failed", details: error.message });
         } else {
             console.error("Error saving container ID:", error);
-            res.status(500).json({ error: "Failed to save container ID", details: error.message });
+            return res.status(500).json({ error: "Failed to save container ID", details: error.message });
         }
     }
 });
@@ -156,12 +156,12 @@ app.post("/api/get-container-users", async (req, res) => {
             return res.status(404).json({ error: "Container not found" });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             users: containerDoc.data()?.accessibleUserIds || [],
         });
     } catch (error) {
         console.error("Error getting container users:", error);
-        res.status(500).json({ error: "Failed to get container users" });
+        return res.status(500).json({ error: "Failed to get container users" });
     }
 });
 
@@ -186,10 +186,10 @@ app.post("/api/list-users", async (req, res) => {
             displayName: u.displayName,
         }));
 
-        res.status(200).json({ users });
+        return res.status(200).json({ users });
     } catch (error) {
         console.error("Error listing users:", error);
-        res.status(500).json({ error: "Failed to list users" });
+        return res.status(500).json({ error: "Failed to list users" });
     }
 });
 
@@ -217,7 +217,7 @@ app.get("/debug/token-info", async (req, res) => {
         });
     } catch (error) {
         console.error("Token debug error:", error);
-        res.status(500).json({ error: "Failed to get token info" });
+        return res.status(500).json({ error: "Failed to get token info" });
     }
 });
 
@@ -231,7 +231,7 @@ app.post("/api/rotate-logs", async (req, res) => {
         if (telemetryRotated) refreshTelemetryLogStream();
         if (serverRotated) refreshServerLogStream();
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             clientRotated,
             telemetryRotated,
@@ -239,7 +239,7 @@ app.post("/api/rotate-logs", async (req, res) => {
             timestamp: new Date().toISOString(),
         });
     } catch (error: any) {
-        res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ success: false, error: error.message });
     }
 });
 

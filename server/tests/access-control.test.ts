@@ -31,6 +31,16 @@ describe("access-control", () => {
 
         mockFirestore = {
             collection: collectionStub,
+            settings: sinon.stub(),
+            databaseId: sinon.stub(),
+            doc: sinon.stub(),
+            collectionGroup: sinon.stub(),
+            runTransaction: sinon.stub(),
+            batch: sinon.stub(),
+            getAll: sinon.stub(),
+            listCollections: sinon.stub(),
+            bulkWriter: sinon.stub(),
+            bundle: sinon.stub(),
         };
     });
 
