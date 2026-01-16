@@ -9,6 +9,9 @@ import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth.js";
 // TODO: Get port from config
 const port = 1234;
 
+// Create a single persistence instance.
+const persistence = await createPersistence("db");
+
 export const hocuspocus = new Server({
     name: "hocuspocus-fluid-outliner",
     port,
@@ -32,7 +35,6 @@ export const hocuspocus = new Server({
         }
     },
     async onLoadDocument({ documentName }) {
-        const persistence = await createPersistence("db");
         const ydoc = await persistence.getYDoc(documentName);
         return ydoc;
     },
