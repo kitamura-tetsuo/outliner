@@ -24,5 +24,6 @@
 **Action:** Use `<ul>` and `<li>` structure for lists of navigation links (like projects or pages) to provide better context for assistive technologies.
 
 ## 2025-02-20 - [ARIA Combobox implementation in Svelte 5]
+
 **Learning:** Implementing the ARIA 1.2 Combobox pattern in a Svelte 5 component requires careful handling of reactive state for `aria-activedescendant`. Derived runes (`$derived`) are excellent for calculating the active ID string based on the selected index, but care must be taken to handle the case where the list is filtered or hidden.
 **Action:** When implementing comboboxes in the future, use derived state to manage `aria-activedescendant` IDs dynamically, and ensure the list container and items have the correct roles (`listbox` and `option`).
