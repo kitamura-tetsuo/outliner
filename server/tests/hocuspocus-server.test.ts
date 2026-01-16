@@ -1,8 +1,8 @@
-import { jest } from "@jest/globals";
 import { HocuspocusProvider } from "@hocuspocus/provider";
-import * as Y from "yjs";
 import { Server } from "@hocuspocus/server";
+import { jest } from "@jest/globals";
 import { DecodedIdToken } from "firebase-admin/auth";
+import * as Y from "yjs";
 
 // Use jest.unstable_mockModule to mock ESM modules
 jest.unstable_mockModule("../src/access-control", () => ({
@@ -71,7 +71,7 @@ describe("Hocuspocus Server", () => {
                 reject(new Error(`Timed out waiting for disconnect code ${expectedCode}`));
             }, 10000);
 
-            provider.on("disconnect", ({ code }: { code: number }) => {
+            provider.on("disconnect", ({ code }: { code: number; }) => {
                 clearTimeout(timeout);
                 try {
                     expect(code).toBe(expectedCode);

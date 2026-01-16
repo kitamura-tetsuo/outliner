@@ -1,9 +1,9 @@
 import "@dotenvx/dotenvx";
 import admin from "firebase-admin";
-import path from "path";
 import fs from "fs";
-import { serverLogger as logger } from "./utils/logger.js";
+import path from "path";
 import { fileURLToPath } from "url";
+import { serverLogger as logger } from "./utils/logger.js";
 
 // Define __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);

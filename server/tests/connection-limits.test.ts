@@ -1,15 +1,15 @@
 import { expect } from "chai";
 import { once } from "events";
+import admin from "firebase-admin";
 import fs from "fs-extra";
+import { Server } from "http";
+import { afterEach, describe, it } from "mocha";
 import os from "os";
 import path from "path";
-import WebSocket from "ws";
 import sinon from "sinon";
-import admin from "firebase-admin";
+import WebSocket from "ws";
 import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
-import { Server } from "http";
-import { describe, it, afterEach } from "mocha";
 
 function waitListening(server: Server): Promise<void> {
     return new Promise(resolve => server.on("listening", resolve));
@@ -19,7 +19,9 @@ describe("connection limits", () => {
     afterEach(() => sinon.restore());
 
     it("closes connection when message exceeds size", async () => {
-        sinon.stub(admin.auth(), "verifyIdToken").resolves({ uid: "user", exp: Math.floor(Date.now() / 1000) + 60 } as any);
+        sinon.stub(admin.auth(), "verifyIdToken").resolves(
+            { uid: "user", exp: Math.floor(Date.now() / 1000) + 60 } as any,
+        );
         const cfg = loadConfig({
             PORT: "12349",
             LOG_LEVEL: "silent",
@@ -41,7 +43,9 @@ describe("connection limits", () => {
     it("enforces per-room socket limit", async () => {
         sinon
             .stub(admin.auth(), "verifyIdToken")
-            .callsFake((token: string) => Promise.resolve({ uid: token, exp: Math.floor(Date.now() / 1000) + 60 } as any));
+            .callsFake((token: string) =>
+                Promise.resolve({ uid: token, exp: Math.floor(Date.now() / 1000) + 60 } as any)
+            );
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ydb-"));
         const cfg = loadConfig({ PORT: "12350", LOG_LEVEL: "silent", LEVELDB_PATH: dir, MAX_SOCKETS_PER_ROOM: "1" });
         const { server } = await startServer(cfg);
@@ -63,7 +67,9 @@ describe("connection limits", () => {
     it("enforces per-ip socket limit", async () => {
         sinon
             .stub(admin.auth(), "verifyIdToken")
-            .callsFake((token: string) => Promise.resolve({ uid: token, exp: Math.floor(Date.now() / 1000) + 60 } as any));
+            .callsFake((token: string) =>
+                Promise.resolve({ uid: token, exp: Math.floor(Date.now() / 1000) + 60 } as any)
+            );
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ydb-"));
         const cfg = loadConfig({
             PORT: "12351",

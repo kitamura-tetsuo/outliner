@@ -2,16 +2,16 @@ import { expect } from "chai";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
-import WebSocket from "ws";
-import * as Y from "yjs";
-import { WebsocketProvider } from "y-websocket";
 import sinon from "sinon";
+import WebSocket from "ws";
+import { WebsocketProvider } from "y-websocket";
+import * as Y from "yjs";
 import "ts-node/register";
 import admin from "firebase-admin";
+import { Server } from "http";
 import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
 import { clearTokenCache } from "../src/websocket-auth.js";
-import { Server } from "http";
 
 function waitListening(server: Server) {
     return new Promise(resolve => server.on("listening", resolve));
@@ -19,7 +19,7 @@ function waitListening(server: Server) {
 
 function waitConnected(provider: WebsocketProvider) {
     return new Promise<void>(resolve => {
-        provider.on("status", (event: { status: string }) => {
+        provider.on("status", (event: { status: string; }) => {
             if (event.status === "connected") {
                 resolve();
             }

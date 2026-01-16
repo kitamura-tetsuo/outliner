@@ -1,24 +1,24 @@
 import "@dotenvx/dotenvx";
+import bodyParser from "body-parser";
+import cors from "cors";
 import express from "express";
 import admin from "firebase-admin";
-import cors from "cors";
-import jwt from "jsonwebtoken";
 import fs from "fs";
+import jwt from "jsonwebtoken";
 import path from "path";
-import bodyParser from "body-parser";
+import { initializeFirebase } from "./firebase-init.js";
 import {
-    serverLogger as logger,
     clientLogger,
+    refreshClientLogStream,
+    refreshServerLogStream,
+    refreshTelemetryLogStream,
+    rotateClientLogs,
+    rotateServerLogs,
+    rotateTelemetryLogs,
+    serverLogger as logger,
     telemetryLogger,
     telemetryLogPath,
-    rotateClientLogs,
-    rotateTelemetryLogs,
-    rotateServerLogs,
-    refreshClientLogStream,
-    refreshTelemetryLogStream,
-    refreshServerLogStream,
 } from "./utils/logger.js";
-import { initializeFirebase } from "./firebase-init.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
@@ -117,7 +117,7 @@ function startLogService() {
 
     app.use((req, res, next) => {
         if (req.method === "OPTIONS") {
-            res.header("Access-Control-Allow-Origin", getSafeOrigins().join(', '));
+            res.header("Access-Control-Allow-Origin", getSafeOrigins().join(", "));
             res.header("Vary", "Origin");
             res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
             res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");

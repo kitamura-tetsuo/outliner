@@ -1,12 +1,12 @@
 import "dotenv/config";
-import { spawn, ChildProcess } from "child_process";
+import { ChildProcess, spawn } from "child_process";
 import { setupNgrokUrl } from "./utils/ngrok-helper.js";
 
 // Local host configuration
 const LOCAL_HOST = process.env.LOCAL_HOST || "localhost";
 
 // サーバーとngrokのプロセスを格納するオブジェクト
-const processes: { ngrok: ChildProcess | null; server: ChildProcess | null } = {
+const processes: { ngrok: ChildProcess | null; server: ChildProcess | null; } = {
     ngrok: null,
     server: null,
 };

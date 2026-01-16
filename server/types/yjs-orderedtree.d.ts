@@ -1,1 +1,1 @@
-declare module 'yjs-orderedtree';
+declare module "yjs-orderedtree";
