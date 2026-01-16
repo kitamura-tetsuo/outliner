@@ -8,14 +8,6 @@ import cors from "cors";
 import express from "express";
 import admin from "firebase-admin";
 import jwt from "jsonwebtoken";
-import {
-    refreshClientLogStream,
-    refreshServerLogStream,
-    refreshTelemetryLogStream,
-    rotateClientLogs,
-    rotateServerLogs,
-    rotateTelemetryLogs,
-} from "../src/utils/logger.js";
 
 // Firebase initialization (minimal configuration for testing)
 if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
@@ -218,28 +210,6 @@ app.get("/debug/token-info", async (req, res) => {
     } catch (error) {
         console.error("Token debug error:", error);
         return res.status(500).json({ error: "Failed to get token info" });
-    }
-});
-
-app.post("/api/rotate-logs", async (req, res) => {
-    try {
-        const clientRotated = await rotateClientLogs(2);
-        const telemetryRotated = await rotateTelemetryLogs(2);
-        const serverRotated = await rotateServerLogs(2);
-
-        if (clientRotated) refreshClientLogStream();
-        if (telemetryRotated) refreshTelemetryLogStream();
-        if (serverRotated) refreshServerLogStream();
-
-        return res.status(200).json({
-            success: true,
-            clientRotated,
-            telemetryRotated,
-            serverRotated,
-            timestamp: new Date().toISOString(),
-        });
-    } catch (error: any) {
-        return res.status(500).json({ success: false, error: error.message });
     }
 });
 

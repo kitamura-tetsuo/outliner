@@ -113,8 +113,20 @@ describe("access-control", () => {
         process.env.NODE_ENV = "test";
 
         // Ensure mock is NOT called by making it throw
-        const throwingMock = {
+        const throwingMock: any = {
             collection: sinon.stub().throws(new Error("Should not be called")),
+            settings: sinon.stub(),
+            databaseId: sinon.stub(),
+            doc: sinon.stub(),
+            collectionGroup: sinon.stub(),
+            runTransaction: sinon.stub(),
+            batch: sinon.stub(),
+            getAll: sinon.stub(),
+            listCollections: sinon.stub(),
+            bulkWriter: sinon.stub(),
+            bundle: sinon.stub(),
+            recursiveDelete: sinon.stub(),
+            terminate: sinon.stub(),
         };
 
         const result = await checkContainerAccess("u1", "c1", throwingMock);
@@ -124,8 +136,20 @@ describe("access-control", () => {
     it("bypasses check if ALLOW_TEST_ACCESS is true", async () => {
         process.env.ALLOW_TEST_ACCESS = "true";
 
-        const throwingMock = {
+        const throwingMock: any = {
             collection: sinon.stub().throws(new Error("Should not be called")),
+            settings: sinon.stub(),
+            databaseId: sinon.stub(),
+            doc: sinon.stub(),
+            collectionGroup: sinon.stub(),
+            runTransaction: sinon.stub(),
+            batch: sinon.stub(),
+            getAll: sinon.stub(),
+            listCollections: sinon.stub(),
+            bulkWriter: sinon.stub(),
+            bundle: sinon.stub(),
+            recursiveDelete: sinon.stub(),
+            terminate: sinon.stub(),
         };
 
         const result = await checkContainerAccess("u1", "c1", throwingMock);
