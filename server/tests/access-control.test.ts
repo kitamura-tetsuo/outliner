@@ -41,6 +41,8 @@ describe("access-control", () => {
             listCollections: sinon.stub(),
             bulkWriter: sinon.stub(),
             bundle: sinon.stub(),
+            recursiveDelete: sinon.stub(),
+            terminate: sinon.stub(),
         };
     });
 

@@ -60,7 +60,6 @@ describe("Hocuspocus Server", () => {
             name: "projects/123",
             document: new Y.Doc(),
             token,
-            connectTimeout: 2000,
         });
     };
 

@@ -87,7 +87,7 @@ describe("idle timeout", () => {
         const doc2 = new Y.Doc();
         const provider2 = new WebsocketProvider(`ws://localhost:${port}`, "projects/testproj", doc2, {
             params: { auth: "token" },
-            WebSocketPolyfill: WebSocket,
+            WebSocketPolyfill: WebSocket as any,
         });
         await waitConnected(provider2);
         if (!provider2.synced) {

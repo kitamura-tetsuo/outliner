@@ -37,6 +37,8 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
             listCollections: sinon.stub(),
             bulkWriter: sinon.stub(),
             bundle: sinon.stub(),
+            recursiveDelete: sinon.stub(),
+            terminate: sinon.stub(),
         };
 
         collectionStub = mockFirestore.collection;

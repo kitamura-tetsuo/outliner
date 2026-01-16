@@ -15,7 +15,7 @@ import {
     rotateClientLogs,
     rotateServerLogs,
     rotateTelemetryLogs,
-} from "../src/utils/logger.js";
+} from "./utils/logger.js";
 
 // Firebase initialization (minimal configuration for testing)
 if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
