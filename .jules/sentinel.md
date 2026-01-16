@@ -39,3 +39,9 @@
 **Vulnerability:** The WebSocket server's token verification logic (`verifyIdTokenCached`) accepted JWTs signed with `alg: none` if they had a specific structure, intended for testing. This logic was not guarded by an environment check, potentially allowing authentication bypass in production.
 **Learning:** Test-specific authentication bypasses (like mocking tokens) must be strictly isolated. Code that "looks like" it handles a specific edge case (like `alg: none`) can inadvertently become a backdoor if not explicitly gated.
 **Prevention:** Always wrap test-only logic in strict `process.env.NODE_ENV === 'test'` blocks. Avoid implementing "mock" logic in production-capable code paths; prefer dependency injection or separate test helpers.
+
+## 2025-05-24 - DoS via Unhandled URI Decoding
+
+**Vulnerability:** The server used `decodeURIComponent` on user-supplied URL segments without a try-catch block. Sending a malformed sequence (like `%`) caused an uncaught exception, crashing the entire server process.
+**Learning:** `decodeURIComponent` throws errors, unlike many other parsing functions that might return null/undefined. Input validation layers (like `parseRoom`) are the first line of defense and must be bulletproof against malformed inputs.
+**Prevention:** Always wrap `decodeURIComponent` (and `JSON.parse`) in try-catch blocks when processing external input. Treat decoding failures as validation errors (return undefined/400).
