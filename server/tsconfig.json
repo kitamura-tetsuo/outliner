@@ -3,7 +3,6 @@
         "target": "ES2020",
         "module": "Node16",
         "outDir": "./dist",
-        "rootDir": "./src",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
@@ -22,12 +21,7 @@
         "allowSyntheticDefaultImports": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
-        "resolveJsonModule": true,
-        "isolatedModules": true,
-        "typeRoots": [
-            "./node_modules/@types",
-            "./types"
-        ]
+        "resolveJsonModule": true
     },
     "include": [
         "src/**/*",

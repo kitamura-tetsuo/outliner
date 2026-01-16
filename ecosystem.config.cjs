@@ -65,8 +65,9 @@ module.exports = {
         {
             name: "log-service",
             script: "node",
-            args: "log-service.cjs --host 0.0.0.0 --port 7091",
+            args: "dist/log-service.js --host 0.0.0.0 --port 7091",
             cwd: "./server",
+            watch: ["src/log-service.ts"],
             env: {
                 ...process.env,
                 NODE_ENV: "test",

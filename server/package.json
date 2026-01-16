@@ -51,9 +51,9 @@
     "scripts": {
         "build": "tsc",
         "create-test-user": "node utils/create-test-user.js",
-        "dev": "nodemon log-service.cjs",
+        "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/log-service.ts",
         "start": "node dist/index.js",
-        "start:log-service": "node log-service.cjs",
+        "start:log-service": "node dist/log-service.js",
         "test": "bash ../scripts/run-server-tests.sh",
         "test:jest": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
         "test:hocuspocus": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.js",
