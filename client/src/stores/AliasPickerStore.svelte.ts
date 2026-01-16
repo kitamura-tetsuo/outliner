@@ -241,15 +241,7 @@ class AliasPickerStore {
                     const rootText: string = typeof rawRootText === "string"
                         ? rawRootText
                         : (rawRootText?.toString?.() ?? "");
-                    for (let i = 0; i < children.length; i++) {
-                        let child: Item | undefined;
-                        try {
-                            child = (children as any).at
-                                ? (children as any).at(i) as Item
-                                : (children as any)[i] as Item;
-                        } catch {
-                            child = undefined;
-                        }
+                    for (const child of children) {
                         if (child && child.id) {
                             // パスはページタイトルを先頭に含める
                             this.traverse(child, [rootText], list);
@@ -293,14 +285,8 @@ class AliasPickerStore {
         try {
             const children = node.items as Items;
             if (!children) return;
-            const len = Number.isFinite((children as any).length) ? (children as any).length as number : 0;
-            for (let i = 0; i < len; i++) {
-                let child: Item | undefined;
-                try {
-                    child = (children as any).at ? (children as any).at(i) as Item : (children as any)[i] as Item;
-                } catch {
-                    child = undefined as any;
-                }
+
+            for (const child of children) {
                 if (child && child.id && !visited.has(child.id)) {
                     this.traverse(child, current, out, visited, depth + 1);
                 }
@@ -335,8 +321,7 @@ class AliasPickerStore {
 
             const items = current.items as Items;
             if (items) {
-                for (let i = 0; i < items.length; i++) {
-                    const child = (items as any).at ? (items as any).at(i) as Item : (items as any)[i] as Item;
+                for (const child of items) {
                     if (child && !visited.has(child.id)) {
                         queue.push(child);
                     }
@@ -363,8 +348,7 @@ class AliasPickerStore {
 
         const items = node.items as Items;
         if (items) {
-            for (let i = 0; i < items.length; i++) {
-                const child = (items as any).at ? (items as any).at(i) as Item : (items as any)[i] as Item;
+            for (const child of items) {
                 if (child) {
                     const found = this.findItem(child, id, depth + 1);
                     if (found) return found;
