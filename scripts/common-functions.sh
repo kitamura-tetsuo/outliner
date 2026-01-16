@@ -356,12 +356,8 @@ install_all_dependencies() {
   # Server dependencies
   cd "${ROOT_DIR}/server"
   npm_ci_if_needed
-  if [ "${SKIP_BUILD:-0}" -eq 0 ]; then
-    echo "Building server..."
-    npm run build
-  else
-    echo "Skipping server build..."
-  fi
+  echo "Building server..."
+  npm run build
 
   # Firebase Functions dependencies
   cd "${ROOT_DIR}/functions"
