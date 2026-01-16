@@ -379,7 +379,9 @@ export async function startServer(config: Config, logger = defaultLogger) {
     });
 
     // Start Hocuspocus server
-    hocuspocus.listen();
+    if (!hocuspocus.httpServer) {
+      hocuspocus.listen();
+    }
 
     const shutdown = () => {
         hocuspocus.destroy();
