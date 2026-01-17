@@ -9,10 +9,10 @@ if (config.SENTRY_DSN) {
         dsn: config.SENTRY_DSN,
         beforeSend(event) {
             if (event.request?.headers) {
-                delete event.request.headers['Authorization'];
-                delete event.request.headers['Cookie'];
-                delete event.request.headers['authorization'];
-                delete event.request.headers['cookie'];
+                delete event.request.headers["Authorization"];
+                delete event.request.headers["Cookie"];
+                delete event.request.headers["authorization"];
+                delete event.request.headers["cookie"];
             }
 
             if (event.user) {
