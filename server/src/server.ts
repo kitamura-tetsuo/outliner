@@ -1,18 +1,17 @@
-console.log("Loading server.ts imports...");
 import { Logger } from "@hocuspocus/extension-logger";
 import { Server } from "@hocuspocus/server";
 import express from "express";
 import http from "http";
 import * as Y from "yjs";
-import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
 import { type Config } from "./config.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence, logTotalSize } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { createSeedRouter } from "./seed-api.js";
-import { sanitizeUrl } from "./utils/sanitize.js";
 import { extractAuthToken, verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
+import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
+import { sanitizeUrl } from "./utils/sanitize.js";
 
 interface ServerOverrides {
     checkContainerAccess?: typeof defaultCheckAccess;
@@ -22,7 +21,7 @@ interface ServerOverrides {
 export async function startServer(
     config: Config,
     logger = defaultLogger,
-    overrides: ServerOverrides = {},
+    overrides: ServerOverrides = {}
 ) {
     const checkContainerAccess = overrides.checkContainerAccess || defaultCheckAccess;
     const verifyIdTokenCached = overrides.verifyIdTokenCached || defaultVerifyToken;
@@ -123,7 +122,7 @@ export async function startServer(
 
             return {
                 user: { uid: decoded.uid },
-                room,
+                room
             };
         },
 
@@ -293,14 +292,6 @@ export async function startServer(
             server.close(() => resolve());
         });
     };
-
-    // Only bind process signals if running directly (optional, but good practice)
-    // But since this function is called by index.ts, we can leave signal handling to caller or here.
-    // For tests, we don't want to exit process.
-    if (require.main === module) {
-        process.on("SIGINT", () => shutdown().then(() => process.exit(0)));
-        process.on("SIGTERM", () => shutdown().then(() => process.exit(0)));
-    }
 
     return { server, hocuspocus, persistence, shutdown };
 }
