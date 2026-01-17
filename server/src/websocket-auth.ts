@@ -63,8 +63,7 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
         if (headerJson.alg === "none") {
             // SECURITY: Only allow alg:none tokens in explicit test environments
             // This prevents attackers from forging tokens in production
-            const isTestEnv = process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development"
-                || process.env.ALLOW_TEST_ACCESS === "true";
+            const isTestEnv = process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" || process.env.ALLOW_TEST_ACCESS === "true";
             if (!isTestEnv) {
                 console.warn("[Auth] Security Warning: alg:none token rejected in non-test environment");
                 throw new Error("alg:none tokens are not allowed in this environment");

@@ -1,11 +1,11 @@
+import { expect } from "chai";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { Server } from "@hocuspocus/server";
-import { expect } from "chai";
+import * as Y from "yjs";
 import sinon from "sinon";
 import WebSocket from "ws";
-import * as Y from "yjs";
-import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
+import { loadConfig } from "../src/config.js";
 
 // @ts-ignore
 global.WebSocket = WebSocket;
@@ -39,8 +39,8 @@ describe("Hocuspocus Server", () => {
         shutdown = res.shutdown;
 
         await new Promise<void>(resolve => {
-            if (httpServer.listening) resolve();
-            else httpServer.on("listening", resolve);
+             if (httpServer.listening) resolve();
+             else httpServer.on('listening', resolve);
         });
         port = (httpServer.address() as any).port;
     });

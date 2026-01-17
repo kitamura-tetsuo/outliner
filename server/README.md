@@ -34,13 +34,11 @@ cp .env.example .env
 サーバーの動作は以下の環境変数で制御できます (`server/src/config.ts` 参照):
 
 ### 基本設定
-
 - `PORT`: サーバーのポート番号 (デフォルト: `3000` または `7093` など)
 - `LOG_LEVEL`: ログレベル (`fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`. デフォルト: `info`)
 - `ORIGIN_ALLOWLIST`: 許可するオリジンのカンマ区切りリスト (空の場合は制限なし)
 
 ### Hocuspocus / Yjs 設定
-
 - `LEVELDB_PATH`: Yjsデータの永続化パス (デフォルト: `./ydb`)
 - `LEVELDB_ROOM_SIZE_WARN_MB`: ルームサイズ警告のしきい値(MB) (デフォルト: `50`)
 - `LEVELDB_LOG_INTERVAL_MS`: LevelDB統計ログの出力間隔(ms) (デフォルト: `3600000` = 1時間)
@@ -49,7 +47,6 @@ cp .env.example .env
 - `ROOM_PREFIX_ENFORCE`: ルーム名のプレフィックス強制 (デフォルト: `false`)
 
 ### 制限・レートリミット
-
 - `MAX_SOCKETS_TOTAL`: サーバー全体での最大接続数 (デフォルト: `1000`)
 - `MAX_SOCKETS_PER_IP`: IPアドレスごとの最大接続数 (デフォルト: `1000000` - 実質無効化)
 - `MAX_SOCKETS_PER_ROOM`: ルームごとの最大接続数 (デフォルト: `100`)
