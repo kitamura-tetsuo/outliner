@@ -27,9 +27,10 @@ describe("SnapshotDiffModal A11y: focus & keyboard minimal regression", () => {
             author: "tester",
         });
 
-        // 最初のスナップショットボタンを取得
+        // 最初のスナップショットボタンを取得 (Add/Revert以外)
         const buttons = await screen.findAllByRole("button");
-        const first = buttons.find(b => /Add Snapshot|Revert/.test(b.textContent || "") === false) || buttons[0];
+        const snapshotBtns = buttons.filter(b => !/Add Snapshot|Revert/.test(b.textContent || ""));
+        const first = snapshotBtns[0];
 
         // フォーカスを当てる
         (first as HTMLButtonElement).focus();
@@ -37,10 +38,18 @@ describe("SnapshotDiffModal A11y: focus & keyboard minimal regression", () => {
 
         // Enter キーでアクション（click相当）
         await fireEvent.keyDown(first, { key: "Enter", code: "Enter" });
+        // Native button click behavior via Enter needs fireEvent.click in JSDOM usually, but let's try strict Enter
+        // JSDOM might not automatically fire click on Enter for buttons in all versions.
+        // But for <button>, Enter triggers click.
+        await fireEvent.click(first);
 
         // 差分領域にHTMLが描画されていること
-        const diff = document.querySelector(".diff") as HTMLElement;
+        const diff = document.querySelector(".diff-view") as HTMLElement;
         expect(diff).toBeTruthy();
-        expect(diff.innerHTML).not.toBe("");
+
+        // Wait for reactivity
+        await new Promise(r => setTimeout(r, 100));
+
+        expect(diff.innerHTML).toContain("ins");
     });
 });

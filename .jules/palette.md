@@ -14,3 +14,8 @@
 
 **Learning:** The `AGENTS.md` documentation claimed the `SearchBox` implemented the ARIA Combobox pattern, but the actual code used a simple input with a list of buttons. E2E tests verified visibility but not the specific ARIA roles, leading to a drift between documentation/expected accessibility standards and implementation.
 **Action:** When `AGENTS.md` claims an accessibility pattern exists, verify it with `getByRole` in tests rather than generic selectors. If missing, implement the full pattern (combobox, listbox, option, activedescendant) to match the documentation and improve screen reader experience.
+
+## 2026-01-17 - [Hybrid Listbox-Button Pattern]
+
+**Learning:** When improving keyboard accessibility for a list of actionable items (like snapshots), converting them to a strict ARIA `listbox` pattern (`role="listbox"`, `role="option"`) works well for semantics. However, using `<button role="option">` inside the list preserves native keyboard behaviors (click on Enter/Space) while providing the correct semantics to screen readers, avoiding the need to manually reimplement all key handlers associated with a pure `div` based listbox.
+**Action:** Use `<button role="option">` for actionable list items to get the best of both worlds: native interactivity and correct ARIA semantics.
