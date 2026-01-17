@@ -18,7 +18,7 @@ import {
     serverLogger as logger,
     telemetryLogger,
     telemetryLogPath,
-} from "./utils/logger.js";
+} from "./utils/log-manager.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
@@ -121,7 +121,8 @@ function startLogService() {
             res.header("Vary", "Origin");
             res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
             res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-            return res.sendStatus(204);
+            res.sendStatus(204);
+            return;
         }
         next();
     });
@@ -133,7 +134,7 @@ function startLogService() {
         res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
     });
 
-    app.post("/api/login", async (req, res) => {
+    app.post("/api/login", async (req, res): Promise<any> => {
         try {
             const { email, password } = req.body;
 
@@ -171,11 +172,11 @@ function startLogService() {
             return res.status(401).json({ error: "Invalid credentials" });
         } catch (error: any) {
             logger.error(`Login error: ${error.message}`);
-            res.status(500).json({ error: "Authentication failed" });
+            return res.status(500).json({ error: "Authentication failed" });
         }
     });
 
-    app.post("/api/log", (req, res) => {
+    app.post("/api/log", (req, res): any => {
         try {
             const logData = req.body;
             if (!logData || !logData.level || !logData.log) {
@@ -216,15 +217,15 @@ function startLogService() {
                     targetLogger.info(JSON.stringify(enrichedLog));
             }
 
-            res.status(200).json({ success: true });
+            return res.status(200).json({ success: true });
         } catch (error: any) {
             logger.error(`ログ処理エラー: ${error.message}`);
-            res.status(500).json({ error: "ログ処理に失敗しました" });
+            return res.status(500).json({ error: "ログ処理に失敗しました" });
         }
     });
 
     if (isDevelopment) {
-        app.get("/api/telemetry-logs", (req, res) => {
+        app.get("/api/telemetry-logs", (req, res): any => {
             try {
                 if (!fs.existsSync(telemetryLogPath)) {
                     return res.status(404).json({ error: "Telemetryログファイルが見つかりません" });
@@ -239,7 +240,8 @@ function startLogService() {
                 fs.open(telemetryLogPath, "r", (err, fd) => {
                     if (err) {
                         logger.error(`Telemetryログファイルを開けませんでした: ${err.message}`);
-                        return res.status(500).json({ error: "ファイルを開けませんでした" });
+                        res.status(500).json({ error: "ファイルを開けませんでした" });
+                        return;
                     }
 
                     const buffer = Buffer.alloc(length);
@@ -248,7 +250,8 @@ function startLogService() {
 
                         if (err) {
                             logger.error(`Telemetryログファイルの読み込みに失敗しました: ${err.message}`);
-                            return res.status(500).json({ error: "ファイルの読み込みに失敗しました" });
+                            res.status(500).json({ error: "ファイルの読み込みに失敗しました" });
+                            return;
                         }
 
                         const data = buffer.toString("utf8");
@@ -271,7 +274,7 @@ function startLogService() {
                 });
             } catch (error: any) {
                 logger.error(`Telemetryログ取得エラー: ${error.message}`);
-                res.status(500).json({ error: "Telemetryログの取得に失敗しました" });
+                return res.status(500).json({ error: "Telemetryログの取得に失敗しました" });
             }
         });
     }
@@ -318,7 +321,7 @@ function startLogService() {
     });
 
     if (process.env.NODE_ENV !== "production") {
-        app.get("/debug/token-info", async (req, res) => {
+        app.get("/debug/token-info", async (req, res): Promise<any> => {
             try {
                 const { token } = req.query;
 
@@ -332,19 +335,20 @@ function startLogService() {
                     return res.status(400).json({ error: "無効なJWTトークンです" });
                 }
 
+                const payload = decoded.payload as jwt.JwtPayload;
                 return res.json({
                     header: decoded.header,
-                    payload: decoded.payload,
-                    expiresIn: decoded.payload.exp ? new Date(decoded.payload.exp * 1000).toISOString() : "N/A",
-                    issuedAt: decoded.payload.iat ? new Date(decoded.payload.iat * 1000).toISOString() : "N/A",
+                    payload: payload,
+                    expiresIn: payload.exp ? new Date(payload.exp * 1000).toISOString() : "N/A",
+                    issuedAt: payload.iat ? new Date(payload.iat * 1000).toISOString() : "N/A",
                 });
             } catch (error: any) {
-                res.status(500).json({ error: `トークン情報の取得に失敗しました: ${error.message}` });
+                return res.status(500).json({ error: `トークン情報の取得に失敗しました: ${error.message}` });
             }
         });
     }
 
-    app.post("/api/create-test-user", async (req, res) => {
+    app.post("/api/create-test-user", async (req, res): Promise<any> => {
         if (process.env.NODE_ENV === "production") {
             return res.status(403).json({ error: "Not available in production" });
         }
@@ -383,13 +387,13 @@ function startLogService() {
             });
 
             logger.info(`Successfully created test user: ${userRecord.uid}`);
-            res.status(200).json({
+            return res.status(200).json({
                 message: "User created successfully",
                 uid: userRecord.uid,
             });
         } catch (error: any) {
             logger.error(`Error creating test user: ${error.message}`);
-            res.status(500).json({ error: error.message });
+            return res.status(500).json({ error: error.message });
         }
     });
 

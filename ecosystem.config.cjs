@@ -32,6 +32,21 @@ module.exports = {
             log_date_format: "YYYY-MM-DD HH:mm:s",
         },
         {
+            name: "log-service",
+            script: "npm",
+            args: "run start:log-service",
+            cwd: "./server",
+            env: {
+                ...process.env,
+                NODE_ENV: "test",
+                PORT: 7091,
+            },
+            log_file: "./logs/log-service.log",
+            out_file: "../logs/log-service.log",
+            error_file: "../logs/log-service.log",
+            log_date_format: "YYYY-MM-DD HH:mm:ss",
+        },
+        {
             name: "vite-server",
             script: "npm",
             args: "run dev -- --host 0.0.0.0 --port 7090 --mode test",

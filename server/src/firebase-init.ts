@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { serverLogger as logger } from "./utils/logger.js";
+import { serverLogger as logger } from "./utils/log-manager.js";
 
 // Define __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -48,7 +48,8 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 let devAuthHelper: any;
 if (isDevelopment) {
     try {
-        devAuthHelper = await import("./scripts/setup-dev-auth.js");
+        // @ts-ignore - dynamic import of script outside src
+        devAuthHelper = await import("../scripts/setup-dev-auth.js");
         logger.info("Development auth helper loaded");
     } catch (error: any) {
         logger.warn(`Development auth helper not available: ${error.message}`);
