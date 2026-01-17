@@ -66,20 +66,7 @@ export async function startServer(
         }
     }, config.RATE_LIMIT_WINDOW_MS * 5));
 
-    const hocuspocus = new Server({
-        name: "hocuspocus-fluid-outliner",
-    } as any);
-
-    // Bind the server reference for proper WebSocket handling
-    (hocuspocus as any).server = hocuspocus;
-
-    // Handle WebSocket upgrade manually
-    server.on("upgrade", (request, socket, head) => {
-        hocuspocus.webSocketServer.handleUpgrade(request, socket, head, (ws) => {
-            hocuspocus.webSocketServer.emit("connection", ws, request);
-        });
-    });
-
+    // Message size limit extension
     const onMessageExtension = {
         async onMessage({ message, connection }: any) {
             recordMessage();
@@ -94,15 +81,10 @@ export async function startServer(
         },
     } as any;
 
-    // Reconfigure Hocuspocus with extensions and callbacks
-    // Access the internal hocuspocus instance via .hocuspocus property
-    (hocuspocus as any).hocuspocus.configure({
+    const hocuspocus = new Server({
+        name: "hocuspocus-fluid-outliner",
         extensions: [
-            new Logger({
-                // Using a no-op log or mapping to our logger could be useful
-                // For now, let's keep it simple.
-                // Hocuspocus logger logs to console by default.
-            }),
+            new Logger({}),
             onMessageExtension,
         ],
 
@@ -272,6 +254,16 @@ export async function startServer(
                 else roomCounts.set(documentName, count);
             }
         },
+    } as any);
+
+    // Bind the server reference for proper WebSocket handling
+    (hocuspocus as any).server = hocuspocus;
+
+    // Handle WebSocket upgrade manually since we're using Express with a separate http.Server
+    server.on("upgrade", (request, socket, head) => {
+        hocuspocus.webSocketServer.handleUpgrade(request, socket, head, (ws) => {
+            hocuspocus.webSocketServer.emit("connection", ws, request);
+        });
     });
 
     // API Routes
