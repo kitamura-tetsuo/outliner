@@ -7,7 +7,6 @@ import { sequence } from "@sveltejs/kit/hooks";
 const paraglideHandle: Handle = ({ event, resolve }) =>
     paraglideMiddleware(event.request, ({ request: localizedRequest, locale }) => {
         event.request = localizedRequest;
-        // (removed legacy endpoint interception)
         return resolve(event, {
             transformPageChunk: ({ html }) => {
                 return html.replace("%lang%", locale);
@@ -16,4 +15,6 @@ const paraglideHandle: Handle = ({ event, resolve }) =>
     });
 
 export const handle: Handle = sequence(Sentry.sentryHandle(), paraglideHandle);
+
+// Sentry error handler
 export const handleError = Sentry.handleErrorWithSentry();
