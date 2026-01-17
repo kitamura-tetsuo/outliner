@@ -1,6 +1,8 @@
+import { Logger } from "@hocuspocus/extension-logger";
+import { Server } from "@hocuspocus/server";
 import express from "express";
 import http from "http";
-import { createRequire } from "module";
+import * as Y from "yjs";
 import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
 import { type Config } from "./config.js";
 import { logger as defaultLogger } from "./logger.js";
@@ -10,11 +12,6 @@ import { parseRoom } from "./room-validator.js";
 import { createSeedRouter } from "./seed-api.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 import { extractAuthToken, verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
-
-const require = createRequire(import.meta.url);
-const { Logger } = require("@hocuspocus/extension-logger");
-const { Server } = require("@hocuspocus/server");
-const Y = require("yjs");
 
 interface ServerOverrides {
     checkContainerAccess?: typeof defaultCheckAccess;

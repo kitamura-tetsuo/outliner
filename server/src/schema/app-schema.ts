@@ -1,12 +1,9 @@
 // NOTE: Fluid Framework 実装は削除。Yjs + yjs-orderedtree 版のみ提供します。
 
-import { createRequire } from "module";
 import { v4 as uuid } from "uuid";
+import * as Y from "yjs";
+import { YTree } from "yjs-orderedtree";
 import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types.js";
-
-const require = createRequire(import.meta.url);
-const Y = require("yjs");
-const { YTree } = require("yjs-orderedtree");
 
 export type Comment = {
     id: string;

@@ -1,9 +1,6 @@
-import { createRequire } from "module";
 import type { Logger } from "pino";
-
-const require = createRequire(import.meta.url);
-const { LeveldbPersistence } = require("y-leveldb");
-const Y = require("yjs");
+import { LeveldbPersistence } from "y-leveldb";
+import * as Y from "yjs";
 
 export async function createPersistence(path: string): Promise<any> {
     if (process.env.DISABLE_Y_LEVELDB === "true") {
