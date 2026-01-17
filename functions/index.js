@@ -43,6 +43,21 @@ Sentry.init({
   dsn: process.env.SENTRY_DSN ||
     "https://5e3118a20b39f1ab217f4aa055e1f9cf@o470306.ingest.us.sentry.io/4510723466788864",
   tracesSampleRate: 1.0,
+  beforeSend(event) {
+    if (event.request && event.request.headers) {
+      delete event.request.headers["Authorization"];
+      delete event.request.headers["Cookie"];
+      delete event.request.headers["authorization"];
+      delete event.request.headers["cookie"];
+    }
+
+    if (event.user) {
+      delete event.user.email;
+      delete event.user.ip_address;
+    }
+
+    return event;
+  },
 });
 
 const { FieldValue } = require("firebase-admin/firestore");
