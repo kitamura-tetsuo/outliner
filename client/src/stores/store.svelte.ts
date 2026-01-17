@@ -48,14 +48,15 @@ export class GeneralStore {
                 const title = page?.text?.toString?.() ?? String(page?.text ?? "");
                 const items = proj.items;
                 let next: Item | undefined;
-                const len = items?.length ?? 0;
-                for (let i = 0; i < len; i++) {
-                    const p = items.at(i);
-                    if (!p) continue;
-                    const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-                    if (String(t).toLowerCase() === String(title).toLowerCase()) {
-                        next = p;
-                        break;
+                // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
+                if (items) {
+                    for (const p of items) {
+                        if (!p) continue;
+                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        if (String(t).toLowerCase() === String(title).toLowerCase()) {
+                            next = p;
+                            break;
+                        }
                     }
                 }
                 // REMOVED: Legacy browser-based auto-creation. Tests should use TestHelpers.createAndSeedProject for data seeding.
