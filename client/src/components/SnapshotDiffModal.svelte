@@ -91,8 +91,9 @@ $effect(() => {
 
         <div class="flex-1 flex flex-col overflow-hidden">
             <h3 class="visually-hidden">Diff View</h3>
+            <!-- Added .diff class for backward compatibility with existing tests -->
             <div
-                class="diff-view flex-1 overflow-auto bg-gray-50 p-3 rounded border border-gray-200 font-mono text-sm"
+                class="diff diff-view flex-1 overflow-auto bg-gray-50 p-3 rounded border border-gray-200 font-mono text-sm"
                 tabindex="0"
                 role="region"
                 aria-label="Diff content"
