@@ -83,6 +83,7 @@ export async function startServer(
 
     const hocuspocus = new Server({
         name: "hocuspocus-fluid-outliner",
+        server, // Pass the HTTP server for proper WebSocket integration
         extensions: [
             new Logger({}),
             onMessageExtension,
@@ -255,16 +256,6 @@ export async function startServer(
             }
         },
     } as any);
-
-    // Bind the server reference for proper WebSocket handling
-    (hocuspocus as any).server = hocuspocus;
-
-    // Handle WebSocket upgrade manually since we're using Express with a separate http.Server
-    server.on("upgrade", (request, socket, head) => {
-        hocuspocus.webSocketServer.handleUpgrade(request, socket, head, (ws) => {
-            hocuspocus.webSocketServer.emit("connection", ws, request);
-        });
-    });
 
     // API Routes
     app.get("/", (_req, res) => {
