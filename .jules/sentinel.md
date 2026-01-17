@@ -45,3 +45,9 @@
 **Vulnerability:** The server used `decodeURIComponent` on user-supplied URL segments without a try-catch block. Sending a malformed sequence (like `%`) caused an uncaught exception, crashing the entire server process.
 **Learning:** `decodeURIComponent` throws errors, unlike many other parsing functions that might return null/undefined. Input validation layers (like `parseRoom`) are the first line of defense and must be bulletproof against malformed inputs.
 **Prevention:** Always wrap `decodeURIComponent` (and `JSON.parse`) in try-catch blocks when processing external input. Treat decoding failures as validation errors (return undefined/400).
+
+## 2025-05-25 - Disabled Rate Limiting by Default
+
+**Vulnerability:** The server configuration defaulted to 1,000,000 connections/requests per IP, effectively disabling DoS protection.
+**Learning:** Default values in configuration schemas (like Zod) are often set to "permissive" values during development to avoid friction, but these defaults can dangerously persist into production if not explicitly overridden.
+**Prevention:** Set secure, restrictive defaults in code (secure-by-default). Use environment variables to relax limits for specific environments (dev/test) if needed, rather than the other way around.
