@@ -140,7 +140,7 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
                 if (subdoc) {
                     const pageRoom = `projects/${projectId}/pages/${page.id}`;
                     const subdocUpdate = Y.encodeStateAsUpdate(subdoc);
-                    await persistence.storeUpdate(pageRoom, subdocUpdate);
+                    await (persistence as any).storeUpdate(pageRoom, subdocUpdate);
                 }
             }
 
@@ -151,7 +151,7 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
             let projectUpdate: Uint8Array | undefined;
             {
                 projectUpdate = Y.encodeStateAsUpdate(projectDoc);
-                await persistence.storeUpdate(projectRoom, projectUpdate);
+                await (persistence as any).storeUpdate(projectRoom, projectUpdate);
             }
 
             // Debug: Verify the persisted state by reading it back
