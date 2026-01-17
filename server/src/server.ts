@@ -92,16 +92,26 @@ export async function startServer(
             } as any,
         ],
 
-        async onAuthenticate({ request, documentName, token: socketToken, connection }: any) {
+        async onAuthenticate(data: any) {
+            const { request, documentName, token: socketToken } = data;
+            let connection = data.connection;
+
+            if (!connection) {
+                // Try to recover connection
+                if (data.instance && data.socketId && data.instance.connections) {
+                    connection = data.instance.connections.get(data.socketId);
+                }
+            }
+
             const token = socketToken || extractAuthToken(request);
             if (!token) {
-                connection.close(4001, "UNAUTHORIZED");
+                connection?.close(4001, "UNAUTHORIZED");
                 throw new Error("Authentication failed: No token provided");
             }
 
             const room = parseRoom(documentName);
             if (!room?.project) {
-                connection.close(4002, "INVALID_ROOM");
+                connection?.close(4002, "INVALID_ROOM");
                 throw new Error("Authentication failed: Invalid room format");
             }
 
@@ -109,14 +119,14 @@ export async function startServer(
             try {
                 decoded = await verifyIdTokenCached(token);
             } catch (err) {
-                connection.close(4001, "UNAUTHORIZED");
+                connection?.close(4001, "UNAUTHORIZED");
                 throw err;
             }
 
             const hasAccess = await checkContainerAccess(decoded.uid, room.project);
 
             if (!hasAccess) {
-                connection.close(4003, "FORBIDDEN");
+                connection?.close(4003, "FORBIDDEN");
                 throw new Error("Authentication failed: Access denied");
             }
 
@@ -162,12 +172,19 @@ export async function startServer(
             return doc;
         },
 
-        async onConnect({ request, documentName, connection }: any) {
+        async onConnect(data: any) {
+            const { request, documentName, connection } = data;
+
             const ip = (request.headers["x-forwarded-for"] as string) || request.socket.remoteAddress || "";
             const origin = request.headers.origin || "";
 
             // Store IP in connection context for onDisconnect
-            (connection as any).context = { ...((connection as any).context || {}), ip };
+            // Use data.context if connection.context is not available
+            if (connection) {
+                (connection as any).context = { ...((connection as any).context || {}), ip };
+            } else if (data.context) {
+                data.context.ip = ip;
+            }
 
             // Rate Limiting Check
             const now = Date.now();
@@ -217,8 +234,13 @@ export async function startServer(
             logger.info({ event: "ws_connection_accepted", room: documentName });
         },
 
-        async onDisconnect({ documentName, connection }: any) {
-            const ip = (connection as any).context?.ip || "";
+        async onDisconnect(data: any) {
+            const { documentName } = data;
+            const connection = data.connection;
+
+            // Context might be in data.context or connection.context
+            const context = data.context || (connection as any)?.context || {};
+            const ip = context.ip || "";
 
             // Decrement counters
             totalSockets--;
@@ -240,7 +262,9 @@ export async function startServer(
 
     // Handle WebSocket upgrade manually
     server.on("upgrade", (request, socket, head) => {
-        (hocuspocus as any).handleUpgrade(request, socket, head);
+        hocuspocus.webSocketServer.handleUpgrade(request, socket, head, (ws) => {
+            hocuspocus.webSocketServer.emit("connection", ws, request);
+        });
     });
 
     // API Routes
