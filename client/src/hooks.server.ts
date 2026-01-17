@@ -1,5 +1,7 @@
 import { paraglideMiddleware } from "$lib/paraglide/server";
+import * as Sentry from "@sentry/sveltekit";
 import type { Handle } from "@sveltejs/kit";
+import { sequence } from "@sveltejs/kit/hooks";
 
 // creating a handle to use the paraglide middleware
 const paraglideHandle: Handle = ({ event, resolve }) =>
@@ -13,4 +15,5 @@ const paraglideHandle: Handle = ({ event, resolve }) =>
         });
     });
 
-export const handle: Handle = paraglideHandle;
+export const handle: Handle = sequence(Sentry.sentryHandle(), paraglideHandle);
+export const handleError = Sentry.handleErrorWithSentry();
