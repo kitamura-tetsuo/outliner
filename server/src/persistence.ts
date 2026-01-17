@@ -1,11 +1,13 @@
+import { createRequire } from "module";
 import type { Logger } from "pino";
-// @ts-ignore
-import { LeveldbPersistence } from "y-leveldb";
-import * as Y from "yjs";
 
-export async function createPersistence(path: string): Promise<LeveldbPersistence> {
+const require = createRequire(import.meta.url);
+const { LeveldbPersistence } = require("y-leveldb");
+const Y = require("yjs");
+
+export async function createPersistence(path: string): Promise<any> {
     if (process.env.DISABLE_Y_LEVELDB === "true") {
-        return {} as any;
+        return undefined;
     }
     const persistence = new LeveldbPersistence(path);
     // Wait for the underlying database to open
@@ -15,7 +17,7 @@ export async function createPersistence(path: string): Promise<LeveldbPersistenc
 }
 
 export async function logTotalSize(
-    persistence: LeveldbPersistence,
+    persistence: any,
     logger: Logger,
 ): Promise<void> {
     const names = await persistence.getAllDocNames();

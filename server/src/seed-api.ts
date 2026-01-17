@@ -1,10 +1,13 @@
 import express from "express";
+import { createRequire } from "module";
 // @ts-ignore
 import type { LeveldbPersistence } from "y-leveldb";
-import * as Y from "yjs";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 import { verifyIdTokenCached } from "./websocket-auth.js";
+
+const require = createRequire(import.meta.url);
+const Y = require("yjs");
 
 export interface PageSeedData {
     name: string;
