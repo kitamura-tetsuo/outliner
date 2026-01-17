@@ -28,7 +28,7 @@ describe("metrics endpoint", () => {
     it("reports message count", async () => {
         sinon.stub(admin.auth(), "verifyIdToken").resolves({ uid: "user", exp: Math.floor(Date.now() / 1000) + 60 });
         const cfg = loadConfig({ PORT: "12348", LOG_LEVEL: "silent" });
-        const { server } = startServer(cfg);
+        const { server } = await startServer(cfg);
         await waitListening(server);
         const ws = new WebSocket(`ws://localhost:${cfg.PORT}/projects/test?auth=token`);
         await once(ws, "open");

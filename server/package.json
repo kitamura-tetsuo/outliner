@@ -3,7 +3,6 @@
         "@dotenvx/dotenvx": "^1.51.4",
         "@hocuspocus/extension-logger": "^3.4.3",
         "@hocuspocus/server": "^3.4.3",
-        "@y/websocket-server": "^0.1.1",
         "cors": "^2.8.5",
         "express": "^5.2.1",
         "find-process": "^2.0.0",
@@ -15,7 +14,6 @@
         "uuid": "^11.1.0",
         "ws": "^8.19.0",
         "y-leveldb": "^0.2.0",
-        "y-websocket": "^3.0.0",
         "yjs": "^13.6.29",
         "yjs-orderedtree": "^1.0.1-beta.3",
         "zod": "^4.3.5"

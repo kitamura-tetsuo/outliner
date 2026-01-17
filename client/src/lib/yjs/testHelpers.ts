@@ -212,6 +212,38 @@ export async function initializeBrowserPage(
 }
 
 /**
+ * Reconnect a Yjs WebSocket provider to ensure it uses a fresh auth token.
+ * This is needed when the provider was created before the user was logged in.
+ *
+ * @param page - Playwright Page instance
+ * @param providerVar - Name of the global variable holding the provider
+ */
+export async function reconnectProvider(page: Page, providerVar: string = "__PROVIDER__"): Promise<void> {
+    await page.evaluate(async ({ pv }) => {
+        const win = window as Record<string, unknown>;
+        const provider = win[pv];
+        if (!provider) return;
+
+        try {
+            // Disconnect and reconnect to get a fresh token
+            provider.disconnect?.();
+            await new Promise(r => setTimeout(r, 100));
+            provider.connect?.();
+
+            // Wait for reconnection
+            let attempts = 0;
+            while (!provider.wsconnected && attempts < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+            console.log(`[${pv}] reconnected, wsconnected=${provider.wsconnected}, synced=${provider.synced}`);
+        } catch (e) {
+            console.error(`[${pv}] reconnect failed:`, e);
+        }
+    }, { pv: providerVar });
+}
+
+/**
  * Create a minimal Yjs connection for testing.
  *
  * ⚠️ TEST ENVIRONMENT ONLY
@@ -423,6 +455,9 @@ export async function prepareTwoBrowserPages(
         throw new Error(`${page1Prefix} failed to connect`);
     }
 
+    // Reconnect to ensure fresh token after login
+    await reconnectProvider(page1, page1ProviderVar);
+
     // Initialize second page
     const { context: context2, page: page2 } = await initializeBrowserPage(
         browser,
@@ -445,6 +480,9 @@ export async function prepareTwoBrowserPages(
     if (!page2Connected) {
         throw new Error(`${page2Prefix} failed to connect`);
     }
+
+    // Reconnect to ensure fresh token after login
+    await reconnectProvider(page2, page2ProviderVar);
 
     return {
         context1,

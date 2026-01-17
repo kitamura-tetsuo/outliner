@@ -3,10 +3,13 @@ import { logger } from "./logger.js";
 
 // Ensure admin is initialized (idempotent)
 if (!admin.apps.length) {
-    if (process.env.FIREBASE_PROJECT_ID) {
-        admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
-    } else {
-        admin.initializeApp();
+    // Skip initialization in test environment if explicit flag is set or no creds available
+    if (process.env.NODE_ENV !== "test" && process.env.SKIP_FIREBASE_INIT !== "true") {
+        if (process.env.FIREBASE_PROJECT_ID) {
+            admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
+        } else {
+            admin.initializeApp();
+        }
     }
 }
 

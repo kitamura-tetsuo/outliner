@@ -1,4 +1,5 @@
 import express from "express";
+// @ts-ignore
 import type { LeveldbPersistence } from "y-leveldb";
 import * as Y from "yjs";
 import { logger } from "./logger.js";
@@ -16,7 +17,7 @@ export interface SeedRequest {
 }
 
 interface GetYDoc {
-    (docname: string, gc?: boolean): Y.Doc;
+    (docname: string, gc?: boolean): Y.Doc | Promise<Y.Doc>;
 }
 
 /**
@@ -81,8 +82,8 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
 
             let projectDoc: Y.Doc;
             if (getYDoc) {
-                // Use live doc from y-websocket memory cache!
-                projectDoc = getYDoc(projectRoom);
+                // Use live doc from memory cache
+                projectDoc = await getYDoc(projectRoom);
                 // Wait for initialization if needed (WSSharedDoc pattern)
                 if ((projectDoc as any).whenInitialized) {
                     await (projectDoc as any).whenInitialized;

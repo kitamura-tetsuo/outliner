@@ -1,60 +1,58 @@
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { Server } from "@hocuspocus/server";
-import { jest } from "@jest/globals";
-import { DecodedIdToken } from "firebase-admin/auth";
+import { expect } from "chai";
+import sinon from "sinon";
+import WebSocket from "ws";
 import * as Y from "yjs";
+import { loadConfig } from "../src/config.js";
+import { startServer } from "../src/server.js";
 
-// Use jest.unstable_mockModule to mock ESM modules
-jest.unstable_mockModule("../src/access-control", () => ({
-    checkContainerAccess: jest.fn(),
-}));
-jest.unstable_mockModule("../src/websocket-auth", () => ({
-    verifyIdTokenCached: jest.fn(),
-    extractAuthToken: jest.fn(),
-}));
+// @ts-ignore
+global.WebSocket = WebSocket;
 
-// Import the modules *after* the mocks are defined
-const { hocuspocus } = await import("../src/hocuspocus-server.js");
-const accessControl = await import("../src/access-control.js");
-const auth = await import("../src/websocket-auth.js");
-
-const mockedAuth = auth as jest.Mocked<typeof auth>;
-const mockedAccessControl = accessControl as jest.Mocked<typeof accessControl>;
-
-// Create a valid mock DecodedIdToken
-const mockDecodedIdToken: DecodedIdToken = {
-    aud: "your-firebase-project-id",
-    auth_time: 1620000000,
-    exp: 1620003600,
-    firebase: { identities: {}, sign_in_provider: "custom" },
-    iat: 1620000000,
-    iss: "https://securetoken.google.com/your-firebase-project-id",
-    sub: "test-uid",
+const mockDecodedIdToken = {
     uid: "test-uid",
-};
+} as any;
 
 describe("Hocuspocus Server", () => {
     let server: Server;
+    let httpServer: any;
     let provider: HocuspocusProvider;
+    let port: number;
+    let checkAccessStub: sinon.SinonStub;
+    let verifyTokenStub: sinon.SinonStub;
+    let shutdown: () => Promise<void>;
 
-    jest.setTimeout(15000);
+    beforeEach(async () => {
+        checkAccessStub = sinon.stub();
+        verifyTokenStub = sinon.stub();
 
-    beforeAll(async () => {
-        await hocuspocus.listen(0);
-        server = hocuspocus;
+        process.env.DISABLE_Y_LEVELDB = "true";
+
+        const config = loadConfig({ PORT: "0", LOG_LEVEL: "info" });
+        const res = await startServer(config, undefined, {
+            checkContainerAccess: checkAccessStub,
+            verifyIdTokenCached: verifyTokenStub,
+        });
+        server = res.hocuspocus;
+        httpServer = res.server;
+        shutdown = res.shutdown;
+
+        await new Promise<void>(resolve => {
+            if (httpServer.listening) resolve();
+            else httpServer.on("listening", resolve);
+        });
+        port = (httpServer.address() as any).port;
     });
 
-    afterAll(async () => {
-        await server.destroy();
-    });
-
-    afterEach(() => {
+    afterEach(async () => {
         provider?.destroy();
-        jest.clearAllMocks();
+        if (shutdown) await shutdown();
+        sinon.restore();
+        delete process.env.DISABLE_Y_LEVELDB;
     });
 
-    const createClient = (token?: string) => {
-        const port = (server.httpServer.address() as any).port;
+    const createClient = (token: string = "dummy") => {
         return new HocuspocusProvider({
             url: `ws://127.0.0.1:${port}`,
             name: "projects/123",
@@ -67,12 +65,12 @@ describe("Hocuspocus Server", () => {
         return new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
                 reject(new Error(`Timed out waiting for disconnect code ${expectedCode}`));
-            }, 10000);
+            }, 5000);
 
             provider.on("disconnect", ({ code }: { code: number; }) => {
                 clearTimeout(timeout);
                 try {
-                    expect(code).toBe(expectedCode);
+                    expect(code).to.equal(expectedCode);
                     resolve();
                 } catch (e) {
                     reject(e);
@@ -82,31 +80,44 @@ describe("Hocuspocus Server", () => {
     };
 
     it("should fail authentication with no token", async () => {
-        provider = createClient();
-        await expectDisconnect(provider, 4000);
+        provider = new HocuspocusProvider({
+            url: `ws://127.0.0.1:${port}`,
+            name: "projects/123",
+            document: new Y.Doc(),
+        });
+        await expectDisconnect(provider, 4001);
     });
 
     it("should fail with invalid token", async () => {
-        mockedAuth.verifyIdTokenCached.mockRejectedValue(new Error("Invalid token"));
+        verifyTokenStub.rejects(new Error("Invalid token"));
         provider = createClient("bad-token");
         await expectDisconnect(provider, 4001);
     });
 
     it("should fail with no access", async () => {
-        mockedAuth.verifyIdTokenCached.mockResolvedValue(mockDecodedIdToken);
-        mockedAccessControl.checkContainerAccess.mockResolvedValue(false);
+        verifyTokenStub.resolves(mockDecodedIdToken);
+        checkAccessStub.resolves(false);
         provider = createClient("valid-token-no-access");
-        await expectDisconnect(provider, 4001);
+        await expectDisconnect(provider, 4003);
     });
 
-    it("should load a document from the database", async () => {
-        mockedAuth.verifyIdTokenCached.mockResolvedValue(mockDecodedIdToken);
-        mockedAccessControl.checkContainerAccess.mockResolvedValue(true);
+    it("should load a document", async () => {
+        verifyTokenStub.resolves(mockDecodedIdToken);
+        checkAccessStub.resolves(true);
 
-        const connection1 = await server.hocuspocus.openDirectConnection("projects/123");
-        connection1.document!.getText("test").insert(0, "hello");
+        const connection1 = await (server as any).hocuspocus.openDirectConnection("projects/123");
+        connection1.transact(doc => {
+            doc.getText("test").insert(0, "hello");
+        });
 
-        const connection2 = await server.hocuspocus.openDirectConnection("projects/123");
-        expect(connection2.document!.getText("test").toString()).toEqual("hello");
+        // HocuspocusProvider connects
+        provider = createClient("valid-token");
+
+        await new Promise<void>(resolve => {
+            provider.on("synced", () => {
+                expect(provider.document.getText("test").toString()).to.equal("hello");
+                resolve();
+            });
+        });
     });
 });
