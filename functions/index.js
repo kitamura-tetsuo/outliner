@@ -49,7 +49,7 @@ const { FieldValue } = require("firebase-admin/firestore");
 const { generateSchedulesIcs } = require("./ical");
 
 // Sentry wrapper helper
-const wrapWithSentry = (fn) => async (req, res) => {
+const wrapWithSentry = fn => async (req, res) => {
   try {
     await fn(req, res);
   } catch (error) {
