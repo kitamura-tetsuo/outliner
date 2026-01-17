@@ -208,7 +208,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     }
 
     const provider = new WebsocketProvider(wsBase, room, doc, {
-        params: token ? { auth: token } : undefined,
+        params: token ? { token } : undefined,
     });
 
     // In valid test environments without a real backend, we might not get a sync event.
@@ -335,7 +335,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     }
 
     const provider = new WebsocketProvider(wsBase, room, doc, {
-        params: token ? { auth: token } : undefined,
+        params: token ? { token } : undefined,
     });
     console.log(
         `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}, token=${token ? "FOUND" : "EMPTY"}`,
@@ -585,7 +585,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         // Stay offline if auth is not ready; provider will attempt reconnect later.
     }
     const provider = new WebsocketProvider(wsBase, room, doc, {
-        params: token ? { auth: token } : undefined,
+        params: token ? { token } : undefined,
     });
     const awareness = provider.awareness;
     // Debug hook (guarded)
@@ -627,7 +627,7 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         token = "";
     }
     const provider = new WebsocketProvider(wsBase, room, doc, {
-        params: token ? { auth: token } : undefined,
+        params: token ? { token } : undefined,
     });
     // 明示接続: 稀に connect: true が反映されないケースがあるため冪等に connect() を呼ぶ
     try {

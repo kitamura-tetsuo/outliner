@@ -38,7 +38,8 @@ function pruneExpiredTokens(now: number) {
 export function extractAuthToken(req: IncomingMessage): string | undefined {
     try {
         const url = new URL(req.url ?? "", "http://localhost");
-        const token = url.searchParams.get("auth");
+        // Check for 'token' parameter (used by y-websocket when token option is provided)
+        const token = url.searchParams.get("token") || url.searchParams.get("auth");
         console.log(`[Auth] req.url=${sanitizeUrl(req.url)}, token=${token ? "FOUND" : "MISSING"}`);
         return token || undefined;
     } catch {
