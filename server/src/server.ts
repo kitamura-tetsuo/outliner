@@ -68,28 +68,42 @@ export async function startServer(
 
     const hocuspocus = new Server({
         name: "hocuspocus-fluid-outliner",
-        // Hocuspocus handles the server internally if we call listen(), but we want to bind to existing http server
-        // We will call handleUpgrade manually.
+    } as any);
 
+    // Bind the server reference for proper WebSocket handling
+    (hocuspocus as any).server = hocuspocus;
+
+    // Handle WebSocket upgrade manually
+    server.on("upgrade", (request, socket, head) => {
+        hocuspocus.webSocketServer.handleUpgrade(request, socket, head, (ws) => {
+            hocuspocus.webSocketServer.emit("connection", ws, request);
+        });
+    });
+
+    const onMessageExtension = {
+        async onMessage({ message, connection }: any) {
+            recordMessage();
+            if (message.byteLength > config.MAX_MESSAGE_SIZE_BYTES) {
+                logger.warn({
+                    event: "ws_connection_closed",
+                    reason: "message_too_large",
+                    size: message.byteLength,
+                });
+                connection.close({ code: 4005, reason: "MESSAGE_TOO_LARGE" });
+            }
+        },
+    } as any;
+
+    // Reconfigure Hocuspocus with extensions and callbacks
+    // Access the internal hocuspocus instance via .hocuspocus property
+    (hocuspocus as any).hocuspocus.configure({
         extensions: [
             new Logger({
                 // Using a no-op log or mapping to our logger could be useful
                 // For now, let's keep it simple.
                 // Hocuspocus logger logs to console by default.
             }),
-            {
-                async onMessage({ message, connection }: any) {
-                    recordMessage();
-                    if (message.byteLength > config.MAX_MESSAGE_SIZE_BYTES) {
-                        logger.warn({
-                            event: "ws_connection_closed",
-                            reason: "message_too_large",
-                            size: message.byteLength,
-                        });
-                        connection.close({ code: 4005, reason: "MESSAGE_TOO_LARGE" });
-                    }
-                },
-            } as any,
+            onMessageExtension,
         ],
 
         async onAuthenticate(data: any) {
@@ -136,7 +150,7 @@ export async function startServer(
             };
         },
 
-        async onLoadDocument({ documentName }) {
+        async onLoadDocument({ documentName }: { documentName: string; }) {
             if (!persistence) {
                 return new Y.Doc();
             }
@@ -260,13 +274,6 @@ export async function startServer(
         },
     });
 
-    // Handle WebSocket upgrade manually
-    server.on("upgrade", (request, socket, head) => {
-        hocuspocus.webSocketServer.handleUpgrade(request, socket, head, (ws) => {
-            hocuspocus.webSocketServer.emit("connection", ws, request);
-        });
-    });
-
     // API Routes
     app.get("/", (_req, res) => {
         res.send("ok");
@@ -288,8 +295,8 @@ export async function startServer(
 
     // Seed API
     const getYDoc = (name: string) => {
-        if ((hocuspocus as any).hocuspocus.documents.has(name)) {
-            return (hocuspocus as any).hocuspocus.documents.get(name)!.document;
+        if ((hocuspocus as any).documents.has(name)) {
+            return (hocuspocus as any).documents.get(name)!.document;
         }
         if (persistence) {
             return persistence.getYDoc(name);
