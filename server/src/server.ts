@@ -1,120 +1,50 @@
+console.log("Loading server.ts imports...");
+import { Logger } from "@hocuspocus/extension-logger";
+import { Server } from "@hocuspocus/server";
 import express from "express";
 import http from "http";
-import * as decoding from "lib0/decoding";
-import * as enc from "lib0/encoding";
-import { WebSocketServer } from "ws";
-import * as Ylib from "yjs";
+import * as Y from "yjs";
 import { type Config } from "./config.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
-import { createPersistence, logTotalSize, warnIfRoomTooLarge } from "./persistence.js";
+import { createPersistence, logTotalSize } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { createSeedRouter } from "./seed-api.js";
-import { addRoomSizeListener, removeRoomSizeListener } from "./update-listeners.js";
-import { extractAuthToken, verifyIdTokenCached } from "./websocket-auth.js";
-
-// Import setupWSConnection and getYDoc from @y/websocket-server/utils
-// @ts-ignore - Optional dependency, may not be available
-import { getYDoc, setupWSConnection as wsSetup } from "@y/websocket-server/utils";
-const setupWSConnection: any = wsSetup || (() => undefined);
-import { checkContainerAccess } from "./access-control.js";
-import { hocuspocus } from "./hocuspocus-server.js";
+import { extractAuthToken, verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
+import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 
-// --- Yjs protocol debug helpers (best-effort decode for logging) ---
-function parseYProtocolFrame(data: unknown): {
-    topType?: "sync" | "awareness" | "auth";
-    syncSubtype?: "step1" | "step2" | "update";
-    payloadBytes?: number;
-} {
-    try {
-        // lazy requires to avoid hard deps in typings
-        const toUint8 = (d: any): Uint8Array => {
-            if (typeof d === "string") return new TextEncoder().encode(d);
-            if (Buffer.isBuffer(d)) return new Uint8Array(d);
-            if (d instanceof ArrayBuffer) return new Uint8Array(d);
-            if (Array.isArray(d)) return new Uint8Array(Buffer.concat(d));
-            return new Uint8Array(d as Uint8Array);
-        };
-        const u8 = toUint8(data);
-        const dec = decoding.createDecoder(u8);
-        const msgType = decoding.readVarUint(dec);
-        if (msgType === 0) {
-            const sub = decoding.readVarUint(dec);
-            if (sub === 0) {
-                const sv = decoding.readVarUint8Array(dec);
-                return { topType: "sync", syncSubtype: "step1", payloadBytes: sv?.length ?? 0 };
-            } else if (sub === 1) {
-                const upd = decoding.readVarUint8Array(dec);
-                return { topType: "sync", syncSubtype: "step2", payloadBytes: upd?.length ?? 0 };
-            } else if (sub === 2) {
-                const upd = decoding.readVarUint8Array(dec);
-                return { topType: "sync", syncSubtype: "update", payloadBytes: upd?.length ?? 0 };
-            }
-            return { topType: "sync" };
-        } else if (msgType === 1) {
-            return { topType: "awareness" };
-        } else if (msgType === 2) {
-            return { topType: "auth" };
-        }
-    } catch {
-        // ignore decode failures
-    }
-    return {};
+interface ServerOverrides {
+    checkContainerAccess?: typeof defaultCheckAccess;
+    verifyIdTokenCached?: typeof defaultVerifyToken;
 }
 
-export async function startServer(config: Config, logger = defaultLogger) {
+export async function startServer(
+    config: Config,
+    logger = defaultLogger,
+    overrides: ServerOverrides = {}
+) {
+    const checkContainerAccess = overrides.checkContainerAccess || defaultCheckAccess;
+    const verifyIdTokenCached = overrides.verifyIdTokenCached || defaultVerifyToken;
+
     // Create Express app for API endpoints
     const app = express();
-
-    // Add JSON body parser middleware
     app.use(express.json());
 
-    // Create HTTP server from Express app
     const server = http.createServer(app);
 
-    const wss = new WebSocketServer({ server });
     const disableLeveldb = process.env.DISABLE_Y_LEVELDB === "true";
     const persistence = disableLeveldb ? undefined : await createPersistence(config.LEVELDB_PATH);
 
-    // Configure y-websocket persistence via environment variable
-    if (!disableLeveldb) {
-        process.env.YPERSISTENCE = config.LEVELDB_PATH;
-    } else {
-        delete process.env.YPERSISTENCE;
+    const intervals: NodeJS.Timeout[] = [];
+
+    if (persistence) {
+        intervals.push(setInterval(() => {
+            logTotalSize(persistence, logger).catch(() => undefined);
+        }, config.LEVELDB_LOG_INTERVAL_MS));
     }
 
-    // Add seed API router with live doc access
-    app.use("/api", createSeedRouter(persistence, getYDoc));
-
-    // Metrics endpoint
-    app.get("/metrics", (_req: any, res: any) => {
-        res.json(getMetrics(wss));
-    });
-
-    // Health check endpoint
-    app.get("/", (_req: any, res: any) => {
-        res.send("ok");
-    });
-
-    // Detailed Health/Debug endpoint
-    app.get("/health", (req: any, res: any) => {
-        const headers = { ...req.headers };
-        // Redact sensible headers if necessary, but for now we want to see them all
-        res.json({
-            status: "ok",
-            env: process.env.NODE_ENV,
-            timestamp: new Date().toISOString(),
-            headers: headers,
-        });
-    });
-    // Configure y-websocket persistence
-    if (!disableLeveldb) {
-        process.env.YPERSISTENCE = config.LEVELDB_PATH;
-    } else {
-        delete process.env.YPERSISTENCE;
-    }
-
+    // Rate limiting state
     const ipCounts = new Map<string, number>();
     const roomCounts = new Map<string, number>();
     const connectionRateLimits = new Map<string, number[]>();
@@ -123,14 +53,8 @@ export async function startServer(config: Config, logger = defaultLogger) {
         config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
     );
 
-    if (persistence) {
-        setInterval(() => {
-            logTotalSize(persistence, logger).catch(() => undefined);
-        }, config.LEVELDB_LOG_INTERVAL_MS);
-    }
-
     // Rate limiter cleanup interval
-    setInterval(() => {
+    intervals.push(setInterval(() => {
         const now = Date.now();
         const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
         for (const [ip, timestamps] of connectionRateLimits) {
@@ -141,255 +65,242 @@ export async function startServer(config: Config, logger = defaultLogger) {
                 connectionRateLimits.set(ip, valid);
             }
         }
-    }, config.RATE_LIMIT_WINDOW_MS * 5);
+    }, config.RATE_LIMIT_WINDOW_MS * 5));
 
-    wss.on("connection", async (ws, req) => {
-        const ip = req.socket.remoteAddress ?? "";
-        const origin = req.headers.origin ?? "";
+    const hocuspocus = new Server({
+        name: "hocuspocus-fluid-outliner",
+        // Hocuspocus handles the server internally if we call listen(), but we want to bind to existing http server
+        // We will call handleUpgrade manually.
 
-        // Rate Limiting Check
-        const now = Date.now();
-        const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
-        let timestamps = connectionRateLimits.get(ip) || [];
-        timestamps = timestamps.filter(t => t > windowStart);
+        extensions: [
+            new Logger({
+                // Using a no-op log or mapping to our logger could be useful
+                // For now, let's keep it simple.
+                // Hocuspocus logger logs to console by default.
+            }),
+            {
+                async onMessage({ message, connection }: any) {
+                    recordMessage();
+                    if (message.byteLength > config.MAX_MESSAGE_SIZE_BYTES) {
+                        logger.warn({
+                            event: "ws_connection_closed",
+                            reason: "message_too_large",
+                            size: message.byteLength,
+                        });
+                        connection.close({ code: 4005, reason: "MESSAGE_TOO_LARGE" });
+                    }
+                },
+            } as any,
+        ],
 
-        if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
-            logger.warn({ event: "ws_connection_denied", reason: "rate_limit_exceeded", ip });
-            // 4029: Too Many Requests (Private Use Code)
-            ws.close(4029, "RATE_LIMIT_EXCEEDED");
-            return;
-        }
-        timestamps.push(now);
-        connectionRateLimits.set(ip, timestamps);
+        async onAuthenticate({ request, documentName, token: socketToken, connection }: any) {
+            const token = socketToken || extractAuthToken(request);
+            if (!token) {
+                connection.close(4001, "UNAUTHORIZED");
+                throw new Error("Authentication failed: No token provided");
+            }
 
-        if (allowedOrigins.size && !allowedOrigins.has(origin)) {
-            logger.warn({ event: "ws_connection_denied", reason: "invalid_origin", origin });
-            ws.close(4003, "ORIGIN_NOT_ALLOWED");
-            return;
-        }
-        if (totalSockets >= config.MAX_SOCKETS_TOTAL) {
-            logger.warn({ event: "ws_connection_denied", reason: "max_sockets_total" });
-            ws.close(4006, "MAX_SOCKETS_TOTAL");
-            return;
-        }
-        if ((ipCounts.get(ip) ?? 0) >= config.MAX_SOCKETS_PER_IP) {
-            logger.warn({ event: "ws_connection_denied", reason: "max_sockets_ip", ip });
-            ws.close(4006, "MAX_SOCKETS_PER_IP");
-            return;
-        }
-        const token = extractAuthToken(req);
-        if (!token) {
-            logger.warn({ event: "ws_connection_denied", reason: "missing_token" });
-            ws.close(4001, "UNAUTHORIZED");
-            return;
-        }
-        const roomInfo = parseRoom(req.url ?? "/");
-        if (!roomInfo) {
-            logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: sanitizeUrl(req.url) });
-            ws.close(4002, "INVALID_ROOM");
-            return;
-        }
-        // 試験: docName を URL と一致させる（projects/... ページありは projects/<id>/pages/<pageId>）
-        const docName = roomInfo.page
-            ? `projects/${roomInfo.project}/pages/${roomInfo.page}`
-            : `projects/${roomInfo.project}`;
-        if ((roomCounts.get(docName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
-            logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: docName });
-            ws.close(4006, "MAX_SOCKETS_PER_ROOM");
-            return;
-        }
-        // Connection counter management with leak prevention
-        let counted = false;
-        const incrementCounters = () => {
-            if (counted) return;
-            counted = true;
+            const room = parseRoom(documentName);
+            if (!room?.project) {
+                connection.close(4002, "INVALID_ROOM");
+                throw new Error("Authentication failed: Invalid room format");
+            }
+
+            let decoded;
+            try {
+                decoded = await verifyIdTokenCached(token);
+            } catch (err) {
+                connection.close(4001, "UNAUTHORIZED");
+                throw err;
+            }
+
+            const hasAccess = await checkContainerAccess(decoded.uid, room.project);
+
+            if (!hasAccess) {
+                connection.close(4003, "FORBIDDEN");
+                throw new Error("Authentication failed: Access denied");
+            }
+
+            return {
+                user: { uid: decoded.uid },
+                room
+            };
+        },
+
+        async onLoadDocument({ documentName }) {
+            if (!persistence) {
+                return new Y.Doc();
+            }
+            const doc = await persistence.getYDoc(documentName);
+
+            // Bind persistence to the document to save updates automatically
+            // y-leveldb's bindState listens to 'update' events
+            await persistence.bindState(documentName, doc);
+
+            // Room Size Warning Listener
+            const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
+            const checkSize = () => {
+                // This might be expensive for large docs, but it matches previous behavior
+                // Ideally this should be debounced
+                const size = Y.encodeStateAsUpdate(doc).byteLength;
+                if (size > limitBytes) {
+                    logger.warn({ event: "room_size_exceeded", room: documentName, bytes: size });
+                }
+            };
+
+            // Attach listener similar to update-listeners.ts
+            try {
+                const ymap: any = doc.getMap("orderedTree");
+                if (ymap && typeof ymap.observeDeep === "function") {
+                    ymap.observeDeep(checkSize);
+                } else {
+                    doc.on("update", checkSize);
+                }
+            } catch {
+                doc.on("update", checkSize);
+            }
+
+            return doc;
+        },
+
+        async onConnect({ request, documentName, connection }: any) {
+            const ip = (request.headers["x-forwarded-for"] as string) || request.socket.remoteAddress || "";
+            const origin = request.headers.origin || "";
+
+            // Store IP in connection context for onDisconnect
+            (connection as any).context = { ...((connection as any).context || {}), ip };
+
+            // Rate Limiting Check
+            const now = Date.now();
+            const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
+            let timestamps = connectionRateLimits.get(ip) || [];
+            timestamps = timestamps.filter(t => t > windowStart);
+
+            if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
+                logger.warn({ event: "ws_connection_denied", reason: "rate_limit_exceeded", ip });
+                throw new Error("RATE_LIMIT_EXCEEDED");
+            }
+            timestamps.push(now);
+            connectionRateLimits.set(ip, timestamps);
+
+            if (allowedOrigins.size && !allowedOrigins.has(origin)) {
+                logger.warn({ event: "ws_connection_denied", reason: "invalid_origin", origin });
+                throw new Error("ORIGIN_NOT_ALLOWED");
+            }
+            if (totalSockets >= config.MAX_SOCKETS_TOTAL) {
+                logger.warn({ event: "ws_connection_denied", reason: "max_sockets_total" });
+                throw new Error("MAX_SOCKETS_TOTAL");
+            }
+            if ((ipCounts.get(ip) ?? 0) >= config.MAX_SOCKETS_PER_IP) {
+                logger.warn({ event: "ws_connection_denied", reason: "max_sockets_ip", ip });
+                throw new Error("MAX_SOCKETS_PER_IP");
+            }
+
+            // Check room limits
+            // Hocuspocus documentName IS the room/docName
+            const roomInfo = parseRoom(documentName);
+            // Note: documentName passed to onConnect is the one from URL
+            if (!roomInfo) {
+                logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: sanitizeUrl(request.url) });
+                throw new Error("INVALID_ROOM");
+            }
+
+            if ((roomCounts.get(documentName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
+                logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: documentName });
+                throw new Error("MAX_SOCKETS_PER_ROOM");
+            }
+
+            // Increment counters
             totalSockets++;
             ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
-            roomCounts.set(docName, (roomCounts.get(docName) ?? 0) + 1);
-        };
-        const decrementCounters = () => {
-            if (!counted) return;
-            counted = false;
+            roomCounts.set(documentName, (roomCounts.get(documentName) ?? 0) + 1);
+
+            logger.info({ event: "ws_connection_accepted", room: documentName });
+        },
+
+        async onDisconnect({ documentName, connection }: any) {
+            const ip = (connection as any).context?.ip || "";
+
+            // Decrement counters
             totalSockets--;
-            ipCounts.set(ip, (ipCounts.get(ip) ?? 1) - 1);
-            if (ipCounts.get(ip)! <= 0) ipCounts.delete(ip);
-            roomCounts.set(docName, (roomCounts.get(docName) ?? 1) - 1);
-            if (roomCounts.get(docName)! <= 0) roomCounts.delete(docName);
-        };
+            if (totalSockets < 0) totalSockets = 0;
 
-        // Register close handler BEFORE async operations to ensure cleanup
-        ws.on("close", decrementCounters);
-
-        // Increment counters
-        incrementCounters();
-
-        // Buffer messages while waiting for async auth verification
-        const msgBuffer: any[] = [];
-        const bufferListener = (data: any) => {
-            msgBuffer.push(data);
-        };
-        ws.on("message", bufferListener);
-
-        try {
-            const decoded = await verifyIdTokenCached(token);
-
-            // Authorization check
-            const hasAccess = await checkContainerAccess(decoded.uid, roomInfo.project);
-            if (!hasAccess) {
-                logger.warn({ event: "ws_connection_denied", reason: "forbidden", uid: decoded.uid, room: docName });
-                ws.close(4003, "FORBIDDEN");
-                return;
+            if (ip) {
+                const count = (ipCounts.get(ip) ?? 1) - 1;
+                if (count <= 0) ipCounts.delete(ip);
+                else ipCounts.set(ip, count);
             }
 
-            // Remove buffer listener
-            ws.removeListener("message", bufferListener);
-            let idleTimer = setTimeout(() => {
-                logger.warn({ event: "ws_connection_closed", reason: "idle_timeout" });
-                ws.close(4004, "IDLE_TIMEOUT");
-            }, config.IDLE_TIMEOUT_MS);
-            const resetIdle = () => {
-                clearTimeout(idleTimer);
-                idleTimer = setTimeout(() => {
-                    logger.warn({ event: "ws_connection_closed", reason: "idle_timeout" });
-                    ws.close(4004, "IDLE_TIMEOUT");
-                }, config.IDLE_TIMEOUT_MS);
-            };
-            logger.info({ event: "ws_connection_accepted", uid: decoded.uid, room: docName });
-            const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
-            let msgCount = 0;
-            let ydocRef: any | undefined = undefined;
-            ws.on("message", data => {
-                resetIdle();
-                let size: number;
-                let firstByte: number | undefined;
-                let isBinary = false;
-                if (typeof data === "string") {
-                    size = Buffer.byteLength(data);
-                } else if (Buffer.isBuffer(data)) {
-                    size = data.length;
-                    isBinary = true;
-                    firstByte = data[0];
-                } else if (data instanceof ArrayBuffer) {
-                    size = data.byteLength;
-                    isBinary = true;
-                    firstByte = new Uint8Array(data)[0];
-                } else if (Array.isArray(data)) {
-                    const buf = Buffer.concat(data);
-                    size = buf.length;
-                    isBinary = true;
-                    firstByte = buf[0];
-                } else {
-                    const buf = Buffer.from(data as Uint8Array);
-                    size = buf.length;
-                    isBinary = true;
-                    firstByte = buf[0];
-                }
-                const parsed = parseYProtocolFrame(data);
-                msgCount++;
-                if (msgCount <= 10) {
-                    logger.info({
-                        event: "ws_message",
-                        room: docName,
-                        size,
-                        isBinary,
-                        firstByte,
-                        y_type: parsed.topType,
-                        y_sync_step: parsed.syncSubtype,
-                        y_payload_bytes: parsed.payloadBytes,
-                    });
-                }
-
-                // 可視化: sync フレーム受信直後に接続数と想定送出先数を記録（step別）
-                if (isBinary && parsed.topType === "sync") {
-                    const conns = roomCounts.get(docName) ?? 0;
-                    const broadcastTargets = conns > 0 ? Math.max(conns - 1, 0) : 0;
-                    logger.info({
-                        event: "sync_receive",
-                        room: docName,
-                        conns,
-                        broadcastTargets,
-                        sync_step: parsed.syncSubtype,
-                        payload_bytes: parsed.payloadBytes,
-                    });
-                }
-
-                if (size > config.MAX_MESSAGE_SIZE_BYTES) {
-                    logger.warn({ event: "ws_connection_closed", reason: "message_too_large", size });
-                    ws.close(4005, "MESSAGE_TOO_LARGE");
-                }
-            });
-
-            if (persistence) {
-                await addRoomSizeListener(persistence, docName, limitBytes, logger);
-                await warnIfRoomTooLarge(persistence, docName, limitBytes, logger);
-                setupWSConnection(ws, req, { docName, persistence, gc: false });
-                // Debug: log server-side doc updates for this room to verify propagation
-                try {
-                    const ydoc = await persistence.getYDoc(docName);
-                    ydocRef = ydoc;
-                    ydoc.on("update", (u: Uint8Array) => {
-                        logger.info({ event: "room_update", room: docName, bytes: u.length });
-                    });
-                    // Fallback for initial sync (v2 handshake differences): proactively send current doc update once
-                    try {
-                        const update: Uint8Array = Ylib.encodeStateAsUpdate(ydoc);
-                        if (update && update.length > 0) {
-                            const e = enc.createEncoder();
-                            enc.writeVarUint(e, 0); // message type: sync
-                            enc.writeVarUint(e, 2); // subtype: update
-                            enc.writeVarUint8Array(e, update);
-                            const frame = enc.toUint8Array(e);
-                            (ws as any).send(frame);
-                            logger.info({
-                                event: "ws_send_fallback_update",
-                                room: docName,
-                                bytes: frame.length,
-                                payload_bytes: update.length,
-                            });
-                        }
-                    } catch { /* ignore */ }
-                } catch { /* ignore */ }
-                ws.on("close", () => {
-                    removeRoomSizeListener(persistence, docName).catch(() => undefined);
-                });
-            } else {
-                setupWSConnection(ws, req, { docName, gc: false });
+            if (documentName) {
+                const count = (roomCounts.get(documentName) ?? 1) - 1;
+                if (count <= 0) roomCounts.delete(documentName);
+                else roomCounts.set(documentName, count);
             }
+        },
+    });
 
-            // Replay buffered messages AFTER setupWSConnection has attached listeners
-            for (const data of msgBuffer) {
-                ws.emit("message", data);
-            }
+    console.log("Hocuspocus keys:", Object.keys(hocuspocus));
+    console.log("Hocuspocus proto keys:", Object.getOwnPropertyNames(Object.getPrototypeOf(hocuspocus)));
 
-            ws.on("message", () => recordMessage());
-        } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const code = (err as any)?.code || (err as any)?.errorInfo?.code || undefined;
-            logger.warn({ event: "ws_connection_denied", reason: "invalid_token", code, message });
-            ws.close(4001, "UNAUTHORIZED");
-            // Ensure counters are decremented if close event doesn't fire synchronously
-            decrementCounters();
+    // Handle WebSocket upgrade manually
+    server.on("upgrade", (request, socket, head) => {
+        const wss = (hocuspocus as any).webSocketServer;
+        wss.handleUpgrade(request, socket, head, (ws: any) => {
+            wss.emit("connection", ws, request);
+        });
+    });
+
+    // API Routes
+    app.get("/", (_req, res) => {
+        res.send("ok");
+    });
+
+    app.get("/health", (req, res) => {
+        const headers = { ...req.headers };
+        res.json({
+            status: "ok",
+            env: process.env.NODE_ENV,
+            timestamp: new Date().toISOString(),
+            headers: headers,
+        });
+    });
+
+    app.get("/metrics", (_req, res) => {
+        res.json(getMetrics(hocuspocus));
+    });
+
+    // Seed API
+    const getYDoc = (name: string) => {
+        if ((hocuspocus as any).hocuspocus.documents.has(name)) {
+            return (hocuspocus as any).hocuspocus.documents.get(name)!.document;
         }
-    });
+        if (persistence) {
+            return persistence.getYDoc(name);
+        }
+        return new Y.Doc();
+    };
+    app.use("/api", createSeedRouter(persistence, getYDoc));
 
-    // Bind to IPv4 to ensure Chromium (Playwright) can reach the server even if IPv6-only sockets are not routed
+    // Listen
     server.listen(config.PORT, "0.0.0.0", () => {
-        logger.info({ port: config.PORT }, "y-websocket server listening");
+        logger.info({ port: config.PORT }, "Hocuspocus server listening");
     });
-
-    // Start Hocuspocus server
-    if (!hocuspocus.httpServer) {
-        hocuspocus.listen();
-    }
 
     const shutdown = () => {
+        intervals.forEach(clearInterval);
         hocuspocus.destroy();
-        wss.close();
-        server.close(() => process.exit(0));
+        return new Promise<void>((resolve) => {
+            server.close(() => resolve());
+        });
     };
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
 
-    return { server, wss, persistence };
+    // Only bind process signals if running directly (optional, but good practice)
+    // But since this function is called by index.ts, we can leave signal handling to caller or here.
+    // For tests, we don't want to exit process.
+    if (require.main === module) {
+         process.on("SIGINT", () => shutdown().then(() => process.exit(0)));
+         process.on("SIGTERM", () => shutdown().then(() => process.exit(0)));
+    }
+
+    return { server, hocuspocus, persistence, shutdown };
 }

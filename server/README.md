@@ -5,7 +5,7 @@
 このサーバーは以下の機能を提供します：
 
 1. Firebase認証トークンの検証
-2. Azure Fluid Relay用のJWTトークン生成
+2. **Hocuspocus (Yjs)** を使用したリアルタイム同期とデータの永続化 (LevelDB)
 
 ## セットアップ
 
@@ -22,8 +22,8 @@ cp .env.example .env
 ```
 
 3. 環境変数を設定:
-   - Azure Fluid Relay設定（テナントID、エンドポイント、プライマリキー）
-   - サーバー設定（ポート、CORS設定など）
+   - サーバー設定（`PORT`、`ORIGIN_ALLOWLIST`など）
+   - 永続化設定（`LEVELDB_PATH`）
    - `LOCAL_HOST` をローカルネットワークのIPアドレスに設定（デフォルトは`localhost`）
 
 4. Firebase Admin SDK JSONファイルをダウンロードして配置:
@@ -80,7 +80,7 @@ cp ../.env.example .env
 docker compose up --build
 ```
 
-Expected output includes the y-websocket server listening log and a Cloudflare Tunnel URL for the configured hostname.
+Expected output includes the Hocuspocus server listening log and a Cloudflare Tunnel URL for the configured hostname.
 
 ## Cloudflare Tunnel Setup
 

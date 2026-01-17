@@ -1,4 +1,4 @@
-import type { WebSocketServer } from "ws";
+import type { Server } from "@hocuspocus/server";
 
 let totalMessages = 0;
 let currentSecondCount = 0;
@@ -19,10 +19,10 @@ export function recordMessage() {
     currentSecondCount++;
 }
 
-export function getMetrics(wss: WebSocketServer) {
+export function getMetrics(server: Server) {
     const msgPerSec = history.length === 0 ? 0 : history.reduce((a, b) => a + b, 0) / history.length;
     return {
-        connections: wss.clients.size,
+        connections: (server as any).getConnectionsCount(),
         totalMessages,
         msgPerSec,
     };
