@@ -15,6 +15,7 @@ const ConfigSchema = z.object({
     ORIGIN_ALLOWLIST: z.string().default(""),
     RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60_000),
     RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(1000000),
+    SENTRY_DSN: z.string().optional(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
