@@ -278,8 +278,9 @@ export async function startServer(
 
     // Seed API
     const getYDoc = (name: string) => {
-        if ((hocuspocus as any).documents.has(name)) {
-            return (hocuspocus as any).documents.get(name)!.document;
+        const docs = (hocuspocus as any).documents;
+        if (docs && docs.has(name)) {
+            return docs.get(name)!.document;
         }
         if (persistence) {
             return persistence.getYDoc(name);
