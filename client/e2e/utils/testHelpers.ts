@@ -319,6 +319,25 @@ export class TestHelpers {
         const projectName = options?.projectName ?? `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = options?.pageName ?? `test-page-${Date.now()}`;
 
+        // Set test environment flags in browser context (skip if page is closed)
+        if (!page.isClosed()) {
+            try {
+                await page.evaluate(() => {
+                    try {
+                        localStorage.setItem("VITE_IS_TEST", "true");
+                        localStorage.setItem("VITE_E2E_TEST", "true");
+                        localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                        localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
+                        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                        localStorage.removeItem("VITE_YJS_DISABLE_WS");
+                        (window as Window & Record<string, any>).__E2E__ = true;
+                    } catch {}
+                }, { timeout: 5000 });
+            } catch (e) {
+                TestHelpers.slog(`createAndSeedProject: Failed to set localStorage flags: ${e}`);
+            }
+        }
+
         // Use SeedClient for HTTP-based seeding instead of browser-based seeding
         if (!options?.skipSeed) {
             try {

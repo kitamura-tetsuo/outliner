@@ -185,6 +185,13 @@ export class GeneralStore {
             return;
         }
 
+        // Guard against setting null/undefined - just clear state without observers
+        if (!v) {
+            this._project = undefined;
+            this._pageNamesCache.clear();
+            return;
+        }
+
         this._project = v;
 
         // Build initial cache
