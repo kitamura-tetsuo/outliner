@@ -308,7 +308,26 @@ export async function startServer(
         }
         return new Y.Doc();
     };
-    app.use("/api", createSeedRouter(persistence, getYDoc));
+
+    // Function to store a document in Hocuspocus's in-memory cache
+    // This is used by the seed API to ensure seeded data is immediately available
+    const cacheDocument = (name: string, doc: Y.Doc) => {
+        const docs = (hocuspocus as any).documents;
+        if (docs) {
+            // Create a minimal doc instance with just what Hocuspocus needs
+            const instance = {
+                document: doc,
+                name: name,
+                connections: new Map(),
+                awareness: null,
+                gc: true,
+            };
+            docs.set(name, instance);
+            logger.info({ event: "seed_cache_document", name }, "Document cached in Hocuspocus");
+        }
+    };
+
+    app.use("/api", createSeedRouter(persistence, getYDoc, cacheDocument));
 
     // Listen
     server.listen(config.PORT, "0.0.0.0", () => {

@@ -20,12 +20,20 @@ interface GetYDoc {
     (docname: string, gc?: boolean): Y.Doc | Promise<Y.Doc>;
 }
 
+interface CacheDocument {
+    (docname: string, doc: Y.Doc): void;
+}
+
 /**
  * Server-side seeding endpoint that directly manipulates Yjs documents
  * This bypasses WebSocket synchronization timing issues by using the exact
  * same schema as the client.
  */
-export function createSeedRouter(persistence: LeveldbPersistence | undefined, getYDoc?: GetYDoc) {
+export function createSeedRouter(
+    persistence: LeveldbPersistence | undefined,
+    getYDoc?: GetYDoc,
+    cacheDocument?: CacheDocument,
+) {
     const router = express.Router();
 
     router.post("/seed", async (req, res): Promise<void> => {
@@ -170,7 +178,14 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
                 if (subdoc) {
                     const pageRoom = `projects/${projectId}/pages/${page.id}`;
                     const subdocUpdate = Y.encodeStateAsUpdate(subdoc);
-                    await (persistence as any).storeUpdate(pageRoom, subdocUpdate);
+                    try {
+                        await (persistence as any).storeUpdate(pageRoom, subdocUpdate);
+                    } catch (storeError: any) {
+                        logger.error(
+                            { event: "seed_store_subdoc_error", error: storeError.message, pageRoom },
+                            "Failed to persist subdoc, continuing anyway",
+                        );
+                    }
                 }
             }
 
@@ -181,7 +196,14 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
             let projectUpdate: Uint8Array | undefined;
             {
                 projectUpdate = Y.encodeStateAsUpdate(projectDoc);
-                await (persistence as any).storeUpdate(projectRoom, projectUpdate);
+                try {
+                    await (persistence as any).storeUpdate(projectRoom, projectUpdate);
+                } catch (storeError: any) {
+                    logger.error(
+                        { event: "seed_store_project_error", error: storeError.message, projectRoom },
+                        "Failed to persist project, continuing anyway",
+                    );
+                }
             }
 
             // Debug: Verify the persisted state by reading it back
@@ -210,6 +232,30 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
                     expectedPages: pages.length,
                 });
             }
+
+            // Always cache the document in Hocuspocus's in-memory cache for immediate client access
+            // This ensures seeded data is available even if persistence has issues
+            if (cacheDocument && projectDoc) {
+                try {
+                    cacheDocument(projectRoom, projectDoc);
+                } catch (cacheError: any) {
+                    logger.warn(
+                        { event: "seed_cache_error", error: cacheError.message, projectRoom },
+                        "Failed to cache document in Hocuspocus",
+                    );
+                }
+            } else {
+                logger.warn(
+                    {
+                        event: "seed_cache_skipped",
+                        projectRoom,
+                        hasCacheDocument: !!cacheDocument,
+                        hasProjectDoc: !!projectDoc,
+                    },
+                    "Skipping document caching - cacheDocument or projectDoc not available",
+                );
+            }
+
             logger.info({ event: "seed_complete", projectName, pageCount: pages.length });
             res.json({ success: true, projectName, pageCount: pages.length });
         } catch (error) {
