@@ -83,17 +83,46 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
             let projectDoc: Y.Doc;
             if (getYDoc) {
                 // Use live doc from memory cache
-                projectDoc = await getYDoc(projectRoom);
+                logger.info({ event: "seed_get_ydoc", projectRoom });
+                try {
+                    projectDoc = await getYDoc(projectRoom);
+                    logger.info({ event: "seed_got_ydoc", projectRoom, docExists: !!projectDoc });
+                } catch (docError: any) {
+                    logger.warn(
+                        { event: "seed_get_ydoc_error", error: docError.message },
+                        "Failed to get doc, creating new doc",
+                    );
+                    projectDoc = new Y.Doc();
+                }
+                // If projectDoc is still null/undefined (e.g., persistence returned null), create a new doc
+                if (!projectDoc) {
+                    logger.warn({ event: "seed_ydoc_null", projectRoom }, "getYDoc returned null, creating new doc");
+                    projectDoc = new Y.Doc();
+                }
                 // Wait for initialization if needed (WSSharedDoc pattern)
-                if ((projectDoc as any).whenInitialized) {
-                    await (projectDoc as any).whenInitialized;
+                // Use optional chaining to handle plain Y.Doc without whenInitialized
+                const whenInitialized = (projectDoc as any)?.whenInitialized;
+                if (whenInitialized) {
+                    await whenInitialized;
                 }
             } else {
                 // Fallback (risk of desync)
-                projectDoc = await persistence.getYDoc(projectRoom);
+                logger.info({ event: "seed_fallback_ydoc", projectRoom });
+                try {
+                    projectDoc = await persistence.getYDoc(projectRoom);
+                } catch (persistenceError: any) {
+                    logger.warn(
+                        { event: "seed_persistence_error", error: persistenceError.message },
+                        "Persistence unavailable, using new doc",
+                    );
+                    projectDoc = new Y.Doc();
+                }
             }
 
             // Use the actual Project schema from client
+            if (!projectDoc) {
+                throw new Error("projectDoc is null or undefined before Project.fromDoc");
+            }
             const project = Project.fromDoc(projectDoc);
 
             // Set project title
@@ -156,16 +185,31 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
             }
 
             // Debug: Verify the persisted state by reading it back
-            const verifyDoc = await persistence.getYDoc(projectRoom);
-            const orderedTree = verifyDoc.getMap("orderedTree");
-            logger.info({
-                event: "seed_project_persisted",
-                projectRoom,
-                bytes: projectUpdate?.byteLength ?? 0,
-                orderedTreeSize: orderedTree.size,
-                expectedPages: pages.length,
-            });
-
+            let verifyDoc: Y.Doc | undefined;
+            try {
+                verifyDoc = await persistence.getYDoc(projectRoom);
+            } catch (verifyError: any) {
+                logger.warn(
+                    { event: "seed_verify_error", error: verifyError.message },
+                    "Could not verify persisted state, skipping verification",
+                );
+                verifyDoc = undefined;
+            }
+            if (!verifyDoc) {
+                logger.warn(
+                    { event: "seed_verify_skipped", projectRoom },
+                    "Skipping verification - persistence unavailable or document not found",
+                );
+            } else {
+                const orderedTree = verifyDoc.getMap("orderedTree");
+                logger.info({
+                    event: "seed_project_persisted",
+                    projectRoom,
+                    bytes: projectUpdate?.byteLength ?? 0,
+                    orderedTreeSize: orderedTree.size,
+                    expectedPages: pages.length,
+                });
+            }
             logger.info({ event: "seed_complete", projectName, pageCount: pages.length });
             res.json({ success: true, projectName, pageCount: pages.length });
         } catch (error) {

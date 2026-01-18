@@ -373,6 +373,11 @@ export class TestHelpers {
         ).catch(() => TestHelpers.slog("Warning: __YJS_STORE__ connect wait timed out"));
         TestHelpers.slog("__YJS_STORE__ connected");
 
+        // Guard against page closure during wait
+        if (page.isClosed()) {
+            TestHelpers.slog("Page closed during YJS connect wait, aborting navigation");
+            return;
+        }
         await page.waitForTimeout(1000);
 
         // E2E stability: wait for store.currentPage to be set explicitly
@@ -421,6 +426,12 @@ export class TestHelpers {
         });
 
         await TestHelpers.waitForAppReady(page);
+
+        // Guard against page closure after waitForAppReady
+        if (page.isClosed()) {
+            TestHelpers.slog("Page closed during waitForAppReady, aborting navigation");
+            return;
+        }
 
         // Wait for tree data to be synced (subdocuments need time to load)
         // This part only makes sense if seeding happened. We need effective seedLines here.
@@ -1196,7 +1207,9 @@ export class TestHelpers {
 
         if (!isOnProjectPage) {
             console.log("Not on a project page, waiting for navigation...");
-            await page.waitForTimeout(2000);
+            if (!page.isClosed()) {
+                await page.waitForTimeout(2000);
+            }
         }
 
         // データ属性付きの実アイテムが出現するまで待つ（プレースホルダー .outliner-item は除外）

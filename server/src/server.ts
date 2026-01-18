@@ -35,6 +35,27 @@ export async function startServer(
     const disableLeveldb = process.env.DISABLE_Y_LEVELDB === "true";
     const persistence = disableLeveldb ? undefined : await createPersistence(config.LEVELDB_PATH);
 
+    // Additional check to ensure LevelDB is fully opened before accepting requests
+    if (persistence) {
+        try {
+            // Force a read operation to ensure database is fully opened
+            // This also triggers any lazy initialization
+            const healthDoc = await persistence.getYDoc("_health_check_");
+            logger.info({ event: "persistence_ready" }, "LevelDB persistence ready");
+            // Clean up the health check doc by deleting it if it was created
+            if (healthDoc) {
+                try {
+                    healthDoc.destroy();
+                } catch {}
+            }
+        } catch (e: any) {
+            logger.warn(
+                { event: "persistence_init_warning", error: e.message },
+                "Persistence initialization warning - continuing anyway",
+            );
+        }
+    }
+
     const intervals: NodeJS.Timeout[] = [];
 
     if (persistence) {

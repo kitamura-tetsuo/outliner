@@ -60,6 +60,9 @@ export class SeedClient {
             `[SeedClient] Seeding project "${this.projectId}" (title: "${this.projectTitle}") with ${pages.length} pages via HTTP API...`,
         );
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
             const response = await fetch(`${this.apiUrl}/api/seed`, {
                 method: "POST",
                 headers: {
@@ -70,7 +73,10 @@ export class SeedClient {
                     projectName: this.projectTitle,
                     pages,
                 }),
+                signal: controller.signal,
             });
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({ error: response.statusText }));
@@ -79,8 +85,17 @@ export class SeedClient {
 
             const result = await response.json();
             console.log(`[SeedClient] Seeding completed:`, result);
-        } catch (error) {
-            console.error("[SeedClient] Seeding failed:", error);
+        } catch (error: any) {
+            // Handle specific error types
+            if (error.name === "AbortError") {
+                console.error("[SeedClient] Seeding timed out after 30 seconds");
+            } else if (error.message.includes("Failed to fetch") || error.message.includes("fetch error")) {
+                console.error(
+                    `[SeedClient] Network error during seeding: ${error.message}. Is the Yjs server running on port ${this.apiUrl}?`,
+                );
+            } else {
+                console.error("[SeedClient] Seeding failed:", error);
+            }
             throw error;
         }
     }
