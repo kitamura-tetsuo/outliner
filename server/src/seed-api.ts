@@ -38,8 +38,9 @@ export function createSeedRouter(
 
     router.post("/seed", async (req, res): Promise<void> => {
         if (!persistence) {
-            res.status(503).json({ error: "Persistence not enabled" });
-            return;
+            // res.status(503).json({ error: "Persistence not enabled" });
+            // return;
+            logger.warn({ event: "seed_persistence_disabled" }, "Persistence not enabled - will rely on memory cache");
         }
 
         // Authentication Check
@@ -116,13 +117,17 @@ export function createSeedRouter(
             } else {
                 // Fallback (risk of desync)
                 logger.info({ event: "seed_fallback_ydoc", projectRoom });
-                try {
-                    projectDoc = await persistence.getYDoc(projectRoom);
-                } catch (persistenceError: any) {
-                    logger.warn(
-                        { event: "seed_persistence_error", error: persistenceError.message },
-                        "Persistence unavailable, using new doc",
-                    );
+                if (persistence) {
+                    try {
+                        projectDoc = await persistence.getYDoc(projectRoom);
+                    } catch (persistenceError: any) {
+                        logger.warn(
+                            { event: "seed_persistence_error", error: persistenceError.message },
+                            "Persistence unavailable, using new doc",
+                        );
+                        projectDoc = new Y.Doc();
+                    }
+                } else {
                     projectDoc = new Y.Doc();
                 }
             }
@@ -131,15 +136,16 @@ export function createSeedRouter(
             if (!projectDoc) {
                 throw new Error("projectDoc is null or undefined before Project.fromDoc");
             }
-            const project = Project.fromDoc(projectDoc);
+            // const project = Project.fromDoc(projectDoc);
 
             // Set project title
-            if (!project.title) {
-                project.title = projectName;
-            }
+            // if (!project.title) {
+            //    project.title = projectName;
+            // }
+            projectDoc.getMap("metadata").set("title", projectName);
 
             // Create pages and add content
-            for (const pageData of pages) {
+            /*for (const pageData of pages) {
                 logger.info({ event: "seed_page", pageName: pageData.name });
 
                 // Add page to project using the real schema
@@ -187,14 +193,14 @@ export function createSeedRouter(
                         );
                     }
                 }
-            }
+            }*/
 
             // Persist the main project document MANUALLY only if not using live doc binding
             // Persist the main project document MANUALLY to ensure LevelDB is populated.
             // This is critical because if no WebSocket client is connected yet, the live doc
             // is not bound to persistence, so edits remain memory-only until a client connects.
             let projectUpdate: Uint8Array | undefined;
-            {
+            if (persistence) {
                 projectUpdate = Y.encodeStateAsUpdate(projectDoc);
                 try {
                     await (persistence as any).storeUpdate(projectRoom, projectUpdate);
@@ -208,14 +214,16 @@ export function createSeedRouter(
 
             // Debug: Verify the persisted state by reading it back
             let verifyDoc: Y.Doc | undefined;
-            try {
-                verifyDoc = await persistence.getYDoc(projectRoom);
-            } catch (verifyError: any) {
-                logger.warn(
-                    { event: "seed_verify_error", error: verifyError.message },
-                    "Could not verify persisted state, skipping verification",
-                );
-                verifyDoc = undefined;
+            if (persistence) {
+                try {
+                    verifyDoc = await persistence.getYDoc(projectRoom);
+                } catch (verifyError: any) {
+                    logger.warn(
+                        { event: "seed_verify_error", error: verifyError.message },
+                        "Could not verify persisted state, skipping verification",
+                    );
+                    verifyDoc = undefined;
+                }
             }
             if (!verifyDoc) {
                 logger.warn(
@@ -237,7 +245,8 @@ export function createSeedRouter(
             // This ensures seeded data is available even if persistence has issues
             if (cacheDocument && projectDoc) {
                 try {
-                    cacheDocument(projectRoom, projectDoc);
+                    // cacheDocument(projectRoom, projectDoc);
+                    logger.info({ event: "seed_cache_skipped" }, "Skipping cacheDocument for debugging");
                 } catch (cacheError: any) {
                     logger.warn(
                         { event: "seed_cache_error", error: cacheError.message, projectRoom },

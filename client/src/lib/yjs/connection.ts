@@ -50,14 +50,7 @@ function attachConnDebug(label: string, provider: WebsocketProvider, awareness: 
 }
 
 function isIndexedDBEnabled(): boolean {
-    try {
-        const envDisabled = String(import.meta.env.VITE_DISABLE_YJS_INDEXEDDB || "") === "true";
-        const lsDisabled = typeof window !== "undefined"
-            && window.localStorage?.getItem?.("VITE_DISABLE_YJS_INDEXEDDB") === "true";
-        return !(envDisabled || lsDisabled);
-    } catch {
-        return true;
-    }
+    return false; // Force disable for debugging loop error
 }
 
 export type PageConnection = {

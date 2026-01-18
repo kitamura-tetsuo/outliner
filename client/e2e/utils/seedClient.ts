@@ -21,6 +21,7 @@ export class SeedClient {
         // Use VITE_YJS_PORT for the seed API (same port as Yjs WebSocket server)
         // The seed API is served from the Yjs server at /api/seed
         this.apiUrl = process.env.VITE_YJS_API_URL || `http://127.0.0.1:${process.env.VITE_YJS_PORT || 7093}`;
+        console.log(`[SeedClient] Initialized with API URL: ${this.apiUrl}`);
     }
 
     /**

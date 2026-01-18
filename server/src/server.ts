@@ -33,20 +33,23 @@ export async function startServer(
     const server = http.createServer(app);
 
     const disableLeveldb = process.env.DISABLE_Y_LEVELDB === "true";
-    const persistence = disableLeveldb ? undefined : await createPersistence(config.LEVELDB_PATH);
+    // const persistence = disableLeveldb ? undefined : await createPersistence(config.LEVELDB_PATH);
+    const persistence = undefined;
 
     // Additional check to ensure LevelDB is fully opened before accepting requests
     if (persistence) {
         try {
             // Force a read operation to ensure database is fully opened
             // This also triggers any lazy initialization
-            const healthDoc = await persistence.getYDoc("_health_check_");
-            logger.info({ event: "persistence_ready" }, "LevelDB persistence ready");
-            // Clean up the health check doc by deleting it if it was created
-            if (healthDoc) {
-                try {
-                    healthDoc.destroy();
-                } catch {}
+            if (persistence) {
+                const healthDoc = await (persistence as any).getYDoc("_health_check_");
+                logger.info({ event: "persistence_ready" }, "LevelDB persistence ready");
+                // Clean up the health check doc by deleting it if it was created
+                if (healthDoc) {
+                    try {
+                        healthDoc.destroy();
+                    } catch {}
+                }
             }
         } catch (e: any) {
             logger.warn(
@@ -104,7 +107,7 @@ export async function startServer(
 
     const hocuspocus = new Server({
         name: "hocuspocus-fluid-outliner",
-        server, // Pass the HTTP server for proper WebSocket integration
+
         extensions: [
             new Logger({}),
             onMessageExtension,
@@ -158,11 +161,14 @@ export async function startServer(
             if (!persistence) {
                 return new Y.Doc();
             }
-            const doc = await persistence.getYDoc(documentName);
+            if (!persistence) {
+                return new Y.Doc();
+            }
+            const doc = await (persistence as any).getYDoc(documentName);
 
             // Bind persistence to the document to save updates automatically
             // y-leveldb's bindState listens to 'update' events
-            await persistence.bindState(documentName, doc);
+            await (persistence as any).bindState(documentName, doc);
 
             // Room Size Warning Listener
             const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
@@ -231,25 +237,39 @@ export async function startServer(
             }
 
             // Check room limits
+            // Fallback for empty documentName (possible Hocuspocus issue)
+            let roomName = documentName;
+            if (!roomName && request.url) {
+                const path = request.url.split("?")[0];
+                roomName = path.startsWith("/") ? path.slice(1) : path;
+                logger.info({ event: "ws_connect_name_fallback", original: documentName, derived: roomName });
+            }
+
             // Hocuspocus documentName IS the room/docName
-            const roomInfo = parseRoom(documentName);
+            const roomInfo = parseRoom(roomName);
             // Note: documentName passed to onConnect is the one from URL
             if (!roomInfo) {
-                logger.warn({ event: "ws_connection_denied", reason: "invalid_room", path: sanitizeUrl(request.url) });
+                logger.warn({
+                    event: "ws_connection_denied",
+                    reason: "invalid_room",
+                    path: sanitizeUrl(request.url),
+                    documentName,
+                    roomName,
+                });
                 throw new Error("INVALID_ROOM");
             }
 
-            if ((roomCounts.get(documentName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
-                logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: documentName });
+            if ((roomCounts.get(roomName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
+                logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: roomName });
                 throw new Error("MAX_SOCKETS_PER_ROOM");
             }
 
             // Increment counters
             totalSockets++;
             ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
-            roomCounts.set(documentName, (roomCounts.get(documentName) ?? 0) + 1);
+            roomCounts.set(roomName, (roomCounts.get(roomName) ?? 0) + 1);
 
-            logger.info({ event: "ws_connection_accepted", room: documentName });
+            logger.info({ event: "ws_connection_accepted", room: roomName });
         },
 
         async onDisconnect(data: any) {
@@ -304,7 +324,7 @@ export async function startServer(
             return docs.get(name)!.document;
         }
         if (persistence) {
-            return persistence.getYDoc(name);
+            return (persistence as any).getYDoc(name);
         }
         return new Y.Doc();
     };
@@ -328,6 +348,29 @@ export async function startServer(
     };
 
     app.use("/api", createSeedRouter(persistence, getYDoc, cacheDocument));
+
+    // Explicitly handle upgrade requests to ensure Hocuspocus receives them
+    server.on("upgrade", (request, socket, head) => {
+        if (request.url?.startsWith("/projects/")) {
+            const wsServer = (hocuspocus as any).webSocketServer;
+            wsServer.handleUpgrade(request, socket, head, (ws: any) => {
+                wsServer.emit("connection", ws, request);
+            });
+        } else {
+            // Let other handlers or default behavior handle it (usually closes socket)
+            // But usually server.on('upgrade') listeners check specific paths.
+            // If we don't have other WS services:
+            if (request.url === "/" || request.url?.startsWith("/api")) {
+                // Ignore standard HTTP paths? No, Upgrade is specific.
+            }
+            // For now, assume all upgrades are for Hocuspocus if they look like project usage
+            // Actually, Hocuspocus usually handles any path.
+            const wsServer = (hocuspocus as any).webSocketServer;
+            wsServer.handleUpgrade(request, socket, head, (ws: any) => {
+                wsServer.emit("connection", ws, request);
+            });
+        }
+    });
 
     // Listen
     server.listen(config.PORT, "0.0.0.0", () => {

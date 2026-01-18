@@ -322,15 +322,17 @@ export class TestHelpers {
         // Set test environment flags in browser context (skip if page is closed)
         // First, ensure we have a loaded page to work with (needed for page.evaluate)
         if (!page.isClosed()) {
-            try {
-                // Navigate to about:blank to ensure we have a proper document context
-                // This is needed because page.evaluate() requires a loaded page
-                const currentUrl = page.url();
-                if (!currentUrl || currentUrl === "about:blank") {
-                    await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 10000 }).catch(() => {});
+            page.on("console", msg => {
+                if (msg.type() === "error" || msg.text().includes("[yjs") || msg.text().includes("[Auth]")) {
+                    console.log(`[BROWSER] ${msg.text()}`);
                 }
+            });
+            page.on("pageerror", err => {
+                console.log(`[BROWSER ERROR] ${err}`);
+            });
 
-                await page.evaluate(() => {
+            try {
+                await page.addInitScript(() => {
                     try {
                         localStorage.setItem("VITE_IS_TEST", "true");
                         localStorage.setItem("VITE_E2E_TEST", "true");
@@ -340,9 +342,9 @@ export class TestHelpers {
                         localStorage.removeItem("VITE_YJS_DISABLE_WS");
                         (window as Window & Record<string, any>).__E2E__ = true;
                     } catch {}
-                }, { timeout: 5000 });
+                });
             } catch (e) {
-                TestHelpers.slog(`createAndSeedProject: Failed to set localStorage flags: ${e}`);
+                TestHelpers.slog(`createAndSeedProject: Failed to set localStorage flags via addInitScript: ${e}`);
             }
         }
 
@@ -2216,12 +2218,18 @@ export class TestHelpers {
             returnSecureToken: true,
         };
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout for auth
+
         try {
+            console.log(`[TestHelpers] getTestAuthToken: Signing in to ${signInUrl}`);
             const response = await fetch(signInUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
+                signal: controller.signal,
             });
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 const text = await response.text();
