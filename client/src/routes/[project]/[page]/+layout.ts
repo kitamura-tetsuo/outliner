@@ -2,7 +2,9 @@
 // This ensures that when navigating directly to child routes like /schedule,
 // the project data is already loaded and available in the store
 
-export const load = async ({ params, url }) => {
+import type { LayoutLoad } from "./$types";
+
+export const load: LayoutLoad = async ({ params, url }) => {
     const projectName = decodeURIComponent(params.project ?? "");
     const pageName = decodeURIComponent(params.page ?? "");
 

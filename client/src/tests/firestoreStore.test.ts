@@ -41,8 +41,8 @@ describe("Firestore Store", () => {
 
         expect(containerData).not.toBeNull();
         expect(containerData?.userId).toBe("test-user-id");
-        expect(containerData?.defaultContainerId).toBe("test-container-1");
-        expect(containerData?.accessibleContainerIds).toEqual([
+        expect(containerData?.defaultProjectId).toBe("test-container-1");
+        expect(containerData?.accessibleProjectIds).toEqual([
             "test-container-1",
             "test-container-2",
             "test-container-3",

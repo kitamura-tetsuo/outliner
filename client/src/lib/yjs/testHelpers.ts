@@ -11,48 +11,29 @@
  * instead of polling for data availability.
  */
 
+import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
-import type { WebsocketProvider } from "y-websocket";
 
 /**
- * Wait for both provider.synced and actual data availability in Y.Doc.
+ * Wait for both provider.isSynced and actual data availability in Y.Doc.
  *
- * This function addresses a race condition in y-websocket 2.x where provider.synced
+ * This function addresses a race condition where provider.isSynced
  * can become true before the actual data is available in Y.Doc.
  *
  * ⚠️ TEST ENVIRONMENT ONLY
  * This is a test-specific utility for scenarios where you need to immediately verify
  * data after synchronization. In production code, use Y.Doc observe events instead.
  *
- * @param provider - The WebsocketProvider instance to monitor
+ * @param provider - The HocuspocusProvider instance to monitor
  * @param checkDataAvailable - Function that returns true when the expected data is available
  * @param options - Configuration options
  * @param options.timeoutMs - Maximum time to wait in milliseconds (default: 30000)
  * @param options.pollIntervalMs - Polling interval in milliseconds (default: 100)
  * @param options.label - Label for debug logging (default: "yjs-sync")
  * @returns Promise that resolves to true if data is available, false if timeout
- *
- * @example
- * ```typescript
- * // In E2E test
- * const value = await page.evaluate(async () => {
- *     const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
- *     const provider = (window as any).__PROVIDER__;
- *     const m = (window as any).__DOC__.getMap("m");
- *
- *     await waitForSyncedAndDataForTest(
- *         provider,
- *         () => m.get("key") !== undefined,
- *         { label: "test-sync" }
- *     );
- *
- *     return m.get("key");
- * });
- * expect(value).toBe("expected-value");
- * ```
  */
 export async function waitForSyncedAndDataForTest(
-    provider: WebsocketProvider,
+    provider: HocuspocusProvider,
     checkDataAvailable: () => boolean,
     options: {
         timeoutMs?: number;
@@ -69,11 +50,11 @@ export async function waitForSyncedAndDataForTest(
     const maxIterations = Math.floor(timeoutMs / pollIntervalMs);
     const debugEnabled = isConnDebugEnabled();
 
-    // Step 1: Wait for provider.synced
+    // Step 1: Wait for provider.isSynced
     for (let i = 0; i < maxIterations; i++) {
-        if (provider.synced === true) {
+        if (provider.isSynced === true) {
             if (debugEnabled) {
-                console.log(`[${label}] provider.synced=true after ${i * pollIntervalMs}ms`);
+                console.log(`[${label}] provider.isSynced=true after ${i * pollIntervalMs}ms`);
             }
             break;
         }
@@ -93,7 +74,7 @@ export async function waitForSyncedAndDataForTest(
 
     if (debugEnabled) {
         console.log(
-            `[${label}] timeout after ${timeoutMs}ms, synced=${provider.synced}, dataAvailable=${checkDataAvailable()}`,
+            `[${label}] timeout after ${timeoutMs}ms, isSynced=${provider.isSynced}, dataAvailable=${checkDataAvailable()}`,
         );
     }
     return false;
@@ -131,15 +112,6 @@ export interface BrowserPageOptions {
  * @param browser - Playwright Browser instance
  * @param options - Configuration options
  * @returns Object containing context and page
- *
- * @example
- * ```typescript
- * const { context, page } = await initializeBrowserPage(browser, {
- *     enableWebSocket: true,
- *     requireAuth: true,
- *     consolePrefix: "p1"
- * });
- * ```
  */
 export async function initializeBrowserPage(
     browser: Browser,
@@ -220,23 +192,24 @@ export async function initializeBrowserPage(
  */
 export async function reconnectProvider(page: Page, providerVar: string = "__PROVIDER__"): Promise<void> {
     await page.evaluate(async ({ pv }) => {
-        const win = window as Record<string, unknown>;
-        const provider = win[pv];
+        const win = window as any;
+        const provider = win[pv] as HocuspocusProvider;
         if (!provider) return;
 
         try {
-            // Disconnect and reconnect to get a fresh token
-            provider.disconnect?.();
+            // HocuspocusProvider handles token refresh via its token option (function)
+            // But we can force a reconnect/token send if needed.
+            provider.disconnect();
             await new Promise(r => setTimeout(r, 100));
-            provider.connect?.();
+            await provider.connect();
 
             // Wait for reconnection
             let attempts = 0;
-            while (!provider.wsconnected && attempts < 50) {
+            while (!provider.isSynced && attempts < 50) {
                 await new Promise(r => setTimeout(r, 100));
                 attempts++;
             }
-            console.log(`[${pv}] reconnected, wsconnected=${provider.wsconnected}, synced=${provider.synced}`);
+            console.log(`[${pv}] reconnected, isSynced=${provider.isSynced}`);
         } catch (e) {
             console.error(`[${pv}] reconnect failed:`, e);
         }
@@ -254,15 +227,6 @@ export async function reconnectProvider(page: Page, providerVar: string = "__PRO
  * @param projectId - Project/container ID
  * @param options - Configuration options
  * @returns True if connection was successful
- *
- * @example
- * ```typescript
- * const connected = await createMinimalYjsConnection(page, projectId, {
- *     docVar: "__DOC__",
- *     providerVar: "__PROVIDER__"
- * });
- * expect(connected).toBeTruthy();
- * ```
  */
 export async function createMinimalYjsConnection(
     page: Page,
@@ -288,24 +252,25 @@ export async function createMinimalYjsConnection(
             );
             const conn = await createMinimalProjectConnection(pid);
             (window as any)[docVar] = conn.doc;
-            const provider = conn.provider as any;
+            const provider = conn.provider as HocuspocusProvider;
             (window as any)[providerVar] = provider;
 
             if (enableLogging) {
                 provider.on("status", (e: any) => console.log(`[${providerVar}] status`, e.status));
-                provider.on("sync", (isSynced: boolean) => console.log(`[${providerVar}] sync`, isSynced));
+                provider.on(
+                    "synced",
+                    (data: { state: boolean; }) => console.log(`[${providerVar}] synced`, data.state),
+                );
                 console.log(
-                    `[${providerVar}] init wsconnected=`,
-                    provider.wsconnected,
-                    "synced=",
-                    provider.synced,
+                    `[${providerVar}] init isSynced=`,
+                    provider.isSynced,
                     "url=",
-                    provider.url,
+                    (provider as any).configuration?.url,
                 );
             }
             try {
-                // Explicitly attempt connection to avoid lazy state
-                provider.connect?.();
+                // HocuspocusProvider connects automatically, but we can call connect if needed
+                await provider.connect();
             } catch {}
 
             return true;
@@ -322,15 +287,6 @@ export async function createMinimalYjsConnection(
  *
  * @param page - Playwright Page instance
  * @param options - Configuration options
- *
- * @example
- * ```typescript
- * await setupUpdateTracking(page, {
- *     docVar: "__DOC2__",
- *     counterVar: "__UPDATES2__"
- * });
- * const updateCount = await page.evaluate(() => (window as any).__UPDATES2__);
- * ```
  */
 export async function setupUpdateTracking(
     page: Page,
@@ -390,25 +346,6 @@ export interface TwoBrowserPagesResult {
  * @param browser - Playwright Browser instance
  * @param options - Configuration options
  * @returns Object containing both contexts, pages, and project ID
- *
- * @example
- * ```typescript
- * const { page1, page2, context1, context2, projectId } =
- *     await prepareTwoBrowserPages(browser, {
- *         page1Prefix: "p1",
- *         page2Prefix: "p2"
- *     });
- *
- * // Use page1 and page2 for testing
- * await page1.evaluate(() => {
- *     const doc = (window as any).__DOC__;
- *     doc.getMap("m").set("key", "value");
- * });
- *
- * // Clean up
- * await context1.close();
- * await context2.close();
- * ```
  */
 export async function prepareTwoBrowserPages(
     browser: Browser,
@@ -520,14 +457,6 @@ export interface TwoFullBrowserPagesResult {
  * @param initialItems - Initial items to create
  * @param TestHelpers - TestHelpers class from e2e/utils/testHelpers.ts
  * @returns Object containing both contexts, pages, and test environment info
- *
- * @example
- * ```typescript
- * // In E2E test file:
- * import { TestHelpers } from "../utils/testHelpers";
- * const { page1, page2, context1, context2, projectName, pageName } =
- *     await prepareTwoFullBrowserPages(browser, testInfo, ["Test Item 1"], TestHelpers);
- * ```
  */
 export async function prepareTwoFullBrowserPages(
     browser: Browser,

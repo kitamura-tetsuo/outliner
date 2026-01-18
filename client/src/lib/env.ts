@@ -25,7 +25,7 @@ export function getEnv(key: string, defaultValue: string = ""): string {
         const envValue = typeof import.meta !== "undefined" && import.meta.env?.[key];
         if (envValue !== undefined) {
             log("env", "debug", `Using value for ${key}: ${envValue}`);
-            return envValue;
+            return envValue as string;
         }
 
         // テスト環境のデフォルト値

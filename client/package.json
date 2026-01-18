@@ -1,6 +1,7 @@
 {
     "dependencies": {
         "@dotenvx/dotenvx": "^1.51.1",
+        "@hocuspocus/provider": "^3.4.3",
         "@sinclair/typebox": "^0.34.41",
         "diff-match-patch": "^1.0.5",
         "echarts": "^5.6.0",

@@ -26,16 +26,24 @@ test.describe("YJS token refresh reconnect", () => {
             (window as any).__CONN__ = conn;
         }, projectId);
 
-        await page.waitForFunction(() => (window as any).__CONN__?.provider.wsconnected === true);
+        await page.waitForFunction(() => {
+            const p = (window as any).__CONN__?.provider;
+            return p?.isSynced === true || (p as any)?.websocketProvider?.status === "connected";
+        });
         await page.evaluate(() => {
             (window as any).__CONN__.provider.disconnect();
         });
-        await page.waitForFunction(() => (window as any).__CONN__.provider.wsconnected === false);
+        await page.waitForFunction(() =>
+            (window as any).__CONN__.provider.websocketProvider?.status === "disconnected"
+        );
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
-        await page.waitForFunction(() => (window as any).__CONN__.provider.wsconnected === true);
-        const authParam = await page.evaluate(() => (window as any).__CONN__.provider.params.auth);
+        await page.waitForFunction(() => {
+            const p = (window as any).__CONN__.provider;
+            return p.isSynced === true || (p as any).websocketProvider?.status === "connected";
+        });
+        const authParam = await page.evaluate(() => (window as any).__CONN__.provider.configuration.token);
         expect(authParam).toBeTruthy();
     });
 
@@ -48,13 +56,19 @@ test.describe("YJS token refresh reconnect", () => {
             (window as any).__CONN__ = conn;
         }, projectId);
 
-        await page.waitForFunction(() => (window as any).__CONN__?.provider.wsconnected === true);
-        const initialAuth = await page.evaluate(() => (window as any).__CONN__.provider.params.auth);
+        await page.waitForFunction(() => {
+            const p = (window as any).__CONN__?.provider;
+            return p?.isSynced === true || (p as any)?.websocketProvider?.status === "connected";
+        });
+        const initialAuth = await page.evaluate(() => (window as any).__CONN__.provider.configuration.token);
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
-        await page.waitForFunction(initial => (window as any).__CONN__.provider.params.auth !== initial, initialAuth);
-        const newAuth = await page.evaluate(() => (window as any).__CONN__.provider.params.auth);
+        await page.waitForFunction(
+            initial => (window as any).__CONN__.provider.configuration.token !== initial,
+            initialAuth,
+        );
+        const newAuth = await page.evaluate(() => (window as any).__CONN__.provider.configuration.token);
         expect(newAuth).toBeTruthy();
         expect(newAuth).not.toEqual(initialAuth);
     });

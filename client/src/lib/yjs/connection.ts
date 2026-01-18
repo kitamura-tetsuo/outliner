@@ -1,5 +1,5 @@
+import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { Awareness } from "y-protocols/awareness";
-import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
 import { createPersistence, waitForSync } from "../yjsPersistence";
@@ -17,12 +17,12 @@ function isConnDebugEnabled(): boolean {
     }
 }
 
-function attachConnDebug(label: string, provider: WebsocketProvider, awareness: Awareness, doc: Y.Doc) {
+function attachConnDebug(label: string, provider: HocuspocusProvider, awareness: Awareness | null, doc: Y.Doc) {
     if (!isConnDebugEnabled()) return;
     try {
         // provider.synced transitions
-        provider.on("sync", (s: boolean) => {
-            console.log(`[yjs-conn] ${label} sync=${s}`);
+        provider.on("synced", (data: { state: boolean; }) => {
+            console.log(`[yjs-conn] ${label} sync=${data.state}`);
         });
         // awareness states count
         const logAwareness = () => {
@@ -32,10 +32,12 @@ function attachConnDebug(label: string, provider: WebsocketProvider, awareness: 
                 console.log(`[yjs-conn] ${label} awareness.states=${count}`);
             } catch {}
         };
-        awareness.on(
-            "change",
-            logAwareness as (event: { added: number[]; removed: number[]; updated: number[]; }) => void,
-        );
+        if (awareness) {
+            awareness.on(
+                "change",
+                logAwareness as (event: { added: number[]; removed: number[]; updated: number[]; }) => void,
+            );
+        }
         logAwareness();
         // doc update count and last payload size
         let updCount = 0;
@@ -55,15 +57,15 @@ function isIndexedDBEnabled(): boolean {
 
 export type PageConnection = {
     doc: Y.Doc;
-    provider: WebsocketProvider;
-    awareness: Awareness;
+    provider: HocuspocusProvider;
+    awareness: Awareness | null;
     dispose: () => void;
 };
 
 export type ProjectConnection = {
     doc: Y.Doc;
-    provider: WebsocketProvider;
-    awareness: Awareness;
+    provider: HocuspocusProvider;
+    awareness: Awareness | null;
     getPageConnection: (pageId: string) => PageConnection | undefined;
     dispose: () => void;
 };
@@ -93,7 +95,7 @@ function getWsBase(): string {
  * 1) 強制有効: localStorage.VITE_YJS_FORCE_WS === "true" → 常に true（テスト/E2E 用の例外。無効化より強い）
  * 2) 無効化: VITE_YJS_DISABLE_WS → false（env または localStorage のどちらか一方でも "true" なら無効）
  * 3) 明示有効: localStorage.VITE_YJS_ENABLE_WS === "true" → true（2) で無効化されていない場合のみ有効）
- * 4) テスト既定: MODE==="test" または VITE_IS_TEST==="true"（env/localStorage いずれか）→ true（2) があればそちらを優先）
+ * 4) テスト既定: MODE===\"test\" または VITE_IS_TEST===\"true\"（env/localStorage いずれか）→ true（2) があればそちらを優先）
  * 5) 既定: 上記に当てはまらない場合は true
  *
  * 運用指針:
@@ -182,14 +184,15 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
             await waitForSync(persistence);
         } catch { /* no-op in Node */ }
     }
-    let token = "";
-    try {
-        token = await getFreshIdToken();
-    } catch {
-        // Tolerate missing token in tests; server will reject unauthenticated connections,
-        // but local-only mode may still function for offline scenarios.
-        token = "";
-    }
+
+    // HocuspocusProvider uses a token function for dynamic token refresh
+    const tokenFn = async () => {
+        try {
+            return await getFreshIdToken();
+        } catch {
+            return "";
+        }
+    };
 
     // Load the subdoc to ensure local state is ready
     // Note: Data from the server is fetched via WebSocket sync, which we wait for below
@@ -200,22 +203,25 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         console.log(`[connectPageDoc] Subdoc load failed for room: ${room}, continuing anyway`, e);
     }
 
-    const provider = new WebsocketProvider(wsBase, room, doc, {
-        params: token ? { token } : undefined,
+    const provider = new HocuspocusProvider({
+        url: wsBase,
+        name: room,
+        document: doc,
+        token: tokenFn,
     });
 
     // In valid test environments without a real backend, we might not get a sync event.
     // So we don't want to block forever.
     const isTest = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
     const syncTimeout = isTest ? 5000 : 15000;
-    provider.on("sync", (isSynced: boolean) => {
-        console.log(`[connectPageDoc] Sync event received for ${room}, isSynced=${isSynced}`);
+    provider.on("synced", (data: { state: boolean; }) => {
+        console.log(`[connectPageDoc] Sync event received for ${room}, isSynced=${data.state}`);
     });
 
     // Wait for initial sync to complete before returning
     // This ensures seeded data is available immediately
     await new Promise<void>((resolve) => {
-        if (provider.synced) {
+        if (provider.isSynced) {
             console.log(`[connectPageDoc] Provider already synced for room: ${room}`);
             resolve();
             return;
@@ -235,20 +241,15 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
             complete();
         }, syncTimeout);
 
-        if (typeof provider.once === "function") {
-            provider.once("sync", () => {
+        const syncHandler = (data: { state: boolean; }) => {
+            if (data.state) {
                 clearTimeout(timer);
                 console.log(`[connectPageDoc] Sync event fired for room: ${room}`);
+                provider.off("synced", syncHandler);
                 complete();
-            });
-        } else {
-            // Fallback if no once method
-            clearTimeout(timer);
-            console.log(
-                `[connectPageDoc] Provider doesn't support 'once', proceeding without sync wait for room: ${room}`,
-            );
-            complete();
-        }
+            }
+        };
+        provider.on("synced", syncHandler);
     });
 
     // Brief wait for pageItems to be populated after WebSocket sync
@@ -283,15 +284,15 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     // Debug hook (guarded)
     attachConnDebug(room, provider, awareness, doc);
     const current = userManager.getCurrentUser();
-    if (current) {
+    if (current && awareness) {
         awareness.setLocalStateField("user", {
             userId: current.id,
             name: current.name,
             color: undefined,
         });
     }
-    const unbind = yjsService.bindPagePresence(awareness);
-    const unsub = attachTokenRefresh(provider);
+    const unbind = yjsService.bindPagePresence(awareness as Awareness);
+    const unsub = attachTokenRefresh(provider as any); // HocuspocusProvider compatible
     const dispose = () => {
         try {
             unbind();
@@ -321,47 +322,49 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         } catch { /* no-op in Node */ }
     }
 
-    let token = "";
-    try {
-        token = await getFreshIdToken();
-    } catch {
-        // Tolerate missing token; provider will attempt reconnect later
-        token = "";
-    }
+    // HocuspocusProvider uses a token function for dynamic token refresh
+    const tokenFn = async () => {
+        try {
+            return await getFreshIdToken();
+        } catch {
+            return "";
+        }
+    };
 
-    const provider = new WebsocketProvider(wsBase, room, doc, {
-        params: token ? { token } : undefined,
+    const provider = new HocuspocusProvider({
+        url: wsBase,
+        name: room,
+        document: doc,
+        token: tokenFn,
     });
     console.log(
-        `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}, token=${token ? "FOUND" : "EMPTY"}`,
+        `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}`,
     );
     provider.on("status", (event: { status: string; }) => console.log(`[yjs-conn] ${room} status: ${event.status}`));
-    provider.on("connection-error", (event: unknown) => console.log(`[yjs-conn] ${room} connection-error`, event));
-    provider.on("connection-close", (event: unknown) => console.log(`[yjs-conn] ${room} connection-close`, event));
+    provider.on("close", (event: unknown) => console.log(`[yjs-conn] ${room} connection-close`, event));
+    provider.on("disconnect", (event: unknown) => console.log(`[yjs-conn] ${room} disconnect`, event));
 
     // Wait for initial project sync to complete before connecting pages
     // This ensures the pagesMap is populated with all seeded pages
     await new Promise<void>((resolve) => {
-        if (provider.synced) {
+        if (provider.isSynced) {
             resolve();
-        } else if (typeof provider.once === "function") {
+        } else {
             const timer = setTimeout(() => {
                 console.log(
                     `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
                 );
                 resolve();
             }, 15000);
-            provider.once("sync", () => {
-                clearTimeout(timer);
-                resolve();
-            });
-        } else {
-            // Provider doesn't support 'once' method (e.g., in some test environments)
-            // Proceed without waiting
-            console.log(
-                `[createProjectConnection] Provider doesn't support 'once', proceeding without sync wait for room: ${room}`,
-            );
-            resolve();
+
+            const syncHandler = (data: { state: boolean; }) => {
+                if (data.state) {
+                    clearTimeout(timer);
+                    provider.off("synced", syncHandler);
+                    resolve();
+                }
+            };
+            provider.on("synced", syncHandler);
         }
     });
 
@@ -370,17 +373,17 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Debug hook (guarded)
     attachConnDebug(room, provider, awareness, doc);
     const current = userManager.getCurrentUser();
-    if (current) {
+    if (current && awareness) {
         awareness.setLocalStateField("user", {
             userId: current.id,
             name: current.name,
             color: undefined,
         });
     }
-    const unbind = yjsService.bindProjectPresence(awareness);
+    const unbind = yjsService.bindProjectPresence(awareness as Awareness);
 
     // Refresh auth param on token refresh
-    const unsub = attachTokenRefresh(provider);
+    const unsub = attachTokenRefresh(provider as any);
 
     const pages = new Map<string, PageConnection>();
 
@@ -560,8 +563,8 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 }
 
 export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<{
-    provider: WebsocketProvider;
-    awareness: Awareness;
+    provider: HocuspocusProvider;
+    awareness: Awareness | null;
 }> {
     const wsBase = getWsBase();
     const room = projectRoomPath(projectId);
@@ -571,22 +574,28 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
             await waitForSync(persistence);
         } catch { /* no-op in Node */ }
     }
-    let token = "";
 
-    try {
-        token = await getFreshIdToken();
-    } catch (e) {
-        console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
-        // Stay offline if auth is not ready; provider will attempt reconnect later.
-    }
-    const provider = new WebsocketProvider(wsBase, room, doc, {
-        params: token ? { token } : undefined,
+    // HocuspocusProvider uses a token function for dynamic token refresh
+    const tokenFn = async () => {
+        try {
+            return await getFreshIdToken();
+        } catch (e) {
+            console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
+            return "";
+        }
+    };
+
+    const provider = new HocuspocusProvider({
+        url: wsBase,
+        name: room,
+        document: doc,
+        token: tokenFn,
     });
     const awareness = provider.awareness;
     // Debug hook (guarded)
     attachConnDebug(room, provider, awareness, doc);
     const current = userManager.getCurrentUser();
-    if (current) {
+    if (current && awareness) {
         awareness.setLocalStateField("user", {
             userId: current.id,
             name: current.name,
@@ -594,13 +603,13 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         });
     }
     // Refresh auth param on token refresh
-    attachTokenRefresh(provider);
+    attachTokenRefresh(provider as any);
     return { provider, awareness };
 }
 
 export async function createMinimalProjectConnection(projectId: string): Promise<{
     doc: Y.Doc;
-    provider: WebsocketProvider;
+    provider: HocuspocusProvider;
     dispose: () => void;
 }> {
     const doc = new Y.Doc({ guid: projectId });
@@ -615,19 +624,23 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         } catch { /* no-op in Node */ }
     }
 
-    let token = "";
-    try {
-        token = await getFreshIdToken();
-    } catch {
-        token = "";
-    }
-    const provider = new WebsocketProvider(wsBase, room, doc, {
-        params: token ? { token } : undefined,
+    // HocuspocusProvider uses a token function for dynamic token refresh
+    const tokenFn = async () => {
+        try {
+            return await getFreshIdToken();
+        } catch {
+            return "";
+        }
+    };
+
+    const provider = new HocuspocusProvider({
+        url: wsBase,
+        name: room,
+        document: doc,
+        token: tokenFn,
     });
-    // 明示接続: 稀に connect: true が反映されないケースがあるため冪等に connect() を呼ぶ
-    try {
-        (provider as WebsocketProvider & { connect?: () => void; }).connect?.();
-    } catch {}
+    // HocuspocusProvider connects automatically, no need to call connect()
+
     // Debug hook (guarded)
     attachConnDebug(room, provider, provider.awareness, doc);
     const dispose = () => {

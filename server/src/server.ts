@@ -158,10 +158,34 @@ export async function startServer(
         },
 
         async onLoadDocument({ documentName }: { documentName: string; }) {
-            if (!persistence) {
-                return new Y.Doc();
+            // First, check if we have a cached document from seed API
+            // This is needed because persistence is currently disabled
+            const docs = (hocuspocus as any).hocuspocus.documents;
+            logger.info({
+                event: "onLoadDocument_start",
+                documentName,
+                hasDocs: !!docs,
+                docsSize: docs?.size ?? 0,
+                hasDocument: docs?.has(documentName) ?? false,
+            });
+
+            if (docs && docs.has(documentName)) {
+                const cached = docs.get(documentName);
+                logger.info({
+                    event: "onLoadDocument_cache_hit",
+                    documentName,
+                    hasCached: !!cached,
+                    hasDocument: !!cached?.document,
+                });
+                if (cached && cached.document) {
+                    logger.info({ event: "load_cached_document", documentName }, "Using cached document from seed API");
+                    return cached.document;
+                }
             }
+
+            logger.info({ event: "onLoadDocument_no_cache", documentName });
             if (!persistence) {
+                logger.info({ event: "onLoadDocument_new_doc", documentName }, "Creating new Y.Doc (no persistence)");
                 return new Y.Doc();
             }
             const doc = await (persistence as any).getYDoc(documentName);
@@ -317,37 +341,8 @@ export async function startServer(
         res.json(getMetrics(hocuspocus));
     });
 
-    // Seed API
-    const getYDoc = (name: string) => {
-        const docs = (hocuspocus as any).documents;
-        if (docs && docs.has(name)) {
-            return docs.get(name)!.document;
-        }
-        if (persistence) {
-            return (persistence as any).getYDoc(name);
-        }
-        return new Y.Doc();
-    };
-
-    // Function to store a document in Hocuspocus's in-memory cache
-    // This is used by the seed API to ensure seeded data is immediately available
-    const cacheDocument = (name: string, doc: Y.Doc) => {
-        const docs = (hocuspocus as any).documents;
-        if (docs) {
-            // Create a minimal doc instance with just what Hocuspocus needs
-            const instance = {
-                document: doc,
-                name: name,
-                connections: new Map(),
-                awareness: null,
-                gc: true,
-            };
-            docs.set(name, instance);
-            logger.info({ event: "seed_cache_document", name }, "Document cached in Hocuspocus");
-        }
-    };
-
-    app.use("/api", createSeedRouter(persistence, getYDoc, cacheDocument));
+    // Seed API - use Hocuspocus's openDirectConnection for proper document lifecycle
+    app.use("/api", createSeedRouter(hocuspocus, persistence));
 
     // Explicitly handle upgrade requests to ensure Hocuspocus receives them
     server.on("upgrade", (request, socket, head) => {

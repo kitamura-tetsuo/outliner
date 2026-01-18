@@ -13,7 +13,7 @@ describe("yjs presence", () => {
         await new Promise(resolve => {
             let syncedCount = 0;
             const checkSync = () => {
-                if (c1.provider.synced && c2.provider.synced) {
+                if (c1.provider.isSynced && c2.provider.isSynced) {
                     syncedCount++;
                     // Check twice to ensure stable sync state
                     if (syncedCount >= 2) resolve(undefined);
@@ -129,8 +129,8 @@ describe("yjs presence", () => {
             throw new Error("page connection not established");
         }
 
-        p1c1.awareness.setLocalStateField("user", { userId: "u1", name: "A" });
-        p1c1.awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
+        p1c1.awareness!.setLocalStateField("user", { userId: "u1", name: "A" });
+        p1c1.awareness!.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
         await new Promise(r => setTimeout(r, 500));
 
         // Manual workaround for awareness synchronization in test environment
@@ -139,15 +139,15 @@ describe("yjs presence", () => {
             user?: { userId: string; name: string; color?: string; };
             presence?: { cursor?: { itemId: string; offset: number; }; };
         };
-        const states1 = p1c1.awareness.getStates() as Map<number, AwarenessState>;
-        const states2 = p1c2.awareness.getStates() as Map<number, AwarenessState>;
+        const states1 = p1c1.awareness!.getStates() as Map<number, AwarenessState>;
+        const states2 = p1c2.awareness!.getStates() as Map<number, AwarenessState>;
         if (states2.size <= 1 && Array.from(states2.values()).every(s => !s.presence?.cursor?.itemId)) {
             // Find the presence state from first awareness and copy it to second if not synchronized
             for (const [, state] of states1.entries()) {
                 if (state.presence?.cursor?.itemId === "root") {
                     // Manually set the presence state on the second client
-                    p1c2.awareness.setLocalStateField("user", state.user ?? null);
-                    p1c2.awareness.setLocalStateField("presence", state.presence ?? null);
+                    p1c2.awareness!.setLocalStateField("user", state.user ?? null);
+                    p1c2.awareness!.setLocalStateField("presence", state.presence ?? null);
                     break;
                 }
             }
@@ -156,7 +156,7 @@ describe("yjs presence", () => {
         // Wait for the manual sync to take effect
         await new Promise(r => setTimeout(r, 100));
 
-        const states = p1c2.awareness.getStates() as Map<number, AwarenessState>;
+        const states = p1c2.awareness!.getStates() as Map<number, AwarenessState>;
         console.log("States size:", states.size);
         console.log("States values:", Array.from(states.values()));
         const received = Array.from(states.values()).some(s => (s as any).presence?.cursor?.itemId === "root");

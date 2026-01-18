@@ -67,21 +67,20 @@ export class TestHelpers {
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
-            // Avoid duplicating console output when using fixtures/console-forward.
-            // Opt-in by setting E2E_ATTACH_BROWSER_CONSOLE=1 when you want these mirrors.
-            if (process.env.E2E_ATTACH_BROWSER_CONSOLE === "1") {
-                page.on("console", (msg) => {
-                    const type = msg.type();
-                    const txt = msg.text();
-                    console.log(`[BROWSER-CONSOLE:${type}]`, txt);
-                });
-                page.on("pageerror", (err) => {
-                    console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
-                });
-                page.on("requestfailed", (req) => {
-                    console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
-                });
-            }
+            // ALWAYS attach for debugging
+            page.on("console", (msg) => {
+                const type = msg.type();
+                const txt = msg.text();
+                // Avoid too much noise from some expected logs if necessary,
+                // but for now let's see everything.
+                console.log(`[BROWSER-CONSOLE:${type}]`, txt);
+            });
+            page.on("pageerror", (err) => {
+                console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
+            });
+            page.on("requestfailed", (req) => {
+                console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
+            });
         } catch {}
 
         // Set WebSocket flag before navigation (needed for Yjs connection)
@@ -94,6 +93,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as Window & Record<string, any>).__E2E__ = true;
                 console.log("[E2E] Test environment flags set in localStorage");
@@ -323,9 +323,8 @@ export class TestHelpers {
         // First, ensure we have a loaded page to work with (needed for page.evaluate)
         if (!page.isClosed()) {
             page.on("console", msg => {
-                if (msg.type() === "error" || msg.text().includes("[yjs") || msg.text().includes("[Auth]")) {
-                    console.log(`[BROWSER] ${msg.text()}`);
-                }
+                const type = msg.type();
+                console.log(`[BROWSER][${type}] ${msg.text()}`);
             });
             page.on("pageerror", err => {
                 console.log(`[BROWSER ERROR] ${err}`);
@@ -339,6 +338,7 @@ export class TestHelpers {
                         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                         localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
                         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                        localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                         localStorage.removeItem("VITE_YJS_DISABLE_WS");
                         (window as Window & Record<string, any>).__E2E__ = true;
                     } catch {}
@@ -518,25 +518,24 @@ export class TestHelpers {
 
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
-            if (process.env.E2E_ATTACH_BROWSER_CONSOLE === "1") {
-                page.on("console", (msg) => {
-                    const type = msg.type();
-                    const txt = msg.text();
-                    console.log(`[BROWSER-CONSOLE:${type}]`, txt);
-                });
-                page.on("pageerror", (err) => {
-                    console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
-                });
-                page.on("requestfailed", (req) => {
-                    console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
-                });
-            }
+            page.on("console", (msg) => {
+                const type = msg.type();
+                const txt = msg.text();
+                console.log(`[BROWSER-CONSOLE:${type}]`, txt);
+            });
+            page.on("pageerror", (err) => {
+                console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
+            });
+            page.on("requestfailed", (req) => {
+                console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
+            });
         } catch {}
 
         // Set WebSocket flag and E2E flag before navigation (consistency with prepareTestEnvironment)
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as Window & Record<string, any>).__E2E__ = true;
             } catch {}

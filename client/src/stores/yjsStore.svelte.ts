@@ -52,7 +52,7 @@ class YjsStore {
                     this.isConnected = v.isContainerConnected;
                 };
                 v.wsProvider.on("status", updateConnected);
-                v.wsProvider.on("sync", updateConnected);
+                v.wsProvider.on("synced", updateConnected);
                 // Initial check
                 updateConnected();
             }

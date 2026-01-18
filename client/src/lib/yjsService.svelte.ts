@@ -151,7 +151,7 @@ export async function createNewProject(projectName: string): Promise<YjsClient> 
 // Debug helper for E2E tests
 
 export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
-    console.log(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.size=${registry.size}`);
+    console.log(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
 
     // First, check the registry for a matching client
     for (const [, [client, project]] of registry.entries()) {
