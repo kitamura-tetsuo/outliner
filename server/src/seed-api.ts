@@ -1,4 +1,5 @@
 import express from "express";
+// @ts-ignore
 import type { LeveldbPersistence } from "y-leveldb";
 import * as Y from "yjs";
 import { logger } from "./logger.js";
