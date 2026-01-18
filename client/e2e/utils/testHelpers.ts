@@ -320,8 +320,16 @@ export class TestHelpers {
         const pageName = options?.pageName ?? `test-page-${Date.now()}`;
 
         // Set test environment flags in browser context (skip if page is closed)
+        // First, ensure we have a loaded page to work with (needed for page.evaluate)
         if (!page.isClosed()) {
             try {
+                // Navigate to about:blank to ensure we have a proper document context
+                // This is needed because page.evaluate() requires a loaded page
+                const currentUrl = page.url();
+                if (!currentUrl || currentUrl === "about:blank") {
+                    await page.goto("about:blank", { waitUntil: "domcontentloaded", timeout: 10000 }).catch(() => {});
+                }
+
                 await page.evaluate(() => {
                     try {
                         localStorage.setItem("VITE_IS_TEST", "true");

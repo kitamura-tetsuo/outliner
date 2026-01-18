@@ -314,9 +314,11 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
 }
 
 export async function createProjectConnection(projectId: string): Promise<ProjectConnection> {
+    console.log(`[createProjectConnection] Starting for projectId=${projectId}`);
     const doc = new Y.Doc({ guid: projectId });
     const wsBase = getWsBase();
     const room = projectRoomPath(projectId);
+    console.log(`[createProjectConnection] wsBase=${wsBase}, room=${room}`);
 
     // Attach IndexedDB persistence and wait for initial sync
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
