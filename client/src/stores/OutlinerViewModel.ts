@@ -129,13 +129,18 @@ export class OutlinerViewModel {
         const existingViewModel = this.viewModels.get(item.id);
         if (existingViewModel) {
             // プロパティを更新（参照は維持）
-            existingViewModel.text = item.text.toString();
-            existingViewModel.votes = [...((item as any).votes || [])];
-            existingViewModel.lastChanged = (item as any).lastChanged;
-            existingViewModel.commentCount = (item as any).comments?.length ?? 0;
-            debugLog(
-                `OutlinerViewModel: Updated existing view model for "${item.text}"`,
-            );
+            // パフォーマンス最適化: lastChanged が変更された場合のみ再計算する
+            // Y.Text.toString() は高コストな操作であるため、不要な呼び出しを避ける
+            const newLastChanged = (item as any).lastChanged;
+            if (existingViewModel.lastChanged !== newLastChanged) {
+                existingViewModel.text = item.text.toString();
+                existingViewModel.votes = [...((item as any).votes || [])];
+                existingViewModel.lastChanged = newLastChanged;
+                existingViewModel.commentCount = (item as any).comments?.length ?? 0;
+                debugLog(
+                    `OutlinerViewModel: Updated existing view model for "${existingViewModel.text}"`,
+                );
+            }
         } else {
             // 新しいビューモデルを作成
             this.viewModels.set(item.id, {

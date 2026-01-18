@@ -22,3 +22,8 @@
 
 **Learning:** `ScrapboxFormatter.checkPageExists` was performing O(N) iteration over all pages for every internal link in every item, resulting in O(M*N) complexity. Replacing this with a cached `Set<string>` in `GeneralStore` reduces lookup to O(1) and eliminates the iteration overhead during rendering.
 **Action:** When performing frequent existence checks in rendering loops, prefer caching with O(1) lookup structures (Set/Map) and maintain them via event listeners (e.g., Yjs observers) rather than iterating arrays on every render.
+
+## 2026-01-18 - [OutlinerViewModel Update Optimization]
+
+**Learning:** `OutlinerViewModel.updateFromModel` was converting every item's `Y.Text` to string (`item.text.toString()`) on every tree update (triggered by `observeDeep`), which is O(N) for the whole tree. `Y.Text.toString()` involves traversing the Yjs structure and is expensive when done repeatedly for thousands of items.
+**Action:** Use `item.lastChanged` timestamp to skip property updates if the item hasn't changed since the last view model update.
