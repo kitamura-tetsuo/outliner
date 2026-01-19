@@ -43,7 +43,9 @@ test.describe("YJS token refresh reconnect", () => {
 
         await page.waitForFunction(() => {
             const p = (window as any).__CONN__?.provider;
-            return p?.isSynced === true || p?.status === "connected";
+            // HocuspocusProvider stores status in configuration.websocketProvider.status
+            const wsStatus = p?.configuration?.websocketProvider?.status;
+            return p?.isSynced === true || wsStatus === "connected";
         });
         await page.evaluate(() => {
             (window as any).__CONN__.provider.disconnect();
@@ -63,10 +65,15 @@ test.describe("YJS token refresh reconnect", () => {
         });
         await page.waitForFunction(() => {
             const p = (window as any).__CONN__.provider;
-            return p.isSynced === true || p.status === "connected";
+            // HocuspocusProvider stores status in configuration.websocketProvider.status
+            const wsStatus = p?.configuration?.websocketProvider?.status;
+            return p.isSynced === true || wsStatus === "connected";
         });
-        // eslint-disable-next-line no-restricted-globals
-        const isConnected = await page.evaluate(() => (window as any).__CONN__.provider.status === "connected");
+        // HocuspocusProvider stores status in configuration.websocketProvider.status
+        const isConnected = await page.evaluate(() =>
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__CONN__.provider.configuration?.websocketProvider?.status === "connected"
+        );
         expect(isConnected).toBeTruthy();
     });
 
@@ -89,7 +96,9 @@ test.describe("YJS token refresh reconnect", () => {
 
         await page.waitForFunction(() => {
             const p = (window as any).__CONN__?.provider;
-            return p?.isSynced === true || p?.status === "connected";
+            // HocuspocusProvider stores status in configuration.websocketProvider.status
+            const wsStatus = p?.configuration?.websocketProvider?.status;
+            return p?.isSynced === true || wsStatus === "connected";
         });
 
         await page.evaluate(async () => {

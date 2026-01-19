@@ -56,26 +56,33 @@ test.describe("WebSocket connection limits", () => {
 
         const ws1 = new WebSocket(`ws://localhost:${port}/projects/testproj?auth=a`);
         await new Promise(resolve => ws1.on("open", resolve));
-        await new Promise<void>(resolve => {
-            const ws2 = new WebSocket(`ws://localhost:${port}/projects/testproj?auth=b`);
-            ws2.on("open", () => {
-                console.log("Debug: ws2 opened");
-            });
-            ws2.on("error", (err: any) => {
-                console.log("Debug: ws2 error:", err);
-                // In some environments, rejection might come as an error (e.g. 403 Forbidden during handshake)
-                // if the server rejects it early, or if the socket is closed abruptly.
-                // However, with Hocuspocus onConnect throwing, we expect a close frame.
-                // But if it fails, we shouldn't hang.
-            });
-            ws2.on("close", code => {
-                console.log("Debug: ws2 closed with code:", code);
-                // Hocuspocus might close with different codes depending on error handling
-                // 4006 is what we expect but generic policy violation might occur
-                expect([4006, 1008, 4403]).toContain(code);
-                resolve();
-            });
+
+        // Use a race between close event and a timeout to handle cases where
+        // Hocuspocus doesn't emit close event on connection rejection
+        let closeResolver: (() => void) | null = null;
+        const closePromise = new Promise<void>(resolve => {
+            closeResolver = resolve;
         });
+        const timeoutPromise = new Promise<void>((_resolve, reject) => {
+            setTimeout(() => reject(new Error("Connection limit check timeout - close event not received")), 10000);
+        });
+
+        const ws2 = new WebSocket(`ws://localhost:${port}/projects/testproj?auth=b`);
+        ws2.on("open", () => {
+            console.log("Debug: ws2 opened - this is unexpected if limit is enforced");
+        });
+        ws2.on("error", (err: any) => {
+            console.log("Debug: ws2 error:", err.message || err);
+        });
+        ws2.on("close", code => {
+            console.log("Debug: ws2 closed with code:", code);
+            // Hocuspocus might close with different codes depending on error handling
+            // 4006 is what we expect but generic policy violation might occur
+            expect([4006, 1008, 4403]).toContain(code);
+            closeResolver?.();
+        });
+
+        await Promise.race([closePromise, timeoutPromise]);
 
         ws1.close();
         server.close();
