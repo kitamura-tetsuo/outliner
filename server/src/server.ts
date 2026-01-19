@@ -230,18 +230,21 @@ export async function startServer(
                     console.log("DEBUG: onConnect called", documentName);
 
                     // Helper to close connection properly and return early
-                    // Unlike throwing (which Hocuspocus catches and only sends permission denied),
-                    // this ensures the WebSocket is actually closed
+                    // We close the raw WebSocket FIRST to ensure close event is emitted
+                    // before Hocuspocus sets up its internal handlers
                     const closeWithReason = (code: number, reason: string) => {
-                        // Try to close via connection object first
-                        if (connection) {
-                            connection.close({ code, reason });
-                        }
-                        // Also close raw WebSocket to ensure close event is emitted
-                        // WebSocket is stored on request.socket.ws during upgrade handler
+                        // Get the raw WebSocket - stored on request.socket.ws during upgrade handler
                         const ws = (request as any)?.socket?.ws;
                         if (ws) {
+                            // Close raw WebSocket FIRST to ensure close event is emitted
+                            // Hocuspocus hasn't fully set up its handlers yet at this point
                             ws.close(code, reason);
+                        }
+                        // Then let Hocuspocus handle its internal cleanup
+                        if (connection) {
+                            try {
+                                connection.close({ code, reason });
+                            } catch {}
                         }
                     };
 

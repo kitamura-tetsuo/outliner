@@ -10,22 +10,30 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
     return async () => {
         try {
             const t = await userManager.auth.currentUser?.getIdToken(true);
-            if (t) {
-                // HocuspocusProvider handles token via the token function passed at creation
-                // To refresh, we can call sendToken() which will invoke the token function
-                // WS が無効化されている場合は再接続を行わない（テスト環境抑止）
-                if (provider?.__wsDisabled === true) {
-                    return;
-                }
-                // For HocuspocusProvider, we call sendToken() to refresh authentication
-                // This will invoke the token function and send the new token to the server
+            // HocuspocusProvider handles token via the token function passed at creation
+            // To refresh, we can call sendToken() which will invoke the token function
+            // WS が無効化されている場合は再接続を行わない（テスト環境抑止）
+            if (provider?.__wsDisabled === true) {
+                return;
+            }
+            // If no token (user disconnected), explicitly reconnect
+            if (!t) {
                 try {
-                    await provider.sendToken();
-                } catch {
-                    // If sendToken fails, try reconnecting
                     provider.disconnect();
+                } catch {}
+                try {
                     await provider.connect();
-                }
+                } catch {}
+                return;
+            }
+            // For HocuspocusProvider, we call sendToken() to refresh authentication
+            // This will invoke the token function and send the new token to the server
+            try {
+                await provider.sendToken();
+            } catch {
+                // If sendToken fails, try reconnecting
+                provider.disconnect();
+                await provider.connect();
             }
         } catch {}
     };
