@@ -47,7 +47,7 @@ test.describe("WebSocket connection limits", () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ydb-"));
         const cfg = loadConfig({
             PORT: String(port),
-            LOG_LEVEL: "silent",
+            LOG_LEVEL: "info",
             MAX_SOCKETS_PER_ROOM: "1",
             LEVELDB_PATH: dir,
         });
@@ -58,6 +58,16 @@ test.describe("WebSocket connection limits", () => {
         await new Promise(resolve => ws1.on("open", resolve));
         await new Promise<void>(resolve => {
             const ws2 = new WebSocket(`ws://localhost:${port}/projects/testproj?auth=b`);
+            ws2.on("open", () => {
+                console.log("Debug: ws2 opened");
+            });
+            ws2.on("error", (err: any) => {
+                console.log("Debug: ws2 error:", err);
+                // In some environments, rejection might come as an error (e.g. 403 Forbidden during handshake)
+                // if the server rejects it early, or if the socket is closed abruptly.
+                // However, with Hocuspocus onConnect throwing, we expect a close frame.
+                // But if it fails, we shouldn't hang.
+            });
             ws2.on("close", code => {
                 console.log("Debug: ws2 closed with code:", code);
                 // Hocuspocus might close with different codes depending on error handling

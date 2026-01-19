@@ -111,215 +111,223 @@ export async function startServer(
         extensions: [
             new Logger({}),
             onMessageExtension,
+            {
+                async onAuthenticate(data: any) {
+                    const { request, documentName, token: socketToken } = data;
+                    let connection = data.connection;
+
+                    if (!connection) {
+                        // Try to recover connection
+                        if (data.instance && data.socketId && data.instance.connections) {
+                            connection = data.instance.connections.get(data.socketId);
+                        }
+                    }
+
+                    const token = socketToken || extractAuthToken(request);
+                    if (!token) {
+                        connection?.close(4001, "UNAUTHORIZED");
+                        throw new Error("Authentication failed: No token provided");
+                    }
+
+                    const room = parseRoom(documentName);
+                    if (!room?.project) {
+                        connection?.close(4002, "INVALID_ROOM");
+                        throw new Error("Authentication failed: Invalid room format");
+                    }
+
+                    let decoded;
+                    try {
+                        decoded = await verifyIdTokenCached(token);
+                    } catch (err) {
+                        connection?.close(4001, "UNAUTHORIZED");
+                        throw err;
+                    }
+
+                    const hasAccess = await checkContainerAccess(decoded.uid, room.project);
+
+                    if (!hasAccess) {
+                        connection?.close(4003, "FORBIDDEN");
+                        throw new Error("Authentication failed: Access denied");
+                    }
+
+                    return {
+                        user: { uid: decoded.uid },
+                        room,
+                    };
+                },
+
+                async onLoadDocument({ documentName }: { documentName: string; }) {
+                    // First, check if we have a cached document from seed API
+                    // This is needed because persistence is currently disabled
+                    const docs = (hocuspocus as any).hocuspocus.documents;
+                    logger.info({
+                        event: "onLoadDocument_start",
+                        documentName,
+                        hasDocs: !!docs,
+                        docsSize: docs?.size ?? 0,
+                        hasDocument: docs?.has(documentName) ?? false,
+                    });
+
+                    if (docs && docs.has(documentName)) {
+                        const cached = docs.get(documentName);
+                        logger.info({
+                            event: "onLoadDocument_cache_hit",
+                            documentName,
+                            hasCached: !!cached,
+                            hasDocument: !!cached?.document,
+                        });
+                        if (cached && cached.document) {
+                            logger.info(
+                                { event: "load_cached_document", documentName },
+                                "Using cached document from seed API",
+                            );
+                            return cached.document;
+                        }
+                    }
+
+                    logger.info({ event: "onLoadDocument_no_cache", documentName });
+                    if (!persistence) {
+                        logger.info(
+                            { event: "onLoadDocument_new_doc", documentName },
+                            "Creating new Y.Doc (no persistence)",
+                        );
+                        return new Y.Doc();
+                    }
+                    const doc = await (persistence as any).getYDoc(documentName);
+
+                    // Bind persistence to the document to save updates automatically
+                    // y-leveldb's bindState listens to 'update' events
+                    await (persistence as any).bindState(documentName, doc);
+
+                    // Room Size Warning Listener
+                    const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
+                    const checkSize = () => {
+                        // This might be expensive for large docs, but it matches previous behavior
+                        // Ideally this should be debounced
+                        const size = Y.encodeStateAsUpdate(doc).byteLength;
+                        if (size > limitBytes) {
+                            logger.warn({ event: "room_size_exceeded", room: documentName, bytes: size });
+                        }
+                    };
+
+                    // Attach listener similar to update-listeners.ts
+                    try {
+                        const ymap: any = doc.getMap("orderedTree");
+                        if (ymap && typeof ymap.observeDeep === "function") {
+                            ymap.observeDeep(checkSize);
+                        } else {
+                            doc.on("update", checkSize);
+                        }
+                    } catch {
+                        doc.on("update", checkSize);
+                    }
+
+                    return doc;
+                },
+
+                async onConnect(data: any) {
+                    const { request, documentName, connection } = data;
+                    console.log("DEBUG: onConnect called", documentName);
+
+                    const ip = (request.headers["x-forwarded-for"] as string) || request.socket.remoteAddress || "";
+                    const origin = request.headers.origin || "";
+
+                    // Store IP in connection context for onDisconnect
+                    // Use data.context if connection.context is not available
+                    if (connection) {
+                        (connection as any).context = { ...((connection as any).context || {}), ip };
+                    } else if (data.context) {
+                        data.context.ip = ip;
+                    }
+
+                    // Rate Limiting Check
+                    const now = Date.now();
+                    const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
+                    let timestamps = connectionRateLimits.get(ip) || [];
+                    timestamps = timestamps.filter(t => t > windowStart);
+
+                    if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
+                        logger.warn({ event: "ws_connection_denied", reason: "rate_limit_exceeded", ip });
+                        throw new Error("RATE_LIMIT_EXCEEDED");
+                    }
+                    timestamps.push(now);
+                    connectionRateLimits.set(ip, timestamps);
+
+                    if (allowedOrigins.size && !allowedOrigins.has(origin)) {
+                        logger.warn({ event: "ws_connection_denied", reason: "invalid_origin", origin });
+                        throw new Error("ORIGIN_NOT_ALLOWED");
+                    }
+                    if (totalSockets >= config.MAX_SOCKETS_TOTAL) {
+                        logger.warn({ event: "ws_connection_denied", reason: "max_sockets_total" });
+                        throw new Error("MAX_SOCKETS_TOTAL");
+                    }
+                    if ((ipCounts.get(ip) ?? 0) >= config.MAX_SOCKETS_PER_IP) {
+                        logger.warn({ event: "ws_connection_denied", reason: "max_sockets_ip", ip });
+                        throw new Error("MAX_SOCKETS_PER_IP");
+                    }
+
+                    // Check room limits
+                    // Fallback for empty documentName (possible Hocuspocus issue)
+                    let roomName = documentName;
+                    if (!roomName && request.url) {
+                        const path = request.url.split("?")[0];
+                        roomName = path.startsWith("/") ? path.slice(1) : path;
+                        logger.info({ event: "ws_connect_name_fallback", original: documentName, derived: roomName });
+                    }
+
+                    // Hocuspocus documentName IS the room/docName
+                    const roomInfo = parseRoom(roomName);
+                    // Note: documentName passed to onConnect is the one from URL
+                    if (!roomInfo) {
+                        logger.warn({
+                            event: "ws_connection_denied",
+                            reason: "invalid_room",
+                            path: sanitizeUrl(request.url),
+                            documentName,
+                            roomName,
+                        });
+                        throw new Error("INVALID_ROOM");
+                    }
+
+                    if ((roomCounts.get(roomName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
+                        logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: roomName });
+                        throw new Error("MAX_SOCKETS_PER_ROOM");
+                    }
+
+                    // Increment counters
+                    totalSockets++;
+                    ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
+                    roomCounts.set(roomName, (roomCounts.get(roomName) ?? 0) + 1);
+
+                    logger.info({ event: "ws_connection_accepted", room: roomName });
+                },
+
+                async onDisconnect(data: any) {
+                    const { documentName } = data;
+                    const connection = data.connection;
+
+                    // Context might be in data.context or connection.context
+                    const context = data.context || (connection as any)?.context || {};
+                    const ip = context.ip || "";
+
+                    // Decrement counters
+                    totalSockets--;
+                    if (totalSockets < 0) totalSockets = 0;
+
+                    if (ip) {
+                        const count = (ipCounts.get(ip) ?? 1) - 1;
+                        if (count <= 0) ipCounts.delete(ip);
+                        else ipCounts.set(ip, count);
+                    }
+
+                    if (documentName) {
+                        const count = (roomCounts.get(documentName) ?? 1) - 1;
+                        if (count <= 0) roomCounts.delete(documentName);
+                        else roomCounts.set(documentName, count);
+                    }
+                },
+            },
         ],
-
-        async onAuthenticate(data: any) {
-            const { request, documentName, token: socketToken } = data;
-            let connection = data.connection;
-
-            if (!connection) {
-                // Try to recover connection
-                if (data.instance && data.socketId && data.instance.connections) {
-                    connection = data.instance.connections.get(data.socketId);
-                }
-            }
-
-            const token = socketToken || extractAuthToken(request);
-            if (!token) {
-                connection?.close(4001, "UNAUTHORIZED");
-                throw new Error("Authentication failed: No token provided");
-            }
-
-            const room = parseRoom(documentName);
-            if (!room?.project) {
-                connection?.close(4002, "INVALID_ROOM");
-                throw new Error("Authentication failed: Invalid room format");
-            }
-
-            let decoded;
-            try {
-                decoded = await verifyIdTokenCached(token);
-            } catch (err) {
-                connection?.close(4001, "UNAUTHORIZED");
-                throw err;
-            }
-
-            const hasAccess = await checkContainerAccess(decoded.uid, room.project);
-
-            if (!hasAccess) {
-                connection?.close(4003, "FORBIDDEN");
-                throw new Error("Authentication failed: Access denied");
-            }
-
-            return {
-                user: { uid: decoded.uid },
-                room,
-            };
-        },
-
-        async onLoadDocument({ documentName }: { documentName: string; }) {
-            // First, check if we have a cached document from seed API
-            // This is needed because persistence is currently disabled
-            const docs = (hocuspocus as any).hocuspocus.documents;
-            logger.info({
-                event: "onLoadDocument_start",
-                documentName,
-                hasDocs: !!docs,
-                docsSize: docs?.size ?? 0,
-                hasDocument: docs?.has(documentName) ?? false,
-            });
-
-            if (docs && docs.has(documentName)) {
-                const cached = docs.get(documentName);
-                logger.info({
-                    event: "onLoadDocument_cache_hit",
-                    documentName,
-                    hasCached: !!cached,
-                    hasDocument: !!cached?.document,
-                });
-                if (cached && cached.document) {
-                    logger.info({ event: "load_cached_document", documentName }, "Using cached document from seed API");
-                    return cached.document;
-                }
-            }
-
-            logger.info({ event: "onLoadDocument_no_cache", documentName });
-            if (!persistence) {
-                logger.info({ event: "onLoadDocument_new_doc", documentName }, "Creating new Y.Doc (no persistence)");
-                return new Y.Doc();
-            }
-            const doc = await (persistence as any).getYDoc(documentName);
-
-            // Bind persistence to the document to save updates automatically
-            // y-leveldb's bindState listens to 'update' events
-            await (persistence as any).bindState(documentName, doc);
-
-            // Room Size Warning Listener
-            const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
-            const checkSize = () => {
-                // This might be expensive for large docs, but it matches previous behavior
-                // Ideally this should be debounced
-                const size = Y.encodeStateAsUpdate(doc).byteLength;
-                if (size > limitBytes) {
-                    logger.warn({ event: "room_size_exceeded", room: documentName, bytes: size });
-                }
-            };
-
-            // Attach listener similar to update-listeners.ts
-            try {
-                const ymap: any = doc.getMap("orderedTree");
-                if (ymap && typeof ymap.observeDeep === "function") {
-                    ymap.observeDeep(checkSize);
-                } else {
-                    doc.on("update", checkSize);
-                }
-            } catch {
-                doc.on("update", checkSize);
-            }
-
-            return doc;
-        },
-
-        async onConnect(data: any) {
-            const { request, documentName, connection } = data;
-
-            const ip = (request.headers["x-forwarded-for"] as string) || request.socket.remoteAddress || "";
-            const origin = request.headers.origin || "";
-
-            // Store IP in connection context for onDisconnect
-            // Use data.context if connection.context is not available
-            if (connection) {
-                (connection as any).context = { ...((connection as any).context || {}), ip };
-            } else if (data.context) {
-                data.context.ip = ip;
-            }
-
-            // Rate Limiting Check
-            const now = Date.now();
-            const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
-            let timestamps = connectionRateLimits.get(ip) || [];
-            timestamps = timestamps.filter(t => t > windowStart);
-
-            if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
-                logger.warn({ event: "ws_connection_denied", reason: "rate_limit_exceeded", ip });
-                throw new Error("RATE_LIMIT_EXCEEDED");
-            }
-            timestamps.push(now);
-            connectionRateLimits.set(ip, timestamps);
-
-            if (allowedOrigins.size && !allowedOrigins.has(origin)) {
-                logger.warn({ event: "ws_connection_denied", reason: "invalid_origin", origin });
-                throw new Error("ORIGIN_NOT_ALLOWED");
-            }
-            if (totalSockets >= config.MAX_SOCKETS_TOTAL) {
-                logger.warn({ event: "ws_connection_denied", reason: "max_sockets_total" });
-                throw new Error("MAX_SOCKETS_TOTAL");
-            }
-            if ((ipCounts.get(ip) ?? 0) >= config.MAX_SOCKETS_PER_IP) {
-                logger.warn({ event: "ws_connection_denied", reason: "max_sockets_ip", ip });
-                throw new Error("MAX_SOCKETS_PER_IP");
-            }
-
-            // Check room limits
-            // Fallback for empty documentName (possible Hocuspocus issue)
-            let roomName = documentName;
-            if (!roomName && request.url) {
-                const path = request.url.split("?")[0];
-                roomName = path.startsWith("/") ? path.slice(1) : path;
-                logger.info({ event: "ws_connect_name_fallback", original: documentName, derived: roomName });
-            }
-
-            // Hocuspocus documentName IS the room/docName
-            const roomInfo = parseRoom(roomName);
-            // Note: documentName passed to onConnect is the one from URL
-            if (!roomInfo) {
-                logger.warn({
-                    event: "ws_connection_denied",
-                    reason: "invalid_room",
-                    path: sanitizeUrl(request.url),
-                    documentName,
-                    roomName,
-                });
-                throw new Error("INVALID_ROOM");
-            }
-
-            if ((roomCounts.get(roomName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
-                logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: roomName });
-                throw new Error("MAX_SOCKETS_PER_ROOM");
-            }
-
-            // Increment counters
-            totalSockets++;
-            ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
-            roomCounts.set(roomName, (roomCounts.get(roomName) ?? 0) + 1);
-
-            logger.info({ event: "ws_connection_accepted", room: roomName });
-        },
-
-        async onDisconnect(data: any) {
-            const { documentName } = data;
-            const connection = data.connection;
-
-            // Context might be in data.context or connection.context
-            const context = data.context || (connection as any)?.context || {};
-            const ip = context.ip || "";
-
-            // Decrement counters
-            totalSockets--;
-            if (totalSockets < 0) totalSockets = 0;
-
-            if (ip) {
-                const count = (ipCounts.get(ip) ?? 1) - 1;
-                if (count <= 0) ipCounts.delete(ip);
-                else ipCounts.set(ip, count);
-            }
-
-            if (documentName) {
-                const count = (roomCounts.get(documentName) ?? 1) - 1;
-                if (count <= 0) roomCounts.delete(documentName);
-                else roomCounts.set(documentName, count);
-            }
-        },
     } as any);
 
     // API Routes
@@ -349,7 +357,14 @@ export async function startServer(
         if (request.url?.startsWith("/projects/")) {
             const wsServer = (hocuspocus as any).webSocketServer;
             wsServer.handleUpgrade(request, socket, head, (ws: any) => {
-                wsServer.emit("connection", ws, request);
+                // Manually handle connection to ensure Hocuspocus receives it
+                // Using internal hocuspocus instance because event emission was unreliable in this setup
+                try {
+                    (hocuspocus as any).hocuspocus.handleConnection(ws, request);
+                } catch (e) {
+                    console.error("Error handling Hocuspocus connection:", e);
+                    ws.close(1011); // Internal Error
+                }
             });
         } else {
             // Let other handlers or default behavior handle it (usually closes socket)

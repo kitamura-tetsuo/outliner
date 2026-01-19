@@ -34,7 +34,12 @@ test.describe("YJS token refresh reconnect", () => {
             (window as any).__CONN__.provider.disconnect();
         });
         // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__CONN__.provider.status === "disconnected");
+        await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const s = (window as any).__CONN__.provider.status;
+            if (s !== "disconnected") console.log("Waiting for disconnected, current:", s);
+            return s === "disconnected";
+        });
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
