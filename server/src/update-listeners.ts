@@ -1,4 +1,5 @@
 import type { Logger } from "pino";
+// @ts-ignore
 import type { LeveldbPersistence } from "y-leveldb";
 import { warnIfRoomTooLarge } from "./persistence.js";
 

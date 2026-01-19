@@ -1,4 +1,5 @@
 import express from "express";
+import helmet from "helmet";
 import http from "http";
 import * as decoding from "lib0/decoding";
 import * as enc from "lib0/encoding";
@@ -66,6 +67,10 @@ export async function startServer(config: Config, logger = defaultLogger) {
     // Create Express app for API endpoints
     const app = express();
 
+    // Add security headers
+    // @ts-ignore
+    app.use((helmet as any)());
+
     // Add JSON body parser middleware
     app.use(express.json());
 
@@ -99,7 +104,10 @@ export async function startServer(config: Config, logger = defaultLogger) {
     // Detailed Health/Debug endpoint
     app.get("/health", (req: any, res: any) => {
         const headers = { ...req.headers };
-        // Redact sensible headers if necessary, but for now we want to see them all
+        // Redact sensitive headers
+        delete headers.authorization;
+        delete headers.cookie;
+
         res.json({
             status: "ok",
             env: process.env.NODE_ENV,
