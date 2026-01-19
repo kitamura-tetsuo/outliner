@@ -22,7 +22,7 @@ test.describe("Basic Navigation Debug", () => {
             console.log("Debug: Page title:", title);
 
             // ページが読み込まれたことを確認
-            await expect(page).toHaveURL(/.*localhost:7090.*/);
+            await expect(page).toHaveURL(/.*(localhost|127\.0\.0\.1):7090.*/);
         } catch (error) {
             console.error("Debug: Navigation failed:", error);
             console.log("Debug: Current page URL:", page.url());

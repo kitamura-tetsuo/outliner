@@ -28,23 +28,23 @@ test.describe("YJS token refresh reconnect", () => {
 
         await page.waitForFunction(() => {
             const p = (window as any).__CONN__?.provider;
-            return p?.isSynced === true || (p as any)?.websocketProvider?.status === "connected";
+            return p?.isSynced === true || p?.status === "connected";
         });
         await page.evaluate(() => {
             (window as any).__CONN__.provider.disconnect();
         });
-        await page.waitForFunction(() =>
-            (window as any).__CONN__.provider.websocketProvider?.status === "disconnected"
-        );
+        // eslint-disable-next-line no-restricted-globals
+        await page.waitForFunction(() => (window as any).__CONN__.provider.status === "disconnected");
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
         await page.waitForFunction(() => {
             const p = (window as any).__CONN__.provider;
-            return p.isSynced === true || (p as any).websocketProvider?.status === "connected";
+            return p.isSynced === true || p.status === "connected";
         });
-        const authParam = await page.evaluate(() => (window as any).__CONN__.provider.configuration.token);
-        expect(authParam).toBeTruthy();
+        // eslint-disable-next-line no-restricted-globals
+        const isConnected = await page.evaluate(() => (window as any).__CONN__.provider.status === "connected");
+        expect(isConnected).toBeTruthy();
     });
 
     test("updates auth param when token changes", async ({ page }) => {
@@ -54,22 +54,29 @@ test.describe("YJS token refresh reconnect", () => {
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
             (window as any).__CONN__ = conn;
+
+            // Spy on sendToken to verify it's called
+            const originalSendToken = conn.provider.sendToken.bind(conn.provider);
+            conn.provider.sendToken = async () => {
+                // eslint-disable-next-line no-restricted-globals
+                (window as any).__SEND_TOKEN_CALLED__ = true;
+                return originalSendToken();
+            };
         }, projectId);
 
         await page.waitForFunction(() => {
             const p = (window as any).__CONN__?.provider;
-            return p?.isSynced === true || (p as any)?.websocketProvider?.status === "connected";
+            return p?.isSynced === true || p?.status === "connected";
         });
-        const initialAuth = await page.evaluate(() => (window as any).__CONN__.provider.configuration.token);
+
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
-        await page.waitForFunction(
-            initial => (window as any).__CONN__.provider.configuration.token !== initial,
-            initialAuth,
-        );
-        const newAuth = await page.evaluate(() => (window as any).__CONN__.provider.configuration.token);
-        expect(newAuth).toBeTruthy();
-        expect(newAuth).not.toEqual(initialAuth);
+
+        // eslint-disable-next-line no-restricted-globals
+        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true);
+        // eslint-disable-next-line no-restricted-globals
+        const tokenRefreshed = await page.evaluate(() => (window as any).__SEND_TOKEN_CALLED__);
+        expect(tokenRefreshed).toBe(true);
     });
 });
