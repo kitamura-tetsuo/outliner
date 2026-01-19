@@ -7,7 +7,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 
 // Type for mock persistence object
 interface MockPersistence {
-    once: ReturnType<typeof vi.fn>;
+    once: (eventName: "synced", callback: () => void) => void;
     synced: boolean;
     destroy: ReturnType<typeof vi.fn>;
 }

@@ -34,12 +34,14 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         (window as any).__DOC__ = conn.doc;
         (window as any).__PROVIDER__ = conn.provider;
         conn.provider.on("status", (e: any) => console.log("[p1] status", e.status));
-        conn.provider.on("sync", (isSynced: boolean) => console.log("[p1] sync", isSynced));
+        conn.provider.on("synced", (data: { state: boolean; }) => console.log("[p1] sync", data.state));
         for (let i = 0; i < 80; i++) {
-            if ((conn.provider as any).wsconnected === true) break;
+            if (conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected") {
+                break;
+            }
             await new Promise(r => setTimeout(r, 100));
         }
-        return (conn.provider as any).wsconnected === true;
+        return conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected";
     }, projectId);
     expect(p1Connected).toBeTruthy();
 
@@ -88,16 +90,18 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         });
 
         // Log provider.synced transitions
-        conn.provider.on("sync", (s: boolean) => {
-            console.log(`[p2] provider.synced=${s}`);
+        conn.provider.on("synced", (data: { state: boolean; }) => {
+            console.log(`[p2] provider.synced=${data.state}`);
         });
-        console.log(`[p2] initial provider.synced=${conn.provider.synced}`);
+        console.log(`[p2] initial provider.isSynced=${conn.provider.isSynced}`);
 
         for (let i = 0; i < 80; i++) {
-            if ((conn.provider as any).wsconnected === true) break;
+            if (conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected") {
+                break;
+            }
             await new Promise(r => setTimeout(r, 100));
         }
-        return (conn.provider as any).wsconnected === true;
+        return conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected";
     }, projectId);
     expect(p2Connected).toBeTruthy();
 

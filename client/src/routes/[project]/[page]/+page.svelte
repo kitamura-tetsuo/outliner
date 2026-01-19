@@ -146,20 +146,18 @@
             const findPage = () => {
                 const items = project.items as any;
                 if (items) {
-                    const len =
-                        typeof items.length === "function"
-                            ? items.length()
-                            : (items.length ?? 0);
+                    const len = (typeof items.length === "function") ? items.length() : (items.length ?? 0);
+                    const titles: string[] = [];
                     for (let i = 0; i < len; i++) {
                         const p = items.at ? items.at(i) : items[i];
-                        const t =
-                            p?.text?.toString?.() ?? String(p?.text ?? "");
-                        if (
-                            String(t).toLowerCase() ===
-                            String(pageName).toLowerCase()
-                        ) {
+                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        titles.push(t);
+                        if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
                             return p;
                         }
+                    }
+                    if (len > 0) {
+                        console.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
                     }
                 }
                 return null;

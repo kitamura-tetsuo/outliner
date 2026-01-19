@@ -3,48 +3,50 @@ import { vi } from "vitest";
 import { applyAwarenessUpdate, Awareness, encodeAwarenessUpdate } from "y-protocols/awareness";
 import * as Y from "yjs";
 
-// Enhanced mock for y-websocket to simulate WebSocket connections in tests
-class MockWebsocketProvider {
+// Enhanced mock for HocuspocusProvider to simulate WebSocket connections in tests
+class MockHocuspocusProvider {
     public doc: Y.Doc;
     public awareness: Awareness;
-    public wsconnected: boolean = false;
-    public synced: boolean = false;
-    public roomname: string;
+    public isSynced: boolean = false;
+    public name: string;
+    public configuration: any;
 
     // Registry of all providers by room
-    static rooms: Map<string, Set<MockWebsocketProvider>> = new Map();
+    static rooms: Map<string, Set<MockHocuspocusProvider>> = new Map();
 
     // Simple event emitter implementation for testing
     private eventListeners: Map<string, ((...args: unknown[]) => void)[]> = new Map();
 
     constructor(
-        serverUrl: string,
-        roomname: string,
-        doc: Y.Doc,
+        configuration: {
+            url: string;
+            name: string;
+            document: Y.Doc;
+        },
     ) {
-        this.doc = doc;
-        this.roomname = roomname;
-        this.awareness = new Awareness(doc);
+        this.doc = configuration.document;
+        this.name = configuration.name;
+        this.configuration = configuration;
+        this.awareness = new Awareness(this.doc);
 
         // Register this provider to the room
-        if (!MockWebsocketProvider.rooms.has(roomname)) {
-            MockWebsocketProvider.rooms.set(roomname, new Set());
-        }
-        MockWebsocketProvider.rooms.get(roomname)!.add(this);
+        const peers = MockHocuspocusProvider.rooms.get(this.name) ?? new Set();
+        void MockHocuspocusProvider.rooms.set(this.name, peers);
+        peers.add(this);
 
         // Listen for doc updates to broadcast
         this.doc.on("update", this.handleDocUpdate);
 
         // Listen for awareness updates to broadcast
-        this.awareness.on("update", this.handleAwarenessUpdate);
+        // Fix TS error: change "update" to "change" if "update" is not recognized
+        this.awareness.on("change", this.handleAwarenessUpdate);
 
         // Simulate connection in test environment
         setTimeout(() => {
-            this.wsconnected = true;
-            this.synced = true;
-            // Emit sync event to simulate successful connection
-            this.emit("sync", [true]);
-            this.emit("status", [{ connected: true }]);
+            this.isSynced = true;
+            // Emit synced event to simulate successful connection
+            this.emit("synced", [{ state: true }]);
+            this.emit("status", [{ status: "connected" }]);
 
             // Sync with existing peers in the room
             this.syncWithPeers();
@@ -53,7 +55,7 @@ class MockWebsocketProvider {
 
     private handleDocUpdate = (update: Uint8Array, origin: unknown) => {
         // Only broadcast if the update originated locally (not from another provider)
-        if (origin instanceof MockWebsocketProvider) return;
+        if (origin instanceof MockHocuspocusProvider) return;
 
         this.broadcastToRoom((peer) => {
             Y.applyUpdate(peer.doc, update, this);
@@ -64,7 +66,7 @@ class MockWebsocketProvider {
         { added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; },
         origin: unknown,
     ) => {
-        if (origin instanceof MockWebsocketProvider) return;
+        if (origin instanceof MockHocuspocusProvider) return;
 
         const changedClients = added.concat(updated).concat(removed);
         const update = encodeAwarenessUpdate(this.awareness, changedClients);
@@ -74,8 +76,8 @@ class MockWebsocketProvider {
         });
     };
 
-    private broadcastToRoom(action: (peer: MockWebsocketProvider) => void) {
-        const peers = MockWebsocketProvider.rooms.get(this.roomname);
+    private broadcastToRoom(action: (peer: MockHocuspocusProvider) => void) {
+        const peers = MockHocuspocusProvider.rooms.get(this.name);
         if (peers) {
             peers.forEach(peer => {
                 if (peer !== this) {
@@ -90,7 +92,7 @@ class MockWebsocketProvider {
     }
 
     private syncWithPeers() {
-        const peers = MockWebsocketProvider.rooms.get(this.roomname);
+        const peers = MockHocuspocusProvider.rooms.get(this.name);
         if (!peers) return;
 
         peers.forEach(peer => {
@@ -128,30 +130,26 @@ class MockWebsocketProvider {
         });
     }
 
-    public connect() {
-        this.wsconnected = true;
-        // Should we sync on connect?
-        if (!this.synced) {
-            this.emit("sync", [true]);
-            this.synced = true;
-        }
-        this.emit("status", [{ connected: true }]);
+    public async connect() {
+        this.isSynced = true;
+        this.emit("synced", [{ state: true }]);
+        this.emit("status", [{ status: "connected" }]);
     }
 
     public disconnect() {
-        this.wsconnected = false;
-        this.emit("status", [{ connected: false }]);
+        this.isSynced = false;
+        this.emit("status", [{ status: "disconnected" }]);
     }
 
     public destroy() {
         // Cleanup
         this.doc.off("update", this.handleDocUpdate);
-        this.awareness.off("update", this.handleAwarenessUpdate);
-        const peers = MockWebsocketProvider.rooms.get(this.roomname);
+        this.awareness.off("change", this.handleAwarenessUpdate);
+        const peers = MockHocuspocusProvider.rooms.get(this.name);
         if (peers) {
             peers.delete(this);
             if (peers.size === 0) {
-                MockWebsocketProvider.rooms.delete(this.roomname);
+                MockHocuspocusProvider.rooms.delete(this.name);
             }
         }
     }
@@ -185,11 +183,23 @@ class MockWebsocketProvider {
             });
         }
     }
+
+    // Add required getters for HocuspocusProvider compatibility
+    get synced() {
+        return this.isSynced;
+    }
 }
 
-// Mock the y-websocket module
+// Mock the y-websocket module for backward compatibility where it's still imported but should be redirected
 vi.mock("y-websocket", () => {
     return {
-        WebsocketProvider: MockWebsocketProvider,
+        WebsocketProvider: MockHocuspocusProvider,
+    };
+});
+
+// Mock the @hocuspocus/provider module
+vi.mock("@hocuspocus/provider", () => {
+    return {
+        HocuspocusProvider: MockHocuspocusProvider,
     };
 });

@@ -5,7 +5,7 @@
 このサーバーは以下の機能を提供します：
 
 1. Firebase認証トークンの検証
-2. Azure Fluid Relay用のJWTトークン生成
+2. **Hocuspocus (Yjs)** を使用したリアルタイム同期とデータの永続化 (LevelDB)
 
 ## セットアップ
 
@@ -22,12 +22,39 @@ cp .env.example .env
 ```
 
 3. 環境変数を設定:
-   - Azure Fluid Relay設定（テナントID、エンドポイント、プライマリキー）
-   - サーバー設定（ポート、CORS設定など）
+   - サーバー設定（`PORT`、`ORIGIN_ALLOWLIST`など）
+   - 永続化設定（`LEVELDB_PATH`）
    - `LOCAL_HOST` をローカルネットワークのIPアドレスに設定（デフォルトは`localhost`）
 
 4. Firebase Admin SDK JSONファイルをダウンロードして配置:
    - `firebase-adminsdk.json` をこのディレクトリに配置
+
+## 構成 (Environment Variables)
+
+サーバーの動作は以下の環境変数で制御できます (`server/src/config.ts` 参照):
+
+### 基本設定
+
+- `PORT`: サーバーのポート番号 (デフォルト: `3000` または `7093` など)
+- `LOG_LEVEL`: ログレベル (`fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`. デフォルト: `info`)
+- `ORIGIN_ALLOWLIST`: 許可するオリジンのカンマ区切りリスト (空の場合は制限なし)
+
+### Hocuspocus / Yjs 設定
+
+- `LEVELDB_PATH`: Yjsデータの永続化パス (デフォルト: `./ydb`)
+- `LEVELDB_ROOM_SIZE_WARN_MB`: ルームサイズ警告のしきい値(MB) (デフォルト: `50`)
+- `LEVELDB_LOG_INTERVAL_MS`: LevelDB統計ログの出力間隔(ms) (デフォルト: `3600000` = 1時間)
+- `MAX_MESSAGE_SIZE_BYTES`: WebSocketメッセージの最大サイズ (デフォルト: `1000000`)
+- `IDLE_TIMEOUT_MS`: 切断までのアイドル時間 (デフォルト: `60000`)
+- `ROOM_PREFIX_ENFORCE`: ルーム名のプレフィックス強制 (デフォルト: `false`)
+
+### 制限・レートリミット
+
+- `MAX_SOCKETS_TOTAL`: サーバー全体での最大接続数 (デフォルト: `1000`)
+- `MAX_SOCKETS_PER_IP`: IPアドレスごとの最大接続数 (デフォルト: `1000000` - 実質無効化)
+- `MAX_SOCKETS_PER_ROOM`: ルームごとの最大接続数 (デフォルト: `100`)
+- `RATE_LIMIT_WINDOW_MS`: レートリミットのウィンドウ時間(ms) (デフォルト: `60000`)
+- `RATE_LIMIT_MAX_REQUESTS`: ウィンドウ内の最大リクエスト数 (デフォルト: `1000000` - 実質無効化)
 
 ## Firebase認証の設定
 
@@ -80,7 +107,7 @@ cp ../.env.example .env
 docker compose up --build
 ```
 
-Expected output includes the y-websocket server listening log and a Cloudflare Tunnel URL for the configured hostname.
+Expected output includes the Hocuspocus server listening log and a Cloudflare Tunnel URL for the configured hostname.
 
 ## Cloudflare Tunnel Setup
 

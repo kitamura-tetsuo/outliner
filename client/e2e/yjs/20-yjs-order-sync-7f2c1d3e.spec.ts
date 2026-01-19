@@ -11,7 +11,6 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
 
     // Initialize first page
     const { context: ctx1, page: p1 } = await initializeBrowserPage(browser, {
-        enableWebSocket: true,
         requireAuth: true,
         consolePrefix: "p1",
     });
@@ -31,7 +30,6 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
 
     // Initialize second page
     const { context: ctx2, page: p2 } = await initializeBrowserPage(browser, {
-        enableWebSocket: true,
         requireAuth: true,
         consolePrefix: "p2",
     });
@@ -53,10 +51,10 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
     // Log provider.synced transitions
     await p2.evaluate(() => {
         const provider = (window as any).__PROVIDER2__;
-        provider.on("sync", (s: boolean) => {
-            console.log(`[p2] provider.synced=${s}`);
+        provider.on("synced", (data: { state: boolean; }) => {
+            console.log(`[p2] provider.synced=${data.state}`);
         });
-        console.log(`[p2] initial provider.synced=${provider.synced}`);
+        console.log(`[p2] initial provider.isSynced=${provider.isSynced}`);
     });
 
     // Wait for both provider.synced and actual data to be available using the test utility function

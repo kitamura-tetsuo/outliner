@@ -1,5 +1,5 @@
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type { Awareness } from "y-protocols/awareness";
-import type { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { createProjectConnection, type PageConnection } from "../lib/yjs/connection";
@@ -12,8 +12,8 @@ export interface YjsClientParams {
     projectId: string;
     project: Project;
     doc?: Y.Doc;
-    provider?: WebsocketProvider;
-    awareness?: Awareness;
+    provider?: HocuspocusProvider;
+    awareness?: Awareness | null;
     getPageConnection?: (pageId: string) => PageConnection | undefined;
 }
 
@@ -23,8 +23,8 @@ export class YjsClient {
     public readonly project: Project;
 
     private _doc?: Y.Doc;
-    private _provider?: WebsocketProvider;
-    private _awareness?: Awareness;
+    private _provider?: HocuspocusProvider;
+    private _awareness?: Awareness | null;
     private _getPageConnection?: (pageId: string) => PageConnection | undefined;
 
     constructor(params: YjsClientParams) {
@@ -88,25 +88,26 @@ export class YjsClient {
         yjsService.setPresence(this._awareness, state);
     }
 
-    public getAwareness(): Awareness | undefined {
+    public getAwareness(): Awareness | undefined | null {
         return this._awareness;
     }
 
-    public get wsProvider(): WebsocketProvider | undefined {
+    public get wsProvider(): HocuspocusProvider | undefined {
         return this._provider;
     }
 
-    public getPageAwareness(pageId: string): Awareness | undefined {
+    public getPageAwareness(pageId: string): Awareness | undefined | null {
         const pageConn = this.getPageConnection(pageId);
         return pageConn?.awareness;
     }
 
     public get isContainerConnected(): boolean {
         try {
-            // WebsocketProvider has a private flag; infer from wsconnected when available
-            const p: any = this._provider;
+            const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
-            return !!(p.wsconnected ?? p.connected ?? p._connected ?? false);
+            // HocuspocusProvider doesn't have .status directly, check websocketProvider
+            return p.isSynced || (p as any).status === "connected"
+                || (p as any).websocketProvider?.status === "connected";
         } catch {
             return true;
         }

@@ -1,10 +1,9 @@
-require("ts-node/register");
-const { Writable } = require("stream");
-const { expect } = require("chai");
-const { createLogger } = require("../src/logger");
+import { expect } from "chai";
+import { Writable } from "stream";
+import { createLogger } from "../src/logger.js";
 
 describe("logger redaction", () => {
-    it("redacts authorization headers, tokens, and emails", done => {
+    it("redacts authorization headers, tokens, and emails", (done) => {
         let output = "";
         const stream = new Writable({
             write(chunk, _enc, cb) {

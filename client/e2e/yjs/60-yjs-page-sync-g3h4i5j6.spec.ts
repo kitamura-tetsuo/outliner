@@ -86,15 +86,16 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Wait for WebSocket to connect
         await page1.waitForFunction(() => {
             const conn = (window as any).__TEST_CONN__;
-            return conn?.provider?.wsconnected === true;
+            return conn?.provider?.isSynced === true
+                || (conn?.provider as any)?.websocketProvider?.status === "connected";
         }, { timeout: 15000 });
 
         const page1WsInfo = await page1.evaluate(() => {
             const conn = (window as any).__TEST_CONN__;
             return {
-                roomname: conn?.provider?.roomname,
-                wsconnected: conn?.provider?.wsconnected,
-                url: conn?.provider?.url,
+                roomname: conn?.provider?.configuration?.name,
+                wsconnected: (conn?.provider as any)?.websocketProvider?.status === "connected",
+                url: conn?.provider?.configuration?.url,
             };
         });
 
@@ -181,7 +182,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             // Instrument provider events for debugging
             try {
                 conn.provider.on("status", (ev: any) => console.log("[yws status]", JSON.stringify(ev)));
-                conn.provider.on("synced", (s: boolean) => console.log("[yws synced]", s));
+                conn.provider.on("synced", (data: { state: boolean; }) => console.log("[yws synced]", data.state));
             } catch {}
 
             const project = Project.fromDoc(conn.doc);
@@ -191,15 +192,16 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Wait for WebSocket to connect
         await page2.waitForFunction(() => {
             const conn = (window as any).__TEST_CONN__;
-            return conn?.provider?.wsconnected === true;
+            return conn?.provider?.isSynced === true
+                || (conn?.provider as any)?.websocketProvider?.status === "connected";
         }, { timeout: 15000 });
 
         const page2WsInfo = await page2.evaluate(() => {
             const conn = (window as any).__TEST_CONN__;
             return {
-                roomname: conn?.provider?.roomname,
-                wsconnected: conn?.provider?.wsconnected,
-                url: conn?.provider?.url,
+                roomname: conn?.provider?.configuration?.name,
+                wsconnected: (conn?.provider as any)?.websocketProvider?.status === "connected",
+                url: conn?.provider?.configuration?.url,
             };
         });
 

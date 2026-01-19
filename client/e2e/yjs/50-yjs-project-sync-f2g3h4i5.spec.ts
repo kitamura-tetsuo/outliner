@@ -41,7 +41,7 @@ test.describe("YJS-f2g3h4i5: Yjs project data sync", () => {
             const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
-            return provider?.wsconnected === true;
+            return (provider as any)?.websocketProvider?.status === "connected" || provider?.isSynced === true;
         }, { timeout: 15000 });
 
         console.log("Page1 WebSocket connected");
@@ -67,7 +67,7 @@ test.describe("YJS-f2g3h4i5: Yjs project data sync", () => {
             const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
-            return provider?.wsconnected === true;
+            return (provider as any)?.websocketProvider?.status === "connected" || provider?.isSynced === true;
         }, { timeout: 15000 });
 
         console.log("Page2 WebSocket connected");

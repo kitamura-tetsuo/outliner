@@ -128,7 +128,7 @@ describe("Logger", () => {
         vi.clearAllMocks();
 
         // テスト環境で必要な環境変数を設定
-        // @ts-expect-error - テスト用にimport.meta.envを直接設定
+        // テスト用にimport.meta.envを直接設定
         Object.assign(import.meta.env, {
             DEV: true,
             NODE_ENV: "test",
