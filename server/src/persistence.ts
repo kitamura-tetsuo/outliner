@@ -1,4 +1,5 @@
 import type { Logger } from "pino";
+// @ts-ignore
 import { LeveldbPersistence } from "y-leveldb";
 import * as Y from "yjs";
 

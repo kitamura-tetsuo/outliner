@@ -1,6 +1,6 @@
-const { expect } = require("chai");
-require("ts-node/register");
-const { recordMessage, getMetrics, resetMetrics } = require("../src/metrics");
+import { expect } from "chai";
+import { afterEach, describe, it } from "mocha";
+import { getMetrics, recordMessage, resetMetrics } from "../src/metrics.js";
 
 function createServer(size = 0) {
     return { getConnectionsCount: () => size };
@@ -13,7 +13,7 @@ describe("metrics", () => {
 
     it("tracks message count", () => {
         recordMessage();
-        const metrics = getMetrics(createServer());
+        const metrics = getMetrics(createServer() as any);
         expect(metrics.totalMessages).to.equal(1);
         expect(metrics.msgPerSec).to.be.a("number");
     });

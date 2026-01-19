@@ -19,6 +19,9 @@ let query = $state(aliasPickerStore.query || "");
 
 let visible = $derived(!!aliasPickerStore.isVisible);
 
+// Derived active descendant ID for ARIA
+let activeDescendantId = $derived(visible && selectedIndex >= 0 ? `alias-option-${selectedIndex}` : undefined);
+
 onMount(() => {
     const onVis = (e: AliasPickerVisibilityEvent) => { try { visible = !!(e?.detail?.visible); } catch {} };
     window.addEventListener("aliaspicker-visibility", onVis);
@@ -108,6 +111,8 @@ $effect(() => {
         onkeydown={handleKeydown}
         tabindex="0"
         role="dialog"
+        aria-modal="true"
+        aria-label="Select alias"
         bind:this={pickerElement}
     >
         <input
@@ -116,11 +121,23 @@ $effect(() => {
             placeholder="Select item"
             oninput={handleInput}
             bind:this={inputElement}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-controls="alias-results-list"
+            aria-expanded="true"
+            aria-activedescendant={activeDescendantId}
+            aria-label="Filter aliases"
         />
-        <ul>
+        <ul id="alias-results-list" role="listbox">
             {#each getFilteredOptions() as opt, index (opt.id)}
-                <li class:selected={index === selectedIndex}>
+                <li
+                    id="alias-option-{index}"
+                    role="option"
+                    aria-selected={index === selectedIndex}
+                    class:selected={index === selectedIndex}
+                >
                     <button
+                        tabindex="-1"
                         data-id={opt.id}
                         onclick={() => confirm(opt.id)}
                         onmouseenter={() => { selectedIndex = index; try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {} }}
@@ -152,6 +169,10 @@ $effect(() => {
     max-height: 200px;
     overflow: auto;
 }
+.alias-picker li {
+    display: block;
+    width: 100%;
+}
 .alias-picker li button {
     display: block;
     width: 100%;
@@ -166,6 +187,6 @@ $effect(() => {
     color: #0066cc;
 }
 .alias-picker li button:hover {
-    background-color: #f0f8ff;
+    background-color: #f0f0f8;
 }
 </style>

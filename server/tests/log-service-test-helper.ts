@@ -79,6 +79,11 @@ app.get("/health", (req, res) => {
     return res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
+let adminInstance = admin;
+export const setAdmin = (mock: any) => {
+    adminInstance = mock;
+};
+
 app.post("/api/save-container", async (req, res) => {
     try {
         const { idToken, containerId } = req.body;
@@ -87,7 +92,7 @@ app.post("/api/save-container", async (req, res) => {
             return res.status(400).json({ error: "Container ID is required" });
         }
 
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const decodedToken = await adminInstance.auth().verifyIdToken(idToken);
         const userId = decodedToken.uid;
 
         const userDocRef = userContainersCollection.doc(userId);
@@ -96,7 +101,7 @@ app.post("/api/save-container", async (req, res) => {
         if (docSnapshot.exists) {
             await userDocRef.update({
                 defaultContainerId: containerId,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: adminInstance.firestore.FieldValue.serverTimestamp(),
             });
 
             return res.status(200).json({
@@ -108,8 +113,8 @@ app.post("/api/save-container", async (req, res) => {
             await userDocRef.set({
                 userId,
                 defaultContainerId: containerId,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: adminInstance.firestore.FieldValue.serverTimestamp(),
+                updatedAt: adminInstance.firestore.FieldValue.serverTimestamp(),
             });
 
             return res.status(200).json({
@@ -136,7 +141,7 @@ app.post("/api/get-container-users", async (req, res) => {
             return res.status(400).json({ error: "Container ID is required" });
         }
 
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const decodedToken = await adminInstance.auth().verifyIdToken(idToken);
 
         if (decodedToken.role !== "admin") {
             return res.status(403).json({ error: "Admin privileges required" });
@@ -171,7 +176,7 @@ app.post("/api/list-users", async (req, res) => {
             return res.status(403).json({ error: "Admin privileges required" });
         }
 
-        const result = await admin.auth().listUsers();
+        const result = await adminInstance.auth().listUsers();
         const users = result.users.map(u => ({
             uid: u.uid,
             email: u.email,
@@ -213,4 +218,28 @@ app.get("/debug/token-info", async (req, res) => {
     }
 });
 
-export { app };
+import LogManager from "../src/utils/log-manager.js";
+
+app.post("/api/rotate-logs", async (req, res) => {
+    try {
+        const clientRotated = await LogManager.rotateClientLogs(2);
+        const telemetryRotated = await LogManager.rotateTelemetryLogs(2);
+        const serverRotated = await LogManager.rotateServerLogs(2);
+
+        if (clientRotated) LogManager.refreshClientLogStream();
+        if (telemetryRotated) LogManager.refreshTelemetryLogStream();
+        if (serverRotated) LogManager.refreshServerLogStream();
+
+        return res.status(200).json({
+            success: true,
+            clientRotated,
+            telemetryRotated,
+            serverRotated,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+export { admin, app };

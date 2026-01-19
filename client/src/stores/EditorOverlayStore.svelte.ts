@@ -1042,10 +1042,12 @@ export class EditorOverlayStore {
                 const currentPage = (window as any).generalStore.currentPage;
                 if (currentPage && currentPage.items) {
                     // Try to find the item by ID in the current page's items
-                    for (let i = 0; i < currentPage.items.length; i++) {
-                        const item = currentPage.items.at ? currentPage.items.at(i) : currentPage.items[i];
-                        if (item && item.id === itemId) {
-                            return item.text || "";
+                    // Use iterator to avoid O(N^2) complexity with indexed access on Items
+                    if (currentPage.items) {
+                        for (const item of currentPage.items) {
+                            if (item && item.id === itemId) {
+                                return item.text || "";
+                            }
                         }
                     }
                 }

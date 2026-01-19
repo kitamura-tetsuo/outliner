@@ -44,8 +44,7 @@ if (typeof (global as any).jest === "undefined") {
     };
 }
 
-import admin from "firebase-admin";
-import { app } from "./log-service-test-helper.js";
+import { admin, app, setAdmin } from "./log-service-test-helper.js";
 
 const sandbox = sinon.createSandbox();
 
@@ -58,7 +57,21 @@ describe("認証サービスのテスト", () => {
             listUsers: sandbox.stub().resolves({ users: [] }),
         };
 
+        const firestoreStub = sandbox.stub();
+        (firestoreStub as any).FieldValue = { serverTimestamp: () => "server-timestamp" };
+
+        // Create a mock admin object
+        const mockAdmin = {
+            auth: () => authStub,
+            firestore: firestoreStub,
+        };
+
+        // Inject the mock
+        setAdmin(mockAdmin);
+
+        // Also stub the original admin just in case other parts use it
         sandbox.stub(admin, "auth").returns(authStub as any);
+        sandbox.stub(admin, "firestore").returns(firestoreStub as any);
 
         // Configure authStub behavior
         authStub.verifyIdToken.callsFake(async (idToken: string) => {
@@ -80,8 +93,6 @@ describe("認証サービスのテスト", () => {
             throw new Error("Invalid token");
         });
 
-        // Mock Firestore
-        const firestoreStub = sandbox.stub(admin, "firestore");
         const firestoreObj = {
             settings: sandbox.stub(),
             collection: sandbox.stub(),

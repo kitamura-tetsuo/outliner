@@ -225,9 +225,9 @@
 
 <div class="project-selector">
     <div class="selector-header">
-        <h3 class="selector-title">プロジェクト選択</h3>
+        <h3 id="project-selector-title" class="selector-title">プロジェクト選択</h3>
         {#if isLoading}
-            <span class="loading-indicator">読み込み中...</span>
+            <span class="loading-indicator" role="status" aria-live="polite">読み込み中...</span>
         {/if}
     </div>
 
@@ -244,6 +244,7 @@
                 onchange={handleProjectChange}
                 disabled={isLoading || projects.length === 0}
                 class="project-select"
+                aria-labelledby="project-selector-title"
             >
                 {#if projects.length === 0}
                     <option value="">利用可能なプロジェクトがありません</option>

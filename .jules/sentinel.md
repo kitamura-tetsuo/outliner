@@ -39,3 +39,15 @@
 **Vulnerability:** The WebSocket server's token verification logic (`verifyIdTokenCached`) accepted JWTs signed with `alg: none` if they had a specific structure, intended for testing. This logic was not guarded by an environment check, potentially allowing authentication bypass in production.
 **Learning:** Test-specific authentication bypasses (like mocking tokens) must be strictly isolated. Code that "looks like" it handles a specific edge case (like `alg: none`) can inadvertently become a backdoor if not explicitly gated.
 **Prevention:** Always wrap test-only logic in strict `process.env.NODE_ENV === 'test'` blocks. Avoid implementing "mock" logic in production-capable code paths; prefer dependency injection or separate test helpers.
+
+## 2025-05-24 - DoS via Unhandled URI Decoding
+
+**Vulnerability:** The server used `decodeURIComponent` on user-supplied URL segments without a try-catch block. Sending a malformed sequence (like `%`) caused an uncaught exception, crashing the entire server process.
+**Learning:** `decodeURIComponent` throws errors, unlike many other parsing functions that might return null/undefined. Input validation layers (like `parseRoom`) are the first line of defense and must be bulletproof against malformed inputs.
+**Prevention:** Always wrap `decodeURIComponent` (and `JSON.parse`) in try-catch blocks when processing external input. Treat decoding failures as validation errors (return undefined/400).
+
+## 2025-05-25 - Disabled Rate Limiting by Default
+
+**Vulnerability:** The server configuration defaulted to 1,000,000 connections/requests per IP, effectively disabling DoS protection.
+**Learning:** Default values in configuration schemas (like Zod) are often set to "permissive" values during development to avoid friction, but these defaults can dangerously persist into production if not explicitly overridden.
+**Prevention:** Set secure, restrictive defaults in code (secure-by-default). Use environment variables to relax limits for specific environments (dev/test) if needed, rather than the other way around.

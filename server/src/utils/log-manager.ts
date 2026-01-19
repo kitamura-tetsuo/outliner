@@ -382,3 +382,17 @@ export function refreshServerLogStream(): fs.WriteStream {
 }
 
 export const logger = serverLogger;
+
+export default {
+    rotateLogFile,
+    rotateClientLogs,
+    rotateTelemetryLogs,
+    rotateServerLogs,
+    refreshClientLogStream,
+    refreshTelemetryLogStream,
+    refreshServerLogStream,
+    clientLogger,
+    telemetryLogger,
+    serverLogger,
+    logger,
+};

@@ -1,12 +1,24 @@
 #!/usr/bin/env node
-const { execFile } = require("child_process");
-const { promisify } = require("util");
-const fs = require("fs/promises");
-const path = require("path");
+import { execFile } from "child_process";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+import { promisify } from "util";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const execFileAsync = promisify(execFile);
 
-function getConfig() {
+interface Config {
+    backupDir: string;
+    sourceDir: string;
+    rcloneBin: string;
+    rcloneRemote?: string;
+    retentionDays: number;
+}
+
+export function getConfig(): Config {
     return {
         backupDir: process.env.BACKUP_DIR || path.join(__dirname, "..", "backups"),
         sourceDir: process.env.BACKUP_SOURCE || path.join(__dirname, "..", "data"),
@@ -16,12 +28,12 @@ function getConfig() {
     };
 }
 
-function getTimestamp() {
+function getTimestamp(): string {
     const d = new Date();
     return d.toISOString().replace(/[:-]/g, "").replace(/\.\d{3}Z$/, "");
 }
 
-async function createArchive() {
+export async function createArchive(): Promise<string> {
     const { backupDir, sourceDir } = getConfig();
     await fs.mkdir(backupDir, { recursive: true });
     const archiveName = `backup-${getTimestamp()}.tar.gz`;
@@ -30,7 +42,7 @@ async function createArchive() {
     return archivePath;
 }
 
-async function uploadArchive(archivePath) {
+export async function uploadArchive(archivePath: string): Promise<void> {
     const { rcloneBin, rcloneRemote } = getConfig();
     if (!rcloneRemote) {
         console.log("RCLONE_REMOTE not set, skipping upload");
@@ -39,7 +51,7 @@ async function uploadArchive(archivePath) {
     await execFileAsync(rcloneBin, ["copy", archivePath, rcloneRemote]);
 }
 
-async function pruneOldBackups(retentionDays) {
+export async function pruneOldBackups(retentionDays?: number): Promise<void> {
     const { backupDir, retentionDays: cfgRetention } = getConfig();
     const limit = retentionDays || cfgRetention;
     const files = await fs.readdir(backupDir);
@@ -61,11 +73,9 @@ async function main() {
     await pruneOldBackups();
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
     main().catch((err) => {
         console.error(err);
         process.exit(1);
     });
 }
-
-module.exports = { createArchive, uploadArchive, pruneOldBackups };

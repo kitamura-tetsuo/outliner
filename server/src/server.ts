@@ -2,6 +2,7 @@ import { Logger } from "@hocuspocus/extension-logger";
 console.log("DEBUG: LOADING server/src/server.ts");
 import { Hocuspocus, Server } from "@hocuspocus/server";
 import express from "express";
+import helmet from "helmet";
 import http from "http";
 import { WebSocketServer } from "ws";
 import * as Y from "yjs";
@@ -30,6 +31,12 @@ export async function startServer(
 
     // Create Express app for API endpoints
     const app = express();
+
+    // Add security headers
+    // @ts-ignore
+    app.use((helmet as any)());
+
+    // Add JSON body parser middleware
     app.use(express.json());
 
     const server = http.createServer(app);
@@ -69,6 +76,27 @@ export async function startServer(
         }, config.LEVELDB_LOG_INTERVAL_MS));
     }
 
+    // Detailed Health/Debug endpoint
+    app.get("/health", (req: any, res: any) => {
+        const headers = { ...req.headers };
+        // Redact sensitive headers
+        delete headers.authorization;
+        delete headers.cookie;
+
+        res.json({
+            status: "ok",
+            env: process.env.NODE_ENV,
+            timestamp: new Date().toISOString(),
+            headers: headers,
+        });
+    });
+    // Configure y-websocket persistence
+    if (!disableLeveldb) {
+        process.env.YPERSISTENCE = config.LEVELDB_PATH;
+    } else {
+        delete process.env.YPERSISTENCE;
+    }
+
     // Rate limiting state
     const ipCounts = new Map<string, number>();
     const roomCounts = new Map<string, number>();
@@ -102,7 +130,7 @@ export async function startServer(
                     reason: "message_too_large",
                     size: message.byteLength,
                 });
-                connection.close({ code: 4005, reason: "MESSAGE_TOO_LARGE" });
+                connection.close(4005, "MESSAGE_TOO_LARGE");
             }
         },
     } as any;
@@ -232,6 +260,14 @@ export async function startServer(
                     const { request, documentName, connection } = data;
                     logger.warn({ event: "DEBUG_onConnect", documentName, url: request.url });
 
+                    // AUTH CHECK (Consistency with onAuthenticate)
+                    const token = extractAuthToken(request);
+                    if (!token) {
+                        logger.warn({ event: "ws_connection_denied", reason: "no_token" });
+                        connection?.close(4001, "UNAUTHORIZED");
+                        throw new Error("Authentication failed: No token provided");
+                    }
+
                     // Helper to close connection properly and return early
                     // We close the raw WebSocket FIRST to ensure close event is emitted
                     // before Hocuspocus sets up its internal handlers
@@ -284,7 +320,7 @@ export async function startServer(
                     if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
                         logger.warn({ event: "ws_connection_denied", reason: "rate_limit_exceeded", ip });
                         closeWithReason(4004, "RATE_LIMIT_EXCEEDED");
-                        return;
+                        throw new Error("RATE_LIMIT_EXCEEDED");
                     }
                     timestamps.push(now);
                     connectionRateLimits.set(ip, timestamps);
@@ -292,17 +328,17 @@ export async function startServer(
                     if (allowedOrigins.size && !allowedOrigins.has(origin)) {
                         logger.warn({ event: "ws_connection_denied", reason: "invalid_origin", origin });
                         closeWithReason(4003, "ORIGIN_NOT_ALLOWED");
-                        return;
+                        throw new Error("ORIGIN_NOT_ALLOWED");
                     }
                     if (totalSockets >= config.MAX_SOCKETS_TOTAL) {
                         logger.warn({ event: "ws_connection_denied", reason: "max_sockets_total" });
                         closeWithReason(4008, "MAX_SOCKETS_TOTAL");
-                        return;
+                        throw new Error("MAX_SOCKETS_TOTAL");
                     }
                     if ((ipCounts.get(ip) ?? 0) >= config.MAX_SOCKETS_PER_IP) {
                         logger.warn({ event: "ws_connection_denied", reason: "max_sockets_ip", ip });
                         closeWithReason(4008, "MAX_SOCKETS_PER_IP");
-                        return;
+                        throw new Error("MAX_SOCKETS_PER_IP");
                     }
 
                     // Check room limits
@@ -326,7 +362,7 @@ export async function startServer(
                             roomName,
                         });
                         closeWithReason(4002, "INVALID_ROOM");
-                        return;
+                        throw new Error("INVALID_ROOM");
                     }
 
                     const currentRoomCount = roomCounts.get(roomName) ?? 0;
@@ -337,7 +373,7 @@ export async function startServer(
                         logger.warn({ event: "DEBUG_Rejecting", room: roomName });
                         logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: roomName });
                         closeWithReason(4006, "MAX_SOCKETS_PER_ROOM");
-                        return;
+                        throw new Error("MAX_SOCKETS_PER_ROOM");
                     }
 
                     // Increment counters

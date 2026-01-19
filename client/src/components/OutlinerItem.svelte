@@ -125,9 +125,8 @@ onMount(() => {
         const targetId = gs?.openCommentItemId;
         let exists = false;
         if (items) {
-            const len = items?.length ?? 0;
-            for (let i = 0; i < len; i++) {
-                const it = items.at ? items.at(i) : items[i];
+            // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
+            for (const it of items) {
                 if (it?.id === targetId) { exists = true; break; }
             }
         }
@@ -518,9 +517,8 @@ function addAttachmentToDomTargetOrModel(ev: DragEvent, url: string) {
         let targetItem: any = null;
         if (w && targetId && w.generalStore?.currentPage?.items) {
             const items: any = w.generalStore.currentPage.items;
-            const len = items?.length ?? 0;
-            for (let i = 0; i < len; i++) {
-                const cand: any = items.at ? items.at(i) : items[i];
+            // Use efficient iterator to avoid O(N^2) complexity
+            for (const cand of items) {
                 if (String(cand?.id) === String(targetId)) { targetItem = cand; break; }
             }
         }
@@ -1603,9 +1601,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                 const mappedId = map ? map[String(model.id)] : undefined;
                                 const curPage:any = w?.generalStore?.currentPage;
                                 if (mappedId && curPage?.items) {
-                                    const len = curPage.items.length ?? 0;
-                                    for (let i = 0; i < len; i++) {
-                                        const cand:any = curPage.items.at ? curPage.items.at(i) : curPage.items[i];
+                                    for (const cand of curPage.items) {
                                         if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as any)?.attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                                     }
                                 }
@@ -1646,9 +1642,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                 const mappedId = map ? map[String(model.id)] : undefined;
                 const curPage:any = w?.generalStore?.currentPage;
                 if (mappedId && curPage?.items) {
-                    const len = curPage.items.length ?? 0;
-                    for (let i = 0; i < len; i++) {
-                        const cand:any = curPage.items.at ? curPage.items.at(i) : curPage.items[i];
+                    for (const cand of curPage.items) {
                         if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch {} try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                     }
                 }

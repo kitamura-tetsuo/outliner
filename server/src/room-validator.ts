@@ -12,19 +12,23 @@ export function parseRoom(path: string): RoomInfo | undefined {
     const [pathname] = path.split("?");
     const parts = pathname.split("/").filter(Boolean);
 
-    if (parts.length === 2 && parts[0] === "projects") {
-        const project = decodeURIComponent(parts[1]);
-        if (project.length > 0 && project.length <= 128) {
-            return { project };
+    try {
+        if (parts.length === 2 && parts[0] === "projects") {
+            const project = decodeURIComponent(parts[1]);
+            if (project.length > 0 && project.length <= 128) {
+                return { project };
+            }
         }
-    }
 
-    if (parts.length === 4 && parts[0] === "projects" && parts[2] === "pages") {
-        const project = decodeURIComponent(parts[1]);
-        const page = decodeURIComponent(parts[3]);
-        if (project.length > 0 && project.length <= 128 && page.length > 0 && page.length <= 128) {
-            return { project, page };
+        if (parts.length === 4 && parts[0] === "projects" && parts[2] === "pages") {
+            const project = decodeURIComponent(parts[1]);
+            const page = decodeURIComponent(parts[3]);
+            if (project.length > 0 && project.length <= 128 && page.length > 0 && page.length <= 128) {
+                return { project, page };
+            }
         }
+    } catch {
+        return undefined;
     }
     return undefined;
 }

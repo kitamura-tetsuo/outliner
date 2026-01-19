@@ -2,6 +2,7 @@
     import { projectStore } from "../stores/projectStore.svelte";
     import { store } from "../stores/store.svelte";
     import { resolve } from "$app/paths";
+    import { page as pageStore } from "$app/stores";
 
     let { isOpen = $bindable(true) } = $props();
 
@@ -73,7 +74,12 @@
                     {:else}
                         {#each projectStore.projects as project (project.id)}
                             <li>
-                                <a href={`/${project.id}`} class="project-item">
+                                <a
+                                    href={`/${encodeURIComponent(project.name)}`}
+                                    class="project-item"
+                                    aria-current={$pageStore.url.pathname === `/${encodeURIComponent(project.name)}` ? "page" : undefined}
+                                    class:active={$pageStore.url.pathname === `/${encodeURIComponent(project.name)}`}
+                                >
                                     <span class="item-content-wrapper">
                                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
                                             <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
@@ -126,12 +132,15 @@
                         <li class="sidebar-placeholder">No pages available</li>
                     {:else}
                         {#each pages as page (page.id)}
+                            {@const pageHref = resolve(
+                                `/${encodeURIComponent(store.project?.title || "Untitled Project")}/${encodeURIComponent(page.text)}`,
+                            )}
                             <li>
                                 <a
                                     class="page-item"
-                                    href={resolve(
-                                        `/${encodeURIComponent(store.project?.title || "Untitled Project")}/${encodeURIComponent(page.text)}`,
-                                    )}
+                                    href={pageHref}
+                                    aria-current={$pageStore.url.pathname === pageHref ? "page" : undefined}
+                                    class:active={$pageStore.url.pathname === pageHref}
                                 >
                                     <span class="item-content-wrapper">
                                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
@@ -160,7 +169,12 @@
 
         <div class="sidebar-section">
             <h3 class="sidebar-section-title">Settings</h3>
-            <a class="settings-link" href={resolve("/settings")}>
+            <a
+                class="settings-link"
+                href={resolve("/settings")}
+                aria-current={$pageStore.url.pathname === resolve("/settings") ? "page" : undefined}
+                class:active={$pageStore.url.pathname === resolve("/settings")}
+            >
                 <span class="item-content-wrapper">
                     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
                         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.72l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
@@ -296,6 +310,12 @@
         background-color: rgba(0, 0, 0, 0.05);
     }
 
+    .project-item.active {
+        background-color: rgba(37, 99, 235, 0.1);
+        color: #2563eb;
+        font-weight: 500;
+    }
+
     .project-list li:last-child .project-item {
         margin-bottom: 0;
     }
@@ -331,6 +351,12 @@
 
     .page-item:hover {
         background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .page-item.active {
+        background-color: rgba(37, 99, 235, 0.1);
+        color: #2563eb;
+        font-weight: 500;
     }
 
     .page-list li:last-child .page-item {
@@ -380,6 +406,12 @@
         background-color: rgba(0, 0, 0, 0.05);
     }
 
+    .settings-link.active {
+        background-color: rgba(37, 99, 235, 0.1);
+        color: #2563eb;
+        font-weight: 500;
+    }
+
     .settings-text {
         font-size: 0.875rem;
         color: #374151;
@@ -410,6 +442,11 @@
         background-color: rgba(255, 255, 255, 0.05);
     }
 
+    :global(html.dark) .project-item.active {
+        background-color: rgba(96, 165, 250, 0.2);
+        color: #60a5fa;
+    }
+
     :global(html.dark) .project-name {
         color: #e5e7eb;
     }
@@ -420,6 +457,11 @@
 
     :global(html.dark) .page-item:hover {
         background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    :global(html.dark) .page-item.active {
+        background-color: rgba(96, 165, 250, 0.2);
+        color: #60a5fa;
     }
 
     :global(html.dark) .page-title {
@@ -462,6 +504,11 @@
 
     :global(html.dark) .settings-link:hover {
         background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    :global(html.dark) .settings-link.active {
+        background-color: rgba(96, 165, 250, 0.2);
+        color: #60a5fa;
     }
 
     :global(html.dark) .settings-text {

@@ -75,6 +75,51 @@ jobs:
           cd functions
           npm ci
 
+      - name: Install server dependencies and build
+        run: |
+          cd server
+          npm ci
+          npm run build
+
+      - name: Create Sentry release (Client)
+        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' && vars.SENTRY_ORG != '' && vars.SENTRY_PROJECT_CLIENT != '' }}
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_CLIENT }}
+        with:
+          environment: production
+          sourcemaps: './build'
+          ignore_missing: true
+          ignore_empty: true
+
+      - name: Create Sentry release (Server)
+        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' && vars.SENTRY_ORG != '' && vars.SENTRY_PROJECT_SERVER != '' }}
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_SERVER }}
+        with:
+          environment: production
+          sourcemaps: './server/dist'
+          ignore_missing: true
+          ignore_empty: true
+
+      - name: Create Sentry release (Functions)
+        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' && vars.SENTRY_ORG != '' && vars.SENTRY_PROJECT_FUNCTIONS != '' }}
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_FUNCTIONS }}
+        with:
+          environment: production
+          sourcemaps: './functions'
+          ignore_missing: true
+          ignore_empty: true
+
 
       - name: Setup GCP credentials
         if: github.actor != 'dependabot[bot]'

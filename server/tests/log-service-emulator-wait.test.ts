@@ -1,6 +1,6 @@
-const { describe, it, beforeEach, afterEach } = require("mocha");
-const { expect } = require("chai");
-const sinon = require("sinon");
+import { expect } from "chai";
+import { afterEach, beforeEach, describe, it } from "mocha";
+import sinon from "sinon";
 
 // Firebase emulator起動待機機能のテスト
 describe("Firebase emulator起動待機機能 (API-0002)", function() {
