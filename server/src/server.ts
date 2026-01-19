@@ -1,8 +1,9 @@
 import { Logger } from "@hocuspocus/extension-logger";
 console.log("DEBUG: LOADING server/src/server.ts");
-import { Server } from "@hocuspocus/server";
+import { Hocuspocus, Server } from "@hocuspocus/server";
 import express from "express";
 import http from "http";
+import { WebSocketServer } from "ws";
 import * as Y from "yjs";
 import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
 import { type Config } from "./config.js";
@@ -106,7 +107,7 @@ export async function startServer(
         },
     } as any;
 
-    const hocuspocus = new Server({
+    const hocuspocus = new Hocuspocus({
         name: "hocuspocus-fluid-outliner",
 
         extensions: [
@@ -227,6 +228,7 @@ export async function startServer(
                 },
 
                 async onConnect(data: any) {
+                    console.log("DEBUG: onConnect triggered");
                     const { request, documentName, connection } = data;
                     logger.warn({ event: "DEBUG_onConnect", documentName, url: request.url });
 
@@ -235,12 +237,22 @@ export async function startServer(
                     // before Hocuspocus sets up its internal handlers
                     const closeWithReason = (code: number, reason: string) => {
                         // Get the raw WebSocket - stored on request.__ws during upgrade handler
-                        const ws = (request as any)?.__ws;
+                        let ws = (request as any)?.__ws;
+
+                        // Fallback: try to get socket from connection
+                        if (!ws && (connection as any)?.webSocket) {
+                            ws = (connection as any).webSocket;
+                        }
+
                         logger.warn({ event: "DEBUG_closeWithReason", code, reason, hasWs: !!ws });
                         if (ws) {
                             // Close raw WebSocket FIRST to ensure close event is emitted
                             // Hocuspocus hasn't fully set up its handlers yet at this point
-                            ws.close(code, reason);
+                            try {
+                                ws.close(code, reason);
+                            } catch (e) {
+                                logger.error({ event: "ws_close_error", error: e });
+                            }
                         }
                         // Then let Hocuspocus handle its internal cleanup
                         if (connection) {
@@ -364,6 +376,8 @@ export async function startServer(
         ],
     } as any);
 
+    const wss = new WebSocketServer({ noServer: true });
+
     // API Routes
     app.get("/", (_req, res) => {
         res.send("ok");
@@ -387,22 +401,130 @@ export async function startServer(
     app.use("/api", createSeedRouter(hocuspocus, persistence));
 
     // Explicitly handle upgrade requests to ensure Hocuspocus receives them
-    server.on("upgrade", (request, socket, head) => {
+    server.on("upgrade", async (request, socket, head) => {
         if (request.url?.startsWith("/projects/")) {
-            const wsServer = (hocuspocus as any).webSocketServer;
-            wsServer.handleUpgrade(request, socket, head, (ws: any) => {
+            wss.handleUpgrade(request, socket, head, async (ws: any) => {
                 logger.warn({ event: "DEBUG_handleUpgrade_callback", url: request.url });
-                // Store WebSocket on request for access in onConnect hook when closing connections
                 (request as any).__ws = ws;
-                // Manually handle connection to ensure Hocuspocus receives it
-                // Using internal hocuspocus instance because event emission was unreliable in this setup
+
+                // --- Manual Connection Handling (Hooks Replacement) ---
+                const ip = (request.headers["x-forwarded-for"] as string) || request.socket.remoteAddress || "";
+                const origin = request.headers.origin || "";
+
+                // Helper to close
+                const reject = (code: number, reason: string) => {
+                    logger.warn({ event: "ws_connection_denied", reason, code, ip });
+                    ws.close(code, reason);
+                };
+
                 try {
-                    logger.warn("DEBUG_calling_handleConnection");
-                    (hocuspocus as any).hocuspocus.handleConnection(ws, request);
-                    logger.warn("DEBUG_called_handleConnection");
-                } catch (e) {
-                    console.error("Error handling Hocuspocus connection:", e);
-                    ws.close(1011); // Internal Error
+                    // 1. Rate Limiting
+                    const now = Date.now();
+                    const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
+                    let timestamps = connectionRateLimits.get(ip) || [];
+                    timestamps = timestamps.filter(t => t > windowStart);
+                    if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
+                        return reject(4004, "RATE_LIMIT_EXCEEDED");
+                    }
+                    timestamps.push(now);
+                    connectionRateLimits.set(ip, timestamps);
+
+                    if (allowedOrigins.size && !allowedOrigins.has(origin)) {
+                        return reject(4003, "ORIGIN_NOT_ALLOWED");
+                    }
+                    if (totalSockets >= config.MAX_SOCKETS_TOTAL) {
+                        return reject(4008, "MAX_SOCKETS_TOTAL");
+                    }
+                    if ((ipCounts.get(ip) ?? 0) >= config.MAX_SOCKETS_PER_IP) {
+                        return reject(4008, "MAX_SOCKETS_PER_IP");
+                    }
+
+                    // 2. Room Parsing & Auth
+                    const token = extractAuthToken(request);
+                    // documentName extraction
+                    let documentName = "";
+                    if (request.url) {
+                        const path = request.url.split("?")[0];
+                        documentName = path.startsWith("/") ? path.slice(1) : path;
+                    }
+
+                    if (!token) throw new Error("Authentication failed: No token provided");
+
+                    const room = parseRoom(documentName);
+                    if (!room?.project) throw new Error("Authentication failed: Invalid room format");
+
+                    let decoded;
+                    try {
+                        decoded = await verifyIdTokenCached(token);
+                    } catch (err) {
+                        ws.close(4001, "UNAUTHORIZED");
+                        return;
+                    }
+
+                    const hasAccess = await checkContainerAccess(decoded.uid, room.project);
+                    if (!hasAccess) {
+                        ws.close(4003, "FORBIDDEN");
+                        return;
+                    }
+
+                    // 3. Room Limits
+                    const currentRoomCount = roomCounts.get(documentName) ?? 0;
+                    if (currentRoomCount >= config.MAX_SOCKETS_PER_ROOM) {
+                        return reject(4006, "MAX_SOCKETS_PER_ROOM");
+                    }
+
+                    // 4. Update Counters
+                    totalSockets++;
+                    ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
+                    roomCounts.set(documentName, (roomCounts.get(documentName) ?? 0) + 1);
+
+                    logger.info({ event: "ws_connection_accepted", room: documentName });
+
+                    // 5. Setup Listeners
+                    ws.on("message", (data: any) => {
+                        recordMessage();
+                        const len = data.byteLength || data.length || 0;
+                        if (len > config.MAX_MESSAGE_SIZE_BYTES) {
+                            logger.warn({
+                                event: "ws_connection_closed",
+                                reason: "message_too_large",
+                                size: len,
+                            });
+                            ws.close(4005, "MESSAGE_TOO_LARGE");
+                        }
+                    });
+
+                    ws.on("close", () => {
+                        totalSockets--;
+                        if (totalSockets < 0) totalSockets = 0;
+                        if (ip) {
+                            const count = (ipCounts.get(ip) ?? 1) - 1;
+                            if (count <= 0) ipCounts.delete(ip);
+                            else ipCounts.set(ip, count);
+                        }
+                        if (documentName) {
+                            const count = (roomCounts.get(documentName) ?? 1) - 1;
+                            if (count <= 0) roomCounts.delete(documentName);
+                            else roomCounts.set(documentName, count);
+                        }
+                    });
+
+                    // 6. Handover to Hocuspocus
+                    try {
+                        // Pass auth context
+                        const context = {
+                            user: { uid: decoded.uid },
+                            room,
+                            ip,
+                        };
+                        hocuspocus.handleConnection(ws, request, context);
+                    } catch (e) {
+                        console.error("Error handling Hocuspocus connection:", e);
+                        ws.close(1011);
+                    }
+                } catch (e: any) {
+                    logger.error({ event: "ws_setup_error", error: e.message });
+                    ws.close(4001, e.message || "Unauthorized");
                 }
             });
         } else {
@@ -414,9 +536,8 @@ export async function startServer(
             }
             // For now, assume all upgrades are for Hocuspocus if they look like project usage
             // Actually, Hocuspocus usually handles any path.
-            const wsServer = (hocuspocus as any).webSocketServer;
-            wsServer.handleUpgrade(request, socket, head, (ws: any) => {
-                wsServer.emit("connection", ws, request);
+            wss.handleUpgrade(request, socket, head, (ws) => {
+                hocuspocus.handleConnection(ws, request, {});
             });
         }
     });

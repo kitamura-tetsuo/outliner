@@ -38,9 +38,11 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
             const status = provider.status as string;
             console.log(`[tokenRefresh] Provider status: ${status}`);
 
-            if (status === "disconnected") {
-                console.log("[tokenRefresh] Provider disconnected, calling connect()");
-                await provider.connect();
+            if (status === "disconnected" || status === "connecting") {
+                console.log(`[tokenRefresh] Provider ${status}, ensuring connection`);
+                if (status === "disconnected") {
+                    await provider.connect();
+                }
                 return;
             }
 
