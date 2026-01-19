@@ -31,7 +31,7 @@ class MockHocuspocusProvider {
 
         // Register this provider to the room
         const peers = MockHocuspocusProvider.rooms.get(this.name) ?? new Set();
-        MockHocuspocusProvider.rooms.set(this.name, peers);
+        void MockHocuspocusProvider.rooms.set(this.name, peers);
         peers.add(this);
 
         // Listen for doc updates to broadcast
