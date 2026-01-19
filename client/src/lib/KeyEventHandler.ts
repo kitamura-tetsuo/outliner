@@ -215,11 +215,18 @@ export class KeyEventHandler {
                                     if (!node) return null;
                                     if (node.id === id) return node;
                                     const ch: any = node.items;
-                                    const len = ch?.length ?? 0;
-                                    for (let i = 0; i < len; i++) {
-                                        const c = ch.at ? ch.at(i) : ch[i];
-                                        const r = find(c, id);
-                                        if (r) return r;
+                                    if (ch && typeof ch[Symbol.iterator] === "function") {
+                                        for (const c of ch) {
+                                            const r = find(c, id);
+                                            if (r) return r;
+                                        }
+                                    } else {
+                                        const len = ch?.length ?? 0;
+                                        for (let i = 0; i < len; i++) {
+                                            const c = ch.at ? ch.at(i) : ch[i];
+                                            const r = find(c, id);
+                                            if (r) return r;
+                                        }
                                     }
                                     return null;
                                 };
@@ -446,16 +453,24 @@ export class KeyEventHandler {
                         const items: any = gs?.currentPage?.items;
                         if (items && typeof items.addNode === "function") {
                             const userId = cursor.userId || "local";
-                            const prevLen = typeof items.length === "number" ? items.length : 0;
+                            let newItem: any = null;
                             try {
-                                items.addNode(userId);
+                                // addNode returns the new item
+                                newItem = items.addNode(userId);
                             } catch {
                                 try {
-                                    items.addNode(userId, prevLen);
+                                    // Fallback if no-arg fails
+                                    const prevLen = typeof items.length === "number" ? items.length : 0;
+                                    newItem = items.addNode(userId, prevLen);
                                 } catch {}
                             }
-                            const lastIndex = (typeof items.length === "number" ? items.length : prevLen + 1) - 1;
-                            const newItem = items[lastIndex];
+
+                            // Fallback if addNode didn't return item (old behavior fallback)
+                            if (!newItem) {
+                                const lastIndex = (items.length ?? 0) - 1;
+                                newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+                            }
+
                             if (newItem) {
                                 newItem.text = "";
                                 (newItem as any).aliasTargetId = undefined;
@@ -549,16 +564,22 @@ export class KeyEventHandler {
                     const items: any = gs?.currentPage?.items;
                     if (items && typeof items.addNode === "function") {
                         const userId = cursor.userId || "local";
-                        const prevLen = typeof items.length === "number" ? items.length : 0;
+                        let newItem: any = null;
                         try {
-                            items.addNode(userId);
+                            newItem = items.addNode(userId);
                         } catch {
                             try {
-                                items.addNode(userId, prevLen);
+                                const prevLen = typeof items.length === "number" ? items.length : 0;
+                                newItem = items.addNode(userId, prevLen);
                             } catch {}
                         }
-                        const lastIndex = (typeof items.length === "number" ? items.length : prevLen + 1) - 1;
-                        const newItem = items[lastIndex];
+
+                        // Fallback
+                        if (!newItem) {
+                            const lastIndex = (items.length ?? 0) - 1;
+                            newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+                        }
+
                         if (newItem) {
                             newItem.text = "";
                             (newItem as any).aliasTargetId = undefined;

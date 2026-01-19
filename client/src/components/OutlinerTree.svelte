@@ -793,9 +793,11 @@
                 // 残りの行を新しいアイテムとして追加
                 for (let i = 1; i < lines.length; i++) {
                     const newIndex = firstAvailableIndex + i;
-                    items.addNode(currentUser, newIndex);
-                    // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-                    const newItem = (items as any).at(newIndex);
+                    let newItem = items.addNode(currentUser, newIndex);
+                    // Fallback if addNode doesn't return the item
+                    if (!newItem) {
+                         newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
+                    }
                     if (newItem) {
                         newItem.updateText(lines[i]);
                     }
@@ -816,9 +818,10 @@
         // 残りの行でアイテムを追加
         for (let i = 1; i < lines.length; i++) {
             const newIndex = itemIndex + i;
-            items.addNode(currentUser, newIndex);
-            // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-            const newItem = (items as any).at(newIndex);
+            let newItem = items.addNode(currentUser, newIndex);
+            if (!newItem) {
+                newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
+            }
             if (newItem) {
                 newItem.updateText(lines[i]);
             }
@@ -906,9 +909,10 @@
                     `Adding new item at index ${newIndex} with text: "${lines[i]}"`,
                 );
             }
-            items.addNode(currentUser, newIndex);
-            // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-            const newItem = (items as any).at(newIndex);
+            let newItem = items.addNode(currentUser, newIndex);
+            if (!newItem) {
+                newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
+            }
             if (newItem) {
                 newItem.updateText(lines[i]);
             }
@@ -1027,9 +1031,10 @@
                     console.log(`Adding new item at index ${newIndex}`);
                 }
 
-                items.addNode(currentUser, newIndex);
-                // 追加直後のアイテムを配列インデックスで取得しテキスト設定
-                const newItem = (items as any).at(newIndex);
+                let newItem = items.addNode(currentUser, newIndex);
+                if (!newItem) {
+                    newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
+                }
                 if (newItem) {
                     if (i === lines.length - 1) {
                         // 最後の行は、選択範囲の後ろのテキストを追加
@@ -1488,8 +1493,10 @@
 
             // 残りの行を新しいアイテムとして追加
             for (let i = 1; i < lines.length; i++) {
-                items.addNode(currentUser, targetIndex + i);
-                const newItem = (items as any).at(targetIndex + i);
+                let newItem = items.addNode(currentUser, targetIndex + i);
+                if (!newItem) {
+                    newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
+                }
                 if (newItem) {
                     newItem.updateText(lines[i]);
                 }
@@ -1717,8 +1724,14 @@
 
             // 残りの行を新しいアイテムとして追加
             for (let i = 1; i < lines.length; i++) {
-                items.addNode(currentUser, targetIndex + i);
-                const newItem = items[targetIndex + i];
+                let newItem = items.addNode(currentUser, targetIndex + i);
+                if (!newItem) {
+                    newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
+                }
+                let newItem = items.addNode(currentUser, targetIndex + i);
+                if (!newItem) {
+                    newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
+                }
                 if (newItem) {
                     newItem.text = lines[i];
                 }
