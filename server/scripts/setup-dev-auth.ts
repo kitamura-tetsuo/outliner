@@ -1,6 +1,7 @@
 // Development environment authentication setup script
 import "dotenv/config";
 import admin from "firebase-admin";
+import { UserRecord } from "firebase-admin/auth";
 import { fileURLToPath } from "url";
 import { serverLogger as logger } from "../src/utils/log-manager.js";
 
@@ -35,7 +36,7 @@ export async function initializeFirebase() {
 }
 
 // テストユーザーの作成・取得
-export async function setupTestUser() {
+export async function setupTestUser(): Promise<UserRecord> {
     try {
         const adminInstance = await initializeFirebase();
         const auth = adminInstance.auth();

@@ -19,7 +19,7 @@ handle_error() {
     local next=$((RETRY_COUNT + 1))
     echo "setup.sh did not complete. Re-running (attempt ${next}/${MAX_RETRIES})..."
     export SETUP_RETRY=$next
-    exec "$0" "${SCRIPT_ARGS[@]}"
+    exec "${SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")" "${SCRIPT_ARGS[@]}"
   else
     echo "setup.sh failed after ${MAX_RETRIES} attempts. Exiting." >&2
     exit "${exit_code}"
