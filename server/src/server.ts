@@ -229,6 +229,21 @@ export async function startServer(
                     const { request, documentName, connection } = data;
                     console.log("DEBUG: onConnect called", documentName);
 
+                    // Helper to close connection properly and return early
+                    // Unlike throwing (which Hocuspocus catches and only sends permission denied),
+                    // this ensures the WebSocket is actually closed
+                    const closeWithReason = (code: number, reason: string) => {
+                        // Try to close via connection object first
+                        if (connection) {
+                            connection.close({ code, reason });
+                        }
+                        // Also close raw WebSocket to ensure close event is emitted
+                        const ws = (data as any).websocket || (request as any)?.socket?.websocket;
+                        if (ws) {
+                            ws.close(code, reason);
+                        }
+                    };
+
                     const ip = (request.headers["x-forwarded-for"] as string) || request.socket.remoteAddress || "";
                     const origin = request.headers.origin || "";
 
@@ -248,22 +263,26 @@ export async function startServer(
 
                     if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
                         logger.warn({ event: "ws_connection_denied", reason: "rate_limit_exceeded", ip });
-                        throw new Error("RATE_LIMIT_EXCEEDED");
+                        closeWithReason(4004, "RATE_LIMIT_EXCEEDED");
+                        return;
                     }
                     timestamps.push(now);
                     connectionRateLimits.set(ip, timestamps);
 
                     if (allowedOrigins.size && !allowedOrigins.has(origin)) {
                         logger.warn({ event: "ws_connection_denied", reason: "invalid_origin", origin });
-                        throw new Error("ORIGIN_NOT_ALLOWED");
+                        closeWithReason(4003, "ORIGIN_NOT_ALLOWED");
+                        return;
                     }
                     if (totalSockets >= config.MAX_SOCKETS_TOTAL) {
                         logger.warn({ event: "ws_connection_denied", reason: "max_sockets_total" });
-                        throw new Error("MAX_SOCKETS_TOTAL");
+                        closeWithReason(4008, "MAX_SOCKETS_TOTAL");
+                        return;
                     }
                     if ((ipCounts.get(ip) ?? 0) >= config.MAX_SOCKETS_PER_IP) {
                         logger.warn({ event: "ws_connection_denied", reason: "max_sockets_ip", ip });
-                        throw new Error("MAX_SOCKETS_PER_IP");
+                        closeWithReason(4008, "MAX_SOCKETS_PER_IP");
+                        return;
                     }
 
                     // Check room limits
@@ -286,14 +305,14 @@ export async function startServer(
                             documentName,
                             roomName,
                         });
-                        throw new Error("INVALID_ROOM");
+                        closeWithReason(4002, "INVALID_ROOM");
+                        return;
                     }
 
                     if ((roomCounts.get(roomName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
                         logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: roomName });
-                        // Properly close the connection before throwing to ensure close event is emitted
-                        connection?.close(4006, "MAX_SOCKETS_PER_ROOM");
-                        throw new Error("MAX_SOCKETS_PER_ROOM");
+                        closeWithReason(4006, "MAX_SOCKETS_PER_ROOM");
+                        return;
                     }
 
                     // Increment counters

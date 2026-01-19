@@ -51,9 +51,9 @@ test.describe("YJS token refresh reconnect", () => {
         // Wait for disconnect event with timeout
         // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 10000 });
-        // After disconnect, verify status
+        // After disconnect, verify status using websocketProvider.status (Hocuspocus stores status there)
         // eslint-disable-next-line no-restricted-globals
-        const status = await page.evaluate(() => (window as any).__CONN__.provider.status);
+        const status = await page.evaluate(() => (window as any).__CONN__.provider.websocketProvider?.status);
         expect(status).toBe("disconnected");
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
