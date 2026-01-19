@@ -161,7 +161,7 @@ export async function startServer(
                 async onLoadDocument({ documentName }: { documentName: string; }) {
                     // First, check if we have a cached document from seed API
                     // This is needed because persistence is currently disabled
-                    const docs = (hocuspocus as any).hocuspocus.documents;
+                    const docs = (hocuspocus as any).documents;
                     logger.info({
                         event: "onLoadDocument_start",
                         documentName,
@@ -394,7 +394,7 @@ export async function startServer(
     });
 
     app.get("/metrics", (_req, res) => {
-        res.json(getMetrics(hocuspocus));
+        res.json(getMetrics(hocuspocus as any));
     });
 
     // Seed API - use Hocuspocus's openDirectConnection for proper document lifecycle
@@ -549,7 +549,7 @@ export async function startServer(
 
     const shutdown = () => {
         intervals.forEach(clearInterval);
-        hocuspocus.destroy();
+        (hocuspocus as any).destroy();
         return new Promise<void>((resolve) => {
             server.close(() => resolve());
         });
