@@ -24,6 +24,21 @@ test.describe("YJS token refresh reconnect", () => {
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
             (window as any).__CONN__ = conn;
+
+            // Listen for status changes to detect disconnect
+            const provider = conn.provider;
+            let disconnectResolve: () => void;
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__DISCONNECT_PROMISE__ = new Promise<void>(resolve => {
+                disconnectResolve = resolve;
+            });
+            provider.on("disconnect", () => {
+                console.log("Provider emitted disconnect event");
+                disconnectResolve?.();
+            });
+            provider.on("status", (event: { status: string; }) => {
+                console.log("Status changed to:", event.status);
+            });
         }, projectId);
 
         await page.waitForFunction(() => {
@@ -33,13 +48,13 @@ test.describe("YJS token refresh reconnect", () => {
         await page.evaluate(() => {
             (window as any).__CONN__.provider.disconnect();
         });
+        // Wait for disconnect event with timeout
         // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const s = (window as any).__CONN__.provider.status;
-            if (s !== "disconnected") console.log("Waiting for disconnected, current:", s);
-            return s === "disconnected";
-        });
+        await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 10000 });
+        // After disconnect, verify status
+        // eslint-disable-next-line no-restricted-globals
+        const status = await page.evaluate(() => (window as any).__CONN__.provider.status);
+        expect(status).toBe("disconnected");
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });

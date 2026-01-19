@@ -291,6 +291,8 @@ export async function startServer(
 
                     if ((roomCounts.get(roomName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
                         logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: roomName });
+                        // Properly close the connection before throwing to ensure close event is emitted
+                        connection?.close(4006, "MAX_SOCKETS_PER_ROOM");
                         throw new Error("MAX_SOCKETS_PER_ROOM");
                     }
 
