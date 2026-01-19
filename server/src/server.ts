@@ -238,7 +238,8 @@ export async function startServer(
                             connection.close({ code, reason });
                         }
                         // Also close raw WebSocket to ensure close event is emitted
-                        const ws = (data as any).websocket || (request as any)?.socket?.websocket;
+                        // WebSocket is stored on request.socket.ws during upgrade handler
+                        const ws = (request as any)?.socket?.ws;
                         if (ws) {
                             ws.close(code, reason);
                         }
@@ -378,6 +379,8 @@ export async function startServer(
         if (request.url?.startsWith("/projects/")) {
             const wsServer = (hocuspocus as any).webSocketServer;
             wsServer.handleUpgrade(request, socket, head, (ws: any) => {
+                // Store WebSocket on request for access in onConnect hook when closing connections
+                (request as any).socket.ws = ws;
                 // Manually handle connection to ensure Hocuspocus receives it
                 // Using internal hocuspocus instance because event emission was unreliable in this setup
                 try {
