@@ -32,19 +32,25 @@ test.describe("YJS token refresh reconnect", () => {
             (window as any).__DISCONNECT_PROMISE__ = new Promise<void>(resolve => {
                 disconnectResolve = resolve;
             });
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__WS_STATUS__ = "unknown";
+
             provider.on("disconnect", () => {
                 console.log("Provider emitted disconnect event");
                 disconnectResolve?.();
             });
             provider.on("status", (event: { status: string; }) => {
                 console.log("Status changed to:", event.status);
+                // eslint-disable-next-line no-restricted-globals
+                (window as any).__WS_STATUS__ = event.status;
             });
         }, projectId);
 
         await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const wsStatus = (window as any).__WS_STATUS__;
+            // eslint-disable-next-line no-restricted-globals
             const p = (window as any).__CONN__?.provider;
-            // HocuspocusProvider stores status in configuration.websocketProvider.status
-            const wsStatus = p?.configuration?.websocketProvider?.status;
             return p?.isSynced === true || wsStatus === "connected";
         });
         await page.evaluate(() => {
@@ -53,26 +59,26 @@ test.describe("YJS token refresh reconnect", () => {
         // Wait for disconnect event with timeout
         // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 10000 });
-        // After disconnect, verify status using configuration.websocketProvider.status
-        // HocuspocusProvider stores websocketProvider in configuration.websocketProvider
-        const status = await page.evaluate(() =>
+        // After disconnect, verify status
+        const status = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
-            (window as any).__CONN__.provider.configuration?.websocketProvider?.status
-        );
+            return (window as any).__WS_STATUS__;
+        });
         expect(status).toBe("disconnected");
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
         await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const wsStatus = (window as any).__WS_STATUS__;
+            // eslint-disable-next-line no-restricted-globals
             const p = (window as any).__CONN__.provider;
-            // HocuspocusProvider stores status in configuration.websocketProvider.status
-            const wsStatus = p?.configuration?.websocketProvider?.status;
             return p.isSynced === true || wsStatus === "connected";
         });
         // HocuspocusProvider stores status in configuration.websocketProvider.status
         const isConnected = await page.evaluate(() =>
             // eslint-disable-next-line no-restricted-globals
-            (window as any).__CONN__.provider.configuration?.websocketProvider?.status === "connected"
+            (window as any).__WS_STATUS__ === "connected"
         );
         expect(isConnected).toBeTruthy();
     });
@@ -84,6 +90,12 @@ test.describe("YJS token refresh reconnect", () => {
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
             (window as any).__CONN__ = conn;
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__WS_STATUS__ = "unknown";
+            conn.provider.on("status", (event: { status: string; }) => {
+                // eslint-disable-next-line no-restricted-globals
+                (window as any).__WS_STATUS__ = event.status;
+            });
 
             // Spy on sendToken to verify it's called
             const originalSendToken = conn.provider.sendToken.bind(conn.provider);
@@ -95,9 +107,10 @@ test.describe("YJS token refresh reconnect", () => {
         }, projectId);
 
         await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
             const p = (window as any).__CONN__?.provider;
-            // HocuspocusProvider stores status in configuration.websocketProvider.status
-            const wsStatus = p?.configuration?.websocketProvider?.status;
+            // eslint-disable-next-line no-restricted-globals
+            const wsStatus = (window as any).__WS_STATUS__;
             return p?.isSynced === true || wsStatus === "connected";
         });
 

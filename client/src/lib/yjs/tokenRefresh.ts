@@ -9,15 +9,19 @@ type TokenRefreshableProvider = HocuspocusProvider & {
 export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () => Promise<void> {
     return async () => {
         try {
+            console.log("[tokenRefresh] refreshAuthAndReconnect triggered");
             const t = await userManager.auth.currentUser?.getIdToken(true);
+            console.log("[tokenRefresh] Got new token:", !!t);
             // HocuspocusProvider handles token via the token function passed at creation
             // To refresh, we can call sendToken() which will invoke the token function
             // WS が無効化されている場合は再接続を行わない（テスト環境抑止）
             if (provider?.__wsDisabled === true) {
+                console.log("[tokenRefresh] WS disabled, skipping");
                 return;
             }
             // If no token (user disconnected), explicitly reconnect
             if (!t) {
+                console.log("[tokenRefresh] No token, forcing reconnect sequence");
                 try {
                     provider.disconnect();
                 } catch {}
@@ -28,14 +32,32 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
             }
             // For HocuspocusProvider, we call sendToken() to refresh authentication
             // This will invoke the token function and send the new token to the server
+
+            // Check status - if disconnected, just connect (which picks up new token)
+            // HocuspocusProvider status getter
+            const status = provider.status as string;
+            console.log(`[tokenRefresh] Provider status: ${status}`);
+
+            if (status === "disconnected") {
+                console.log("[tokenRefresh] Provider disconnected, calling connect()");
+                await provider.connect();
+                return;
+            }
+
             try {
+                console.log("[tokenRefresh] Calling provider.sendToken()");
                 await provider.sendToken();
-            } catch {
+                console.log("[tokenRefresh] provider.sendToken() success");
+            } catch (e) {
+                console.log("[tokenRefresh] provider.sendToken() failed:", e);
                 // If sendToken fails, try reconnecting
                 provider.disconnect();
+                console.log("[tokenRefresh] Calling provider.connect()");
                 await provider.connect();
             }
-        } catch {}
+        } catch (err) {
+            console.error("[tokenRefresh] Error in refreshAuthAndReconnect:", err);
+        }
     };
 }
 

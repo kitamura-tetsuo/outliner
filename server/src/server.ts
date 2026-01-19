@@ -1,4 +1,5 @@
 import { Logger } from "@hocuspocus/extension-logger";
+console.log("DEBUG: LOADING server/src/server.ts");
 import { Server } from "@hocuspocus/server";
 import express from "express";
 import http from "http";
@@ -227,14 +228,15 @@ export async function startServer(
 
                 async onConnect(data: any) {
                     const { request, documentName, connection } = data;
-                    console.log("DEBUG: onConnect called", documentName);
+                    logger.warn({ event: "DEBUG_onConnect", documentName, url: request.url });
 
                     // Helper to close connection properly and return early
                     // We close the raw WebSocket FIRST to ensure close event is emitted
                     // before Hocuspocus sets up its internal handlers
                     const closeWithReason = (code: number, reason: string) => {
-                        // Get the raw WebSocket - stored on request.socket.ws during upgrade handler
-                        const ws = (request as any)?.socket?.ws;
+                        // Get the raw WebSocket - stored on request.__ws during upgrade handler
+                        const ws = (request as any)?.__ws;
+                        logger.warn({ event: "DEBUG_closeWithReason", code, reason, hasWs: !!ws });
                         if (ws) {
                             // Close raw WebSocket FIRST to ensure close event is emitted
                             // Hocuspocus hasn't fully set up its handlers yet at this point
@@ -250,6 +252,8 @@ export async function startServer(
 
                     const ip = (request.headers["x-forwarded-for"] as string) || request.socket.remoteAddress || "";
                     const origin = request.headers.origin || "";
+
+                    logger.warn({ event: "DEBUG_onConnect_details", ip, totalSockets });
 
                     // Store IP in connection context for onDisconnect
                     // Use data.context if connection.context is not available
@@ -313,7 +317,12 @@ export async function startServer(
                         return;
                     }
 
-                    if ((roomCounts.get(roomName) ?? 0) >= config.MAX_SOCKETS_PER_ROOM) {
+                    const currentRoomCount = roomCounts.get(roomName) ?? 0;
+                    const maxRoom = config.MAX_SOCKETS_PER_ROOM;
+                    logger.warn({ event: "DEBUG_RoomCheck", room: roomName, count: currentRoomCount, max: maxRoom });
+
+                    if (currentRoomCount >= maxRoom) {
+                        logger.warn({ event: "DEBUG_Rejecting", room: roomName });
                         logger.warn({ event: "ws_connection_denied", reason: "max_sockets_room", room: roomName });
                         closeWithReason(4006, "MAX_SOCKETS_PER_ROOM");
                         return;
@@ -382,12 +391,15 @@ export async function startServer(
         if (request.url?.startsWith("/projects/")) {
             const wsServer = (hocuspocus as any).webSocketServer;
             wsServer.handleUpgrade(request, socket, head, (ws: any) => {
+                logger.warn({ event: "DEBUG_handleUpgrade_callback", url: request.url });
                 // Store WebSocket on request for access in onConnect hook when closing connections
-                (request as any).socket.ws = ws;
+                (request as any).__ws = ws;
                 // Manually handle connection to ensure Hocuspocus receives it
                 // Using internal hocuspocus instance because event emission was unreliable in this setup
                 try {
+                    logger.warn("DEBUG_calling_handleConnection");
                     (hocuspocus as any).hocuspocus.handleConnection(ws, request);
+                    logger.warn("DEBUG_called_handleConnection");
                 } catch (e) {
                     console.error("Error handling Hocuspocus connection:", e);
                     ws.close(1011); // Internal Error
