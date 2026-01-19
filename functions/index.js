@@ -63,10 +63,11 @@ if (process.env.SENTRY_DSN) {
   if (process.env.NODE_ENV === "production") {
     logger.warn("Sentry DSN not found. Sentry logging is disabled.");
   } else {
-    logger.info("Sentry DSN not found. Sentry logging is disabled (expected in dev/test).");
+    logger.info(
+      "Sentry DSN not found. Sentry logging is disabled (expected in dev/test).",
+    );
   }
 }
-
 
 const { FieldValue } = require("firebase-admin/firestore");
 const { generateSchedulesIcs } = require("./ical");
