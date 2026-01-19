@@ -30,10 +30,9 @@ class MockHocuspocusProvider {
         this.awareness = new Awareness(this.doc);
 
         // Register this provider to the room
-        if (!MockHocuspocusProvider.rooms.has(this.name)) {
-            MockHocuspocusProvider.rooms.get(this.name) || MockHocuspocusProvider.rooms.set(this.name, new Set());
-        }
-        MockHocuspocusProvider.rooms.get(this.name)!.add(this);
+        const peers = MockHocuspocusProvider.rooms.get(this.name) ?? new Set();
+        MockHocuspocusProvider.rooms.set(this.name, peers);
+        peers.add(this);
 
         // Listen for doc updates to broadcast
         this.doc.on("update", this.handleDocUpdate);
