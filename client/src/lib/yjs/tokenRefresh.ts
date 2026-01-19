@@ -4,6 +4,11 @@ import { userManager } from "../../auth/UserManager";
 // Type for provider that supports token refresh
 type TokenRefreshableProvider = HocuspocusProvider & {
     __wsDisabled?: boolean;
+    configuration?: {
+        websocketProvider?: {
+            status?: string;
+        };
+    };
 };
 
 export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () => Promise<void> {
@@ -35,7 +40,11 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
 
             // Check status - if disconnected, just connect (which picks up new token)
             // HocuspocusProvider status getter
-            const status = provider.status as string;
+            let status = provider.status as string;
+            // Fallback for some Hocuspocus versions or test environments where status getter might be missing
+            if (!status && provider.configuration?.websocketProvider) {
+                status = provider.configuration.websocketProvider.status;
+            }
             console.log(`[tokenRefresh] Provider status: ${status}`);
 
             if (status === "disconnected" || status === "connecting") {
