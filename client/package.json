@@ -23,7 +23,7 @@
         "@eslint/compat": "^2.0.1",
         "@eslint/js": "^9.31.0",
         "@fluidframework/test-client-utils": "^1.4.0",
-        "@fluidframework/tinylicious-client": "^2.51.0",
+        "@fluidframework/tinylicious-client": "^2.80.0",
         "@inlang/message-lint-rule-empty-pattern": "^1.4.8",
         "@inlang/message-lint-rule-identical-pattern": "^1.5.9",
         "@inlang/message-lint-rule-missing-translation": "^1.4.8",
