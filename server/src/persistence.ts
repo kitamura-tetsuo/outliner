@@ -1,7 +1,6 @@
 import type { Logger } from "pino";
 // @ts-ignore
 import { SQLite } from "@hocuspocus/extension-sqlite";
-import * as Y from "yjs";
 import { Config } from "./config.js";
 
 export async function createPersistence(config: Config): Promise<any> {
