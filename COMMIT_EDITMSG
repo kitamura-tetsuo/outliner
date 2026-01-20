@@ -1,7 +1,4 @@
-refactor(e2e): improve test environment detection in yjsService
+Fix E2E test timeouts by adding retry logic to SeedClient and failing fast on seed errors
 
-- Enhance isTestEnvironment() detection with multiple fallback mechanisms
-- Check import.meta.env.MODE for reliable build-time test detection
-- Add localStorage flags (VITE_IS_TEST, VITE_E2E_TEST) for runtime E2E test detection
-- Include window.__E2E__ property check for additional test environment detection
-- Maintain backward compatibility with existing test infrastructure
+- Added retry logic (3 attempts) to `SeedClient.seed` to handle transient network errors during server seeding.
+- Updated `TestHelpers.createAndSeedProject` to throw an error immediately if seeding fails, preventing subsequent 120s timeouts in `navigateToProjectPage` and ensuring clearer failure reporting.
