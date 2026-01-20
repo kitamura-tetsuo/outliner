@@ -1936,6 +1936,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                 <button
                     class="collapse-btn"
                     onclick={toggleCollapse}
+                    title={isCollapsed ? "Expand" : "Collapse"}
                     aria-label={isCollapsed ? "Expand item" : "Collapse item"}
                     aria-expanded={!isCollapsed}
                 >
