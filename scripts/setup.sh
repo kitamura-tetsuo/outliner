@@ -267,36 +267,22 @@ else
     cd "${ROOT_DIR}"
   fi
 
-  # Ensure server is built if artifacts are missing (critical for Yjs server)
-  # Strictly verify existence and non-empty status
-  SERVER_ARTIFACTS_MISSING=0
-  if [ ! -s "${ROOT_DIR}/server/dist/index.js" ] || [ ! -s "${ROOT_DIR}/server/dist/log-service.js" ]; then
-    SERVER_ARTIFACTS_MISSING=1
-  fi
-
-  # Determine if we should build:
-  # 1. If artifacts are missing, we MUST build (ignores SKIP_BUILD).
-  # 2. If in CI and SKIP_BUILD!=1, we build to ensure freshness.
-  SHOULD_BUILD=0
-  if [ "$SERVER_ARTIFACTS_MISSING" -eq 1 ]; then
-     SHOULD_BUILD=1
-     echo "Server artifacts missing. Forcing build..."
-  elif [ "${CI:-}" = "true" ] && [ "${SKIP_BUILD:-0}" -ne 1 ]; then
-     SHOULD_BUILD=1
-     echo "CI environment and build not skipped. Rebuilding to ensure freshness..."
-  fi
-
-  if [ "$SHOULD_BUILD" -eq 1 ]; then
-    echo "Building server..."
+  # Ensure server is built if dist is missing or empty (critical for Yjs server)
+  if [ ! -s "${ROOT_DIR}/server/dist/src/index.js" ]; then
+    echo "Server build artifacts missing or empty. Building server..."
     cd "${ROOT_DIR}/server"
     npm_ci_if_needed
     npm run build
-    echo "Server build complete. Artifacts in dist:"
-    ls -la dist || echo "dist directory missing!"
+    if [ ! -s "dist/src/index.js" ]; then
+        echo "Error: Server build failed to produce dist/src/index.js"
+        ls -la dist || echo "dist directory not found"
+        ls -la dist/src || echo "dist/src directory not found"
+        exit 1
+    fi
     cd "${ROOT_DIR}"
   else
-    echo "Server artifacts found (or build skipped)."
-    ls -la "${ROOT_DIR}/server/dist" 2>/dev/null || echo "ls failed"
+    echo "Server build artifacts found at ${ROOT_DIR}/server/dist/src/index.js"
+    ls -l "${ROOT_DIR}/server/dist/src/index.js"
   fi
 fi
 
