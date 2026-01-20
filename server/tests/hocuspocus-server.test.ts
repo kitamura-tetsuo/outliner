@@ -1,5 +1,5 @@
 import { HocuspocusProvider } from "@hocuspocus/provider";
-import { Server } from "@hocuspocus/server";
+import { Hocuspocus } from "@hocuspocus/server";
 import { expect } from "chai";
 import sinon from "sinon";
 import WebSocket from "ws";
@@ -15,7 +15,7 @@ const mockDecodedIdToken = {
 } as any;
 
 describe("Hocuspocus Server", () => {
-    let server: Server;
+    let server: Hocuspocus;
     let httpServer: any;
     let provider: HocuspocusProvider;
     let port: number;
@@ -105,8 +105,10 @@ describe("Hocuspocus Server", () => {
         verifyTokenStub.resolves(mockDecodedIdToken);
         checkAccessStub.resolves(true);
 
-        const connection1 = await (server as any).hocuspocus.openDirectConnection("projects/123");
-        connection1.transact(doc => {
+        // Access the underlying Hocuspocus instance (which is `server` in this test context)
+        // Note: in previous code `server` was `res.hocuspocus` which is a `Hocuspocus` instance.
+        const connection1 = await server.openDirectConnection("projects/123");
+        connection1.transact((doc: any) => {
             doc.getText("test").insert(0, "hello");
         });
 
