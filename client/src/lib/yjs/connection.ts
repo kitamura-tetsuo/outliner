@@ -203,8 +203,40 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         console.log(`[connectPageDoc] Subdoc load failed for room: ${room}, continuing anyway`, e);
     }
 
+    // Ensure token is available for initial connection URL (required by server upgrade handler)
+    let initialToken = "";
+    try {
+        initialToken = await getFreshIdToken();
+    } catch {}
+
     const provider = new HocuspocusProvider({
-        url: wsBase,
+        url: initialToken ? `${wsBase}?token=${initialToken}` : wsBase,
+    // Ensure token is available for initial connection URL (required by server upgrade handler)
+    let initialToken = "";
+    try {
+        initialToken = await getFreshIdToken();
+    } catch {}
+
+    const provider = new HocuspocusProvider({
+        url: initialToken ? `${wsBase}?token=${initialToken}` : wsBase,
+    // Ensure token is available for initial connection URL (required by server upgrade handler)
+    let initialToken = "";
+    try {
+        initialToken = await getFreshIdToken();
+    } catch (e) {
+        console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
+    }
+
+    const provider = new HocuspocusProvider({
+        url: initialToken ? `${wsBase}?token=${initialToken}` : wsBase,
+    // Ensure token is available for initial connection URL (required by server upgrade handler)
+    let initialToken = "";
+    try {
+        initialToken = await getFreshIdToken();
+    } catch {}
+
+    const provider = new HocuspocusProvider({
+        url: initialToken ? `${wsBase}?token=${initialToken}` : wsBase,
         name: room,
         document: doc,
         token: tokenFn,
