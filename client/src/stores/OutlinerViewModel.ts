@@ -129,13 +129,32 @@ export class OutlinerViewModel {
         const existingViewModel = this.viewModels.get(item.id);
         if (existingViewModel) {
             // プロパティを更新（参照は維持）
-            existingViewModel.text = item.text.toString();
-            existingViewModel.votes = [...((item as any).votes || [])];
-            existingViewModel.lastChanged = (item as any).lastChanged;
-            existingViewModel.commentCount = (item as any).comments?.length ?? 0;
-            debugLog(
-                `OutlinerViewModel: Updated existing view model for "${item.text}"`,
-            );
+            // パフォーマンス最適化: lastChanged が変更された場合のみ再計算する
+            // Y.Text.toString() は高コストな操作であるため、不要な呼び出しを避ける
+            // Use safe type checking instead of explicit any casts
+            const lastChangedProp = "lastChanged" in item ? item.lastChanged : undefined;
+            const newLastChanged = typeof lastChangedProp === "number" ? lastChangedProp : 0;
+
+            if (existingViewModel.lastChanged !== newLastChanged) {
+                existingViewModel.text = item.text.toString();
+
+                // Safely access votes array
+                let votesArray: string[] = [];
+                if (item.votes && typeof item.votes.toArray === "function") {
+                    votesArray = item.votes.toArray();
+                } else if ("votes" in item && Array.isArray((item as unknown as { votes: string[]; }).votes)) {
+                    votesArray = (item as unknown as { votes: string[]; }).votes;
+                }
+                existingViewModel.votes = [...votesArray];
+
+                existingViewModel.lastChanged = newLastChanged;
+                // Item wrapper exposes comments wrapper, but we need length from underlying Y.Array or wrapper
+                const comments = item.comments;
+                existingViewModel.commentCount = comments?.length ?? 0;
+                debugLog(
+                    `OutlinerViewModel: Updated existing view model for "${existingViewModel.text}"`,
+                );
+            }
         } else {
             // 新しいビューモデルを作成
             this.viewModels.set(item.id, {
