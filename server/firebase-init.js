@@ -1,1 +1,1 @@
-firebase-init.cjs
+dist/firebase-init.js

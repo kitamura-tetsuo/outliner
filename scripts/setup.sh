@@ -15,9 +15,13 @@ handle_error() {
   local line=$1
   local exit_code=$2
   echo "Error occurred at line ${line}. Exit code: ${exit_code}" >&2
+
+  # Remove sentinel to ensure clean retry
+  rm -f "$SETUP_SENTINEL"
+
   if [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; then
     local next=$((RETRY_COUNT + 1))
-    echo "setup.sh did not complete. Re-running (attempt ${next}/${MAX_RETRIES})..."
+    echo "setup.sh did not complete. Retrying (attempt ${next}/${MAX_RETRIES})..."
     export SETUP_RETRY=$next
     exec "${SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")" "${SCRIPT_ARGS[@]}"
   else
@@ -38,7 +42,7 @@ fix_permissions() {
   # Fix ownership of client directory and its contents
   if [ -d "${ROOT_DIR}/client" ]; then
     # Fix ownership of node_modules if it exists and is owned by root
-    if [ -d "${ROOT_DIR}/client/node_modules" ] && [ "$(stat -c %U ${ROOT_DIR}/client/node_modules)" = "root" ]; then
+    if [ -d "${ROOT_DIR}/client/node_modules" ] && [ "$(stat -c %U "${ROOT_DIR}/client/node_modules")" = "root" ]; then
       echo "Fixing node_modules ownership..."
       sudo chown -R node:node "${ROOT_DIR}/client/node_modules" || true
     fi
@@ -74,8 +78,12 @@ echo "ROOT_DIR: ${ROOT_DIR}"
 
 # In CI/self-hosted environments, always run full setup to ensure clean state
 if ([ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]) && [ "${PREINSTALLED_ENV:-}" != "true" ]; then
-  echo "CI environment detected (and PREINSTALLED_ENV not set), removing setup sentinel to ensure full setup..."
-  rm -f "$SETUP_SENTINEL"
+  # Only remove sentinel if this is the first run (SETUP_RETRY is 0 or unset)
+  # Actually RETRY_COUNT is set at top.
+  if [ "$RETRY_COUNT" -eq 0 ]; then
+     echo "CI environment detected (and PREINSTALLED_ENV not set), removing setup sentinel to ensure full setup..."
+     rm -f "$SETUP_SENTINEL"
+  fi
 fi
 
 # Bypass heavy setup steps if sentinel file exists
@@ -143,6 +151,8 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   echo "Building server..."
   cd "${ROOT_DIR}/server"
   npm run build
+  echo "Server build complete. Artifacts in dist:"
+  ls -la dist || echo "dist directory missing!"
   cd "${ROOT_DIR}"
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
@@ -200,13 +210,19 @@ else
     cd "${ROOT_DIR}"
   fi
 
-  # Ensure server is built if dist is missing (critical for Yjs server)
-  if [ ! -f "${ROOT_DIR}/server/dist/index.js" ]; then
-    echo "Server build artifacts missing. Building server..."
+  # Ensure server is built if artifacts are missing (critical for Yjs server)
+  # Strictly verify existence and non-empty status
+  if [ ! -s "${ROOT_DIR}/server/dist/index.js" ] || [ ! -s "${ROOT_DIR}/server/dist/log-service.js" ]; then
+    echo "Server build artifacts missing or empty. Building server..."
     cd "${ROOT_DIR}/server"
     npm_ci_if_needed
     npm run build
+    echo "Server build complete. Artifacts in dist:"
+    ls -la dist || echo "dist directory missing!"
     cd "${ROOT_DIR}"
+  else
+    echo "Server artifacts found."
+    ls -la "${ROOT_DIR}/server/dist"
   fi
 fi
 
@@ -363,6 +379,16 @@ else
     if ! check_pm2_status; then
       echo "Detected crashed services via PM2. Exiting setup."
       pm2 logs --lines 50 --nostream
+      # Force log dumping specifically for server applications
+      echo "[TAILING] Tailing last 50 lines for [all] processes (change the value with --lines option)"
+      if [ -f "${ROOT_DIR}/server/logs/yjs-server.log" ]; then
+         echo "/__w/outliner/outliner/logs/yjs-server.log last 50 lines:"
+         tail -n 50 "${ROOT_DIR}/server/logs/yjs-server.log" || true
+      fi
+      if [ -f "${ROOT_DIR}/server/logs/log-service.log" ]; then
+         echo "/__w/outliner/outliner/logs/log-service.log last 50 lines:"
+         tail -n 50 "${ROOT_DIR}/server/logs/log-service.log" || true
+      fi
       exit 1
     fi
 
