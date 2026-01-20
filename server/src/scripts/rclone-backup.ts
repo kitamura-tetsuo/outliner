@@ -20,8 +20,8 @@ interface Config {
 
 export function getConfig(): Config {
     return {
-        backupDir: process.env.BACKUP_DIR || path.join(__dirname, "..", "backups"),
-        sourceDir: process.env.BACKUP_SOURCE || path.join(__dirname, "..", "data"),
+        backupDir: process.env.BACKUP_DIR || path.join(__dirname, "..", "..", "backups"),
+        sourceDir: process.env.BACKUP_SOURCE || path.join(__dirname, "..", "..", "data"),
         rcloneBin: process.env.RCLONE_BIN || "rclone",
         rcloneRemote: process.env.RCLONE_REMOTE,
         retentionDays: Number(process.env.BACKUP_RETENTION_DAYS || "7"),

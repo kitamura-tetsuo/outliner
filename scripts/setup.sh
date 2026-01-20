@@ -139,6 +139,12 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   echo "Installing all dependencies..."
   install_all_dependencies
 
+  # Build server (critical for artifacts)
+  echo "Building server..."
+  cd "${ROOT_DIR}/server"
+  npm run build
+  cd "${ROOT_DIR}"
+
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"
   npx --yes playwright install chromium
