@@ -51,3 +51,9 @@
 **Vulnerability:** The server configuration defaulted to 1,000,000 connections/requests per IP, effectively disabling DoS protection.
 **Learning:** Default values in configuration schemas (like Zod) are often set to "permissive" values during development to avoid friction, but these defaults can dangerously persist into production if not explicitly overridden.
 **Prevention:** Set secure, restrictive defaults in code (secure-by-default). Use environment variables to relax limits for specific environments (dev/test) if needed, rather than the other way around.
+
+## 2025-05-26 - Hardcoded Sentry DSN
+
+**Vulnerability:** The Sentry DSN was hardcoded in `functions/index.js` as a fallback, exposing configuration details and preventing clean environment isolation.
+**Learning:** Hardcoding "non-secret" configuration like DSNs still couples code to specific environments/accounts and makes open-sourcing or forking difficult. It also risks sending dev/test errors to production projects.
+**Prevention:** Initialize third-party services (Sentry, Analytics) strictly conditionally based on the presence of their specific environment variables. Fail/log gracefully if missing.
