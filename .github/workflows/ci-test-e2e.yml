@@ -79,7 +79,7 @@ jobs:
       pull-requests: write
     
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         project: [basic, core-1, core-2, core-3, core-4, core-5, core-6, core-7, core-8, new-1, new-2, new-3, new-4, auth, utils, server, yjs]
 
