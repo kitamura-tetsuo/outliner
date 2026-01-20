@@ -85,15 +85,21 @@ fix_permissions() {
   if [ -d "${ROOT_DIR}/client" ]; then
     # Fix ownership of node_modules if it exists and is owned by root
     if [ -d "${ROOT_DIR}/client/node_modules" ] && [ "$(stat -c %U "${ROOT_DIR}/client/node_modules")" = "root" ]; then
-      echo "Fixing node_modules ownership..."
-      sudo chown -R node:node "${ROOT_DIR}/client/node_modules" || true
+      if id "node" >/dev/null 2>&1; then
+        echo "Fixing node_modules ownership..."
+        sudo chown -R node:node "${ROOT_DIR}/client/node_modules" || true
+      else
+         echo "Skipping node_modules ownership fix (user 'node' not found)"
+      fi
     fi
   fi
   
   # Fix ownership of other key directories
   for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
     if [ -d "$dir" ]; then
-      sudo chown -R node:node "$dir" || true
+      if id "node" >/dev/null 2>&1; then
+        sudo chown -R node:node "$dir" || true
+      fi
     fi
   done
 }
@@ -183,7 +189,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
 
   # Install pre-commit via pip
   if pip install --no-cache-dir pre-commit; then
-    pre-commit install --hook-type pre-commit || echo "Warning: Failed to install pre-commit hook"
+    if [ -d "${ROOT_DIR}/.git" ]; then
+      pre-commit install --hook-type pre-commit || echo "Warning: Failed to install pre-commit hook"
+    else
+      echo "Skipping pre-commit install (not a git repository)"
+    fi
   else
     echo "Warning: Failed to install pre-commit package"
   fi
@@ -191,12 +201,16 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   install_all_dependencies
 
   # Build server (critical for artifacts)
-  echo "Building server..."
-  cd "${ROOT_DIR}/server"
-  npm run build
-  echo "Server build complete. Artifacts in dist:"
-  ls -la dist || echo "dist directory missing!"
-  cd "${ROOT_DIR}"
+  if [ "${SKIP_BUILD:-0}" -ne 1 ]; then
+    echo "Building server..."
+    cd "${ROOT_DIR}/server"
+    npm run build
+    echo "Server build complete. Artifacts in dist:"
+    ls -la dist || echo "dist directory missing!"
+    cd "${ROOT_DIR}"
+  else
+    echo "Skipping server build (SKIP_BUILD=1)"
+  fi
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"

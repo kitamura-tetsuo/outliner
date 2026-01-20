@@ -133,8 +133,10 @@ clear_log_files() {
 npm_ci_if_needed() {
   # Fix permissions before installing
   if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
-    echo "Fixing node_modules ownership before npm install..."
-    sudo chown -R node:node "node_modules" || true
+    if id "node" >/dev/null 2>&1; then
+      echo "Fixing node_modules ownership before npm install..."
+      sudo chown -R node:node "node_modules" || true
+    fi
   fi
   
   if [ ! -d node_modules ] || ! npm ls >/dev/null 2>&1; then
