@@ -20,8 +20,6 @@ export interface SeedRequest {
     pages: PageSeedData[];
 }
 
-const seedingConnections = new Map<string, any>();
-
 /**
  * Server-side seeding endpoint that directly manipulates Yjs documents
  * Uses Hocuspocus's openDirectConnection API for proper document lifecycle management.
@@ -83,9 +81,6 @@ export function createSeedRouter(
             const directConnection = await (hocuspocus as any).openDirectConnection(projectRoom, {
                 isSeeding: true,
             });
-
-            // Keep reference to prevent GC/Closure
-            seedingConnections.set(projectRoom, directConnection);
 
             try {
                 const doc = directConnection.document;

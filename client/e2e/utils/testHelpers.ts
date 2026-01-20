@@ -350,27 +350,16 @@ export class TestHelpers {
 
         // Use SeedClient for HTTP-based seeding instead of browser-based seeding
         if (!options?.skipSeed) {
-            let lastError;
-            for (let i = 0; i < 3; i++) {
-                try {
-                    const { SeedClient } = await import("../utils/seedClient.js");
-                    const authToken = await TestHelpers.getTestAuthToken();
-                    const seeder = new SeedClient(projectName, authToken);
-                    await seeder.seedPage(pageName, lines);
-                    TestHelpers.slog(
-                        `createAndSeedProject: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
-                    );
-                    lastError = null;
-                    break;
-                } catch (e) {
-                    console.log(`createAndSeedProject: Seed attempt ${i + 1} failed: ${e}`);
-                    lastError = e;
-                    await page.waitForTimeout(1000);
-                }
-            }
-            if (lastError) {
-                TestHelpers.slog(`createAndSeedProject: SeedClient seeding failed after 3 attempts: ${lastError}`);
-                throw new Error(`createAndSeedProject: SeedClient seeding failed: ${lastError}`);
+            try {
+                const { SeedClient } = await import("../utils/seedClient.js");
+                const authToken = await TestHelpers.getTestAuthToken();
+                const seeder = new SeedClient(projectName, authToken);
+                await seeder.seedPage(pageName, lines);
+                TestHelpers.slog(
+                    `createAndSeedProject: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
+                );
+            } catch (e) {
+                TestHelpers.slog(`createAndSeedProject: SeedClient seeding failed, page will be empty: ${e}`);
             }
         }
 

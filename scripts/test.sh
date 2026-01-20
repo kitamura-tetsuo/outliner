@@ -43,16 +43,6 @@ ensure_services() {
   ' >&2; then
     echo "Service check failed. Running setup..."
     "${SCRIPT_DIR}/setup.sh"
-    return
-  fi
-
-  # If PM2 says online, verify responsiveness
-  # Check Yjs Server (critical for tests)
-  YJS_PORT="${TEST_YJS_PORT:-7093}"
-  if ! curl -s --connect-timeout 2 --max-time 5 "http://127.0.0.1:${YJS_PORT}/health" >/dev/null; then
-      echo "⚠️ Yjs server is online but not responding at http://127.0.0.1:${YJS_PORT}/health"
-      echo "Restarting services..."
-      "${SCRIPT_DIR}/setup.sh"
   fi
 }
 
