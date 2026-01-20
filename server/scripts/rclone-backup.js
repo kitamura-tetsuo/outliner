@@ -10,15 +10,7 @@ const __dirname = path.dirname(__filename);
 
 const execFileAsync = promisify(execFile);
 
-interface Config {
-    backupDir: string;
-    sourceDir: string;
-    rcloneBin: string;
-    rcloneRemote?: string;
-    retentionDays: number;
-}
-
-export function getConfig(): Config {
+export function getConfig() {
     return {
         backupDir: process.env.BACKUP_DIR || path.join(__dirname, "..", "backups"),
         sourceDir: process.env.BACKUP_SOURCE || path.join(__dirname, "..", "data"),
@@ -28,12 +20,12 @@ export function getConfig(): Config {
     };
 }
 
-function getTimestamp(): string {
+function getTimestamp() {
     const d = new Date();
     return d.toISOString().replace(/[:-]/g, "").replace(/\.\d{3}Z$/, "");
 }
 
-export async function createArchive(): Promise<string> {
+export async function createArchive() {
     const { backupDir, sourceDir } = getConfig();
     await fs.mkdir(backupDir, { recursive: true });
     const archiveName = `backup-${getTimestamp()}.tar.gz`;
@@ -42,7 +34,7 @@ export async function createArchive(): Promise<string> {
     return archivePath;
 }
 
-export async function uploadArchive(archivePath: string): Promise<void> {
+export async function uploadArchive(archivePath) {
     const { rcloneBin, rcloneRemote } = getConfig();
     if (!rcloneRemote) {
         console.log("RCLONE_REMOTE not set, skipping upload");
@@ -51,7 +43,7 @@ export async function uploadArchive(archivePath: string): Promise<void> {
     await execFileAsync(rcloneBin, ["copy", archivePath, rcloneRemote]);
 }
 
-export async function pruneOldBackups(retentionDays?: number): Promise<void> {
+export async function pruneOldBackups(retentionDays) {
     const { backupDir, retentionDays: cfgRetention } = getConfig();
     const limit = retentionDays || cfgRetention;
     const files = await fs.readdir(backupDir);
