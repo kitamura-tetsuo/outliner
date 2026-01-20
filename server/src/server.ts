@@ -13,6 +13,14 @@ import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence, logTotalSize } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { createSeedRouter } from "./seed-api.js";
+import {
+    refreshClientLogStream,
+    refreshServerLogStream,
+    refreshTelemetryLogStream,
+    rotateClientLogs,
+    rotateServerLogs,
+    rotateTelemetryLogs,
+} from "./utils/log-manager.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 import { extractAuthToken, verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
 
@@ -236,6 +244,48 @@ export async function startServer(
 
     // Seed API - use Hocuspocus's openDirectConnection for proper document lifecycle
     app.use("/api", createSeedRouter(hocuspocus, persistence));
+
+    // Log rotation endpoint
+    app.post("/api/rotate-logs", async (req: any, res: any) => {
+        try {
+            const clientRotated = await rotateClientLogs(2);
+            const telemetryRotated = await rotateTelemetryLogs(2);
+            const serverRotated = await rotateServerLogs(2);
+
+            if (clientRotated) {
+                refreshClientLogStream();
+            }
+            if (telemetryRotated) {
+                refreshTelemetryLogStream();
+            }
+            if (serverRotated) {
+                refreshServerLogStream();
+            }
+
+            res.status(200).json({
+                success: true,
+                clientRotated,
+                telemetryRotated,
+                serverRotated,
+                timestamp: new Date().toISOString(),
+            });
+
+            logger.info(`Log rotation completed: ${
+                JSON.stringify({
+                    clientRotated,
+                    telemetryRotated,
+                    serverRotated,
+                    timestamp: new Date().toISOString(),
+                })
+            }`);
+        } catch (error: any) {
+            logger.error(`Log rotation error: ${error.message}`);
+            res.status(500).json({
+                success: false,
+                error: error.message,
+            });
+        }
+    });
 
     // Explicitly handle upgrade requests to ensure Hocuspocus receives them
     server.on("upgrade", async (request, socket, head) => {

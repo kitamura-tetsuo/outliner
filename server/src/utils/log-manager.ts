@@ -9,11 +9,17 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Calculate server root directory correctly handling both src and dist structures
+let serverRoot = path.resolve(__dirname, "..", "..");
+if (path.basename(serverRoot) === "dist") {
+    serverRoot = path.resolve(serverRoot, "..");
+}
+
 // ログディレクトリのパス
-// server/src/utils -> server/logs
-const serverLogDir = path.resolve(__dirname, "..", "..", "logs");
-// server/src/utils -> client/logs
-const clientLogDir = path.resolve(__dirname, "..", "..", "..", "client", "logs");
+// server/logs
+const serverLogDir = path.join(serverRoot, "logs");
+// client/logs
+const clientLogDir = path.resolve(serverRoot, "..", "client", "logs");
 
 // ログファイルのパス
 export const serverLogPath = path.join(serverLogDir, "log-service.log");
