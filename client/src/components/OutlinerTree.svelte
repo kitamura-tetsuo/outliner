@@ -1728,10 +1728,6 @@
                 if (!newItem) {
                     newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
                 }
-                let newItem = items.addNode(currentUser, targetIndex + i);
-                if (!newItem) {
-                    newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
-                }
                 if (newItem) {
                     newItem.text = lines[i];
                 }
