@@ -174,6 +174,18 @@ async function getFreshIdToken(): Promise<string> {
     }
 }
 
+/**
+ * Constructs the WebSocket URL including room path and auth token.
+ * The server requires the room name in the URL path for authentication validation.
+ */
+function constructWsUrl(wsBase: string, room: string, token: string): string {
+    // Ensure no double slashes when joining base and room
+    const baseUrl = wsBase.replace(/\/$/, "");
+    const roomPath = room.startsWith("/") ? room.slice(1) : room;
+    const url = `${baseUrl}/${roomPath}`;
+    return token ? `${url}?token=${token}` : url;
+}
+
 export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: string): Promise<PageConnection> {
     const wsBase = getWsBase();
     const room = pageRoomPath(projectId, pageId);
@@ -203,8 +215,14 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         console.log(`[connectPageDoc] Subdoc load failed for room: ${room}, continuing anyway`, e);
     }
 
+    // Ensure token is available for initial connection URL (required by server upgrade handler)
+    let initialToken = "";
+    try {
+        initialToken = await getFreshIdToken();
+    } catch {}
+
     const provider = new HocuspocusProvider({
-        url: wsBase,
+        url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
         token: tokenFn,
@@ -331,8 +349,14 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         }
     };
 
+    // Ensure token is available for initial connection URL (required by server upgrade handler)
+    let initialToken = "";
+    try {
+        initialToken = await getFreshIdToken();
+    } catch {}
+
     const provider = new HocuspocusProvider({
-        url: wsBase,
+        url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
         token: tokenFn,
@@ -585,8 +609,16 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         }
     };
 
+    // Ensure token is available for initial connection URL (required by server upgrade handler)
+    let initialToken = "";
+    try {
+        initialToken = await getFreshIdToken();
+    } catch (e) {
+        console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
+    }
+
     const provider = new HocuspocusProvider({
-        url: wsBase,
+        url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
         token: tokenFn,
@@ -633,8 +665,14 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         }
     };
 
+    // Ensure token is available for initial connection URL (required by server upgrade handler)
+    let initialToken = "";
+    try {
+        initialToken = await getFreshIdToken();
+    } catch {}
+
     const provider = new HocuspocusProvider({
-        url: wsBase,
+        url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
         token: tokenFn,

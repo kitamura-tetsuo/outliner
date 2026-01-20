@@ -58,11 +58,13 @@ describe("Hocuspocus Server", () => {
     });
 
     const createClient = (token: string = "dummy") => {
+        // Append token to URL because server.on('upgrade') checks it there
+        // (HocuspocusProvider 'token' option is sent in the WebSocket message, which is too late for upgrade-time auth)
         return new HocuspocusProvider({
             url: `ws://127.0.0.1:${port}/projects/123?token=${token}`,
             name: "projects/123",
             document: new Y.Doc(),
-            token,
+            token, // Still pass it here in case it's used elsewhere
         });
     };
 
@@ -113,9 +115,7 @@ describe("Hocuspocus Server", () => {
         verifyTokenStub.resolves(mockDecodedIdToken);
         checkAccessStub.resolves(true);
 
-        // Access the underlying Hocuspocus instance (which is `server` in this test context)
-        // Note: in previous code `server` was `res.hocuspocus` which is a `Hocuspocus` instance.
-        const connection1 = await server.openDirectConnection("projects/123");
+        const connection1 = await (server as any).openDirectConnection("projects/123");
         connection1.transact((doc: any) => {
             doc.getText("test").insert(0, "hello");
         });
