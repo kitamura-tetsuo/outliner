@@ -194,13 +194,22 @@ else
     cd "${ROOT_DIR}"
   fi
 
-  # Ensure server is built if dist is missing (critical for Yjs server)
-  if [ ! -f "${ROOT_DIR}/server/dist/index.js" ]; then
-    echo "Server build artifacts missing. Building server..."
+  # Ensure server is built if dist is missing or empty (critical for Yjs server)
+  if [ ! -s "${ROOT_DIR}/server/dist/src/index.js" ]; then
+    echo "Server build artifacts missing or empty. Building server..."
     cd "${ROOT_DIR}/server"
     npm_ci_if_needed
     npm run build
+    if [ ! -s "dist/src/index.js" ]; then
+        echo "Error: Server build failed to produce dist/src/index.js"
+        ls -la dist || echo "dist directory not found"
+        ls -la dist/src || echo "dist/src directory not found"
+        exit 1
+    fi
     cd "${ROOT_DIR}"
+  else
+    echo "Server build artifacts found at ${ROOT_DIR}/server/dist/src/index.js"
+    ls -l "${ROOT_DIR}/server/dist/src/index.js"
   fi
 fi
 
