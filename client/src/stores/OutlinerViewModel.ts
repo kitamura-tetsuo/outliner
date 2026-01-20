@@ -131,11 +131,22 @@ export class OutlinerViewModel {
             // プロパティを更新（参照は維持）
             // パフォーマンス最適化: lastChanged が変更された場合のみ再計算する
             // Y.Text.toString() は高コストな操作であるため、不要な呼び出しを避ける
-            // Use specific types instead of any where possible, falling back to safe access for runtime properties
-            const newLastChanged = typeof item.lastChanged === "number" ? item.lastChanged : (item as any).lastChanged;
+            // Use safe type checking instead of explicit any casts
+            const lastChangedProp = "lastChanged" in item ? item.lastChanged : undefined;
+            const newLastChanged = typeof lastChangedProp === "number" ? lastChangedProp : 0;
+
             if (existingViewModel.lastChanged !== newLastChanged) {
                 existingViewModel.text = item.text.toString();
-                existingViewModel.votes = [...(item.votes?.toArray?.() ?? (item as any).votes ?? [])];
+
+                // Safely access votes array
+                let votesArray: string[] = [];
+                if (item.votes && typeof item.votes.toArray === "function") {
+                    votesArray = item.votes.toArray();
+                } else if ("votes" in item && Array.isArray((item as unknown as { votes: string[]; }).votes)) {
+                    votesArray = (item as unknown as { votes: string[]; }).votes;
+                }
+                existingViewModel.votes = [...votesArray];
+
                 existingViewModel.lastChanged = newLastChanged;
                 // Item wrapper exposes comments wrapper, but we need length from underlying Y.Array or wrapper
                 const comments = item.comments;
