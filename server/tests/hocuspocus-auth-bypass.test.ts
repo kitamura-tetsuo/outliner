@@ -1,4 +1,3 @@
-
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { expect } from "chai";
 import sinon from "sinon";
@@ -83,18 +82,18 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
     });
 
     it("should BLOCK connection to project-like path if obscured (e.g. //projects) (FIXED)", async () => {
-         const provider = new HocuspocusProvider({
-             url: `ws://127.0.0.1:${port}//projects/123`,
-             name: "projects/123",
-             document: new Y.Doc(),
-         });
+        const provider = new HocuspocusProvider({
+            url: `ws://127.0.0.1:${port}//projects/123`,
+            name: "projects/123",
+            document: new Y.Doc(),
+        });
 
-         await new Promise<void>((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
             provider.on("synced", () => {
                 reject(new Error("Should NOT have synced! Vulnerability exists if this passes."));
             });
 
-             provider.on("disconnect", (data) => {
+            provider.on("disconnect", (data) => {
                 resolve();
             });
         });
@@ -103,22 +102,22 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
     });
 
     it("should BLOCK connection to normal /projects path without auth", async () => {
-         const provider = new HocuspocusProvider({
-             url: `ws://127.0.0.1:${port}/projects/123`,
-             name: "projects/123",
-             document: new Y.Doc(),
-         });
+        const provider = new HocuspocusProvider({
+            url: `ws://127.0.0.1:${port}/projects/123`,
+            name: "projects/123",
+            document: new Y.Doc(),
+        });
 
-         await new Promise<void>((resolve, reject) => {
-             provider.on("disconnect", (data) => {
-                 resolve();
-             });
+        await new Promise<void>((resolve, reject) => {
+            provider.on("disconnect", (data) => {
+                resolve();
+            });
 
-             provider.on("synced", () => {
-                 reject(new Error("Should not have synced!"));
-             });
-         });
+            provider.on("synced", () => {
+                reject(new Error("Should not have synced!"));
+            });
+        });
 
-         provider.destroy();
+        provider.destroy();
     });
 });
