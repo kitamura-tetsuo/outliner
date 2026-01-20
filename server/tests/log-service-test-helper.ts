@@ -1,22 +1,15 @@
 /**
- * log-service.jsファイルをテスト用にエクスポート可能にするためのヘルパーファイル
- * このファイルは直接サーバーを起動せず、Expressのミドルウェアのみをエクスポートします。
+ * Helper file to make log-service.js testable.
+ * This file does not start the server directly but exports the Express middleware.
  */
 
-// dotenvの設定を読み込み
-require("dotenv").config({ path: ".env.test" });
+import "dotenv/config";
+import cors from "cors";
+import express from "express";
+import admin from "firebase-admin";
+import jwt from "jsonwebtoken";
 
-// 必要なモジュール
-const express = require("express");
-const cors = require("cors");
-const admin = require("firebase-admin");
-
-// サービスアカウントの設定
-// テスト用なのでJSONファイルのパスチェックはスキップ
-const serviceAccount = {}; // テスト用の空オブジェクト
-
-// Firebaseの初期化（テスト用に最小構成）
-// テスト環境でFirestoreエミュレーターを使用
+// Firebase initialization (minimal configuration for testing)
 if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
     process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
     process.env.GCLOUD_PROJECT = "test-project";
@@ -28,7 +21,6 @@ if (!admin.apps.length) {
     });
 }
 
-// データベース接続設定（テスト用）
 const db = admin.firestore();
 if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
     db.settings({
@@ -40,8 +32,7 @@ if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
 const userContainersCollection = db.collection("userContainers");
 const containerUsersCollection = db.collection("containerUsers");
 
-// CORS_ORIGINの値を検証して安全な値のみを使用
-function getSafeOrigins() {
+function getSafeOrigins(): string[] {
     const defaultOrigins = ["http://localhost:7070"];
 
     if (!process.env.CORS_ORIGIN) {
@@ -51,10 +42,8 @@ function getSafeOrigins() {
     try {
         const origins = process.env.CORS_ORIGIN.split(",").map(origin => origin.trim());
         const safeOrigins = origins.filter(origin => {
-            // URLの形式を検証
             try {
                 new URL(origin);
-                // 不正な文字列パターンを除外
                 if (origin.includes("pathToRegexpError") || origin.includes("git.new")) {
                     console.warn(`Filtering out invalid origin: ${origin}`);
                     return false;
@@ -71,13 +60,12 @@ function getSafeOrigins() {
         }
 
         return safeOrigins;
-    } catch (error) {
+    } catch (error: any) {
         console.error(`Error parsing CORS_ORIGIN: ${error.message}, using defaults`);
         return defaultOrigins;
     }
 }
 
-// Expressアプリの作成
 const app = express();
 app.use(cors({
     origin: getSafeOrigins(),
@@ -87,12 +75,15 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// ヘルスチェックエンドポイント
 app.get("/health", (req, res) => {
-    res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
+    return res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-// コンテナID保存エンドポイント
+let adminInstance = admin;
+export const setAdmin = (mock: any) => {
+    adminInstance = mock;
+};
+
 app.post("/api/save-container", async (req, res) => {
     try {
         const { idToken, containerId } = req.body;
@@ -101,22 +92,19 @@ app.post("/api/save-container", async (req, res) => {
             return res.status(400).json({ error: "Container ID is required" });
         }
 
-        // Firebase IDトークンを検証
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const decodedToken = await adminInstance.auth().verifyIdToken(idToken);
         const userId = decodedToken.uid;
 
-        // ユーザードキュメントを取得
         const userDocRef = userContainersCollection.doc(userId);
         const docSnapshot = await userDocRef.get();
 
-        // ドキュメントが存在するかでオペレーションを変更
         if (docSnapshot.exists) {
             await userDocRef.update({
                 defaultContainerId: containerId,
-                updatedAt: admin.FieldValue.serverTimestamp(),
+                updatedAt: adminInstance.firestore.FieldValue.serverTimestamp(),
             });
 
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 operation: "updated",
                 containerId: containerId,
@@ -125,27 +113,26 @@ app.post("/api/save-container", async (req, res) => {
             await userDocRef.set({
                 userId,
                 defaultContainerId: containerId,
-                createdAt: admin.FieldValue.serverTimestamp(),
-                updatedAt: admin.FieldValue.serverTimestamp(),
+                createdAt: adminInstance.firestore.FieldValue.serverTimestamp(),
+                updatedAt: adminInstance.firestore.FieldValue.serverTimestamp(),
             });
 
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 operation: "created",
                 containerId: containerId,
             });
         }
-    } catch (error) {
+    } catch (error: any) {
         if (error.message === "Invalid token") {
-            res.status(401).json({ error: "Authentication failed", details: error.message });
+            return res.status(401).json({ error: "Authentication failed", details: error.message });
         } else {
             console.error("Error saving container ID:", error);
-            res.status(500).json({ error: "Failed to save container ID", details: error.message });
+            return res.status(500).json({ error: "Failed to save container ID", details: error.message });
         }
     }
 });
 
-// コンテナにアクセス可能なユーザーのリストを取得するエンドポイント（管理者用）
 app.post("/api/get-container-users", async (req, res) => {
     try {
         const { idToken, containerId } = req.body;
@@ -154,7 +141,7 @@ app.post("/api/get-container-users", async (req, res) => {
             return res.status(400).json({ error: "Container ID is required" });
         }
 
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const decodedToken = await adminInstance.auth().verifyIdToken(idToken);
 
         if (decodedToken.role !== "admin") {
             return res.status(403).json({ error: "Admin privileges required" });
@@ -166,16 +153,15 @@ app.post("/api/get-container-users", async (req, res) => {
             return res.status(404).json({ error: "Container not found" });
         }
 
-        res.status(200).json({
-            users: containerDoc.data().accessibleUserIds || [],
+        return res.status(200).json({
+            users: containerDoc.data()?.accessibleUserIds || [],
         });
     } catch (error) {
         console.error("Error getting container users:", error);
-        res.status(500).json({ error: "Failed to get container users" });
+        return res.status(500).json({ error: "Failed to get container users" });
     }
 });
 
-// 全ユーザー一覧を取得するエンドポイント（管理者用）
 app.post("/api/list-users", async (req, res) => {
     try {
         const { idToken } = req.body;
@@ -190,79 +176,70 @@ app.post("/api/list-users", async (req, res) => {
             return res.status(403).json({ error: "Admin privileges required" });
         }
 
-        const result = await admin.auth().listUsers();
+        const result = await adminInstance.auth().listUsers();
         const users = result.users.map(u => ({
             uid: u.uid,
             email: u.email,
             displayName: u.displayName,
         }));
 
-        res.status(200).json({ users });
+        return res.status(200).json({ users });
     } catch (error) {
         console.error("Error listing users:", error);
-        res.status(500).json({ error: "Failed to list users" });
+        return res.status(500).json({ error: "Failed to list users" });
     }
 });
 
-// デバッグ用エンドポイント
 app.get("/debug/token-info", async (req, res) => {
     try {
         const { token } = req.query;
 
         if (!token) {
-            return res.status(400).json({ error: "トークンが必要です" });
+            return res.status(400).json({ error: "Token is required" });
         }
 
-        // JWTをデコード
-        const decoded = require("jsonwebtoken").decode(token, { complete: true });
+        const decoded = jwt.decode(token as string, { complete: true });
 
         if (!decoded) {
-            return res.status(400).json({ error: "無効なJWTトークンです" });
+            return res.status(400).json({ error: "Invalid JWT" });
         }
+
+        const payload = decoded.payload as jwt.JwtPayload;
 
         return res.json({
             header: decoded.header,
-            payload: decoded.payload,
-            expiresIn: decoded.payload.exp ? new Date(decoded.payload.exp * 1000).toISOString() : "N/A",
-            issuedAt: decoded.payload.iat ? new Date(decoded.payload.iat * 1000).toISOString() : "N/A",
+            payload: payload,
+            expiresIn: payload.exp ? new Date(payload.exp * 1000).toISOString() : "N/A",
+            issuedAt: payload.iat ? new Date(payload.iat * 1000).toISOString() : "N/A",
         });
     } catch (error) {
         console.error("Token debug error:", error);
-        res.status(500).json({ error: "トークン情報の取得に失敗しました" });
+        return res.status(500).json({ error: "Failed to get token info" });
     }
 });
 
-// ログファイルをローテーションするエンドポイント
-const {
-    rotateClientLogs,
-    rotateTelemetryLogs,
-    rotateServerLogs,
-    refreshClientLogStream,
-    refreshTelemetryLogStream,
-    refreshServerLogStream,
-} = require("../utils/logger");
+import LogManager from "../src/utils/log-manager.js";
 
 app.post("/api/rotate-logs", async (req, res) => {
     try {
-        const clientRotated = await rotateClientLogs(2);
-        const telemetryRotated = await rotateTelemetryLogs(2);
-        const serverRotated = await rotateServerLogs(2);
+        const clientRotated = await LogManager.rotateClientLogs(2);
+        const telemetryRotated = await LogManager.rotateTelemetryLogs(2);
+        const serverRotated = await LogManager.rotateServerLogs(2);
 
-        if (clientRotated) refreshClientLogStream();
-        if (telemetryRotated) refreshTelemetryLogStream();
-        if (serverRotated) refreshServerLogStream();
+        if (clientRotated) LogManager.refreshClientLogStream();
+        if (telemetryRotated) LogManager.refreshTelemetryLogStream();
+        if (serverRotated) LogManager.refreshServerLogStream();
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             clientRotated,
             telemetryRotated,
             serverRotated,
             timestamp: new Date().toISOString(),
         });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+    } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// テスト用にExpressアプリをエクスポート（サーバーは起動しない）
-module.exports = app;
+export { admin, app };

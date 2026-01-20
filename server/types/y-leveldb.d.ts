@@ -18,5 +18,6 @@ declare module "y-leveldb" {
         destroy(): Promise<void>;
         clearAll(): Promise<any>;
         flushDocument(docName: string): Promise<void>;
+        bindState(docName: string, ydoc: import("yjs").Doc): Promise<void>;
     }
 }

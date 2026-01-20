@@ -38,20 +38,20 @@ test.describe("Page subdoc provider", () => {
         const rooms = await page.evaluate(({ p1, p2 }) => {
             const c = (window as any).__CONN__;
             return {
-                r1: c.getPageConnection(p1).provider.roomname,
-                r2: c.getPageConnection(p2).provider.roomname,
+                r1: c.getPageConnection(p1).provider.configuration.name,
+                r2: c.getPageConnection(p2).provider.configuration.name,
             };
         }, ids);
         expect(rooms.r1).not.toBe(rooms.r2);
         await page.evaluate(p1 => {
             const c = (window as any).__CONN__;
-            c.getPageConnection(p1).awareness.setLocalStateField("presence", { cursor: { itemId: "a", offset: 0 } });
+            c.getPageConnection(p1).awareness?.setLocalStateField("presence", { cursor: { itemId: "a", offset: 0 } });
         }, ids.p1);
         const presence = await page.evaluate(({ p1, p2 }) => {
             const c = (window as any).__CONN__;
             return {
-                p1: c.getPageConnection(p1).awareness.getLocalState().presence,
-                p2: c.getPageConnection(p2).awareness.getLocalState()?.presence,
+                p1: c.getPageConnection(p1).awareness?.getLocalState()?.presence,
+                p2: c.getPageConnection(p2).awareness?.getLocalState()?.presence,
             };
         }, ids);
         expect(presence.p1).toBeTruthy();

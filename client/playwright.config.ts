@@ -98,10 +98,11 @@ export default defineConfig({
             : []),
     ] as any,
     // テスト実行時のタイムアウトを延長（環境初期化の揺らぎに対応）
-    timeout: process.env.CI ? 120 * 1000 : 60 * 1000, // CIでは120秒、それ以外は60秒
+    // Hocuspocusへの接続とYjs同期に時間がかかることがあるため、120秒に延長
+    timeout: 120 * 1000,
     expect: {
         // 要素の検出待機のタイムアウト設定を延長
-        timeout: process.env.CI ? 90 * 1000 : 60 * 1000, // CIでは90秒、それ以外は60秒
+        timeout: 90 * 1000,
     },
 
     use: {

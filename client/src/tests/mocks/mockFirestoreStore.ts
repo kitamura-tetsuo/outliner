@@ -22,4 +22,4 @@ export const getUserContainers = mockGetUserContainers;
 export const saveContainerIdToServer = mockSaveContainerIdToServer;
 
 // Re-export types from the mock
-export type { UserContainer } from "./firestoreMock";
+export type { UserProject } from "./firestoreMock";

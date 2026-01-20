@@ -1,6 +1,6 @@
-require("ts-node/register");
-const { expect } = require("chai");
-const { sanitizeUrl } = require("../src/utils/sanitize");
+import { expect } from "chai";
+import { describe, it } from "mocha";
+import { sanitizeUrl } from "../src/utils/sanitize.js";
 
 describe("sanitizeUrl", () => {
     it("should return empty string for undefined", () => {

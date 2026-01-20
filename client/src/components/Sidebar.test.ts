@@ -126,7 +126,7 @@ describe("Sidebar", () => {
                     items: { length: 0 },
                 },
             ],
-        };
+        } as any;
         store.pagesVersion = 0;
     });
 
@@ -212,8 +212,8 @@ describe("Sidebar", () => {
             const originalProject = store.project;
             const originalPages = store.pages;
 
-            store.project = Project.createInstance("Empty Project");
-            store.pages = { current: [] };
+            store.project = Project.createInstance("Empty Project") as any;
+            store.pages = { current: [] } as any;
 
             const { rerender } = render(Sidebar, { isOpen: true });
 

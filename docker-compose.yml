@@ -36,6 +36,18 @@ services:
       - yjs-net
     restart: unless-stopped
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    command: tunnel --no-autoupdate run
+    env_file:
+      - ./server/.env.docker
+    volumes:
+      - ./cloudflared:/etc/cloudflared
+    networks:
+      - yjs-net
+    restart: unless-stopped
+
 networks:
   yjs-net:
     enable_ipv6: true

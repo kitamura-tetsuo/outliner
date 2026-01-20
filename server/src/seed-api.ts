@@ -6,6 +6,10 @@ import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 import { verifyIdTokenCached } from "./websocket-auth.js";
 
+// Use 'any' type for Hocuspocus to avoid ESM import issues
+// The actual type is @hocuspocus/server.Hocuspocus
+type HocuspocusInstance = any;
+
 export interface PageSeedData {
     name: string;
     lines?: string[];
@@ -16,24 +20,17 @@ export interface SeedRequest {
     pages: PageSeedData[];
 }
 
-interface GetYDoc {
-    (docname: string, gc?: boolean): Y.Doc;
-}
-
 /**
  * Server-side seeding endpoint that directly manipulates Yjs documents
- * This bypasses WebSocket synchronization timing issues by using the exact
- * same schema as the client.
+ * Uses Hocuspocus's openDirectConnection API for proper document lifecycle management.
  */
-export function createSeedRouter(persistence: LeveldbPersistence | undefined, getYDoc?: GetYDoc) {
+export function createSeedRouter(
+    hocuspocus: HocuspocusInstance,
+    persistence?: LeveldbPersistence,
+) {
     const router = express.Router();
 
     router.post("/seed", async (req, res): Promise<void> => {
-        if (!persistence) {
-            res.status(503).json({ error: "Persistence not enabled" });
-            return;
-        }
-
         // Authentication Check
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -76,98 +73,78 @@ export function createSeedRouter(persistence: LeveldbPersistence | undefined, ge
                 return `p${hex}`; // ensure starts with a letter; matches [A-Za-z0-9_-]+
             }
 
-            // Get or create the project document using stable ID (same as client)
             const projectId = stableIdFromTitle(projectName);
             const projectRoom = `projects/${projectId}`;
 
-            let projectDoc: Y.Doc;
-            if (getYDoc) {
-                // Use live doc from y-websocket memory cache!
-                projectDoc = getYDoc(projectRoom);
-                // Wait for initialization if needed (WSSharedDoc pattern)
-                if ((projectDoc as any).whenInitialized) {
-                    await (projectDoc as any).whenInitialized;
-                }
-            } else {
-                // Fallback (risk of desync)
-                projectDoc = await persistence.getYDoc(projectRoom);
-            }
-
-            // Use the actual Project schema from client
-            const project = Project.fromDoc(projectDoc);
-
-            // Set project title
-            if (!project.title) {
-                project.title = projectName;
-            }
-
-            // Create pages and add content
-            for (const pageData of pages) {
-                logger.info({ event: "seed_page", pageName: pageData.name });
-
-                // Add page to project using the real schema
-                // project.addPage creates the page node in the main tree and manages the subdoc entry
-                const page = project.addPage(pageData.name, "seed-server");
-
-                // Add content items (lines) to the page
-                // We use page.items.addNode() effectively adding children in the main OrderTree
-                if (pageData.lines && pageData.lines.length > 0) {
-                    const items = page.items; // Items wrapper for this page
-
-                    for (const line of pageData.lines) {
-                        const item = items.addNode("seed-server");
-                        item.text = line;
-                    }
-
-                    logger.info({
-                        event: "seed_items_added",
-                        pageName: pageData.name,
-                        itemCount: pageData.lines.length,
-                    });
-                }
-
-                // If project.addPage creates a subdoc, we might want to fail-safe persist it or ignore if empty
-                // The shared app-schema addPage puts a subdoc in the 'pages' map.
-                // We'll persist that subdoc just in case, though content is now in the main doc.
-                // (Optional: inspect if app-schema puts anything critical in subdoc)
-                // App-schema:
-                //   const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as YDocOptions);
-                //   pages.set(page.id, subdoc);
-                // It's mostly a placeholder for now.
-
-                // We should ensure the subdoc is persisted if it exists, to match system expectations
-                const pagesMap = projectDoc.getMap<Y.Doc>("pages");
-                const subdoc = pagesMap.get(page.id);
-                if (subdoc) {
-                    const pageRoom = `projects/${projectId}/pages/${page.id}`;
-                    const subdocUpdate = Y.encodeStateAsUpdate(subdoc);
-                    await persistence.storeUpdate(pageRoom, subdocUpdate);
-                }
-            }
-
-            // Persist the main project document MANUALLY only if not using live doc binding
-            // Persist the main project document MANUALLY to ensure LevelDB is populated.
-            // This is critical because if no WebSocket client is connected yet, the live doc
-            // is not bound to persistence, so edits remain memory-only until a client connects.
-            let projectUpdate: Uint8Array | undefined;
-            {
-                projectUpdate = Y.encodeStateAsUpdate(projectDoc);
-                await persistence.storeUpdate(projectRoom, projectUpdate);
-            }
-
-            // Debug: Verify the persisted state by reading it back
-            const verifyDoc = await persistence.getYDoc(projectRoom);
-            const orderedTree = verifyDoc.getMap("orderedTree");
-            logger.info({
-                event: "seed_project_persisted",
-                projectRoom,
-                bytes: projectUpdate?.byteLength ?? 0,
-                orderedTreeSize: orderedTree.size,
-                expectedPages: pages.length,
+            // Use Hocuspocus's official openDirectConnection API
+            // This properly handles document lifecycle, caching, and sync
+            const directConnection = await (hocuspocus as any).openDirectConnection(projectRoom, {
+                isSeeding: true,
             });
 
-            logger.info({ event: "seed_complete", projectName, pageCount: pages.length });
-            res.json({ success: true, projectName, pageCount: pages.length });
+            try {
+                const doc = directConnection.document;
+                if (!doc) {
+                    throw new Error("Failed to get document from direct connection");
+                }
+
+                // Use transact for proper change handling
+                // IMPORTANT: We avoid using Project.addPage because it creates subdocuments
+                // with subdoc.load() which doesn't work correctly with Hocuspocus's Document class.
+                // Instead, we create pages directly in the orderedTree without subdocuments.
+                await directConnection.transact((document: any) => {
+                    const ydoc = document as unknown as Y.Doc;
+
+                    // Set project title directly in metadata
+                    const metadata = ydoc.getMap("metadata");
+                    if (!metadata.get("title")) {
+                        metadata.set("title", projectName);
+                    }
+
+                    // Create Project wrapper for YTree access
+                    const project = Project.fromDoc(ydoc);
+                    const items = project.items; // Items wrapper for YTree
+
+                    // Create pages and add content
+                    for (const pageData of pages) {
+                        logger.info({ event: "seed_page", pageName: pageData.name });
+
+                        // Create page node directly using Items.addNode (avoids subdoc creation)
+                        // This creates a node in the YTree with the page name as text
+                        const page = items.addNode("seed-server");
+                        page.updateText(pageData.name);
+
+                        // Add content items (lines) as children of the page
+                        if (pageData.lines && pageData.lines.length > 0) {
+                            const pageItems = page.items;
+
+                            for (const line of pageData.lines) {
+                                const item = pageItems.addNode("seed-server");
+                                item.text = line;
+                            }
+
+                            logger.info({
+                                event: "seed_items_added",
+                                pageName: pageData.name,
+                                itemCount: pageData.lines.length,
+                            });
+                        }
+                    }
+                });
+
+                logger.info({ event: "seed_complete", projectName, pageCount: pages.length });
+                res.json({ success: true, projectName, pageCount: pages.length });
+
+                // Keep the connection open to allow clients to connect and sync
+                // The document will be properly managed by Hocuspocus
+                // We don't disconnect immediately to ensure the document stays in memory
+                // for when the client connects
+                logger.info({ event: "seed_connection_kept_open", projectRoom });
+            } catch (transactError: any) {
+                // If transaction fails, disconnect the connection
+                await directConnection.disconnect();
+                throw transactError;
+            }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             const errorStack = error instanceof Error ? error.stack : undefined;

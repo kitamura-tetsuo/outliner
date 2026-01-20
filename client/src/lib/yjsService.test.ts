@@ -32,8 +32,9 @@ vi.mock("../yjs/YjsClient", () => ({
                 doc: {
                     guid: projectId,
                 },
+                project,
                 getProject: () => project,
-            });
+            } as any);
         }
     },
 }));
@@ -57,11 +58,11 @@ describe("yjsService", () => {
 
             // 4. Assert client is returned and has correct ID.
             expect(reloadedClient).toBeDefined();
-            expect(reloadedClient!.doc.guid).toBe(originalClient.doc.guid);
+            expect((reloadedClient as any).doc.guid).toBe((originalClient as any).doc.guid);
 
             // Verify the stable ID matches what's expected
             const expectedId = stableIdFromTitle("TestProject");
-            expect(reloadedClient!.doc.guid.startsWith(expectedId)).toBe(true);
+            expect((reloadedClient as any).doc.guid.startsWith(expectedId)).toBe(true);
         });
     });
 });

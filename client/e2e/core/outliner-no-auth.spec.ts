@@ -91,7 +91,7 @@ test.describe("Outliner No Auth Test", () => {
         expect(appState.readyState).toBe("complete");
         expect(appState.bodyExists).toBe(true);
         expect(appState.headExists).toBe(true);
-        expect(appState.location).toMatch(/localhost:7090/);
+        expect(appState.location).toMatch(/(localhost|127\.0\.0\.1):7090/);
 
         // UserManagerが存在することを確認（認証なしでも初期化される）
         if (appState.userManager === "object") {
@@ -136,6 +136,6 @@ test.describe("Outliner No Auth Test", () => {
         // ページの状態が安定していることを確認
         const finalUrl = page.url();
         console.log("Debug: Final URL:", finalUrl);
-        expect(finalUrl).toMatch(/localhost:7090/);
+        expect(finalUrl).toMatch(/(localhost|127\.0\.0\.1):7090/);
     });
 });

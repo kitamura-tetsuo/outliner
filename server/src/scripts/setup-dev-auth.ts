@@ -1,12 +1,12 @@
 // Development environment authentication setup script
-require("dotenv").config();
-const admin = require("firebase-admin");
-const path = require("path");
-const fs = require("fs");
-const { serverLogger: logger } = require("../utils/logger");
+import "dotenv/config";
+import admin from "firebase-admin";
+import { UserRecord } from "firebase-admin/auth";
+import { fileURLToPath } from "url";
+import { serverLogger as logger } from "../utils/log-manager.js";
 
 // Firebase Admin SDKの初期化
-async function initializeFirebase() {
+export async function initializeFirebase() {
     try {
         // Check if already initialized
         if (admin.apps.length === 0) {
@@ -17,7 +17,7 @@ async function initializeFirebase() {
                 clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
                 clientId: process.env.FIREBASE_CLIENT_ID,
                 clientX509CertUrl: process.env.FIREBASE_CLIENT_CERT_URL,
-            };
+            } as admin.ServiceAccount;
 
             admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount),
@@ -30,13 +30,13 @@ async function initializeFirebase() {
 
         return admin;
     } catch (error) {
-        logger.error("Firebase initialization error:", error);
+        logger.error({ err: error }, "Firebase initialization error");
         throw error;
     }
 }
 
 // テストユーザーの作成・取得
-async function setupTestUser() {
+export async function setupTestUser(): Promise<UserRecord> {
     try {
         const adminInstance = await initializeFirebase();
         const auth = adminInstance.auth();
@@ -50,7 +50,7 @@ async function setupTestUser() {
             const userRecord = await auth.getUserByEmail(testEmail);
             logger.info(`Test user already exists: ${userRecord.uid}`);
             return userRecord;
-        } catch (error) {
+        } catch (error: any) {
             if (error.code !== "auth/user-not-found") {
                 throw error;
             }
@@ -76,13 +76,13 @@ async function setupTestUser() {
             return userRecord;
         }
     } catch (error) {
-        logger.error("Error setting up test user:", error);
+        logger.error({ err: error }, "Error setting up test user");
         throw error;
     }
 }
 
 // スクリプトが直接実行された場合
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
     setupTestUser()
         .then(user => {
             console.log("=================================================");
@@ -101,5 +101,3 @@ if (require.main === module) {
             process.exit(1);
         });
 }
-
-module.exports = { setupTestUser, initializeFirebase };

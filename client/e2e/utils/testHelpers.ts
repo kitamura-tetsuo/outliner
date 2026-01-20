@@ -67,21 +67,20 @@ export class TestHelpers {
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
-            // Avoid duplicating console output when using fixtures/console-forward.
-            // Opt-in by setting E2E_ATTACH_BROWSER_CONSOLE=1 when you want these mirrors.
-            if (process.env.E2E_ATTACH_BROWSER_CONSOLE === "1") {
-                page.on("console", (msg) => {
-                    const type = msg.type();
-                    const txt = msg.text();
-                    console.log(`[BROWSER-CONSOLE:${type}]`, txt);
-                });
-                page.on("pageerror", (err) => {
-                    console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
-                });
-                page.on("requestfailed", (req) => {
-                    console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
-                });
-            }
+            // ALWAYS attach for debugging
+            page.on("console", (msg) => {
+                const type = msg.type();
+                const txt = msg.text();
+                // Avoid too much noise from some expected logs if necessary,
+                // but for now let's see everything.
+                console.log(`[BROWSER-CONSOLE:${type}]`, txt);
+            });
+            page.on("pageerror", (err) => {
+                console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
+            });
+            page.on("requestfailed", (req) => {
+                console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
+            });
         } catch {}
 
         // Set WebSocket flag before navigation (needed for Yjs connection)
@@ -94,6 +93,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as Window & Record<string, any>).__E2E__ = true;
                 console.log("[E2E] Test environment flags set in localStorage");
@@ -319,6 +319,35 @@ export class TestHelpers {
         const projectName = options?.projectName ?? `Test Project ${workerIndex} ${Date.now()}`;
         const pageName = options?.pageName ?? `test-page-${Date.now()}`;
 
+        // Set test environment flags in browser context (skip if page is closed)
+        // First, ensure we have a loaded page to work with (needed for page.evaluate)
+        if (!page.isClosed()) {
+            page.on("console", msg => {
+                const type = msg.type();
+                console.log(`[BROWSER][${type}] ${msg.text()}`);
+            });
+            page.on("pageerror", err => {
+                console.log(`[BROWSER ERROR] ${err}`);
+            });
+
+            try {
+                await page.addInitScript(() => {
+                    try {
+                        localStorage.setItem("VITE_IS_TEST", "true");
+                        localStorage.setItem("VITE_E2E_TEST", "true");
+                        localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+                        localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
+                        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                        localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
+                        localStorage.removeItem("VITE_YJS_DISABLE_WS");
+                        (window as Window & Record<string, any>).__E2E__ = true;
+                    } catch {}
+                });
+            } catch (e) {
+                TestHelpers.slog(`createAndSeedProject: Failed to set localStorage flags via addInitScript: ${e}`);
+            }
+        }
+
         // Use SeedClient for HTTP-based seeding instead of browser-based seeding
         if (!options?.skipSeed) {
             try {
@@ -330,7 +359,8 @@ export class TestHelpers {
                     `createAndSeedProject: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
                 );
             } catch (e) {
-                TestHelpers.slog(`createAndSeedProject: SeedClient seeding failed, page will be empty: ${e}`);
+                TestHelpers.slog(`createAndSeedProject: SeedClient seeding failed: ${e}`);
+                throw e; // Fail the test immediately if seeding fails
             }
         }
 
@@ -373,6 +403,11 @@ export class TestHelpers {
         ).catch(() => TestHelpers.slog("Warning: __YJS_STORE__ connect wait timed out"));
         TestHelpers.slog("__YJS_STORE__ connected");
 
+        // Guard against page closure during wait
+        if (page.isClosed()) {
+            TestHelpers.slog("Page closed during YJS connect wait, aborting navigation");
+            return;
+        }
         await page.waitForTimeout(1000);
 
         // E2E stability: wait for store.currentPage to be set explicitly
@@ -421,6 +456,12 @@ export class TestHelpers {
         });
 
         await TestHelpers.waitForAppReady(page);
+
+        // Guard against page closure after waitForAppReady
+        if (page.isClosed()) {
+            TestHelpers.slog("Page closed during waitForAppReady, aborting navigation");
+            return;
+        }
 
         // Wait for tree data to be synced (subdocuments need time to load)
         // This part only makes sense if seeding happened. We need effective seedLines here.
@@ -478,25 +519,24 @@ export class TestHelpers {
 
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
-            if (process.env.E2E_ATTACH_BROWSER_CONSOLE === "1") {
-                page.on("console", (msg) => {
-                    const type = msg.type();
-                    const txt = msg.text();
-                    console.log(`[BROWSER-CONSOLE:${type}]`, txt);
-                });
-                page.on("pageerror", (err) => {
-                    console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
-                });
-                page.on("requestfailed", (req) => {
-                    console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
-                });
-            }
+            page.on("console", (msg) => {
+                const type = msg.type();
+                const txt = msg.text();
+                console.log(`[BROWSER-CONSOLE:${type}]`, txt);
+            });
+            page.on("pageerror", (err) => {
+                console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
+            });
+            page.on("requestfailed", (req) => {
+                console.log("[BROWSER-REQUESTFAILED]", req.url(), req.failure()?.errorText);
+            });
         } catch {}
 
         // Set WebSocket flag and E2E flag before navigation (consistency with prepareTestEnvironment)
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+                localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as Window & Record<string, any>).__E2E__ = true;
             } catch {}
@@ -1196,7 +1236,9 @@ export class TestHelpers {
 
         if (!isOnProjectPage) {
             console.log("Not on a project page, waiting for navigation...");
-            await page.waitForTimeout(2000);
+            if (!page.isClosed()) {
+                await page.waitForTimeout(2000);
+            }
         }
 
         // データ属性付きの実アイテムが出現するまで待つ（プレースホルダー .outliner-item は除外）
@@ -2176,12 +2218,18 @@ export class TestHelpers {
             returnSecureToken: true,
         };
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout for auth
+
         try {
+            console.log(`[TestHelpers] getTestAuthToken: Signing in to ${signInUrl}`);
             const response = await fetch(signInUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
+                signal: controller.signal,
             });
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 const text = await response.text();

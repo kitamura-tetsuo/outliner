@@ -3,7 +3,10 @@ import type { Logger } from "pino";
 import { LeveldbPersistence } from "y-leveldb";
 import * as Y from "yjs";
 
-export async function createPersistence(path: string): Promise<LeveldbPersistence> {
+export async function createPersistence(path: string): Promise<any> {
+    if (process.env.DISABLE_Y_LEVELDB === "true") {
+        return undefined;
+    }
     const persistence = new LeveldbPersistence(path);
     // Wait for the underlying database to open
     // The tr property is a promise that resolves when the database transaction system is ready
@@ -11,21 +14,8 @@ export async function createPersistence(path: string): Promise<LeveldbPersistenc
     return persistence;
 }
 
-export async function warnIfRoomTooLarge(
-    persistence: LeveldbPersistence,
-    room: string,
-    limitBytes: number,
-    logger: Logger,
-): Promise<void> {
-    const doc = await persistence.getYDoc(room);
-    const size = Y.encodeStateAsUpdate(doc).byteLength;
-    if (size > limitBytes) {
-        logger.warn({ event: "room_size_exceeded", room, bytes: size });
-    }
-}
-
 export async function logTotalSize(
-    persistence: LeveldbPersistence,
+    persistence: any,
     logger: Logger,
 ): Promise<void> {
     const names = await persistence.getAllDocNames();

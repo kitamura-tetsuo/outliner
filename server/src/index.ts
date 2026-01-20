@@ -25,4 +25,14 @@ if (config.SENTRY_DSN) {
     });
 }
 
-await startServer(config);
+(async () => {
+    try {
+        const { shutdown } = await startServer(config);
+
+        process.on("SIGINT", () => shutdown().then(() => process.exit(0)));
+        process.on("SIGTERM", () => shutdown().then(() => process.exit(0)));
+    } catch (err) {
+        console.error("Failed to start server:", err);
+        process.exit(1);
+    }
+})();

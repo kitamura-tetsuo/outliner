@@ -71,19 +71,26 @@ export class OutlinerViewModel {
         // 更新中に既に処理中かどうかをチェック
         if (this._isUpdating) return;
 
+        if (!pageItem) {
+            console.error("OutlinerViewModel: updateFromModel called with null pageItem");
+            return;
+        }
+
         try {
             this._isUpdating = true;
 
-            debugLog("OutlinerViewModel: updateFromModel called");
-            debugLog(
+            console.error(
+                `OutlinerViewModel: updateFromModel for pageItem.id=${pageItem.id} isItemLike=${isItemLike(pageItem)}`,
+            );
+            console.error(
                 "OutlinerViewModel: pageItem.items length:",
                 (pageItem.items as any)?.length || 0,
             );
 
-            // 既存のビューモデルをクリアせず、更新または追加する
+            // 既存のビューモデルを更新または追加する
             this.ensureViewModelsItemExist(pageItem);
 
-            debugLog(
+            console.error(
                 "OutlinerViewModel: viewModels count after ensure:",
                 this.viewModels.size,
             );
@@ -91,11 +98,15 @@ export class OutlinerViewModel {
             // 表示順序と深度を再計算 - pageItem自体から開始
             this.recalculateOrderAndDepthItem(pageItem);
 
-            debugLog(
+            console.error(
                 "OutlinerViewModel: visibleOrder length after recalculate:",
                 this.visibleOrder.length,
             );
-            logger.info({ count: this.visibleOrder.length }, "View models updated");
+            if (this.visibleOrder.length === 0) {
+                console.error("OutlinerViewModel: visibleOrder is EMPTY!");
+            }
+        } catch (err) {
+            console.error("OutlinerViewModel: Error in updateFromModel:", err);
         } finally {
             this._isUpdating = false;
         }

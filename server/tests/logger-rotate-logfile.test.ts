@@ -1,13 +1,14 @@
-const { describe, it, beforeEach, afterEach } = require("mocha");
-const { expect } = require("chai");
-const fs = require("fs-extra");
-const os = require("os");
-const path = require("path");
-const { rotateLogFile } = require("../utils/logger");
+import { expect } from "chai";
+import fs from "fs-extra";
+import { afterEach, beforeEach, describe, it } from "mocha";
+import os from "os";
+import path from "path";
+// @ts-ignore
+import { rotateLogFile } from "../src/utils/log-manager.js";
 
 describe("rotateLogFile utility (LOG-0002)", function() {
-    let tmpDir;
-    let logFile;
+    let tmpDir: string;
+    let logFile: string;
 
     beforeEach(async function() {
         tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "log-"));

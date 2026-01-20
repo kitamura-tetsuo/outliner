@@ -151,50 +151,63 @@ export async function createNewProject(projectName: string): Promise<YjsClient> 
 // Debug helper for E2E tests
 
 export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
+    console.log(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
+
     // First, check the registry for a matching client
     for (const [, [client, project]] of registry.entries()) {
         if (project?.title === projectTitle && client) {
+            console.log(`[getClientByProjectTitle] Found existing client in registry`);
             return client;
         }
     }
 
     // If not in registry, try to find the projectId by title in metaDoc
     const projectId = getProjectIdByTitle(projectTitle);
+    console.log(`[getClientByProjectTitle] projectId from metaDoc=${projectId}`);
 
     if (projectId) {
         const user = userManager.getCurrentUser();
         let userId = user?.id;
         const isTest = isTestEnvironment();
+        console.log(`[getClientByProjectTitle] userId=${userId}, isTest=${isTest}`);
 
         if (!userId && isTest) userId = "test-user-id";
         if (!userId) {
             // Cannot create a new client without a user ID
+            console.log(`[getClientByProjectTitle] No userId, returning undefined`);
             return undefined;
         }
 
         const project = Project.createInstance(projectTitle);
+        console.log(`[getClientByProjectTitle] Calling YjsClient.connect for projectId=${projectId}`);
         const client = await YjsClient.connect(projectId, project);
+        console.log(`[getClientByProjectTitle] YjsClient.connect completed`);
         registry.set(keyFor(userId, projectId), [client, project]);
         return client;
     }
 
     // In test environment, attempt to auto-connect if we can derive the ID
     const isTest = isTestEnvironment();
+    console.log(`[getClientByProjectTitle] projectId not found, isTest=${isTest}`);
 
     if (isTest) {
         const userId = userManager.getCurrentUser()?.id || "test-user-id";
         const projectId = stableIdFromTitle(projectTitle);
+        console.log(`[getClientByProjectTitle] Using stableIdFromTitle, projectId=${projectId}`);
 
         // Check if already connected by ID (but title mismatch? unlikely for stable ID)
         if (registry.has(keyFor(userId, projectId))) {
             const [c] = registry.get(keyFor(userId, projectId))!;
             if (c) {
+                console.log(`[getClientByProjectTitle] Found client by stable ID`);
                 return c;
             }
         }
 
         const project = Project.createInstance(projectTitle);
+        console.log(`[getClientByProjectTitle] Calling YjsClient.connect for derived projectId=${projectId}`);
         const client = await YjsClient.connect(projectId, project);
+        console.log(`[getClientByProjectTitle] YjsClient.connect completed`);
 
         registry.set(keyFor(userId, projectId), [client, project]);
         // Also save title to persistence so next time it might appear
@@ -202,6 +215,7 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
         return client;
     }
 
+    console.log(`[getClientByProjectTitle] Returning undefined`);
     return undefined;
 }
 

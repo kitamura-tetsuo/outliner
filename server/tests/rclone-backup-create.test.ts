@@ -1,7 +1,13 @@
-const { expect } = require("chai");
-const fs = require("fs-extra");
-const path = require("path");
-const { createArchive } = require("../scripts/rclone-backup.js");
+import { expect } from "chai";
+import fs from "fs-extra";
+import path from "path";
+// @ts-ignore
+import { afterEach, beforeEach, describe, it } from "mocha";
+import { fileURLToPath } from "url";
+import { createArchive, getConfig } from "../src/scripts/rclone-backup.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe("rclone backup createArchive", function() {
     const temp = path.join(__dirname, "tmp-create");

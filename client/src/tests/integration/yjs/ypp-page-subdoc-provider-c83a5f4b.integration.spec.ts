@@ -13,33 +13,8 @@ vi.mock("../../../stores/store.svelte", () => ({
 vi.mock("../../../stores/yjsStore.svelte", () => ({
     yjsStore: { isConnected: true },
 }));
-vi.mock("y-websocket", () => ({
-    WebsocketProvider: class {
-        roomname: string;
-        awareness: any;
-        on: any;
-        connect: any;
-        disconnect: any;
-        destroy: any;
-        synced = false;
-        constructor(serverUrl: string, roomname: string) {
-            this.roomname = roomname;
-            this.awareness = {
-                setLocalStateField: () => {},
-                getLocalState: () => ({}),
-                getStates: () => new Map(),
-                on: () => {},
-            };
-            this.on = (event: string, cb: () => void) => {
-                if (event === "sync") cb(); // auto-sync
-            };
-            this.connect = () => {};
-            this.disconnect = () => {};
-            this.destroy = () => {};
-            setTimeout(() => this.synced = true, 0);
-        }
-    },
-}));
+// Removed local y-websocket mock as it's now handled by the global mock in setup.ts for both y-websocket and @hocuspocus/provider
+
 vi.mock("../../../stores/EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
         setUser: () => {},
@@ -79,10 +54,14 @@ describe("page subdoc provider", () => {
         const c1 = await waitForPageConnection(conn, p1.id);
         const c2 = await waitForPageConnection(conn, p2.id);
 
-        expect(c1.provider.roomname).toBe(`projects/${projectId}/pages/${p1.id}`);
-        expect(c2.provider.roomname).toBe(`projects/${projectId}/pages/${p2.id}`);
-        c1.awareness.setLocalStateField("presence", { cursor: { itemId: "a", offset: 0 } });
-        expect(c2.awareness.getLocalState()?.presence).toBeUndefined();
+        // HocuspocusProvider stores the room name in the 'name' property
+        expect(c1.provider.configuration.name).toBe(`projects/${projectId}/pages/${p1.id}`);
+        expect(c2.provider.configuration.name).toBe(`projects/${projectId}/pages/${p2.id}`);
+
+        // Use non-null assertions for awareness as they are checked by waitForPageConnection
+        c1.awareness!.setLocalStateField("presence", { cursor: { itemId: "a", offset: 0 } });
+        expect(c2.awareness!.getLocalState()?.presence).toBeUndefined();
+
         c2.dispose();
         conn.dispose();
     }, 30000);

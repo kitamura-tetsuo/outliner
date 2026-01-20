@@ -24,19 +24,63 @@ test.describe("YJS token refresh reconnect", () => {
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
             (window as any).__CONN__ = conn;
+
+            // Listen for status changes to detect disconnect
+            const provider = conn.provider;
+            let disconnectResolve: () => void;
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__DISCONNECT_PROMISE__ = new Promise<void>(resolve => {
+                disconnectResolve = resolve;
+            });
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__WS_STATUS__ = "unknown";
+
+            provider.on("disconnect", () => {
+                console.log("Provider emitted disconnect event");
+                disconnectResolve?.();
+            });
+            provider.on("status", (event: { status: string; }) => {
+                console.log("Status changed to:", event.status);
+                // eslint-disable-next-line no-restricted-globals
+                (window as any).__WS_STATUS__ = event.status;
+            });
         }, projectId);
 
-        await page.waitForFunction(() => (window as any).__CONN__?.provider.wsconnected === true);
+        await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const wsStatus = (window as any).__WS_STATUS__;
+            // eslint-disable-next-line no-restricted-globals
+            const p = (window as any).__CONN__?.provider;
+            return p?.isSynced === true || wsStatus === "connected";
+        });
         await page.evaluate(() => {
             (window as any).__CONN__.provider.disconnect();
         });
-        await page.waitForFunction(() => (window as any).__CONN__.provider.wsconnected === false);
+        // Wait for disconnect event with timeout
+        // eslint-disable-next-line no-restricted-globals
+        await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 10000 });
+        // After disconnect, verify status
+        const status = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
+            return (window as any).__WS_STATUS__;
+        });
+        expect(status).toBe("disconnected");
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
-        await page.waitForFunction(() => (window as any).__CONN__.provider.wsconnected === true);
-        const authParam = await page.evaluate(() => (window as any).__CONN__.provider.params.auth);
-        expect(authParam).toBeTruthy();
+        await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const wsStatus = (window as any).__WS_STATUS__;
+            // eslint-disable-next-line no-restricted-globals
+            const p = (window as any).__CONN__.provider;
+            return p.isSynced === true || wsStatus === "connected";
+        });
+        // HocuspocusProvider stores status in configuration.websocketProvider.status
+        const isConnected = await page.evaluate(() =>
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__WS_STATUS__ === "connected"
+        );
+        expect(isConnected).toBeTruthy();
     });
 
     test("updates auth param when token changes", async ({ page }) => {
@@ -46,16 +90,38 @@ test.describe("YJS token refresh reconnect", () => {
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
             (window as any).__CONN__ = conn;
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__WS_STATUS__ = "unknown";
+            conn.provider.on("status", (event: { status: string; }) => {
+                // eslint-disable-next-line no-restricted-globals
+                (window as any).__WS_STATUS__ = event.status;
+            });
+
+            // Spy on sendToken to verify it's called
+            const originalSendToken = conn.provider.sendToken.bind(conn.provider);
+            conn.provider.sendToken = async () => {
+                // eslint-disable-next-line no-restricted-globals
+                (window as any).__SEND_TOKEN_CALLED__ = true;
+                return originalSendToken();
+            };
         }, projectId);
 
-        await page.waitForFunction(() => (window as any).__CONN__?.provider.wsconnected === true);
-        const initialAuth = await page.evaluate(() => (window as any).__CONN__.provider.params.auth);
+        await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const p = (window as any).__CONN__?.provider;
+            // eslint-disable-next-line no-restricted-globals
+            const wsStatus = (window as any).__WS_STATUS__;
+            return p?.isSynced === true || wsStatus === "connected";
+        });
+
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
-        await page.waitForFunction(initial => (window as any).__CONN__.provider.params.auth !== initial, initialAuth);
-        const newAuth = await page.evaluate(() => (window as any).__CONN__.provider.params.auth);
-        expect(newAuth).toBeTruthy();
-        expect(newAuth).not.toEqual(initialAuth);
+
+        // eslint-disable-next-line no-restricted-globals
+        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true);
+        // eslint-disable-next-line no-restricted-globals
+        const tokenRefreshed = await page.evaluate(() => (window as any).__SEND_TOKEN_CALLED__);
+        expect(tokenRefreshed).toBe(true);
     });
 });

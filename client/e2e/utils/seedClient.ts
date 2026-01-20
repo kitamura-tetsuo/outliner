@@ -20,7 +20,8 @@ export class SeedClient {
         this.authToken = authToken;
         // Use VITE_YJS_PORT for the seed API (same port as Yjs WebSocket server)
         // The seed API is served from the Yjs server at /api/seed
-        this.apiUrl = process.env.VITE_YJS_API_URL || `http://localhost:${process.env.VITE_YJS_PORT || 7093}`;
+        this.apiUrl = process.env.VITE_YJS_API_URL || `http://127.0.0.1:${process.env.VITE_YJS_PORT || 7093}`;
+        console.log(`[SeedClient] Initialized with API URL: ${this.apiUrl}`);
     }
 
     /**
@@ -59,30 +60,57 @@ export class SeedClient {
         console.log(
             `[SeedClient] Seeding project "${this.projectId}" (title: "${this.projectTitle}") with ${pages.length} pages via HTTP API...`,
         );
-        try {
-            const response = await fetch(`${this.apiUrl}/api/seed`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${this.authToken}`,
-                },
-                body: JSON.stringify({
-                    projectName: this.projectTitle,
-                    pages,
-                }),
-            });
 
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({ error: response.statusText }));
-                throw new Error(`Seeding failed: ${error.error || response.statusText}`);
+        let lastError: any;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+                const response = await fetch(`${this.apiUrl}/api/seed`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${this.authToken}`,
+                    },
+                    body: JSON.stringify({
+                        projectName: this.projectTitle,
+                        pages,
+                    }),
+                    signal: controller.signal,
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({ error: response.statusText }));
+                    throw new Error(`Seeding failed: ${error.error || response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log(`[SeedClient] Seeding completed:`, result);
+                return; // Success
+            } catch (error: any) {
+                lastError = error;
+                console.warn(`[SeedClient] Attempt ${attempt} failed: ${error.message}`);
+
+                // Handle specific error types
+                if (error.name === "AbortError") {
+                    console.error("[SeedClient] Seeding timed out after 30 seconds");
+                } else if (error.message.includes("Failed to fetch") || error.message.includes("fetch error")) {
+                    console.error(
+                        `[SeedClient] Network error during seeding: ${error.message}. Is the Yjs server running on port ${this.apiUrl}?`,
+                    );
+                }
+
+                if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+                }
             }
-
-            const result = await response.json();
-            console.log(`[SeedClient] Seeding completed:`, result);
-        } catch (error) {
-            console.error("[SeedClient] Seeding failed:", error);
-            throw error;
         }
+
+        console.error("[SeedClient] All seed attempts failed.");
+        throw lastError;
     }
 
     /**

@@ -15,11 +15,15 @@ handle_error() {
   local line=$1
   local exit_code=$2
   echo "Error occurred at line ${line}. Exit code: ${exit_code}" >&2
+
+  # Remove sentinel to ensure clean retry
+  rm -f "$SETUP_SENTINEL"
+
   if [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; then
     local next=$((RETRY_COUNT + 1))
-    echo "setup.sh did not complete. Re-running (attempt ${next}/${MAX_RETRIES})..."
+    echo "setup.sh did not complete. Retrying (attempt ${next}/${MAX_RETRIES})..."
     export SETUP_RETRY=$next
-    exec "$0" "${SCRIPT_ARGS[@]}"
+    exec "${SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")" "${SCRIPT_ARGS[@]}"
   else
     echo "setup.sh failed after ${MAX_RETRIES} attempts. Exiting." >&2
     exit "${exit_code}"
@@ -32,22 +36,70 @@ trap 'handle_error ${LINENO} $?' ERR
 source "${SCRIPT_DIR}/common-config.sh"
 source "${SCRIPT_DIR}/common-functions.sh"
 
+cleanup_ports() {
+  echo "Cleaning up ports: ${REQUIRED_PORTS[*]}"
+  for port in "${REQUIRED_PORTS[@]}"; do
+    if [ -n "$port" ]; then
+      # Find processes using the port
+      pids=$(lsof -t -i :"$port" 2>/dev/null || true)
+
+      if [ -n "$pids" ]; then
+        echo "Killing processes on port $port: $pids"
+        # Try SIGTERM first
+        kill $pids 2>/dev/null || true
+        sleep 1
+
+        # Check if still running and force kill
+        pids=$(lsof -t -i :"$port" 2>/dev/null || true)
+        if [ -n "$pids" ]; then
+             echo "Force killing processes on port $port: $pids"
+             kill -9 $pids 2>/dev/null || true
+        fi
+      fi
+    fi
+  done
+
+  # Wait for ports to be free
+  for port in "${REQUIRED_PORTS[@]}"; do
+    if [ -n "$port" ]; then
+        local wait_count=0
+        while lsof -t -i :"$port" >/dev/null 2>&1; do
+            echo "Waiting for port $port to be free... (attempt $wait_count)"
+            sleep 1
+            wait_count=$((wait_count + 1))
+            if [ "$wait_count" -gt 30 ]; then
+                echo "Warning: Port $port is still in use after 30 seconds."
+                # Try force kill again just in case
+                lsof -t -i :"$port" | xargs kill -9 2>/dev/null || true
+                break
+            fi
+        done
+    fi
+  done
+}
+
 # Fix permissions before proceeding
 fix_permissions() {
   echo "Fixing directory permissions..."
   # Fix ownership of client directory and its contents
   if [ -d "${ROOT_DIR}/client" ]; then
     # Fix ownership of node_modules if it exists and is owned by root
-    if [ -d "${ROOT_DIR}/client/node_modules" ] && [ "$(stat -c %U ${ROOT_DIR}/client/node_modules)" = "root" ]; then
-      echo "Fixing node_modules ownership..."
-      sudo chown -R node:node "${ROOT_DIR}/client/node_modules" || true
+    if [ -d "${ROOT_DIR}/client/node_modules" ] && [ "$(stat -c %U "${ROOT_DIR}/client/node_modules")" = "root" ]; then
+      if id "node" >/dev/null 2>&1; then
+        echo "Fixing node_modules ownership..."
+        sudo chown -R node:node "${ROOT_DIR}/client/node_modules" || true
+      else
+         echo "Skipping node_modules ownership fix (user 'node' not found)"
+      fi
     fi
   fi
   
   # Fix ownership of other key directories
   for dir in "${ROOT_DIR}/client" "${ROOT_DIR}/server" "${ROOT_DIR}/functions" "${ROOT_DIR}/scripts/tests"; do
     if [ -d "$dir" ]; then
-      sudo chown -R node:node "$dir" || true
+      if id "node" >/dev/null 2>&1; then
+        sudo chown -R node:node "$dir" || true
+      fi
     fi
   done
 }
@@ -69,21 +121,26 @@ ensure_python_env() {
   fi
 }
 
+echo "=== Outliner Test Environment Setup ==="
+echo "ROOT_DIR: ${ROOT_DIR}"
+
+# In CI/self-hosted environments, always run full setup to ensure clean state
+if ([ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]) && [ "${PREINSTALLED_ENV:-}" != "true" ]; then
+  echo "CI environment detected. RETRY_COUNT: $RETRY_COUNT"
+  # Only remove sentinel if this is the first run (SETUP_RETRY is 0 or unset)
+  # Actually RETRY_COUNT is set at top.
+  if [ "$RETRY_COUNT" -eq 0 ]; then
+     echo "Removing setup sentinel to ensure full setup..."
+     rm -f "$SETUP_SENTINEL"
+  fi
+fi
+
 # Bypass heavy setup steps if sentinel file exists
 if [ -f "$SETUP_SENTINEL" ]; then
   echo "Setup already completed, skipping installation steps"
   SKIP_INSTALL=1
 else
   SKIP_INSTALL=0
-fi
-
-echo "=== Outliner Test Environment Setup ==="
-echo "ROOT_DIR: ${ROOT_DIR}"
-
-# In CI/self-hosted environments, always run full setup to ensure clean state
-if ([ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]) && [ "${PREINSTALLED_ENV:-}" != "true" ]; then
-  echo "CI environment detected (and PREINSTALLED_ENV not set), removing setup sentinel to ensure full setup..."
-  rm -f "$SETUP_SENTINEL"
 fi
 
 # Note for env tests: keep tokens for discovery
@@ -132,12 +189,28 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
 
   # Install pre-commit via pip
   if pip install --no-cache-dir pre-commit; then
-    pre-commit install --hook-type pre-commit || echo "Warning: Failed to install pre-commit hook"
+    if [ -d "${ROOT_DIR}/.git" ]; then
+      pre-commit install --hook-type pre-commit || echo "Warning: Failed to install pre-commit hook"
+    else
+      echo "Skipping pre-commit install (not a git repository)"
+    fi
   else
     echo "Warning: Failed to install pre-commit package"
   fi
   echo "Installing all dependencies..."
   install_all_dependencies
+
+  # Build server (critical for artifacts)
+  if [ "${SKIP_BUILD:-0}" -ne 1 ]; then
+    echo "Building server..."
+    cd "${ROOT_DIR}/server"
+    npm run build
+    echo "Server build complete. Artifacts in dist:"
+    ls -la dist || echo "dist directory missing!"
+    cd "${ROOT_DIR}"
+  else
+    echo "Skipping server build (SKIP_BUILD=1)"
+  fi
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
   cd "${ROOT_DIR}/client"
@@ -194,13 +267,22 @@ else
     cd "${ROOT_DIR}"
   fi
 
-  # Ensure server is built if dist is missing (critical for Yjs server)
-  if [ ! -d "${ROOT_DIR}/server/dist" ]; then
-    echo "Server build missing. Building server..."
+  # Ensure server is built if dist is missing or empty (critical for Yjs server)
+  if [ ! -s "${ROOT_DIR}/server/dist/index.js" ]; then
+    echo "Server build artifacts missing or empty. Building server..."
     cd "${ROOT_DIR}/server"
     npm_ci_if_needed
     npm run build
+    if [ ! -s "dist/index.js" ]; then
+        echo "Error: Server build failed to produce dist/index.js"
+        ls -la dist || echo "dist directory not found"
+        # ls -la dist/src || echo "dist/src directory not found"
+        exit 1
+    fi
     cd "${ROOT_DIR}"
+  else
+    echo "Server build artifacts found at ${ROOT_DIR}/server/dist/index.js"
+    ls -l "${ROOT_DIR}/server/dist/index.js"
   fi
 fi
 
@@ -223,6 +305,9 @@ if [ ! -f node_modules/.bin/paraglide-js ] || [ ! -f node_modules/.bin/dotenvx ]
 fi
 cd "${ROOT_DIR}"
 
+echo "Verifying server artifacts before startup..."
+ls -R "${ROOT_DIR}/server/dist" || echo "server/dist missing!"
+
 # Ensure pm2 is available before managing processes
 if ! command -v pm2 >/dev/null 2>&1; then
   echo "pm2 not found. Installing pm2..."
@@ -237,6 +322,9 @@ fi
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
 pm2 delete all || true
+
+# Robust port cleanup
+cleanup_ports
 
 # Kill existing firebase emulators running in background (not managed by PM2)
 if pgrep -f "firebase.*emulators" > /dev/null; then
@@ -357,6 +445,16 @@ else
     if ! check_pm2_status; then
       echo "Detected crashed services via PM2. Exiting setup."
       pm2 logs --lines 50 --nostream
+      # Force log dumping specifically for server applications
+      echo "[TAILING] Tailing last 50 lines for [all] processes (change the value with --lines option)"
+      if [ -f "${ROOT_DIR}/server/logs/yjs-server.log" ]; then
+         echo "/__w/outliner/outliner/logs/yjs-server.log last 50 lines:"
+         tail -n 50 "${ROOT_DIR}/server/logs/yjs-server.log" || true
+      fi
+      if [ -f "${ROOT_DIR}/server/logs/log-service.log" ]; then
+         echo "/__w/outliner/outliner/logs/log-service.log last 50 lines:"
+         tail -n 50 "${ROOT_DIR}/server/logs/log-service.log" || true
+      fi
       exit 1
     fi
 

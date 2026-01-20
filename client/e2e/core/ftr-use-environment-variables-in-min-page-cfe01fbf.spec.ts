@@ -71,7 +71,7 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
 
         expect(apiKey).toBe("AIzaSyCMPfoobar1234567890abcdefghij");
         expect(projectId).toBe("outliner-d57b0");
-        expect(tokenVerifyUrl).toBe("http://localhost:7091/verify");
+        expect(tokenVerifyUrl).toMatch(/http:\/\/(localhost|127\.0\.0\.1):7091\/verify/);
 
         // 基本的なページアクセス確認
         await page.goto("/");

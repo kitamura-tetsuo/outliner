@@ -10,7 +10,7 @@ import { prepareTwoBrowserPages, setupUpdateTracking } from "../../src/lib/yjs/t
 // Minimal end-to-end verification that a plain Y.Doc map synchronizes via our WS server
 // This helps isolate server/provider issues from application schema complexities.
 
-test("basic map value sync via y-websocket", async ({ browser }) => {
+test("basic map value sync via hocuspocus", async ({ browser }) => {
     // Prepare two browser pages with minimal Yjs connections
     const { page1: p1, page2: p2, context1: ctx1, context2: ctx2 } = await prepareTwoBrowserPages(browser, {
         page1Prefix: "p1",
@@ -25,8 +25,8 @@ test("basic map value sync via y-websocket", async ({ browser }) => {
     });
 
     const url1 = await p1.evaluate(() => (window as any).__PROVIDER__?.url ?? "");
-    const p1synced = await p1.evaluate(() => (window as any).__PROVIDER__?.synced ?? false);
-    const p2synced = await p2.evaluate(() => (window as any).__PROVIDER2__?.synced ?? false);
+    const p1synced = await p1.evaluate(() => (window as any).__PROVIDER__?.isSynced ?? false);
+    const p2synced = await p2.evaluate(() => (window as any).__PROVIDER2__?.isSynced ?? false);
     console.log("[yjs-basic] p1 synced:", p1synced, "p2 synced:", p2synced);
 
     const url2 = await p2.evaluate(() => (window as any).__PROVIDER2__?.url ?? "");
@@ -34,11 +34,11 @@ test("basic map value sync via y-websocket", async ({ browser }) => {
     console.log("[yjs-basic] p2 url:", (url2 as string).slice(0, 100));
 
     // wait up to ~8s for initial sync to complete on both sides
-    await p1.waitForFunction(() => (window as any).__PROVIDER__?.synced === true, null, { timeout: 8000 }).catch(() =>
+    await p1.waitForFunction(() => (window as any).__PROVIDER__?.isSynced === true, null, { timeout: 8000 }).catch(() =>
         undefined
     );
-    await p2.waitForFunction(() => (window as any).__PROVIDER2__?.synced === true, null, { timeout: 8000 }).catch(() =>
-        undefined
+    await p2.waitForFunction(() => (window as any).__PROVIDER2__?.isSynced === true, null, { timeout: 8000 }).catch(
+        () => undefined,
     );
 
     await p1.evaluate(() => {

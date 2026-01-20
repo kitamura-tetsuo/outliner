@@ -5,32 +5,38 @@ vi.mock("../../../auth/UserManager", () => ({
         auth: {
             currentUser: { getIdToken: vi.fn().mockResolvedValue("newToken") },
         },
+        addEventListener: vi.fn(),
     },
 }));
 
-import type { WebsocketProvider } from "y-websocket";
 import { refreshAuthAndReconnect } from "../../../lib/yjs/tokenRefresh";
 
 describe("refreshAuthAndReconnect", () => {
-    it("updates params and reconnects", async () => {
-        // Set NODE_ENV to test to ensure timestamp is appended
-        vi.stubGlobal("process", {
-            ...process,
-            env: { ...process.env, NODE_ENV: "test" },
-        });
-
+    it("calls sendToken on the provider", async () => {
         const provider = {
-            params: {},
-            shouldConnect: true,
-            wsconnected: false,
+            sendToken: vi.fn().mockResolvedValue(undefined),
+            disconnect: vi.fn(),
             connect: vi.fn(),
-        } as unknown as WebsocketProvider;
+        } as any;
 
         const handler = refreshAuthAndReconnect(provider);
         await handler();
 
-        // テスト環境では "newToken:timestamp" 形式になる
-        expect(provider.params.auth).toMatch(/^newToken:\d+$/);
+        expect(provider.sendToken).toHaveBeenCalled();
+    });
+
+    it("tries reconnect if sendToken fails", async () => {
+        const provider = {
+            sendToken: vi.fn().mockRejectedValue(new Error("fail")),
+            disconnect: vi.fn(),
+            connect: vi.fn(),
+        } as any;
+
+        const handler = refreshAuthAndReconnect(provider);
+        await handler();
+
+        expect(provider.sendToken).toHaveBeenCalled();
+        expect(provider.disconnect).toHaveBeenCalled();
         expect(provider.connect).toHaveBeenCalled();
     });
 });

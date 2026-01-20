@@ -42,6 +42,7 @@ export TEST_ENV=localhost
 export FIREBASE_PROJECT_ID
 export VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
 export VITE_YJS_PORT=${TEST_YJS_PORT}
+export TEST_API_PORT
 
 # Firebase emulator settings for test environment
 export USE_FIREBASE_EMULATOR=true
@@ -84,11 +85,11 @@ LOG_DIRS=(
 # Ports to monitor for readiness
 REQUIRED_PORTS=(
   ${TEST_YJS_PORT}
+  ${TEST_API_PORT}
   ${VITE_PORT}
   ${FIREBASE_FUNCTIONS_PORT}
   ${FIREBASE_AUTH_PORT}
   ${FIREBASE_FIRESTORE_PORT}
   ${FIREBASE_HOSTING_PORT}
   ${FIREBASE_STORAGE_PORT}
-  ${TEST_API_PORT}
 )
