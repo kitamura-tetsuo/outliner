@@ -174,6 +174,18 @@ async function getFreshIdToken(): Promise<string> {
     }
 }
 
+/**
+ * Constructs the WebSocket URL including room path and auth token.
+ * The server requires the room name in the URL path for authentication validation.
+ */
+function constructWsUrl(wsBase: string, room: string, token: string): string {
+    // Ensure no double slashes when joining base and room
+    const baseUrl = wsBase.replace(/\/$/, "");
+    const roomPath = room.startsWith("/") ? room.slice(1) : room;
+    const url = `${baseUrl}/${roomPath}`;
+    return token ? `${url}?token=${token}` : url;
+}
+
 export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: string): Promise<PageConnection> {
     const wsBase = getWsBase();
     const room = pageRoomPath(projectId, pageId);
@@ -210,7 +222,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     } catch {}
 
     const provider = new HocuspocusProvider({
-        url: initialToken ? `${wsBase}?token=${initialToken}` : wsBase,
+        url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
         token: tokenFn,
@@ -344,7 +356,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     } catch {}
 
     const provider = new HocuspocusProvider({
-        url: initialToken ? `${wsBase}?token=${initialToken}` : wsBase,
+        url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
         token: tokenFn,
@@ -606,7 +618,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     }
 
     const provider = new HocuspocusProvider({
-        url: initialToken ? `${wsBase}?token=${initialToken}` : wsBase,
+        url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
         token: tokenFn,
@@ -660,7 +672,7 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     } catch {}
 
     const provider = new HocuspocusProvider({
-        url: initialToken ? `${wsBase}?token=${initialToken}` : wsBase,
+        url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
         token: tokenFn,
