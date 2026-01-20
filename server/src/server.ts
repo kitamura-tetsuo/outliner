@@ -144,6 +144,7 @@ export async function startServer(
             {
                 async onAuthenticate(data: any) {
                     const { request, documentName, token: socketToken } = data;
+                    console.log(`DEBUG: onAuthenticate triggered for ${documentName}, hasSocketToken=${!!socketToken}`);
                     let connection = data.connection;
 
                     if (!connection) {
@@ -180,6 +181,7 @@ export async function startServer(
                         throw new Error("Authentication failed: Access denied");
                     }
 
+                    console.log(`DEBUG: onAuthenticate returning user=${decoded.uid}`);
                     return {
                         user: { uid: decoded.uid },
                         room,
@@ -257,15 +259,17 @@ export async function startServer(
 
                 async onConnect(data: any) {
                     console.log("DEBUG: onConnect triggered");
-                    const { request, documentName, connection } = data;
+                    const { request, documentName, connection, context } = data;
                     logger.warn({ event: "DEBUG_onConnect", documentName, url: request.url });
 
                     // AUTH CHECK (Consistency with onAuthenticate)
-                    const token = extractAuthToken(request);
-                    if (!token) {
-                        logger.warn({ event: "ws_connection_denied", reason: "no_token" });
-                        connection?.close(4001, "UNAUTHORIZED");
-                        throw new Error("Authentication failed: No token provided");
+                    // If user is already in context (from onAuthenticate or upgrade), skip URL token check
+                    if (!context?.user) {
+                        const token = extractAuthToken(request);
+                        if (!token) {
+                            // Defer to onAuthenticate (message based auth)
+                            logger.info({ event: "ws_connect_no_token", msg: "Waiting for auth message" });
+                        }
                     }
 
                     // Helper to close connection properly and return early
@@ -484,24 +488,33 @@ export async function startServer(
                         documentName = path.startsWith("/") ? path.slice(1) : path;
                     }
 
-                    if (!token) throw new Error("Authentication failed: No token provided");
+                    // if (!token) throw new Error("Authentication failed: No token provided");
 
                     const room = parseRoom(documentName);
                     if (!room?.project) throw new Error("Authentication failed: Invalid room format");
 
                     let decoded;
-                    try {
-                        decoded = await verifyIdTokenCached(token);
-                    } catch (err) {
-                        ws.close(4001, "UNAUTHORIZED");
-                        return;
+                    if (token) {
+                        try {
+                            decoded = await verifyIdTokenCached(token);
+                        } catch (err) {
+                            ws.close(4001, "UNAUTHORIZED");
+                            return;
+                        }
+
+                        const hasAccess = await checkContainerAccess(decoded.uid, room.project);
+                        if (!hasAccess) {
+                            ws.close(4003, "FORBIDDEN");
+                            return;
+                        }
+                    } else {
+                        logger.warn({
+                            event: "ws_no_token_in_url",
+                            msg: "Deferring auth to Hocuspocus onAuthenticate",
+                        });
                     }
 
-                    const hasAccess = await checkContainerAccess(decoded.uid, room.project);
-                    if (!hasAccess) {
-                        ws.close(4003, "FORBIDDEN");
-                        return;
-                    }
+                    // 3. Room Limits
 
                     // 3. Room Limits
                     const currentRoomCount = roomCounts.get(documentName) ?? 0;
@@ -549,7 +562,7 @@ export async function startServer(
                     try {
                         // Pass auth context
                         const context = {
-                            user: { uid: decoded.uid },
+                            user: decoded ? { uid: decoded.uid } : undefined,
                             room,
                             ip,
                         };
