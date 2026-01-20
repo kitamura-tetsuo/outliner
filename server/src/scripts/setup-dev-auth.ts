@@ -3,7 +3,7 @@ import "dotenv/config";
 import admin from "firebase-admin";
 import { UserRecord } from "firebase-admin/auth";
 import { fileURLToPath } from "url";
-import { serverLogger as logger } from "../src/utils/log-manager.js";
+import { serverLogger as logger } from "../utils/log-manager.js";
 
 // Firebase Admin SDKの初期化
 export async function initializeFirebase() {

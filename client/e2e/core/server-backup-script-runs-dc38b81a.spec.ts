@@ -23,7 +23,8 @@ test("backup script creates archive", async () => {
     process.env.BACKUP_DIR = backupDir;
     process.env.BACKUP_SOURCE = sourceDir;
     process.env.RCLONE_REMOTE = "";
-    await execFileAsync("node", ["server/scripts/rclone-backup.js"], { cwd: root });
+    // Compiled file will be in dist/scripts/rclone-backup.js
+    await execFileAsync("node", ["server/dist/scripts/rclone-backup.js"], { cwd: root });
     const files = await fs.promises.readdir(backupDir);
     expect(files.length).toBe(1);
 });

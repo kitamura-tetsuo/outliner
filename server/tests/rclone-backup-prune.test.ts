@@ -4,7 +4,7 @@ import path from "path";
 // @ts-ignore
 import { afterEach, beforeEach, describe, it } from "mocha";
 import { fileURLToPath } from "url";
-import { getConfig, pruneOldBackups } from "../scripts/rclone-backup.js";
+import { getConfig, pruneOldBackups } from "../src/scripts/rclone-backup.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -60,45 +60,57 @@ export class SeedClient {
         console.log(
             `[SeedClient] Seeding project "${this.projectId}" (title: "${this.projectTitle}") with ${pages.length} pages via HTTP API...`,
         );
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-            const response = await fetch(`${this.apiUrl}/api/seed`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${this.authToken}`,
-                },
-                body: JSON.stringify({
-                    projectName: this.projectTitle,
-                    pages,
-                }),
-                signal: controller.signal,
-            });
+        let lastError: any;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-            clearTimeout(timeoutId);
+                const response = await fetch(`${this.apiUrl}/api/seed`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${this.authToken}`,
+                    },
+                    body: JSON.stringify({
+                        projectName: this.projectTitle,
+                        pages,
+                    }),
+                    signal: controller.signal,
+                });
 
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({ error: response.statusText }));
-                throw new Error(`Seeding failed: ${error.error || response.statusText}`);
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({ error: response.statusText }));
+                    throw new Error(`Seeding failed: ${error.error || response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log(`[SeedClient] Seeding completed:`, result);
+                return; // Success
+            } catch (error: any) {
+                lastError = error;
+                console.warn(`[SeedClient] Attempt ${attempt} failed: ${error.message}`);
+
+                // Handle specific error types
+                if (error.name === "AbortError") {
+                    console.error("[SeedClient] Seeding timed out after 30 seconds");
+                } else if (error.message.includes("Failed to fetch") || error.message.includes("fetch error")) {
+                    console.error(
+                        `[SeedClient] Network error during seeding: ${error.message}. Is the Yjs server running on port ${this.apiUrl}?`,
+                    );
+                }
+
+                if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+                }
             }
-
-            const result = await response.json();
-            console.log(`[SeedClient] Seeding completed:`, result);
-        } catch (error: any) {
-            // Handle specific error types
-            if (error.name === "AbortError") {
-                console.error("[SeedClient] Seeding timed out after 30 seconds");
-            } else if (error.message.includes("Failed to fetch") || error.message.includes("fetch error")) {
-                console.error(
-                    `[SeedClient] Network error during seeding: ${error.message}. Is the Yjs server running on port ${this.apiUrl}?`,
-                );
-            } else {
-                console.error("[SeedClient] Seeding failed:", error);
-            }
-            throw error;
         }
+
+        console.error("[SeedClient] All seed attempts failed.");
+        throw lastError;
     }
 
     /**

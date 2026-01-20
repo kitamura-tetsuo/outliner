@@ -359,7 +359,8 @@ export class TestHelpers {
                     `createAndSeedProject: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
                 );
             } catch (e) {
-                TestHelpers.slog(`createAndSeedProject: SeedClient seeding failed, page will be empty: ${e}`);
+                TestHelpers.slog(`createAndSeedProject: SeedClient seeding failed: ${e}`);
+                throw e; // Fail the test immediately if seeding fails
             }
         }
 
