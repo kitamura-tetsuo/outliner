@@ -4,6 +4,7 @@ import { userManager } from "../../auth/UserManager";
 // Type for provider that supports token refresh
 type TokenRefreshableProvider = HocuspocusProvider & {
     __wsDisabled?: boolean;
+    status?: string;
     configuration?: {
         websocketProvider?: {
             status?: string;
