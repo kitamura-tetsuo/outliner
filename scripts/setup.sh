@@ -256,7 +256,7 @@ else
   # Ensure server is built if artifacts are missing (critical for Yjs server)
   # Strictly verify existence and non-empty status
   # In CI, we force a check/rebuild to avoid stale artifacts causing MODULE_NOT_FOUND
-  if [ ! -s "${ROOT_DIR}/server/dist/index.js" ] || [ ! -s "${ROOT_DIR}/server/dist/log-service.js" ] || [ "${CI:-}" = "true" ]; then
+  if ( [ ! -s "${ROOT_DIR}/server/dist/index.js" ] || [ ! -s "${ROOT_DIR}/server/dist/log-service.js" ] || [ "${CI:-}" = "true" ] ) && [ "${SKIP_BUILD:-0}" -ne 1 ]; then
     echo "Server build artifacts missing, empty, or running in CI. Building server..."
     cd "${ROOT_DIR}/server"
     npm_ci_if_needed
