@@ -34,7 +34,7 @@ export async function createArchive() {
     return archivePath;
 }
 
-export async function uploadArchive(archivePath) {
+export async function uploadArchive(archivePath: string) {
     const { rcloneBin, rcloneRemote } = getConfig();
     if (!rcloneRemote) {
         console.log("RCLONE_REMOTE not set, skipping upload");
@@ -43,7 +43,7 @@ export async function uploadArchive(archivePath) {
     await execFileAsync(rcloneBin, ["copy", archivePath, rcloneRemote]);
 }
 
-export async function pruneOldBackups(retentionDays) {
+export async function pruneOldBackups(retentionDays?: number) {
     const { backupDir, retentionDays: cfgRetention } = getConfig();
     const limit = retentionDays || cfgRetention;
     const files = await fs.readdir(backupDir);
