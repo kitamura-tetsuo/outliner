@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import OutlinerItem from "./OutlinerItem.svelte";
 import * as Y from "yjs";
+import OutlinerItem from "./OutlinerItem.svelte";
 
 // Mock dependencies
 vi.mock("$app/navigation", () => ({
@@ -58,7 +58,7 @@ function createMockModel(id: string) {
         tree: {
             getNodeValueFromKey: () => new Y.Map(),
         },
-        key: 'some-key',
+        key: "some-key",
     };
 
     return {
@@ -69,7 +69,7 @@ function createMockModel(id: string) {
         author: "author",
         created: Date.now(),
         lastChanged: Date.now(),
-        commentCount: 0
+        commentCount: 0,
     };
 }
 
@@ -86,7 +86,7 @@ describe("OutlinerItem UX", () => {
             model: model as any,
             hasChildren: true,
             isCollapsed: false,
-            index: 0
+            index: 0,
         });
 
         const collapseBtn = screen.getByLabelText("Collapse item");
@@ -103,7 +103,7 @@ describe("OutlinerItem UX", () => {
             model: model as any,
             hasChildren: true,
             isCollapsed: true,
-            index: 0
+            index: 0,
         });
 
         const expandBtn = screen.getByLabelText("Expand item");
