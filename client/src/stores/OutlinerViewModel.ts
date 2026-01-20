@@ -131,12 +131,15 @@ export class OutlinerViewModel {
             // プロパティを更新（参照は維持）
             // パフォーマンス最適化: lastChanged が変更された場合のみ再計算する
             // Y.Text.toString() は高コストな操作であるため、不要な呼び出しを避ける
-            const newLastChanged = (item as any).lastChanged;
+            // Use specific types instead of any where possible, falling back to safe access for runtime properties
+            const newLastChanged = typeof item.lastChanged === "number" ? item.lastChanged : (item as any).lastChanged;
             if (existingViewModel.lastChanged !== newLastChanged) {
                 existingViewModel.text = item.text.toString();
-                existingViewModel.votes = [...((item as any).votes || [])];
+                existingViewModel.votes = [...(item.votes?.toArray?.() ?? (item as any).votes ?? [])];
                 existingViewModel.lastChanged = newLastChanged;
-                existingViewModel.commentCount = (item as any).comments?.length ?? 0;
+                // Item wrapper exposes comments wrapper, but we need length from underlying Y.Array or wrapper
+                const comments = item.comments;
+                existingViewModel.commentCount = comments?.length ?? 0;
                 debugLog(
                     `OutlinerViewModel: Updated existing view model for "${existingViewModel.text}"`,
                 );
