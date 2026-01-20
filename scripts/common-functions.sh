@@ -133,8 +133,10 @@ clear_log_files() {
 npm_ci_if_needed() {
   # Fix permissions before installing
   if [ -d "node_modules" ] && [ "$(stat -c %U node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
-    echo "Fixing node_modules ownership before npm install..."
-    sudo chown -R node:node "node_modules" || true
+    if id "node" >/dev/null 2>&1; then
+      echo "Fixing node_modules ownership before npm install..."
+      sudo chown -R node:node "node_modules" || true
+    fi
   fi
   
   if [ ! -d node_modules ] || ! npm ls >/dev/null 2>&1; then
@@ -339,13 +341,17 @@ install_all_dependencies() {
       if [ -d "$dir" ]; then
         # Fix node_modules ownership if needed
         if [ -d "${dir}/node_modules" ] && [ "$(stat -c %U ${dir}/node_modules 2>/dev/null || echo "unknown")" = "root" ]; then
-          echo "Fixing node_modules ownership in $dir..."
-          sudo chown -R node:node "${dir}/node_modules" || true
+          if id "node" >/dev/null 2>&1; then
+            echo "Fixing node_modules ownership in $dir..."
+            sudo chown -R node:node "${dir}/node_modules" || true
+          fi
         fi
         # Ensure directory is owned by node user
         if [ "$(stat -c %U $dir)" = "root" ]; then
-          echo "Fixing ownership for $dir..."
-          sudo chown -R node:node "$dir" || true
+          if id "node" >/dev/null 2>&1; then
+            echo "Fixing ownership for $dir..."
+            sudo chown -R node:node "$dir" || true
+          fi
         fi
       fi
     done
