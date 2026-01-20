@@ -120,20 +120,26 @@ onMount(() => {
     // インデックス優先で自動的に再オープン（E2E 安定化）
     try {
         const gs: any = generalStore as any;
-        const cp: any = gs?.currentPage;
-        const items: any = cp?.items as any;
-        const targetId = gs?.openCommentItemId;
-        let exists = false;
-        if (items) {
-            // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
-            for (const it of items) {
-                if (it?.id === targetId) { exists = true; break; }
+        // Optimization: Only perform the expensive existence check if this item is a candidate for auto-reopen
+        // This avoids O(N^2) complexity where every item iterates the full list on mount
+        const isCandidate = !isPageTitle && (index === 1 || gs.openCommentItemIndex === index);
+
+        if (isCandidate) {
+            const cp: any = gs?.currentPage;
+            const items: any = cp?.items as any;
+            const targetId = gs?.openCommentItemId;
+            let exists = false;
+            if (items) {
+                // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
+                for (const it of items) {
+                    if (it?.id === targetId) { exists = true; break; }
+                }
             }
-        }
-        if (!exists && !isPageTitle && (index === 1 || gs.openCommentItemIndex === index)) {
-            gs.openCommentItemId = model.id;
-            gs.openCommentItemIndex = index;
-            try { logger.debug('[OutlinerItem] auto-reopen comment thread by index, id=', model.id, 'index=', index); } catch {}
+            if (!exists) {
+                gs.openCommentItemId = model.id;
+                gs.openCommentItemIndex = index;
+                try { logger.debug('[OutlinerItem] auto-reopen comment thread by index, id=', model.id, 'index=', index); } catch {}
+            }
         }
     } catch {}
 });
