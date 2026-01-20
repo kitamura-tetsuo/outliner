@@ -99,7 +99,7 @@ if (!serviceAccount.project_id && !isEmulatorEnvironment) {
     process.exit(1);
 }
 
-async function waitForFirebaseEmulator(maxRetries = 3, initialDelay = 1000, maxDelay = 10000) {
+async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
     const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST
         || process.env.FIRESTORE_EMULATOR_HOST
         || process.env.FIREBASE_EMULATOR_HOST;

@@ -36,6 +36,48 @@ trap 'handle_error ${LINENO} $?' ERR
 source "${SCRIPT_DIR}/common-config.sh"
 source "${SCRIPT_DIR}/common-functions.sh"
 
+cleanup_ports() {
+  echo "Cleaning up ports: ${REQUIRED_PORTS[*]}"
+  for port in "${REQUIRED_PORTS[@]}"; do
+    if [ -n "$port" ]; then
+      # Find processes using the port
+      pids=$(lsof -t -i :"$port" 2>/dev/null || true)
+
+      if [ -n "$pids" ]; then
+        echo "Killing processes on port $port: $pids"
+        # Try SIGTERM first
+        kill $pids 2>/dev/null || true
+        sleep 1
+
+        # Check if still running and force kill
+        pids=$(lsof -t -i :"$port" 2>/dev/null || true)
+        if [ -n "$pids" ]; then
+             echo "Force killing processes on port $port: $pids"
+             kill -9 $pids 2>/dev/null || true
+        fi
+      fi
+    fi
+  done
+
+  # Wait for ports to be free
+  for port in "${REQUIRED_PORTS[@]}"; do
+    if [ -n "$port" ]; then
+        local wait_count=0
+        while lsof -t -i :"$port" >/dev/null 2>&1; do
+            echo "Waiting for port $port to be free... (attempt $wait_count)"
+            sleep 1
+            wait_count=$((wait_count + 1))
+            if [ "$wait_count" -gt 30 ]; then
+                echo "Warning: Port $port is still in use after 30 seconds."
+                # Try force kill again just in case
+                lsof -t -i :"$port" | xargs kill -9 2>/dev/null || true
+                break
+            fi
+        done
+    fi
+  done
+}
+
 # Fix permissions before proceeding
 fix_permissions() {
   echo "Fixing directory permissions..."
@@ -259,6 +301,9 @@ fi
 # Stop any existing servers to ensure clean restart
 echo "Stopping any existing servers..."
 pm2 delete all || true
+
+# Robust port cleanup
+cleanup_ports
 
 # Kill existing firebase emulators running in background (not managed by PM2)
 if pgrep -f "firebase.*emulators" > /dev/null; then
