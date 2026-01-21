@@ -1739,7 +1739,7 @@
             // 残りの行を新しいアイテムとして追加
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = items[targetIndex + i];
+                const newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -1755,7 +1755,7 @@
             // 残りの行を新しいアイテムとして追加
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = items[targetIndex + i];
+                const newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -1788,6 +1788,7 @@
 </script>
 
 {#key outlinerKey}
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
         class="outliner"
         onmousedown={handleTreeMouseDown}
@@ -1842,9 +1843,24 @@
 
             {#if displayItems.length === 0 && !isReadOnly}
                 <div class="empty-state">
-                    <p>
-                        アイテムがありません。「アイテム追加」ボタンを押して始めましょう。
+                    <div class="empty-icon" aria-hidden="true">
+                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                    </div>
+                    <p class="empty-text">
+                        まだアイテムがありません
                     </p>
+                    <button class="empty-action-btn" onclick={handleAddItem}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        最初のアイテムを追加
+                    </button>
                 </div>
             {/if}
 
@@ -2059,9 +2075,48 @@
     }
 
     .empty-state {
-        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
         text-align: center;
-        color: #999;
+        color: #9ca3af;
+    }
+
+    .empty-icon {
+        margin-bottom: 16px;
+        color: #d1d5db;
+    }
+
+    .empty-text {
+        font-size: 0.95rem;
+        margin-bottom: 24px;
+        color: #6b7280;
+    }
+
+    .empty-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background-color: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background-color 0.2s, transform 0.1s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .empty-action-btn:hover {
+        background-color: #1d4ed8;
+    }
+
+    .empty-action-btn:active {
+        transform: translateY(1px);
     }
 
     .overlay-container {
