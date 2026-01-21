@@ -59,12 +59,6 @@ export async function startServer(
 
     const intervals: NodeJS.Timeout[] = [];
 
-    if (persistence) {
-        intervals.push(setInterval(() => {
-            logTotalSize(persistence, logger).catch(() => undefined);
-        }, config.LEVELDB_LOG_INTERVAL_MS));
-    }
-
     // Detailed Health/Debug endpoint
     app.get("/health", (req: any, res: any) => {
         const headers = { ...req.headers };
@@ -126,63 +120,6 @@ export async function startServer(
 
     const extensions = [
         new Logger({}),
-        {
-            async onLoadDocument({ documentName }: { documentName: string; }) {
-                // First, check if we have a cached document from seed API
-                // This is needed because persistence is currently disabled
-                const docs = (hocuspocus as any).documents;
-                logger.info({
-                    event: "onLoadDocument_start",
-                    documentName,
-                    hasDocs: !!docs,
-                    docsSize: docs?.size ?? 0,
-                    hasDocument: docs?.has(documentName) ?? false,
-                });
-
-                if (docs && docs.has(documentName)) {
-                    const cached = docs.get(documentName);
-                    logger.info({
-                        event: "onLoadDocument_cache_hit",
-                        documentName,
-                        hasCached: !!cached,
-                        hasDocument: !!cached?.document,
-                    });
-                    if (cached && cached.document) {
-                        logger.info(
-                            { event: "load_cached_document", documentName },
-                            "Using cached document from seed API",
-                        );
-                        return cached.document;
-                    }
-                }
-
-                logger.info({ event: "onLoadDocument_no_cache", documentName });
-                if (!persistence) {
-                    logger.info(
-                        { event: "onLoadDocument_new_doc", documentName },
-                        "Creating new Y.Doc (no persistence)",
-                    );
-                    return new Y.Doc();
-                }
-
-                // For SQLite extension, we don't need to manually bindState.
-                // The SQLite extension handles onLoadDocument automatically if included in extensions.
-                // However, we are not passing the persistence instance as an extension in the constructor
-                // but managing it manually here to replicate previous logic?
-
-                // Wait, if we use SQLite extension, we should add it to the extensions list of Hocuspocus.
-                // The previous code was manually using y-leveldb methods.
-                // With Hocuspocus SQLite extension, it hooks into onLoadDocument/onStoreDocument.
-
-                // If we want to use the extension properly, we should add `persistence` to the extensions array.
-                // But `persistence` is created by `createPersistence` which returns the extension instance.
-
-                // Let's verify if `persistence` is an Extension instance.
-                // In createPersistence, we return `new SQLite(...)`.
-
-                return undefined; // Let other extensions (SQLite) handle it or create default
-            },
-        },
     ];
 
     if (persistence) {
