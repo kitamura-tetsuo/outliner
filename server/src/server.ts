@@ -13,6 +13,7 @@ import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { createSeedRouter } from "./seed-api.js";
+import { requireAuth } from "./auth-middleware.js";
 import {
     refreshClientLogStream,
     refreshServerLogStream,
@@ -142,7 +143,7 @@ export async function startServer(
         });
     });
 
-    app.get("/metrics", (_req, res) => {
+    app.get("/metrics", requireAuth, (_req, res) => {
         res.json(getMetrics(hocuspocus as any));
     });
 
@@ -150,7 +151,7 @@ export async function startServer(
     app.use("/api", createSeedRouter(hocuspocus));
 
     // Log rotation endpoint
-    app.post("/api/rotate-logs", async (req: any, res: any) => {
+    app.post("/api/rotate-logs", requireAuth, async (req: any, res: any) => {
         try {
             const clientRotated = await rotateClientLogs(2);
             const telemetryRotated = await rotateTelemetryLogs(2);
