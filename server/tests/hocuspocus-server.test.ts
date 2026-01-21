@@ -1,6 +1,9 @@
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { Hocuspocus } from "@hocuspocus/server";
 import { expect } from "chai";
+import fs from "fs-extra";
+import os from "os";
+import path from "path";
 import sinon from "sinon";
 import WebSocket from "ws";
 import * as Y from "yjs";
@@ -22,14 +25,14 @@ describe("Hocuspocus Server", () => {
     let checkAccessStub: sinon.SinonStub;
     let verifyTokenStub: sinon.SinonStub;
     let shutdown: () => Promise<void>;
+    let dbDir: string;
 
     beforeEach(async () => {
+        dbDir = fs.mkdtempSync(path.join(os.tmpdir(), "hocuspocus-test-"));
         checkAccessStub = sinon.stub();
         verifyTokenStub = sinon.stub();
 
-        process.env.DISABLE_Y_LEVELDB = "true";
-
-        const config = loadConfig({ PORT: "0", LOG_LEVEL: "info" });
+        const config = loadConfig({ PORT: "0", LOG_LEVEL: "info", LEVELDB_PATH: dbDir });
         const res = await startServer(config, undefined, {
             checkContainerAccess: checkAccessStub,
             verifyIdTokenCached: verifyTokenStub,
@@ -43,18 +46,20 @@ describe("Hocuspocus Server", () => {
             else httpServer.on("listening", resolve);
         });
         port = (httpServer.address() as any).port;
+        // Wait for SQLite initialization
+        await new Promise(r => setTimeout(r, 500));
     });
 
     afterEach(async () => {
         provider?.destroy();
         if (shutdown) await shutdown();
         sinon.restore();
-        delete process.env.DISABLE_Y_LEVELDB;
+        await fs.remove(dbDir);
     });
 
     const createClient = (token: string = "dummy") => {
         return new HocuspocusProvider({
-            url: `ws://127.0.0.1:${port}`,
+            url: `ws://127.0.0.1:${port}/projects/123?token=${token}`,
             name: "projects/123",
             document: new Y.Doc(),
             token,
@@ -67,12 +72,15 @@ describe("Hocuspocus Server", () => {
                 reject(new Error(`Timed out waiting for disconnect code ${expectedCode}`));
             }, 5000);
 
-            provider.on("disconnect", ({ code }: { code: number; }) => {
+            provider.on("disconnect", (data: any) => {
                 clearTimeout(timeout);
+                const code = data.code ?? data.event?.code;
                 try {
                     expect(code).to.equal(expectedCode);
+                    provider.disconnect(); // Stop retrying
                     resolve();
                 } catch (e) {
+                    console.error("Disconnect code mismatch. Data:", JSON.stringify(data));
                     reject(e);
                 }
             });
@@ -81,7 +89,7 @@ describe("Hocuspocus Server", () => {
 
     it("should fail authentication with no token", async () => {
         provider = new HocuspocusProvider({
-            url: `ws://127.0.0.1:${port}`,
+            url: `ws://127.0.0.1:${port}/projects/123`,
             name: "projects/123",
             document: new Y.Doc(),
         });

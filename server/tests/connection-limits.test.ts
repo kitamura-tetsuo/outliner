@@ -40,10 +40,12 @@ describe("connection limits", () => {
         sinon.stub(admin.auth(), "verifyIdToken").resolves(
             { uid: "user", exp: Math.floor(Date.now() / 1000) + 60 } as any,
         );
+        cleanupDir = fs.mkdtempSync(path.join(os.tmpdir(), "ydb-"));
         const cfg = loadConfig({
             PORT: "12349",
             LOG_LEVEL: "silent",
             MAX_MESSAGE_SIZE_BYTES: "5",
+            LEVELDB_PATH: cleanupDir,
         });
         const res = await startServer(cfg);
         server = res.server;

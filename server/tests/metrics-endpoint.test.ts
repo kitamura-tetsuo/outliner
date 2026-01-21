@@ -1,7 +1,10 @@
 import { expect } from "chai";
 import { once } from "events";
 import admin from "firebase-admin";
+import fs from "fs-extra";
 import http from "http";
+import os from "os";
+import path from "path";
 import sinon from "sinon";
 import WebSocket from "ws";
 import { loadConfig } from "../src/config.js";
@@ -25,6 +28,7 @@ import { clearTokenCache } from "../src/websocket-auth.js";
 
 describe("metrics endpoint", () => {
     let server: any;
+    let dbDir: string;
 
     afterEach(async () => {
         if (server) {
@@ -33,13 +37,17 @@ describe("metrics endpoint", () => {
         }
         sinon.restore();
         clearTokenCache();
+        if (dbDir) {
+            await fs.remove(dbDir);
+        }
     });
 
     it("reports message count", async () => {
+        dbDir = fs.mkdtempSync(path.join(os.tmpdir(), "metrics-test-"));
         sinon.stub(admin.auth(), "verifyIdToken").resolves(
             { uid: "user", exp: Math.floor(Date.now() / 1000) + 60 } as any,
         );
-        const cfg = loadConfig({ PORT: "12348", LOG_LEVEL: "silent" });
+        const cfg = loadConfig({ PORT: "12348", LOG_LEVEL: "silent", LEVELDB_PATH: dbDir });
         const res = await startServer(cfg);
         server = res.server;
         await waitListening(server);
