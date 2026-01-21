@@ -26,7 +26,7 @@ test.describe("Production Reproduction", () => {
         // Based on typical behavior, there is a "New Project" button or input
 
         // Wait for the container list to be visible or the "New Project" button
-        const newProjectBtn = page.getByRole("button", { name: "New Project" });
+        // const newProjectBtn = page.getByRole("button", { name: "New Project" });
         // Or specific selector from basic.spec.ts if available
         // Fallback to searching for the button
 
