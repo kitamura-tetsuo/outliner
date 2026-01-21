@@ -346,7 +346,11 @@ export async function startServer(
 
     const shutdown = () => {
         intervals.forEach(clearInterval);
-        (hocuspocus as any).destroy();
+        if (typeof (hocuspocus as any).destroy === "function") {
+            (hocuspocus as any).destroy();
+        } else {
+            hocuspocus.closeConnections();
+        }
         return new Promise<void>((resolve) => {
             server.close(() => resolve());
         });
