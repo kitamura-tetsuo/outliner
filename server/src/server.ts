@@ -7,6 +7,7 @@ import http from "http";
 import { WebSocketServer } from "ws";
 import * as Y from "yjs";
 import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
+import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
@@ -142,7 +143,7 @@ export async function startServer(
         });
     });
 
-    app.get("/metrics", (_req, res) => {
+    app.get("/metrics", requireAuth, (_req, res) => {
         res.json(getMetrics(hocuspocus as any));
     });
 
@@ -150,7 +151,7 @@ export async function startServer(
     app.use("/api", createSeedRouter(hocuspocus));
 
     // Log rotation endpoint
-    app.post("/api/rotate-logs", async (req: any, res: any) => {
+    app.post("/api/rotate-logs", requireAuth, async (req: any, res: any) => {
         try {
             const clientRotated = await rotateClientLogs(2);
             const telemetryRotated = await rotateTelemetryLogs(2);
