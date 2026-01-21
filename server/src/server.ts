@@ -7,13 +7,13 @@ import http from "http";
 import { WebSocketServer } from "ws";
 import * as Y from "yjs";
 import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
+import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { createSeedRouter } from "./seed-api.js";
-import { requireAuth } from "./auth-middleware.js";
 import {
     refreshClientLogStream,
     refreshServerLogStream,
