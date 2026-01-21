@@ -119,8 +119,6 @@ describe("Hocuspocus Server", () => {
         connection1.transact((doc: any) => {
             doc.getText("test").insert(0, "hello");
         });
-
-        // HocuspocusProvider connects
         provider = createClient("valid-token");
 
         await new Promise<void>(resolve => {
