@@ -49,8 +49,8 @@ export async function startServer(
 
     const server = http.createServer(app);
 
-    const disableLeveldb = process.env.DISABLE_Y_LEVELDB === "true";
-    const persistence = disableLeveldb ? undefined : await createPersistence(config);
+    const disablePersistence = process.env.DISABLE_PERSISTENCE === "true";
+    const persistence = disablePersistence ? undefined : await createPersistence(config);
 
     // Additional check to ensure Persistence is ready
     if (persistence) {
@@ -73,12 +73,6 @@ export async function startServer(
             headers: headers,
         });
     });
-    // Configure y-websocket persistence
-    if (!disableLeveldb) {
-        process.env.YPERSISTENCE = config.LEVELDB_PATH;
-    } else {
-        delete process.env.YPERSISTENCE;
-    }
 
     // Rate limiting state
     const ipCounts = new Map<string, number>();

@@ -49,7 +49,7 @@ describe("idle timeout", () => {
         const cfg = loadConfig({
             PORT: String(port),
             LOG_LEVEL: "silent",
-            LEVELDB_PATH: dir,
+            DATABASE_PATH: dir,
             IDLE_TIMEOUT_MS: "100",
         });
         const { server } = await startServer(cfg);

@@ -32,7 +32,7 @@ describe("Hocuspocus Server", () => {
         checkAccessStub = sinon.stub();
         verifyTokenStub = sinon.stub();
 
-        const config = loadConfig({ PORT: "0", LOG_LEVEL: "info", LEVELDB_PATH: dbDir });
+        const config = loadConfig({ PORT: "0", LOG_LEVEL: "info", DATABASE_PATH: dbDir });
         const res = await startServer(config, undefined, {
             checkContainerAccess: checkAccessStub,
             verifyIdTokenCached: verifyTokenStub,

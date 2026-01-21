@@ -4,18 +4,14 @@ import { SQLite } from "@hocuspocus/extension-sqlite";
 import { Config } from "./config.js";
 
 export async function createPersistence(config: Config): Promise<any> {
-    if (process.env.DISABLE_Y_LEVELDB === "true") {
+    if (process.env.DISABLE_PERSISTENCE === "true") {
         return undefined;
     }
 
-    // Use the configured LEVELDB_PATH for SQLite database path as well for now,
-    // or we might want to change the config name.
-    // For now, I will use LEVELDB_PATH as the path to the sqlite file.
-    // If it is a directory, we might need to append a filename.
-    let dbPath = config.LEVELDB_PATH;
+    let dbPath = config.DATABASE_PATH;
 
     // SQLite extension expects a file path, usually ending in .sqlite or .db
-    // If LEVELDB_PATH was a directory, we should probably append a filename.
+    // If DATABASE_PATH was a directory, we should probably append a filename.
     // Assuming the user will update the config or we handle it here.
     if (!dbPath.endsWith(".sqlite") && !dbPath.endsWith(".db")) {
         dbPath = `${dbPath}/database.sqlite`;
