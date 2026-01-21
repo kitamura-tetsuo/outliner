@@ -1,28 +1,33 @@
 import type { Logger } from "pino";
 // @ts-ignore
-import { LeveldbPersistence } from "y-leveldb";
-import * as Y from "yjs";
+import { SQLite } from "@hocuspocus/extension-sqlite";
+import { Config } from "./config.js";
 
-export async function createPersistence(path: string): Promise<any> {
-    if (process.env.DISABLE_Y_LEVELDB === "true") {
+export async function createPersistence(config: Config): Promise<any> {
+    if (process.env.DISABLE_PERSISTENCE === "true") {
         return undefined;
     }
-    const persistence = new LeveldbPersistence(path);
-    // Wait for the underlying database to open
-    // The tr property is a promise that resolves when the database transaction system is ready
-    await persistence.tr;
-    return persistence;
-}
 
-export async function logTotalSize(
-    persistence: any,
-    logger: Logger,
-): Promise<void> {
-    const names = await persistence.getAllDocNames();
-    let total = 0;
-    for (const n of names) {
-        const d = await persistence.getYDoc(n);
-        total += Y.encodeStateAsUpdate(d).byteLength;
+    let dbPath = config.DATABASE_PATH;
+
+    // SQLite extension expects a file path, usually ending in .sqlite or .db
+    // If DATABASE_PATH was a directory, we should probably append a filename.
+    // Assuming the user will update the config or we handle it here.
+    if (!dbPath.endsWith(".sqlite") && !dbPath.endsWith(".db")) {
+        dbPath = `${dbPath}/database.sqlite`;
     }
-    logger.info({ event: "leveldb_total_size", bytes: total });
+
+    // Ensure directory exists
+    const fs = await import("fs");
+    const path = await import("path");
+    const dir = path.dirname(dbPath);
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+
+    const persistence = new SQLite({
+        database: dbPath,
+    });
+
+    return persistence;
 }

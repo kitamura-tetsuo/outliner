@@ -1,6 +1,4 @@
 import express from "express";
-// @ts-ignore
-import type { LeveldbPersistence } from "y-leveldb";
 import * as Y from "yjs";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
@@ -26,7 +24,7 @@ export interface SeedRequest {
  */
 export function createSeedRouter(
     hocuspocus: HocuspocusInstance,
-    persistence?: LeveldbPersistence,
+    // persistence argument removed as it's not used here anymore and type was y-leveldb
 ) {
     const router = express.Router();
 

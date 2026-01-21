@@ -1,6 +1,9 @@
 import { HocuspocusProvider } from "@hocuspocus/provider";
-import { Server } from "@hocuspocus/server";
+import { Hocuspocus } from "@hocuspocus/server";
 import { expect } from "chai";
+import fs from "fs-extra";
+import os from "os";
+import path from "path";
 import sinon from "sinon";
 import WebSocket from "ws";
 import * as Y from "yjs";
@@ -15,21 +18,21 @@ const mockDecodedIdToken = {
 } as any;
 
 describe("Hocuspocus Server", () => {
-    let server: Server;
+    let server: Hocuspocus;
     let httpServer: any;
     let provider: HocuspocusProvider;
     let port: number;
     let checkAccessStub: sinon.SinonStub;
     let verifyTokenStub: sinon.SinonStub;
     let shutdown: () => Promise<void>;
+    let dbDir: string;
 
     beforeEach(async () => {
+        dbDir = fs.mkdtempSync(path.join(os.tmpdir(), "hocuspocus-test-"));
         checkAccessStub = sinon.stub();
         verifyTokenStub = sinon.stub();
 
-        process.env.DISABLE_Y_LEVELDB = "true";
-
-        const config = loadConfig({ PORT: "0", LOG_LEVEL: "info" });
+        const config = loadConfig({ PORT: "0", LOG_LEVEL: "info", DATABASE_PATH: dbDir });
         const res = await startServer(config, undefined, {
             checkContainerAccess: checkAccessStub,
             verifyIdTokenCached: verifyTokenStub,
@@ -43,13 +46,15 @@ describe("Hocuspocus Server", () => {
             else httpServer.on("listening", resolve);
         });
         port = (httpServer.address() as any).port;
+        // Wait for SQLite initialization
+        await new Promise(r => setTimeout(r, 500));
     });
 
     afterEach(async () => {
         provider?.destroy();
         if (shutdown) await shutdown();
         sinon.restore();
-        delete process.env.DISABLE_Y_LEVELDB;
+        await fs.remove(dbDir);
     });
 
     const createClient = (token: string = "dummy") => {
@@ -71,18 +76,13 @@ describe("Hocuspocus Server", () => {
 
             provider.on("disconnect", (data: any) => {
                 clearTimeout(timeout);
+                const code = data.code ?? data.event?.code;
                 try {
-                    // Try to extract code from various places
-                    const code = data.code || data.event?.code || data.event?.reason;
-                    // If code is undefined, it might be due to test env websocket implementation
-                    if (code !== undefined) {
-                        expect(code).to.equal(expectedCode);
-                    } else {
-                        // If we can't check the code, just ensure we disconnected
-                        // console.warn("Could not verify disconnect code");
-                    }
+                    expect(code).to.equal(expectedCode);
+                    provider.disconnect(); // Stop retrying
                     resolve();
                 } catch (e) {
+                    console.error("Disconnect code mismatch. Data:", JSON.stringify(data));
                     reject(e);
                 }
             });
@@ -116,11 +116,9 @@ describe("Hocuspocus Server", () => {
         checkAccessStub.resolves(true);
 
         const connection1 = await (server as any).openDirectConnection("projects/123");
-        connection1.transact(doc => {
+        connection1.transact((doc: any) => {
             doc.getText("test").insert(0, "hello");
         });
-
-        // HocuspocusProvider connects
         provider = createClient("valid-token");
 
         await new Promise<void>(resolve => {

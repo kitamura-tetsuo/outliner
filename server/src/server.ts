@@ -10,7 +10,7 @@ import { checkContainerAccess as defaultCheckAccess } from "./access-control.js"
 import { type Config } from "./config.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
-import { createPersistence, logTotalSize } from "./persistence.js";
+import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { createSeedRouter } from "./seed-api.js";
 import {
@@ -49,40 +49,15 @@ export async function startServer(
 
     const server = http.createServer(app);
 
-    const disableLeveldb = process.env.DISABLE_Y_LEVELDB === "true";
-    // const persistence = disableLeveldb ? undefined : await createPersistence(config.LEVELDB_PATH);
-    const persistence = undefined;
+    const disablePersistence = process.env.DISABLE_PERSISTENCE === "true";
+    const persistence = disablePersistence ? undefined : await createPersistence(config);
 
-    // Additional check to ensure LevelDB is fully opened before accepting requests
+    // Additional check to ensure Persistence is ready
     if (persistence) {
-        try {
-            // Force a read operation to ensure database is fully opened
-            // This also triggers any lazy initialization
-            if (persistence) {
-                const healthDoc = await (persistence as any).getYDoc("_health_check_");
-                logger.info({ event: "persistence_ready" }, "LevelDB persistence ready");
-                // Clean up the health check doc by deleting it if it was created
-                if (healthDoc) {
-                    try {
-                        healthDoc.destroy();
-                    } catch {}
-                }
-            }
-        } catch (e: any) {
-            logger.warn(
-                { event: "persistence_init_warning", error: e.message },
-                "Persistence initialization warning - continuing anyway",
-            );
-        }
+        logger.info({ event: "persistence_ready" }, "Persistence initialized");
     }
 
     const intervals: NodeJS.Timeout[] = [];
-
-    if (persistence) {
-        intervals.push(setInterval(() => {
-            logTotalSize(persistence, logger).catch(() => undefined);
-        }, config.LEVELDB_LOG_INTERVAL_MS));
-    }
 
     // Detailed Health/Debug endpoint
     app.get("/health", (req: any, res: any) => {
@@ -98,12 +73,6 @@ export async function startServer(
             headers: headers,
         });
     });
-    // Configure y-websocket persistence
-    if (!disableLeveldb) {
-        process.env.YPERSISTENCE = config.LEVELDB_PATH;
-    } else {
-        delete process.env.YPERSISTENCE;
-    }
 
     // Rate limiting state
     const ipCounts = new Map<string, number>();
@@ -143,82 +112,17 @@ export async function startServer(
         },
     } as any;
 
+    const extensions = [
+        new Logger({}),
+    ];
+
+    if (persistence) {
+        extensions.push(persistence);
+    }
+
     const hocuspocus = new Hocuspocus({
         name: "hocuspocus-fluid-outliner",
-
-        extensions: [
-            new Logger({}),
-            {
-                async onLoadDocument({ documentName }: { documentName: string; }) {
-                    // First, check if we have a cached document from seed API
-                    // This is needed because persistence is currently disabled
-                    const docs = (hocuspocus as any).documents;
-                    logger.info({
-                        event: "onLoadDocument_start",
-                        documentName,
-                        hasDocs: !!docs,
-                        docsSize: docs?.size ?? 0,
-                        hasDocument: docs?.has(documentName) ?? false,
-                    });
-
-                    if (docs && docs.has(documentName)) {
-                        const cached = docs.get(documentName);
-                        logger.info({
-                            event: "onLoadDocument_cache_hit",
-                            documentName,
-                            hasCached: !!cached,
-                            hasDocument: !!cached?.document,
-                        });
-                        if (cached && cached.document) {
-                            logger.info(
-                                { event: "load_cached_document", documentName },
-                                "Using cached document from seed API",
-                            );
-                            return cached.document;
-                        }
-                    }
-
-                    logger.info({ event: "onLoadDocument_no_cache", documentName });
-                    if (!persistence) {
-                        logger.info(
-                            { event: "onLoadDocument_new_doc", documentName },
-                            "Creating new Y.Doc (no persistence)",
-                        );
-                        return new Y.Doc();
-                    }
-                    const doc = await (persistence as any).getYDoc(documentName);
-
-                    // Bind persistence to the document to save updates automatically
-                    // y-leveldb's bindState listens to 'update' events
-                    await (persistence as any).bindState(documentName, doc);
-
-                    // Room Size Warning Listener
-                    const limitBytes = config.LEVELDB_ROOM_SIZE_WARN_MB * 1024 * 1024;
-                    const checkSize = () => {
-                        // This might be expensive for large docs, but it matches previous behavior
-                        // Ideally this should be debounced
-                        const size = Y.encodeStateAsUpdate(doc).byteLength;
-                        if (size > limitBytes) {
-                            logger.warn({ event: "room_size_exceeded", room: documentName, bytes: size });
-                        }
-                    };
-
-                    // Attach listener similar to update-listeners.ts
-                    try {
-                        const ymap: any = doc.getMap("orderedTree");
-                        if (ymap && typeof ymap.observeDeep === "function") {
-                            ymap.observeDeep(checkSize);
-                        } else {
-                            doc.on("update", checkSize);
-                        }
-                    } catch {
-                        doc.on("update", checkSize);
-                    }
-
-                    return doc;
-                },
-            },
-        ],
+        extensions: extensions as any[],
     } as any);
 
     const wss = new WebSocketServer({ noServer: true });
@@ -243,7 +147,7 @@ export async function startServer(
     });
 
     // Seed API - use Hocuspocus's openDirectConnection for proper document lifecycle
-    app.use("/api", createSeedRouter(hocuspocus, persistence));
+    app.use("/api", createSeedRouter(hocuspocus));
 
     // Log rotation endpoint
     app.post("/api/rotate-logs", async (req: any, res: any) => {
@@ -425,10 +329,10 @@ export async function startServer(
 
     const shutdown = () => {
         intervals.forEach(clearInterval);
-        try {
+        if (typeof (hocuspocus as any).destroy === "function") {
             (hocuspocus as any).destroy();
-        } catch (e) {
-            // Ignore destruction errors
+        } else {
+            hocuspocus.closeConnections();
         }
         return new Promise<void>((resolve) => {
             server.close(() => resolve());
