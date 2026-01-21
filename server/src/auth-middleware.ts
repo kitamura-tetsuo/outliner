@@ -1,6 +1,6 @@
-import { NextFunction, Request, Response } from "express";
-import { logger } from "./logger.js";
+import { Request, Response, NextFunction } from "express";
 import { verifyIdTokenCached } from "./websocket-auth.js";
+import { logger } from "./logger.js";
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
     let token = req.headers.authorization?.replace("Bearer ", "");

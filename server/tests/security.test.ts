@@ -1,7 +1,8 @@
+
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
+import { loadConfig } from "../src/config.js";
 
 // Mock Firebase Admin
 // We need to mock verifyIdTokenCached because it is imported by auth-middleware directly
@@ -14,16 +15,16 @@ import { startServer } from "../src/server.js";
 // To mock this effectively in Vitest, we should use vi.mock.
 
 vi.mock("../src/websocket-auth.js", async () => {
-    const actual = await vi.importActual("../src/websocket-auth.js");
-    return {
-        ...actual,
-        verifyIdTokenCached: vi.fn().mockImplementation(async (token: string) => {
-            if (token === "valid-token") {
-                return { uid: "test-user", role: "admin" };
-            }
-            throw new Error("Invalid token");
-        }),
-    };
+  const actual = await vi.importActual("../src/websocket-auth.js");
+  return {
+    ...actual,
+    verifyIdTokenCached: vi.fn().mockImplementation(async (token: string) => {
+        if (token === "valid-token") {
+            return { uid: "test-user", role: "admin" };
+        }
+        throw new Error("Invalid token");
+    }),
+  };
 });
 
 describe("Server Security Tests", () => {
