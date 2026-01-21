@@ -35,14 +35,3 @@ export async function createPersistence(config: Config): Promise<any> {
 
     return persistence;
 }
-
-export async function logTotalSize(
-    persistence: any,
-    logger: Logger,
-): Promise<void> {
-    // TODO: Implement size calculation for SQLite
-    // SQLite extension doesn't expose getAllDocNames or getYDoc directly in the same way as y-leveldb.
-    // We would need to query the database directly to get the size of blobs.
-    // For now, this functionality is disabled.
-    logger.warn({ event: "sqlite_total_size", message: "Size calculation not implemented for SQLite" });
-}
