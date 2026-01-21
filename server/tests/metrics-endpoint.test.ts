@@ -47,7 +47,7 @@ describe("metrics endpoint", () => {
         sinon.stub(admin.auth(), "verifyIdToken").resolves(
             { uid: "user", exp: Math.floor(Date.now() / 1000) + 60 } as any,
         );
-        const cfg = loadConfig({ PORT: "12348", LOG_LEVEL: "silent", LEVELDB_PATH: dbDir });
+        const cfg = loadConfig({ PORT: "12348", LOG_LEVEL: "silent", DATABASE_PATH: dbDir });
         const res = await startServer(cfg);
         server = res.server;
         await waitListening(server);

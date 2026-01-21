@@ -45,7 +45,7 @@ describe("connection limits", () => {
             PORT: "12349",
             LOG_LEVEL: "silent",
             MAX_MESSAGE_SIZE_BYTES: "5",
-            LEVELDB_PATH: cleanupDir,
+            DATABASE_PATH: cleanupDir,
         });
         const res = await startServer(cfg);
         server = res.server;
@@ -77,7 +77,7 @@ describe("connection limits", () => {
         const cfg = loadConfig({
             PORT: "12350",
             LOG_LEVEL: "silent",
-            LEVELDB_PATH: cleanupDir,
+            DATABASE_PATH: cleanupDir,
             MAX_SOCKETS_PER_ROOM: "1",
         });
         const res = await startServer(cfg);
@@ -114,7 +114,7 @@ describe("connection limits", () => {
         const cfg = loadConfig({
             PORT: "12351",
             LOG_LEVEL: "silent",
-            LEVELDB_PATH: cleanupDir,
+            DATABASE_PATH: cleanupDir,
             MAX_SOCKETS_PER_IP: "1",
             MAX_SOCKETS_PER_ROOM: "2",
         });

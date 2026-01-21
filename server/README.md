@@ -5,7 +5,7 @@
 このサーバーは以下の機能を提供します：
 
 1. Firebase認証トークンの検証
-2. **Hocuspocus (Yjs)** を使用したリアルタイム同期とデータの永続化 (LevelDB)
+2. **Hocuspocus (Yjs)** を使用したリアルタイム同期とデータの永続化
 
 ## セットアップ
 
@@ -23,7 +23,6 @@ cp .env.example .env
 
 3. 環境変数を設定:
    - サーバー設定（`PORT`、`ORIGIN_ALLOWLIST`など）
-   - 永続化設定（`LEVELDB_PATH`）
    - `LOCAL_HOST` をローカルネットワークのIPアドレスに設定（デフォルトは`localhost`）
 
 4. Firebase Admin SDK JSONファイルをダウンロードして配置:
@@ -41,9 +40,6 @@ cp .env.example .env
 
 ### Hocuspocus / Yjs 設定
 
-- `LEVELDB_PATH`: Yjsデータの永続化パス (デフォルト: `./ydb`)
-- `LEVELDB_ROOM_SIZE_WARN_MB`: ルームサイズ警告のしきい値(MB) (デフォルト: `50`)
-- `LEVELDB_LOG_INTERVAL_MS`: LevelDB統計ログの出力間隔(ms) (デフォルト: `3600000` = 1時間)
 - `MAX_MESSAGE_SIZE_BYTES`: WebSocketメッセージの最大サイズ (デフォルト: `1000000`)
 - `IDLE_TIMEOUT_MS`: 切断までのアイドル時間 (デフォルト: `60000`)
 - `ROOM_PREFIX_ENFORCE`: ルーム名のプレフィックス強制 (デフォルト: `false`)
