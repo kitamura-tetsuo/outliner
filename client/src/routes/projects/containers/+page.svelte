@@ -12,6 +12,7 @@ import * as yjsHighService from "../../../lib/yjsService.svelte";
 import { getLogger } from "../../../lib/logger";
 import { saveContainerId } from "../../../stores/firestoreStore.svelte";
 import { yjsStore } from "../../../stores/yjsStore.svelte";
+import { v4 as uuidv4 } from "uuid";
 const logger = getLogger();
 
 let isLoading = $state(false);
@@ -52,17 +53,23 @@ async function createNewContainer() {
             yjsStore.yjsClient = undefined;
         }
 
-        // 新規プロジェクトを作成
-        const newClient = await yjsHighService.createNewProject(containerName);
+        // 1. IDを先に生成
+        const newProjectId = uuidv4();
+        createdContainerId = newProjectId; // UIに即座に反映
 
-        // 作成されたIDを取得
-        createdContainerId = newClient.containerId;
+        // 2. サーバーに保存してアクセス権を確定させる（WebSocket接続前に行うのが重要）
+        logger.info(`Saving new container ID ${newProjectId} to server...`);
+        const saveResult = await saveContainerId(newProjectId);
+        if (!saveResult) {
+            throw new Error("サーバーへのコンテナID保存に失敗しました");
+        }
+
+        // 3. 権限が確定してからWebSocket接続を開始
+        logger.info(`Connecting to WebSocket for ${newProjectId}...`);
+        const newClient = await yjsHighService.createNewProject(containerName, newProjectId);
 
         // ストアを更新
         yjsStore.yjsClient = newClient as any;
-
-        // サーバーに保存（デフォルトコンテナとして設定）
-        await saveContainerId(createdContainerId);
 
         success = `新しいアウトライナーが作成されました！ (ID: ${createdContainerId})`;
 

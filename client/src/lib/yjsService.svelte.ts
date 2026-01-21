@@ -112,7 +112,7 @@ export function stableIdFromTitle(title: string): string {
     }
 }
 
-export async function createNewProject(projectName: string): Promise<YjsClient> {
+export async function createNewProject(projectName: string, existingProjectId?: string): Promise<YjsClient> {
     const user = userManager.getCurrentUser();
     let userId = user?.id;
     const isTest = isTestEnvironment();
@@ -122,7 +122,14 @@ export async function createNewProject(projectName: string): Promise<YjsClient> 
         throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
     }
 
-    const projectId = isTest ? stableIdFromTitle(projectName) : uuid();
+    // Use provided ID or generate new ones (stable for test, random for prod)
+    let projectId: string;
+    if (existingProjectId) {
+        projectId = existingProjectId;
+    } else {
+        projectId = isTest ? stableIdFromTitle(projectName) : uuid();
+    }
+
     console.log(
         `[yjsService] createNewProject: isTest=${isTest}, projectName="${projectName}", projectId="${projectId}"`,
     );
