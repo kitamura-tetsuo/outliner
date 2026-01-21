@@ -1,6 +1,6 @@
-import { NextFunction, Request, Response } from "express";
-import { logger } from "./logger.js";
+import { Request, Response, NextFunction } from "express";
 import { verifyIdTokenCached } from "./websocket-auth.js";
+import { logger } from "./logger.js";
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
     let token = req.headers.authorization?.replace("Bearer ", "");
@@ -14,7 +14,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     }
 
     if (!token) {
-        return res.status(401).json({ error: "Unauthorized: Missing token" });
+        res.status(401).json({ error: "Unauthorized: Missing token" });
+        return;
     }
 
     try {
@@ -23,6 +24,6 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         next();
     } catch (error) {
         logger.warn({ event: "auth_failed", error: (error as Error).message, ip: req.ip });
-        return res.status(401).json({ error: "Unauthorized: Invalid token" });
+        res.status(401).json({ error: "Unauthorized: Invalid token" });
     }
 }
