@@ -39,6 +39,24 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
     const backlinks: Backlink[] = [];
     const normalizedTargetName = targetPageName.toLowerCase();
 
+    // 正規表現をループの外で作成（パフォーマンス最適化）
+    // [page-name] 形式
+    const escapedTargetName = escapeRegExp(normalizedTargetName); // Note: RegExp "i" flag handles casing
+    const internalLinkPattern = new RegExp(`\\[${escapedTargetName}\\]`, "i");
+
+    // プロジェクト内部リンクの正規表現パターン
+    // [/project-name/page-name] 形式
+    const currentProject = store.project?.title || "";
+    const escapedCurrentProject = escapeRegExp(currentProject);
+    const projectLinkPattern = new RegExp(
+        `\\[\\/${escapedCurrentProject}\\/${escapedTargetName}\\]`,
+        "i",
+    );
+
+    // extractContext 用の汎用パターン（プロジェクト名が異なる場合も考慮）
+    // NOTE: extractContext logic used `\\[\\/.+\\/${escapeRegExp(targetPageName)}\\]` which matches any project
+    const anyProjectLinkPattern = new RegExp(`\\[\\/.+\\/${escapedTargetName}\\]`, "i");
+
     try {
         // すべてのページを検索
         const pages = store.pages.current;
@@ -54,13 +72,13 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             }
 
             // ページ自身のテキストをチェック
-            if (containsLink(pageText, normalizedTargetName)) {
+            if (internalLinkPattern.test(pageText) || projectLinkPattern.test(pageText)) {
                 backlinks.push({
                     sourcePageId: pageItem.id,
                     sourcePageName: pageText,
                     sourceItemId: pageItem.id,
                     sourceItemText: pageText,
-                    context: extractContext(pageText, normalizedTargetName),
+                    context: extractContext(pageText, internalLinkPattern, anyProjectLinkPattern),
                 });
             }
 
@@ -69,13 +87,13 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             if (items && items.length && items.length > 0) {
                 for (const item of items) {
                     const itemText = String(item.text);
-                    if (item && containsLink(itemText, normalizedTargetName)) {
+                    if (item && (internalLinkPattern.test(itemText) || projectLinkPattern.test(itemText))) {
                         backlinks.push({
                             sourcePageId: pageItem.id,
                             sourcePageName: pageText,
                             sourceItemId: item.id,
                             sourceItemText: itemText,
-                            context: extractContext(itemText, normalizedTargetName),
+                            context: extractContext(itemText, internalLinkPattern, anyProjectLinkPattern),
                         });
                     }
                 }
@@ -91,42 +109,14 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
 }
 
 /**
- * テキストに指定したページへのリンクが含まれているかチェックする
- * @param text チェックするテキスト
- * @param targetPageName 対象のページ名（小文字）
- * @returns リンクが含まれている場合はtrue
- */
-function containsLink(text: string, targetPageName: string): boolean {
-    if (!text) return false;
-
-    // 内部リンクの正規表現パターン
-    // [page-name] 形式
-    const internalLinkPattern = new RegExp(`\\[${escapeRegExp(targetPageName)}\\]`, "i");
-
-    // プロジェクト内部リンクの正規表現パターン
-    // [/project-name/page-name] 形式
-    // 現在のプロジェクト名を取得
-    const currentProject = store.project?.title || "";
-    const projectLinkPattern = new RegExp(
-        `\\[\\/${escapeRegExp(currentProject)}\\/${escapeRegExp(targetPageName)}\\]`,
-        "i",
-    );
-
-    return internalLinkPattern.test(text) || projectLinkPattern.test(text);
-}
-
-/**
  * リンクの前後のコンテキストを抽出する
  * @param text 元のテキスト
- * @param targetPageName 対象のページ名（小文字）
+ * @param internalLinkPattern 内部リンクパターン
+ * @param projectLinkPattern プロジェクトリンクパターン
  * @returns コンテキスト文字列
  */
-function extractContext(text: string, targetPageName: string): string {
+function extractContext(text: string, internalLinkPattern: RegExp, projectLinkPattern: RegExp): string {
     if (!text) return "";
-
-    // 内部リンクの正規表現パターン
-    const internalLinkPattern = new RegExp(`\\[${escapeRegExp(targetPageName)}\\]`, "i");
-    const projectLinkPattern = new RegExp(`\\[\\/.+\\/${escapeRegExp(targetPageName)}\\]`, "i");
 
     // リンクの位置を特定
     const internalMatch = text.match(internalLinkPattern);
