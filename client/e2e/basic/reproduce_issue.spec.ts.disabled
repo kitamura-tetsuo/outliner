@@ -9,7 +9,7 @@ dotenv.config({ path: ".env.test" });
 const TARGET_URL = "https://outliner-d57b0.web.app/projects/containers";
 
 test.describe("Production Reproduction", () => {
-    test("Create New Project", async ({ page }) => {
+    test.skip("Create New Project", async ({ page }) => {
         // 1. Navigate to the target page
         console.log(`Navigating to ${TARGET_URL}...`);
         await page.goto(TARGET_URL);
