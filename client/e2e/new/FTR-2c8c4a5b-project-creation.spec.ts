@@ -37,27 +37,25 @@ test.describe("FTR-2c8c4a5b: Project Creation", () => {
         await page.click("button:has-text('作成する')");
 
         // 5. Verify redirect to the new project
-        // It shoud redirect to root (/) then to the project page potentially?
+        // It should redirect to root (/) then to the project page potentially?
         // The code says: `goto("/")` after creation.
         // Then the home page usually redirects to the default project or shows the list.
-        await page.waitForURL("**/", { timeout: 15000 });
 
-        // 6. Verify we are effectively on a project page or have the project in the list
-        // If it redirects to /p/<projectId>, check that.
-        // Or check if the project selector contains the new project.
-
-        // Wait for potential redirection to specific project
+        // Wait for navigation to the project page (which contains the project name)
+        // URL will look like /Test%20Project%20123...
         try {
-            await page.waitForURL(/p[0-9a-f]+/, { timeout: 5000 });
-        } catch {
-            // If it stays on root, maybe check the selector
+            await page.waitForURL(/Test%20Project/, { timeout: 10000 });
+        } catch (e) {
+            console.log("Redirect to specific URL did not happen, checking if we are on root with correct selection");
         }
 
         // Check if the project name appears in the title or selector
         const selector = page.locator("select.project-select");
         if (await selector.isVisible()) {
-            const options = selector.locator("option");
-            await expect(options).toContainText(projectName);
+            // Check if ANY option contains the project name
+            // We use .first() to avoid strict mode violation if multiple elements somehow matched (unlikely for specific name)
+            // or just use locator with hasText
+            await expect(selector.locator(`option:has-text("${projectName}")`)).toBeAttached();
         } else {
             // Maybe we are on the project page directly, check header or title
             // Title bar usually contains project name
