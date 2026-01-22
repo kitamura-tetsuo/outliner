@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("New Page Navigation", () => {
@@ -24,13 +24,13 @@ test.describe("New Page Navigation", () => {
         await pageNameInput.fill(newPageName);
 
         // Click create button
-        const createButton = page.locator('button', { hasText: '作成' });
+        const createButton = page.locator("button", { hasText: "作成" });
         await createButton.click();
 
         // Verify navigation to the new page
         // Both project name and page name should be encoded in the URL regex
-        const encodedProjectName = encodeURIComponent(projectName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const encodedPageName = encodeURIComponent(newPageName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const encodedProjectName = encodeURIComponent(projectName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const encodedPageName = encodeURIComponent(newPageName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const expectedUrlPattern = new RegExp(`/${encodedProjectName}/${encodedPageName}`);
 
         console.log(`Expecting URL pattern: ${expectedUrlPattern}`);
@@ -40,12 +40,12 @@ test.describe("New Page Navigation", () => {
         // Note: The test environment might be slow to sync the new page to the view.
         // We accept seeing the page title in the header OR the outliner.
         try {
-            await page.waitForSelector('.outliner', { state: 'visible', timeout: 15000 });
+            await page.waitForSelector(".outliner", { state: "visible", timeout: 15000 });
         } catch (e) {
             console.log("Outliner not found, checking for page title in header as fallback verification");
             // If outliner is not found (maybe empty page logic differs), check if we are at least on the page
             // and the system acknowledges the page name in the UI
-            await expect(page.locator('h1')).toContainText(newPageName);
+            await expect(page.locator("h1")).toContainText(newPageName);
         }
     });
 });
