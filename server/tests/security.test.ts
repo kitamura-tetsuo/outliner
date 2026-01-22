@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import { jest } from "@jest/globals";
 import request from "supertest";
 
 // Mock Firebase Admin FIRST, before importing any modules that use it
