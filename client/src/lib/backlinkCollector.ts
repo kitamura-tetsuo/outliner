@@ -72,7 +72,8 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             }
 
             // ページ自身のテキストをチェック
-            if (internalLinkPattern.test(pageText) || projectLinkPattern.test(pageText)) {
+            // Fast path: check if text contains '[' before running regex
+            if (pageText.includes("[") && (internalLinkPattern.test(pageText) || projectLinkPattern.test(pageText))) {
                 backlinks.push({
                     sourcePageId: pageItem.id,
                     sourcePageName: pageText,
@@ -87,7 +88,8 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             if (items && items.length && items.length > 0) {
                 for (const item of items) {
                     const itemText = String(item.text);
-                    if (item && (internalLinkPattern.test(itemText) || projectLinkPattern.test(itemText))) {
+                    // Fast path: check if text contains '[' before running regex
+                    if (item && itemText.includes("[") && (internalLinkPattern.test(itemText) || projectLinkPattern.test(itemText))) {
                         backlinks.push({
                             sourcePageId: pageItem.id,
                             sourcePageName: pageText,
