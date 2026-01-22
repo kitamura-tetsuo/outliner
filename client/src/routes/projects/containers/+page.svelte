@@ -73,9 +73,9 @@ async function createNewContainer() {
 
         success = `新しいアウトライナーが作成されました！ (ID: ${createdContainerId})`;
 
-        // 1.5秒後にメインページに移動
+        // 1.5秒後に作成したプロジェクトのページに移動
         setTimeout(() => {
-            goto("/");
+            goto("/" + containerName);
         }, 1500);
     }
     catch (err) {
