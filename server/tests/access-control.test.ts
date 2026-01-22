@@ -51,16 +51,16 @@ describe("access-control", () => {
         process.env = originalEnv;
     });
 
-    it("allows access via containerUsers", async () => {
-        const containerGetStub = sinon.stub().resolves({
+    it("allows access via projectUsers", async () => {
+        const projectGetStub = sinon.stub().resolves({
             exists: true,
             data: () => ({ accessibleUserIds: ["u1"] }),
         });
 
         collectionStub.callsFake((name: string) => {
-            if (name === "containerUsers") {
+            if (name === "projectUsers") {
                 return {
-                    doc: sinon.stub().withArgs("c1").returns({ get: containerGetStub }),
+                    doc: sinon.stub().withArgs("c1").returns({ get: projectGetStub }),
                 };
             }
             return { doc: docStub };
@@ -70,14 +70,14 @@ describe("access-control", () => {
         expect(result).to.be.true;
     });
 
-    it("allows access via userContainers", async () => {
+    it("allows access via userProjects", async () => {
         const userGetStub = sinon.stub().resolves({
             exists: true,
-            data: () => ({ accessibleContainerIds: ["c1"] }),
+            data: () => ({ accessibleProjectIds: ["c1"] }),
         });
 
         collectionStub.callsFake((name: string) => {
-            if (name === "userContainers") {
+            if (name === "userProjects") {
                 return {
                     doc: sinon.stub().withArgs("u1").returns({ get: userGetStub }),
                 };
@@ -90,18 +90,18 @@ describe("access-control", () => {
     });
 
     it("denies access if neither has permission", async () => {
-        const containerGetStub = sinon.stub().resolves({
+        const projectGetStub = sinon.stub().resolves({
             exists: true,
             data: () => ({ accessibleUserIds: ["other"] }),
         });
         const userGetStub = sinon.stub().resolves({
             exists: true,
-            data: () => ({ accessibleContainerIds: ["other"] }),
+            data: () => ({ accessibleProjectIds: ["other"] }),
         });
 
         collectionStub.callsFake((name: string) => {
-            if (name === "containerUsers") return { doc: sinon.stub().returns({ get: containerGetStub }) };
-            if (name === "userContainers") return { doc: sinon.stub().returns({ get: userGetStub }) };
+            if (name === "projectUsers") return { doc: sinon.stub().returns({ get: projectGetStub }) };
+            if (name === "userProjects") return { doc: sinon.stub().returns({ get: userGetStub }) };
             return { doc: docStub };
         });
 
@@ -173,8 +173,8 @@ describe("access-control", () => {
         });
 
         collectionStub.callsFake((name: string) => {
-            if (name === "containerUsers") return { doc: sinon.stub().returns({ get: containerGetStub }) };
-            if (name === "userContainers") return { doc: sinon.stub().returns({ get: userGetStub }) };
+            if (name === "projectUsers") return { doc: sinon.stub().returns({ get: containerGetStub }) };
+            if (name === "userProjects") return { doc: sinon.stub().returns({ get: userGetStub }) };
             return { doc: docStub };
         });
 

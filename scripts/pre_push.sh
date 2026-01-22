@@ -17,6 +17,7 @@ fi
 
 if ! npx --yes dprint check $CHANGED; then
     echo "\nCommit includes unformatted files. Run 'npx dprint fmt $CHANGED' before pushing." >&2
+    npx --yes dprint fmt $CHANGED
     exit 1
 fi
 
