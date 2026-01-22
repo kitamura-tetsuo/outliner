@@ -40,10 +40,10 @@ export async function checkContainerAccess(
     try {
         const db = firestoreInstance || admin.firestore();
 
-        // 1. Check containerUsers collection (container -> users)
-        const containerUserDoc = await db.collection("containerUsers").doc(containerId).get();
-        if (containerUserDoc.exists) {
-            const data = containerUserDoc.data();
+        // 1. Check projectUsers collection (project -> users)
+        const projectUserDoc = await db.collection("projectUsers").doc(containerId).get();
+        if (projectUserDoc.exists) {
+            const data = projectUserDoc.data();
             if (data?.accessibleUserIds && Array.isArray(data.accessibleUserIds)) {
                 if (data.accessibleUserIds.includes(userId)) {
                     return true;
@@ -51,12 +51,12 @@ export async function checkContainerAccess(
             }
         }
 
-        // 2. Check userContainers collection (user -> containers)
-        const userContainerDoc = await db.collection("userContainers").doc(userId).get();
-        if (userContainerDoc.exists) {
-            const data = userContainerDoc.data();
-            if (data?.accessibleContainerIds && Array.isArray(data.accessibleContainerIds)) {
-                if (data.accessibleContainerIds.includes(containerId)) {
+        // 2. Check userProjects collection (user -> projects)
+        const userProjectDoc = await db.collection("userProjects").doc(userId).get();
+        if (userProjectDoc.exists) {
+            const data = userProjectDoc.data();
+            if (data?.accessibleProjectIds && Array.isArray(data.accessibleProjectIds)) {
+                if (data.accessibleProjectIds.includes(containerId)) {
                     return true;
                 }
             }
