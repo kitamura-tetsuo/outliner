@@ -162,9 +162,9 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
             console.log("Collapse button count:", collapseBtnCount);
 
             if (collapseBtnCount > 0) {
-                const btnText = await collapseBtn.textContent();
-                console.log("Collapse button text:", btnText);
-                if (btnText === "▶") {
+                const isExpanded = await collapseBtn.getAttribute("aria-expanded");
+                console.log("Collapse button aria-expanded:", isExpanded);
+                if (isExpanded === "false") {
                     console.log("Expanding Child item");
                     await collapseBtn.click();
                     await TestHelpers.waitForUIStable(page);
@@ -347,9 +347,9 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
             console.log("Collapse button count:", collapseBtnCount);
 
             if (collapseBtnCount > 0) {
-                const btnText = await collapseBtn.textContent();
-                console.log("Collapse button text:", btnText);
-                if (btnText === "▶") {
+                const isExpanded = await collapseBtn.getAttribute("aria-expanded");
+                console.log("Collapse button aria-expanded:", isExpanded);
+                if (isExpanded === "false") {
                     console.log("Expanding Child item");
                     await collapseBtn.click();
                     await TestHelpers.waitForUIStable(page);

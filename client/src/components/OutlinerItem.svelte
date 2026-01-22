@@ -1940,7 +1940,24 @@ export function setSelectionPosition(start: number, end: number = start) {
                     aria-label={isCollapsed ? "Expand item" : "Collapse item"}
                     aria-expanded={!isCollapsed}
                 >
-                    {isCollapsed ? "▶" : "▼"}
+                    <svg
+                        class="chevron-icon"
+                        class:collapsed={isCollapsed}
+                        width="12"
+                        height="12"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M4 6L8 10L12 6"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+                    </svg>
                 </button>
             {:else}
                 <span class="bullet">•</span>
@@ -2119,6 +2136,18 @@ export function setSelectionPosition(start: number, end: number = start) {
     cursor: pointer;
     font-size: 0.7rem;
     color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chevron-icon {
+    transition: transform 0.2s ease;
+    transform: rotate(0deg); /* Expanded state (down) */
+}
+
+.chevron-icon.collapsed {
+    transform: rotate(-90deg); /* Collapsed state (right) */
 }
 
 .item-content-container {
