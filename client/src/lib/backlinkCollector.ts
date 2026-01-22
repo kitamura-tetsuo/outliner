@@ -89,7 +89,10 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
                 for (const item of items) {
                     const itemText = String(item.text);
                     // Fast path: check if text contains '[' before running regex
-                    if (item && itemText.includes("[") && (internalLinkPattern.test(itemText) || projectLinkPattern.test(itemText))) {
+                    if (
+                        item && itemText.includes("[")
+                        && (internalLinkPattern.test(itemText) || projectLinkPattern.test(itemText))
+                    ) {
                         backlinks.push({
                             sourcePageId: pageItem.id,
                             sourcePageName: pageText,
