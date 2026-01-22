@@ -1,0 +1,11 @@
+id: NAV-002
+title: Navigate to new page after creation
+description: When a user creates a new page, they should be automatically navigated to that page.
+category: navigation
+status: implemented
+acceptance:
+- After clicking the create button, the URL should change to the new page's URL.
+- The page content (Outliner) should be visible.
+tests:
+- client/e2e/basic/new-page-navigation.spec.ts
+title-ja: 新規ページ作成後に遷移

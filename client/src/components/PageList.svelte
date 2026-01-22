@@ -33,10 +33,9 @@ function handleCreatePage() {
     }
 
     // プロジェクトに直接ページを追加
-    project.addPage(pageTitle, currentUser);
+    const newPage = project.addPage(pageTitle, currentUser);
+    selectPage(newPage);
     pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : "";
-
-
 }
 
 function selectPage(page: Item) {
