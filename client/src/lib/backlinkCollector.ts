@@ -84,8 +84,10 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             }
 
             // 子アイテムをチェック
-            const items = pageItem.items as Iterable<Item> & { length?: number; };
-            if (items && items.length && items.length > 0) {
+            const items = pageItem.items as Iterable<Item>;
+            // Optimization: Iterate directly to avoid O(N log N) sorting caused by items.length check
+            // (Items.length getter triggers a full sort of children keys in app-schema.ts)
+            if (items) {
                 for (const item of items) {
                     const itemText = String(item.text);
                     // Fast path: check if text contains '[' before running regex
