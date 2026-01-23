@@ -1,11 +1,17 @@
 import admin from "firebase-admin";
 import type { IncomingMessage } from "http";
+import { getServiceAccount } from "./firebase-init.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 
 if (!admin.apps.length) {
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "outliner-d57b0";
-    console.log(`[Auth] Initializing Firebase Admin with projectId=${projectId}`);
-    admin.initializeApp({ projectId });
+    const serviceAccount = getServiceAccount();
+    const projectId = serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
+    if (projectId) {
+        console.log(`[Auth] Initializing Firebase Admin with projectId=${projectId}`);
+        admin.initializeApp({ projectId });
+    } else {
+        console.warn("[Auth] No project ID found, skipping auto-initialization");
+    }
 }
 
 interface CacheEntry {

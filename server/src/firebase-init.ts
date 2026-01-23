@@ -57,7 +57,7 @@ if (isDevelopment) {
 }
 
 // Firebase service account configuration
-function getServiceAccount() {
+export function getServiceAccount() {
     // Firebase Admin SDKファイルが指定されている場合はそれを使用
     if (process.env.FIREBASE_ADMIN_SDK_PATH) {
         const sdkPath = path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH);
