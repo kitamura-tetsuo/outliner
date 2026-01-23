@@ -965,6 +965,14 @@ function toggleComments() {
 function handleContentClick(e: MouseEvent) {
     const el = e.target as HTMLElement | null;
     if (!el) return;
+
+    // Prevent component selector clicks from triggering item editing (focusing textarea)
+    // which would immediately close the select dropdown
+    if (el.closest('.component-selector') || el.tagName.toLowerCase() === 'select') {
+        e.stopPropagation();
+        return;
+    }
+
     const btn = el.closest('button.comment-button');
     if (btn) {
         try { logger.debug('[OutlinerItem] handleContentClick toggling comments for id=', model.id); } catch {}
@@ -1062,6 +1070,11 @@ function handleMouseDown(event: MouseEvent) {
 
     // Anchor click should not trigger editing or dragging
     if ((event.target as HTMLElement).closest("a")) {
+        return;
+    }
+
+    // Component selector clicks should not trigger item editing (focusing textarea)
+    if ((event.target as HTMLElement).closest(".component-selector") || (event.target as HTMLElement).tagName.toLowerCase() === 'select') {
         return;
     }
 
