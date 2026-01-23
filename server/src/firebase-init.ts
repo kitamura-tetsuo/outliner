@@ -1,8 +1,8 @@
-import "@dotenvx/dotenvx";
 import admin from "firebase-admin";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { secretManager } from "./secret-manager.js";
 import { serverLogger as logger } from "./utils/log-manager.js";
 
 // Define __dirname for ESM
@@ -71,33 +71,28 @@ function getServiceAccount() {
     }
 
     // 環境変数から設定を読み取る（従来の方式）
+    // Secret Manager からの読み込みを優先
+    const privateKey = secretManager.getSecret("FIREBASE_PRIVATE_KEY") || process.env.FIREBASE_PRIVATE_KEY || "";
+
     return {
         type: "service_account",
         project_id: process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "outliner-d57b0",
-        private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-        private_key: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
-        client_email: process.env.FIREBASE_CLIENT_EMAIL,
-        client_id: process.env.FIREBASE_CLIENT_ID,
+        private_key_id: secretManager.getSecret("FIREBASE_PRIVATE_KEY_ID") || process.env.FIREBASE_PRIVATE_KEY_ID,
+        private_key: privateKey.replace(/\\n/g, "\n"),
+        client_email: secretManager.getSecret("FIREBASE_CLIENT_EMAIL") || process.env.FIREBASE_CLIENT_EMAIL,
+        client_id: secretManager.getSecret("FIREBASE_CLIENT_ID") || process.env.FIREBASE_CLIENT_ID,
         auth_uri: "https://accounts.google.com/o/oauth2/auth",
         token_uri: "https://oauth2.googleapis.com/token",
         auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-        client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
+        client_x509_cert_url: secretManager.getSecret("FIREBASE_CLIENT_CERT_URL")
+            || process.env.FIREBASE_CLIENT_CERT_URL,
     };
 }
-
-const serviceAccount = getServiceAccount();
 
 const isEmulatorEnvironment = process.env.USE_FIREBASE_EMULATOR === "true"
     || process.env.FIREBASE_AUTH_EMULATOR_HOST
     || process.env.FIRESTORE_EMULATOR_HOST
     || process.env.FIREBASE_EMULATOR_HOST;
-
-if (!serviceAccount.project_id && !isEmulatorEnvironment) {
-    logger.error(
-        "Firebase service account environment variables are not properly configured.",
-    );
-    process.exit(1);
-}
 
 async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
     const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST
@@ -197,6 +192,26 @@ async function clearFirestoreEmulatorData() {
 
 export async function initializeFirebase() {
     try {
+        // Load secrets from GCP Secret Manager if not in emulator environment
+        if (!isEmulatorEnvironment) {
+            await secretManager.loadSecrets([
+                "FIREBASE_PRIVATE_KEY",
+                "FIREBASE_PRIVATE_KEY_ID",
+                "FIREBASE_CLIENT_EMAIL",
+                "FIREBASE_CLIENT_ID",
+                "FIREBASE_CLIENT_CERT_URL",
+            ]);
+        }
+
+        const serviceAccount = getServiceAccount();
+
+        if (!serviceAccount.project_id && !isEmulatorEnvironment) {
+            logger.error(
+                "Firebase service account environment variables are not properly configured.",
+            );
+            process.exit(1);
+        }
+
         try {
             const apps = admin.apps;
             if (apps.length) {
