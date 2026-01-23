@@ -62,6 +62,28 @@ export async function checkContainerAccess(
             }
         }
 
+        // 3. Check containerUsers collection (Legacy)
+        const containerUserDoc = await db.collection("containerUsers").doc(containerId).get();
+        if (containerUserDoc.exists) {
+            const data = containerUserDoc.data();
+            if (data?.accessibleUserIds && Array.isArray(data.accessibleUserIds)) {
+                if (data.accessibleUserIds.includes(userId)) {
+                    return true;
+                }
+            }
+        }
+
+        // 4. Check userContainers collection (Legacy)
+        const userContainerDoc = await db.collection("userContainers").doc(userId).get();
+        if (userContainerDoc.exists) {
+            const data = userContainerDoc.data();
+            if (data?.accessibleContainerIds && Array.isArray(data.accessibleContainerIds)) {
+                if (data.accessibleContainerIds.includes(containerId)) {
+                    return true;
+                }
+            }
+        }
+
         logger.warn({ event: "access_denied", userId, containerId });
         return false;
     } catch (error) {

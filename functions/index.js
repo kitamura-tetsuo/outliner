@@ -230,7 +230,33 @@ async function checkContainerAccess(userId, containerId) {
       `Checking container access for user: ${userId}, container: ${containerId}`,
     );
 
-    // Check if user is in containerUsers collection
+    // 1. Check projectUsers collection (New Architecture)
+    const projectUserDoc = await projectUsersCollection.doc(containerId).get();
+    if (projectUserDoc.exists) {
+      const data = projectUserDoc.data();
+      if (
+        data.accessibleUserIds &&
+        data.accessibleUserIds.includes(userId)
+      ) {
+        logger.info(`Access granted via projectUsers collection`);
+        return true;
+      }
+    }
+
+    // 2. Check userProjects collection (New Architecture)
+    const userProjectDoc = await userProjectsCollection.doc(userId).get();
+    if (userProjectDoc.exists) {
+      const data = userProjectDoc.data();
+      if (
+        data.accessibleProjectIds &&
+        data.accessibleProjectIds.includes(containerId)
+      ) {
+        logger.info(`Access granted via userProjects collection`);
+        return true;
+      }
+    }
+
+    // 3. Check containerUsers collection (Legacy)
     const containerUserDoc = await db.collection("containerUsers").doc(
       containerId,
     ).get();
@@ -246,7 +272,7 @@ async function checkContainerAccess(userId, containerId) {
       }
     }
 
-    // Check if container is in user's containers list
+    // 4. Check userContainers collection (Legacy)
     const userContainerDoc = await userContainersCollection.doc(userId).get();
 
     if (userContainerDoc.exists) {
@@ -423,13 +449,16 @@ exports.saveProject = onRequest(
           { error: firestoreError },
         );
         return res.status(500).json({
-          error: "Database error while saving project ID",
+          error:
+            `Database error while saving project ID: ${firestoreError.message}`,
         });
       }
     } catch (error) {
       Sentry.captureException(error);
       logger.error(`Error saving project ID: ${error.message}`, { error });
-      return res.status(500).json({ error: "Failed to save project ID" });
+      return res.status(500).json({
+        error: `Failed to save project ID: ${error.message}`,
+      });
     }
   }),
 );

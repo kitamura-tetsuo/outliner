@@ -32,8 +32,8 @@ export function getFirebaseFunctionUrl(functionName: string): string {
     }
 
     // プロダクション環境の場合
-    // Firebase Hostingのrewritesルールにより、直接function名でアクセス可能
-    return `${apiBaseUrl}/${functionName}`;
+    // Firebase Hostingのrewritesルールにより、/api/function名 でアクセス可能
+    return `${apiBaseUrl}/api/${functionName}`;
 }
 
 /**

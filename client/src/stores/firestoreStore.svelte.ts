@@ -342,9 +342,6 @@ export async function saveProjectId(projectId: string): Promise<boolean> {
         logger.info(`Saving project ID via /api/saveProject`);
 
         // Firebase Functionsを呼び出してコンテナIDを保存
-
-        // Use helper to get correct URL for environment
-        // Note: getFirebaseFunctionUrl handles the path construction based on environment
         const url = getFirebaseFunctionUrl("saveProject");
 
         const response = await fetch(url, {
