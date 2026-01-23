@@ -2,14 +2,15 @@ import admin from "firebase-admin";
 import { logger } from "./logger.js";
 
 // Ensure admin is initialized (idempotent)
+// Ensure admin is initialized (idempotent)
 if (!admin.apps.length) {
-    // Skip initialization in test environment if explicit flag is set or no creds available
-    if (process.env.NODE_ENV !== "test" && process.env.SKIP_FIREBASE_INIT !== "true") {
-        if (process.env.FIREBASE_PROJECT_ID) {
-            admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
-        } else {
-            admin.initializeApp();
-        }
+    // Skip initialization in test environment if explicit flag is set
+    if (process.env.NODE_ENV === "test" && process.env.SKIP_FIREBASE_INIT === "true") {
+        // do nothing
+    } else {
+        const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "outliner-d57b0";
+        logger.info(`[AccessControl] Initializing Firebase Admin with projectId=${projectId}`);
+        admin.initializeApp({ projectId });
     }
 }
 
@@ -21,8 +22,10 @@ export async function checkContainerAccess(
     userId: string,
     containerId: string,
     // Allow dependency injection for testing
+    // Allow dependency injection for testing
     firestoreInstance?: admin.firestore.Firestore,
 ): Promise<boolean> {
+    logger.info(`[AccessControl] Checking container access for user: ${userId}, container: ${containerId}`);
     // In test/dev environment, allow access if explicitly allowed or strictly in test mode
     if (
         process.env.FUNCTIONS_EMULATOR === "true"
@@ -44,22 +47,38 @@ export async function checkContainerAccess(
         const projectUserDoc = await db.collection("projectUsers").doc(containerId).get();
         if (projectUserDoc.exists) {
             const data = projectUserDoc.data();
-            if (data?.accessibleUserIds && Array.isArray(data.accessibleUserIds)) {
-                if (data.accessibleUserIds.includes(userId)) {
-                    return true;
-                }
+            const accessibleUserIds = data?.accessibleUserIds || [];
+            const hasAccess = Array.isArray(accessibleUserIds) && accessibleUserIds.includes(userId);
+
+            logger.info(
+                `[AccessControl] projectUsers check: docExists=true, hasAccess=${hasAccess}, userIdsCount=${accessibleUserIds.length}`,
+            );
+
+            if (hasAccess) {
+                logger.info(`[AccessControl] Access granted via projectUsers collection`);
+                return true;
             }
+        } else {
+            logger.info(`[AccessControl] projectUsers check: docExists=false for container ${containerId}`);
         }
 
         // 2. Check userProjects collection (user -> projects)
         const userProjectDoc = await db.collection("userProjects").doc(userId).get();
         if (userProjectDoc.exists) {
             const data = userProjectDoc.data();
-            if (data?.accessibleProjectIds && Array.isArray(data.accessibleProjectIds)) {
-                if (data.accessibleProjectIds.includes(containerId)) {
-                    return true;
-                }
+            const accessibleProjectIds = data?.accessibleProjectIds || [];
+            const hasAccess = Array.isArray(accessibleProjectIds) && accessibleProjectIds.includes(containerId);
+
+            logger.info(
+                `[AccessControl] userProjects check: docExists=true, hasAccess=${hasAccess}, projectIdsCount=${accessibleProjectIds.length}`,
+            );
+
+            if (hasAccess) {
+                logger.info(`[AccessControl] Access granted via userProjects collection`);
+                return true;
             }
+        } else {
+            logger.info(`[AccessControl] userProjects check: docExists=false for user ${userId}`);
         }
 
         // 3. Check containerUsers collection (Legacy)

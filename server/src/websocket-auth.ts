@@ -3,11 +3,9 @@ import type { IncomingMessage } from "http";
 import { sanitizeUrl } from "./utils/sanitize.js";
 
 if (!admin.apps.length) {
-    if (process.env.FIREBASE_PROJECT_ID) {
-        admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
-    } else {
-        admin.initializeApp();
-    }
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "outliner-d57b0";
+    console.log(`[Auth] Initializing Firebase Admin with projectId=${projectId}`);
+    admin.initializeApp({ projectId });
 }
 
 interface CacheEntry {
@@ -101,8 +99,14 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
         console.warn("[Auth] Test mode: failed to parse alg:none token", e);
     }
 
-    const decoded = await admin.auth().verifyIdToken(token);
-    const exp = Math.min(decoded.exp ? decoded.exp * 1000 : now + CACHE_TTL_MS, now + CACHE_TTL_MS);
-    tokenCache.set(token, { decoded, exp });
-    return decoded;
+    try {
+        const decoded = await admin.auth().verifyIdToken(token);
+        console.log(`[Auth] Verified token for uid=${decoded.uid}`);
+        const exp = Math.min(decoded.exp ? decoded.exp * 1000 : now + CACHE_TTL_MS, now + CACHE_TTL_MS);
+        tokenCache.set(token, { decoded, exp });
+        return decoded;
+    } catch (e: any) {
+        console.error(`[Auth] Token verification failed: ${e.message}`);
+        throw e;
+    }
 }
