@@ -60,21 +60,6 @@ export async function startServer(
 
     const intervals: NodeJS.Timeout[] = [];
 
-    // Detailed Health/Debug endpoint
-    app.get("/health", (req: any, res: any) => {
-        const headers = { ...req.headers };
-        // Redact sensitive headers
-        delete headers.authorization;
-        delete headers.cookie;
-
-        res.json({
-            status: "ok",
-            env: process.env.NODE_ENV,
-            timestamp: new Date().toISOString(),
-            headers: headers,
-        });
-    });
-
     // Rate limiting state
     const ipCounts = new Map<string, number>();
     const roomCounts = new Map<string, number>();
@@ -83,6 +68,24 @@ export async function startServer(
     const allowedOrigins = new Set(
         config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
     );
+
+    // Helper to check rate limit
+    const checkRateLimit = (ip: string): boolean => {
+        const now = Date.now();
+        const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
+        let timestamps = connectionRateLimits.get(ip) || [];
+        timestamps = timestamps.filter(t => t > windowStart);
+
+        if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
+            // Keep the filtered list even if rejected, to avoid memory leak of old timestamps
+            connectionRateLimits.set(ip, timestamps);
+            return false;
+        }
+
+        timestamps.push(now);
+        connectionRateLimits.set(ip, timestamps);
+        return true;
+    };
 
     // Rate limiter cleanup interval
     intervals.push(setInterval(() => {
@@ -97,6 +100,37 @@ export async function startServer(
             }
         }
     }, config.RATE_LIMIT_WINDOW_MS * 5));
+
+    // Rate limiter middleware
+    const rateLimiterMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        const ipHeader = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "";
+        const clientIp = Array.isArray(ipHeader) ? ipHeader[0] : ipHeader.split(",")[0].trim();
+
+        if (!checkRateLimit(clientIp)) {
+            logger.warn({ event: "http_rate_limit_exceeded", ip: clientIp, path: req.path });
+            res.status(429).json({ error: "Too Many Requests" });
+            return;
+        }
+        next();
+    };
+
+    // Apply rate limiter middleware globally
+    app.use(rateLimiterMiddleware);
+
+    // Detailed Health/Debug endpoint
+    app.get("/health", (req: any, res: any) => {
+        const headers = { ...req.headers };
+        // Redact sensitive headers
+        delete headers.authorization;
+        delete headers.cookie;
+
+        res.json({
+            status: "ok",
+            env: process.env.NODE_ENV,
+            timestamp: new Date().toISOString(),
+            headers: headers,
+        });
+    });
 
     // Message size limit extension
     const onMessageExtension = {
@@ -131,16 +165,6 @@ export async function startServer(
     // API Routes
     app.get("/", (_req, res) => {
         res.send("ok");
-    });
-
-    app.get("/health", (req, res) => {
-        const headers = { ...req.headers };
-        res.json({
-            status: "ok",
-            env: process.env.NODE_ENV,
-            timestamp: new Date().toISOString(),
-            headers: headers,
-        });
     });
 
     app.get("/metrics", requireAuth, (_req, res) => {
@@ -200,7 +224,8 @@ export async function startServer(
             (request as any).__ws = ws;
 
             // --- Manual Connection Handling (Hooks Replacement) ---
-            const ip = (request.headers["x-forwarded-for"] as string) || request.socket.remoteAddress || "";
+            const ipHeader = (request.headers["x-forwarded-for"] as string) || request.socket.remoteAddress || "";
+            const ip = Array.isArray(ipHeader) ? ipHeader[0] : ipHeader.split(",")[0].trim();
             const origin = request.headers.origin || "";
 
             // Helper to close
@@ -211,15 +236,9 @@ export async function startServer(
 
             try {
                 // 1. Rate Limiting
-                const now = Date.now();
-                const windowStart = now - config.RATE_LIMIT_WINDOW_MS;
-                let timestamps = connectionRateLimits.get(ip) || [];
-                timestamps = timestamps.filter(t => t > windowStart);
-                if (timestamps.length >= config.RATE_LIMIT_MAX_REQUESTS) {
+                if (!checkRateLimit(ip)) {
                     return reject(4004, "RATE_LIMIT_EXCEEDED");
                 }
-                timestamps.push(now);
-                connectionRateLimits.set(ip, timestamps);
 
                 if (allowedOrigins.size && !allowedOrigins.has(origin)) {
                     return reject(4003, "ORIGIN_NOT_ALLOWED");
