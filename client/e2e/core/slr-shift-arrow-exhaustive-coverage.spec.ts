@@ -14,7 +14,7 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "First line of text for testing",
             "Second line of text for testing",
-            "Third line of text for testing",
+            "Third line of text for testing"
         ]);
 
         // Move to start of first item
@@ -41,19 +41,20 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
 
         // Loop Shift+Right
         for (let i = 0; i < 10; i++) {
-            await page.keyboard.press("Shift+ArrowRight");
-            await page.waitForTimeout(100); // small delay to let UI update
+             await page.keyboard.press("Shift+ArrowRight");
+             await page.waitForTimeout(100); // small delay to let UI update
 
-            // Check cursor count is STRICTLY 1
-            await CursorValidator.assertCursorCount(page, 1);
+             // Check cursor count is STRICTLY 1
+             await CursorValidator.assertCursorCount(page, 1);
 
-            // Check selection exists
-            const selectionText = await page.evaluate(() => {
+             // Check selection exists
+             const selectionText = await page.evaluate(() => {
+                // eslint-disable-next-line no-restricted-globals
                 const store = (window as any).editorOverlayStore;
                 return store ? store.getSelectedText() : "";
-            });
-            // Selection length should be at least i+1 because we started at 0 selection and press Shift+Right
-            expect(selectionText.length).toBeGreaterThanOrEqual(i + 1);
+             });
+             // Selection length should be at least i+1 because we started at 0 selection and press Shift+Right
+             expect(selectionText.length).toBeGreaterThanOrEqual(i + 1);
         }
     });
 
@@ -67,17 +68,18 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
 
         // Loop Shift+Left
         for (let i = 0; i < 5; i++) {
-            await page.keyboard.press("Shift+ArrowLeft");
-            await page.waitForTimeout(100);
+             await page.keyboard.press("Shift+ArrowLeft");
+             await page.waitForTimeout(100);
 
-            await CursorValidator.assertCursorCount(page, 1);
+             await CursorValidator.assertCursorCount(page, 1);
 
-            const selectionText = await page.evaluate(() => {
+             const selectionText = await page.evaluate(() => {
+                // eslint-disable-next-line no-restricted-globals
                 const store = (window as any).editorOverlayStore;
                 return store ? store.getSelectedText() : "";
-            });
-            // Selection grows
-            expect(selectionText.length).toBeGreaterThanOrEqual(i + 1);
+             });
+             // Selection grows
+             expect(selectionText.length).toBeGreaterThanOrEqual(i + 1);
         }
     });
 
@@ -91,7 +93,8 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
         await CursorValidator.assertCursorCount(page, 1);
 
         // Verify multiple lines selected
-        let selectionText = await page.evaluate(() => {
+        const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).editorOverlayStore;
             return store ? store.getSelectedText() : "";
         });
@@ -106,7 +109,8 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
 
         await CursorValidator.assertCursorCount(page, 1);
 
-        let newSelectionText = await page.evaluate(() => {
+        const newSelectionText = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).editorOverlayStore;
             return store ? store.getSelectedText() : "";
         });
@@ -131,6 +135,7 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
         await CursorValidator.assertCursorCount(page, 1);
 
         const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).editorOverlayStore;
             return store ? store.getSelectedText() : "";
         });
