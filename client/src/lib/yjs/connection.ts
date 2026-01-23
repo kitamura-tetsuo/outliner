@@ -322,6 +322,15 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
             provider.destroy();
         } catch {}
     };
+
+    // Attach fatal error handling for page doc
+    provider.on("close", (event: { code: number; reason: string; }) => {
+        console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
+        if ([4001, 4003, 4004, 4006, 4008].includes(event.code)) {
+            console.error(`[yjs-conn] FATAL ERROR: ${event.code} ${event.reason}. Stopping reconnection for ${room}`);
+            provider.destroy();
+        }
+    });
     return { doc, provider, awareness, dispose };
 }
 
@@ -365,8 +374,20 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}`,
     );
     provider.on("status", (event: { status: string; }) => console.log(`[yjs-conn] ${room} status: ${event.status}`));
-    provider.on("close", (event: unknown) => console.log(`[yjs-conn] ${room} connection-close`, event));
-    provider.on("disconnect", (event: unknown) => console.log(`[yjs-conn] ${room} disconnect`, event));
+    provider.on("close", (event: { code: number; reason: string; }) => {
+        console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
+        // Fatal errors: 4001 (Unauthorized), 4003 (Forbidden), 4004 (Rate Limit), 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
+        if ([4001, 4003, 4004, 4006, 4008].includes(event.code)) {
+            console.error(`[yjs-conn] FATAL ERROR: ${event.code} ${event.reason}. Stopping reconnection for ${room}`);
+            provider.configuration.token = async () => Promise.resolve(""); // Prevent further auth attempts
+            provider.disconnect(); // Ensure completely stopped
+            // destroy() might be better but disconnect() + nuke config is safer to not break references
+            provider.destroy();
+        }
+    });
+    provider.on("disconnect", (event: { code: number; reason: string; }) => {
+        console.log(`[yjs-conn] ${room} disconnect code=${event.code} reason=${event.reason}`);
+    });
 
     // Wait for initial project sync to complete before connecting pages
     // This ensures the pagesMap is populated with all seeded pages
