@@ -20,9 +20,9 @@ import { store } from "../stores/store.svelte";
 describe("backlinkCollector", () => {
     beforeEach(() => {
         // Reset store before each test
-        // @ts-ignore
+        // @ts-expect-error - mocking store state
         store.pages.current = [];
-        // @ts-ignore
+        // @ts-expect-error - mocking store state
         store.project.title = "TestProject";
     });
 
@@ -39,7 +39,7 @@ describe("backlinkCollector", () => {
                 items: [],
             },
         ];
-        // @ts-ignore
+        // @ts-expect-error - mocking store state
         store.pages.current = mockPages;
 
         const result = collectBacklinks("TargetPage");
@@ -61,7 +61,7 @@ describe("backlinkCollector", () => {
                 ],
             },
         ];
-        // @ts-ignore
+        // @ts-expect-error - mocking store state
         store.pages.current = mockPages;
 
         const result = collectBacklinks("TargetPage");
@@ -83,7 +83,7 @@ describe("backlinkCollector", () => {
                 ],
             },
         ];
-        // @ts-ignore
+        // @ts-expect-error - mocking store state
         store.pages.current = mockPages;
 
         const result = collectBacklinks("TargetPage");
@@ -103,7 +103,7 @@ describe("backlinkCollector", () => {
                 ],
             },
         ];
-        // @ts-ignore
+        // @ts-expect-error - mocking store state
         store.pages.current = mockPages;
 
         // Implementation of collectBacklinks skips the page if pageText matches targetName
