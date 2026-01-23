@@ -68,12 +68,36 @@ const attachments = $derived.by(() => {
         return [] as string[];
     }
 });
+
+function getAttachmentLabel(url: string): string {
+    try {
+        if (!url) return "View attachment";
+        if (url.startsWith("data:") || url.startsWith("blob:")) return "View attachment";
+
+        const urlObj = new URL(url, window.location.origin); // safe for relative URLs if any
+        const pathname = urlObj.pathname;
+        const filename = pathname.split('/').pop();
+        if (filename) {
+            return `View attachment: ${decodeURIComponent(filename)}`;
+        }
+    } catch {}
+    return "View attachment";
+}
 </script>
 
 {#if attachments.length > 0}
     <div class="attachments">
         {#each attachments as url (url)}
-            <img src={url} class="attachment-preview" alt="添付ファイル" />
+            <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="attachment-link"
+                aria-label={getAttachmentLabel(url)}
+                title={getAttachmentLabel(url)}
+            >
+                <img src={url} class="attachment-preview" alt="" />
+            </a>
         {/each}
     </div>
 {/if}
@@ -83,12 +107,27 @@ const attachments = $derived.by(() => {
     margin-top: 4px;
     display: flex;
     gap: 4px;
+    flex-wrap: wrap;
+}
+
+.attachment-link {
+    display: inline-block;
+    text-decoration: none;
+    line-height: 0;
+    border-radius: 4px;
+}
+
+.attachment-link:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
 }
 
 .attachment-preview {
     width: 40px;
     height: 40px;
     object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 </style>
 
