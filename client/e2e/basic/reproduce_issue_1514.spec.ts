@@ -12,8 +12,6 @@ test.describe("Item Component Type Selector Test", () => {
     });
 
     test("Component type selector should remain open/focused when clicked", async ({ page }) => {
-        // Find the item (excluding page title)
-        const items = page.locator(".outliner-item[data-item-id]");
         // Page title is usually the first one or marked specially, but here we seeded "Test Item" so likely the second one (index 1) or we look for text.
         // The implementation says `{#if !isPageTitle}` for component selector.
         // So we look for the component selector.
