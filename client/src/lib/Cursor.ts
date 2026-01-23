@@ -754,14 +754,14 @@ export class Cursor implements CursorEditingContext {
                 }
             } else {
                 // 正方向の選択範囲の場合、終了位置を移動
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
+                startItemId = existingSelection.startItemId;
+                startOffset = existingSelection.startOffset;
 
                 // カーソルを左に移動
                 this.moveLeft();
 
-                startItemId = this.itemId;
-                startOffset = this.offset;
+                endItemId = this.itemId;
+                endOffset = this.offset;
                 isReversed = false;
 
                 // 選択範囲が消滅した場合は方向を反転
