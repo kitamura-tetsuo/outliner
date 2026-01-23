@@ -879,6 +879,8 @@ export class Cursor implements CursorEditingContext {
             isReversed = false;
         }
 
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
+        store.clearSelectionForUser(this.userId);
         // 選択範囲を設定
         store.setSelection({
             startItemId,
@@ -971,6 +973,8 @@ export class Cursor implements CursorEditingContext {
             isReversed = true;
         }
 
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
+        store.clearSelectionForUser(this.userId);
         // 選択範囲を設定
         store.setSelection({
             startItemId,
@@ -1301,6 +1305,8 @@ export class Cursor implements CursorEditingContext {
             );
         }
 
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
+        store.clearSelectionForUser(this.userId);
         // 選択範囲を設定
         store.setSelection({
             startItemId,
@@ -1389,6 +1395,8 @@ export class Cursor implements CursorEditingContext {
             );
         }
 
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
+        store.clearSelectionForUser(this.userId);
         // 選択範囲を設定
         const selectionId = store.setSelection({
             startItemId,
