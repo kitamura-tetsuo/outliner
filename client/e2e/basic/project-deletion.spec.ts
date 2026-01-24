@@ -27,8 +27,8 @@ test.describe("Project Deletion", () => {
             const response = await page.request.post("http://localhost:57000/api/save-project", {
                 data: {
                     idToken,
-                    projectId
-                }
+                    projectId,
+                },
             });
             expect(response.ok()).toBeTruthy();
         };
@@ -54,8 +54,8 @@ test.describe("Project Deletion", () => {
 
         // Debugging: dump table content if not found
         try {
-             await expect(keeperRow).toBeVisible({ timeout: 10000 });
-             await expect(targetRow).toBeVisible({ timeout: 10000 });
+            await expect(keeperRow).toBeVisible({ timeout: 10000 });
+            await expect(targetRow).toBeVisible({ timeout: 10000 });
         } catch (e) {
             console.log("Project rows not found. Current table content:");
             const rows = await page.locator("tr").allInnerTexts();
