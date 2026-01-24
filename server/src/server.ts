@@ -14,6 +14,7 @@ import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { createSeedRouter } from "./seed-api.js";
+import { getClientIp } from "./utils/ip.js";
 import {
     refreshClientLogStream,
     refreshServerLogStream,
@@ -22,7 +23,6 @@ import {
     rotateServerLogs,
     rotateTelemetryLogs,
 } from "./utils/log-manager.js";
-import { getClientIp } from "./utils/ip.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 import { extractAuthToken, verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
 

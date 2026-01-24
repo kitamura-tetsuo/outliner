@@ -13,15 +13,15 @@ export function getClientIp(req: IncomingMessage): string {
     // making them more trustworthy than X-Forwarded-For which can be set by the client.
     const platformHeaders = [
         "cf-connecting-ip", // Cloudflare
-        "fly-client-ip",    // Fly.io
+        "fly-client-ip", // Fly.io
         "fastly-client-ip", // Fastly
-        "true-client-ip"    // Akamai / Cloudflare Enterprise
+        "true-client-ip", // Akamai / Cloudflare Enterprise
     ];
 
     for (const header of platformHeaders) {
         const val = headers[header];
         if (val) {
-             return Array.isArray(val) ? val[0] : val.split(",")[0].trim();
+            return Array.isArray(val) ? val[0] : val.split(",")[0].trim();
         }
     }
 
