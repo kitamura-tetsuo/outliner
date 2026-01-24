@@ -274,7 +274,6 @@ export function cleanupClient() {
     yjsStore.yjsClient = undefined;
 }
 
-// Compatibility stubs for UI that previously used Fluid Functions
 export async function deleteProject(projectId: string): Promise<boolean> {
     console.log(`[yjsService] deleteProject called for: ${projectId}`);
 
