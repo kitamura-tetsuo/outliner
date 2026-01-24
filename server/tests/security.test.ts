@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import request from "supertest";
 import fs from "fs-extra";
-import path from "path";
 import os from "os";
+import path from "path";
+import request from "supertest";
 import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
 

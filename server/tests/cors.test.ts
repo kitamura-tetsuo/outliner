@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import request from "supertest";
 import fs from "fs-extra";
-import path from "path";
 import os from "os";
+import path from "path";
+import request from "supertest";
 import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
 
@@ -14,7 +14,7 @@ describe("CORS Middleware", () => {
     afterEach(async () => {
         if (shutdown) await shutdown();
         if (dbDir) {
-             await fs.remove(dbDir);
+            await fs.remove(dbDir);
         }
     });
 
@@ -24,7 +24,7 @@ describe("CORS Middleware", () => {
             PORT: "0",
             LOG_LEVEL: "silent",
             DATABASE_PATH: dbDir,
-            ORIGIN_ALLOWLIST: "http://example.com"
+            ORIGIN_ALLOWLIST: "http://example.com",
         });
         const instance = await startServer(config);
         app = instance.server;
@@ -44,7 +44,7 @@ describe("CORS Middleware", () => {
             PORT: "0",
             LOG_LEVEL: "silent",
             DATABASE_PATH: dbDir,
-            ORIGIN_ALLOWLIST: "http://example.com"
+            ORIGIN_ALLOWLIST: "http://example.com",
         });
         const instance = await startServer(config);
         app = instance.server;
@@ -70,7 +70,7 @@ describe("CORS Middleware", () => {
             PORT: "0",
             LOG_LEVEL: "silent",
             DATABASE_PATH: dbDir,
-            ORIGIN_ALLOWLIST: "http://example.com"
+            ORIGIN_ALLOWLIST: "http://example.com",
         });
         const instance = await startServer(config);
         app = instance.server;
@@ -88,7 +88,7 @@ describe("CORS Middleware", () => {
             PORT: "0",
             LOG_LEVEL: "silent",
             DATABASE_PATH: dbDir,
-            ORIGIN_ALLOWLIST: ""
+            ORIGIN_ALLOWLIST: "",
         });
         const instance = await startServer(config);
         app = instance.server;
