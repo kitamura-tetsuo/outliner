@@ -2070,13 +2070,13 @@ export function setSelectionPosition(start: number, end: number = start) {
         {#if !isPageTitle}
             <div class="item-actions">
                 <button onclick={addNewItem} title="新しいアイテムを追加" aria-label="Add new item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
                 </button>
                 <button onclick={handleDelete} title="削除" aria-label="Delete item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
@@ -2089,7 +2089,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                     aria-label="Vote for this item"
                     aria-pressed={model.votes.includes(currentUser)}
                 >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill={model.votes.includes(currentUser) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill={model.votes.includes(currentUser) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
                 </button>
@@ -2227,6 +2227,12 @@ export function setSelectionPosition(start: number, end: number = start) {
 
 .item-actions button:hover {
     background-color: #f0f0f0;
+}
+
+.item-actions button:focus-visible {
+    background-color: #f0f0f0;
+    outline: 2px solid #0078d7;
+    outline-offset: -2px;
 }
 
 .vote-btn {
