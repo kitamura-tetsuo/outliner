@@ -23,8 +23,8 @@ test.describe("Project Deletion", () => {
         const response = await page.request.post("http://localhost:57000/api/save-project", {
             data: {
                 idToken,
-                projectId
-            }
+                projectId,
+            },
         });
         expect(response.ok()).toBeTruthy();
 
