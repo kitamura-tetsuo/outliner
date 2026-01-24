@@ -1,3 +1,9 @@
+## 2026-01-24 - IP Spoofing via X-Forwarded-For
+
+**Vulnerability:** Rate limiting logic blindly trusted the first IP in `X-Forwarded-For` header, allowing attackers to bypass limits by sending a spoofed header.
+**Learning:** Extracting client IP manually via `split(",")[0]` is a common anti-pattern. Without explicit proxy trust configuration, it's safer to prioritize platform-specific headers like `CF-Connecting-IP` over `X-Forwarded-For`.
+**Prevention:** Use a centralized `getClientIp` utility that prioritizes secure headers (Cloudflare, Fly.io, etc.) over `X-Forwarded-For`. Avoid inline string parsing of IP headers.
+
 ## 2025-02-19 - Hardcoded Admin Token in Functions
 
 **Vulnerability:** A hardcoded secret string acting as an admin token was found directly in the source code of `functions/index.js` protecting a critical data deletion endpoint.
