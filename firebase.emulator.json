@@ -64,6 +64,10 @@
                 "function": "deleteProject"
             },
             {
+                "source": "/api/deleteProject",
+                "function": "deleteProject"
+            },
+            {
                 "source": "/api/update-schedule",
                 "function": "updateSchedule"
             },
