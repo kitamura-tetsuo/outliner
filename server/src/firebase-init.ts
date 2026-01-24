@@ -60,13 +60,30 @@ if (isDevelopment) {
 export function getServiceAccount() {
     // Firebase Admin SDKファイルが指定されている場合はそれを使用
     if (process.env.FIREBASE_ADMIN_SDK_PATH) {
-        const sdkPath = path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH);
-        if (fs.existsSync(sdkPath)) {
+        // Try multiple paths:
+        // 1. As absolute path or relative to CWD
+        // 2. Relative to __dirname (dist/)
+        // 3. Relative to project root (parent of dist/)
+        const candidates = [
+            path.resolve(process.env.FIREBASE_ADMIN_SDK_PATH),
+            path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH),
+            path.resolve(__dirname, "..", process.env.FIREBASE_ADMIN_SDK_PATH),
+        ];
+
+        let sdkPath = "";
+        for (const candidate of candidates) {
+            if (fs.existsSync(candidate)) {
+                sdkPath = candidate;
+                break;
+            }
+        }
+
+        if (sdkPath) {
             logger.info(`Using Firebase Admin SDK file: ${sdkPath}`);
             const sdkFile = fs.readFileSync(sdkPath, "utf-8");
             return JSON.parse(sdkFile);
         } else {
-            logger.warn(`Firebase Admin SDK file not found: ${sdkPath}`);
+            logger.warn(`Firebase Admin SDK file not found in candidates: ${candidates.join(", ")}`);
         }
     }
 

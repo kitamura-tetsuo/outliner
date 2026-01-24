@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { loadConfig } from "./config.js";
+import { initializeFirebase } from "./firebase-init.js";
 import { startServer } from "./server.js";
 
 const config = loadConfig();
@@ -27,6 +28,7 @@ if (config.SENTRY_DSN) {
 
 (async () => {
     try {
+        await initializeFirebase();
         const { shutdown } = await startServer(config);
 
         process.on("SIGINT", () => shutdown().then(() => process.exit(0)));

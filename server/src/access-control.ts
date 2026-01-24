@@ -3,22 +3,7 @@ import { getServiceAccount } from "./firebase-init.js";
 import { logger } from "./logger.js";
 
 // Ensure admin is initialized (idempotent)
-if (!admin.apps.length) {
-    // Skip initialization in test environment if explicit flag is set
-    if (process.env.NODE_ENV === "test" && process.env.SKIP_FIREBASE_INIT === "true") {
-        // do nothing
-    } else {
-        const serviceAccount = getServiceAccount();
-        const projectId = serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
-
-        if (projectId) {
-            logger.info(`[AccessControl] Initializing Firebase Admin with projectId=${projectId}`);
-            admin.initializeApp({ projectId });
-        } else {
-            logger.warn("[AccessControl] No project ID found, skipping auto-initialization");
-        }
-    }
-}
+// Initialization is now handled in index.ts calling initializeFirebase()
 
 /**
  * Checks if a user has access to a specific container (project).
