@@ -22,7 +22,7 @@ test.describe("Debug Page Health Check", () => {
         // 4. Click Health Check button and intercept request
         // We verify that the request goes to localhost/127.0.0.1, not the hardcoded external URL
         const [response] = await Promise.all([
-            page.waitForResponse(resp => resp.url().includes('/health')),
+            page.waitForResponse(resp => resp.url().includes("/health")),
             page.click("text=ヘルスチェック実行 (GET /health)"),
         ]);
 
