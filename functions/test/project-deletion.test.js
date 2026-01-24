@@ -18,18 +18,24 @@ describe("deleteProject Logic Tests", () => {
 
     // Reset Mock Data
     mockUserProjects = {
-      "user1": { accessibleProjectIds: ["projectP"], defaultProjectId: "projectP" },
-      "user2": { accessibleProjectIds: ["projectP"], defaultProjectId: "projectP" },
+      user1: {
+        accessibleProjectIds: ["projectP"],
+        defaultProjectId: "projectP",
+      },
+      user2: {
+        accessibleProjectIds: ["projectP"],
+        defaultProjectId: "projectP",
+      },
     };
     mockProjectUsers = {
-      "projectP": { accessibleUserIds: ["user1", "user2"] },
+      projectP: { accessibleUserIds: ["user1", "user2"] },
     };
 
     // Mock admin.auth
     jest.spyOn(admin, "auth").mockReturnValue({
-      verifyIdToken: jest.fn().mockImplementation(async (token) => {
-        if (token === "token-user1") return { uid: "user1" };
-        if (token === "token-user2") return { uid: "user2" };
+      verifyIdToken: jest.fn().mockImplementation(async token => {
+        if (token === "token-user1") { return { uid: "user1" }; }
+        if (token === "token-user2") { return { uid: "user2" }; }
         throw new Error("Invalid token");
       }),
     });
@@ -127,7 +133,7 @@ describe("deleteProject Logic Tests", () => {
       expect.objectContaining({
         accessibleProjectIds: [], // Should be empty
         defaultProjectId: null,
-      })
+      }),
     );
 
     // Verify Project P was updated (User 1 removed from accessibleUserIds)
@@ -135,12 +141,12 @@ describe("deleteProject Logic Tests", () => {
       expect.objectContaining({ path: "projectUsers/projectP" }),
       expect.objectContaining({
         accessibleUserIds: ["user2"],
-      })
+      }),
     );
 
     // Verify Project P was NOT deleted
     expect(transactionDeleteSpy).not.toHaveBeenCalledWith(
-      expect.objectContaining({ path: "projectUsers/projectP" })
+      expect.objectContaining({ path: "projectUsers/projectP" }),
     );
   });
 
@@ -181,18 +187,18 @@ describe("deleteProject Logic Tests", () => {
       expect.objectContaining({
         accessibleProjectIds: [],
         defaultProjectId: null,
-      })
+      }),
     );
 
     // Verify Project P was DELETED
     expect(transactionDeleteSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ path: "projectUsers/projectP" })
+      expect.objectContaining({ path: "projectUsers/projectP" }),
     );
 
     // Verify Project P was NOT updated (it should be deleted instead)
     expect(transactionUpdateSpy).not.toHaveBeenCalledWith(
       expect.objectContaining({ path: "projectUsers/projectP" }),
-      expect.anything()
+      expect.anything(),
     );
   });
 });
