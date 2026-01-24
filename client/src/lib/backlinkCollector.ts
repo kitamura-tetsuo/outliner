@@ -65,15 +65,19 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
         }
         for (const page of pages) {
             const pageItem = page as any as Item;
-            const pageText = String(pageItem.text);
+
+            const pText = pageItem.text;
+            const pageHasText = pText && pText.length > 0;
+            const pageText = pageHasText ? String(pText) : "";
+
             // 対象ページ自身は除外
-            if (pageText.toLowerCase() === normalizedTargetName) {
+            if (pageHasText && pageText.toLowerCase() === normalizedTargetName) {
                 continue;
             }
 
             // ページ自身のテキストをチェック
             // Fast path: check if text contains '[' before running regex
-            if (pageText.includes("[") && (internalLinkPattern.test(pageText) || projectLinkPattern.test(pageText))) {
+            if (pageHasText && pageText.includes("[") && (internalLinkPattern.test(pageText) || projectLinkPattern.test(pageText))) {
                 backlinks.push({
                     sourcePageId: pageItem.id,
                     sourcePageName: pageText,
@@ -84,12 +88,21 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             }
 
             // 子アイテムをチェック
-            const items = pageItem.items as Iterable<Item>;
+            const items = pageItem.items as Iterable<Item> & { iterateUnordered?: () => Iterator<Item> };
             // Optimization: Iterate directly to avoid O(N log N) sorting caused by items.length check
             // (Items.length getter triggers a full sort of children keys in app-schema.ts)
+            // Also prefer iterateUnordered to avoid sorting completely
             if (items) {
-                for (const item of items) {
-                    const itemText = String(item.text);
+                const iterator = (typeof items.iterateUnordered === 'function')
+                    ? { [Symbol.iterator]: () => items.iterateUnordered!() }
+                    : items;
+
+                for (const item of iterator) {
+                    const text = item.text;
+                    // Optimization: skip empty text to avoid expensive toString() (Y.Text deserialization)
+                    if (!text || text.length === 0) continue;
+
+                    const itemText = String(text);
                     // Fast path: check if text contains '[' before running regex
                     if (
                         item && itemText.includes("[")

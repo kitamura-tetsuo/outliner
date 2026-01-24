@@ -275,6 +275,24 @@ export class Items {
             },
         };
     }
+
+    /**
+     * Iterate over items without sorting.
+     * Use this when order doesn't matter for better performance (O(N) vs O(N log N)).
+     */
+    iterateUnordered(): Iterator<Item> {
+        const keys = this.tree.getNodeChildrenFromKey(this.parentKey);
+        let i = 0;
+        return {
+            next: () => {
+                if (i < keys.length) {
+                    const value = new Item(this.ydoc, this.tree, keys[i++]);
+                    return { value, done: false };
+                }
+                return { value: undefined, done: true } as IteratorResult<Item>;
+            },
+        };
+    }
 }
 
 export class Project {
