@@ -77,7 +77,10 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
 
             // ページ自身のテキストをチェック
             // Fast path: check if text contains '[' before running regex
-            if (pageHasText && pageText.includes("[") && (internalLinkPattern.test(pageText) || projectLinkPattern.test(pageText))) {
+            if (
+                pageHasText && pageText.includes("[")
+                && (internalLinkPattern.test(pageText) || projectLinkPattern.test(pageText))
+            ) {
                 backlinks.push({
                     sourcePageId: pageItem.id,
                     sourcePageName: pageText,
@@ -88,12 +91,12 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             }
 
             // 子アイテムをチェック
-            const items = pageItem.items as Iterable<Item> & { iterateUnordered?: () => Iterator<Item> };
+            const items = pageItem.items as Iterable<Item> & { iterateUnordered?: () => Iterator<Item>; };
             // Optimization: Iterate directly to avoid O(N log N) sorting caused by items.length check
             // (Items.length getter triggers a full sort of children keys in app-schema.ts)
             // Also prefer iterateUnordered to avoid sorting completely
             if (items) {
-                const iterator = (typeof items.iterateUnordered === 'function')
+                const iterator = (typeof items.iterateUnordered === "function")
                     ? { [Symbol.iterator]: () => items.iterateUnordered!() }
                     : items;
 
