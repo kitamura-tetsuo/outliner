@@ -1,70 +1,79 @@
-import { jest } from "@jest/globals";
+import { expect } from "chai";
+import fs from "fs-extra";
+import os from "os";
+import path from "path";
 import request from "supertest";
+import { loadConfig } from "../src/config.js";
+import { startServer } from "../src/server.js";
 
-// Mock Firebase Admin FIRST, before importing any modules that use it
-jest.unstable_mockModule("../src/websocket-auth.js", () => {
-    return {
-        __esModule: true,
-        verifyIdTokenCached: jest.fn().mockImplementation(async (token: any) => {
-            if (token === "valid-token") {
-                return { uid: "test-user", role: "admin" };
-            }
-            throw new Error("Invalid token");
-        }),
-        extractAuthToken: jest.fn(),
-        clearTokenCache: jest.fn(),
-        getTokenCacheSize: jest.fn(),
-    };
-});
+function toBase64(obj: any) {
+    // Use standard Base64 but maybe strip padding to be safe, though Buffer handles it.
+    // websocket-auth.ts uses standard Buffer decoding.
+    return Buffer.from(JSON.stringify(obj)).toString("base64");
+}
 
 // Dynamic imports to ensure mocks are applied
-const { loadConfig } = await import("../src/config.js");
-const { startServer } = await import("../src/server.js");
+const { loadConfig: loadConfigImport } = await import("../src/config.js");
+const { startServer: startServerImport } = await import("../src/server.js");
 
 describe("Server Security Tests", () => {
     let app: any;
     let shutdown: any;
+    let dbDir: string;
 
-    beforeAll(async () => {
-        const config = loadConfig();
-        const instance = await startServer(config);
+    before(async () => {
+        process.env.ALLOW_TEST_ACCESS = "true";
+        dbDir = fs.mkdtempSync(path.join(os.tmpdir(), "security-test-"));
+        const config = loadConfigImport({
+            PORT: "0",
+            LOG_LEVEL: "silent",
+            DATABASE_PATH: dbDir,
+        });
+        const instance = await startServerImport(config);
         app = instance.server;
         shutdown = instance.shutdown;
     });
 
-    afterAll(async () => {
+    after(async () => {
+        delete process.env.ALLOW_TEST_ACCESS;
         if (shutdown) await shutdown();
-        jest.restoreAllMocks();
+        if (dbDir) await fs.remove(dbDir);
     });
 
     it("should reject unauthenticated request to /metrics", async () => {
         const response = await request(app).get("/metrics");
-        expect(response.status).toBe(401);
+        expect(response.status).to.equal(401);
     });
 
     it("should accept authenticated request to /metrics", async () => {
+        const header = toBase64({ alg: "none" });
+        const payload = toBase64({ user_id: "test-user" });
+        // alg:none token format: header.payload. (empty signature)
+        const validToken = `${header}.${payload}.`;
+
         const response = await request(app)
             .get("/metrics")
-            .set("Authorization", "Bearer valid-token");
-        expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty("connections");
+            .set("Authorization", `Bearer ${validToken}`);
+
+        expect(response.status).to.equal(200);
+        expect(response.body).to.have.property("connections");
     });
 
     it("should reject unauthenticated request to /api/rotate-logs", async () => {
         const response = await request(app).post("/api/rotate-logs");
-        expect(response.status).toBe(401);
+        expect(response.status).to.equal(401);
     });
 
     it("should reject invalid token request to /api/rotate-logs", async () => {
         const response = await request(app)
             .post("/api/rotate-logs")
             .set("Authorization", "Bearer invalid-token");
-        expect(response.status).toBe(401);
+        expect(response.status).to.equal(401);
     });
 
     it("should reject authenticated request via query param (security fix verification)", async () => {
         const response = await request(app)
             .get("/metrics?token=valid-token");
-        expect(response.status).toBe(401);
+        expect(response.status).to.equal(401);
     });
 });

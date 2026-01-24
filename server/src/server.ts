@@ -1,6 +1,7 @@
 import { Logger } from "@hocuspocus/extension-logger";
 console.log("DEBUG: LOADING server/src/server.ts");
 import { Hocuspocus, Server } from "@hocuspocus/server";
+import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import http from "http";
@@ -42,6 +43,29 @@ export async function startServer(
     // Create Express app for API endpoints
     const app = express();
 
+    // CORS configuration
+    const allowedOrigins = new Set(
+        config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
+    );
+
+    const corsOptions: cors.CorsOptions = {
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) return callback(null, true);
+
+            // If allowlist is empty, allow all
+            if (allowedOrigins.size === 0) return callback(null, true);
+
+            if (allowedOrigins.has(origin)) {
+                return callback(null, true);
+            } else {
+                return callback(null, false);
+            }
+        },
+        credentials: true,
+    };
+    app.use(cors(corsOptions));
+
     // Add security headers
     // @ts-ignore
     app.use((helmet as any)());
@@ -66,9 +90,6 @@ export async function startServer(
     const roomCounts = new Map<string, number>();
     const connectionRateLimits = new Map<string, number[]>();
     let totalSockets = 0;
-    const allowedOrigins = new Set(
-        config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
-    );
 
     // Helper to check rate limit
     const checkRateLimit = (ip: string): boolean => {

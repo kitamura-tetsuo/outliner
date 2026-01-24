@@ -171,6 +171,34 @@ export class YjsClient {
         }
     }
 
+    public getDebugInfo() {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const provider = this._provider as any;
+        const config = provider?.configuration;
+        const wsProvider = config?.websocketProvider;
+
+        return {
+            clientId: this.clientId,
+            containerId: this.containerId,
+            connectionState: this.connectionState,
+            isSynced: this.isContainerConnected,
+            docGuid: this._doc?.guid,
+            awareness: this._awareness
+                ? {
+                    states: Array.from(this._awareness.getStates().entries()),
+                    localState: this._awareness.getLocalState(),
+                }
+                : null,
+            provider: this._provider
+                ? {
+                    url: provider.url || config?.url || wsProvider?.url,
+                    name: provider.name || config?.name,
+                    connected: provider.connected || wsProvider?.status === "connected",
+                }
+                : null,
+        };
+    }
+
     public dispose() {
         try {
             (this._provider as any)?.destroy?.();
