@@ -5,6 +5,7 @@ import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
+import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
 import { getContainerTitleFromMetaDoc, getProjectIdByTitle, setContainerTitleInMetaDoc } from "./metaDoc.svelte";
 
 interface ClientKey {
@@ -275,10 +276,47 @@ export function cleanupClient() {
 
 // Compatibility stubs for UI that previously used Fluid Functions
 export async function deleteProject(projectId: string): Promise<boolean> {
-    // No-op in Yjs-only mode; projects are client-local concepts here.
-    // Using projectId to satisfy function signature
     console.log(`[yjsService] deleteProject called for: ${projectId}`);
-    return true;
+
+    const currentUser = userManager.auth.currentUser;
+    if (!currentUser) {
+        console.error("[yjsService] deleteProject: User not logged in");
+        throw new Error("User not logged in");
+    }
+
+    try {
+        const idToken = await currentUser.getIdToken();
+        const url = getFirebaseFunctionUrl("deleteProject");
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                idToken,
+                projectId,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[yjsService] deleteProject failed: ${response.status} ${response.statusText}`, errorText);
+            throw new Error(`Failed to delete project: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            console.log(`[yjsService] deleteProject success for ${projectId}`);
+            return true;
+        } else {
+            console.error(`[yjsService] deleteProject returned failure`, data);
+            return false;
+        }
+    } catch (error) {
+        console.error(`[yjsService] deleteProject exception`, error);
+        throw error;
+    }
 }
 
 export async function getUserContainers(): Promise<{

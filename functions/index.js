@@ -810,6 +810,10 @@ exports.deleteUser = onRequest(
 );
 
 // プロジェクトを削除するエンドポイント
+/**
+ * Deletes a project and its associated data.
+ * API Endpoint for project deletion.
+ */
 exports.deleteProject = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
