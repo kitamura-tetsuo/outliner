@@ -38,6 +38,12 @@ function handleCreatePage() {
     pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : "";
 }
 
+function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === "Enter" && !e.isComposing) {
+        handleCreatePage();
+    }
+}
+
 function selectPage(page: Item) {
     // イベントを発火
     if (onPageSelected) {
@@ -83,7 +89,13 @@ onMount(() => {
     <h2>ページ一覧</h2>
 
     <div class="page-create">
-        <input type="text" bind:value={pageTitle} placeholder="新しいページ名" aria-label="新しいページ名" />
+        <input
+            type="text"
+            bind:value={pageTitle}
+            placeholder="新しいページ名"
+            aria-label="新しいページ名"
+            onkeydown={handleKeyDown}
+        />
         <button type="button" onclick={handleCreatePage}>作成</button>
     </div>
 
