@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * coverage ディレクトリをタイムスタンプ付きでバックアップします。
- * - coverageディレクトリをcoverage-backupsにコピー（移動ではない）
- * - 10個より古いバックアップを自動削除
- * 出力先: coverage-backups/<YYYYMMDD-HHMMSS>
- * 例: coverage-backups/2025-10-29-14-23-05
+ * Back up the coverage directory with a timestamp.
+ * - Copy (not move) the coverage directory to coverage-backups
+ * - Automatically delete backups older than 10
+ * Output destination: coverage-backups/<YYYYMMDD-HHMMSS>
+ * Example: coverage-backups/2025-10-29-14-23-05
  */
 
 import fs from "fs";
@@ -28,7 +28,7 @@ function timestamp() {
 }
 
 /**
- * 古いバックアップを削除（最新10個を保持）
+ * Delete old backups (keep the latest 10)
  */
 function pruneOldBackups() {
     if (!fs.existsSync(backupsRoot)) {
@@ -44,9 +44,9 @@ function pruneOldBackups() {
                 path: path.join(backupsRoot, entry.name),
                 mtime: fs.statSync(path.join(backupsRoot, entry.name)).mtime,
             }))
-            .sort((a, b) => b.mtime - a.mtime); // 新しい順にソート
+            .sort((a, b) => b.mtime - a.mtime); // Sort by newness
 
-        // 10個より古いバックアップを削除
+        // Delete backups older than 10
         const toDelete = backupDirs.slice(10);
         if (toDelete.length > 0) {
             console.log(`[coverage:backup] pruning ${toDelete.length} old backup(s)...`);
@@ -57,7 +57,7 @@ function pruneOldBackups() {
         }
     } catch (e) {
         console.error("[coverage:backup] failed to prune old backups:", e);
-        // エラーが発生してもバックアップ処理は続行
+        // Continue backup process even if an error occurs
     }
 }
 
@@ -73,7 +73,7 @@ function main() {
     console.log(`[coverage:backup] copying: ${coverageDir} -> ${dest}`);
 
     try {
-        // coverageディレクトリをコピー（移動ではない）
+        // Copy coverage directory (not move)
         fs.cpSync(coverageDir, dest, { recursive: true });
     } catch (e) {
         console.error("[coverage:backup] backup failed:", e);
@@ -82,7 +82,7 @@ function main() {
 
     console.log("[coverage:backup] backup completed");
 
-    // 古いバックアップを削除
+    // Delete old backups
     pruneOldBackups();
 
     console.log("[coverage:backup] done");

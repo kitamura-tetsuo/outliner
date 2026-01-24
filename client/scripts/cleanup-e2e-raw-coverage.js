@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * e2e/raw/ ディレクトリ内の重複したカバレッジファイルを整理します。
- * 同一テストのカバレッジファイルが複数ある場合、最新のものだけを残して他を削除します。
- * ファイル名形式: coverage-<TEST_NAME>-<TIMESTAMP>.json
+ * Clean up duplicate coverage files in the e2e/raw/ directory.
+ * If there are multiple coverage files for the same test, keep only the latest one and delete the others.
+ * Filename format: coverage-<TEST_NAME>-<TIMESTAMP>.json
  */
 
 import fs from "fs";

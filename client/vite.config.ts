@@ -6,10 +6,10 @@ import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig(async ({ mode }) => {
-    // dotenvxで環境変数を読み込み（ESモジュール対応）
+    // Load environment variables with dotenvx (ES module support)
     const { config } = await import("@dotenvx/dotenvx");
 
-    // テスト環境の場合は.env.testから環境変数を読み込み
+    // Load environment variables from .env.test if in test environment
     if (mode === "test" || process.env.NODE_ENV === "test") {
         console.log("Loading test environment variables from .env.test");
         config({ path: [".env.test"] });
@@ -63,9 +63,9 @@ export default defineConfig(async ({ mode }) => {
                     changeOrigin: true,
                 },
             },
-            // E2E 実行時は HMR を無効化してテスト中の再読込によるページクローズを抑止
+            // Disable HMR during E2E execution to prevent page close due to reload during test
             hmr: process.env.E2E_DISABLE_HMR === "1" ? false : undefined,
-            // E2E 実行時はファイル監視を全面無効化して SSR/dev の再起動を抑止
+            // Disable file watching completely during E2E execution to prevent SSR/dev restart
             watch: process.env.E2E_DISABLE_WATCH === "1"
                 ? { ignored: ["**"] }
                 : {
@@ -87,13 +87,13 @@ export default defineConfig(async ({ mode }) => {
         },
         build: {
             sourcemap: true,
-            // 手動チャンク分割の適用に合わせ、警告閾値は最小限の緩和に留める
+            // Keep the warning threshold relaxation to a minimum in line with the application of manual chunk splitting
             chunkSizeWarningLimit: 1100,
             rollupOptions: {
                 output: {
-                    // 最小限の vendor 分割 + echarts をさらに細分化して 500kB 超過を回避
+                    // Minimize vendor splitting + further subdivide echarts to avoid exceeding 500kB
                     manualChunks(id: string) {
-                        // ECharts 系は用途別に分割
+                        // Split ECharts-related by usage
                         if (id.includes("node_modules/echarts/")) {
                             if (id.includes("/lib/chart/")) return "echarts-charts";
                             if (id.includes("/lib/component/")) return "echarts-components";
@@ -101,15 +101,15 @@ export default defineConfig(async ({ mode }) => {
                         }
                         if (id.includes("node_modules/zrender/")) return "zrender";
 
-                        // Firebase は単一の vendor チャンクに集約
+                        // Aggregate Firebase into a single vendor chunk
                         if (id.includes("node_modules/firebase/")) return "firebase";
 
                         return undefined;
                     },
                 },
-                // 大容量チャンク（例: ECharts）については警告を抑止して許容
+                // Suppress warnings and allow large chunks (e.g. ECharts)
                 onwarn(warning: { code?: string; }, handler: (warning: { code?: string; }) => void) {
-                    // Rollup の CHUNK_SIZE_LIMIT 警告のみをフィルタ
+                    // Filter only Rollup's CHUNK_SIZE_LIMIT warnings
                     if (warning.code === "CHUNK_SIZE_LIMIT") return;
                     handler(warning);
                 },
@@ -122,7 +122,7 @@ export default defineConfig(async ({ mode }) => {
             global: "globalThis",
         },
         test: {
-            // 全プロジェクト共通のカバレッジ設定
+            // Common coverage configuration for all projects
             coverage: {
                 provider: "v8",
                 reporter: ["text", "json", "html", "lcov"],
@@ -184,7 +184,7 @@ export default defineConfig(async ({ mode }) => {
                         include: ["src/tests/integration/**/*{.svelte,}.{test,spec}.{js,ts}"],
                         exclude: ["src/lib/server/**"],
                         envFile: ".env.test",
-                        testTimeout: 30000, // Integration testは時間がかかる可能性があるため
+                        testTimeout: 30000, // Since integration tests may take time
                         setupFiles: ["./vitest-setup-client.ts", "./src/tests/integration/setup.ts"],
                         coverage: {
                             enabled: true,
@@ -207,11 +207,11 @@ export default defineConfig(async ({ mode }) => {
                         exclude: ["src/lib/server/**"],
                         envFile: ".env.production",
                         setupFiles: ["src/tests/production/setup.ts"],
-                        testTimeout: 30000, // Production testは時間がかかる可能性があるため
+                        testTimeout: 30000, // Since production tests may take time
                         hookTimeout: 30000,
                         globals: true,
                         coverage: {
-                            enabled: false, // Production testはカバレッジ対象外
+                            enabled: false, // Production tests are excluded from coverage
                         },
                     },
                     server: {

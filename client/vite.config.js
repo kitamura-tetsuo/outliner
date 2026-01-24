@@ -8,14 +8,14 @@ export default defineConfig({
         sveltekit(),
     ],
     build: {
-        // Firebase Hostingのpublicディレクトリに出力
+        // Output to the public directory of Firebase Hosting
         outDir: "../build",
         emptyOutDir: true,
-        // SPAモードで動作させる
+        // Run in SPA mode
         ssr: false,
-        // 静的サイトとして出力
+        // Output as a static site
         target: "esnext",
-        // 画像などのアセットをインライン化する閾値
+        // Threshold for inlining assets like images
         assetsInlineLimit: 10000,
     },
 });
