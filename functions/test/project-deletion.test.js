@@ -201,4 +201,62 @@ describe("deleteProject Logic Tests", () => {
       expect.anything(),
     );
   });
+
+  it("Scenario C: Project not found (Should return 404)", async () => {
+    delete mockProjectUsers["projectP"];
+
+    const req = {
+      method: "POST",
+      headers: { origin: "http://localhost:3000" },
+      body: {
+        idToken: "token-user1",
+        projectId: "projectP",
+      },
+    };
+
+    const res = {
+      set: jest.fn(),
+      setHeader: jest.fn(),
+      getHeader: jest.fn(),
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      end: jest.fn(),
+    };
+
+    await myFunctions.deleteProject(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ error: "Project not found" });
+  });
+
+  it("Scenario D: Access denied (Should return 403)", async () => {
+    mockProjectUsers["projectP"].accessibleUserIds = ["user2"];
+
+    const req = {
+      method: "POST",
+      headers: { origin: "http://localhost:3000" },
+      body: {
+        idToken: "token-user1",
+        projectId: "projectP",
+      },
+    };
+
+    const res = {
+      set: jest.fn(),
+      setHeader: jest.fn(),
+      getHeader: jest.fn(),
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+      on: jest.fn(),
+      emit: jest.fn(),
+      end: jest.fn(),
+    };
+
+    await myFunctions.deleteProject(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: "Access to the project is denied" });
+  });
 });
