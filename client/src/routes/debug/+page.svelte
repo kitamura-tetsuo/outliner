@@ -12,7 +12,7 @@ import { getDebugConfig } from "../../lib/env";
 import { getLogger } from "../../lib/logger";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 
-import { createYjsClient } from "../../services";
+import { createYjsClient, saveFirestoreContainerIdToServer } from "../../services";
 
 const logger = getLogger();
 
@@ -49,7 +49,18 @@ async function initializeFluidClient() {
     isInitializing = true;
 
     try {
-        await createYjsClient();
+        // Use a fixed UUID for the debug page to avoid creating new projects on every reload
+        const projectId = "00000000-0000-0000-0000-000000000000";
+        console.log(`[debug] Registering debug project: ${projectId}`);
+        const saved = await saveFirestoreContainerIdToServer(projectId);
+        if (!saved) {
+            console.error("[debug] Failed to register debug project");
+            networkError = "デバッグ用プロジェクトの登録に失敗しました。";
+            return;
+        }
+
+        console.log(`[debug] Connecting to debug project: ${projectId}`);
+        await createYjsClient(projectId);
         updateConnectionStatus();
     }
     catch (err) {
