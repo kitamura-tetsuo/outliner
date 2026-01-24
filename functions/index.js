@@ -839,6 +839,10 @@ exports.deleteUser = onRequest(
 );
 
 // プロジェクトを削除するエンドポイント
+/**
+ * Deletes a project and its associated data.
+ * API Endpoint for project deletion.
+ */
 exports.deleteProject = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
@@ -891,38 +895,54 @@ exports.deleteProject = onRequest(
             throw new Error("Access to the project is denied");
           }
 
-          // プロジェクトにアクセスできる各ユーザーから、プロジェクトIDを削除
-          for (const accessUserId of accessibleUserIds) {
-            const userDocRef = userProjectsCollection.doc(accessUserId);
-            const userDoc = await transaction.get(userDocRef);
+          // Remove projectId from current user's userProjects
+          const userDocRef = userProjectsCollection.doc(userId);
+          const userDoc = await transaction.get(userDocRef);
 
-            if (userDoc.exists) {
-              const userData = userDoc.data();
-              const accessibleProjectIds = userData.accessibleProjectIds ||
-                [];
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            const accessibleProjectIds = userData.accessibleProjectIds || [];
 
-              // プロジェクトIDを削除
-              const updatedProjectIds = accessibleProjectIds.filter(id =>
-                id !== projectId
-              );
+            // プロジェクトIDを削除
+            const updatedProjectIds = accessibleProjectIds.filter(id =>
+              id !== projectId
+            );
 
-              // デフォルトプロジェクトの更新
-              let defaultProjectId = userData.defaultProjectId;
-              if (defaultProjectId === projectId) {
-                defaultProjectId = updatedProjectIds.length > 0 ?
-                  updatedProjectIds[0] : null;
-              }
-
-              transaction.update(userDocRef, {
-                accessibleProjectIds: updatedProjectIds,
-                defaultProjectId: defaultProjectId,
-                updatedAt: FieldValue.serverTimestamp(),
-              });
+            // デフォルトプロジェクトの更新
+            let defaultProjectId = userData.defaultProjectId;
+            if (defaultProjectId === projectId) {
+              defaultProjectId = updatedProjectIds.length > 0 ?
+                updatedProjectIds[0] : null;
             }
+
+            transaction.update(userDocRef, {
+              accessibleProjectIds: updatedProjectIds,
+              defaultProjectId: defaultProjectId,
+              updatedAt: FieldValue.serverTimestamp(),
+            });
           }
 
-          // プロジェクトドキュメントを削除
-          transaction.delete(projectDocRef);
+          // Remove userId from projectUsers
+          const updatedAccessibleUserIds = accessibleUserIds.filter(id =>
+            id !== userId
+          );
+
+          if (updatedAccessibleUserIds.length === 0) {
+            // No users left, delete project
+            transaction.delete(projectDocRef);
+            logger.info(
+              `Project ${projectId} deleted (no users left) by ${userId}`,
+            );
+          } else {
+            // Update project with removed user
+            transaction.update(projectDocRef, {
+              accessibleUserIds: updatedAccessibleUserIds,
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+            logger.info(
+              `User ${userId} left project ${projectId} (remaining users: ${updatedAccessibleUserIds.length})`,
+            );
+          }
         });
 
         logger.info(`Project ${projectId} deleted successfully`);
