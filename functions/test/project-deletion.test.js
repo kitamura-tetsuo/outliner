@@ -257,8 +257,6 @@ describe("deleteProject Logic Tests", () => {
     await myFunctions.deleteProject(req, res);
 
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith({
-      error: "Access to the project is denied",
-    });
+    expect(res.json).toHaveBeenCalledWith({ error: "Access to the project is denied" });
   });
 });
