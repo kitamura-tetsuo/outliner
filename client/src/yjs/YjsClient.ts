@@ -172,6 +172,7 @@ export class YjsClient {
     }
 
     public getDebugInfo() {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const provider = this._provider as any;
         const config = provider?.configuration;
         const wsProvider = config?.websocketProvider;

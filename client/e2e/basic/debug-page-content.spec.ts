@@ -9,9 +9,7 @@ test.describe("Debug Page", () => {
         // 1. Setup environment and login
         await page.goto("/");
         // Prepare environment (logs in, seeds data)
-        await TestHelpers.prepareTestEnvironment(page, test.info(), ["Debug Test Page"], undefined, {
-            skipAppReady: true,
-        });
+        await TestHelpers.prepareTestEnvironment(page, test.info(), ["Debug Test Page"], undefined, { skipAppReady: true });
 
         // 2. Visit /debug
         await page.goto("/debug");
@@ -50,7 +48,7 @@ test.describe("Debug Page", () => {
 
         // Check provider info
         if (info.provider) {
-            expect(info.provider.url).toBeTruthy();
+             expect(info.provider.url).toBeTruthy();
         }
     });
 });
