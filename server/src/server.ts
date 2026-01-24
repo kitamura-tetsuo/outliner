@@ -14,6 +14,7 @@ import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { createSeedRouter } from "./seed-api.js";
+import { getClientIp } from "./utils/ip.js";
 import {
     refreshClientLogStream,
     refreshServerLogStream,
@@ -103,8 +104,7 @@ export async function startServer(
 
     // Rate limiter middleware
     const rateLimiterMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-        const ipHeader = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "";
-        const clientIp = Array.isArray(ipHeader) ? ipHeader[0] : ipHeader.split(",")[0].trim();
+        const clientIp = getClientIp(req);
 
         if (!checkRateLimit(clientIp)) {
             logger.warn({ event: "http_rate_limit_exceeded", ip: clientIp, path: req.path });
@@ -224,8 +224,7 @@ export async function startServer(
             (request as any).__ws = ws;
 
             // --- Manual Connection Handling (Hooks Replacement) ---
-            const ipHeader = (request.headers["x-forwarded-for"] as string) || request.socket.remoteAddress || "";
-            const ip = Array.isArray(ipHeader) ? ipHeader[0] : ipHeader.split(",")[0].trim();
+            const ip = getClientIp(request);
             const origin = request.headers.origin || "";
 
             // Helper to close
