@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { Project } from "../schema/yjs-schema";
-import { createNewProject, getClientByProjectTitle, stableIdFromTitle } from "./yjsService.svelte";
+import { createNewProject, deleteProject, getClientByProjectTitle, stableIdFromTitle } from "./yjsService.svelte";
 
 // Define a type for the window object to avoid using 'any'
 interface TestWindow extends Window {
@@ -39,6 +39,21 @@ vi.mock("../yjs/YjsClient", () => ({
     },
 }));
 
+vi.mock("../auth/UserManager", () => ({
+    userManager: {
+        auth: {
+            currentUser: {
+                getIdToken: vi.fn().mockResolvedValue("mock-token"),
+            },
+        },
+        getCurrentUser: vi.fn().mockReturnValue({ id: "test-user-id" }),
+    },
+}));
+
+vi.mock("./firebaseFunctionsUrl", () => ({
+    getFirebaseFunctionUrl: vi.fn().mockReturnValue("http://localhost/api/deleteProject"),
+}));
+
 describe("yjsService", () => {
     describe("getClientByProjectTitle", () => {
         it("reloads project from metaDoc after registry is cleared", async () => {
@@ -63,6 +78,55 @@ describe("yjsService", () => {
             // Verify the stable ID matches what's expected
             const expectedId = stableIdFromTitle("TestProject");
             expect((reloadedClient as any).doc.guid.startsWith(expectedId)).toBe(true);
+        });
+    });
+
+    describe("deleteProject", () => {
+        const originalFetch = global.fetch;
+
+        beforeEach(() => {
+            global.fetch = vi.fn();
+        });
+
+        afterEach(() => {
+            global.fetch = originalFetch;
+        });
+
+        it("should call deleteProject function with correct parameters", async () => {
+            (global.fetch as Mock).mockResolvedValue({
+                ok: true,
+                json: async () => ({ success: true }),
+            });
+
+            const result = await deleteProject("project-123");
+
+            expect(result).toBe(true);
+            expect(global.fetch).toHaveBeenCalledWith(
+                "http://localhost/api/deleteProject",
+                expect.objectContaining({
+                    method: "POST",
+                    headers: expect.objectContaining({
+                        "Content-Type": "application/json",
+                    }),
+                    body: JSON.stringify({
+                        idToken: "mock-token",
+                        projectId: "project-123",
+                    }),
+                }),
+            );
+        });
+
+        it("should throw error if fetch fails", async () => {
+            (global.fetch as Mock).mockResolvedValue({
+                ok: false,
+                status: 500,
+                statusText: "Internal Server Error",
+                text: async () => "Error details",
+            });
+
+            await expect(deleteProject("project-123")).rejects.toThrow(
+                "Failed to delete project: Internal Server Error",
+            );
         });
     });
 });
