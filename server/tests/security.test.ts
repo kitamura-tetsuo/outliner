@@ -1,70 +1,69 @@
+import { expect } from "chai";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import fs from "fs-extra";
+import path from "path";
+import os from "os";
 import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
 
-// Mock Firebase Admin
-// We need to mock verifyIdTokenCached because it is imported by auth-middleware directly
-// and not via dependency injection in startServer (since middleware is static).
-// Actually, startServer does support overrides, but the middleware is imported at the top level of server.ts.
-// Wait, the middleware is imported into server.ts.
-// `import { requireAuth } from "./auth-middleware.js";`
-// And `auth-middleware.ts` imports `verifyIdTokenCached`.
-
-// To mock this effectively in Vitest, we should use vi.mock.
-
-vi.mock("../src/websocket-auth.js", async () => {
-    const actual = await vi.importActual("../src/websocket-auth.js");
-    return {
-        ...actual,
-        verifyIdTokenCached: vi.fn().mockImplementation(async (token: string) => {
-            if (token === "valid-token") {
-                return { uid: "test-user", role: "admin" };
-            }
-            throw new Error("Invalid token");
-        }),
-    };
-});
+function toBase64(obj: any) {
+    // Use standard Base64 but maybe strip padding to be safe, though Buffer handles it.
+    // websocket-auth.ts uses standard Buffer decoding.
+    return Buffer.from(JSON.stringify(obj)).toString("base64");
+}
 
 describe("Server Security Tests", () => {
     let app: any;
     let shutdown: any;
+    let dbDir: string;
 
-    beforeAll(async () => {
-        const config = loadConfig();
-        // We pass empty overrides because we are mocking the module directly
+    before(async () => {
+        process.env.ALLOW_TEST_ACCESS = "true";
+        dbDir = fs.mkdtempSync(path.join(os.tmpdir(), "security-test-"));
+        const config = loadConfig({
+            PORT: "0",
+            LOG_LEVEL: "silent",
+            DATABASE_PATH: dbDir,
+        });
         const instance = await startServer(config);
         app = instance.server;
         shutdown = instance.shutdown;
     });
 
-    afterAll(async () => {
+    after(async () => {
+        delete process.env.ALLOW_TEST_ACCESS;
         if (shutdown) await shutdown();
-        vi.restoreAllMocks();
+        if (dbDir) await fs.remove(dbDir);
     });
 
     it("should reject unauthenticated request to /metrics", async () => {
         const response = await request(app).get("/metrics");
-        expect(response.status).toBe(401);
+        expect(response.status).to.equal(401);
     });
 
     it("should accept authenticated request to /metrics", async () => {
+        const header = toBase64({ alg: "none" });
+        const payload = toBase64({ user_id: "test-user" });
+        // alg:none token format: header.payload. (empty signature)
+        const validToken = `${header}.${payload}.`;
+
         const response = await request(app)
             .get("/metrics")
-            .set("Authorization", "Bearer valid-token");
-        expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty("connections");
+            .set("Authorization", `Bearer ${validToken}`);
+
+        expect(response.status).to.equal(200);
+        expect(response.body).to.have.property("connections");
     });
 
     it("should reject unauthenticated request to /api/rotate-logs", async () => {
         const response = await request(app).post("/api/rotate-logs");
-        expect(response.status).toBe(401);
+        expect(response.status).to.equal(401);
     });
 
     it("should reject invalid token request to /api/rotate-logs", async () => {
         const response = await request(app)
             .post("/api/rotate-logs")
             .set("Authorization", "Bearer invalid-token");
-        expect(response.status).toBe(401);
+        expect(response.status).to.equal(401);
     });
 });
