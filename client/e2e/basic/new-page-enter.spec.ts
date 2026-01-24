@@ -34,7 +34,7 @@ test.describe("New Page Creation with Enter", () => {
         await expect(page).toHaveURL(expectedUrlPattern);
 
         // Verify content to be sure
-         try {
+        try {
             await page.waitForSelector(".outliner", { state: "visible", timeout: 15000 });
         } catch {
             console.log("Outliner not found, checking for page title in header as fallback verification");
