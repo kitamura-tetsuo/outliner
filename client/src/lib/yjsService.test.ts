@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { Project } from "../schema/yjs-schema";
-import { createNewProject, getClientByProjectTitle, stableIdFromTitle, deleteProject } from "./yjsService.svelte";
+import { createNewProject, deleteProject, getClientByProjectTitle, stableIdFromTitle } from "./yjsService.svelte";
 
 // Define a type for the window object to avoid using 'any'
 interface TestWindow extends Window {
@@ -112,7 +112,7 @@ describe("yjsService", () => {
                         idToken: "mock-token",
                         projectId: "project-123",
                     }),
-                })
+                }),
             );
         });
 
@@ -124,7 +124,9 @@ describe("yjsService", () => {
                 text: async () => "Error details",
             });
 
-            await expect(deleteProject("project-123")).rejects.toThrow("Failed to delete project: Internal Server Error");
+            await expect(deleteProject("project-123")).rejects.toThrow(
+                "Failed to delete project: Internal Server Error",
+            );
         });
     });
 });
