@@ -81,11 +81,37 @@ async function retryConnection() {
 let healthStatus: any = $state(null);
 let healthError: string | undefined = $state(undefined);
 
+function getHealthCheckUrl() {
+    let port = 7093;
+    try {
+        if (import.meta.env.VITE_YJS_PORT) port = Number(import.meta.env.VITE_YJS_PORT);
+        if (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_YJS_PORT")) {
+            port = Number(window.localStorage.getItem("VITE_YJS_PORT"));
+        }
+    } catch {}
+
+    // Prefer explicitly configured HTTP URL if available
+    const envHttpUrl = import.meta.env.VITE_YJS_HTTP_URL;
+    if (envHttpUrl) return envHttpUrl + "/health";
+
+    // Fallback to converting WS URL
+    const wsUrl = import.meta.env.VITE_YJS_WS_URL || `ws://localhost:${port}`;
+
+    if (wsUrl.startsWith("wss://")) {
+        return wsUrl.replace("wss://", "https://").replace(/\/$/, "") + "/health";
+    } else if (wsUrl.startsWith("ws://")) {
+        return wsUrl.replace("ws://", "http://").replace(/\/$/, "") + "/health";
+    }
+
+    return `http://localhost:${port}/health`;
+}
+
 async function checkHealth() {
     healthStatus = null;
     healthError = undefined;
     try {
-        const res = await fetch("https://outliner-yjs-ws-mutsurao.duckdns.org/health");
+        const url = getHealthCheckUrl();
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
         healthStatus = await res.json();
     } catch (e) {
