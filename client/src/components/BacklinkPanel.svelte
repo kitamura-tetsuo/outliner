@@ -21,13 +21,13 @@ interface Props {
 
 let { pageName, projectName }: Props = $props();
 
-// バックリンク情報
+// Backlink information
 let backlinks = $state<Backlink[]>([]);
 let isLoading = $state(false);
 let isOpen = $state(false);
 let error = $state<string | null>(null);
 
-// バックリンクを読み込む
+// Load backlinks
 async function loadBacklinks() {
     if (!pageName) return;
 
@@ -35,13 +35,13 @@ async function loadBacklinks() {
     error = null;
 
     try {
-        // バックリンクを収集
+        // Collect backlinks
         backlinks = collectBacklinks(pageName);
         logger.info(`Loaded ${backlinks.length} backlinks for page: ${pageName}`);
     }
     catch (err) {
         logger.error("Failed to load backlinks:", err);
-        error = "バックリンクの読み込みに失敗しました";
+        error = "Failed to load backlinks";
         backlinks = [];
     }
     finally {
@@ -49,7 +49,7 @@ async function loadBacklinks() {
     }
 }
 
-// パネルの開閉を切り替える
+// Toggle panel visibility
 function togglePanel() {
     isOpen = !isOpen;
 
@@ -58,10 +58,10 @@ function togglePanel() {
     }
 }
 
-// バックリンク先のページに移動する
+// Navigate to source page
 async function navigateToPage(_pageId: string, pageName: string) {
     if (!projectName) {
-        // プロジェクト名が指定されていない場合は現在のプロジェクトを使用
+        // Use current project if not specified
         await goto(resolve(`/${pageName}`));
     }
     else {
@@ -69,20 +69,19 @@ async function navigateToPage(_pageId: string, pageName: string) {
     }
 }
 
-// バックリンクを再読み込みする
+// Reload backlinks
 function refreshBacklinks() {
     loadBacklinks();
 }
 
-// コンポーネントがマウントされたときの処理
+// Component lifecycle
 onMount(() => {
-    // 初期状態では閉じておく
+    // Start collapsed
     isOpen = false;
 });
 
-// コンポーネントが破棄されるときの処理
 onDestroy(() => {
-    // クリーンアップ処理
+    // Cleanup
 });
 
 </script>
@@ -96,8 +95,25 @@ onDestroy(() => {
         aria-controls="backlink-content-panel"
     >
         <span class="backlink-count">{backlinks.length}</span>
-        <span class="backlink-label">バックリンク</span>
-        <span class="toggle-icon" aria-hidden="true">{isOpen ? "▼" : "▶"}</span>
+        <span class="backlink-label">Backlinks</span>
+        <svg
+            class="chevron-icon"
+            class:collapsed={!isOpen}
+            width="12"
+            height="12"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+        >
+            <path
+                d="M4 6L8 10L12 6"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            />
+        </svg>
     </button>
 
     {#if isOpen}
@@ -105,24 +121,28 @@ onDestroy(() => {
             id="backlink-content-panel"
             class="backlink-content"
             role="region"
-            aria-label="バックリンク"
+            aria-label="Backlinks"
         >
             <div class="backlink-header">
-                <h3>バックリンク</h3>
+                <h3>Backlinks</h3>
                 <button
                     onclick={refreshBacklinks}
                     class="refresh-button"
-                    title="再読み込み"
-                    aria-label="バックリンクを再読み込み"
+                    title="Refresh"
+                    aria-label="Refresh backlinks"
                 >
-                    ↻
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M1 20v-6h6"></path>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
                 </button>
             </div>
 
             {#if isLoading}
                 <div class="backlink-loading" role="status" aria-live="polite">
                     <div class="loader"></div>
-                    <p>読み込み中...</p>
+                    <p>Loading...</p>
                 </div>
             {:else if error}
                 <div class="backlink-error" role="status" aria-live="polite">
@@ -130,7 +150,7 @@ onDestroy(() => {
                 </div>
             {:else if backlinks.length === 0}
                 <div class="backlink-empty" role="status">
-                    <p>このページへのリンクはありません</p>
+                    <p>No backlinks found for this page.</p>
                 </div>
             {:else}
                 <ul class="backlink-list">
@@ -205,9 +225,14 @@ onDestroy(() => {
     font-weight: 500;
 }
 
-.toggle-icon {
-    font-size: 10px;
+.chevron-icon {
+    transition: transform 0.2s ease;
+    transform: rotate(0deg); /* Expanded state (down) */
     color: #666;
+}
+
+.chevron-icon.collapsed {
+    transform: rotate(-90deg); /* Collapsed state (right) */
 }
 
 .backlink-content {
@@ -238,6 +263,9 @@ onDestroy(() => {
     font-size: 16px;
     padding: 4px 8px;
     border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .refresh-button:hover {
@@ -321,4 +349,3 @@ onDestroy(() => {
     border-radius: 2px;
 }
 </style>
-
