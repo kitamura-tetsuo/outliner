@@ -20,7 +20,7 @@
         "ws": "^8.19.0",
         "yjs": "^13.6.29",
         "yjs-orderedtree": "^1.0.1-beta.3",
-        "zod": "^4.3.5"
+        "zod": "^4.3.6"
     },
     "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
