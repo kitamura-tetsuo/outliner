@@ -1,6 +1,6 @@
 id: CHT-001
 title: Chart Component
-description: 保存されたデータをグラフ表示するチャートコンポーネント
+description: Chart component that displays saved data as a graph
 category: visualization
 status: implemented
 components:
@@ -8,6 +8,6 @@ components:
 tests:
 - client/e2e/core/cht-chart-component-1b7a8eff.spec.ts
 acceptance:
-- データをグラフで表示する
-- データ更新時にグラフが自動更新される
+- Display data as a graph
+- Graph automatically updates when data is updated
 title-ja: チャートコンポーネント
