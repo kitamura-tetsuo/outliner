@@ -55,14 +55,14 @@ export function importOpmlIntoProject(opml: string, project: Project) {
     const build = (parent: Items, el: Element, isRootLevel = false) => {
         const text = el.getAttribute("text") || "";
 
-        // 最初のルートレベルアイテムのみをページとして作成
+        // Create only the first root-level item as a page
         const node = (isRootLevel && isFirstRootItem)
             ? project.addPage(text, "import")
             : parent.addNode("import");
 
         node.updateText(text);
 
-        // 最初のルートアイテムが処理されたらフラグを更新
+        // Update flag after the first root item is processed
         if (isRootLevel && isFirstRootItem) {
             isFirstRootItem = false;
         }
@@ -87,7 +87,7 @@ export function importMarkdownIntoProject(md: string, project: Project) {
     const lines = md.split(/\r?\n/);
     console.log("importMarkdownIntoProject: Lines to process:", lines);
 
-    // スタック構造を簡素化
+    // Simplify stack structure
     const stack: { indent: number; items: Items; }[] = [
         { indent: -1, items: project.items as Items },
     ];
@@ -103,7 +103,7 @@ export function importMarkdownIntoProject(md: string, project: Project) {
 
         console.log(`importMarkdownIntoProject: Processing line "${line}" -> indent=${indent}, text="${text}"`);
 
-        // スタックを適切なレベルまで戻す
+        // Pop stack to the appropriate level
         while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
             stack.pop();
         }
@@ -115,18 +115,18 @@ export function importMarkdownIntoProject(md: string, project: Project) {
 
         let node;
         if (isFirstRootItem && indent === 0) {
-            // 最初のルートレベルアイテムのみをページとして作成
+            // Create only the first root-level item as a page
             console.log(`importMarkdownIntoProject: Creating page "${text}"`);
             node = project.addPage(text, "import");
             firstPageItems = node.items as Items;
             isFirstRootItem = false;
         } else if (indent === 0 && firstPageItems) {
-            // 2番目以降のルートレベルアイテムは最初のページの子として作成
+            // Create 2nd and subsequent root-level items as children of the first page
             console.log(`importMarkdownIntoProject: Creating root-level child "${text}" under first page`);
             node = firstPageItems.addNode("import");
             node.updateText(text);
         } else {
-            // 通常の子アイテムとして作成
+            // Create as a normal child item
             console.log(`importMarkdownIntoProject: Creating child "${text}" under parent`);
             node = parentInfo.items.addNode("import");
             node.updateText(text);
@@ -134,7 +134,7 @@ export function importMarkdownIntoProject(md: string, project: Project) {
 
         console.log(`importMarkdownIntoProject: Created node "${node.text}" with ${node.items?.length || 0} children`);
 
-        // 次のアイテム用のスタック情報を追加
+        // Add stack info for the next item
         stack.push({
             indent,
             items: node.items as Items,

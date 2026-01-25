@@ -1,7 +1,7 @@
-// サービス機能のエクスポートをまとめたバレルファイル
-// 循環依存を避けるためのパターン
+// Barrel file consolidating service exports
+// Pattern to avoid circular dependencies
 
-// FirestoreStore関連の関数をエクスポート
+// Export FirestoreStore related functions
 export {
     firestoreStore,
     getDefaultContainerId,
