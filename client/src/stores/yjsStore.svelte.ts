@@ -3,7 +3,7 @@ import { store as globalStore } from "./store.svelte";
 
 class YjsStore {
     private _client: YjsClient | undefined;
-    // 直近に設定した Project の Y.Doc GUID を記録し、同一ドキュメントでの再設定を抑止
+    // Record the Y.Doc GUID of the most recently set Project to prevent resetting with the same document
     private _lastProjectGuid: string | null = null;
 
     get yjsClient(): YjsClient | undefined {
@@ -16,7 +16,7 @@ class YjsStore {
         if (v && this._client && (v.containerId === this._client.containerId || v.clientId === this._client.clientId)) {
             return;
         }
-        // コメントスレッドの選択はドキュメント切替時に無効化してデフォルト挙動に任せる
+        // Disable comment thread selection when switching documents and leave it to the default behavior
         try {
             (globalStore as any).openCommentItemId = null;
         } catch {}
@@ -38,7 +38,7 @@ class YjsStore {
                 globalStore.project = connectedProject as any;
                 return;
             }
-            // さらに、自身が直前に設定した GUID とも比較して冪等性を高める
+            // Furthermore, compare with the GUID set immediately before by self to improve idempotency
             if (this._lastProjectGuid && newGuid && this._lastProjectGuid === newGuid) {
                 return;
             }
@@ -64,7 +64,7 @@ class YjsStore {
             try {
                 /*
                 if (isTestEnv && prevCount > 0) {
-                    // ケースA: 接続済みプロジェクトが空 -> 以前のページを丸ごと移植（ID維持）
+                    // Case A: Connected project is empty -> Port the entire previous page (maintain ID)
                     if (newCount === 0) {
                         for (let i = 0; i < prevCount; i++) {
                             const prevPage: any = prevItems.at ? prevItems.at(i) : prevItems[i];
@@ -76,14 +76,14 @@ class YjsStore {
                                     ? cp.addPage(title, "tester")
                                     : (cp.items?.addNode ? cp.items.addNode("tester") : null);
                                 if (!newPage) continue;
-                                // ページIDを引き継ぐ
+                                // Inherit page ID
                                 try {
                                     (newPage as any).value?.set?.("id", String(prevPage.id));
                                 } catch {}
                                 try {
                                     newPage.updateText?.(title);
                                 } catch {}
-                                // 子行もID/テキストを引き継ぐ
+                                // Inherit ID/text for child rows as well
                                 try {
                                     const prevLines: any = prevPage?.items as any;
                                     const len = prevLines?.length ?? 0;
@@ -106,7 +106,7 @@ class YjsStore {
                             } catch {}
                         }
                     } else {
-                        // ケースB: 接続済みプロジェクトに既存ページあり -> タイトル一致でIDを上書き（行もインデックス一致で上書き）
+                        // Case B: Existing page in connected project -> Overwrite ID with matching title (overwrite row with matching index as well)
                         try {
                             const newPages: any = newItems;
                             const getTitle = (p: any) => p?.text?.toString?.() ?? String(p?.text ?? "");
@@ -115,7 +115,7 @@ class YjsStore {
                                 const curPage: any = newPages.at ? newPages.at(i) : newPages[i];
                                 if (!curPage) continue;
                                 const title = getTitle(curPage);
-                                // 以前のプロジェクトから同名ページを探す
+                                // Search for a page with the same name from the previous project
                                 let matchPrev: any = null;
                                 for (let k = 0; k < prevCount; k++) {
                                     const pp = prevItems.at ? prevItems.at(k) : prevItems[k];
@@ -125,11 +125,11 @@ class YjsStore {
                                     }
                                 }
                                 if (!matchPrev) continue;
-                                // ページIDを上書き
+                                // Overwrite page ID
                                 try {
                                     (curPage as any).value?.set?.("id", String(matchPrev.id));
                                 } catch {}
-                                // 子行のIDをインデックス対応で上書き
+                                // Overwrite ID of child rows with corresponding index
                                 try {
                                     const prevLines: any = matchPrev?.items as any;
                                     const newLines: any = curPage?.items as any;
@@ -157,7 +157,7 @@ class YjsStore {
     // Connection state is a plain data property for Svelte 5 reactivity
     isConnected: boolean = false;
     get connectionState() {
-        return this._client?.getConnectionStateString() ?? "未接続";
+        return this._client?.getConnectionStateString() ?? "Disconnected";
     }
     get currentProjectId() {
         return this._client?.containerId ?? null;
