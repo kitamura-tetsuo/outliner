@@ -14,16 +14,16 @@ type ServiceWorkerGlobalScope = typeof globalThis & {
     skipWaiting(): Promise<void>;
 };
 
-// Service Worker環境でのidbインポート
+// Import idb in Service Worker environment
 declare const self: ServiceWorkerGlobalScope;
 
-// IndexedDBの初期化（Service Worker環境用）
+// Initialize IndexedDB (for Service Worker environment)
 let dbPromise: Promise<IDBDatabase> | undefined;
 
 async function initDB() {
     if (dbPromise) return dbPromise;
 
-    // Service Worker環境でのIndexedDB使用
+    // Use IndexedDB in Service Worker environment
     dbPromise = new Promise((resolve, reject) => {
         const request = indexedDB.open("outliner", 1);
 
@@ -46,7 +46,7 @@ self.addEventListener("install", event => {
         caches.open(CACHE_NAME).then(cache => {
             return cache.addAll(ASSETS).catch(err => {
                 console.warn("Failed to cache some assets:", err);
-                // 一部のアセットのキャッシュに失敗しても続行
+                // Continue even if caching some assets fails
             });
         }),
     );
@@ -57,7 +57,7 @@ self.addEventListener("activate", event => {
     event.waitUntil(
         Promise.all([
             self.clients.claim(),
-            // 古いキャッシュを削除
+            // Delete old cache
             caches.keys().then(cacheNames => {
                 return Promise.all(
                     cacheNames.map(cacheName => {
@@ -130,7 +130,7 @@ self.addEventListener("sync", event => {
 self.addEventListener("fetch", event => {
     const req = event.request;
 
-    // GETリクエストのキャッシュ処理
+    // Cache handling for GET requests
     if (req.method === "GET") {
         event.respondWith(
             caches.match(req).then(res => {
@@ -139,7 +139,7 @@ self.addEventListener("fetch", event => {
                 }
 
                 return fetch(req).then(response => {
-                    // レスポンスが正常な場合のみキャッシュ
+                    // Cache only if response is normal
                     if (response.status === 200) {
                         const copy = response.clone();
                         caches.open(CACHE_NAME).then(cache => {
@@ -158,7 +158,7 @@ self.addEventListener("fetch", event => {
         return;
     }
 
-    // POSTリクエストのオフライン対応
+    // Offline support for POST requests
     if (req.method === "POST" && req.url.includes("/api/")) {
         event.respondWith(
             fetch(req.clone()).catch(async () => {
