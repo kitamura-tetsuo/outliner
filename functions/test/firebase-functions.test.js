@@ -8,13 +8,13 @@ describe("Firebase Functions HTTP API Tests", () => {
   let testContainerId;
 
   beforeAll(async () => {
-    // テスト用のデータを設定
+    // Set test data
     testIdToken = "test-invalid-token";
     testContainerId = "test-container-id";
   });
 
   afterAll(async () => {
-    // クリーンアップ処理
+    // Cleanup process
   });
 
   describe("Health Check Endpoint", () => {
@@ -30,7 +30,7 @@ describe("Firebase Functions HTTP API Tests", () => {
           }),
         );
       } catch {
-        // エミュレーターが動いていない場合はスキップ
+        // Skip if emulator is not running
         console.warn("Firebase Emulator not running, skipping test");
         expect(true).toBe(true);
       }
@@ -42,7 +42,7 @@ describe("Firebase Functions HTTP API Tests", () => {
 
         expect(response.status).toBe(204);
       } catch {
-        // エミュレーターが動いていない場合はスキップ
+        // Skip if emulator is not running
         console.warn("Firebase Emulator not running, skipping test");
         expect(true).toBe(true);
       }
@@ -56,7 +56,7 @@ describe("Firebase Functions HTTP API Tests", () => {
           idToken: testIdToken,
           // containerId is missing
         });
-        // リクエストが成功した場合はテスト失敗
+        // Fail test if request succeeds
         expect(true).toBe(false);
       } catch (error) {
         if (error.response) {
@@ -65,7 +65,7 @@ describe("Firebase Functions HTTP API Tests", () => {
             error: "Container ID is required",
           });
         } else {
-          // エミュレーターが動いていない場合はスキップ
+          // Skip if emulator is not running
           console.warn("Firebase Emulator not running, skipping test");
           expect(true).toBe(true);
         }
@@ -78,7 +78,7 @@ describe("Firebase Functions HTTP API Tests", () => {
           idToken: "invalid-token",
           containerId: testContainerId,
         });
-        // リクエストが成功した場合はテスト失敗
+        // Fail test if request succeeds
         expect(true).toBe(false);
       } catch (error) {
         if (error.response) {
@@ -87,7 +87,7 @@ describe("Firebase Functions HTTP API Tests", () => {
             error: "Failed to save container ID",
           });
         } else {
-          // エミュレーターが動いていない場合はスキップ
+          // Skip if emulator is not running
           console.warn("Firebase Emulator not running, skipping test");
           expect(true).toBe(true);
         }
@@ -97,14 +97,14 @@ describe("Firebase Functions HTTP API Tests", () => {
     it("should return 405 for non-POST methods", async () => {
       try {
         await axios.get(`${baseURL}/save-container`);
-        // リクエストが成功した場合はテスト失敗
+        // Fail test if request succeeds
         expect(true).toBe(false);
       } catch (error) {
         if (error.response) {
           expect(error.response.status).toBe(405);
           expect(error.response.data).toEqual({ error: "Method Not Allowed" });
         } else {
-          // エミュレーターが動いていない場合はスキップ
+          // Skip if emulator is not running
           console.warn("Firebase Emulator not running, skipping test");
           expect(true).toBe(true);
         }
@@ -118,7 +118,7 @@ describe("Firebase Functions HTTP API Tests", () => {
         await axios.post(`${baseURL}/get-user-containers`, {
           idToken: "invalid-token",
         });
-        // リクエストが成功した場合はテスト失敗
+        // Fail test if request succeeds
         expect(true).toBe(false);
       } catch (error) {
         if (error.response) {
@@ -127,7 +127,7 @@ describe("Firebase Functions HTTP API Tests", () => {
             error: "Failed to get user containers",
           });
         } else {
-          // エミュレーターが動いていない場合はスキップ
+          // Skip if emulator is not running
           console.warn("Firebase Emulator not running, skipping test");
           expect(true).toBe(true);
         }

@@ -1,5 +1,5 @@
-// Firebase Functionsでは本番でFirebase Secretsを使用
-// テスト/エミュレーター環境ではdotenvxで.envを読み込む
+// Use Firebase Secrets in production for Firebase Functions
+// Load .env with dotenvx in test/emulator environments
 try {
   if (
     process.env.CI === "true" || process.env.NODE_ENV === "test" ||
@@ -11,10 +11,10 @@ try {
     });
   }
 } catch {
-  // dotenvx が無くても処理継続（本番はSecretsを使用）
+  // Continue processing even without dotenvx (Secrets are used in production)
 }
 
-// テスト環境またはCI環境用の追加設定（他の設定より前に実行）
+// Additional settings for test or CI environments (executed before other settings)
 if (
   process.env.CI === "true" || process.env.NODE_ENV === "test" ||
   process.env.FUNCTIONS_EMULATOR === "true"
@@ -28,7 +28,7 @@ if (
   process.env.FIREBASE_PROJECT_ID ||= "outliner-d57b0";
 }
 
-// 本番向けのフォールバック（Secrets未設定時）
+// Fallback for production (when Secrets are not set)
 if (!process.env.FUNCTIONS_EMULATOR) {
   process.env.FIREBASE_PROJECT_ID ||= "outliner-d57b0";
 }
@@ -103,7 +103,7 @@ function validateSchedule(schedule) {
   return null;
 }
 
-// CORS設定を共通化する関数
+// Function to unify CORS settings
 function setCorsHeaders(req, res) {
   const allowedOrigins = [
     "http://localhost:7090",
@@ -125,16 +125,16 @@ function setCorsHeaders(req, res) {
   res.set("X-Frame-Options", "DENY");
 }
 
-// Firebase Admin SDKの初期化
+// Initialize Firebase Admin SDK
 if (!admin.apps.length) {
-  // プロジェクトIDを明示的に設定（エミュレーター環境では必須）
+  // Explicitly set project ID (required in emulator environment)
   const projectId = process.env.GCLOUD_PROJECT || "outliner-d57b0";
 
   const config = {
     projectId: projectId,
   };
 
-  // エミュレーター環境の詳細チェック
+  // Detailed check for emulator environment
   const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
     process.env.FIRESTORE_EMULATOR_HOST ||
     process.env.FUNCTIONS_EMULATOR);
@@ -143,7 +143,7 @@ if (!admin.apps.length) {
     logger.info("🔧 Firebase Admin SDK: Emulator environment detected");
     logger.info(`📋 Project ID: ${projectId}`);
 
-    // 環境変数の詳細チェック
+    // Detailed check for environment variables
     const envVars = {
       FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST,
       FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST,
@@ -167,7 +167,7 @@ if (!admin.apps.length) {
 
   admin.initializeApp(config);
 
-  // Admin SDK インスタンスの確認
+  // Confirmation of Admin SDK instance
   try {
     // eslint-disable-next-line no-unused-vars
     const auth = admin.auth();
@@ -194,12 +194,12 @@ if (!admin.apps.length) {
 
 logger.info(`Firebase project ID: ${admin.app().options.projectId}`);
 
-// Storage Emulatorの設定
+// Storage Emulator settings
 if (process.env.NODE_ENV === "development" || process.env.FUNCTIONS_EMULATOR) {
   process.env.FIREBASE_STORAGE_EMULATOR_HOST = "localhost:59200";
 }
 
-// Firestoreの参照を取得
+// Get Firestore reference
 const db = admin.firestore();
 const userProjectsCollection = db.collection("userProjects");
 const projectUsersCollection = db.collection("projectUsers");
@@ -298,9 +298,9 @@ async function checkContainerAccess(userId, containerId) {
   }
 }
 
-// Azure Fluid Relay設定（上記で定義済み）
+// Azure Fluid Relay settings (defined above)
 
-// Azure設定を取得する関数
+// Function to get Azure configuration
 function getAzureConfig() {
   return {
     tenantId: process.env.AZURE_TENANT_ID,
@@ -311,57 +311,59 @@ function getAzureConfig() {
   };
 }
 
-// Azure設定の初期化確認
+// Confirmation of Azure settings initialization
 try {
-  // 環境変数を直接確認
-  logger.info("環境変数の確認:");
-  logger.info(`AZURE_TENANT_ID: ${process.env.AZURE_TENANT_ID || "未設定"}`);
-  logger.info(`AZURE_ENDPOINT: ${process.env.AZURE_ENDPOINT || "未設定"}`);
+  // Confirm environment variables directly
+  logger.info("Checking environment variables:");
+  logger.info(`AZURE_TENANT_ID: ${process.env.AZURE_TENANT_ID || "not set"}`);
+  logger.info(`AZURE_ENDPOINT: ${process.env.AZURE_ENDPOINT || "not set"}`);
   logger.info(
     `AZURE_PRIMARY_KEY: ${
-      process.env.AZURE_PRIMARY_KEY ? "設定済み" : "未設定"
+      process.env.AZURE_PRIMARY_KEY ? "set" : "not set"
     }`,
   );
   logger.info(
     `AZURE_SECONDARY_KEY: ${
-      process.env.AZURE_SECONDARY_KEY ? "設定済み" : "未設定"
+      process.env.AZURE_SECONDARY_KEY ? "set" : "not set"
     }`,
   );
-  logger.info(`AZURE_ACTIVE_KEY: ${process.env.AZURE_ACTIVE_KEY || "未設定"}`);
+  logger.info(`AZURE_ACTIVE_KEY: ${process.env.AZURE_ACTIVE_KEY || "not set"}`);
 
   const config = getAzureConfig();
   if (!config.tenantId || !config.primaryKey) {
-    logger.warn("Azure設定が不完全です。環境変数を確認してください。");
     logger.warn(
-      `現在の設定: tenantId=${
-        config.tenantId ? "設定済み" : "未設定"
-      }, primaryKey=${config.primaryKey ? "設定済み" : "未設定"}, endpoint=${
-        config.endpoint ? "設定済み" : "未設定"
+      "Azure settings are incomplete. Please check environment variables.",
+    );
+    logger.warn(
+      `Current settings: tenantId=${
+        config.tenantId ? "set" : "not set"
+      }, primaryKey=${config.primaryKey ? "set" : "not set"}, endpoint=${
+        config.endpoint ? "set" : "not set"
       }`,
     );
   } else {
-    logger.info("Azure設定が正常に読み込まれました。");
+    logger.info("Azure settings loaded successfully.");
     logger.info(
       `tenantId: ${config.tenantId}, endpoint: ${config.endpoint}, activeKey: ${config.activeKey}`,
     );
   }
 } catch (error) {
-  logger.error("Azure設定の取得に失敗しました:", error.message);
+  logger.error("Failed to get Azure settings:", error.message);
 }
 
-// ユーザーのプロジェクトIDを保存するエンドポイント
+// Endpoint to save user's project ID
 exports.saveProject = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // POSTメソッド以外は拒否
+    // Reject non-POST methods
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -373,24 +375,24 @@ exports.saveProject = onRequest(
         return res.status(400).json({ error: "Project ID is required" });
       }
 
-      // Firebaseトークンを検証
+      // Verify Firebase token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       try {
-        // Firestoreトランザクションを使用して両方のコレクションを更新
+        // Update both collections using Firestore transaction
         await db.runTransaction(async transaction => {
           const userDocRef = userProjectsCollection.doc(userId);
           const projectDocRef = db.collection("projectUsers").doc(
             projectId,
           );
 
-          // すべての読み取り操作を先に実行
+          // Execute all read operations first
           const userDoc = await transaction.get(userDocRef);
           const projectDoc = await transaction.get(projectDocRef);
 
-          // 読み取り完了後に書き込み操作を開始
-          // ユーザーのデフォルトプロジェクトIDとアクセス可能なプロジェクトIDを更新
+          // Start write operations after read completion
+          // Update user's default project ID and accessible project IDs
           if (userDoc.exists) {
             const userData = userDoc.data();
             const accessibleProjectIds = userData.accessibleProjectIds || [];
@@ -414,7 +416,7 @@ exports.saveProject = onRequest(
             });
           }
 
-          // プロジェクトのアクセス可能なユーザーIDを更新
+          // Update accessible user IDs for the project
           if (projectDoc.exists) {
             const projectData = projectDoc.data();
             const accessibleUserIds = projectData.accessibleUserIds || [];
@@ -463,19 +465,19 @@ exports.saveProject = onRequest(
   }),
 );
 
-// ユーザーがアクセス可能なプロジェクトIDのリストを取得するエンドポイント
+// Endpoint to get the list of project IDs accessible by the user
 exports.getUserProjects = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // POSTメソッド以外は拒否
+    // Reject non-POST methods
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -483,7 +485,7 @@ exports.getUserProjects = onRequest(
     try {
       const { idToken } = req.body;
 
-      // Firebaseトークンを検証
+      // Verify Firebase token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
@@ -507,19 +509,19 @@ exports.getUserProjects = onRequest(
   }),
 );
 
-// ユーザーのコンテナIDを保存するエンドポイント
+// Endpoint to save user's container ID
 exports.saveContainer = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // POSTメソッド以外は拒否
+    // Reject non-POST methods
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -531,24 +533,24 @@ exports.saveContainer = onRequest(
         return res.status(400).json({ error: "Container ID is required" });
       }
 
-      // Firebaseトークンを検証
+      // Verify Firebase token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       try {
-        // Firestoreトランザクションを使用して両方のコレクションを更新
+        // Update both collections using Firestore transaction
         await db.runTransaction(async transaction => {
           const userDocRef = userContainersCollection.doc(userId);
           const containerDocRef = db.collection("containerUsers").doc(
             containerId,
           );
 
-          // すべての読み取り操作を先に実行
+          // Execute all read operations first
           const userDoc = await transaction.get(userDocRef);
           const containerDoc = await transaction.get(containerDocRef);
 
-          // 読み取り完了後に書き込み操作を開始
-          // ユーザーのアクセス可能なコンテナIDを更新
+          // Start write operations after read completion
+          // Update user's accessible container IDs
           if (userDoc.exists) {
             const userData = userDoc.data();
             const accessibleContainerIds = userData.accessibleContainerIds ||
@@ -571,7 +573,7 @@ exports.saveContainer = onRequest(
             });
           }
 
-          // コンテナのアクセス可能なユーザーIDを更新
+          // Update accessible user IDs for the container
           if (containerDoc.exists) {
             const containerData = containerDoc.data();
             const accessibleUserIds = containerData.accessibleUserIds || [];
@@ -624,19 +626,19 @@ exports.saveContainer = onRequest(
   }),
 );
 
-// ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
+// Endpoint to get the list of container IDs accessible by the user
 exports.getUserContainers = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // POSTメソッド以外は拒否
+    // Reject non-POST methods
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -644,7 +646,7 @@ exports.getUserContainers = onRequest(
     try {
       const { idToken } = req.body;
 
-      // Firebaseトークンを検証
+      // Verify Firebase token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
@@ -676,24 +678,24 @@ exports.getUserContainers = onRequest(
   }),
 );
 
-// テストユーザーを作成するエンドポイント
+// Endpoint to create a test user
 exports.createTestUser = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // POSTメソッド以外は拒否
+    // Reject non-POST methods
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    // 本番環境チェック
+    // Production environment check
     const isProduction = !process.env.FUNCTIONS_EMULATOR &&
       !process.env.FIRESTORE_EMULATOR_HOST &&
       process.env.NODE_ENV === "production";
@@ -738,19 +740,19 @@ exports.createTestUser = onRequest(
   }),
 );
 
-// ユーザーを削除するエンドポイント
+// Endpoint to delete a user
 exports.deleteUser = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // POSTメソッド以外は拒否
+    // Reject non-POST methods
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -762,14 +764,14 @@ exports.deleteUser = onRequest(
         return res.status(400).json({ error: "ID token is required" });
       }
 
-      // Firebaseトークンを検証
+      // Verify Firebase token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       try {
-        // Firestoreトランザクションを使用してユーザー関連データを削除
+        // Delete user-related data using Firestore transaction
         await db.runTransaction(async transaction => {
-          // ユーザーのコンテナ情報を取得
+          // Get user's container information
           const userDocRef = userContainersCollection.doc(userId);
           const userDoc = await transaction.get(userDocRef);
 
@@ -778,7 +780,7 @@ exports.deleteUser = onRequest(
             const accessibleContainerIds = userData.accessibleContainerIds ||
               [];
 
-            // ユーザーがアクセス可能な各コンテナから、ユーザーIDを削除
+            // Remove user ID from each container accessible by the user
             for (const containerId of accessibleContainerIds) {
               const containerDocRef = db.collection("containerUsers").doc(
                 containerId,
@@ -789,16 +791,16 @@ exports.deleteUser = onRequest(
                 const containerData = containerDoc.data();
                 const accessibleUserIds = containerData.accessibleUserIds || [];
 
-                // ユーザーIDを削除
+                // Delete user ID
                 const updatedUserIds = accessibleUserIds.filter(id =>
                   id !== userId
                 );
 
                 if (updatedUserIds.length === 0) {
-                  // ユーザーがいなくなった場合はコンテナドキュメントを削除
+                  // Delete container document if no users are left
                   transaction.delete(containerDocRef);
                 } else {
-                  // ユーザーIDを更新
+                  // Update user ID
                   transaction.update(containerDocRef, {
                     accessibleUserIds: updatedUserIds,
                     updatedAt: FieldValue.serverTimestamp(),
@@ -807,12 +809,12 @@ exports.deleteUser = onRequest(
               }
             }
 
-            // ユーザーのコンテナ情報を削除
+            // Delete user's container information
             transaction.delete(userDocRef);
           }
         });
 
-        // Firebase Authからユーザーを削除
+        // Delete user from Firebase Auth
         await admin.auth().deleteUser(userId);
 
         logger.info(`User ${userId} and related data deleted successfully`);
@@ -838,7 +840,7 @@ exports.deleteUser = onRequest(
   }),
 );
 
-// プロジェクトを削除するエンドポイント
+// Endpoint to delete a project
 /**
  * Deletes a project and its associated data.
  * API Endpoint for project deletion.
@@ -846,15 +848,15 @@ exports.deleteUser = onRequest(
 exports.deleteProject = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // POSTメソッド以外は拒否
+    // Reject non-POST methods
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -870,14 +872,14 @@ exports.deleteProject = onRequest(
         return res.status(400).json({ error: "Project ID is required" });
       }
 
-      // Firebaseトークンを検証
+      // Verify Firebase token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       try {
-        // Firestoreトランザクションを使用してプロジェクト関連データを削除
+        // Delete project-related data using Firestore transaction
         await db.runTransaction(async transaction => {
-          // プロジェクト情報を取得
+          // Get project information
           const projectDocRef = db.collection("projectUsers").doc(
             projectId,
           );
@@ -890,7 +892,7 @@ exports.deleteProject = onRequest(
           const projectData = projectDoc.data();
           const accessibleUserIds = projectData.accessibleUserIds || [];
 
-          // ユーザーがこのプロジェクトにアクセスできるか確認
+          // Check if user has access to this project
           if (!accessibleUserIds.includes(userId)) {
             throw new Error("Access to the project is denied");
           }
@@ -903,12 +905,12 @@ exports.deleteProject = onRequest(
             const userData = userDoc.data();
             const accessibleProjectIds = userData.accessibleProjectIds || [];
 
-            // プロジェクトIDを削除
+            // Delete project ID
             const updatedProjectIds = accessibleProjectIds.filter(id =>
               id !== projectId
             );
 
-            // デフォルトプロジェクトの更新
+            // Update default project
             let defaultProjectId = userData.defaultProjectId;
             if (defaultProjectId === projectId) {
               defaultProjectId = updatedProjectIds.length > 0 ?
@@ -995,19 +997,19 @@ exports.fluidToken404 = onRequest(
   }),
 );
 
-// プロジェクトにアクセス可能なユーザーのリストを取得するエンドポイント（管理者用）
+// Endpoint to get the list of users accessible to the project (for admin)
 exports.getProjectUsers = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // POSTメソッド以外は拒否
+    // Reject non-POST methods
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -1023,18 +1025,18 @@ exports.getProjectUsers = onRequest(
         return res.status(400).json({ error: "ID token required" });
       }
 
-      // 空文字列のIDトークンもチェック
+      // Check for empty string ID token
       if (idToken.trim() === "") {
         return res.status(400).json({ error: "ID token required" });
       }
 
-      // 明らかに無効なトークン形式をチェック
+      // Check for clearly invalid token format
       if (typeof idToken !== "string" || idToken.length < 10) {
         logger.error(`Invalid token format: ${idToken}`);
         return res.status(401).json({ error: "Authentication failed" });
       }
 
-      // CI環境での特別な処理：明らかに無効なトークンを早期に検出
+      // Special handling in CI environment: detect clearly invalid token early
       if (process.env.CI === "true" && idToken === "invalid-token") {
         logger.error("CI environment: Detected invalid-token, returning 401");
         return res.status(401).json({ error: "Authentication failed" });
@@ -1042,10 +1044,10 @@ exports.getProjectUsers = onRequest(
 
       let decodedToken;
       try {
-        // Firebase Auth エミュレーターの準備状況をチェック
+        // Check readiness of Firebase Auth emulator
         if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
           try {
-            // エミュレーターが利用可能かテスト
+            // Test if emulator is available
             await admin.auth().listUsers(1);
           } catch (emulatorError) {
             logger.error(
@@ -1057,10 +1059,10 @@ exports.getProjectUsers = onRequest(
           }
         }
 
-        // Firebaseトークンを検証
+        // Verify Firebase token
         decodedToken = await admin.auth().verifyIdToken(idToken);
 
-        // デコードされたトークンが有効かチェック
+        // Check if decoded token is valid
         if (!decodedToken || !decodedToken.uid) {
           logger.error("Decoded token is invalid or missing uid");
           return res.status(401).json({ error: "Authentication failed" });
@@ -1108,19 +1110,19 @@ exports.getProjectUsers = onRequest(
   }),
 );
 
-// 全ユーザー一覧を取得するエンドポイント（管理者用）
+// Endpoint to get all users list (for admin)
 exports.listUsers = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // POSTメソッド以外は拒否
+    // Reject non-POST methods
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -1132,18 +1134,18 @@ exports.listUsers = onRequest(
         return res.status(400).json({ error: "ID token required" });
       }
 
-      // 空文字列のIDトークンもチェック
+      // Check for empty string ID token
       if (idToken.trim() === "") {
         return res.status(400).json({ error: "ID token required" });
       }
 
-      // 明らかに無効なトークン形式をチェック
+      // Check for clearly invalid token format
       if (typeof idToken !== "string" || idToken.length < 10) {
         logger.error(`Invalid token format: ${idToken}`);
         return res.status(401).json({ error: "Authentication failed" });
       }
 
-      // CI環境での特別な処理：明らかに無効なトークンを早期に検出
+      // Special handling in CI environment: detect clearly invalid token early
       if (process.env.CI === "true" && idToken === "invalid-token") {
         logger.error("CI environment: Detected invalid-token, returning 401");
         return res.status(401).json({ error: "Authentication failed" });
@@ -1151,10 +1153,10 @@ exports.listUsers = onRequest(
 
       let decodedToken;
       try {
-        // Firebase Auth エミュレーターの準備状況をチェック
+        // Check readiness of Firebase Auth emulator
         if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
           try {
-            // エミュレーターが利用可能かテスト
+            // Test if emulator is available
             await admin.auth().listUsers(1);
           } catch (emulatorError) {
             logger.error(
@@ -1168,7 +1170,7 @@ exports.listUsers = onRequest(
 
         decodedToken = await admin.auth().verifyIdToken(idToken);
 
-        // デコードされたトークンが有効かチェック
+        // Check if decoded token is valid
         if (!decodedToken || !decodedToken.uid) {
           logger.error("Decoded token is invalid or missing uid");
           return res.status(401).json({ error: "Authentication failed" });
@@ -1212,19 +1214,19 @@ exports.listUsers = onRequest(
   }),
 );
 
-// ヘルスチェックエンドポイント
+// Health check endpoint
 exports.health = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // GETメソッドのみ許可
+    // Allow only GET method
     if (req.method !== "GET") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -1260,7 +1262,7 @@ exports.createSchedule = onRequest(
     }
 
     try {
-      // エミュレーター環境の確認
+      // Check emulator environment
       logger.info(
         `createSchedule: Environment check - FIREBASE_AUTH_EMULATOR_HOST: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`,
       );
@@ -1273,8 +1275,8 @@ exports.createSchedule = onRequest(
 
       let uid;
 
-      // Firebase Admin SDKでトークンを検証
-      // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
+      // Verify token with Firebase Admin SDK
+      // Set checkRevoked: false in emulator environment as unsigned tokens are issued
       const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
         process.env.FUNCTIONS_EMULATOR === "true");
 
@@ -1285,7 +1287,7 @@ exports.createSchedule = onRequest(
       }
 
       try {
-        // エミュレーター環境では checkRevoked: false を設定
+        // Set checkRevoked: false in emulator environment
         const decoded = await admin.auth().verifyIdToken(
           idToken,
           !isEmulatorEnv,
@@ -1300,7 +1302,7 @@ exports.createSchedule = onRequest(
           `createSchedule: Token verification failed: ${tokenError.message}`,
         );
 
-        // エミュレーター環境でのフォールバック（最後の手段）
+        // Fallback in emulator environment (last resort)
         if (
           isEmulatorEnv && idToken && typeof idToken === "string" &&
           idToken.length > 0
@@ -1314,7 +1316,7 @@ exports.createSchedule = onRequest(
         }
       }
 
-      // 重要なデバッグ情報: 受信したページIDとスケジュール
+      // Important debug info: received pageId and schedule
       try {
         logger.info(
           `createSchedule: pageId=${pageId}, nextRunAt=${schedule?.nextRunAt}`,
@@ -1415,8 +1417,8 @@ exports.updateSchedule = onRequest(
     try {
       let uid;
 
-      // Firebase Admin SDKでトークンを検証
-      // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
+      // Verify token with Firebase Admin SDK
+      // Set checkRevoked: false in emulator environment as unsigned tokens are issued
       const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
         process.env.FUNCTIONS_EMULATOR === "true");
 
@@ -1427,7 +1429,7 @@ exports.updateSchedule = onRequest(
       }
 
       try {
-        // エミュレーター環境では checkRevoked: false を設定
+        // Set checkRevoked: false in emulator environment
         const decoded = await admin.auth().verifyIdToken(
           idToken,
           !isEmulatorEnv,
@@ -1442,7 +1444,7 @@ exports.updateSchedule = onRequest(
           `updateSchedule: Token verification failed: ${tokenError.message}`,
         );
 
-        // エミュレーター環境でのフォールバック（最後の手段）
+        // Fallback in emulator environment (last resort)
         if (
           isEmulatorEnv && idToken && typeof idToken === "string" &&
           idToken.length > 0
@@ -1464,8 +1466,8 @@ exports.updateSchedule = onRequest(
       if (!scheduleSnap.exists) {
         return res.status(404).json({ error: "Schedule not found" });
       }
-      // 権限チェック：スケジュールの作成者のみが更新可能
-      // エミュレーター環境では、権限チェックを緩和
+      // Permission check: only the creator of the schedule can update it
+      // Relax permission check in emulator environment
       const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST ||
         process.env.FUNCTIONS_EMULATOR === "true";
       if (!isEmulator && scheduleSnap.data().createdBy !== uid) {
@@ -1515,8 +1517,8 @@ exports.listSchedules = onRequest(
     }
 
     try {
-      // Firebase Admin SDKでトークンを検証
-      // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
+      // Verify token with Firebase Admin SDK
+      // Set checkRevoked: false in emulator environment as unsigned tokens are issued
       const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
         process.env.FUNCTIONS_EMULATOR === "true");
 
@@ -1527,7 +1529,7 @@ exports.listSchedules = onRequest(
       }
 
       try {
-        // エミュレーター環境では checkRevoked: false を設定
+        // Set checkRevoked: false in emulator environment
         const decoded = await admin.auth().verifyIdToken(
           idToken,
           !isEmulatorEnv,
@@ -1541,7 +1543,7 @@ exports.listSchedules = onRequest(
           `listSchedules: Token verification failed: ${tokenError.message}`,
         );
 
-        // エミュレーター環境でのフォールバック（最後の手段）
+        // Fallback in emulator environment (last resort)
         if (
           isEmulatorEnv && idToken && typeof idToken === "string" &&
           idToken.length > 0
@@ -1709,8 +1711,8 @@ exports.cancelSchedule = onRequest(
     try {
       let uid;
 
-      // Firebase Admin SDKでトークンを検証
-      // エミュレーター環境では署名なしトークンが発行されるため、checkRevoked: falseを設定
+      // Verify token with Firebase Admin SDK
+      // Set checkRevoked: false in emulator environment as unsigned tokens are issued
       const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
         process.env.FUNCTIONS_EMULATOR === "true");
 
@@ -1721,7 +1723,7 @@ exports.cancelSchedule = onRequest(
       }
 
       try {
-        // エミュレーター環境では checkRevoked: false を設定
+        // Set checkRevoked: false in emulator environment
         const decoded = await admin.auth().verifyIdToken(
           idToken,
           !isEmulatorEnv,
@@ -1736,7 +1738,7 @@ exports.cancelSchedule = onRequest(
           `cancelSchedule: Token verification failed: ${tokenError.message}`,
         );
 
-        // エミュレーター環境でのフォールバック（最後の手段）
+        // Fallback in emulator environment (last resort)
         if (
           isEmulatorEnv && idToken && typeof idToken === "string" &&
           idToken.length > 0
@@ -1758,8 +1760,8 @@ exports.cancelSchedule = onRequest(
       if (!scheduleSnap.exists) {
         return res.status(404).json({ error: "Schedule not found" });
       }
-      // 権限チェック：スケジュールの作成者のみがキャンセル可能
-      // エミュレーター環境では、権限チェックを緩和
+      // Permission check: only the creator of the schedule can cancel it
+      // Relax permission check in emulator environment
       const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST ||
         process.env.FUNCTIONS_EMULATOR === "true";
       if (!isEmulator && scheduleSnap.data().createdBy !== uid) {
@@ -1879,7 +1881,7 @@ exports.uploadAttachment = onRequest(
         return res.status(403).json({ error: "Access denied to container" });
       }
 
-      // テスト環境では適切なバケット名を設定
+      // Set appropriate bucket name in test environment
       const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
         process.env.NODE_ENV === "development";
       const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
@@ -1936,7 +1938,7 @@ exports.uploadAttachment = onRequest(
       let url;
 
       if (isEmulator) {
-        // Emulator環境では直接URLを生成
+        // Generate direct URL in Emulator environment
         const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
           "localhost:59200";
         url = `http://${storageHost}/v0/b/${bucket.name}/o/${
@@ -1944,7 +1946,7 @@ exports.uploadAttachment = onRequest(
         }?alt=media`;
         logger.info(`uploadAttachment generated emulator URL: ${url}`);
       } else {
-        // 本番環境では署名付きURLを生成
+        // Generate signed URL in production environment
         const [signedUrl] = await file.getSignedUrl({
           action: "read",
           expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
@@ -1998,7 +2000,7 @@ exports.listAttachments = onRequest(
         return res.status(403).json({ error: "Access denied to container" });
       }
 
-      // テスト環境では適切なバケット名を設定
+      // Set appropriate bucket name in test environment
       const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
         process.env.NODE_ENV === "development";
       const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
@@ -2010,7 +2012,7 @@ exports.listAttachments = onRequest(
       let urls;
 
       if (isEmulator) {
-        // Emulator環境では直接URLを生成
+        // Generate direct URL in Emulator environment
         const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
           "localhost:59200";
         urls = files.map(file => {
@@ -2020,7 +2022,7 @@ exports.listAttachments = onRequest(
           }?alt=media`;
         });
       } else {
-        // 本番環境では署名付きURLを生成
+        // Generate signed URL in production environment
         urls = await Promise.all(
           files.map(f =>
             f.getSignedUrl({
@@ -2073,7 +2075,7 @@ exports.deleteAttachment = onRequest(
         return res.status(403).json({ error: "Access denied to container" });
       }
 
-      // テスト環境では適切なバケット名を設定
+      // Set appropriate bucket name in test environment
       const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
         process.env.NODE_ENV === "development";
       const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
@@ -2097,7 +2099,7 @@ exports.deleteAttachment = onRequest(
   }),
 );
 
-// 管理者チェック API
+// Admin check API
 exports.adminCheckForProjectUserListing = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
@@ -2110,7 +2112,7 @@ exports.adminCheckForProjectUserListing = onRequest(
     }
 
     try {
-      // IDトークンの検証（Authorizationヘッダーまたはリクエストボディから取得）
+      // Verify ID token (get from Authorization header or request body)
       let idToken = req.headers.authorization?.replace("Bearer ", "");
       if (!idToken) {
         idToken = req.body.idToken;
@@ -2126,17 +2128,17 @@ exports.adminCheckForProjectUserListing = onRequest(
         return res.status(400).json({ error: "ID token required" });
       }
 
-      // projectId パラメータの検証
+      // Validate projectId parameter
       const { projectId } = req.body;
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
       }
 
-      // Firebase Admin SDKでIDトークンを検証
+      // Verify ID token with Firebase Admin SDK
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const uid = decodedToken.uid;
 
-      // 管理者権限の確認
+      // Check admin privileges
       const userRecord = await admin.auth().getUser(uid);
       const customClaims = userRecord.customClaims || {};
 
@@ -2144,7 +2146,7 @@ exports.adminCheckForProjectUserListing = onRequest(
         return res.status(403).json({ error: "Admin access required" });
       }
 
-      // プロジェクトのユーザーリストを取得（実際の実装では Firestore から取得）
+      // Get project user list (fetched from Firestore in actual implementation)
       const db = admin.firestore();
       const projectDoc = await db.collection("projects").doc(projectId)
         .get();
@@ -2179,7 +2181,7 @@ exports.adminCheckForProjectUserListing = onRequest(
   }),
 );
 
-// 管理者ユーザーリスト API
+// Admin user list API
 exports.adminUserList = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
@@ -2190,17 +2192,17 @@ exports.adminUserList = onRequest(
     }
 
     try {
-      // IDトークンの検証
+      // Verify ID token
       const idToken = req.headers.authorization?.replace("Bearer ", "");
       if (!idToken) {
         return res.status(400).json({ error: "ID token required" });
       }
 
-      // Firebase Admin SDKでIDトークンを検証
+      // Verify ID token with Firebase Admin SDK
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const uid = decodedToken.uid;
 
-      // 管理者権限の確認
+      // Check admin privileges
       const userRecord = await admin.auth().getUser(uid);
       const customClaims = userRecord.customClaims || {};
 
@@ -2208,7 +2210,7 @@ exports.adminUserList = onRequest(
         return res.status(403).json({ error: "Admin access required" });
       }
 
-      // ユーザーリストを取得
+      // Get user list
       const listUsersResult = await admin.auth().listUsers();
       const users = listUsersResult.users.map(user => ({
         uid: user.uid,
@@ -2240,7 +2242,7 @@ exports.adminUserList = onRequest(
   }),
 );
 
-// デバッグ用: ユーザーのプロジェクトアクセス権限を確認するAPI
+// For debug: API to check user's project access permissions
 exports.debugUserProjects = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
@@ -2257,19 +2259,19 @@ exports.debugUserProjects = onRequest(
         return res.status(400).json({ error: "ID token is required" });
       }
 
-      // Firebase IDトークンを検証
+      // Verify Firebase ID token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       logger.info(`Debug: Checking projects for user: ${userId}`);
 
-      // userProjects コレクションを確認
+      // Check userProjects collection
       const userProjectDoc = await db.collection("userProjects").doc(userId)
         .get();
       const userProjectData = userProjectDoc.exists ?
         userProjectDoc.data() : null;
 
-      // projectUsers コレクションで該当するドキュメントを検索
+      // Search matching documents in projectUsers collection
       const projectUsersQuery = await db.collection("projectUsers")
         .where("accessibleUserIds", "array-contains", userId)
         .get();
@@ -2304,19 +2306,19 @@ exports.debugUserProjects = onRequest(
   }),
 );
 
-// 本番環境データ全削除エンドポイント（管理者専用）
+// Endpoint to delete all production data (Admin only)
 exports.deleteAllProductionData = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    // CORS設定
+    // CORS settings
     setCorsHeaders(req, res);
 
-    // プリフライト OPTIONS リクエストの処理
+    // Handle preflight OPTIONS request
     if (req.method === "OPTIONS") {
       return res.status(204).end();
     }
 
-    // POSTメソッド以外は拒否
+    // Reject non-POST methods
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -2324,14 +2326,14 @@ exports.deleteAllProductionData = onRequest(
     try {
       const { adminToken, confirmationCode } = req.body;
 
-      // 管理者トークンの検証
+      // Verify admin token
       const adminSecret = process.env.ADMIN_DELETE_TOKEN;
       if (!adminToken || !adminSecret || adminToken !== adminSecret) {
         logger.warn("Unauthorized attempt to delete all production data");
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      // 確認コードの検証
+      // Verify confirmation code
       if (
         !confirmationCode ||
         confirmationCode !== "DELETE_ALL_PRODUCTION_DATA_CONFIRM"
@@ -2340,7 +2342,7 @@ exports.deleteAllProductionData = onRequest(
         return res.status(400).json({ error: "Invalid confirmation code" });
       }
 
-      // 本番環境チェック
+      // Production environment check
       const isProduction = !process.env.FUNCTIONS_EMULATOR &&
         !process.env.FIRESTORE_EMULATOR_HOST &&
         process.env.NODE_ENV === "production";
@@ -2362,12 +2364,12 @@ exports.deleteAllProductionData = onRequest(
         storage: { success: false, error: null, deletedFiles: 0 },
       };
 
-      // 1. Firestore データ削除
+      // 1. Delete Firestore data
       try {
         logger.info("Deleting all Firestore data...");
         const db = admin.firestore();
 
-        // 主要なコレクションを削除
+        // Delete major collections
         const collections = [
           "users",
           "projects",
@@ -2387,14 +2389,14 @@ exports.deleteAllProductionData = onRequest(
               batch.delete(doc.ref);
               batchCount++;
 
-              // Firestoreのバッチ制限（500件）に達したら実行
+              // Execute when Firestore batch limit (500) is reached
               if (batchCount >= 500) {
                 await batch.commit();
                 batchCount = 0;
               }
             }
 
-            // 残りのドキュメントを削除
+            // Delete remaining documents
             if (batchCount > 0) {
               await batch.commit();
             }
@@ -2423,7 +2425,7 @@ exports.deleteAllProductionData = onRequest(
         deletionResults.firestore.error = firestoreError.message;
       }
 
-      // 2. Firebase Auth ユーザー削除
+      // 2. Delete Firebase Auth users
       try {
         logger.info("Deleting all Firebase Auth users...");
 
@@ -2460,7 +2462,7 @@ exports.deleteAllProductionData = onRequest(
         deletionResults.auth.error = authError.message;
       }
 
-      // 3. Firebase Storage ファイル削除
+      // 3. Delete Firebase Storage files
       try {
         logger.info("Deleting all Firebase Storage files...");
 
