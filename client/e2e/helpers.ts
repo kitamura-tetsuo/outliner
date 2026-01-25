@@ -29,8 +29,8 @@ export async function ensureOutlinerItemCount(page: Page, count: number, timeout
 
 /**
  * カーソルが表示されるのを待つ
- * @param page Playwrightのページオブジェクト
- * @param timeout タイムアウト時間（ミリ秒）
+ * @param page Playwright page object
+ * @param timeout Timeout in milliseconds
  */
 export async function waitForCursorVisible(page: Page, timeout: number = 10000): Promise<boolean> {
     try {
@@ -75,7 +75,7 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
 
 /**
  * カーソルデバッグ関数をブラウザコンテキストに注入する
- * TestHelpers の実装を再利用し、存在しない場合は安全にスキップする
+ * Reuse TestHelpers implementation, safe skip if missing
  */
 export async function setupCursorDebugger(page: Page): Promise<void> {
     const helpersAny = TestHelpers as unknown as { setupCursorDebugger?: (page: Page) => Promise<void>; };
@@ -95,12 +95,12 @@ export async function setupCursorDebugger(page: Page): Promise<void> {
     });
 }
 
-// NOTE: e2e では Playwright/JSDOM 上の window 構造が実行時に変化するため、
-// (window as any) などの any キャストを意図的に使用しています。型安全性よりも
-// 実ブラウザ挙動の再現性・安定性を優先するテスト特有の緩和であり、
-// 本番コードには any キャストを持ち込まない方針です。
+// NOTE: In e2e, window structure on Playwright/JSDOM changes at runtime,
+// so we intentionally use any casts like (window as any). This is a test-specific relaxation
+// prioritizing reproducibility/stability of real browser behavior over type safety.
+// We do not bring any casts into production code.
 
-// グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
+// Extend global type definitions (add functionality to window object for tests)
 declare global {
     interface Window {
         mockUser?: { id: string; name: string; email?: string; };

@@ -41,10 +41,10 @@ if (!process.env.CI) {
     console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
     console.log(`Loading environment from: ${envFilePath}`);
 
-    // ファイルが存在するか確認
+    // Check if file exists
     if (fs.existsSync(envFilePath)) {
         console.log(`Loading test environment from: ${envFilePath}`);
-        // 環境変数を読み込む
+        // Load environment variables
         const result = dotenv.config({ path: envFilePath, override: true });
 
         if (result.error) {
@@ -57,12 +57,12 @@ if (!process.env.CI) {
     }
 }
 
-// E2Eテスト用環境変数のセットアップ
+// Setup environment variables for E2E tests
 export function setupEnv() {
-    // .env.testから環境変数が読み込まれています
-    // ここでは追加の環境変数操作やテスト固有の設定のみを行います
+    // Environment variables are loaded from .env.test
+    // Only additional environment variable operations or test-specific settings are performed here
 
-    // ローカルストレージでも使用できるように、重要な変数を確認
+    // Check critical variables to ensure they can be used in localStorage
     const requiredVars = [
         "VITE_IS_TEST",
         "VITE_USE_FIREBASE_EMULATOR",

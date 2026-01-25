@@ -219,7 +219,7 @@ if (typeof window !== "undefined") {
     border-bottom: 1px solid #e5e7eb;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     padding: 0.75rem 1rem;
-    height: 4rem; /* 明示的な高さを設定 */
+    height: 4rem; /* Set explicit height */
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto;
@@ -291,8 +291,8 @@ if (typeof window !== "undefined") {
     }
 }
 
-/* .main-toolbar-placeholder は未使用のため削除 */
+/* .main-toolbar-placeholder deleted as unused */
 /* .main-toolbar-placeholder { */
-    /* height: 2.5rem; SearchBoxと同じ高さを確保 */
+    /* height: 2.5rem; Ensure same height as SearchBox */
 /* } */
 </style>

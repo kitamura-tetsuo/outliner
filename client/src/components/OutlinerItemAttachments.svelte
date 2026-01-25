@@ -14,10 +14,10 @@ interface Props {
 
 let { modelId, item }: Props = $props();
 
-// 添付ミラー（Yjs→UI）
+// Attachment mirror (Yjs->UI)
 let attachmentsMirror = $state<string[]>([]);
 
-// Yjs observe による添付の購読
+// Subscribe to attachments via Yjs observe
 onMount(() => {
     try {
         const yArr: any = (item as any)?.attachments;
@@ -29,18 +29,18 @@ onMount(() => {
             } catch {}
         };
         if (yArr && typeof yArr.observe === 'function' && typeof yArr.unobserve === 'function') {
-            read(); // 初期反映
+            read(); // Initial reflection
             const yHandler = () => { read(); };
             yArr.observe(yHandler);
             onDestroy(() => { try { yArr.unobserve(yHandler); } catch {} });
         } else {
-            // 予備: observe不可でも一度だけ反映
+            // Fallback: Reflect once even if observe is unavailable
             attachmentsMirror = ((item as any)?.attachments?.toArray?.() ?? []).map((u: any) => Array.isArray(u) ? u[0] : u);
         }
     } catch {}
 });
 
-// テスト環境用のイベントリスナー
+// Event listener for test environment
 onMount(() => {
     const onAtt = (_e: any) => {
         try {

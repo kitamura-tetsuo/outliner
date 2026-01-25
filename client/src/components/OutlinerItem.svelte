@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-    // ドラッグ開始位置（全アイテムで共有）
+    // Drag start position (shared by all items)
     let dragStartClientX = 0;
     let dragStartClientY = 0;
 
@@ -117,7 +117,7 @@ onMount(() => {
 });
 onMount(() => {
     // Yjs 接続切替などで openCommentItemId が現在のページに存在しない場合、
-    // インデックス優先で自動的に再オープン（E2E 安定化）
+        // Automatically reopen comment thread prioritizing index (E2E stabilization)
     try {
         const gs: any = generalStore as any;
         // Optimization: Only perform the expensive existence check if this item is a candidate for auto-reopen
@@ -2048,34 +2048,34 @@ export function setSelectionPosition(start: number, end: number = start) {
                             onchange={(e: Event) => handleComponentTypeChange(String((e.target as HTMLSelectElement)?.value ?? "none"))}
                             aria-label="Item component type"
                         >
-                            <option value="none">テキスト</option>
-                            <option value="table">テーブル</option>
-                            <option value="chart">チャート</option>
+                            <option value="none">Text</option>
+                            <option value="table">Table</option>
+                            <option value="chart">Chart</option>
                         </select>
                     </div>
                 {/if}
 
-                <!-- コンポーネント表示（テキストは非表示） -->
+                <!-- Component display (text is hidden) -->
                 {#if (componentType ?? compTypeValue) === "table"}
                     <InlineJoinTable />
                 {:else if (componentType ?? compTypeValue) === "chart"}
                     <ChartQueryEditor item={model.original} />
                     <ChartPanel item={model.original} />
                 {/if}
-                <!-- エイリアス表示 -->
+                <!-- Alias display -->
                 <OutlinerItemAlias modelId={model.id} item={item} isReadOnly={isReadOnly} isCollapsed={isCollapsed} />
             </div>
         </div>
 
         {#if !isPageTitle}
             <div class="item-actions">
-                <button onclick={addNewItem} title="新しいアイテムを追加" aria-label="Add new item">
+                <button onclick={addNewItem} title="Add new item" aria-label="Add new item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
                 </button>
-                <button onclick={handleDelete} title="削除" aria-label="Delete item">
+                <button onclick={handleDelete} title="Delete" aria-label="Delete item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -2085,7 +2085,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                     onclick={toggleVote}
                     class="vote-btn"
                     class:voted={model.votes.includes(currentUser)}
-                    title="投票"
+                    title="Vote"
                     aria-label="Vote for this item"
                     aria-pressed={model.votes.includes(currentUser)}
                 >
@@ -2119,7 +2119,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     margin: 0;
     padding-top: 4px;
     padding-bottom: 4px;
-    min-height: 24px; /* E2E安定化: 新規挿入直後も可視境界がゼロにならないようにする */
+    min-height: 24px; /* E2E stabilization: Ensure visible boundary is not zero immediately after new insertion */
 }
 
 .page-title {
@@ -2193,7 +2193,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     padding-bottom: 8px;
 }
 
-/* 編集中のスタイルは削除 */
+/* Editing styles deleted */
 
 .item-text {
     flex: 1;
@@ -2279,7 +2279,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     font-size: 1.2em;
 }
 
-/* フォーマットされたテキストのスタイル */
+/* Formatted text styles */
 :global(.item-text.formatted strong) {
     font-weight: bold;
 }
@@ -2299,7 +2299,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     border-radius: 3px;
 }
 
-/* リンクのスタイル */
+/* Link styles */
 :global(.item-text.formatted a) {
     color: #0078d7;
     text-decoration: none;
@@ -2309,7 +2309,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     text-decoration: underline;
 }
 
-/* 引用のスタイル */
+/* Quote styles */
 :global(.item-text.formatted blockquote) {
     margin: 0;
     padding-left: 10px;
@@ -2318,7 +2318,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     font-style: italic;
 }
 
-/* 制御文字のスタイル */
+/* Control character styles */
 :global(.control-char) {
     color: #aaa;
     font-size: 0.9em;
@@ -2328,7 +2328,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     padding: 0 2px;
 }
 
-/* ドラッグ＆ドロップ関連のスタイル */
+/* Drag & drop related styles */
 .item-content.dragging {
     opacity: 0.7;
     cursor: grabbing;
@@ -2366,8 +2366,8 @@ export function setSelectionPosition(start: number, end: number = start) {
     background-color: #0078d7;
     z-index: 10;
 }
-/* alias-path, alias-subtree, attachments, attachment-preview スタイルは削除 */
-/* OutlinerItemAlias.svelte と OutlinerItemAttachments.svelte に移動済み */
+/* alias-path, alias-subtree, attachments, attachment-preview styles deleted */
+/* Moved to OutlinerItemAlias.svelte and OutlinerItemAttachments.svelte */
 
 .comment-count {
     background-color: #e3f2fd;

@@ -22,7 +22,7 @@ test.describe("SRE-001: Advanced Search & Replace regex", () => {
         await expect(page.getByTestId("search-panel")).toBeVisible();
 
         // enable regex mode
-        const regexCheckbox = page.locator('label:has-text("正規表現") input');
+        const regexCheckbox = page.locator('label:has-text("Regex") input');
         await regexCheckbox.check();
         await expect(regexCheckbox).toBeChecked();
 

@@ -19,7 +19,7 @@ $effect(() => {
     currentVisible = [...visible]; // Create a new array to ensure reactivity
     currentQuery = query;
     
-    // デバッグ用にコンポーネントの状態をログ出力
+    // Log component state for debugging
     try {
         console.log('[SlashCommandPalette] isVisible:', commandPaletteStore.isVisible);
         console.log('[SlashCommandPalette] visible length:', visible.length);
@@ -63,7 +63,7 @@ $effect(() => {
     background:#eee;
 }
 
-/* デバッグ用のスタイル - 常に表示 */
+/* Debug style - always show */
 .debug-show {
     display: block !important;
     border: 2px solid red;
