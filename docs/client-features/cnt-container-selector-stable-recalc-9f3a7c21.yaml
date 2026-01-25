@@ -19,16 +19,16 @@ components:
 - client/src/stores/containerStore.svelte.ts
 - client/src/stores/firestoreStore.svelte.ts
 impact:
-- コンポーネント側の再計算は firestoreStore.ucVersion への依存で発火
-- setUserContainer 差し替え経路／Proxy 破壊的変更の両方で ucVersion++ により即時反映
-- テスト環境で ucVersion ポーリングを走らせることで初期化レースを緩和
+- Recalculation on the component side is triggered by dependency on firestoreStore.ucVersion
+- Immediate reflection by ucVersion++ in both setUserContainer replacement path and Proxy destructive changes
+- Initialization races are mitigated by running ucVersion polling in the test environment
 tradeoffs:
-- $state のトップレベル依存に寄せたため、ストア内にバージョンカウンタを持つ設計負債が増える
-- ポーリングはテスト環境限定とはいえ、コードパスが複雑化する
+- Since dependencies are concentrated on top-level $state, design debt of holding a version counter in the store increases
+- Polling is limited to the test environment, but the code path becomes complicated
 notes:
-- containerStore.containers は getter のまま。コンテナ名解決は従来通り。
-- 現行フェーズでは CustomEvent を完全に排除済み。PoC の成果を Production 相当フローで確認済み。
-- 今後は ucVersion 自体の整理（より宣言的な reactivity 経路への移行）を検討。
+- containerStore.containers remains a getter. Container name resolution is as before.
+- CustomEvents have been completely eliminated in the current phase. PoC results confirmed in Production-equivalent flow.
+- Future consideration of organizing ucVersion itself (migration to a more declarative reactivity path).
 tests:
 - client/src/tests/integration/cnt-container-selector-reactivity-e3f1a9c2.integration.spec.ts
 - client/src/tests/integration/snapshot-diff-modal-a11y-9f2d1c3a.integration.spec.ts

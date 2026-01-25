@@ -1,12 +1,12 @@
 id: CLM-0002
 title: Move left
 shortcut: ←
-description: カーソルを1文字左に移動します。
+description: Moves the cursor one character to the left.
 category: cursor-movement
 status: implemented
 acceptance:
-- カーソルを1文字左に移動する
-- 一番最初の文字にある時は、一つ前のアイテムの最後の文字へ移動する
+- Moves the cursor one character to the left
+- If at the first character, moves to the last character of the previous item
 tests:
 - client/e2e/core/clm-move-left-b4e61244.spec.ts
 title-ja: 左へ移動

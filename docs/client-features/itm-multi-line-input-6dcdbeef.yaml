@@ -4,9 +4,9 @@ description: Users can create multiple items by typing text and pressing Enter.
 category: item-management
 status: implemented
 acceptance:
-- Backspaceキーで文字を削除後、再入力したテキストが表示される
-- Enterキーを押すたびに新しいアイテムが追加される
-- 入力したテキストはそのアイテムだけに表示される
+- Text re-entered after deleting characters with Backspace is displayed
+- A new item is added each time Enter is pressed
+- The entered text is displayed only in that item
 tests:
 - client/e2e/core/itm-multi-line-input-6dcdbeef.spec.ts
 title-ja: 複数行テキスト入力

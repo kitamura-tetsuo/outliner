@@ -1,15 +1,15 @@
 id: LNK-0004
 title: Temporary page function
-description: 存在しないページへのリンクをクリックした場合に仮ページを表示し、編集時のみ実際のページとして保存する機能
+description: Feature to display a temporary page when clicking a link to a non-existent page, and save it as a real page only when edited
 category: navigation
 status: implemented
 acceptance:
-- 仮ページが保存された後は、通常のページとして扱われる
-- 仮ページであることを示すUIは表示されない（非表示設定）
-- 仮ページにアクセスしただけでは、ページは作成されない
-- 仮ページの通知UIは非表示になっている
-- 仮ページを編集した場合のみ、実際のページとして保存される
-- 存在しないページへのリンクをクリックした場合、仮ページを表示する
+- Once a temporary page is saved, it is treated as a normal page
+- UI indicating a temporary page is not displayed (hidden setting)
+- Simply accessing a temporary page does not create the page
+- The temporary page notification UI is hidden
+- Only when a temporary page is edited is it saved as a real page
+- Clicking a link to a non-existent page displays a temporary page
 tests:
 - client/e2e/core/lnk-temporary-page-display-08bbbbfc.spec.ts
 - client/e2e/core/lnk-temporary-page-edit-save-08bbbbfc.spec.ts
@@ -17,8 +17,8 @@ tests:
 - client/e2e/core/lnk-temporary-page-notice-buttons-08bbbbfc.spec.ts
 - client/e2e/core/lnk-temporary-page-notice-hidden-08bbbbfc.spec.ts
 testcases:
-- 存在しないページへのリンクをクリックした場合に仮ページが表示される
-- 仮ページを編集した場合に実際のページとして保存される
-- 仮ページにアクセスしただけではページが作成されないことを確認
-- 仮ページの通知UIが非表示になっている
+- Clicking a link to a non-existent page displays a temporary page
+- Editing a temporary page saves it as a real page
+- Confirm that simply accessing a temporary page does not create the page
+- The temporary page notification UI is hidden
 title-ja: 仮ページ機能

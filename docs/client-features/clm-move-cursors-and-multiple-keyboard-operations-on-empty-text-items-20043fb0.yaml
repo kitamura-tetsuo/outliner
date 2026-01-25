@@ -1,13 +1,13 @@
 id: CLM-0102
 title: Move cursors and multiple keyboard operations on empty text items
-description: 空のテキストアイテムでのカーソル移動と、クリック後の複数回のキーボード操作が正しく機能することを確認します。
+description: Verifies that cursor movement on empty text items and multiple keyboard operations after clicking work correctly.
 category: cursor-management
 status: implemented
 tests:
 - client/e2e/core/clm-move-cursors-and-multiple-keyboard-operations-on-empty-text-items-20043fb0.spec.ts
 acceptance:
-- アイテム間を移動しても常に1つのカーソルだけが表示される
-- クリック後に複数回のキーボード操作でカーソルが正しく移動する
-- 入力が正しいアイテムに行われる
-- 空のテキストアイテム間をキーボードで移動できる
+- Only one cursor is displayed even when moving between items
+- Cursor moves correctly with multiple keyboard operations after clicking
+- Input goes to the correct item
+- Can move between empty text items using keyboard
 title-ja: 空のテキストアイテムでのカーソル移動と複数回のキーボード操作

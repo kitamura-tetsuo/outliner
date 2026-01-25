@@ -1,13 +1,13 @@
 id: CLM-0101
 title: Cursor duplication and input distribution problems when moving between items
-description: アイテム間を移動する際に、複数のカーソルが生成され、入力が複数のアイテムに分散する問題を検出します。
+description: Detects problems where multiple cursors are generated and input is distributed across multiple items when moving between items.
 category: cursor-management
 status: implemented
 tests:
 - client/e2e/core/clm-cursor-duplication-and-input-distribution-problems-when-moving-between-items-be4c0ba6.spec.ts
 acceptance:
-- 1番目のアイテムに「123」の繰り返しが表示される問題を検出する
-- 入力が複数のアイテムに分散する問題を検出する
-- 異なる位置に複数のカーソルが表示される問題を検出する
-- 複数のアイテムをクリックすると、複数のカーソルが生成される問題を検出する
+- Detects the problem where "123" repetition appears in the first item
+- Detects the problem where input is distributed across multiple items
+- Detects the problem where multiple cursors appear at different positions
+- Detects the problem where multiple cursors are generated when clicking multiple items
 title-ja: アイテム間移動時のカーソル重複と入力分散問題

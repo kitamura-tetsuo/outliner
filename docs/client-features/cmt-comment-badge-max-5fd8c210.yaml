@@ -1,9 +1,9 @@
 id: CMT-5fd8c210
 title: OutlinerItem comment badge reflects Yjs count (max logic)
 title-ja: コメント数バッジは Yjs の件数（最大値ロジック）を表示する
-description: 'OutlinerItem の commentCountVisual は Yjs 由来値とローカルフォールバックの最大値を用いる。
-
-  Yjs 側で add/delete を行った際に、バッジの件数が正確に増減し、最大値を表示することを確認する。
+description: 'OutlinerItem''s commentCountVisual uses the maximum value of the Yjs-derived
+  value and the local fallback. Verify that when add/delete is performed on the Yjs
+  side, the badge count increases/decreases accurately and displays the maximum value.
 
   '
 category: comments
@@ -12,10 +12,10 @@ components:
 - client/src/components/CommentThread.svelte
 - client/src/components/OutlinerItem.svelte
 impact:
-- コメント件数の視認性と整合性が向上
+- Improved visibility and consistency of comment counts
 tradeoffs:
-- DOM フォールバックによる一時的上書きの経路が残るため、将来的に整理予定
+- The path for temporary overwriting by DOM fallback remains, so it is planned to be organized in the future
 notes:
-- スレッド未展開時でも Y.Array('comments') の observe により件数が更新される（最小粒度の Yjs observe）
+- Even when the thread is not expanded, the count is updated by observing Y.Array('comments') (minimal granularity Yjs observe)
 tests:
 - client/e2e/new/cmt-comment-badge-max-5fd8c210.spec.ts

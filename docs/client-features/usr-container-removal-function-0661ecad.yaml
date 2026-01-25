@@ -1,12 +1,12 @@
 id: USR-0661ecad
 title: Container removal function
-description: コンテナとそれに関連するデータを削除する機能
+description: Function to delete a container and its related data
 category: container-management
 status: implemented
 acceptance:
-- コンテナがデフォルトコンテナだった場合、ユーザーのデフォルトコンテナが更新される
-- コンテナが存在しない場合は適切なエラーメッセージが表示される
-- コンテナにアクセス可能だったユーザーのアクセス権からコンテナIDが削除される
-- コンテナへのアクセス権がない場合は適切なエラーメッセージが表示される
-- コンテナを削除できる
+- If the container was the default container, the user's default container is updated
+- Appropriate error message is displayed if the container does not exist
+- Container ID is removed from the access rights of users who had access to the container
+- Appropriate error message is displayed if there is no access right to the container
+- Can delete the container
 title-ja: コンテナ削除機能

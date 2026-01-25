@@ -1,23 +1,23 @@
 id: LNK-0007
 title: Backlink function
-description: あるページからリンクされているページの一覧を表示する機能
+description: Function to display a list of pages linking to a page
 category: navigation
 status: implemented
 acceptance:
-- バックリンクのコンテキスト（リンクを含む文脈）が表示される
-- バックリンクの数がバッジとして表示される
-- バックリンクをクリックすると、リンク元のページに移動できる
-- バックリンクパネルには、そのページへのリンクを含むページの一覧が表示される
-- バックリンクパネルは開閉できる
-- ページにバックリンクパネルが表示される
+- Backlink context (context including the link) is displayed
+- The number of backlinks is displayed as a badge
+- Clicking a backlink navigates to the source page
+- The backlink panel displays a list of pages containing links to that page
+- The backlink panel can be opened and closed
+- The backlink panel is displayed on the page
 tests:
 - client/e2e/core/lnk-backlink-function-7976aef8.spec.ts
 testcases:
-- ページにバックリンクパネルが表示される
-- バックリンクパネルにリンク元ページの一覧が表示される
-- バックリンクの数がバッジとして表示される
-- バックリンクパネルを開閉できる
-- バックリンクをクリックするとリンク元ページに移動できる
+- The backlink panel is displayed on the page
+- A list of source pages is displayed in the backlink panel
+- The number of backlinks is displayed as a badge
+- The backlink panel can be opened and closed
+- Clicking a backlink navigates to the source page
 notes:
-- テスト環境ではバックリンクパネルの開閉が正確に動作しない場合があるため、TestHelpers.openBacklinkPanel()を使用してテストを安定化
+- In the test environment, opening/closing the backlink panel may not work accurately, so use TestHelpers.openBacklinkPanel() to stabilize tests
 title-ja: バックリンク機能

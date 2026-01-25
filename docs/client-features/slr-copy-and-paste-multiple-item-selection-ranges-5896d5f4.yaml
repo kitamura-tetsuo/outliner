@@ -1,12 +1,12 @@
 id: SLR-0006
 title: Copy and paste multiple item selection ranges
-description: 複数アイテムにまたがる選択範囲のコピー＆ペースト機能
+description: Copy and paste function for selection ranges spanning multiple items
 category: selection-range
 status: implemented
 acceptance:
-- コピーしたテキストを別の場所にペーストできる
-- 複数アイテムにまたがる選択範囲のテキストをコピーできる
-- 複数行テキストをペーストすると適切に複数アイテムに分割される
+- Copied text can be pasted elsewhere
+- Text in selection ranges spanning multiple items can be copied
+- Pasting multi-line text splits it appropriately into multiple items
 tests:
 - client/e2e/core/slr-copy-selection-4c4c4f1a.spec.ts
 - client/e2e/core/slr-paste-copied-text-20a382d6.spec.ts

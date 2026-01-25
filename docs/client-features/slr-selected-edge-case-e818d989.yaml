@@ -1,13 +1,13 @@
 id: SLR-0008
 title: Selected Edge Case
-description: 選択範囲機能のエッジケースのテスト
+description: Testing edge cases of the selection range function
 category: selection-range
 status: implemented
 acceptance:
-- 空のアイテムを含む選択範囲を作成できる
-- 複数アイテムにまたがる選択範囲を削除した後、カーソル位置が適切に更新される
-- 選択範囲の方向（正方向/逆方向）を切り替えることができる
-- 長いテキストを含むアイテムの選択範囲を作成できる
+- Selection ranges containing empty items can be created
+- Cursor position is updated appropriately after deleting a selection range spanning multiple items
+- Selection direction (forward/backward) can be switched
+- Selection ranges can be created for items containing long text
 tests:
 - client/e2e/core/slr-selected-delete-correction-31fe9b27.spec.ts
 - client/e2e/core/slr-selected-direction-3724726f.spec.ts

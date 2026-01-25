@@ -1,17 +1,17 @@
 id: API-0002
 title: Firebase emulator startup standby function
-description: Firebase emulatorの起動を待つリトライ機能により、ECONNREFUSED エラーを回避する機能
+description: Retry function to wait for Firebase emulator startup to avoid ECONNREFUSED errors.
 category: api-server
 status: implemented
 acceptance:
-- ECONNREFUSED エラーが発生した場合、指数バックオフでリトライする
-- ECONNREFUSED以外のエラーは即座に失敗とする
-- Firebase Auth emulatorへの接続テストを行い、成功するまで待機する
-- Firebase emulator環境変数が設定されている場合、emulatorの起動を待機する
-- emulator環境でない場合は待機をスキップする
-- リトライ回数と遅延時間をログに出力する
-- 接続成功時にユーザー数とユーザー情報をログに出力する
-- 最大30回のリトライを行い、初期遅延1秒、最大遅延10秒で待機する
+- Retries with exponential backoff if ECONNREFUSED error occurs
+- Fails immediately for errors other than ECONNREFUSED
+- Tests connection to Firebase Auth emulator and waits until success
+- Waits for emulator startup if Firebase emulator environment variables are set
+- Skips waiting if not in emulator environment
+- Logs retry count and delay time
+- Logs user count and user info upon successful connection
+- Retries up to 30 times, with initial delay 1s and max delay 10s
 tests:
 - client/e2e/core/api-firebase-emulator-startup-standby-function-c9fa9c85.spec.ts
 - server/tests/log-service-emulator-wait.test.js

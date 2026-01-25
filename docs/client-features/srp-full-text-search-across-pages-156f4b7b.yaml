@@ -1,7 +1,7 @@
 id: SRP-0001
 title: Project-Wide Search & Replace
 title-ja: プロジェクト全体の検索・置換
-description: 全ページを対象とした高速全文検索と一括置換機能
+description: High-speed full-text search and bulk replace function for all pages
 category: search
 status: implemented
 components:

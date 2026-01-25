@@ -1,21 +1,21 @@
 id: LNK-9bddc693
 title: Link preview feature
-description: 内部リンクにマウスオーバーした際にページ内容のプレビューを表示する機能
+description: Feature to display a preview of the page content when hovering over an internal link
 category: navigation
 status: implemented
 acceptance:
-- プレビューにはページのタイトルと内容の一部が表示される
-- プレビューはマウスが離れると非表示になる
-- 内部リンクにマウスオーバーするとプレビューが表示される
-- 別プロジェクトのページへのリンクの場合は、その旨が表示される
-- 存在しないページへのリンクの場合は、その旨が表示される
+- The preview displays the page title and part of the content
+- The preview disappears when the mouse moves away
+- Hovering over an internal link displays a preview
+- If the link is to a page in another project, that fact is displayed
+- If the link is to a non-existent page, that fact is displayed
 tests:
 - client/e2e/core/lnk-link-preview-feature-9bddc693.spec.ts
 testcases:
-- 内部リンクにマウスオーバーするとプレビューが表示される
-- プレビューにページのタイトルと内容の一部が表示される
-- プレビューはマウスが離れると非表示になる
-- 存在しないページへのリンクの場合は、その旨が表示される
+- Hovering over an internal link displays a preview
+- The preview displays the page title and part of the content
+- The preview disappears when the mouse moves away
+- If the link is to a non-existent page, that fact is displayed
 notes:
-- テスト環境ではマウスイベントが正確に動作しない場合があるため、TestHelpers.forceHoverEvent()とTestHelpers.forceLinkPreview()を使用してテストを安定化
+- In the test environment, mouse events may not work accurately, so use TestHelpers.forceHoverEvent() and TestHelpers.forceLinkPreview() to stabilize tests
 title-ja: リンクプレビュー機能

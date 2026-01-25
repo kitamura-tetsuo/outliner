@@ -1,17 +1,17 @@
 id: SLR-0101
 title: Box Selection (Rectangle Selection) Function - Mouse
-shortcut: Alt+Shift+ドラッグ
-description: Alt+Shift+マウスドラッグによる矩形選択機能
+shortcut: Alt+Shift+Drag
+description: Box selection function using Alt+Shift+Mouse drag
 category: selection-range
 status: implemented
 acceptance:
-- Alt+Shift+マウスドラッグで矩形選択を開始できる
-- 矩形選択の範囲がドラッグに合わせて拡張される
-- 矩形選択の範囲が視覚的に表示される
-- 矩形選択範囲にテキストをペーストできる
-- 矩形選択範囲のテキストをコピーできる
-- 矩形選択範囲のテキストを削除できる
-- 複数アイテムにまたがる矩形選択を作成できる
+- Box selection can be started with Alt+Shift+Mouse drag
+- Box selection range extends as you drag
+- Box selection range is visually displayed
+- Text can be pasted into the box selection range
+- Text in the box selection range can be copied
+- Text in the box selection range can be deleted
+- Box selection spanning multiple items can be created
 tests:
 - client/e2e/core/slr-box-selection-rectangle-selection-function-mouse-ca340ca3.spec.ts
 title-ja: ボックス選択（矩形選択）機能 - マウス

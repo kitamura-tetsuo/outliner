@@ -1,14 +1,14 @@
 id: SLR-0001
 title: Shift + Up, down, left, right
-shortcut: Shift + 上下左右
-description: カーソルを1文字上下左右に移動し、選択範囲を広げます。
+shortcut: Shift + Up/Down/Left/Right
+description: Moves the cursor one character up, down, left, or right and extends the selection range.
 category: selection-range
 status: implemented
 acceptance:
-- Shift + 上で選択範囲の上端を広げる
-- Shift + 下で選択範囲の下端を広げる
-- Shift + 右で選択範囲の右端を広げる
-- Shift + 左で選択範囲の左端を広げる
+- Shift + Up extends the top edge of the selection range
+- Shift + Down extends the bottom edge of the selection range
+- Shift + Right extends the right edge of the selection range
+- Shift + Left extends the left edge of the selection range
 tests:
 - client/e2e/core/slr-shift-up-down-left-right-eb1d392a.spec.ts
 title-ja: Shift + 上下左右

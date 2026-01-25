@@ -1,18 +1,18 @@
 id: LNK-0003
 title: Internal link navigation feature
-description: 内部リンクをクリックして別のページに移動する機能
+description: Feature to navigate to another page by clicking an internal link
 category: navigation
 status: implemented
 acceptance:
-- URLを直接入力して内部リンク先のページにアクセスできる
-- プロジェクト内部リンクの形式が正しく生成される（[/project-name/page-name]形式）
-- プロジェクト内部リンクをクリックして遷移先のページ内容が正しく表示される
-- プロジェクト内部リンク（/project-name/page-name形式）をクリックすると対応するページに移動する
-- 内部リンクの形式が正しく生成される（[page-name]形式）
-- 内部リンクをクリックして遷移先のページ内容が正しく表示される
-- 内部リンクをクリックすると対応するページに移動する
-- 存在しないページへのリンクをクリックした場合も対応するURLに移動する
-- 存在しないページへの内部リンクをクリックした場合、新規ページが作成される
+- Can access the linked page by entering the URL directly
+- Project internal link format is generated correctly ([/project-name/page-name] format)
+- Clicking a project internal link displays the content of the destination page correctly
+- Clicking a project internal link (/project-name/page-name format) navigates to the corresponding page
+- Internal link format is generated correctly ([page-name] format)
+- Clicking an internal link displays the content of the destination page correctly
+- Clicking an internal link navigates to the corresponding page
+- Clicking a link to a non-existent page also navigates to the corresponding URL
+- Clicking an internal link to a non-existent page creates a new page
 tests:
 - client/e2e/core/lnk-click-navigation-6feab1d7.spec.ts
 - client/e2e/core/lnk-create-internal-af8f309a.spec.ts
@@ -22,11 +22,11 @@ tests:
 - client/e2e/core/lnk-project-link-navigation-e9b58abb.spec.ts
 - client/e2e/core/lnk-url-direct-df445603.spec.ts
 testcases:
-- 内部リンクをクリックして別のページに移動する
-- URLを直接入力して内部リンク先のページにアクセスする
-- 実際のアプリケーションで内部リンクを作成する
-- 実際のアプリケーションでプロジェクト内部リンクを作成する
-- 内部リンクをクリックして遷移先のページ内容が正しく表示される
-- 存在しないページへの内部リンクをクリックした場合の挙動
-- プロジェクト内部リンクをクリックして遷移先のページ内容が正しく表示される
+- Navigate to another page by clicking an internal link
+- Access the linked page by entering the URL directly
+- Create an internal link in the actual application
+- Create a project internal link in the actual application
+- Clicking an internal link displays the content of the destination page correctly
+- Behavior when clicking an internal link to a non-existent page
+- Clicking a project internal link displays the content of the destination page correctly
 title-ja: 内部リンクのナビゲーション機能

@@ -4,9 +4,9 @@ description: Pressing Backspace at the beginning of an item joins it with the pr
 category: item-management
 status: implemented
 acceptance:
-- Backspaceキーをアイテムの先頭で押すと前のアイテムと結合する
-- カーソルは連結前のテキスト末尾に移動する
-- 連結されたテキストが正しく表示される
+- Pressing Backspace at the beginning of an item merges it with the previous item
+- The cursor moves to the end of the text before the merge
+- The merged text is displayed correctly
 tests:
 - client/e2e/core/itm-backspace-merge-previous-item-ea76cd92.spec.ts
 title-ja: Backspaceで前のアイテムと結合

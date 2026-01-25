@@ -1,12 +1,12 @@
 id: SLR-0003
 title: Select to the end of the line
 shortcut: Shift + End
-description: カーソル位置から行の末尾までを選択します。
+description: Selects from the cursor position to the end of the line.
 category: selection-range
 status: implemented
 acceptance:
-- Shift + Endで現在位置から行末までを選択する
-- 複数行のアイテムでは、現在のカーソルがある行の末尾までを選択する
+- Shift + End selects from the current position to the end of the line
+- In multi-line items, selects to the end of the line where the cursor is currently located
 tests:
 - client/e2e/core/slr-select-to-the-end-of-the-line-8467ba25.spec.ts
 title-ja: 行末まで選択

@@ -7,4 +7,4 @@ status: implemented
 tests:
 - client/e2e/core/thm-dark-mode-persistence-0f7c39db.spec.ts
 acceptance:
-- ダークモード状態でリロードしてもダークモードが維持される
+- Dark mode is maintained after reloading even if in dark mode state

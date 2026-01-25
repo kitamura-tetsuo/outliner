@@ -1,17 +1,17 @@
 id: FMT-0008
 title: Support multiple internal links in one item
 title-ja: 1アイテム内で複数の内部リンクをサポート
-description: 単一のアイテム内で複数の内部リンクを正しく表示・動作させる
+description: Correctly display and operate multiple internal links within a single item
 category: text-formatting
 status: implemented
 acceptance:
-- 1アイテム内に複数の [page] と [/project/page] リンクを含めてもすべてがリンクとして表示される
-- E2E テストが成功する
-- ScrapboxFormatter.formatToHtml で複数リンクが適切に生成される
-- カーソルがある場合はプレーンテキスト表示となる
-- ページ存在チェッククラス page-exists/page-not-exists がそれぞれ適用される
-- リンクをクリックすると正しいページへ遷移する
-- 各リンクにリンクプレビューが表示される
+- Even if multiple [page] and [/project/page] links are included in one item, all are displayed as links
+- E2E tests pass
+- Multiple links are generated appropriately in ScrapboxFormatter.formatToHtml
+- Displayed as plain text if cursor is present
+- Page existence check classes page-exists/page-not-exists are applied respectively
+- Clicking a link navigates to the correct page
+- Link preview is displayed for each link
 tests:
 - client/e2e/core/fmt-multiple-internal-links-3a606671.spec.ts
 - client/src/utils/ScrapboxFormatter.test.ts

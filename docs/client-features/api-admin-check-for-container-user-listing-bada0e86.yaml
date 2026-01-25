@@ -4,8 +4,8 @@ description: /api/get-container-users requires admin role
 category: api-server
 status: implemented
 acceptance:
-- 管理者はコンテナのユーザーリストを取得できる
-- 非管理者がアクセスした場合403エラーを返す
+- Admins can retrieve the container user list
+- Returns 403 error if accessed by non-admin
 tests:
 - client/e2e/core/api-admin-check-for-container-user-listing-bada0e86.spec.ts
 - server/tests/get-container-users.test.js

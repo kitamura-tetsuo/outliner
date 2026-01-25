@@ -7,4 +7,4 @@ status: implemented
 tests:
 - client/e2e/core/thm-dark-mode-toggle-5e7cbe61.spec.ts
 acceptance:
-- アプリ全体でダークテーマとライトテーマを切り替えられる
+- Switch between dark and light themes throughout the app

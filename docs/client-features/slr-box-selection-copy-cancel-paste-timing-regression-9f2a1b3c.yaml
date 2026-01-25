@@ -1,16 +1,16 @@
 id: SLR-0102
 title: Box Selection Copy-Cancel-Paste Timing Regression Test
-shortcut: Alt+Shift+ドラッグ
-description: 矩形選択のコピー・キャンセル・ペーストのタイミング問題を検出する回帰テスト
+shortcut: Alt+Shift+Drag
+description: Regression test to detect copy-cancel-paste timing issues with box selection
 category: selection-range
 status: implemented
 acceptance:
-- Escキーで矩形選択をキャンセルできる（ペーストせずに）
-- キャンセル後に再度矩形選択を作成できる
-- タイミング問題による回帰が発生しない
-- ペーストされたテキストが最初にコピーしたテキストと一致する
-- 再度作成した矩形選択にペーストできる
-- 矩形選択でテキストをコピーできる
+- Box selection can be cancelled with Esc key (without pasting)
+- Box selection can be created again after cancellation
+- Regression due to timing issues does not occur
+- Pasted text matches the originally copied text
+- Can paste into a recreated box selection
+- Text can be copied via box selection
 tests:
 - client/e2e/core/slr-box-selection-copy-cancel-paste-timing-regression-9f2a1b3c.spec.ts
 title-ja: ボックス選択コピー・キャンセル・ペーストのタイミング回帰テスト
