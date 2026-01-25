@@ -6,8 +6,8 @@ import { projectStore } from "./projectStore.svelte";
 vi.mock("../lib/metaDoc.svelte", () => ({
     getProjectTitleFromMetaDoc: vi.fn((id: string) => {
         const titles: Record<string, string> = {
-            "p1": "テストプロジェクト1",
-            "p2": "テストプロジェクト2",
+            "p1": "Test Project 1",
+            "p2": "Test Project 2",
         };
         return titles[id] || "";
     }),
@@ -17,10 +17,10 @@ vi.mock("../lib/metaDoc.svelte", () => ({
 vi.mock("../lib/projectTitleProvider", () => ({
     getProjectTitle: vi.fn((id: string) => {
         const titles: Record<string, string> = {
-            "p1": "テストプロジェクト1",
-            "p2": "テストプロジェクト2",
+            "p1": "Test Project 1",
+            "p2": "Test Project 2",
         };
-        return titles[id] || "デフォルトプロジェクト";
+        return titles[id] || "Default Project";
     }),
 }));
 
@@ -41,10 +41,10 @@ describe("ProjectStore", () => {
         const list = projectStore.projects;
         expect(list.length).toBe(2);
         expect(list[0].id).toBe("p1");
-        expect(list[0].name).toBe("テストプロジェクト1");
+        expect(list[0].name).toBe("Test Project 1");
         expect(list[0].isDefault).toBe(true);
         expect(list[1].id).toBe("p2");
-        expect(list[1].name).toBe("テストプロジェクト2");
+        expect(list[1].name).toBe("Test Project 2");
         expect(list[1].isDefault).toBe(false);
     });
 });
