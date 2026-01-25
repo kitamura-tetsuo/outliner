@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import CommentThread from "../../components/CommentThread.svelte";
 import { Item } from "../../schema/app-schema";
 
-// jsdom の Clipboard / ResizeObserver など不足 API を最小限スタブ
+// Minimal stub for missing APIs such as Clipboard / ResizeObserver in jsdom
 class ResizeObserver {
     observe() {}
     unobserve() {}
@@ -12,9 +12,9 @@ class ResizeObserver {
 (globalThis as Record<string, unknown>).ResizeObserver = ResizeObserver;
 
 /**
- * CMT-0001 派生状態のみで再描画が成立することを検証する軽量統合テスト
- * - Yjs 側（Item.comments）を更新すると、CommentThread の件数表示が反映される
- * - $effect に依存せず、最小粒度の Yjs observe + $derived 経由で UI が更新される
+ * CMT-0001 Lightweight integration test verifying that re-rendering occurs solely through derived state
+ * - Updating the Yjs side (Item.comments) reflects in the comment count display of CommentThread
+ * - UI updates via minimal granularity Yjs observe + $derived, without depending on $effect
  */
 describe("cmt-derived-renders", () => {
     it("updates renderCommentsState length when Yjs comments change", async () => {
@@ -26,14 +26,14 @@ describe("cmt-derived-renders", () => {
             doc: item.ydoc,
         });
 
-        // 初期は 0 件
+        // Initially 0 items
         const counter = await screen.findByText(/\b0\b/, { selector: ".thread-comment-count" });
         expect(counter).toBeTruthy();
 
-        // Yjs 経由でコメントを追加
+        // Add comment via Yjs
         item.addComment("me", "hello");
 
-        // コメント件数が 1 に変化するまで待機（派生のみで伝播することを確認）
+        // Wait for comment count to change to 1 (verify propagation via derived state only)
         await waitFor(async () => {
             const el = await screen.findByText(/\b1\b/, { selector: ".thread-comment-count" });
             expect(el).toBeTruthy();
