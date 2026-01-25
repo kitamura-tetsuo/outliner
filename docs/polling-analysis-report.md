@@ -21,18 +21,18 @@ These pollings may be safe to remove.
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
-        } catch (error) {
-            // ... existing catch ...
-            // If invalid-api-key happens here, catch it?
-            // But I'm preventing it by checking isMockMode first.
-            logger.error({ error }, "Failed to initialize auth listener");
-            setTimeout(() => {
-                this.initAuthListenerAsync();
-            }, 1000);
-        }
-    }
 
+```
+    } catch (error) {
+        // ... existing catch ...
+        // If invalid-api-key happens here, catch it?
+        // But I'm preventing it by checking isMockMode first.
+        logger.error({ error }, "Failed to initialize auth listener");
+        setTimeout(() => {
+            this.initAuthListenerAsync();
+        }, 1000);
+    }
+}
 ```
 
 ### AliasPicker.svelte:99:setTimeout
@@ -43,18 +43,19 @@ These pollings may be safe to remove.
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
-    if (aliasPickerStore.isVisible) {
-        try {
-            // まずピッカー本体
-            pickerElement?.focus();
-            // 次に検索入力へ（存在すれば）
-            setTimeout(() => {
-                inputElement?.focus();
-            }, 0);
-            // 外部ストアへ選択インデックスを同期
-            try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
-        } catch {}
+if (aliasPickerStore.isVisible) {
+    try {
+        // まずピッカー本体
+        pickerElement?.focus();
+        // 次に検索入力へ（存在すれば）
+        setTimeout(() => {
+            inputElement?.focus();
+        }, 0);
+        // 外部ストアへ選択インデックスを同期
+        try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
+    } catch {}
 ```
 
 ### Checklist.svelte:29:setInterval
@@ -65,6 +66,7 @@ These pollings may be safe to remove.
 - **Code**: `const interval = setInterval(() => applyAutoReset(id), 1000);`
 
 **Context**:
+
 ```
     const id = createChecklist(title, mode, rrule);
     const unsubscribe = checklists.subscribe(arr => {
@@ -87,6 +89,7 @@ These pollings may be safe to remove.
 - **Code**: `updatePositionMapTimer = setTimeout(() => {`
 
 **Context**:
+
 ```
 let updatePositionMapTimer: number;
 
@@ -109,6 +112,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         treeContainer.addEventListener('scroll', debouncedUpdatePositionMap);
     }
@@ -131,18 +135,19 @@ function debouncedUpdatePositionMap() {
 - **Code**: `const timer = setTimeout(() => {`
 
 **Context**:
+
 ```
-            } catch {
-                // Intentionally empty - catch potential errors without further handling
-            }
-        });
-        updatingFlags[key] = true; // デバッグ用の副作用（UIはこれに依存しない）
-        const timer = setTimeout(() => {
-            mo?.disconnect();
-            node.classList.remove('selection-box-updating');
-            updatingFlags[key] = false;
-            try {
-                if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+    } catch {
+        // Intentionally empty - catch potential errors without further handling
+    }
+});
+updatingFlags[key] = true; // デバッグ用の副作用（UIはこれに依存しない）
+const timer = setTimeout(() => {
+    mo?.disconnect();
+    node.classList.remove('selection-box-updating');
+    updatingFlags[key] = false;
+    try {
+        if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
 ```
 
 ### GlobalTextArea.svelte:60:requestAnimationFrame
@@ -153,6 +158,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
     if (textareaRef) {
         textareaRef.focus();
@@ -175,6 +181,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         requestAnimationFrame(() => {
             if (textareaRef) {
@@ -197,6 +204,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
     if (aliasPickerStore.isVisible) {
         return;
@@ -219,6 +227,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         });
 
@@ -241,8 +250,8 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => signOutBtn?.focus(), 0);`
 
 **Context**:
-```
 
+```
 function openMenu() {
     if (!isAuthenticated) return;
     isMenuOpen = true;
@@ -263,18 +272,19 @@ function closeMenu() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
-                            patchSingle(origAt(i));
-                        }
-                    } catch {}
-                };
-                patchItems();
-                setTimeout(() => {
-                    try {
-                        patchItems();
-                    } catch {}
-                }, 0);
-                setTimeout(() => {
+            patchSingle(origAt(i));
+        }
+    } catch {}
+};
+patchItems();
+setTimeout(() => {
+    try {
+        patchItems();
+    } catch {}
+}, 0);
+setTimeout(() => {
 ```
 
 ### OutlinerBase.svelte:322:setTimeout
@@ -285,18 +295,19 @@ function closeMenu() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
-                setTimeout(() => {
-                    try {
-                        patchItems();
-                    } catch {}
-                }, 0);
-                setTimeout(() => {
-                    try {
-                        patchItems();
-                    } catch {}
-                }, 200);
-            }
+    setTimeout(() => {
+        try {
+            patchItems();
+        } catch {}
+    }, 0);
+    setTimeout(() => {
+        try {
+            patchItems();
+        } catch {}
+    }, 200);
+}
 ```
 
 ### OutlinerItem.svelte:762:requestAnimationFrame
@@ -307,6 +318,7 @@ function closeMenu() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
         "OutlinerItem startEditing: Focus set to global textarea, activeElement:",
         document.activeElement === textareaEl,
@@ -318,7 +330,6 @@ function closeMenu() {
 
         setTimeout(() => {
             textareaEl.focus();
-
 ```
 
 ### OutlinerItem.svelte:765:setTimeout
@@ -329,8 +340,8 @@ function closeMenu() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
 
+```
     // フォーカス確保のための追加試行
     requestAnimationFrame(() => {
         textareaEl.focus();
@@ -351,6 +362,7 @@ function closeMenu() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
         if (textarea) {
             // フォーカスを確実に設定するための複数の試行
@@ -373,6 +385,7 @@ function closeMenu() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             // requestAnimationFrameを使用してフォーカスを設定
             requestAnimationFrame(() => {
@@ -395,8 +408,8 @@ function closeMenu() {
 - **Code**: `const iv = setInterval(() => {`
 
 **Context**:
-```
 
+```
 // 暫定フォールバック: lastConfirmed をポーリング
 let aliasLastConfirmedPulse: { itemId: string; targetId: string; at: number } | null = $state(null);
 
@@ -417,6 +430,7 @@ onMount(() => {
 - **Code**: `scrollTimeout = requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
     // Throttle scroll event to improve performance
     let scrollTimeout: number | null = null;
@@ -439,6 +453,7 @@ onMount(() => {
 - **Code**: `setTimeout(focusNewItem, 10);`
 
 **Context**:
+
 ```
                         `Sent finish-edit event to active item ${activeItem}`,
                     );
@@ -461,6 +476,7 @@ onMount(() => {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     "password",
                 );
@@ -483,18 +499,18 @@ onMount(() => {
 - **Code**: `const handler = setTimeout(() => {`
 
 **Context**:
-```
-    $effect(() => {
-        if (!query) {
-            debouncedQuery = "";
-            return;
-        }
-        const handler = setTimeout(() => {
-            debouncedQuery = query;
-        }, 200);
-        return () => clearTimeout(handler);
-    });
 
+```
+$effect(() => {
+    if (!query) {
+        debouncedQuery = "";
+        return;
+    }
+    const handler = setTimeout(() => {
+        debouncedQuery = query;
+    }, 200);
+    return () => clearTimeout(handler);
+});
 ```
 
 ### SearchBox.svelte:419:setTimeout
@@ -505,6 +521,7 @@ onMount(() => {
 - **Code**: `setTimeout(() => (refreshTick += 1), i * 50);`
 
 **Context**:
+
 ```
             ) as HTMLElement | null;
             console.info(logPrefix, "main-toolbar styles", styles(toolbar));
@@ -527,6 +544,7 @@ onMount(() => {
 - **Code**: `setTimeout(() => { dedupeToolbars(); dumpToolbarState("mount-setTimeout-0ms"); }, 0);`
 
 **Context**:
+
 ```
 onMount(() => {
     // Initial dedupe and dump
@@ -549,8 +567,8 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => { dedupeToolbars(); dumpToolbarState("afterNavigate-0ms"); }, 0);`
 
 **Context**:
-```
 
+```
 if (typeof window !== "undefined") {
     import("$app/navigation").then(({ afterNavigate }) => {
         try {
@@ -571,6 +589,7 @@ if (typeof window !== "undefined") {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
             if (textarea) {
                 // フォーカスを確実に設定するための複数の試行
@@ -593,6 +612,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                 // requestAnimationFrameを使用してフォーカスを設定
                 requestAnimationFrame(() => {
@@ -615,6 +635,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // グローバルテキストエリアの選択範囲を設定
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -626,7 +647,6 @@ if (typeof window !== "undefined") {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
-
 ```
 
 ### Cursor.ts:1425:setTimeout
@@ -637,6 +657,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // グローバルテキストエリアの選択範囲を設定
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -648,7 +669,6 @@ if (typeof window !== "undefined") {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
-
 ```
 
 ### Cursor.ts:1448:setTimeout
@@ -659,6 +679,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     store.forceUpdate();
                 }
@@ -681,18 +702,18 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
 
-            // ここでEnterの通常処理（改行/新規アイテム追加等）が完了しているはずなので、
-            // 事前検出フラグに基づいてAliasPickerを後追いで開く
-            if (shouldOpenAliasPickerAfterDefault) {
-                try {
-                    setTimeout(() => {
-                        try {
-                            const w: any = typeof window !== "undefined" ? (window as any) : null;
-                            const tryOpen = (attempt = 0) => {
-                                try {
-                                    const activeId = store.getActiveItem?.();
+```
+// ここでEnterの通常処理（改行/新規アイテム追加等）が完了しているはずなので、
+// 事前検出フラグに基づいてAliasPickerを後追いで開く
+if (shouldOpenAliasPickerAfterDefault) {
+    try {
+        setTimeout(() => {
+            try {
+                const w: any = typeof window !== "undefined" ? (window as any) : null;
+                const tryOpen = (attempt = 0) => {
+                    try {
+                        const activeId = store.getActiveItem?.();
 ```
 
 ### KeyEventHandler.ts:655:setTimeout
@@ -703,18 +724,19 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => tryOpen(attempt + 1), 10);`
 
 **Context**:
+
 ```
-                                            );
-                                        } catch {}
-                                        return;
-                                    }
-                                    if (attempt < 10) {
-                                        setTimeout(() => tryOpen(attempt + 1), 10);
-                                    } else {
-                                        console.warn(
-                                            "KeyEventHandler(Post): active item not found to open AliasPicker",
-                                        );
-                                    }
+        );
+    } catch {}
+    return;
+}
+if (attempt < 10) {
+    setTimeout(() => tryOpen(attempt + 1), 10);
+} else {
+    console.warn(
+        "KeyEventHandler(Post): active item not found to open AliasPicker",
+    );
+}
 ```
 
 ### KeyEventHandler.ts:704:requestAnimationFrame
@@ -725,6 +747,7 @@ if (typeof window !== "undefined") {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
             if (globalTextarea) {
                 // フォーカスを確実に設定するための複数の試行
@@ -747,6 +770,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             }
 
@@ -769,18 +793,19 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => tryOpen(attempt + 1), 10);`
 
 **Context**:
+
 ```
-                                            );
-                                        } catch {}
-                                        return;
-                                    }
-                                    if (attempt < 10) {
-                                        setTimeout(() => tryOpen(attempt + 1), 10);
-                                    } else {
-                                        console.warn(
-                                            "KeyEventHandler(Post2): active item not found to open AliasPicker",
-                                        );
-                                    }
+        );
+    } catch {}
+    return;
+}
+if (attempt < 10) {
+    setTimeout(() => tryOpen(attempt + 1), 10);
+} else {
+    console.warn(
+        "KeyEventHandler(Post2): active item not found to open AliasPicker",
+    );
+}
 ```
 
 ### KeyEventHandler.ts:880:requestAnimationFrame
@@ -791,6 +816,7 @@ if (typeof window !== "undefined") {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
         if (textareaElement) {
             // フォーカスを確実に設定するための複数の試行
@@ -813,6 +839,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             // requestAnimationFrameを使用してフォーカスを設定
             requestAnimationFrame(() => {
@@ -835,6 +862,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     }
                 `;
@@ -857,6 +885,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                         hintEl.style.transition = "opacity 0.3s ease-in-out";
 
@@ -879,6 +908,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                         document.body.appendChild(hintEl);
 
@@ -901,6 +931,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             cursor.clearSelection();
             store.setActiveItem(cursor.itemId);
@@ -923,6 +954,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // グローバルテキストエリアの選択範囲を設定
         this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -934,7 +966,6 @@ if (typeof window !== "undefined") {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
-
 ```
 
 ### CursorSelection.ts:758:setTimeout
@@ -945,6 +976,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // グローバルテキストエリアの選択範囲を設定
         this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -956,7 +988,6 @@ if (typeof window !== "undefined") {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
-
 ```
 
 ### CursorSelection.ts:781:setTimeout
@@ -967,6 +998,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     store.forceUpdate();
                 }
@@ -989,6 +1021,7 @@ if (typeof window !== "undefined") {
 - **Code**: `previewTimer = window.setTimeout(() => {`
 
 **Context**:
+
 ```
         window.clearTimeout(hideTimer);
         hideTimer = null;
@@ -1011,6 +1044,7 @@ if (typeof window !== "undefined") {
 - **Code**: `hideTimer = window.setTimeout(() => {`
 
 **Context**:
+
 ```
         window.clearTimeout(previewTimer);
         previewTimer = null;
@@ -1033,6 +1067,7 @@ if (typeof window !== "undefined") {
 - **Code**: `//             await new Promise(r => setTimeout(r, 1000));`
 
 **Context**:
+
 ```
 //     }
 
@@ -1055,6 +1090,7 @@ if (typeof window !== "undefined") {
 - **Code**: `//             await new Promise(r => setTimeout(r, 500));`
 
 **Context**:
+
 ```
 //     }
 
@@ -1077,6 +1113,7 @@ if (typeof window !== "undefined") {
 - **Code**: `//         await new Promise(r => setTimeout(r, 700));`
 
 **Context**:
+
 ```
 //     service.methodB();
 
@@ -1099,6 +1136,7 @@ if (typeof window !== "undefined") {
 - **Code**: `//         await new Promise(r => setTimeout(r, 700));`
 
 **Context**:
+
 ```
 //         await new Promise(r => setTimeout(r, 700));
 //         console.log('custom lock end');
@@ -1109,7 +1147,6 @@ if (typeof window !== "undefined") {
 //         console.log('custom lock 2 end');
 //     });
 // })();
-
 ```
 
 ### metaDoc.test.ts:123:setTimeout
@@ -1120,6 +1157,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 10));`
 
 **Context**:
+
 ```
             setContainerTitleInMetaDoc(containerId, "Version 1");
             updateLastOpenedAt(containerId);
@@ -1142,6 +1180,7 @@ if (typeof window !== "undefined") {
 - **Code**: `console.log(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);`
 
 **Context**:
+
 ```
                 };
 
@@ -1164,6 +1203,7 @@ if (typeof window !== "undefined") {
 - **Code**: `console.log(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);`
 
 **Context**:
+
 ```
                 };
 
@@ -1186,6 +1226,7 @@ if (typeof window !== "undefined") {
 - **Code**: `console.log(`[PollingMonitor] Disabled requestAnimationFrame (id=${id})`);`
 
 **Context**:
+
 ```
             };
 
@@ -1208,6 +1249,7 @@ if (typeof window !== "undefined") {
 - **Code**: `const timer = setTimeout(() => {`
 
 **Context**:
+
 ```
             if (solved) return;
             solved = true;
@@ -1230,18 +1272,19 @@ if (typeof window !== "undefined") {
 - **Code**: `const timer = setTimeout(() => {`
 
 **Context**:
+
 ```
-    // This ensures the pagesMap is populated with all seeded pages
-    await new Promise<void>((resolve) => {
-        if (provider.isSynced) {
+// This ensures the pagesMap is populated with all seeded pages
+await new Promise<void>((resolve) => {
+    if (provider.isSynced) {
+        resolve();
+    } else {
+        const timer = setTimeout(() => {
+            console.log(
+                `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
+            );
             resolve();
-        } else {
-            const timer = setTimeout(() => {
-                console.log(
-                    `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
-                );
-                resolve();
-            }, 15000);
+        }, 15000);
 ```
 
 ### testHelpers.ts:61:setTimeout
@@ -1252,6 +1295,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise((r) => setTimeout(r, pollIntervalMs));`
 
 **Context**:
+
 ```
             if (debugEnabled) {
                 console.log(`[${label}] provider.isSynced=true after ${i * pollIntervalMs}ms`);
@@ -1274,6 +1318,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise((r) => setTimeout(r, pollIntervalMs));`
 
 **Context**:
+
 ```
             if (debugEnabled) {
                 console.log(`[${label}] data available after ${i * pollIntervalMs}ms from synced`);
@@ -1296,8 +1341,8 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
-```
 
+```
         try {
             // HocuspocusProvider handles token refresh via its token option (function)
             // But we can force a reconnect/token send if needed.
@@ -1318,6 +1363,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
             await provider.connect();
 
@@ -1340,6 +1386,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         yText.insert(0, "Hello, World!");
         const yArray = doc1.getArray("items");
@@ -1351,7 +1398,6 @@ if (typeof window !== "undefined") {
         // Dispose the first doc
         persistence1.destroy();
         doc1.destroy();
-
 ```
 
 ### yjsPersistence.test.ts:94:setTimeout
@@ -1362,6 +1408,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
+
 ```
         await waitForSync(persistence1);
 
@@ -1384,6 +1431,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
+
 ```
         const yText = doc1.getText("content");
         yText.insert(0, "First");
@@ -1406,8 +1454,8 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
-```
 
+```
         yText.insert(yText.length, " Second");
         await new Promise(resolve => setTimeout(resolve, 30));
 
@@ -1428,8 +1476,8 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
-```
 
+```
         // Verify the text is correct before persistence
         expect(yText.toString()).toBe("First Second Third");
 
@@ -1439,7 +1487,6 @@ if (typeof window !== "undefined") {
         // Dispose and recreate
         persistence1.destroy();
         doc1.destroy();
-
 ```
 
 ### yjsPersistence.test.ts:172:setTimeout
@@ -1450,6 +1497,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         const childArray = new Y.Array<string>();
         childArray.push(["item1", "item2"]);
@@ -1472,6 +1520,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 50));`
 
 **Context**:
+
 ```
         await waitForSync(persistence1);
 
@@ -1494,6 +1543,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 50));`
 
 **Context**:
+
 ```
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -1516,6 +1566,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -1538,6 +1589,7 @@ if (typeof window !== "undefined") {
 - **Code**: `return setInterval(() => {`
 
 **Context**:
+
 ```
  */
 function schedulePeriodicLogRotation() {
@@ -1560,6 +1612,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             return;
         }
@@ -1582,18 +1635,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise((r) => setTimeout(r, 100));`
 
 **Context**:
+
 ```
-                    `loadProjectAndPage: Page "${pageName}" not found initially. Retrying...`,
-                );
-                // Wait up to 15 seconds (150 * 100ms) for Yjs to sync
-                const maxRetries = 150;
-                for (let i = 0; i < maxRetries; i++) {
-                    await new Promise((r) => setTimeout(r, 100));
-                    targetPage = findPage();
-                    if (targetPage) {
-                        logger.info(
-                            `loadProjectAndPage: Found page "${pageName}" after retry ${i + 1}`,
-                        );
+    `loadProjectAndPage: Page "${pageName}" not found initially. Retrying...`,
+);
+// Wait up to 15 seconds (150 * 100ms) for Yjs to sync
+const maxRetries = 150;
+for (let i = 0; i < maxRetries; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    targetPage = findPage();
+    if (targetPage) {
+        logger.info(
+            `loadProjectAndPage: Found page "${pageName}" after retry ${i + 1}`,
+        );
 ```
 
 ### +page.svelte:423:setTimeout
@@ -1604,6 +1658,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise((resolve) => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
             );
             let retryCount = 0;
@@ -1626,6 +1681,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             };
         }
@@ -1648,6 +1704,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
         for (let i = 0; i < 50; i++) {
             if (store.project?.items?.length > 0) {
@@ -1670,6 +1727,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
             break;
         }
@@ -1692,6 +1750,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         if (hasProject && !projectHasItems) {
             console.log("Schedule page: Project exists but has no items, triggering parent load");
@@ -1714,8 +1773,8 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
-```
 
+```
         if (foundPageRef) {
             break;
         }
@@ -1736,18 +1795,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
-                                console.log("Schedule page: Page subdocument connected with items", { pageId, itemCount });
-                                break;
-                            }
-                        }
+                        console.log("Schedule page: Page subdocument connected with items", { pageId, itemCount });
+                        break;
                     }
-                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
             }
-        } catch (e) {
-            console.warn("Schedule page: Error waiting for page connection:", e);
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
+    }
+} catch (e) {
+    console.warn("Schedule page: Error waiting for page connection:", e);
+}
 ```
 
 ### +page.svelte:569:setTimeout
@@ -1758,18 +1818,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => URL.revokeObjectURL(url), 0);`
 
 **Context**:
+
 ```
-        anchor.href = url;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 0);
-        console.log("Schedule page: Exported schedules to iCal", filename);
-    }
-    catch (err) {
-        console.error("Schedule page: Error exporting schedules:", err);
-    }
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    console.log("Schedule page: Exported schedules to iCal", filename);
+}
+catch (err) {
+    console.error("Schedule page: Error exporting schedules:", err);
+}
 ```
 
 ### +page.svelte:160:setInterval
@@ -1780,6 +1841,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `statusInterval = setInterval(() => {`
 
 **Context**:
+
 ```
         if (isAuthenticated) {
             initializeFluidClient();
@@ -1802,6 +1864,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         yjsStore.yjsClient = newClient as any;
 
@@ -1824,6 +1887,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         }
 
@@ -1846,18 +1910,18 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
-```
 
-            // Wait for items to be available if subdoc just loaded
-            let waitCount = 0;
-            const maxWait = 100; // Increase to 10s for slow CI environments
-            while (pageItemsSize <= 1 && waitCount < maxWait) { // <= 1 means only "initialized" key
-                await new Promise(resolve => setTimeout(resolve, 100));
-                const newSize = pageItems.size;
-                if (newSize === pageItemsSize) {
-                    // Size hasn't changed, no more items to wait for
-                    break;
-                }
+```
+// Wait for items to be available if subdoc just loaded
+let waitCount = 0;
+const maxWait = 100; // Increase to 10s for slow CI environments
+while (pageItemsSize <= 1 && waitCount < maxWait) { // <= 1 means only "initialized" key
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const newSize = pageItems.size;
+    if (newSize === pageItemsSize) {
+        // Size hasn't changed, no more items to wait for
+        break;
+    }
 ```
 
 ### CommandPaletteStore.svelte.ts:427:setTimeout
@@ -1868,18 +1932,18 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
-        requestAnimationFrame(() => {
-            try {
-                window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-            } catch {}
-        });
-        setTimeout(() => {
-            try {
-                window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-            } catch {}
-        }, 0);
 
+```
+requestAnimationFrame(() => {
+    try {
+        window.dispatchEvent(new CustomEvent("outliner-items-changed"));
+    } catch {}
+});
+setTimeout(() => {
+    try {
+        window.dispatchEvent(new CustomEvent("outliner-items-changed"));
+    } catch {}
+}, 0);
 ```
 
 ### EditorOverlayStore.svelte.ts:225:requestAnimationFrame
@@ -1890,6 +1954,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
             if (textarea) {
                 // Multiple attempts to ensure focus is set
@@ -1912,6 +1977,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                 // Set focus using requestAnimationFrame
                 requestAnimationFrame(() => {
@@ -1934,6 +2000,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
         if (textarea) {
             // Multiple attempts to ensure focus is set
@@ -1956,6 +2023,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             // Set focus using requestAnimationFrame
             requestAnimationFrame(() => {
@@ -1978,6 +2046,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             console.log(`Box selection set with key: ${key}`);
             console.log(`Current selections:`, this.selections);
@@ -2000,8 +2069,8 @@ function schedulePeriodicLogRotation() {
 - **Code**: `this.timerId = setInterval(() => {`
 
 **Context**:
-```
 
+```
     startCursorBlink() {
         this.cursorVisible = true;
         clearInterval(this.timerId);
@@ -2022,6 +2091,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // Force update by temporarily clearing and resetting the selection range
         const tempSelections = { ...this.selections };
@@ -2044,8 +2114,8 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
 
+```
         // Update cursors as well
         const tempCursors = { ...this.cursors };
         this.cursors = {};
@@ -2066,18 +2136,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `this.timerId = setInterval(() => {`
 
 **Context**:
+
 ```
-        );
-    }
-    startCursorBlink() {
-        this.cursorVisible = true;
-        clearInterval(this.timerId);
-        this.timerId = setInterval(() => {
-            this.cursorVisible = !this.cursorVisible;
-        }, 530);
-    }
-    stopCursorBlink() {
-        clearInterval(this.timerId);
+    );
+}
+startCursorBlink() {
+    this.cursorVisible = true;
+    clearInterval(this.timerId);
+    this.timerId = setInterval(() => {
+        this.cursorVisible = !this.cursorVisible;
+    }, 530);
+}
+stopCursorBlink() {
+    clearInterval(this.timerId);
 ```
 
 ### snapshot-diff-modal-a11y-9f2d1c3a.integration.spec.ts:51:setTimeout
@@ -2088,6 +2159,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
         // 差分領域にHTMLが描画されていること
         const diff = document.querySelector(".diff-view") as HTMLElement;
@@ -2099,7 +2171,6 @@ function schedulePeriodicLogRotation() {
         expect(diff.innerHTML).toContain("ins");
     });
 });
-
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:20:setTimeout
@@ -2110,18 +2181,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `else setTimeout(checkSync, 50);`
 
 **Context**:
+
 ```
-            const checkSync = () => {
-                if (c1.provider.isSynced && c2.provider.isSynced) {
-                    syncedCount++;
-                    // Check twice to ensure stable sync state
-                    if (syncedCount >= 2) resolve(undefined);
-                    else setTimeout(checkSync, 50);
-                } else {
-                    setTimeout(checkSync, 50);
-                }
-            };
-            checkSync();
+const checkSync = () => {
+    if (c1.provider.isSynced && c2.provider.isSynced) {
+        syncedCount++;
+        // Check twice to ensure stable sync state
+        if (syncedCount >= 2) resolve(undefined);
+        else setTimeout(checkSync, 50);
+    } else {
+        setTimeout(checkSync, 50);
+    }
+};
+checkSync();
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:22:setTimeout
@@ -2132,18 +2204,18 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(checkSync, 50);`
 
 **Context**:
-```
-                    syncedCount++;
-                    // Check twice to ensure stable sync state
-                    if (syncedCount >= 2) resolve(undefined);
-                    else setTimeout(checkSync, 50);
-                } else {
-                    setTimeout(checkSync, 50);
-                }
-            };
-            checkSync();
-        });
 
+```
+            syncedCount++;
+            // Check twice to ensure stable sync state
+            if (syncedCount >= 2) resolve(undefined);
+            else setTimeout(checkSync, 50);
+        } else {
+            setTimeout(checkSync, 50);
+        }
+    };
+    checkSync();
+});
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:36:setTimeout
@@ -2154,18 +2226,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
-        // Wait for the page to be synchronized to the second client's project document
-        const project2 = Project.fromDoc(c2.doc);
-        await new Promise<void>((resolve) => {
-            let resolved = false;
-            // Set timeout for resolution
-            setTimeout(() => {
-                if (!resolved) {
-                    console.log("Timeout waiting for project synchronization");
-                    resolve();
-                }
-            }, 5000);
+// Wait for the page to be synchronized to the second client's project document
+const project2 = Project.fromDoc(c2.doc);
+await new Promise<void>((resolve) => {
+    let resolved = false;
+    // Set timeout for resolution
+    setTimeout(() => {
+        if (!resolved) {
+            console.log("Timeout waiting for project synchronization");
+            resolve();
+        }
+    }, 5000);
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:63:setTimeout
@@ -2176,18 +2249,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(check, 50);`
 
 **Context**:
+
 ```
-                        resolved = true;
-                        resolve();
-                        return;
-                    }
-                    // Continue checking every 50ms
-                    setTimeout(check, 50);
-                } catch (e) {
-                    console.log("Error checking synchronization:", e);
-                    // Continue checking
-                    setTimeout(check, 50);
-                }
+        resolved = true;
+        resolve();
+        return;
+    }
+    // Continue checking every 50ms
+    setTimeout(check, 50);
+} catch (e) {
+    console.log("Error checking synchronization:", e);
+    // Continue checking
+    setTimeout(check, 50);
+}
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:67:setTimeout
@@ -2198,18 +2272,18 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(check, 50);`
 
 **Context**:
-```
-                    // Continue checking every 50ms
-                    setTimeout(check, 50);
-                } catch (e) {
-                    console.log("Error checking synchronization:", e);
-                    // Continue checking
-                    setTimeout(check, 50);
-                }
-            };
-            check();
-        });
 
+```
+            // Continue checking every 50ms
+            setTimeout(check, 50);
+        } catch (e) {
+            console.log("Error checking synchronization:", e);
+            // Continue checking
+            setTimeout(check, 50);
+        }
+    };
+    check();
+});
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:83:setTimeout
@@ -2220,18 +2294,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(check, 50);`
 
 **Context**:
+
 ```
-                const conn = c1.getPageConnection(page.id);
-                if (conn) {
-                    resolved = true;
-                    resolve(conn);
-                } else if (!resolved) {
-                    setTimeout(check, 50);
-                }
-            };
-            setTimeout(check, 0);
-            // Set timeout for resolution
-            setTimeout(() => {
+    const conn = c1.getPageConnection(page.id);
+    if (conn) {
+        resolved = true;
+        resolve(conn);
+    } else if (!resolved) {
+        setTimeout(check, 50);
+    }
+};
+setTimeout(check, 0);
+// Set timeout for resolution
+setTimeout(() => {
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:86:setTimeout
@@ -2242,18 +2317,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(check, 0);`
 
 **Context**:
+
 ```
-                    resolve(conn);
-                } else if (!resolved) {
-                    setTimeout(check, 50);
-                }
-            };
-            setTimeout(check, 0);
-            // Set timeout for resolution
-            setTimeout(() => {
-                if (!resolved) {
-                    console.log("Timeout waiting for page connection on client 1");
-                    resolve(null);
+        resolve(conn);
+    } else if (!resolved) {
+        setTimeout(check, 50);
+    }
+};
+setTimeout(check, 0);
+// Set timeout for resolution
+setTimeout(() => {
+    if (!resolved) {
+        console.log("Timeout waiting for page connection on client 1");
+        resolve(null);
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:88:setTimeout
@@ -2264,18 +2340,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
-                    setTimeout(check, 50);
-                }
-            };
-            setTimeout(check, 0);
-            // Set timeout for resolution
-            setTimeout(() => {
-                if (!resolved) {
-                    console.log("Timeout waiting for page connection on client 1");
-                    resolve(null);
-                }
-            }, 30000);
+        setTimeout(check, 50);
+    }
+};
+setTimeout(check, 0);
+// Set timeout for resolution
+setTimeout(() => {
+    if (!resolved) {
+        console.log("Timeout waiting for page connection on client 1");
+        resolve(null);
+    }
+}, 30000);
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:104:setTimeout
@@ -2286,18 +2363,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(check, 50);`
 
 **Context**:
+
 ```
-                const conn = c2.getPageConnection(page.id);
-                if (conn) {
-                    resolved = true;
-                    resolve(conn);
-                } else if (!resolved) {
-                    setTimeout(check, 50);
-                }
-            };
-            setTimeout(check, 0);
-            // Set timeout for resolution
-            setTimeout(() => {
+    const conn = c2.getPageConnection(page.id);
+    if (conn) {
+        resolved = true;
+        resolve(conn);
+    } else if (!resolved) {
+        setTimeout(check, 50);
+    }
+};
+setTimeout(check, 0);
+// Set timeout for resolution
+setTimeout(() => {
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:107:setTimeout
@@ -2308,18 +2386,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(check, 0);`
 
 **Context**:
+
 ```
-                    resolve(conn);
-                } else if (!resolved) {
-                    setTimeout(check, 50);
-                }
-            };
-            setTimeout(check, 0);
-            // Set timeout for resolution
-            setTimeout(() => {
-                if (!resolved) {
-                    console.log("Timeout waiting for page connection on client 2");
-                    resolve(null);
+        resolve(conn);
+    } else if (!resolved) {
+        setTimeout(check, 50);
+    }
+};
+setTimeout(check, 0);
+// Set timeout for resolution
+setTimeout(() => {
+    if (!resolved) {
+        console.log("Timeout waiting for page connection on client 2");
+        resolve(null);
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:109:setTimeout
@@ -2330,18 +2409,19 @@ function schedulePeriodicLogRotation() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
-                    setTimeout(check, 50);
-                }
-            };
-            setTimeout(check, 0);
-            // Set timeout for resolution
-            setTimeout(() => {
-                if (!resolved) {
-                    console.log("Timeout waiting for page connection on client 2");
-                    resolve(null);
-                }
-            }, 30000);
+        setTimeout(check, 50);
+    }
+};
+setTimeout(check, 0);
+// Set timeout for resolution
+setTimeout(() => {
+    if (!resolved) {
+        console.log("Timeout waiting for page connection on client 2");
+        resolve(null);
+    }
+}, 30000);
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:157:setTimeout
@@ -2352,6 +2432,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
                 }
             }
@@ -2374,6 +2455,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise(r => setTimeout(r, 0));`
 
 **Context**:
+
 ```
         expect(received).toBe(true);
         p1c1.dispose();
@@ -2383,7 +2465,6 @@ function schedulePeriodicLogRotation() {
         await new Promise(r => setTimeout(r, 0));
     });
 });
-
 ```
 
 ### ypp-page-subdoc-provider-c83a5f4b.integration.spec.ts:40:setTimeout
@@ -2394,6 +2475,7 @@ function schedulePeriodicLogRotation() {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 50));`
 
 **Context**:
+
 ```
 ): Promise<PageConnection> {
     const startTime = Date.now();
@@ -2416,6 +2498,7 @@ describe("page subdoc provider", () => {
 - **Code**: `setTimeout(callback, 10);`
 
 **Context**:
+
 ```
         it("should wait for sync event if not synced", async () => {
             const persistence: MockPersistence = {
@@ -2438,6 +2521,7 @@ describe("page subdoc provider", () => {
 - **Code**: `setTimeout(callback, 10);`
 
 **Context**:
+
 ```
         it("should handle multiple calls to waitForSync", async () => {
             const persistence: MockPersistence = {
