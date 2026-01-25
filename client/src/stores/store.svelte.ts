@@ -149,7 +149,8 @@ export class GeneralStore {
             const items = this._project?.items;
             if (items) {
                 // Items is iterable
-                for (const page of items) {
+                // Use iterateUnordered for better performance (O(N) vs O(N log N)) since we just need the set of names
+                for (const page of items.iterateUnordered()) {
                     try {
                         const text = page.text;
                         if (text) {
