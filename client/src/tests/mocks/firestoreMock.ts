@@ -1,6 +1,6 @@
 // filepath: /workspace/client/src/tests/mocks/firestoreMock.ts
 import { get, type Writable, writable } from "svelte/store";
-import { log } from "../../lib/logger"; // ロガーをインポート
+import { log } from "../../lib/logger"; // Import logger
 
 // Mock version of UserProject from the real store
 export interface UserProject {
@@ -145,7 +145,7 @@ export async function mockSaveContainerIdToServer(containerId: string): Promise<
     mockContainers.set(userId, updatedData);
     mockUserContainer.set(updatedData);
 
-    // ローカルストレージにも現在のコンテナIDを保存
+    // Save current container ID to local storage as well
     if (typeof window !== "undefined") {
         window.localStorage.setItem("currentContainerId", containerId);
     }
@@ -201,7 +201,7 @@ function buildContainersList(data: UserProject): { id: string; name?: string; is
     if (data.defaultProjectId) {
         containers.push({
             id: data.defaultProjectId,
-            name: "デフォルトコンテナ",
+            name: "Default Container",
             isDefault: true,
         });
     }
@@ -212,7 +212,7 @@ function buildContainersList(data: UserProject): { id: string; name?: string; is
             .filter(id => id !== data.defaultProjectId)
             .map(id => ({
                 id,
-                name: `コンテナ ${id.substring(0, 8)}...`,
+                name: `Container ${id.substring(0, 8)}...`,
                 isDefault: false,
             }));
 

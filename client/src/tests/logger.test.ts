@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
-// useConsoleAPIをモックするためにloggerモジュールを先にモック
+// Mock logger module first to mock useConsoleAPI
 vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
     const actual = await importOriginal();
 
-    // loggerをカスタムタイプとして定義
+    // Define logger as custom type
     type LoggerMock = {
         trace: Mock;
         debug: Mock;
@@ -18,7 +18,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
     return {
         ...actual,
         getLogger: (componentName = "TestComponent") => {
-            // シンプルなロガーモックを作成
+            // Create a simple logger mock
             const logger: LoggerMock = {
                 trace: vi.fn(),
                 debug: vi.fn(),
@@ -28,7 +28,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
                 fatal: vi.fn(),
             };
 
-            // ロガーメソッドが呼ばれたらコンソールも呼ぶよう設定
+            // Set up to call console when logger method is called
             (["trace", "debug", "info", "warn", "error", "fatal"] as const).forEach(level => {
                 logger[level].mockImplementation((...args: any[]) => {
                     const consoleMethod = level === "trace" || level === "debug"
@@ -37,7 +37,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
                         ? "error"
                         : level;
 
-                    // 型安全にコンソールメソッドを呼び出す
+                    // Call console method in a type-safe way
                     switch (consoleMethod) {
                         case "log":
                             console.log(
@@ -92,15 +92,15 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
     };
 });
 
-// getLoggerの後でインポート
+// Import after getLogger
 import { getLogger } from "../lib/logger";
 
-// windowオブジェクトのグローバルモックを設定（jsdomなしでテストする場合に必要）
+// Set global mock for window object (required when testing without jsdom)
 global.window = {
     console: console,
 } as any;
 
-// fetchのモック
+// Mock fetch
 global.fetch = vi.fn(() =>
     Promise.resolve({
         ok: true,
@@ -109,7 +109,7 @@ global.fetch = vi.fn(() =>
 ) as any;
 
 describe("Logger", () => {
-    // コンソールのモックを設定
+    // Set console mock
     const originalConsole = { ...console };
     const mockConsole = {
         log: vi.fn(),
@@ -120,15 +120,15 @@ describe("Logger", () => {
     };
 
     beforeEach(() => {
-        // コンソールをモックに置き換え
+        // Replace console with mock
         global.console = mockConsole as any;
         global.window.console = mockConsole as any;
 
-        // モックをリセット
+        // Reset mocks
         vi.clearAllMocks();
 
-        // テスト環境で必要な環境変数を設定
-        // テスト用にimport.meta.envを直接設定
+        // Set necessary environment variables for test environment
+        // Directly set import.meta.env for testing
         Object.assign(import.meta.env, {
             DEV: true,
             NODE_ENV: "test",
@@ -138,9 +138,9 @@ describe("Logger", () => {
     });
 
     afterEach(() => {
-        // 元のコンソールに戻す
+        // Restore original console
         global.console = originalConsole;
-        // 環境変数を元に戻す
+        // Restore environment variables
         vi.unstubAllEnvs();
     });
 
@@ -152,7 +152,7 @@ describe("Logger", () => {
     it("should log messages with correct level", () => {
         const logger = getLogger("TestComponent", true);
 
-        // 各レベルのログをテスト
+        // Test logs for each level
         logger.info({ data: "test info" }, "test info message");
         expect(console.info).toHaveBeenCalledWith(
             "%c[logger.test.ts]%c [TestComponent]%c [INFO]:",
@@ -217,18 +217,18 @@ describe("Logger", () => {
         const logger = getLogger("TestComponent", true);
         const customData = { customField: "value" };
 
-        logger.info({ ...customData }, "テストメッセージ");
+        logger.info({ ...customData }, "test message");
         expect(console.info).toHaveBeenCalledWith(
             "%c[logger.test.ts]%c [TestComponent]%c [INFO]:",
             expect.any(String),
             expect.any(String),
             expect.any(String),
             { ...customData },
-            "テストメッセージ",
+            "test message",
         );
     });
 
-    // 別のテストケースとして追加
+    // Add as another test case
     it("should create another logger with component name", () => {
         const testObj = { key: "value" };
         const logger = getLogger("TestComponent", true);
