@@ -4,9 +4,9 @@ description: Select text by mouse dragging.
 category: selection-range
 status: implemented
 acceptance:
-- Text within a single item can be selected by mouse dragging
 - Selection range is visually displayed
 - Text in the selection range can be copied
+- Text within a single item can be selected by mouse dragging
 tests:
 - client/e2e/core/slr-selection-by-dragging-mouse-c032a81b.spec.ts
 title-ja: マウスドラッグによる選択

@@ -4,12 +4,12 @@ description: Feature to display a temporary page when clicking a link to a non-e
 category: navigation
 status: implemented
 acceptance:
+- Clicking a link to a non-existent page displays a temporary page
 - Once a temporary page is saved, it is treated as a normal page
-- UI indicating a temporary page is not displayed (hidden setting)
+- Only when a temporary page is edited is it saved as a real page
 - Simply accessing a temporary page does not create the page
 - The temporary page notification UI is hidden
-- Only when a temporary page is edited is it saved as a real page
-- Clicking a link to a non-existent page displays a temporary page
+- UI indicating a temporary page is not displayed (hidden setting)
 tests:
 - client/e2e/core/lnk-temporary-page-display-08bbbbfc.spec.ts
 - client/e2e/core/lnk-temporary-page-edit-save-08bbbbfc.spec.ts

@@ -4,9 +4,9 @@ description: Text selection function spanning multiple items
 category: selection-range
 status: implemented
 acceptance:
-- Selection ranges spanning multiple items can be created with Shift + Up/Down keys
-- Selection ranges spanning multiple items can be created by mouse dragging
 - Selection ranges spanning multiple items are visually displayed
+- Selection ranges spanning multiple items can be created by mouse dragging
+- Selection ranges spanning multiple items can be created with Shift + Up/Down keys
 tests:
 - client/e2e/core/slr-selection-spans-multiple-items-7374d150.spec.ts
 title-ja: 複数アイテムにまたがる選択

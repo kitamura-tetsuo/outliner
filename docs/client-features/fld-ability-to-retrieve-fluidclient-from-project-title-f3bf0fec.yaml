@@ -4,13 +4,13 @@ description: Function to scan clientRegistry and retrieve a FluidClient instance
 category: fluid-service
 status: implemented
 acceptance:
-- Scan all FluidClients registered in clientRegistry to find a match
+- Can access project data using the retrieved FluidClient instance
+- Can load project data using this function in project layout
+- Can retrieve FluidClient after creating a new project
 - Can retrieve FluidClient instance from project title
 - Returns error if project title is not specified
 - Returns undefined if no FluidClient matching the project title is found
-- Can load project data using this function in project layout
-- Can access project data using the retrieved FluidClient instance
-- Can retrieve FluidClient after creating a new project
+- Scan all FluidClients registered in clientRegistry to find a match
 tests:
 - client/e2e/core/fld-ability-to-retrieve-fluidclient-from-project-title-f3bf0fec.spec.ts
 title-ja: プロジェクトタイトルからFluidClientを取得する機能

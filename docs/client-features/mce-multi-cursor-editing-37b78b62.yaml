@@ -4,9 +4,9 @@ description: Feature to edit simultaneously using multiple cursors
 category: collaboration
 status: implemented
 acceptance:
-- Undo/redo applies to all cursors
-- Text can be edited independently from each cursor
 - Multiple cursors can be placed
+- Text can be edited independently from each cursor
+- Undo/redo applies to all cursors
 tests:
 - client/e2e/core/mce-multi-cursor-editing-37b78b62.spec.ts
 - client/src/stores/EditorOverlayStore.test.ts

@@ -10,3 +10,4 @@ status: implemented
 components: []
 tests:
 - scripts/tests/env-github-deploy-self-hosted-dc9f7a7b.spec.ts
+title-ja: Deploy workflow runs on self-hosted runner

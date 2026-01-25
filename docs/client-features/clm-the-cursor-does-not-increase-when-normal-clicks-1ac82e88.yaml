@@ -7,6 +7,6 @@ tests:
 - client/e2e/core/clm-the-cursor-does-not-increase-when-normal-clicks-1ac82e88.spec.ts
 acceptance:
 - Cursor count does not increase when moving between items by clicking
-- The cursor in the previous item is completely removed
 - Only one cursor is displayed at all times
+- The cursor in the previous item is completely removed
 title-ja: 通常クリックでカーソルが増えないこと

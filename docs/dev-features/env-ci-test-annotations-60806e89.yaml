@@ -6,3 +6,4 @@ status: implemented
 components: []
 tests:
 - scripts/tests/env-ci-test-annotations-60806e89.spec.ts
+title-ja: Inline test annotations and job summary in CI

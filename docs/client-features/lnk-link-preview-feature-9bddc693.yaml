@@ -4,11 +4,11 @@ description: Feature to display a preview of the page content when hovering over
 category: navigation
 status: implemented
 acceptance:
-- The preview displays the page title and part of the content
-- The preview disappears when the mouse moves away
 - Hovering over an internal link displays a preview
-- If the link is to a page in another project, that fact is displayed
 - If the link is to a non-existent page, that fact is displayed
+- If the link is to a page in another project, that fact is displayed
+- The preview disappears when the mouse moves away
+- The preview displays the page title and part of the content
 tests:
 - client/e2e/core/lnk-link-preview-feature-9bddc693.spec.ts
 testcases:

@@ -1,9 +1,7 @@
 id: CMT-5fd8c210
 title: OutlinerItem comment badge reflects Yjs count (max logic)
 title-ja: コメント数バッジは Yjs の件数（最大値ロジック）を表示する
-description: 'OutlinerItem''s commentCountVisual uses the maximum value of the Yjs-derived
-  value and the local fallback. Verify that when add/delete is performed on the Yjs
-  side, the badge count increases/decreases accurately and displays the maximum value.
+description: 'OutlinerItem''s commentCountVisual uses the maximum value of the Yjs-derived value and the local fallback. Verify that when add/delete is performed on the Yjs side, the badge count increases/decreases accurately and displays the maximum value.
 
   '
 category: comments

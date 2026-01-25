@@ -5,8 +5,8 @@ description: Selects from the cursor position to the beginning of the line.
 category: selection-range
 status: implemented
 acceptance:
-- Shift + Home selects from the current position to the beginning of the line
 - In multi-line items, selects to the beginning of the line where the cursor is currently located
+- Shift + Home selects from the current position to the beginning of the line
 tests:
 - client/e2e/core/slr-select-up-to-the-beginning-of-the-line-6c287e80.spec.ts
 title-ja: 行頭まで選択

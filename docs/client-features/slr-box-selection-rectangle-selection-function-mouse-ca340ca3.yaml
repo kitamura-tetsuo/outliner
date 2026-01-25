@@ -8,10 +8,10 @@ acceptance:
 - Box selection can be started with Alt+Shift+Mouse drag
 - Box selection range extends as you drag
 - Box selection range is visually displayed
+- Box selection spanning multiple items can be created
 - Text can be pasted into the box selection range
 - Text in the box selection range can be copied
 - Text in the box selection range can be deleted
-- Box selection spanning multiple items can be created
 tests:
 - client/e2e/core/slr-box-selection-rectangle-selection-function-mouse-ca340ca3.spec.ts
 title-ja: ボックス選択（矩形選択）機能 - マウス

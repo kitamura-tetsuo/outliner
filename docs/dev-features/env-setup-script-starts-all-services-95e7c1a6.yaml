@@ -6,3 +6,4 @@ status: implemented
 components: []
 tests:
 - scripts/tests/env-setup-script-starts-all-services-95e7c1a6.spec.ts
+title-ja: Setup script starts all services

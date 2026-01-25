@@ -4,11 +4,11 @@ description: Improvements to increase the stability and reliability of the test 
 category: testing
 status: implemented
 acceptance:
-- Provide helper functions for detecting and manipulating DOM elements
-- Extend timeout settings during test execution to improve test stability
 - Adjust test conditions considering test environment constraints
-- Provide alternatives when mouse events do not work accurately
+- Extend timeout settings during test execution to improve test stability
 - Extend timeout settings for element detection waiting to improve test stability
+- Provide alternatives when mouse events do not work accurately
+- Provide helper functions for detecting and manipulating DOM elements
 tests:
 - client/e2e/core/lnk-backlink-function-7976aef8.spec.ts
 - client/e2e/core/tst-improve-your-test-environment-72a51b65.spec.ts

@@ -4,15 +4,15 @@ description: Feature to change the format (bold, italic, underline, strikethroug
 category: selection-range
 status: implemented
 acceptance:
-- Formats compliant with Scrapbox syntax are applied
-- Formats can be changed with keyboard shortcuts
-- Code format (`text`) can be applied
-- Format of selection within a single item can be changed
-- Strikethrough format ([- text]) can be applied
 - Applying the same format again removes the format
 - Bold format ([[text]]) can be applied
-- Italic format ([/ text]) can be applied
+- Code format (`text`) can be applied
 - Format of selection spanning multiple items can be changed
+- Format of selection within a single item can be changed
+- Formats can be changed with keyboard shortcuts
+- Formats compliant with Scrapbox syntax are applied
+- Italic format ([/ text]) can be applied
+- Strikethrough format ([- text]) can be applied
 tests:
 - client/e2e/core/slr-change-the-format-of-the-selection-880de1fa.spec.ts
 title-ja: 選択範囲のフォーマット変更

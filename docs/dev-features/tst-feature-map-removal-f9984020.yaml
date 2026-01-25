@@ -4,7 +4,8 @@ description: pre-commit hook to automatically delete docs/feature-map.md during 
 category: development
 status: implemented
 acceptance:
-- docs/feature-map.md is deleted before commit even if it exists
 - Automatically deleted even if added to the index
+- docs/feature-map.md is deleted before commit even if it exists
 tests:
 - client/e2e/utils/tst-feature-map-removal-f9984020.spec.ts
+title-ja: feature-map deletion script

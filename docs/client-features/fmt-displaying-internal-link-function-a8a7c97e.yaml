@@ -4,10 +4,10 @@ description: Feature to support internal links in /project-name/page-name format
 category: text-formatting
 status: implemented
 acceptance:
-- Internal links in [/project-name/page-name] format are displayed correctly
-- Internal links in [page-name] format are displayed correctly
 - Internal links are displayed as plain text in the item with the cursor
 - Internal links are visually displayed as links in items without the cursor
+- Internal links in [/project-name/page-name] format are displayed correctly
+- Internal links in [page-name] format are displayed correctly
 tests:
 - client/e2e/core/fmt-displaying-internal-link-function-a8a7c97e.spec.ts
 title-ja: 内部リンク機能の表示

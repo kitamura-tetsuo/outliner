@@ -4,13 +4,13 @@ description: Utility to retrieve cursor information as JSON in tests and verify 
 category: testing
 status: implemented
 acceptance:
-- Verify active item ID
-- Verify number of cursors
-- Retrieve cursor information in JSON format
-- Take snapshots and compare later
-- Strictly compare expected and actual values
 - Partially compare expected and actual values
+- Retrieve cursor information in JSON format
+- Strictly compare expected and actual values
+- Take snapshots and compare later
+- Verify active item ID
 - Verify data at a specific path
+- Verify number of cursors
 tests:
 - client/e2e/utils/cursor-validation.spec.ts
 examples:

@@ -5,8 +5,8 @@ description: Moves the cursor one character to the right.
 category: cursor-movement
 status: implemented
 acceptance:
-- Moves the cursor one character to the right
 - If at the last character, moves to the first character of the next item
+- Moves the cursor one character to the right
 tests:
 - client/e2e/core/clm-move-to-the-right-c4f91a56.spec.ts
 title-ja: 右へ移動

@@ -7,3 +7,4 @@ components:
 - scripts/pre_push.sh
 tests:
 - scripts/tests/env-pre-push-format-check-c017dc07.spec.ts
+title-ja: Pre-push formatting check

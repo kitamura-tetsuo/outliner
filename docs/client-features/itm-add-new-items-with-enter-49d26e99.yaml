@@ -5,12 +5,12 @@ description: Splits the item at the cursor position and adds a new item.
 category: item-management
 status: implemented
 acceptance:
-- Pressing Enter splits the item at the cursor position
-- The cursor moves to the beginning of the new item
-- Text before the cursor remains in the current item
-- Text after the cursor moves to the new item
-- For titles, the new item is added as the first child
 - For normal items, the new item is added as a sibling
+- For titles, the new item is added as the first child
+- Pressing Enter splits the item at the cursor position
+- Text after the cursor moves to the new item
+- Text before the cursor remains in the current item
+- The cursor moves to the beginning of the new item
 tests:
 - client/e2e/core/itm-add-new-items-with-enter-49d26e99.spec.ts
 - client/e2e/core/itm-yjs-tree-reflects-split-42ac1ecd.spec.ts

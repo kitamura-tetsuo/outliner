@@ -6,3 +6,4 @@ status: implemented
 components: []
 tests:
 - scripts/tests/env-sequential-playwright-testing-415fc760.spec.ts
+title-ja: Sequential Playwright testing documented

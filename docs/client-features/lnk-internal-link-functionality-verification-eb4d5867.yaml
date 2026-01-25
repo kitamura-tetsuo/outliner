@@ -4,9 +4,9 @@ description: Verify that internal links work correctly
 category: navigation
 status: implemented
 acceptance:
-- The href attribute of project internal links (/project-name/page-name format) is generated correctly
-- The href attribute of internal links is generated correctly
 - The class and text of internal links are set correctly
+- The href attribute of internal links is generated correctly
+- The href attribute of project internal links (/project-name/page-name format) is generated correctly
 - Various formats of internal links are generated correctly
 tests:
 - client/e2e/core/lnk-internal-link-basic-eb4d5867.spec.ts

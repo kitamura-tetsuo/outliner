@@ -24,8 +24,8 @@ examples:
   - VITE_YJS_WS_URL=wss://yjs.example.com
   - VITE_YJS_PORT=443
   e2e:
-  - 'Set "VITE_YJS_DISABLE_WS=true" in .env.test or localStorage to suppress Yjs WS'
-  - 'In Playwright, collect WS using page.on(''websocket'', ...) and confirm that the number of Yjs-related connections (port 7093, /yjs, /projects/) is 0'
+  - Set "VITE_YJS_DISABLE_WS=true" in .env.test or localStorage to suppress Yjs WS
+  - In Playwright, collect WS using page.on('websocket', ...) and confirm that the number of Yjs-related connections (port 7093, /yjs, /projects/) is 0
 ws-enabled-priority:
 - '1) Force Enable: localStorage.VITE_YJS_FORCE_WS === ''true'' -> Always enabled (For Test/E2E. Prioritized over disable)'
 - '2) Disable: VITE_YJS_DISABLE_WS (Either env or localStorage is ''true'') -> Disabled'
@@ -36,3 +36,4 @@ usage:
 - Recommend VITE_YJS_DISABLE_WS=true in .env.test (Suppress Yjs WS handshake noise)
 - For E2E requiring WS, force connection by setting VITE_YJS_FORCE_WS=true in localStorage using page.addInitScript etc.
 - In production, do not use localStorage overrides (ENABLE/FORCE) in principle. Prioritize control via environment variables when necessary
+title-ja: Yjs WebSocket URL priority and single source of truth

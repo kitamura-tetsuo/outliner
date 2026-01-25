@@ -4,13 +4,13 @@ description: Feature to visually display Scrapbox format syntax
 category: text-formatting
 status: implemented
 acceptance:
-- Clones Scrapbox UX, showing plain text during editing and formatted display when not editing
-- Plain text input is displayed as is in the item with the cursor
-- Formatted content is displayed in items without the cursor
-- Code format (`text`) is visually displayed in code style
-- Strikethrough format ([- text]) is visually displayed with strikethrough
 - Bold format ([[text]]) is visually displayed in bold
+- Clones Scrapbox UX, showing plain text during editing and formatted display when not editing
+- Code format (`text`) is visually displayed in code style
+- Formatted content is displayed in items without the cursor
 - Italic format ([/ text]) is visually displayed in italic
+- Plain text input is displayed as is in the item with the cursor
+- Strikethrough format ([- text]) is visually displayed with strikethrough
 tests:
 - client/e2e/core/fmt-format-display-048d107c.spec.ts
 title-ja: フォーマット表示

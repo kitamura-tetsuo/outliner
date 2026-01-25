@@ -4,12 +4,12 @@ description: Feature to display a link to the project page as breadcrumb navigat
 category: navigation
 status: implemented
 acceptance:
-- A link to the project page is displayed in breadcrumb navigation
 - A link to home is displayed in breadcrumb navigation
-- The current page name is displayed in breadcrumb navigation
-- Clicking the project page link navigates to the project page
+- A link to the project page is displayed in breadcrumb navigation
 - Breadcrumb navigation is displayed when displaying a page
 - Clicking the home link navigates to the home page
+- Clicking the project page link navigates to the project page
+- The current page name is displayed in breadcrumb navigation
 tests:
 - client/e2e/core/nav-link-function-to-project-page-a0e7d28a.spec.ts
 title-ja: プロジェクトページへのリンク機能

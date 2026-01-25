@@ -1,10 +1,7 @@
 id: ATT-7c19a2b4
 title: Attachments react to Yjs add/remove immediately
 title-ja: 添付ファイルの追加・削除が即時に UI に反映される
-description: 'Verify that add/remove operations on Item.attachments (Y.Array<string>)
-  are immediately reflected in the OutlinerItem attachment preview. Works with minimal
-  granularity Yjs observe (Y.Array/Y.Map) reflection and does not rely on external
-  events or artificial delays.
+description: 'Verify that add/remove operations on Item.attachments (Y.Array<string>) are immediately reflected in the OutlinerItem attachment preview. Works with minimal granularity Yjs observe (Y.Array/Y.Map) reflection and does not rely on external events or artificial delays.
 
   '
 category: outliner

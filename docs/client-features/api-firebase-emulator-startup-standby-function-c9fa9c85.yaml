@@ -4,14 +4,14 @@ description: Retry function to wait for Firebase emulator startup to avoid ECONN
 category: api-server
 status: implemented
 acceptance:
-- Retries with exponential backoff if ECONNREFUSED error occurs
 - Fails immediately for errors other than ECONNREFUSED
-- Tests connection to Firebase Auth emulator and waits until success
-- Waits for emulator startup if Firebase emulator environment variables are set
-- Skips waiting if not in emulator environment
 - Logs retry count and delay time
 - Logs user count and user info upon successful connection
 - Retries up to 30 times, with initial delay 1s and max delay 10s
+- Retries with exponential backoff if ECONNREFUSED error occurs
+- Skips waiting if not in emulator environment
+- Tests connection to Firebase Auth emulator and waits until success
+- Waits for emulator startup if Firebase emulator environment variables are set
 tests:
 - client/e2e/core/api-firebase-emulator-startup-standby-function-c9fa9c85.spec.ts
 - server/tests/log-service-emulator-wait.test.js

@@ -8,3 +8,4 @@ status: implemented
 components: []
 tests:
 - scripts/tests/env-setup-script-caches-installation-edcef4b8.spec.ts
+title-ja: Setup script caches installation

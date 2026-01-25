@@ -4,10 +4,10 @@ description: Feature to visually display Scrapbox extended format syntax (links,
 category: text-formatting
 status: implemented
 acceptance:
+- Complex formats (bold or italic within quotes, etc.) are displayed correctly
 - Extended formats are displayed as plain text in the item with the cursor
 - Link syntax ([URL]) is correctly displayed as a link
 - Quote syntax (> text) is correctly displayed as a quote
-- Complex formats (bold or italic within quotes, etc.) are displayed correctly
 tests:
 - client/e2e/core/fmt-extended-format-b471a4b9.spec.ts
 title-ja: 拡張フォーマット

@@ -5,14 +5,14 @@ category: navigation
 status: implemented
 acceptance:
 - Can access the linked page by entering the URL directly
-- Project internal link format is generated correctly ([/project-name/page-name] format)
-- Clicking a project internal link displays the content of the destination page correctly
+- Clicking a link to a non-existent page also navigates to the corresponding URL
 - Clicking a project internal link (/project-name/page-name format) navigates to the corresponding page
-- Internal link format is generated correctly ([page-name] format)
+- Clicking a project internal link displays the content of the destination page correctly
 - Clicking an internal link displays the content of the destination page correctly
 - Clicking an internal link navigates to the corresponding page
-- Clicking a link to a non-existent page also navigates to the corresponding URL
 - Clicking an internal link to a non-existent page creates a new page
+- Internal link format is generated correctly ([page-name] format)
+- Project internal link format is generated correctly ([/project-name/page-name] format)
 tests:
 - client/e2e/core/lnk-click-navigation-6feab1d7.spec.ts
 - client/e2e/core/lnk-create-internal-af8f309a.spec.ts

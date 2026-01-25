@@ -4,9 +4,9 @@ description: Feature to navigate to the project page when a project is selected 
 category: navigation
 status: implemented
 acceptance:
-- Links from the page list on the project page (/[project_name]) to the corresponding page (/[project_name]/[page_name]) work
 - After selecting a project, a list of pages in the project is displayed
 - Clicking each page name in the page list displays the content of that page
+- Links from the page list on the project page (/[project_name]) to the corresponding page (/[project_name]/[page_name]) work
 - Selecting a project on the root page (/) navigates to the corresponding project page (/[project_name])
 tests:
 - client/e2e/core/nav-project-selection-and-page-navigation-bf35d422.spec.ts

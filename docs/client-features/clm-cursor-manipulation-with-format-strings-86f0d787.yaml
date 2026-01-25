@@ -6,8 +6,8 @@ status: implemented
 tests:
 - client/e2e/core/clm-cursor-manipulation-with-format-strings-86f0d787.spec.ts
 acceptance:
+- Cursor movement in strings with mixed multiple formats works correctly
+- Cursor movement within formatted strings works correctly
 - Home/End keys work correctly in formatted strings
 - Shift+Arrow key selection works correctly in formatted strings
-- Cursor movement within formatted strings works correctly
-- Cursor movement in strings with mixed multiple formats works correctly
 title-ja: フォーマット文字列でのカーソル操作

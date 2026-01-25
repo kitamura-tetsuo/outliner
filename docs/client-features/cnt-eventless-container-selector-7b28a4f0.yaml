@@ -1,13 +1,7 @@
 id: CNT-7b28a4f0
 title: Eventless ContainerSelector via ucVersion
 title-ja: イベントレスなContainerSelector（ucVersion依存）
-description: 'Completely eliminate CustomEvent dependency (firestore-user-container-changed)
-  from ContainerSelector and prove that stable recalculation is possible only with
-  firestoreStore.ucVersion and Svelte 5 $state/$derived. Maintains a design where
-  immediate reflection is achieved by ucVersion++ in both setUserContainer replacement
-  path and array push/pop via Proxy, while adding a fallback that polls for ucVersion
-  changes in the test environment to backstop redraws. Confirmed in E2E that setUserContainer
-  replacement via fluidService directly leads to option increase in real UI.
+description: 'Completely eliminate CustomEvent dependency (firestore-user-container-changed) from ContainerSelector and prove that stable recalculation is possible only with firestoreStore.ucVersion and Svelte 5 $state/$derived. Maintains a design where immediate reflection is achieved by ucVersion++ in both setUserContainer replacement path and array push/pop via Proxy, while adding a fallback that polls for ucVersion changes in the test environment to backstop redraws. Confirmed in E2E that setUserContainer replacement via fluidService directly leads to option increase in real UI.
 
   '
 category: project

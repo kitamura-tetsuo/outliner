@@ -7,8 +7,8 @@ acceptance:
 - Control characters ([[]], [/], [-], `) are displayed in the item with the cursor
 - Control characters are hidden and format is applied in items without the cursor
 - Display switches appropriately when moving cursors
-- Title (first line) is displayed as normal text (not bold)
 - Link syntax ([ text]] - typo in original? should be [[text]] or [text]) is displayed correctly as a link
+- Title (first line) is displayed as normal text (not bold)
 tests:
 - client/e2e/core/fmt-consistency-of-format-display-when-moving-cursors-36199743.spec.ts
 title-ja: カーソル移動時のフォーマット表示の一貫性

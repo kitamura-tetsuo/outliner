@@ -8,3 +8,4 @@ components:
 - scripts/tests/env-schedule-functions-dotenvx-3c0f73e5.spec.ts
 tests:
 - scripts/tests/env-schedule-functions-dotenvx-3c0f73e5.spec.ts
+title-ja: Schedule management functions load env via dotenvx

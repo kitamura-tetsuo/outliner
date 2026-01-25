@@ -23,3 +23,4 @@ components:
 tests:
 - client/e2e/env/env-stryker-nightly-schedule-visibility-2c9b1a4d.spec.ts
 - npm run test:mutation
+title-ja: Enable Stryker mutation testing

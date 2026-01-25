@@ -5,10 +5,10 @@ category: selection-range
 status: implemented
 acceptance:
 - Entire items can be moved by drag and drop
-- Visual feedback is displayed during drag
-- Text is inserted appropriately according to the drop position
-- Selection ranges within a single item can be moved by drag and drop
 - Selection ranges spanning multiple items can be moved by drag and drop
+- Selection ranges within a single item can be moved by drag and drop
+- Text is inserted appropriately according to the drop position
+- Visual feedback is displayed during drag
 tests:
 - client/e2e/core/slr-drag-drop-item-e889233a.spec.ts
 - client/e2e/core/slr-drag-drop-selection-e889233a.spec.ts

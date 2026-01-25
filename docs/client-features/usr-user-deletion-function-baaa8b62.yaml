@@ -4,9 +4,9 @@ description: Function to delete a user account and its related data
 category: user-management
 status: implemented
 acceptance:
-- User account is deleted from Firebase Auth
-- User ID is removed from containers the user had access to
-- Containers where the user was the last accessor are completely deleted
-- Container information related to the user is deleted
 - Can delete the user account
+- Container information related to the user is deleted
+- Containers where the user was the last accessor are completely deleted
+- User ID is removed from containers the user had access to
+- User account is deleted from Firebase Auth
 title-ja: ユーザー削除機能

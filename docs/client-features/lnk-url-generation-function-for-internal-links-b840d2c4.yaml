@@ -4,9 +4,9 @@ description: Feature to correctly generate URLs for internal links
 category: navigation
 status: implemented
 acceptance:
+- HTML for internal links is generated correctly
 - Internal links in the format [/project-name/page-name] generate a URL of /project-name/page-name
 - Internal links in the format [page-name] generate a URL of /page-name
-- HTML for internal links is generated correctly
 - URL for internal links is generated correctly
 tests:
 - client/e2e/core/lnk-url-generation-function-for-internal-links-b840d2c4.spec.ts

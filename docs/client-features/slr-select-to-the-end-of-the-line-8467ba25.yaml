@@ -5,8 +5,8 @@ description: Selects from the cursor position to the end of the line.
 category: selection-range
 status: implemented
 acceptance:
-- Shift + End selects from the current position to the end of the line
 - In multi-line items, selects to the end of the line where the cursor is currently located
+- Shift + End selects from the current position to the end of the line
 tests:
 - client/e2e/core/slr-select-to-the-end-of-the-line-8467ba25.spec.ts
 title-ja: 行末まで選択

@@ -17,13 +17,13 @@ tests:
 - src/tests/sqlService.test.ts
 - src/tests/syncWorker.test.ts
 acceptance:
-- Values edited in JOIN queries are reflected in the correct table
-- Each row of the JOIN result is correctly mapped to the table to be edited using the PK alias
-- Display SQL query results in a grid
-- ChartPanel is displayed after query execution
 - Changes are displayed in ChartPanel after cell editing
-- queryStore data is updated after cell editing
-- Query results re-executed after cell editing are also updated
-- Edits are synced via Fluid
 - Chart updates automatically after editing
+- ChartPanel is displayed after query execution
+- Display SQL query results in a grid
+- Each row of the JOIN result is correctly mapped to the table to be edited using the PK alias
+- Edits are synced via Fluid
+- Query results re-executed after cell editing are also updated
+- Values edited in JOIN queries are reflected in the correct table
+- queryStore data is updated after cell editing
 title-ja: 編集可能な結合テーブル

@@ -1,10 +1,7 @@
 id: ALS-8a1f2c30
 title: Alias path fallback via lastConfirmedTargetId within 2s
 title-ja: 2秒以内の lastConfirmedTargetId フォールバックでエイリアスのパス表示
-description: 'In OutlinerItem alias derivation, guarantees that the target path is displayed
-  in the UI if the temporary fallback using aliasPickerStore.lastConfirmedTargetId/lastConfirmedAt
-  is within 2 seconds. In E2E, verify alias path visualization and data-alias-target-id
-  reflection by directly setting lastConfirmed*.
+description: 'In OutlinerItem alias derivation, guarantees that the target path is displayed in the UI if the temporary fallback using aliasPickerStore.lastConfirmedTargetId/lastConfirmedAt is within 2 seconds. In E2E, verify alias path visualization and data-alias-target-id reflection by directly setting lastConfirmed*.
 
   '
 category: outliner

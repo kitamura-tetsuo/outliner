@@ -5,8 +5,8 @@ description: Moves the cursor to the beginning of the line.
 category: cursor-movement
 status: implemented
 acceptance:
-- Pressing Home moves the cursor to the beginning of the current line
 - In multi-line items, moves to the beginning of the line where the cursor is currently located
+- Pressing Home moves the cursor to the beginning of the current line
 tests:
 - client/e2e/core/clm-go-to-the-beginning-of-the-line-d39d158b.spec.ts
 title-ja: 行頭へ移動

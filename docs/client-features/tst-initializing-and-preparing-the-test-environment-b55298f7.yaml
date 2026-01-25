@@ -4,10 +4,10 @@ description: Improve environment preparation before test execution to increase t
 category: testing
 status: implemented
 acceptance:
-- Provide improved helper functions to solve DOM element detection issues
 - Improve stability by creating data directly using Fluid API instead of UI operations
 - Provide a mechanism to automatically create projects and pages before test execution
 - Provide helper functions to initialize the test environment in a consistent way
+- Provide improved helper functions to solve DOM element detection issues
 - Reduce dependencies between tests so that each test can run independently
 tests:
 - client/e2e/basic.spec.ts

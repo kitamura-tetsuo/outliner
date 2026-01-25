@@ -5,8 +5,8 @@ category: selection-range
 status: implemented
 acceptance:
 - Copied text can be pasted elsewhere
-- Text in selection ranges spanning multiple items can be copied
 - Pasting multi-line text splits it appropriately into multiple items
+- Text in selection ranges spanning multiple items can be copied
 tests:
 - client/e2e/core/slr-copy-selection-4c4c4f1a.spec.ts
 - client/e2e/core/slr-paste-copied-text-20a382d6.spec.ts

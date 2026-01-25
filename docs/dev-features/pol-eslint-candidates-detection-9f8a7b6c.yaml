@@ -32,3 +32,4 @@ related_files:
 - scripts/promote-candidates-*.json (output artifacts)
 changelog:
 - 2025-11-09: Initial implementation of ESLint candidates detection
+title-ja: ESLint Candidates Detection Script

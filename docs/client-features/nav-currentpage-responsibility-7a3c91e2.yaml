@@ -3,18 +3,15 @@ title: Consolidate currentPage responsibility into +page.svelte
 title-ja: currentPage 設定の責務を +page.svelte に集約
 category: navigation
 status: implemented
-description: 'Consolidated currentPage setting processing that existed in both +layout.svelte
-  and +page.svelte, centralizing currentPage determination and fallback to +page.svelte.
-  Eliminated re-entry, double waiting, and duplicate settings to improve routing stability
-  and test robustness.
+description: 'Consolidated currentPage setting processing that existed in both +layout.svelte and +page.svelte, centralizing currentPage determination and fallback to +page.svelte. Eliminated re-entry, double waiting, and duplicate settings to improve routing stability and test robustness.
 
   '
 acceptance:
 - During E2E tests, stabilize with minimal automatic page creation if necessary (test environment only)
+- Existing navigation E2Es (LNK-0003 etc.) are green
+- Guarantee visibility of OutlinerBase anchor and main toolbar in subtests
 - When URL parameters change, if the corresponding page exists, currentPage is set to that page
 - currentPage setting is done only by +page.svelte (+layout.svelte does not do it)
-- Guarantee visibility of OutlinerBase anchor and main toolbar in subtests
-- Existing navigation E2Es (LNK-0003 etc.) are green
 components:
 - client/src/routes/[project]/[page]/+layout.svelte
 - client/src/routes/[project]/[page]/+page.svelte

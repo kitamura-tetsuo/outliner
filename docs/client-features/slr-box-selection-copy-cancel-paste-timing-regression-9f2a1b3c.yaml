@@ -7,9 +7,9 @@ status: implemented
 acceptance:
 - Box selection can be cancelled with Esc key (without pasting)
 - Box selection can be created again after cancellation
-- Regression due to timing issues does not occur
-- Pasted text matches the originally copied text
 - Can paste into a recreated box selection
+- Pasted text matches the originally copied text
+- Regression due to timing issues does not occur
 - Text can be copied via box selection
 tests:
 - client/e2e/core/slr-box-selection-copy-cancel-paste-timing-regression-9f2a1b3c.spec.ts

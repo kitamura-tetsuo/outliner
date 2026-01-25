@@ -22,3 +22,4 @@ notes:
 - Future splitting candidates: Lazy loading for graph features and editor auxiliary features.
 tests:
 - client/e2e/basic/00-tst-outliner-visible-after-prepare-0f1a2b3c.spec.ts
+title-ja: Optimize large bundle chunks via Vite manualChunks

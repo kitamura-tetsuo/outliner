@@ -6,8 +6,8 @@ status: implemented
 tests:
 - client/e2e/core/clm-move-cursors-and-multiple-keyboard-operations-on-empty-text-items-20043fb0.spec.ts
 acceptance:
-- Only one cursor is displayed even when moving between items
+- Can move between empty text items using keyboard
 - Cursor moves correctly with multiple keyboard operations after clicking
 - Input goes to the correct item
-- Can move between empty text items using keyboard
+- Only one cursor is displayed even when moving between items
 title-ja: 空のテキストアイテムでのカーソル移動と複数回のキーボード操作

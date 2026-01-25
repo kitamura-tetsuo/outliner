@@ -5,11 +5,11 @@ category: navigation
 status: implemented
 acceptance:
 - Backlink context (context including the link) is displayed
-- The number of backlinks is displayed as a badge
 - Clicking a backlink navigates to the source page
-- The backlink panel displays a list of pages containing links to that page
 - The backlink panel can be opened and closed
+- The backlink panel displays a list of pages containing links to that page
 - The backlink panel is displayed on the page
+- The number of backlinks is displayed as a badge
 tests:
 - client/e2e/core/lnk-backlink-function-7976aef8.spec.ts
 testcases:

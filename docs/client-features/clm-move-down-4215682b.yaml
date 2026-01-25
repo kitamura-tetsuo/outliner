@@ -5,10 +5,10 @@ description: Moves the cursor one line down.
 category: cursor-movement
 status: implemented
 acceptance:
-- Moves the cursor one line down
+- If not on the last line, moves to the line below in the same item
 - If on the last line and there is no next item, moves to the end of the same item
 - If on the last line, moves to the first line of the next item. In this case, sets the cursor at the position with the smallest change in x-coordinate. It may move significantly if the number of characters is small. If no operations other than cursor up/down have been performed, sets the cursor at the position with small change from the x-coordinate where cursor down started.
-- If not on the last line, moves to the line below in the same item
+- Moves the cursor one line down
 tests:
 - client/e2e/core/clm-move-down-4215682b.spec.ts
 title-ja: 下へ移動

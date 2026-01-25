@@ -5,18 +5,18 @@ category: api-server
 status: implemented
 acceptance:
 - CORS settings are configured correctly and cross-origin requests are processed normally
+- Environment variables are loaded correctly and Azure Fluid Relay settings are applied
 - Firebase Functions emulator starts normally
+- Health check endpoint (/health) responds normally
+- 'Port settings are configured correctly (Hosting: 57000)'
 - Requests via Firebase Hosting are correctly routed to Functions
+- Returns 400 error if required parameters are missing
+- Returns 401 or 500 error if authentication fails
+- Returns 405 error for invalid HTTP methods
 - deleteContainer endpoint (/api/deleteContainer) handles auth errors appropriately
 - deleteUser endpoint (/api/deleteUser) handles auth errors appropriately
 - getUserContainers endpoint (/api/getUserContainers) handles auth errors appropriately
 - save-container endpoint (/api/save-container) handles auth errors appropriately
-- Health check endpoint (/health) responds normally
-- Port settings are configured correctly (Hosting: 57000)
-- Returns 400 error if required parameters are missing
-- Returns 405 error for invalid HTTP methods
-- Environment variables are loaded correctly and Azure Fluid Relay settings are applied
-- Returns 401 or 500 error if authentication fails
 tests:
 - client/e2e/core/api-fixing-firebase-functions-api-server-9e65d78b.spec.ts
 - functions/test/firebase-functions.test.js

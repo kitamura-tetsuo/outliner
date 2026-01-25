@@ -4,10 +4,10 @@ description: Testing edge cases of the selection range function
 category: selection-range
 status: implemented
 acceptance:
-- Selection ranges containing empty items can be created
 - Cursor position is updated appropriately after deleting a selection range spanning multiple items
 - Selection direction (forward/backward) can be switched
 - Selection ranges can be created for items containing long text
+- Selection ranges containing empty items can be created
 tests:
 - client/e2e/core/slr-selected-delete-correction-31fe9b27.spec.ts
 - client/e2e/core/slr-selected-direction-3724726f.spec.ts

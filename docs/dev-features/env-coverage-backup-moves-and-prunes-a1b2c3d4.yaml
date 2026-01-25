@@ -61,3 +61,4 @@ rationale: 'The test script runs coverage:backup 4 times during execution:
   Both scripts keep 10 backups to maintain sufficient history while preventing bloat.
 
   '
+title-ja: Coverage backup and move-to-backup scripts

@@ -4,11 +4,11 @@ description: Text paste from clipboard and format preservation function
 category: text-formatting
 status: implemented
 acceptance:
-- Text is pasted at the cursor position
-- Pasting text containing format syntax works correctly
-- Pasting plain text works correctly
 - Pasted format syntax is visually displayed correctly
 - Pasting multi-line text works correctly
+- Pasting plain text works correctly
+- Pasting text containing format syntax works correctly
+- Text is pasted at the cursor position
 tests:
 - client/e2e/core/fmt-paste-and-format-from-the-clipboard-fe4971c2.spec.ts
 title-ja: クリップボードからのペーストとフォーマット

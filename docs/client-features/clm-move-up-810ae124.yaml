@@ -5,10 +5,10 @@ description: Moves the cursor one line up.
 category: cursor-movement
 status: implemented
 acceptance:
-- Moves the cursor one line up
+- If not on the first line, moves to the line above in the same item
 - If on the first line and there is no previous item, moves to the beginning of the same item
 - If on the first line, moves to the last line of the previous item. In this case, sets the cursor at the position with the smallest change in x-coordinate. It may move significantly if the number of characters is small. If no operations other than cursor up/down have been performed, sets the cursor at the position with small change from the x-coordinate where cursor up started.
-- If not on the first line, moves to the line above in the same item
+- Moves the cursor one line up
 tests:
 - client/e2e/core/clm-move-up-line-move-06855626.spec.ts
 - client/e2e/core/clm-move-up-no-prev-item-9e8d4b10.spec.ts

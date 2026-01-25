@@ -6,8 +6,8 @@ status: implemented
 acceptance:
 - Alias displays the path to the referenced item
 - Can create an alias node
-- Can operate the alias picker with keyboard and confirm
 - Can edit the referenced subtree when expanding the alias
+- Can operate the alias picker with keyboard and confirm
 - Changes are reflected in the original item
 components:
 - client/src/components/AliasPicker.svelte

@@ -5,13 +5,13 @@ description: Correctly display and operate multiple internal links within a sing
 category: text-formatting
 status: implemented
 acceptance:
-- Even if multiple [page] and [/project/page] links are included in one item, all are displayed as links
-- E2E tests pass
-- Multiple links are generated appropriately in ScrapboxFormatter.formatToHtml
-- Displayed as plain text if cursor is present
-- Page existence check classes page-exists/page-not-exists are applied respectively
 - Clicking a link navigates to the correct page
+- Displayed as plain text if cursor is present
+- E2E tests pass
+- Even if multiple [page] and [/project/page] links are included in one item, all are displayed as links
 - Link preview is displayed for each link
+- Multiple links are generated appropriately in ScrapboxFormatter.formatToHtml
+- Page existence check classes page-exists/page-not-exists are applied respectively
 tests:
 - client/e2e/core/fmt-multiple-internal-links-3a606671.spec.ts
 - client/src/utils/ScrapboxFormatter.test.ts

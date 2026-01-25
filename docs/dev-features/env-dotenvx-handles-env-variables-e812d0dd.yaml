@@ -6,3 +6,4 @@ status: implemented
 components: []
 tests:
 - scripts/tests/env-dotenvx-handles-env-variables-e812d0dd.spec.ts
+title-ja: dotenvx handles env variables without cross-env

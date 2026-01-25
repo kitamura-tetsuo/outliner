@@ -6,3 +6,4 @@ status: implemented
 components: []
 tests:
 - client/e2e/new/env-no-fluid-service-global-a5b6c7d8.spec.ts
+title-ja: Ensure no Fluid service is exposed globally

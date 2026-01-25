@@ -9,3 +9,4 @@ components:
 - scripts/setup.sh
 tests:
 - scripts/tests/env-dotenvx-functions-root-9a2b7c8d.spec.ts
+title-ja: Functions load env via dotenvx

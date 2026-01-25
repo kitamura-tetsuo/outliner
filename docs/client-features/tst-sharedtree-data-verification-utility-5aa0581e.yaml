@@ -4,13 +4,13 @@ description: Utility to retrieve SharedTree content as JSON in tests and verify 
 category: testing
 status: implemented
 acceptance:
-- Retrieve SharedTree data structure in JSON format
-- Take snapshots and compare later
 - Accurately verify nested structures (parent-child relationships)
-- Strictly compare expected and actual values
-- Partially compare expected and actual values
-- Verify data at a specific path
 - Ignore specific paths for comparison
+- Partially compare expected and actual values
+- Retrieve SharedTree data structure in JSON format
+- Strictly compare expected and actual values
+- Take snapshots and compare later
+- Verify data at a specific path
 tests:
 - client/e2e/utils/tree-validation.spec.ts
 examples:
