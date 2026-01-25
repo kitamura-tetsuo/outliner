@@ -17,7 +17,7 @@ export function projectsFromUserProject(
         return [];
     }
 
-    // テスト環境の検出（より広範囲に検出）
+    // Detect test environment (detect more broadly)
     const isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
@@ -26,7 +26,7 @@ export function projectsFromUserProject(
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
         || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
-    // ID 重複を排除して安定化
+    // Deduplicate IDs for stabilization
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
     const uniqueIds = Array.from(new Set(data.accessibleProjectIds));
     return uniqueIds
@@ -48,9 +48,9 @@ export function projectsFromUserProject(
                 console.warn(`Failed to get project title for ${id}:`, error);
                 name = id;
             }
-            // テスト環境で名前が空の場合、デフォルト名を使用
+            // Use default name if name is empty in test environment
             if (isTestEnv && (!name || name.trim() === "")) {
-                name = `テストプロジェクト${id.slice(-4)}`;
+                name = `Test Project ${id.slice(-4)}`;
             }
             return {
                 id,
@@ -60,13 +60,13 @@ export function projectsFromUserProject(
         })
         .filter(project => {
             if (isTestEnv) {
-                // テスト環境では、名前が空でないものを全て表示（\"プロジェクト\" も許可）
+                // In test environment, display all non-empty names (allow "Project")
                 return !!(project.name && project.name.trim() !== "");
             } else {
-                // 本番環境では、厳密な条件でフィルタリング
+                // In production environment, filter with strict conditions
                 return project.name
                     && project.name.trim() !== ""
-                    && project.name !== "プロジェクト";
+                    && project.name !== "Project";
             }
         });
 }
