@@ -31,6 +31,7 @@ test.describe("Chart Component E2E", () => {
 
         // Check if "Chart" option is available
         const options = await componentSelector.locator("option").allTextContents();
+        // Verified: Expecting "Chart" (English) instead of Japanese "チャート"
         expect(options).toContain("Chart");
     });
 
