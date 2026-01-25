@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * ポーリング分析ツール
+ * Polling Analysis Tool
  *
- * このスクリプトは以下を実行します:
- * 1. コードベース内のすべてのポーリング処理を検出
- * 2. 各ポーリングの目的と場所をカタログ化
- * 3. テスト実行時にポーリングの影響を測定
- * 4. 不要なポーリングを特定するレポートを生成
+ * This script performs the following:
+ * 1. Detects all polling processes in the codebase
+ * 2. Catalogs the purpose and location of each polling
+ * 3. Measures the impact of polling during test execution
+ * 4. Generates a report identifying unnecessary polling
  */
 
 import * as fs from "fs";
@@ -17,7 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * ファイル内のポーリング処理を検出
+ * Detect polling processes in a file
  */
 function detectPollingInFile(filePath) {
     const instances = [];
@@ -35,12 +35,12 @@ function detectPollingInFile(filePath) {
 
         for (const { type, pattern } of pollingPatterns) {
             if (pattern.test(line)) {
-                // コンテキストを取得（前後5行）
+                // Get context (5 lines before and after)
                 const contextStart = Math.max(0, i - 5);
                 const contextEnd = Math.min(lines.length, i + 6);
                 const context = lines.slice(contextStart, contextEnd);
 
-                // ユニークIDを生成
+                // Generate unique ID
                 const id = `${path.basename(filePath)}:${i + 1}:${type}`;
 
                 instances.push({
@@ -59,7 +59,7 @@ function detectPollingInFile(filePath) {
 }
 
 /**
- * ディレクトリを再帰的に走査してポーリングを検出
+ * Recursively scan directory to detect polling
  */
 function scanDirectory(dir, extensions = [".ts", ".svelte", ".js"]) {
     let instances = [];
@@ -69,7 +69,7 @@ function scanDirectory(dir, extensions = [".ts", ".svelte", ".js"]) {
     for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
 
-        // node_modules, .svelte-kit, build などは除外
+        // Exclude node_modules, .svelte-kit, build, etc.
         if (entry.isDirectory()) {
             if (!["node_modules", ".svelte-kit", "build", "dist", ".git"].includes(entry.name)) {
                 instances = instances.concat(scanDirectory(fullPath, extensions));
@@ -86,7 +86,7 @@ function scanDirectory(dir, extensions = [".ts", ".svelte", ".js"]) {
 }
 
 /**
- * ポーリングを分類
+ * Categorize polling
  */
 function categorizePolling(instances) {
     const necessary = [];
@@ -97,7 +97,7 @@ function categorizePolling(instances) {
         const contextStr = instance.context.join("\n").toLowerCase();
         const codeStr = instance.code.toLowerCase();
 
-        // テスト専用のポーリング
+        // Test-only polling
         if (
             contextStr.includes("e2e")
             || contextStr.includes("test")
@@ -108,21 +108,21 @@ function categorizePolling(instances) {
             continue;
         }
 
-        // 明らかに必要なポーリング（ログローテーション、カーソル点滅など）
+        // Clearly necessary polling (log rotation, cursor blink, etc.)
         if (
             contextStr.includes("log rotation")
             || contextStr.includes("cursor blink")
             || contextStr.includes("idle timeout")
-            || codeStr.includes("530") // カーソル点滅の間隔
+            || codeStr.includes("530") // Cursor blink interval
         ) {
             necessary.push(instance);
             continue;
         }
 
-        // 疑わしいポーリング（短い間隔、明確な目的がない）
+        // Suspicious polling (short interval, no clear purpose)
         if (
-            codeStr.includes("100") // 100ms間隔
-            || codeStr.includes("120") // 120ms間隔
+            codeStr.includes("100") // 100ms interval
+            || codeStr.includes("120") // 120ms interval
             || contextStr.includes("fallback")
             || contextStr.includes("フォールバック")
             || contextStr.includes("暫定")
@@ -131,7 +131,7 @@ function categorizePolling(instances) {
             continue;
         }
 
-        // その他は疑わしいものとして扱う
+        // Treat others as suspicious
         suspicious.push(instance);
     }
 
@@ -139,71 +139,71 @@ function categorizePolling(instances) {
 }
 
 /**
- * レポートをMarkdown形式で出力
+ * Output report in Markdown format
  */
 function formatReportAsMarkdown(report) {
-    let md = "# ポーリング分析レポート\n\n";
-    md += `生成日時: ${new Date().toISOString()}\n\n`;
-    md += `## 概要\n\n`;
-    md += `- 総ポーリング数: ${report.totalPolling}\n`;
-    md += `- 必要なポーリング: ${report.categorized.necessary.length}\n`;
-    md += `- 疑わしいポーリング: ${report.categorized.suspicious.length}\n`;
-    md += `- テスト専用ポーリング: ${report.categorized.testOnly.length}\n\n`;
+    let md = "# Polling Analysis Report\n\n";
+    md += `Generated at: ${new Date().toISOString()}\n\n`;
+    md += `## Overview\n\n`;
+    md += `- Total Polling Count: ${report.totalPolling}\n`;
+    md += `- Necessary Polling: ${report.categorized.necessary.length}\n`;
+    md += `- Suspicious Polling: ${report.categorized.suspicious.length}\n`;
+    md += `- Test-Only Polling: ${report.categorized.testOnly.length}\n\n`;
 
-    // 疑わしいポーリングの詳細
-    md += `## 疑わしいポーリング（削除候補）\n\n`;
-    md += `これらのポーリングは削除しても問題ない可能性があります。\n\n`;
+    // Suspicious polling details
+    md += `## Suspicious Polling (Removal Candidates)\n\n`;
+    md += `These pollings may be safe to remove.\n\n`;
 
     for (const instance of report.categorized.suspicious) {
         md += `### ${instance.id}\n\n`;
-        md += `- **ファイル**: \`${instance.file}\`\n`;
-        md += `- **行**: ${instance.line}\n`;
-        md += `- **タイプ**: ${instance.type}\n`;
-        md += `- **コード**: \`${instance.code}\`\n\n`;
-        md += `**コンテキスト**:\n\`\`\`\n${instance.context.join("\n")}\n\`\`\`\n\n`;
+        md += `- **File**: \`${instance.file}\`\n`;
+        md += `- **Line**: ${instance.line}\n`;
+        md += `- **Type**: ${instance.type}\n`;
+        md += `- **Code**: \`${instance.code}\`\n\n`;
+        md += `**Context**:\n\`\`\`\n${instance.context.join("\n")}\n\`\`\`\n\n`;
     }
 
-    // テスト専用ポーリング
-    md += `## テスト専用ポーリング\n\n`;
-    md += `これらはテスト環境でのみ実行されるポーリングです。\n\n`;
+    // Test-only polling
+    md += `## Test-Only Polling\n\n`;
+    md += `These are pollings executed only in test environments.\n\n`;
 
     for (const instance of report.categorized.testOnly) {
         md += `### ${instance.id}\n\n`;
-        md += `- **ファイル**: \`${instance.file}\`\n`;
-        md += `- **行**: ${instance.line}\n`;
-        md += `- **タイプ**: ${instance.type}\n\n`;
+        md += `- **File**: \`${instance.file}\`\n`;
+        md += `- **Line**: ${instance.line}\n`;
+        md += `- **Type**: ${instance.type}\n\n`;
     }
 
-    // 必要なポーリング
-    md += `## 必要なポーリング\n\n`;
-    md += `これらは明確な目的があり、削除すべきではないポーリングです。\n\n`;
+    // Necessary polling
+    md += `## Necessary Polling\n\n`;
+    md += `These are pollings with clear purposes and should not be removed.\n\n`;
 
     for (const instance of report.categorized.necessary) {
         md += `### ${instance.id}\n\n`;
-        md += `- **ファイル**: \`${instance.file}\`\n`;
-        md += `- **行**: ${instance.line}\n`;
-        md += `- **タイプ**: ${instance.type}\n`;
-        md += `- **コード**: \`${instance.code}\`\n\n`;
+        md += `- **File**: \`${instance.file}\`\n`;
+        md += `- **Line**: ${instance.line}\n`;
+        md += `- **Type**: ${instance.type}\n`;
+        md += `- **Code**: \`${instance.code}\`\n\n`;
     }
 
     return md;
 }
 
 /**
- * メイン処理
+ * Main process
  */
 function main() {
-    console.log("ポーリング分析を開始します...\n");
+    console.log("Starting polling analysis...\n");
 
-    // スクリプトの場所から相対的にclient/srcを見つける
+    // Find client/src relatively from script location
     const scriptDir = __dirname;
     const workspaceRoot = path.dirname(scriptDir);
     const clientDir = path.join(workspaceRoot, "client", "src");
 
-    console.log(`スキャン対象: ${clientDir}`);
+    console.log(`Scan target: ${clientDir}`);
     const instances = scanDirectory(clientDir);
 
-    console.log(`\n検出されたポーリング: ${instances.length}件\n`);
+    console.log(`\nDetected polling: ${instances.length} instances\n`);
 
     const categorized = categorizePolling(instances);
     const report = {
@@ -214,26 +214,26 @@ function main() {
 
     const markdown = formatReportAsMarkdown(report);
 
-    // レポートを保存
+    // Save report
     const reportPath = path.join(workspaceRoot, "docs", "polling-analysis-report.md");
     fs.writeFileSync(reportPath, markdown, "utf-8");
 
-    console.log(`レポートを保存しました: ${reportPath}\n`);
+    console.log(`Report saved: ${reportPath}\n`);
 
-    // サマリーを表示
-    console.log("=== サマリー ===");
-    console.log(`総ポーリング数: ${report.totalPolling}`);
-    console.log(`必要なポーリング: ${report.categorized.necessary.length}`);
-    console.log(`疑わしいポーリング: ${report.categorized.suspicious.length}`);
-    console.log(`テスト専用ポーリング: ${report.categorized.testOnly.length}`);
-    console.log("\n疑わしいポーリングの削除候補:");
+    // Display summary
+    console.log("=== Summary ===");
+    console.log(`Total Polling Count: ${report.totalPolling}`);
+    console.log(`Necessary Polling: ${report.categorized.necessary.length}`);
+    console.log(`Suspicious Polling: ${report.categorized.suspicious.length}`);
+    console.log(`Test-Only Polling: ${report.categorized.testOnly.length}`);
+    console.log("\nSuspicious Polling Removal Candidates:");
 
     for (const instance of report.categorized.suspicious.slice(0, 5)) {
         console.log(`  - ${instance.file}:${instance.line} (${instance.type})`);
     }
 
     if (report.categorized.suspicious.length > 5) {
-        console.log(`  ... 他 ${report.categorized.suspicious.length - 5} 件`);
+        console.log(`  ... and ${report.categorized.suspicious.length - 5} more`);
     }
 }
 

@@ -8,4 +8,3 @@ components:
 - scripts/setup.sh
 tests:
 - scripts/tests/env-setup-script-executable-90408b00.spec.ts
-title-ja: Setup script is executable

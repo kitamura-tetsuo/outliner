@@ -1,7 +1,6 @@
 id: FTR-e8f39b39
 slug: srv
 title: Document rclone configuration for backups
-title-ja: バックアップ用rclone設定のドキュメント
 description: 'Required environment variables:
 
   - `RCLONE_REMOTE`: destination like `r2:bucket/backups` or `s3:bucket/path`

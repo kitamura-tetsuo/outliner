@@ -8,4 +8,3 @@ components:
 - scripts/tests/env-schedule-functions-dotenvx-3c0f73e5.spec.ts
 tests:
 - scripts/tests/env-schedule-functions-dotenvx-3c0f73e5.spec.ts
-title-ja: スケジュール管理Functionsがdotenvxで環境変数を読み込む

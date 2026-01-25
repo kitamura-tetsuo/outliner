@@ -1,6 +1,5 @@
 id: ENV-a5b6c7d8
 title: Ensure no Fluid service is exposed globally
-title-ja: グローバルにFluidサービスが存在しないことの確認
 description: Verify that the client no longer attaches a Fluid service to the window object after removing Fluid code.
 category: environment
 status: implemented

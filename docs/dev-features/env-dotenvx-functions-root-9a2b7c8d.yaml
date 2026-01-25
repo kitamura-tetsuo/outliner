@@ -9,4 +9,3 @@ components:
 - scripts/setup.sh
 tests:
 - scripts/tests/env-dotenvx-functions-root-9a2b7c8d.spec.ts
-title-ja: dotenvxでFunctionsの環境変数を読み込む

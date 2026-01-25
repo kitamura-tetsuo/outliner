@@ -1,7 +1,6 @@
 id: FTR-7e3c9a12
 slug: 7e3
 title: 'Server: migrate room-size listener to Yjs observeDeep with fallback'
-title-ja: 'サーバ: ルームサイズ監視を Yjs observeDeep に移行（フォールバック付き）'
 type: dev
 area: server
 status: implemented
@@ -11,20 +10,10 @@ summary:
   en: 'Replace doc.on(''update'') with minimal-granularity Yjs observeDeep on the root orderedTree map when available, with a safe fallback to doc-level update listener.
 
     '
-  ja: '可能であればルートの orderedTree Y.Map に対する最小粒度の observeDeep を用い、
-
-    非対応環境やスキーマ欠落時は doc.on(''update'') へフォールバックする方針に変更。
-
-    '
 motivation:
   en: 'Reduce unnecessary wake-ups from unrelated Y.Doc updates and make room-size checks more targeted.
 
     Keep backward compatibility for containers without orderedTree.
-
-    '
-  ja: 'Y.Doc 全体の更新に起因する不要な起動を削減し、監視対象を orderedTree に限定して効率化するため。
-
-    orderedTree を持たないコンテナにも互換性を維持する。
 
     '
 changes:
@@ -35,37 +24,21 @@ changes:
       otherwise falls back to doc.on(''update'', warn). removeRoomSizeListener detaches both safely.
 
       '
-    ja: 'addRoomSizeListener は doc.getMap("orderedTree") の observeDeep(warn) を優先し、
-
-      利用不可時は doc.on(''update'', warn) にフォールバック。removeRoomSizeListener は両経路の detach を安全に実施。
-
-      '
 impact:
   granularity:
     en: Observes only orderedTree subtree when available (reduced noise).
-    ja: orderedTree 配下のみを監視（不要通知の低減）。
   load:
     en: Lower CPU due to fewer irrelevant listener wake-ups; equivalent memory footprint.
-    ja: 不要なリスナー起動が減るため CPU 負荷が低減。メモリは同等。
   detach:
     en: 'Safe detach covers both unobserveDeep and off(''update''). Listener references are ref-counted per room.
 
       '
-    ja: 'unobserveDeep と off(''update'') の双方を網羅して安全に解放。リスナー参照は部屋ごとに参照カウント管理。
-
-      '
 fallback:
   en: If orderedTree is missing or observeDeep is unavailable, uses doc.on('update') to preserve behavior.
-  ja: orderedTree が無い/observeDeep が無い場合は doc.on('update') を用いて従来動作を維持。
 future:
   en: '- Consider subdoc-level listeners if pages are split into subdocs.
 
     - Emit metrics for listener attach/detach to observe load over time.
-
-    '
-  ja: '- ページを subdoc 化した場合は subdoc 単位の監視も検討。
-
-    - リスナーの attach/detach をメトリクス化して負荷傾向を観測。
 
     '
 tests:
@@ -77,12 +50,5 @@ tests:
         - Fallback path via doc.on(''update'') also triggers
 
         - Both detach paths release listeners safely
-
-        '
-      ja: '- orderedTree の変更で observeDeep 経由の warnIfRoomTooLarge が確実に起動
-
-        - doc.on(''update'') フォールバック経路でも起動
-
-        - 両経路の detach が安全に解放されることを検証
 
         '

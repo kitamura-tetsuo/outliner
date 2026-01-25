@@ -1,6 +1,5 @@
 id: ENV-9f3d1b7a
 title: Enable Stryker mutation testing
-title-ja: Strykerによるミューテーションテストの導入
 description: 'Add Stryker configuration, dependencies, and npm scripts so developers can run mutation testing with Vitest.
 
   GitHub Actions execute incremental mutation testing on pull requests (limited to changed lines) and

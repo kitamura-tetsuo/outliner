@@ -1,5 +1,4 @@
 title: ESLint Candidates Detection Script
-title-ja: ESLint候補検出スクリプト
 description: 'Added ESLint Detection Script that identifies files ready for rule promotion from warn to error level.
 
   The script scans the codebase to find files with zero violations for specified ESLint rules,

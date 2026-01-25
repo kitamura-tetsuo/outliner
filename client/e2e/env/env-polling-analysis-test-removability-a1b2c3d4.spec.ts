@@ -1,8 +1,8 @@
 /**
- * ENV-POLL-0001: ポーリング削除可能性テスト
+ * ENV-POLL-0001: Polling Removability Test
  *
- * 各ポーリングを無効化してテストを実行し、
- * 削除しても問題ないポーリングを特定します。
+ * Runs tests with each polling disabled to identify
+ * polling that can be safely removed.
  */
 
 import { expect, test } from "@playwright/test";
@@ -21,7 +21,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 registerCoverageHooks();
 
-test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
+test.describe("ENV-POLL-0001: Polling Removability Test", () => {
     const results: PollingTestResult[] = [];
 
     test.beforeEach(async ({ page }) => {
@@ -31,40 +31,40 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
     });
 
     test.afterAll(async () => {
-        // レポートを生成
+        // Generate report
         const report = generatePollingTestReport(results);
         const reportPath = path.join(process.cwd(), "docs", "polling-removability-report.md");
         fs.writeFileSync(reportPath, report, "utf-8");
-        console.log(`\nレポートを保存しました: ${reportPath}`);
+        console.log(`\nReport saved: ${reportPath}`);
     });
 
-    test("OutlinerItem.svelte の aliasLastConfirmedPulse ポーリング", async ({ page }) => {
-        // OutlinerItem.svelte の 340行目付近のポーリング
+    test("OutlinerItem.svelte aliasLastConfirmedPulse polling", async ({ page }) => {
+        // Polling around line 340 in OutlinerItem.svelte
         const result = await testWithoutPolling(
             page,
             "OutlinerItem aliasLastConfirmedPulse",
             /OutlinerItem\.svelte.*aliasLastConfirmedPulse/,
             async () => {
-                // エイリアス機能のテスト
+                // Test alias feature
                 await page.goto("http://localhost:7090/test-project/test-page");
                 await page.waitForSelector("[data-item-id]", { timeout: 5000 });
 
                 const items = await page.locator("[data-item-id]").all();
                 expect(items.length).toBeGreaterThan(0);
 
-                // エイリアス属性が設定されているか確認
+                // Verify alias attribute is set
                 const firstItem = items[0];
                 await firstItem.evaluate(el => el.hasAttribute("data-alias-target-id"));
 
-                // ポーリングなしでも属性が設定されるべき
-                // （Yjs observeで十分なはず）
+                // Attribute should be set even without polling
+                // (Yjs observe should be sufficient)
             },
         );
 
         results.push(result);
     });
 
-    test("OutlinerItemAlias.svelte の aliasLastConfirmedPulse ポーリング", async ({ page }) => {
+    test("OutlinerItemAlias.svelte aliasLastConfirmedPulse polling", async ({ page }) => {
         const result = await testWithoutPolling(
             page,
             "OutlinerItemAlias aliasLastConfirmedPulse",
@@ -73,17 +73,17 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
                 await page.goto("http://localhost:7090/test-project/test-page");
                 await page.waitForSelector("[data-item-id]", { timeout: 5000 });
 
-                // エイリアスコンポーネントが正しく表示されるか
+                // Verify alias component is displayed correctly
                 await page.locator(".alias-content").all();
 
-                // ポーリングなしでもエイリアスが表示されるべき
+                // Alias should be displayed even without polling
             },
         );
 
         results.push(result);
     });
 
-    test("CommentThread.svelte の入力値ポーリング", async ({ page }) => {
+    test("CommentThread.svelte input polling", async ({ page }) => {
         const result = await testWithoutPolling(
             page,
             "CommentThread input polling",
@@ -92,32 +92,32 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
                 await page.goto("http://localhost:7090/test-project/test-page");
                 await page.waitForSelector("[data-item-id]", { timeout: 5000 });
 
-                // コメントボタンをクリック
+                // Click comment button
                 const commentButton = page.locator("button.comment-button").first();
                 await commentButton.click();
 
-                // コメント入力欄が表示されるか
+                // Verify comment input is displayed
                 const commentInput = page.locator('[data-testid="new-comment-input"]');
                 await expect(commentInput).toBeVisible({ timeout: 5000 });
 
-                // コメントを入力
+                // Enter comment
                 await commentInput.fill("Test comment");
 
-                // 追加ボタンをクリック
+                // Click add button
                 const addButton = page.locator('button:has-text("追加")');
                 await addButton.click();
 
-                // コメントが追加されるか
+                // Verify comment is added
                 await expect(page.locator(".comment-item")).toBeVisible({ timeout: 5000 });
 
-                // ポーリングなしでもbind:valueが機能するべき
+                // bind:value should work even without polling
             },
         );
 
         results.push(result);
     });
 
-    test("OutlinerItem.svelte の E2E ファイルドロップポーリング", async ({ page }) => {
+    test("OutlinerItem.svelte E2E file drop polling", async ({ page }) => {
         const result = await testWithoutPolling(
             page,
             "OutlinerItem E2E file drop polling",
@@ -126,23 +126,23 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
                 await page.goto("http://localhost:7090/test-project/test-page");
                 await page.waitForSelector("[data-item-id]", { timeout: 5000 });
 
-                // 通常のテキスト編集が動作するか
+                // Verify normal text editing works
                 const firstItem = page.locator("[data-item-id]").first();
                 await firstItem.click();
 
                 await page.keyboard.type("Test text");
 
-                // テキストが入力されるか
+                // Verify text is entered
                 await expect(firstItem).toContainText("Test text", { timeout: 5000 });
 
-                // ファイルドロップのポーリングは通常操作には不要
+                // File drop polling is unnecessary for normal operation
             },
         );
 
         results.push(result);
     });
 
-    test("EditorOverlay.svelte の位置更新ポーリング", async ({ page }) => {
+    test("EditorOverlay.svelte position update polling", async ({ page }) => {
         const result = await testWithoutPolling(
             page,
             "EditorOverlay position update",
@@ -151,44 +151,44 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
                 await page.goto("http://localhost:7090/test-project/test-page");
                 await page.waitForSelector("[data-item-id]", { timeout: 5000 });
 
-                // カーソルを設定
+                // Set cursor
                 const firstItem = page.locator("[data-item-id]").first();
                 await firstItem.click();
 
-                // カーソルが表示されるか
+                // Verify cursor is visible
                 const cursor = page.locator(".cursor");
                 await expect(cursor).toBeVisible({ timeout: 5000 });
 
-                // ポーリングなしでもMutationObserverで位置更新されるべき
+                // Position should update via MutationObserver even without polling
             },
         );
 
         results.push(result);
     });
 
-    test("統計情報の確認", async ({ page }) => {
+    test("Check statistics", async ({ page }) => {
         await page.goto("http://localhost:7090/test-project/test-page");
         await page.waitForSelector("[data-item-id]", { timeout: 5000 });
 
-        // 少し待機してポーリングが実行されるのを待つ
+        // Wait a bit for polling to run
         await page.waitForTimeout(3000);
 
-        // ポーリング統計を取得
+        // Get polling stats
         const stats = await getPollingStats(page);
 
-        console.log("\n=== ポーリング統計 ===");
-        console.log(`総呼び出し数: ${stats.totalCalls}`);
-        console.log(`アクティブ: ${stats.activeCalls}`);
-        console.log(`無効化済み: ${stats.disabledCalls}`);
+        console.log("\n=== Polling Statistics ===");
+        console.log(`Total Calls: ${stats.totalCalls}`);
+        console.log(`Active: ${stats.activeCalls}`);
+        console.log(`Disabled: ${stats.disabledCalls}`);
 
-        // 実行回数が多いポーリングを表示
+        // Show frequent pollings
         const sortedCalls = stats.calls.sort((a: any, b: any) => b.executionCount - a.executionCount);
 
-        console.log("\n実行回数が多いポーリング（上位10件）:");
+        console.log("\nTop 10 Frequent Pollings:");
         for (const call of sortedCalls.slice(0, 10)) {
-            console.log(`  - ${call.type} (delay=${call.delay}ms): ${call.executionCount}回実行`);
+            console.log(`  - ${call.type} (delay=${call.delay}ms): Executed ${call.executionCount} times`);
 
-            // スタックトレースから呼び出し元を特定
+            // Identify caller from stack trace
             const stackLines = call.stack.split("\n");
             const relevantLine = stackLines.find((line: string) => line.includes(".svelte") || line.includes(".ts"));
             if (relevantLine) {
@@ -196,15 +196,15 @@ test.describe("ENV-POLL-0001: ポーリング削除可能性テスト", () => {
             }
         }
 
-        // 短い間隔のポーリングを警告
+        // Warn short interval polling
         const shortIntervalPolling = stats.calls.filter((call: any) =>
             call.type === "setInterval" && call.delay && call.delay < 200
         );
 
         if (shortIntervalPolling.length > 0) {
-            console.log(`\n⚠ 警告: ${shortIntervalPolling.length}件の短い間隔（<200ms）のポーリングが検出されました`);
+            console.log(`\n⚠ Warning: ${shortIntervalPolling.length} short interval (<200ms) pollings detected`);
             for (const call of shortIntervalPolling) {
-                console.log(`  - delay=${call.delay}ms, 実行回数=${call.executionCount}`);
+                console.log(`  - delay=${call.delay}ms, Execution Count=${call.executionCount}`);
             }
         }
     });
