@@ -17,7 +17,7 @@ interface Props {
 
 let { modelId, item, isReadOnly = false, isCollapsed = false }: Props = $props();
 
-// Yjs observe による aliasTargetId の購読
+// Subscription to aliasTargetId via Yjs observe
 let aliasTargetId = $state<string | undefined>(item.aliasTargetId);
 
 onMount(() => {
@@ -37,13 +37,13 @@ onMount(() => {
                 } catch {}
             };
             ymap.observe(obs);
-            obs(); // 初期反映
+            obs(); // Initial reflection
             onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
         }
     } catch {}
 });
 
-// 暫定フォールバック: lastConfirmed をポーリング
+// Temporary fallback: poll lastConfirmed
 let aliasLastConfirmedPulse: { itemId: string; targetId: string; at: number } | null = $state(null);
 
 onMount(() => {
@@ -107,7 +107,7 @@ const aliasPath = $derived.by(() => {
             const p = findPath(page, targetId);
             if (p && p.length > 0) return p;
             
-            // フォールバック
+            // Fallback
             const fallbackTarget = findItem(page, targetId);
             if (fallbackTarget) return [fallbackTarget];
         }

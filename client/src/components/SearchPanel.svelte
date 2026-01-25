@@ -86,7 +86,7 @@
     }
 
     function getPagesToSearch(): any[] {
-        // 1) project.items を優先
+        // 1) Prioritize project.items
         try {
             const items = (project as any)?.items;
             const arr: any[] = [];
@@ -105,7 +105,7 @@
             }
             if (arr.length) return arr;
         } catch {}
-        // 2) generalStore.pages.current をフォールバック
+        // 2) Fallback to generalStore.pages.current
         try {
             const gs = (window as any).generalStore;
             const pages = gs?.pages?.current;
@@ -143,7 +143,7 @@
         } catch {}
 
         if (pageItem && pages.length === 0) {
-            // ページ優先（プロジェクトページ不在時）
+            // Prioritize page (when project page is absent)
             matches = searchItems(pageItem, searchQuery, options).map((m) => ({
                 ...m,
                 page: pageItem!,
@@ -151,7 +151,7 @@
         } else if (pages.length) {
             const collected: Array<PageItemMatch<Item>> = [] as any;
             for (const p of pages) {
-                // まずページタイトルを検索
+                // First search page title
                 const pageTitle = ((p as any).text?.toString?.() ??
                     String((p as any).text ?? "")) as string;
                 const titleMatches = findMatches(
@@ -166,10 +166,10 @@
                         matches: titleMatches,
                     } as any);
 
-                // 子アイテムを明示的にスキャン（ArrayLike/Iterable 双方対応）
+                // Explicitly scan child items (Supports both ArrayLike/Iterable)
                 const children: any = (p as any).items;
                 if (children) {
-                    // Iterable 優先（Yjs/Fluid 双対応）
+                    // Prioritize Iterable (Supports both Yjs/Fluid)
                     try {
                         if (typeof children[Symbol.iterator] === "function") {
                             for (const child of children as any) {
@@ -222,7 +222,7 @@
                             }
                         }
                     } catch {
-                        // 走査失敗時は安全にスキップ
+                        // Safely skip on scan failure
                     }
                 }
             }
@@ -251,7 +251,7 @@
             });
         } catch {}
 
-        // ページ単位のフォールバック: プロジェクト検索で0件の場合、現在ページのみで再検索
+        // Page unit fallback: If 0 results in project search, search current page only
         if (matchCount === 0 && pageItem) {
             const localMatches = searchItems(
                 pageItem as any,
@@ -271,7 +271,7 @@
             }
         }
 
-        // フォールバック: 0件ならページタイトルのみで再検索（E2E安定化）
+        // Fallback: If 0 results, search page titles only (E2E stabilization)
         if (matchCount === 0 && (isTestEnv || true)) {
             const fallback: Array<PageItemMatch<Item>> = [] as any;
             for (const p of pages.length ? pages : pageItem ? [pageItem] : []) {
@@ -349,7 +349,7 @@
                 );
                 total += replaced;
             }
-            // フォールバック: タイトル置換
+            // Fallback: Title replacement
             if (total === 0) {
                 for (const p of pages) {
                     const text = ((p as any).text?.toString?.() ??
@@ -390,7 +390,7 @@
     });
 
     $effect(() => {
-        // テスト環境では入力だけで自動検索して安定化
+        // Auto-search on input in test environment for stabilization
         if (
             isTestEnv &&
             searchQuery &&
@@ -408,60 +408,60 @@
             : ''}"
         data-testid="search-panel"
         role="region"
-        aria-label="検索・置換"
+        aria-label="Search and Replace"
     >
         <div class="search-panel-header">
-            <h3>検索・置換</h3>
+            <h3>Search and Replace</h3>
         </div>
 
-        <section class="search-panel-content" aria-label="検索・置換">
+        <section class="search-panel-content" aria-label="Search and Replace">
             <div class="search-input-group">
-                <label for="search-input">検索:</label>
+                <label for="search-input">Search:</label>
                 <input
                     id="search-input"
                     type="text"
                     bind:value={searchQuery}
-                    placeholder="検索文字列を入力"
+                    placeholder="Enter search term"
                     class="search-input"
                     data-testid="search-input"
                 />
                 <button
                     onclick={handleSearch}
                     class="search-btn-action"
-                    data-testid="search-button">検索</button
+                    data-testid="search-button">Search</button
                 >
             </div>
 
             <div class="replace-input-group">
-                <label for="replace-input">置換:</label>
+                <label for="replace-input">Replace:</label>
                 <input
                     id="replace-input"
                     type="text"
                     bind:value={replaceText}
-                    placeholder="置換文字列を入力"
+                    placeholder="Enter replacement term"
                     class="replace-input"
                     data-testid="replace-input"
                 />
                 <button
                     onclick={handleReplace}
                     class="replace-btn"
-                    data-testid="replace-button">置換</button
+                    data-testid="replace-button">Replace</button
                 >
                 <button
                     onclick={handleReplaceAll}
                     class="replace-all-btn"
-                    data-testid="replace-all-button">すべて置換</button
+                    data-testid="replace-all-button">Replace All</button
                 >
             </div>
 
             <div class="search-options">
                 <label class="option-checkbox">
                     <input type="checkbox" bind:checked={isRegexMode} />
-                    正規表現
+                    Regex
                 </label>
                 <label class="option-checkbox">
                     <input type="checkbox" bind:checked={isCaseSensitive} />
-                    大文字小文字を区別
+                    Case Sensitive
                 </label>
             </div>
 

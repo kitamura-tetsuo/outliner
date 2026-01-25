@@ -21,13 +21,13 @@
     let isLoading = $state(false);
     let error = $state<string | null>(null);
 
-    // 再描画トリガ（テスト環境のバックストップ用）
+    // Redraw trigger (backstop for test environment)
     let redraw = $state(0);
 
-    // projects を安定再計算（イベントレス: ucVersion、テストフォールバック: redraw）
+    // Calculate projects stably (Eventless: ucVersion, Test fallback: redraw)
     let projects = $derived.by(() => {
-        void firestoreStore.ucVersion; // 依存のみ
-        void redraw; // 暫定依存（イベント駆動の互換）
+        void firestoreStore.ucVersion; // Dependency only
+        void redraw; // Provisional dependency (event-driven compatibility)
         return projectsFromUserProject(firestoreStore.userProject);
     });
     $effect(() => {
@@ -37,23 +37,23 @@
         });
     });
 
-    // 現在ロード中のプロジェクトIDを表示
+    // Display current loading project ID
     let currentProjectId = yjsStore.currentProjectId;
 
     onMount(() => {
         const cleanupTasks: Array<() => void> = [];
-        // 現在のプロジェクトIDがある場合はそれを選択済みに
+        // If there is a current project ID, mark it as selected
         if (currentProjectId) {
             selectedProjectId = currentProjectId;
         }
 
-        // 初期同期: マウント直後に一度だけ再計算を強制して、事前に投入済みの userProject を反映
-        // （ucVersion の変化がマウント前に発生していた場合でもDOMに反映させる）
+        // Initial sync: Force recalculation once immediately after mount to reflect pre-loaded userProject
+        // (Reflect to DOM even if ucVersion change occurred before mount)
         try {
             redraw = (redraw + 1) | 0;
         } catch {}
 
-        // 認証状態を確認し、必要に応じてログインを試行（非同期で実行）
+        // Check authentication status and attempt login if necessary (async execution)
         ensureUserLoggedIn();
 
         if (typeof window !== "undefined") {
@@ -65,7 +65,7 @@
                 (window as any).__E2E__ === true;
 
             if (isTestEnv) {
-                // テスト環境では ucVersion の変化に追従するバックストップを設ける
+                // In test environment, provide a backstop to follow ucVersion changes
                 let lastVersion = firestoreStore.ucVersion;
                 const intervalId = window.setInterval(() => {
                     const currentVersion = firestoreStore.ucVersion;
@@ -78,7 +78,7 @@
                     window.clearInterval(intervalId);
                 });
 
-                // 追加: テスト専用の同期イベントで即時再計算（seed直後の初期化競合を回避）
+                // Added: Immediate recalculation with test-specific sync event (avoid initialization race condition immediately after seed)
                 const onUcChanged = () => {
                     try {
                         redraw = (redraw + 1) | 0;
@@ -94,7 +94,7 @@
             }
         }
 
-        // 認証状態の変化を監視
+        // Monitor authentication state changes
         const userManagerInstance = (
             window as typeof window & { __USER_MANAGER__?: UserManager }
         ).__USER_MANAGER__;
@@ -117,7 +117,7 @@
             }
         }
 
-        // クリーンアップ関数を返す
+        // Return cleanup function
         return () => {
             for (const clean of cleanupTasks) {
                 try {
@@ -129,9 +129,9 @@
         };
     });
 
-    // ユーザーのログイン状態を確認し、必要に応じてログインを試行する関数
+    // Function to check user login status and attempt login if necessary
     async function ensureUserLoggedIn() {
-        // UserManagerのインスタンスを取得
+        // Get UserManager instance
         const userManagerInstance = (
             window as typeof window & { __USER_MANAGER__?: UserManager }
         ).__USER_MANAGER__;
@@ -155,7 +155,7 @@
                 );
                 logger.info("ProjectSelector - Login successful");
 
-                // ログイン成功後、少し待ってからFirestoreの同期を確認
+                // After successful login, wait a bit and check Firestore sync
                 setTimeout(() => {
                     const cnt = projectsFromUserProject(
                         firestoreStore.userProject,
@@ -171,7 +171,7 @@
         }
     }
 
-    // プロジェクト選択時の処理
+    // Process project selection
     async function handleProjectChange() {
         if (!selectedProjectId) return;
 
@@ -179,15 +179,15 @@
             isLoading = true;
             error = null;
 
-            // 選択したプロジェクトの情報を取得
+            // Get selected project information
             const selectedProject = projectsFromUserProject(
                 firestoreStore.userProject,
             ).find((c) => c.id === selectedProjectId);
             if (!selectedProject) {
-                throw new Error("選択されたプロジェクトが見つかりません");
+                throw new Error("Selected project not found");
             }
 
-            // 選択したプロジェクトIDとプロジェクト名をイベントとして発行
+            // Emit event with selected project ID and name
             onProjectSelected(selectedProjectId, selectedProject.name);
         } catch (err) {
             (logger as any).error("Project selection error:", err);
@@ -200,7 +200,7 @@
         }
     }
 
-    // 現在のプロジェクトIDのリロード
+    // Reload current project ID
     async function reloadCurrentProject() {
         if (!currentProjectId) return;
 
@@ -208,15 +208,15 @@
             isLoading = true;
             error = null;
 
-            // ファクトリーメソッドを使用して現在のプロジェクトを再ロード
+            // Reload current project using factory method
             const client = await createYjsClient(currentProjectId);
             yjsStore.yjsClient = client as YjsClient;
         } catch (err) {
-            logger.error("プロジェクト再ロードエラー:", err);
+            logger.error("Project reload error:", err);
             error =
                 err instanceof Error
                     ? err.message
-                    : "プロジェクトの再ロード中にエラーが発生しました";
+                    : "Error occurred while reloading project";
         } finally {
             isLoading = false;
         }
@@ -225,9 +225,9 @@
 
 <div class="project-selector">
     <div class="selector-header">
-        <h3 id="project-selector-title" class="selector-title">プロジェクト選択</h3>
+        <h3 id="project-selector-title" class="selector-title">Select Project</h3>
         {#if isLoading}
-            <span class="loading-indicator" role="status" aria-live="polite">読み込み中...</span>
+            <span class="loading-indicator" role="status" aria-live="polite">Loading...</span>
         {/if}
     </div>
 
@@ -247,14 +247,14 @@
                 aria-labelledby="project-selector-title"
             >
                 {#if projects.length === 0}
-                    <option value="">利用可能なプロジェクトがありません</option>
+                    <option value="">No available projects</option>
                 {:else}
                     {#each projects as project (project.id)}
                         <option value={project.id}>
                             {project.name}
-                            {project.isDefault ? "(デフォルト)" : ""}
+                            {project.isDefault ? "(Default)" : ""}
                             {project.id === currentProjectId
-                                ? "(現在表示中)"
+                                ? "(Current)"
                                 : ""}
                         </option>
                     {/each}
@@ -268,11 +268,11 @@
                 disabled={isLoading || !currentProjectId}
                 class="reload-button"
             >
-                現在のプロジェクトを再読み込み
+                Reload current project
             </button>
 
             <a href={resolve("/projects")} class="new-project-link">
-                新規作成
+                Create New
             </a>
         </div>
     </div>

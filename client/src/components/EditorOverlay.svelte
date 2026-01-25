@@ -1564,13 +1564,13 @@ function handlePaste(event: ClipboardEvent) {
     background-color: var(--selection-fill, rgba(0, 120, 215, 0.2));
 }
 
-/* 複数アイテム選択時の連続性を強調 */
+/* Emphasize continuity when selecting multiple items */
 .selection-multi-item {
     border-left: none;
     border-right: none;
 }
 
-/* 矩形選択（ボックス選択）のスタイル */
+/* Box selection styles */
 
 .selection-box {
     background-color: var(--selection-fill, rgba(0, 120, 215, 0.2));
@@ -1578,7 +1578,7 @@ function handlePaste(event: ClipboardEvent) {
     box-shadow: 0 0 3px var(--selection-outline, rgba(0, 120, 215, 0.3));
 }
 
-/* 矩形選択のパルスアニメーション */
+/* Box selection pulse animation */
 @keyframes box-selection-pulse {
     0% {
         background-color: rgba(0, 120, 215, 0.15);
@@ -1594,7 +1594,7 @@ function handlePaste(event: ClipboardEvent) {
     }
 }
 
-/* 矩形選択の開始位置と終了位置のマーカー */
+/* Start and end position markers for box selection */
 .selection-box-marker {
     width: 8px;
     height: 8px;
@@ -1603,21 +1603,21 @@ function handlePaste(event: ClipboardEvent) {
     box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
 }
 
-/* 開始位置マーカー */
+/* Start position marker */
 .selection-box-start-marker {
     background-color: #0078d7;
     border: 1px solid white;
     animation: marker-pulse 2s infinite ease-in-out;
 }
 
-/* 終了位置マーカー */
+/* End position marker */
 .selection-box-end-marker {
     background-color: #ff4081;
     border: 1px solid white;
     animation: marker-pulse 2s infinite ease-in-out reverse;
 }
 
-/* マーカーのパルスアニメーション */
+/* Marker pulse animation */
 @keyframes marker-pulse {
     0% {
         transform: scale(0.8);
@@ -1633,7 +1633,7 @@ function handlePaste(event: ClipboardEvent) {
     }
 }
 
-/* 矩形選択の最初と最後の行のスタイル */
+/* Styles for the first and last lines of box selection */
 .selection-box-first {
     border-top: 2px solid rgba(0, 120, 215, 0.9);
 }
@@ -1642,7 +1642,7 @@ function handlePaste(event: ClipboardEvent) {
     border-bottom: 2px solid rgba(0, 120, 215, 0.9);
 }
 
-/* 矩形選択の開始アイテムと終了アイテムのスタイル */
+/* Styles for the start and end items of box selection */
 .selection-box-start {
     border-left: 2px solid rgba(0, 120, 215, 0.9);
 }
@@ -1651,7 +1651,7 @@ function handlePaste(event: ClipboardEvent) {
     border-right: 2px solid rgba(0, 120, 215, 0.9);
 }
 
-/* 矩形選択の更新時のスタイル */
+/* Styles when box selection is updating */
 :global(.selection-box-updating) {
     animation: box-selection-update 0.3s ease-out;
 }

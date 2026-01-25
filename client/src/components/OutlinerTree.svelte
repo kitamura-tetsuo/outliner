@@ -2024,7 +2024,7 @@
         border-radius: 6px;
         overflow: hidden;
         margin-bottom: 20px;
-        height: calc(100vh - 40px); /* ブラウザの高さから余白を引いた値 */
+        height: calc(100vh - 40px); /* Value calculated by subtracting margin from browser height */
         display: flex;
         flex-direction: column;
         position: relative;
@@ -2038,7 +2038,7 @@
         padding: 8px 16px;
         background: #f5f5f5;
         border-bottom: 1px solid #ddd;
-        flex-shrink: 0; /* ツールバーは縮まないように */
+        flex-shrink: 0; /* Prevent toolbar from shrinking */
     }
 
     .actions {
@@ -2061,17 +2061,17 @@
 
     .tree-container {
         padding: 8px 16px;
-        position: relative; /* 子要素の絶対位置の基準点 */
-        min-height: 100px; /* 最小高さを設定 */
-        flex: 1; /* 残りの空間を全て使用 */
-        overflow-y: auto; /* スクロール可能に */
+        position: relative; /* Reference point for absolute positioning of child elements */
+        min-height: 100px; /* Set minimum height */
+        flex: 1; /* Use all remaining space */
+        overflow-y: auto; /* Enable scrolling */
     }
 
     .item-container {
         position: relative;
         margin-left: calc(max(0, var(--item-depth) - 1) * 24px);
         width: auto;
-        min-height: 36px; /* 最小の高さを設定 */
+        min-height: 36px; /* Set minimum height */
     }
 
     .empty-state {
@@ -2125,9 +2125,9 @@
         left: 0;
         right: 0;
         bottom: 0;
-        pointer-events: none !important; /* クリックイベントを下のレイヤーに確実に透過 */
+        pointer-events: none !important; /* Ensure click events pass through to lower layers */
         z-index: 100;
-        transform: none !important; /* 変形を防止 */
+        transform: none !important; /* Prevent transformation */
     }
 
     .scroll-top-btn {
