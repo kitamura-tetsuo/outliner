@@ -18,7 +18,7 @@ class ResizeObserver {
 (globalThis as any).requestAnimationFrame = (cb: FrameRequestCallback) => setTimeout(cb, 0);
 (globalThis as any).YTree = YTree;
 
-describe("ITM-0001: Enterで新規アイテム追加", () => {
+describe("ITM-0001: Add new item with Enter", () => {
     it("splits the item at the cursor position", () => {
         const project = Project.createInstance("test");
         const page = project.addPage("page", "me");

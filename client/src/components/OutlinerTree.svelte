@@ -1797,7 +1797,7 @@
     >
         <div class="toolbar">
             <div class="actions">
-                <button onclick={handleAddItem}>アイテム追加</button>
+                <button onclick={handleAddItem}>Add Item</button>
                 <button
                     onclick={() => goto(`/${projectName}/${pageName}/diff`)}
                 >
@@ -1809,7 +1809,7 @@
         <div
             class="tree-container"
             role="region"
-            aria-label="アウトライナーツリー"
+            aria-label="Outliner Tree"
             bind:this={treeContainer}
             onscroll={handleScroll}
         >
@@ -1852,14 +1852,14 @@
                         </svg>
                     </div>
                     <p class="empty-text">
-                        まだアイテムがありません
+                        No items yet
                     </p>
                     <button class="empty-action-btn" onclick={handleAddItem}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
-                        最初のアイテムを追加
+                        Add first item
                     </button>
                 </div>
             {/if}

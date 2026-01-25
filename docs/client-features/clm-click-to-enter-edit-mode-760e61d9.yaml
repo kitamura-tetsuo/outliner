@@ -1,7 +1,7 @@
 id: CLM-0001
 title: Click to enter edit mode
-shortcut: クリック
-description: クリックで編集モードに入ります。
+shortcut: Click
+description: Enter edit mode by clicking.
 category: cursor-movement
 status: implemented
 tests:
@@ -12,9 +12,9 @@ tests:
 - client/e2e/core/clm-input-editable-c67b1dc8.spec.ts
 - client/e2e/core/clm-last-line-click-b8389849.spec.ts
 acceptance:
-- カーソルがクリック位置に表示される（最後の行を除く）
-- カーソルが点滅する
-- カーソルが表示される
-- クリックで編集モードに入る
-- 編集モードで文字入力が可能になる
+- Cursor appears at the clicked position (excluding the last line)
+- Cursor blinks
+- Cursor is visible
+- Enter edit mode on click
+- Text input is enabled in edit mode
 title-ja: クリックで編集モードに入る

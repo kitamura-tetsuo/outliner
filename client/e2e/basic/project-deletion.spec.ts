@@ -1,3 +1,5 @@
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { SeedClient } from "../utils/seedClient";
 import { TestHelpers } from "../utils/testHelpers";

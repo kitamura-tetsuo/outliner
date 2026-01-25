@@ -2,7 +2,7 @@ import { getLogger } from "../lib/logger";
 import { Item, Items } from "../schema/app-schema";
 
 const logger = getLogger();
-// Suppress verbose logs in E2E/test environments
+// Suppress verbose logs in E2E/Test environments
 const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     || import.meta.env.MODE === "test"
     || import.meta.env.VITE_IS_TEST === "true";
@@ -33,7 +33,7 @@ export interface OutlinerItemViewModel {
     commentCount: number;
 }
 
-// Item information for display
+// Display item information
 export interface DisplayItem {
     model: OutlinerItemViewModel;
     depth: number;
@@ -41,8 +41,8 @@ export interface DisplayItem {
 }
 
 /**
- * Store managing the view model of the outliner
- * Maintains reference identity of items to avoid DOM regeneration
+ * Store managing the outliner view model
+ * Maintains item reference identity to avoid DOM regeneration
  */
 export class OutlinerViewModel {
     // View model map by ID (maintains reference identity)
@@ -57,7 +57,7 @@ export class OutlinerViewModel {
     // Parent item ID map
     private parentMap = new Map<string, string | null>();
 
-    // Collapse state map
+    // Collapsed state map
     private collapsedMap = new Map<string, boolean>();
 
     // Updating flag
@@ -95,7 +95,7 @@ export class OutlinerViewModel {
                 this.viewModels.size,
             );
 
-            // Recalculate order and depth - start from pageItem itself
+            // Recalculate display order and depth - start from pageItem itself
             this.recalculateOrderAndDepthItem(pageItem);
 
             console.error(
@@ -113,7 +113,7 @@ export class OutlinerViewModel {
     }
 
     /**
-     * Ensure item view models exist, creating or updating as necessary
+     * Ensure item view model exists, create or update as needed
      */
     private ensureViewModelsItemsExist(
         items: Items,
@@ -136,12 +136,12 @@ export class OutlinerViewModel {
             `OutlinerViewModel: ensureViewModelsItemExist for item "${item.text}" (id: ${item.id})`,
         );
 
-        // Update or create existing view model
+        // Update existing view model or create new
         const existingViewModel = this.viewModels.get(item.id);
         if (existingViewModel) {
             // Update properties (maintain reference)
-            // Performance optimization: recalculate only if lastChanged has changed
-            // Avoid unnecessary calls as Y.Text.toString() is expensive
+            // Performance optimization: Recalculate only if lastChanged has modified
+            // Y.Text.toString() is a high-cost operation, so avoid unnecessary calls
             // Use safe type checking instead of explicit any casts
             const lastChangedProp = "lastChanged" in item ? item.lastChanged : undefined;
             const newLastChanged = typeof lastChangedProp === "number" ? lastChangedProp : 0;
@@ -186,7 +186,7 @@ export class OutlinerViewModel {
         // Set parent
         this.parentMap.set(item.id, parentId);
 
-        // Process child items
+        // Process child items too
         if (((it: any) => (it && typeof it.length === "number" && typeof it.at === "function"))((item as any).items)) {
             const children = item.items;
             debugLog(
@@ -207,7 +207,7 @@ export class OutlinerViewModel {
     ): void {
         if (!items) return;
 
-        // Initialize visible order and depth first
+        // Initialize display order and depth first
         if (depth === 0) {
             this.visibleOrder = [];
         }
@@ -226,7 +226,7 @@ export class OutlinerViewModel {
     ): void {
         if (!isItemLike(item)) return;
 
-        // Initialize visible order first (only for root item)
+        // Initialize display order first (only for root item)
         if (depth === 0) {
             this.visibleOrder = [];
         }
@@ -235,7 +235,7 @@ export class OutlinerViewModel {
             `OutlinerViewModel: recalculateOrderAndDepthItem for "${item.text.toString()}" (depth: ${depth})`,
         );
 
-        // Add to visible order
+        // Add to display order
         this.visibleOrder.push(item.id);
 
         // Set depth
@@ -274,13 +274,13 @@ export class OutlinerViewModel {
     }
 
     /**
-     * Toggle collapse state of an item
+     * Toggle item collapsed state
      */
     toggleCollapsed(itemId: string): void {
         const isCollapsed = this.collapsedMap.get(itemId) || false;
         this.collapsedMap.set(itemId, !isCollapsed);
 
-        // Recalculate display info from model (item instances are maintained)
+        // Recalculate display info from model (maintain item instance)
         const rootItem = this.findRootItem(itemId);
         if (!rootItem) return;
         if (
@@ -311,7 +311,7 @@ export class OutlinerViewModel {
     }
 
     /**
-     * Get list of items for display
+     * Get display item list
      */
     getVisibleItems(): DisplayItem[] {
         return this.visibleOrder
@@ -332,7 +332,7 @@ export class OutlinerViewModel {
     }
 
     /**
-     * Get collapse state of an item
+     * Get item collapsed state
      */
     isCollapsed(itemId: string): boolean {
         return this.collapsedMap.get(itemId) || false;
@@ -356,7 +356,7 @@ export class OutlinerViewModel {
     }
 
     /**
-     * Release resources
+     * Dispose resources
      */
     dispose(): void {
         this.viewModels.clear();

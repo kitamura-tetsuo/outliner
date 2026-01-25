@@ -88,7 +88,7 @@ describe("EditorOverlayStore", () => {
         store = new TestEditorOverlayStore();
     });
 
-    it("初期状態が正しい", () => {
+    it("initial state is correct", () => {
         expect(store.cursors).toEqual({});
         expect(store.selections).toEqual({});
         expect(store.activeItemId).toBeNull();
@@ -96,7 +96,7 @@ describe("EditorOverlayStore", () => {
         expect(store.animationPaused).toBe(false);
     });
 
-    it("addCursor と removeCursor が動作する", () => {
+    it("addCursor and removeCursor work correctly", () => {
         const id = store.addCursor({
             itemId: "foo",
             offset: 3,
@@ -115,7 +115,7 @@ describe("EditorOverlayStore", () => {
         expect(store.cursors[id]).toBeUndefined();
     });
 
-    it("undoLastCursor が最後に追加したカーソルを削除する", () => {
+    it("undoLastCursor removes the last added cursor", () => {
         const id1 = store.addCursor({
             itemId: "A",
             offset: 0,
@@ -134,7 +134,7 @@ describe("EditorOverlayStore", () => {
         expect(store.cursors[id1]).toBeDefined();
     });
 
-    it("getLastActiveCursor が最後に追加したカーソルを返す", () => {
+    it("getLastActiveCursor returns the last added cursor", () => {
         const id1 = store.addCursor({
             itemId: "A",
             offset: 0,
@@ -164,8 +164,8 @@ describe("EditorOverlayStore", () => {
         });
     });
 
-    it("clearCursorForItem がアイテムの全カーソルをクリアする", () => {
-        // テスト用にカーソルを追加
+    it("clearCursorForItem clears all cursors for an item", () => {
+        // Add cursor for testing
         store.addCursor({
             itemId: "X",
             offset: 0,
@@ -179,22 +179,22 @@ describe("EditorOverlayStore", () => {
             userId: "local",
         });
 
-        // 追加したカーソルが存在することを確認
+        // Confirm added cursor exists
         expect(
             Object.values(store.cursors).filter(c => c.itemId === "X").length,
         ).toBe(2);
 
-        // クリア処理を実行
+        // Execute clear operation
         store.clearCursorForItem("X");
 
-        // カーソルが削除されたことを確認
+        // Confirm cursor is deleted
         expect(
             Object.values(store.cursors).filter(c => c.itemId === "X").length,
         ).toBe(0);
     });
 
-    it("setSelection と clearCursorAndSelection が動作する", () => {
-        // setSelectionメソッドは選択範囲のキーを`${selection.startItemId}-${selection.endItemId}-${selection.userId || 'local'}`の形式で生成する
+    it("setSelection and clearCursorAndSelection work correctly", () => {
+        // setSelection method generates selection key in format `${selection.startItemId}-${selection.endItemId}-${selection.userId || 'local'}`
         const selection = {
             startItemId: "Y",
             startOffset: 0,
@@ -203,29 +203,29 @@ describe("EditorOverlayStore", () => {
         };
         store.setSelection(selection);
 
-        // 正しいキーで選択範囲を取得
+        // Retrieve selection with correct key
         const key = `${selection.startItemId}-${selection.endItemId}-local`;
         expect(store.selections[key]).toMatchObject({
             startOffset: 0,
             endOffset: 5,
         });
 
-        // clearCursorAndSelectionはuserIdをキーにremovalするので、アイテムIDを渡しても選択範囲は削除されない
+        // clearCursorAndSelection removes by userId, so passing itemId does not remove selection
         store.clearCursorAndSelection("Y");
         expect(store.selections[key]).toBeDefined();
 
-        // clearCursorAndSelectionの第2引数がfalseの場合は選択範囲は削除されない
+        // Selection is not removed if second argument of clearCursorAndSelection is false
         store.clearCursorAndSelection("local", false);
         expect(store.selections[key]).toBeDefined();
 
-        // clearSelectionForUserメソッドを使用して選択範囲を削除
+        // Remove selection using clearSelectionForUser method
         store.clearSelectionForUser("local");
 
-        // 選択範囲が削除されたことを確認
+        // Confirm selection is deleted
         expect(Object.keys(store.selections).length).toBe(0);
     });
 
-    it("startCursorBlink と stopCursorBlink が cursorVisible をトグルする", () => {
+    it("startCursorBlink and stopCursorBlink toggle cursorVisible", () => {
         vi.useFakeTimers();
         store.startCursorBlink();
         expect(store.cursorVisible).toBe(true);
@@ -239,7 +239,7 @@ describe("EditorOverlayStore", () => {
     });
 
     afterEach(() => {
-        // タイマーや状態をリセット
+        // Reset timers and state
         vi.useRealTimers();
         store.reset();
     });

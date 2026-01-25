@@ -14,10 +14,10 @@ class CommandPaletteStore {
     query = "";
     selectedIndex = 0;
 
-    // Cursor state specific to CommandPalette
+    // Cursor state dedicated to CommandPalette
     private commandCursorItemId: string | null = null;
     private commandCursorOffset: number = 0;
-    private commandStartOffset: number = 0; // Position of the slash
+    private commandStartOffset: number = 0; // Position of slash
 
     readonly commands = [
         { label: "Table", type: "table" as const },
@@ -47,7 +47,7 @@ class CommandPaletteStore {
             const w: any = typeof window !== "undefined" ? (window as any) : null;
             const gs: any = w?.generalStore ?? null;
 
-            // 1) Guess from recent input stream
+            // 1) Infer from recent input stream
             const stream: string = typeof gs?.__lastInputStream === "string" ? gs.__lastInputStream : "";
             if (stream) {
                 const lastSlash = stream.lastIndexOf("/");
@@ -60,7 +60,7 @@ class CommandPaletteStore {
                 }
             }
 
-            // 2) Get directly from textarea content
+            // 2) Obtain directly from text area content
             const ta: HTMLTextAreaElement | null | undefined = gs?.textareaRef ?? null;
             if (ta && typeof ta.value === "string") {
                 const caret = typeof ta.selectionStart === "number" ? ta.selectionStart : ta.value.length;
@@ -144,7 +144,7 @@ class CommandPaletteStore {
             const cursor = cursors[0];
             this.commandCursorItemId = cursor.itemId;
             this.commandCursorOffset = cursor.offset;
-            this.commandStartOffset = cursor.offset - 1; // Position of the slash
+            this.commandStartOffset = cursor.offset - 1; // Position of slash
         }
     }
 
@@ -161,7 +161,7 @@ class CommandPaletteStore {
         this.selectedIndex = 0;
     }
 
-    // Lightweight input that updates query without rewriting model
+    // Lightweight input that updates only the query without rewriting the model
     inputLight(ch: string) {
         console.log("[CommandPaletteStore] inputLight:", ch);
         this.query = (this.query || "") + ch;
@@ -175,8 +175,8 @@ class CommandPaletteStore {
     }
 
     /**
-     * Act as a cursor and accumulate command string
-     * @param inputData Input character
+     * Act as a cursor and accumulate command strings
+     * @param inputData input character
      */
     handleCommandInput(inputData: string) {
         if (!this.isVisible || !this.commandCursorItemId) return;
@@ -193,7 +193,7 @@ class CommandPaletteStore {
         const beforeSlash = text.slice(0, this.commandStartOffset);
         const afterCursor = text.slice(cursor.offset);
 
-        // Build new command string
+        // Construct new command string
         const newCommandText = this.query + inputData;
         const newText = beforeSlash + "/" + newCommandText + afterCursor;
 
@@ -238,13 +238,13 @@ class CommandPaletteStore {
         const node = cursor.findTarget();
         if (!node) return;
 
-        // If query is empty, remove slash too and hide command palette
+        // If query is empty, delete slash as well and hide command palette
         if (this.query.length === 0) {
             const text = node.text || "";
             const beforeSlash = text.slice(0, this.commandStartOffset);
             const afterCursor = text.slice(cursor.offset);
 
-            // Remove slash
+            // Delete slash
             const newText = beforeSlash + afterCursor;
             node.updateText(newText);
 
@@ -261,7 +261,7 @@ class CommandPaletteStore {
         const beforeSlash = text.slice(0, this.commandStartOffset);
         const afterCursor = text.slice(cursor.offset);
 
-        // Build new command string (remove last character)
+        // Construct new command string (delete last character)
         const newCommandText = this.query.slice(0, -1);
         const newText = beforeSlash + "/" + newCommandText + afterCursor;
 
@@ -352,7 +352,7 @@ class CommandPaletteStore {
                 const beforeSlash = text.slice(0, this.commandStartOffset);
                 const afterCursor = text.slice(cursor.offset);
 
-                // Remove slash and command string
+                // Delete slash and command string
                 const newText = beforeSlash + afterCursor;
                 node.updateText(newText);
 
@@ -375,8 +375,8 @@ class CommandPaletteStore {
             return;
         }
 
-        // Clear text and set component type
-        // Use updateText to work with both yjs-schema and app-schema
+        // Empty text and set component type
+        // Use updateText to work with both yjs-schema / app-schema
         if (typeof (newItem as any).updateText === "function") (newItem as any).updateText("");
         else (newItem as any).text = "";
 
@@ -403,7 +403,7 @@ class CommandPaletteStore {
             } catch {}
             aliasPickerStore.show(newItem.id);
         } else {
-            // Safely set componentType
+            // Set componentType safely
             if (!setMapField(newItem, "componentType", type)) {
                 (newItem as any).componentType = type;
             }
@@ -415,7 +415,7 @@ class CommandPaletteStore {
         cursor.applyToStore();
         editorOverlayStore.startCursorBlink();
 
-        // Prompt immediate rendering after addition (Stabilization for E2E)
+        // Prompt immediate rendering immediately after addition (E2E stabilization)
         try {
             window.dispatchEvent(new CustomEvent("outliner-items-changed"));
         } catch {}
@@ -430,7 +430,7 @@ class CommandPaletteStore {
             } catch {}
         }, 0);
 
-        // Log component type for debugging
+        // Output component type to log for debugging
         console.log("CommandPaletteStore.insert: Set componentType to", type, "for item", newItem.id);
     }
 }

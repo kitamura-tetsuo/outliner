@@ -4,7 +4,7 @@ import { yjsStore } from "./yjsStore.svelte";
 
 // Exported types
 export interface CursorPosition {
-    // Unique ID for each cursor instance
+    // ID uniquely identifying each cursor instance
     cursorId: string;
     // ID of the item the cursor belongs to
     itemId: string;
@@ -34,29 +34,29 @@ export interface SelectionRange {
     endItemId: string;
     // End offset
     endOffset: number;
-    // User identification
+    // For user identification
     userId?: string;
     userName?: string;
-    // Whether selection is reversed
+    // Whether the selection is reversed
     isReversed?: boolean;
     color?: string;
-    // Whether it is a box selection (rectangular selection)
+    // Whether it is a rectangular selection (box selection)
     isBoxSelection?: boolean;
-    // Start/end offsets for each line in case of box selection
+    // Start/end offsets for each line in case of rectangular selection
     boxSelectionRanges?: Array<{
         itemId: string;
         startOffset: number;
         endOffset: number;
     }>;
-    // Whether the selection is updating (for visual feedback)
+    // Whether the selection range is updating (for visual feedback)
     isUpdating?: boolean;
 }
 
-// Use Svelte 5 runtime runes macros (no import needed)
+// Use Svelte 5 runtime runes macros (import not required)
 
 export class EditorOverlayStore {
     cursors = $state<Record<string, CursorPosition>>({});
-    // Map to hold Cursor instances
+    // Map holding Cursor instances
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal instance cache, not reactive state
     cursorInstances = new Map<string, Cursor>();
     // History of added cursors
@@ -99,7 +99,7 @@ export class EditorOverlayStore {
         return this.onEditCallback;
     }
 
-    // Call onEdit callback
+    // Trigger onEdit callback
     triggerOnEdit() {
         if (this.onEditCallback) {
             this.onEditCallback();
@@ -149,7 +149,7 @@ export class EditorOverlayStore {
             inst.isActive = cursor.isActive;
             if (cursor.userId) inst.userId = cursor.userId;
         } else {
-            // Create new instance if it doesn't exist
+            // Create new instance if not exists
             const newInst = new Cursor(cursor.cursorId, {
                 itemId: cursor.itemId,
                 offset: cursor.offset,
@@ -225,7 +225,7 @@ export class EditorOverlayStore {
                 requestAnimationFrame(() => {
                     textarea.focus();
 
-                    // Also use setTimeout to be sure
+                    // Use setTimeout as well to be more certain
                     setTimeout(() => {
                         textarea.focus();
 
@@ -240,7 +240,7 @@ export class EditorOverlayStore {
                     }, 10);
                 });
             } else {
-                // Log error if textarea not found
+                // Error log if textarea is not found
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.error(`Global textarea not found in addCursor (existing cursor)`);
                 }
@@ -249,7 +249,7 @@ export class EditorOverlayStore {
             return existingCursor.cursorId;
         }
 
-        // Create and hold Cursor instance
+        // Generate and hold Cursor instance
         const cursorInst = new Cursor(newId, {
             itemId: omitProps.itemId,
             offset: omitProps.offset,
@@ -278,7 +278,7 @@ export class EditorOverlayStore {
             requestAnimationFrame(() => {
                 textarea.focus();
 
-                // Also use setTimeout to be sure
+                // Use setTimeout as well to be more certain
                 setTimeout(() => {
                     textarea.focus();
 
@@ -293,7 +293,7 @@ export class EditorOverlayStore {
                 }, 10);
             });
         } else {
-            // Log error if textarea not found
+            // Error log if textarea is not found
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Global textarea not found in addCursor (new cursor)`);
             }
@@ -321,7 +321,7 @@ export class EditorOverlayStore {
         const removed = this.cursors[cursorId];
         // Remove instance from Map
         this.cursorInstances.delete(cursorId);
-        // Remove from reactive state
+        // Remove from reactive state as well
         const newCursors = { ...this.cursors };
         delete newCursors[cursorId];
         this.cursors = newCursors;
@@ -360,12 +360,12 @@ export class EditorOverlayStore {
     }
 
     /**
-     * Set box selection (rectangular selection)
+     * Set rectangular selection (box selection)
      * @param startItemId Start item ID
      * @param startOffset Start offset
      * @param endItemId End item ID
      * @param endOffset End offset
-     * @param boxSelectionRanges Selection ranges for each line
+     * @param boxSelectionRanges Selection range for each line
      * @param userId User ID (default is "local")
      */
     setBoxSelection(
@@ -400,10 +400,10 @@ export class EditorOverlayStore {
             return;
         }
 
-        // Clear existing selection (only box selection for the same user)
+        // Clear existing selection (only rectangular selection for the same user)
         this.clearSelectionForUser(userId);
 
-        // Set box selection
+        // Set rectangular selection
         const selection: SelectionRange = {
             startItemId,
             startOffset,
@@ -415,7 +415,7 @@ export class EditorOverlayStore {
             isUpdating: true, // Initial state is updating
         };
 
-        // Set selection
+        // Set selection range
         const key = this.setSelection(selection);
 
         // Debug info
@@ -459,7 +459,7 @@ export class EditorOverlayStore {
     }
 
     /**
-     * Clear selection for the specified user
+     * Clear selections for the specified user
      * @param userId User ID (default is "local")
      */
     clearSelectionForUser(userId = "local") {
@@ -469,10 +469,10 @@ export class EditorOverlayStore {
             console.log(`Current selections before clearing:`, this.selections);
         }
 
-        // Delete selection for the specified user (both normal selection and box selection)
+        // Remove selections for the specified user (both normal and rectangular selections)
         const filteredSelectionEntries = [];
         for (const [key, s] of Object.entries(this.selections)) {
-            // Check if object's userId property matches
+            // Check if the userId property of the object matches
             if (s.userId !== userId && (s.userId || "local") !== userId) {
                 filteredSelectionEntries.push([key, s]);
             }
@@ -484,7 +484,7 @@ export class EditorOverlayStore {
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Selections after clearing:`, this.selections);
 
-            // Check if selection was cleared correctly
+            // Check if selections were cleared correctly
             const remainingSelections = [];
             for (const [key, s] of Object.entries(this.selections)) {
                 if (s.userId === userId || (s.userId || "local") === userId) {
@@ -551,8 +551,8 @@ export class EditorOverlayStore {
     /**
      * Delete all cursors for the specified user
      * @param userId User ID (default is "local")
-     * @param clearSelections Whether to clear selections as well (default is false)
-     * @param preserveAltClick Whether to preserve cursors added with Alt+Click (default is false)
+     * @param clearSelections Whether to also delete selection ranges (default is false)
+     * @param preserveAltClick Whether to keep cursors added with Alt+Click (default is false)
      */
     clearCursorAndSelection(userId = "local", clearSelections = false, preserveAltClick = false) {
         // Debug info
@@ -563,9 +563,9 @@ export class EditorOverlayStore {
             console.log(`Current cursors before clearing:`, this.cursors);
         }
 
-        // If cursors added with Alt+Click should be preserved
+        // If preserving cursors added with Alt+Click
         if (preserveAltClick) {
-            // Collect cursor IDs to remove (only remove active cursors)
+            // Collect cursor IDs to delete (delete only active cursors)
             const cursorIdsToRemove: string[] = [];
             const cursorIdsToKeep: string[] = [];
 
@@ -573,7 +573,7 @@ export class EditorOverlayStore {
             for (const [cursorId, inst] of this.cursorInstances.entries()) {
                 if (inst.userId === userId) {
                     if (inst.isActive) {
-                        // Remove active cursors only
+                        // Delete only active cursors
                         cursorIdsToRemove.push(cursorId);
                     } else {
                         // Keep inactive cursors
@@ -589,9 +589,9 @@ export class EditorOverlayStore {
                 );
             }
 
-            // Remove identified cursors
+            // Delete all identified cursors
             if (cursorIdsToRemove.length > 0) {
-                // Remove instances from Map
+                // Remove instance from Map
                 cursorIdsToRemove.forEach(id => {
                     this.cursorInstances.delete(id);
                 });
@@ -605,8 +605,8 @@ export class EditorOverlayStore {
                 );
             }
         } else {
-            // Normal removal process (remove all cursors)
-            // Collect cursor IDs to remove
+            // Normal deletion process (delete all cursors)
+            // Collect cursor IDs to delete
             const cursorIdsToRemove: string[] = [];
 
             // Identify matching instances from Map
@@ -616,9 +616,9 @@ export class EditorOverlayStore {
                 }
             }
 
-            // Remove identified cursors
+            // Delete all identified cursors
             if (cursorIdsToRemove.length > 0) {
-                // Remove instances from Map
+                // Remove instance from Map
                 cursorIdsToRemove.forEach(id => {
                     this.cursorInstances.delete(id);
                 });
@@ -635,7 +635,7 @@ export class EditorOverlayStore {
             this.cursors = Object.fromEntries(filteredCursorEntries);
         }
 
-        // Clear selections if requested
+        // If also deleting selections
         if (clearSelections) {
             const filteredSelectionEntries = [];
             for (const [key, s] of Object.entries(this.selections)) {
@@ -646,7 +646,7 @@ export class EditorOverlayStore {
             this.selections = Object.fromEntries(filteredSelectionEntries);
         }
 
-        // If removing user's cursors leaves no active cursor, clear active item
+        // Clear active item if it no longer exists after deleting the user's cursor
         const activeCursorExists = Object.values(this.cursors).some(c =>
             c.isActive && (c.userId || "local") === userId
         );
@@ -683,15 +683,15 @@ export class EditorOverlayStore {
     }
 
     /**
-     * Force update
+     * Force an update
      * Used when selection range or cursor display is not updated
      */
     forceUpdate() {
-        // Temporarily clear and reset selections to force update
+        // Force update by temporarily clearing and resetting the selection range
         const tempSelections = { ...this.selections };
         this.selections = {};
 
-        // Reset after a short delay
+        // Reset after a short wait
         setTimeout(() => {
             this.selections = tempSelections;
         }, 0);
@@ -706,7 +706,7 @@ export class EditorOverlayStore {
     }
 
     /**
-     * For debugging: Log current cursor state
+     * For debugging: Output the current cursor state to the log
      */
     logCursorState() {
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -763,22 +763,22 @@ export class EditorOverlayStore {
         const cursorIdsToRemove: string[] = [];
         for (const [cursorId, inst] of this.cursorInstances.entries()) {
             if (inst.userId === userId) {
-                // Always clear if it's the same item
-                // Even for different items, clear existing active cursors if the new cursor is active
+                // Always clear if it is the same item
+                // Even if it is a different item, clear the existing active cursor if the new cursor is active
                 if (inst.itemId === itemId || (cursorProps.isActive && inst.isActive)) {
                     cursorIdsToRemove.push(cursorId);
                 }
             }
         }
 
-        // Remove identified cursors
+        // Delete all identified cursors
         if (cursorIdsToRemove.length > 0) {
-            // Remove instances from Map
+            // Remove instance from Map
             cursorIdsToRemove.forEach(id => {
                 this.cursorInstances.delete(id);
             });
 
-            // Remove from reactive state
+            // Update reactive state
             const newCursors = { ...this.cursors };
             cursorIdsToRemove.forEach(id => {
                 delete newCursors[id];
@@ -797,7 +797,7 @@ export class EditorOverlayStore {
         // Create new cursor
         const id = this.genUUID();
 
-        // Create and hold Cursor instance
+        // Generate and hold Cursor instance
         const cursorInst = new Cursor(id, {
             itemId: cursorProps.itemId,
             offset: cursorProps.offset,
@@ -850,7 +850,7 @@ export class EditorOverlayStore {
     }
 
     clearCursorForItem(itemId: string) {
-        // Collect cursor IDs to remove
+        // Collect cursor IDs to delete
         const cursorIdsToRemove: string[] = [];
 
         // Identify matching instances from Map
@@ -860,9 +860,9 @@ export class EditorOverlayStore {
             }
         }
 
-        // Remove identified cursors
+        // Delete all identified cursors
         if (cursorIdsToRemove.length > 0) {
-            // Remove instances from Map
+            // Remove instance from Map
             cursorIdsToRemove.forEach(id => {
                 this.cursorInstances.delete(id);
             });
@@ -874,7 +874,7 @@ export class EditorOverlayStore {
             });
             this.cursors = newCursors;
 
-            // Clear active item if it matches the removed item
+            // Clear active item if it is the item to be deleted
             if (this.activeItemId === itemId) {
                 this.activeItemId = null;
             }
@@ -891,10 +891,10 @@ export class EditorOverlayStore {
     /**
      * Get text within the selection range
      * @param userId User ID (default is "local")
-     * @returns Text within the selection range. Returns empty string if no selection range.
+     * @returns Text within the selection range. Returns an empty string if there is no selection.
      */
     getSelectedText(userId = "local"): string {
-        // Get selections for the specified user
+        // Get selection range for the specified user
         const selections = Object.values(this.selections).filter(s =>
             s.userId === userId || (!s.userId && userId === "local")
         );
@@ -910,7 +910,7 @@ export class EditorOverlayStore {
 
             try {
                 if (sel.isBoxSelection && sel.boxSelectionRanges) {
-                    // Case of box selection (rectangular selection)
+                    // Rectangular selection (box selection)
                     selectionText = this.getTextFromBoxSelection(sel);
                 } else if (sel.startItemId === sel.endItemId) {
                     // Selection within a single item
@@ -950,7 +950,7 @@ export class EditorOverlayStore {
     }
 
     /**
-     * Get text from selection within a single item
+     * Get text from a selection within a single item
      * @param sel Selection range
      * @returns Text within the selection range
      */
@@ -1118,7 +1118,7 @@ export class EditorOverlayStore {
     }
 
     /**
-     * Get text from selection range
+     * Get text from selection
      * @param sel Selection range
      * @returns Text within the selection range
      */
@@ -1130,7 +1130,7 @@ export class EditorOverlayStore {
 
         try {
             if (sel.isBoxSelection && sel.boxSelectionRanges) {
-                // Case of box selection (rectangular selection)
+                // Rectangular selection (box selection)
                 return this.getTextFromBoxSelection(sel);
             } else if (sel.startItemId === sel.endItemId) {
                 // Selection within a single item
@@ -1140,7 +1140,7 @@ export class EditorOverlayStore {
                 return this.getTextFromMultiItemSelection(sel);
             }
         } catch (error) {
-            // Log error if one occurs
+            // Log error if it occurs
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in getTextFromSelection:`, error);
                 if (error instanceof Error) {
@@ -1154,7 +1154,7 @@ export class EditorOverlayStore {
     }
 
     /**
-     * Get text from box selection (rectangular selection)
+     * Get text from rectangular selection (box selection)
      * @param sel Selection range
      * @returns Text within the selection range
      */
@@ -1194,7 +1194,7 @@ export class EditorOverlayStore {
                 continue;
             }
 
-            // Check if offsets are within range
+            // Check if offset is within range
             if (startOffset < 0 || endOffset > text.length) {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
@@ -1210,7 +1210,7 @@ export class EditorOverlayStore {
             }
         }
 
-        // Join each line with newline for VS Code like box selection
+        // Join each line with a newline in case of VS Code rectangular selection
         return lines.join("\n");
     }
 
@@ -1239,7 +1239,7 @@ export class EditorOverlayStore {
             return "";
         }
 
-        // Determine start and end indices of the selection
+        // Determine start and end indices of the selection range
         const firstIdx = Math.min(sIdx, eIdx);
         const lastIdx = Math.max(sIdx, eIdx);
 
@@ -1273,7 +1273,7 @@ export class EditorOverlayStore {
             const text = textEl.textContent || "";
             const len = text.length;
 
-            // Calculate offsets
+            // Offset calculation
             let startOff = 0;
             let endOff = len;
 
@@ -1292,7 +1292,7 @@ export class EditorOverlayStore {
                 const itemText = text.substring(startOff, endOff);
                 result += itemText;
 
-                // Add newline unless it's the last item
+                // Add newline for all but the last item
                 if (i < itemsInRange.length - 1) {
                     result += "\n";
                 }
@@ -1310,7 +1310,7 @@ export class EditorOverlayStore {
     } | null = null;
 
     /**
-     * Get item ID and index mapping (with caching)
+     * Get item ID and index mapping (with cache)
      * @returns Item ID and index mapping
      */
     private getItemsMapping(): { itemIdToIndex: Map<string, number>; allItems: HTMLElement[]; } {

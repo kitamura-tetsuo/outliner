@@ -1,10 +1,10 @@
 id: CLM-1cef29b1
 title: Cursor count stable after drag
-description: ドラッグでアイテムを移動してもカーソルの数は変化しません。
+description: The number of cursors does not change even when moving items by dragging.
 category: cursor-management
 status: implemented
 acceptance:
-- アイテムをドラッグして移動したあともカーソルの総数が変わらない
+- The total number of cursors remains the same after dragging and moving items
 tests:
 - client/e2e/core/clm-cursor-count-stable-after-drag-1cef29b1.spec.ts
 title-ja: ドラッグ後もカーソル数は変化しない

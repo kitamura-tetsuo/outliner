@@ -15,13 +15,13 @@ describe("Import/Export Service", () => {
 
             importMarkdownIntoProject(markdown, project);
 
-            // プロジェクトに1つのページが作成されているはず
+            // There should be 1 page created in the project
             expect((project.items as any).length).toBe(1);
 
             const page = (project.items as any)[0];
             expect(page.text).toBe("ImportedPage");
 
-            // ページに1つの子アイテムがあるはず
+            // There should be 1 child item in the page
             expect((page.items as any).length).toBe(1);
             expect((page.items as any)[0].text).toBe("Child");
         });
@@ -32,18 +32,18 @@ describe("Import/Export Service", () => {
 
             importMarkdownIntoProject(markdown, project);
 
-            // プロジェクトに1つのページが作成されているはず
+            // There should be 1 page created in the project
             expect((project.items as any).length).toBe(1);
 
             const page = (project.items as any)[0];
             expect(page.text).toBe("Parent");
 
-            // ページに1つの子アイテムがあるはず
+            // There should be 1 child item in the page
             expect((page.items as any).length).toBe(1);
             const child = (page.items as any)[0];
             expect(child.text).toBe("Child");
 
-            // 子アイテムに1つの孫アイテムがあるはず
+            // There should be 1 grandchild item in the child item
             expect((child.items as any).length).toBe(1);
             expect((child.items as any)[0].text).toBe("Grand");
         });
@@ -54,19 +54,19 @@ describe("Import/Export Service", () => {
 
             importMarkdownIntoProject(markdown, project);
 
-            // 現在の実装では、最初のインデント0アイテムのみがページとして作成され、
-            // 2番目以降のインデント0アイテムは最初のページの子として作成される
+            // In the current implementation, only the first indent 0 item is created as a page,
+            // and subsequent indent 0 items are created as children of the first page
             expect((project.items as any).length).toBe(1);
 
             const page = (project.items as any)[0];
             expect(page.text).toBe("FirstPage");
 
-            // ページに2つの子アイテムがあるはず（Child1とSecondItem）
+            // There should be 2 child items in the page (Child1 and SecondItem)
             expect((page.items as any).length).toBe(2);
             expect((page.items as any)[0].text).toBe("Child1");
             expect((page.items as any)[1].text).toBe("SecondItem");
 
-            // SecondItemに1つの子アイテムがあるはず
+            // There should be 1 child item in SecondItem
             expect((page.items as any)[1].items.length).toBe(1);
             expect((page.items as any)[1].items[0].text).toBe("Child2");
         });
@@ -79,13 +79,13 @@ describe("Import/Export Service", () => {
 
             importOpmlIntoProject(opml, project);
 
-            // プロジェクトに1つのページが作成されているはず
+            // There should be 1 page created in the project
             expect((project.items as any).length).toBe(1);
 
             const page = (project.items as any)[0];
             expect(page.text).toBe("Imported");
 
-            // ページに1つの子アイテムがあるはず
+            // There should be 1 child item in the page
             expect((page.items as any).length).toBe(1);
             expect((page.items as any)[0].text).toBe("Child");
         });
