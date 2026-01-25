@@ -13,7 +13,7 @@ class AliasPickerStore {
     selectedIndex: number = 0;
     // prevent double-confirm
     private isConfirming = false;
-    // 直近の確定情報（OutlinerItem が Yjs 反映前に暫定的に参照するため）
+    // Most recent confirmed information (for OutlinerItem to refer to tentatively before Yjs reflection)
     lastConfirmedItemId: string | null = null;
     lastConfirmedTargetId: string | null = null;
     private _lastConfirmedAt: number | null = null;
@@ -96,7 +96,7 @@ class AliasPickerStore {
         // Close immediately to avoid UI-driven feedback while processing
         this.isVisible = false;
 
-        // 入力検証
+        // Input validation
         if (!this.itemId) {
             console.warn("AliasPickerStore: No itemId provided");
             this.hide();
@@ -117,14 +117,14 @@ class AliasPickerStore {
             return;
         }
 
-        // 自己参照チェック
+        // Self-reference check
         if (option.id === this.itemId) {
             console.warn("AliasPickerStore: Cannot create alias to self");
             this.hide();
             return;
         }
 
-        // より堅牢な検索でアイテムを特定
+        // Identify item with more robust search
         try {
             let item = this.findItemSafe(generalStore.currentPage, this.itemId);
             if (!item) {
@@ -134,12 +134,12 @@ class AliasPickerStore {
             if (item) {
                 (item as Item).aliasTargetId = option.id;
 
-                // OutlinerItem 側が即時に反映できるよう暫定情報を保持
+                // Keep tentative information so that OutlinerItem side can reflect immediately
                 this.lastConfirmedItemId = this.itemId;
                 this.lastConfirmedTargetId = option.id;
                 this.lastConfirmedAt = Date.now();
 
-                // DOM 直接変更は行わない（UI 更新は反応系に任せる）
+                // Do not change DOM directly (leave UI update to reactivity system)
             } else {
                 console.error("AliasPickerStore: Item not found:", this.itemId);
             }
@@ -168,14 +168,14 @@ class AliasPickerStore {
     }
 
     confirmById(id: string) {
-        // 自己参照は即座に拒否
+        // Self-reference is rejected immediately
         if (!id || id === this.itemId) {
             console.warn("AliasPickerStore.confirmById: invalid id or self", { id, itemId: this.itemId });
-            // 自己参照の場合は何もしないで閉じる（テストでは self ボタンが存在しない前提だが保険）
+            // If self-reference, do nothing and close (assuming self button does not exist in tests, but as a precaution)
             this.hide();
             return;
         }
-        // itemId が未設定の場合でも E2E を安定化させるために、アクティブアイテムや末尾アイテムから補完
+        // Even if itemId is not set, supplement from active item or last item to stabilize E2E
         if (!this.itemId) {
             try {
                 const w: any = typeof window !== "undefined" ? (window as any) : null;
@@ -195,7 +195,7 @@ class AliasPickerStore {
                 }
             } catch {}
         }
-        // 直接 ID で確定（path マッチングに依存しない）
+        // Confirm directly by ID (do not depend on path matching)
         try {
             if (!generalStore.currentPage || !this.itemId) {
                 this.hide();
@@ -204,10 +204,10 @@ class AliasPickerStore {
             let item = this.findItemSafe(generalStore.currentPage, this.itemId);
             if (!item) item = this.findItemDFS(generalStore.currentPage, this.itemId);
             if (item) {
-                // Yjsモデルに確実に書き込む
+                // Write to Yjs model reliably
                 (item as Item).aliasTargetId = id;
 
-                // Yjsモデルへの書き込みを確実にするため、Y.Mapに直接アクセス
+                // Access Y.Map directly to ensure writing to Yjs model
                 try {
                     const anyItem: any = item as any;
                     const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
@@ -230,7 +230,7 @@ class AliasPickerStore {
         this.hide();
     }
     private collectOptions(): Option[] {
-        // 1) 標準: 現在のページ木から収集（ページタイトル＝ルートは候補に含めない）
+        // 1) Standard: Collect from current page tree (page title = root is not included in candidates)
         const list: Option[] = [];
         const root = generalStore.currentPage;
         if (root) {
@@ -243,7 +243,7 @@ class AliasPickerStore {
                         : (rawRootText?.toString?.() ?? "");
                     for (const child of children) {
                         if (child && child.id) {
-                            // パスはページタイトルを先頭に含める
+                            // Path includes page title at the beginning
                             this.traverse(child, [rootText], list);
                         }
                     }
@@ -253,20 +253,20 @@ class AliasPickerStore {
             }
         }
 
-        // 自分自身（新規エイリアスアイテム）は候補から除外
+        // Exclude self (new alias item) from candidates
         const filteredModel = list.filter(o => o.id !== this.itemId);
 
         return filteredModel;
     }
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- visited is a local Set for cycle detection, not reactive state
     private traverse(node: Item, path: string[], out: Option[], visited = new Set<string>(), depth = 0) {
-        // 入力検証
+        // Input validation
         if (!node || !node.id) {
             console.warn("AliasPickerStore traverse: Invalid node", node);
             return;
         }
 
-        // 無限ループ対策
+        // Infinite loop protection
         if (depth > 100 || visited.has(node.id)) {
             console.warn(
                 `AliasPickerStore traverse: Skipping node ${node.id} (depth: ${depth}, visited: ${
@@ -295,21 +295,21 @@ class AliasPickerStore {
             console.warn("AliasPickerStore.traverse: children iteration error", e);
         }
 
-        visited.delete(node.id); // バックトラッキング時に削除
+        visited.delete(node.id); // Remove during backtracking
     }
     private findItemSafe(node: Item, id: string): Item | undefined {
-        // 非再帰的な幅優先探索を使用して無限ループを回避
+        // Use non-recursive breadth-first search to avoid infinite loops
         const queue: Item[] = [node];
         // eslint-disable-next-line svelte/prefer-svelte-reactivity -- visited is a local Set for cycle detection, not reactive state
         const visited = new Set<string>();
         let iterations = 0;
-        const maxIterations = 1000; // 安全のための上限
+        const maxIterations = 1000; // Upper limit for safety
 
         while (queue.length > 0 && iterations < maxIterations) {
             iterations++;
             const current = queue.shift()!;
 
-            // 既に訪問済みのノードはスキップ
+            // Skip already visited nodes
             if (visited.has(current.id)) {
                 continue;
             }

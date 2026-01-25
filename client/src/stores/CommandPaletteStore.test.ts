@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// モジュールをモック
+// Mock module
 // Provide a local mock instead of importing .svelte.ts in tests
 const mockCursor: any = {
     itemId: "test-item",
@@ -97,7 +97,7 @@ describe("CommandPaletteStore", () => {
     // use locals defined above
 
     beforeEach(async () => {
-        // 各テスト前にストアの状態をリセット
+        // Reset store state before each test
         commandPaletteStore.hide();
         vi.clearAllMocks();
 
@@ -132,9 +132,9 @@ describe("CommandPaletteStore", () => {
                 updateText: vi.fn(),
             };
             mockCursor.findTarget.mockReturnValue(mockNode);
-            mockCursor.offset = 6; // スラッシュの直後
+            mockCursor.offset = 6; // Immediately after slash
 
-            // showを呼び出してcommandStartOffsetを設定
+            // Call show to set commandStartOffset
             commandPaletteStore.show({ top: 100, left: 200 });
 
             commandPaletteStore.handleCommandInput("t");
@@ -152,7 +152,7 @@ describe("CommandPaletteStore", () => {
             mockCursor.findTarget.mockReturnValue(mockNode);
             mockCursor.offset = 6;
 
-            // showを呼び出してcommandStartOffsetを設定
+            // Call show to set commandStartOffset
             commandPaletteStore.show({ top: 100, left: 200 });
 
             commandPaletteStore.handleCommandInput("t");
@@ -177,15 +177,15 @@ describe("CommandPaletteStore", () => {
             mockCursor.findTarget.mockReturnValue(mockNode);
             mockCursor.offset = 9;
 
-            // showを呼び出してcommandStartOffsetを設定
+            // Call show to set commandStartOffset
             commandPaletteStore.show({ top: 100, left: 200 });
 
-            // まずクエリを設定
+            // Set query first
             commandPaletteStore.handleCommandInput("t");
             commandPaletteStore.handleCommandInput("a");
             commandPaletteStore.handleCommandInput("b");
 
-            // バックスペースを実行
+            // Execute backspace
             commandPaletteStore.handleCommandBackspace();
 
             expect(commandPaletteStore.query).toBe("ta");
@@ -199,14 +199,14 @@ describe("CommandPaletteStore", () => {
             mockCursor.findTarget.mockReturnValue(mockNode);
             mockCursor.offset = 6;
 
-            // showを呼び出してcommandStartOffsetを設定
+            // Call show to set commandStartOffset
             commandPaletteStore.show({ top: 100, left: 200 });
 
             commandPaletteStore.handleCommandBackspace();
 
             expect(commandPaletteStore.isVisible).toBe(false);
             expect(mockNode.updateText).toHaveBeenCalledWith("hello");
-            expect(mockCursor.offset).toBe(5); // スラッシュの位置に戻る
+            expect(mockCursor.offset).toBe(5); // Return to slash position
         });
     });
 
@@ -221,16 +221,16 @@ describe("CommandPaletteStore", () => {
 
             commandPaletteStore.show({ top: 0, left: 0 });
 
-            // 空のクエリでは全てのコマンドが表示される
+            // All commands are displayed with empty query
             expect(commandPaletteStore.filtered).toHaveLength(3);
 
-            // "ta"でフィルタリング（"Table"のみにマッチ）
+            // Filter by "ta" (matches only "Table")
             commandPaletteStore.handleCommandInput("t");
             commandPaletteStore.handleCommandInput("a");
             expect(commandPaletteStore.filtered).toHaveLength(1);
             expect(commandPaletteStore.filtered[0].label).toBe("Table");
 
-            // "ch"でフィルタリング
+            // Filter by "ch"
             commandPaletteStore.query = "ch";
             expect(commandPaletteStore.filtered).toHaveLength(1);
             expect(commandPaletteStore.filtered[0].label).toBe("Chart");

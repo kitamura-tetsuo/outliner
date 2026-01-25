@@ -1,16 +1,16 @@
 <script lang="ts">
 import { firestoreStore as moduleStore } from "../../stores/firestoreStore.svelte";
 import { onMount } from "svelte";
-// Vitest + JSDOM での 2 重ロード対策: window に公開されたインスタンスがあればそれを使う
+// Workaround for double loading in Vitest + JSDOM: Use the instance exposed on window if available
 const storeRef = (typeof window !== "undefined" && (window as any).__FIRESTORE_STORE__)
     ? (window as any).__FIRESTORE_STORE__
     : moduleStore;
 
-// 直接代入で UI を更新するローカル状態（$derived に依存しない）
+// Local state updating UI by direct assignment (independent of $derived)
 let idsLocal = $state<string[]>([]);
 let defaultIdLocal = $state<string | undefined>(undefined);
 
-// フォールバック: defaultId が ids に含まれない場合に末尾へ追加
+// Fallback: Append defaultId to the end if it's not included in ids
 function computeDisplayed(ids: string[], def?: string) {
     return def && !ids.includes(def) ? [...ids, def] : ids;
 }
@@ -23,7 +23,7 @@ onMount(() => {
             defaultIdLocal = u?.defaultProjectId;
         } catch {}
     };
-    // 初期適用 + 追加通知での更新
+    // Initial application + update on additional notification
     apply();
     try { window.addEventListener('firestore-uc-changed', apply); } catch {}
     // NOTE: This CustomEvent is test-environment only. In production/development,

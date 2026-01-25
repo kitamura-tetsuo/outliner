@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { SeedClient } from "../utils/seedClient";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 test.describe("Project Deletion", () => {
     test("should allow deleting a project", async ({ page }, testInfo) => {
