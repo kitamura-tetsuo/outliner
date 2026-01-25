@@ -7,27 +7,27 @@ jobs:
   relay:
     runs-on: ubuntu-latest
     steps:
-      # 1. 完全履歴を取る
+      # 1. Fetch full history
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # ← 浅い clone を解除
+          fetch-depth: 0 # ← Disable shallow clone
 
-      # 2. Git ユーザ情報
+      # 2. Git user identity
       - name: Git identity
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 3. GitLab と同期
+      # 3. Sync with GitLab
       - name: Force-push to GitLab
         env:
-          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }} # api 権限 PAT
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }} # api scope PAT
         run: |
           git remote add gitlab https://oauth2:${GITLAB_TOKEN}@gitlab.com/kitamura.tetsuo/outliner.git
 
-          # GitLab 側の main を取り込み
+          # Fetch main from GitLab
           git fetch gitlab main
 
-          # GitLabの履歴が分岐している場合も強制的に上書き
+          # Force overwrite even if GitLab history has diverged
           echo "🔄 Force pushing to GitLab main branch"
           git push --force-with-lease gitlab HEAD:main

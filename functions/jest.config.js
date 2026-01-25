@@ -11,6 +11,6 @@ module.exports = {
   coverageReporters: ["text", "lcov", "html"],
   testTimeout: 30000,
   verbose: true,
-  // Firebase Functions テスト用の環境変数
+  // Environment variables for Firebase Functions tests
   setupFiles: ["<rootDir>/test/env.js"],
 };

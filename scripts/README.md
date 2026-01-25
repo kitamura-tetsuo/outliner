@@ -1,35 +1,35 @@
 # Test Environment Scripts
 
-ローカルのテスト用サーバーは `scripts/setup.sh` が一括で起動・準備します。個別のローカル起動スクリプトは廃止しました。
+The local test server is started and prepared at once by `scripts/setup.sh`. Individual local startup scripts have been deprecated.
 
-## 使い方
+## Usage
 
-1. テスト環境のセットアップとサーバー起動
+1. Setup test environment and start server
 
 ```bash
 scripts/setup.sh
 ```
 
-- Firebase エミュレーター (Auth/Firestore/Functions/Hosting)
-- Yjs WebSocket サーバー
-- SvelteKit サーバー
+- Firebase Emulators (Auth/Firestore/Functions/Hosting)
+- Yjs WebSocket Server
+- SvelteKit Server
 
-初回実行時のみ依存関係のインストールとOS依存パッケージの導入を実施します。2回目以降は高速に完了します。
+Dependency installation and OS-dependent package installation are performed only on the first run. Subsequent runs will complete quickly.
 
-2. Playwright の逐次実行（クラウド環境向け）
+2. Sequential execution of Playwright (for cloud environments)
 
 ```bash
 scripts/run-e2e-progress.sh 1
 ```
 
-クラウド環境ではタイムアウト回避のため、E2E を 1 ファイルずつ実行します。
+In cloud environments, run E2E files one by one to avoid timeouts.
 
-3. 環境維持テスト（ENV-*)
+3. Environment maintenance tests (ENV-*)
 
 ```bash
 scripts/run-env-tests.sh
 ```
 
-## ログファイル
+## Log Files
 
-- `server/logs/` 配下に各サービスのログを出力します
+- Logs for each service are output under `server/logs/`.

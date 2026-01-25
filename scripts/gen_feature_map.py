@@ -10,17 +10,17 @@ from pathlib import Path
 import re, sys, yaml, subprocess
 from loguru import logger
 
-# ─────────────────────────  設定  ──────────────────────────
+# ─────────────────────────  Settings  ──────────────────────────
 ROOT        = Path(__file__).resolve().parent.parent
 YAML_DIR    = ROOT / "docs" / "client-features"
-# ★ 複数ディレクトリをリストで指定
-TEST_ROOTS  = [                                   # 任意で追記 / 上書き
+# ★ Specify multiple directories in a list
+TEST_ROOTS  = [                                   # Append / Overwrite as needed
     ROOT / "client/e2e",                         # default
     ROOT / "client/src/tests",                   # default
     ROOT / "functions/test",                     # new: Cloud Functions tests
     ROOT / "server/tests",                       # new: server unit tests
 ]
-MD_OUTFILE  = ROOT / "docs" / "feature-map.md"        # 出力先
+MD_OUTFILE  = ROOT / "docs" / "feature-map.md"        # Output destination
 # Accept tags like ITM-xxxxxxx (hex), CLM-xxxxxxxx, FTR-xxxxxxxx, etc.
 # Prefix: 2+ letters, Suffix: 8 hex characters (case-insensitive)
 FEATURE_RE  = re.compile(r"@feature\s+([A-Z]+-[0-9a-f]{8})", re.I)
@@ -122,7 +122,7 @@ def main() -> None:
     features = load_features()
     tests    = scan_tests()
 
-    # Markdown をバッファに貯める
+    # Buffer Markdown lines
     lines: list[str] = []
     lines.append("# Feature ↔ Test Matrix\n")
     lines.append("| Feature | Title | Test files | Status |\n")
@@ -140,11 +140,11 @@ def main() -> None:
     )
     md_text = header + "".join(lines)
 
-    # ファイルへ書き込み（差分がなければスキップ）
+    # Write to file (skip if no diff)
     if not MD_OUTFILE.exists() or MD_OUTFILE.read_text(encoding="utf-8") != md_text:
         MD_OUTFILE.write_text(md_text, encoding="utf-8")
         logger.info(f"feature-map.md updated → {MD_OUTFILE.relative_to(ROOT)}")
-        # pre-commit から呼ばれた場合に備え、自動 add しておく
+        # Auto-add if called from pre-commit
         subprocess.run(["git", "add", str(MD_OUTFILE)], check=False)
     else:
         logger.info("feature-map.md already up-to-date ✔")

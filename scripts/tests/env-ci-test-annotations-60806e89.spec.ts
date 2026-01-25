@@ -28,7 +28,7 @@ test("workflow runs tests with annotation reporters", () => {
     expect(workflow).toMatch(/npm run github:test:unit/);
     expect(workflow).toMatch(/npm run github:test:integration/);
     expect(workflow).toMatch(/Run e2e tests for github reporting/);
-    // E2Eはgithub reporterを使用するnpmスクリプトを実行
+    // E2E executes npm script using github reporter
     expect(workflow).toMatch(/npm run github:test:e2e/);
     expect(workflow).toMatch(/Summarise failures/);
 });

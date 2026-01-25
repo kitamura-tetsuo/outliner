@@ -1072,7 +1072,7 @@ exports.getProjectUsers = onRequest(
             authError,
           },
         );
-        // Firebase認証エラーの場合は401を返す
+        // Return 401 on Firebase authentication error
         return res.status(401).json({ error: "Authentication failed" });
       }
 
@@ -1095,7 +1095,7 @@ exports.getProjectUsers = onRequest(
     } catch (error) {
       Sentry.captureException(error);
       logger.error(`Error getting project users: ${error.message}`, { error });
-      // Firebase認証エラーの場合は401を返す
+      // Return 401 on Firebase authentication error
       if (
         error.code === "auth/id-token-expired" ||
         error.code === "auth/invalid-id-token" ||
@@ -1180,7 +1180,7 @@ exports.listUsers = onRequest(
             authError,
           },
         );
-        // Firebase認証エラーの場合は401を返す
+        // Return 401 on Firebase authentication error
         return res.status(401).json({ error: "Authentication failed" });
       }
 
@@ -1199,7 +1199,7 @@ exports.listUsers = onRequest(
     } catch (error) {
       Sentry.captureException(error);
       logger.error(`Error listing users: ${error.message}`, { error });
-      // Firebase認証エラーの場合は401を返す
+      // Return 401 on Firebase authentication error
       if (
         error.code === "auth/id-token-expired" ||
         error.code === "auth/invalid-id-token" ||
@@ -1341,7 +1341,7 @@ exports.createSchedule = onRequest(
     } catch (err) {
       Sentry.captureException(err);
       logger.error(`createSchedule error: ${err.message}`);
-      // Firebase認証エラーの場合は401を返す
+      // Return 401 on Firebase authentication error
       if (
         err.code === "auth/id-token-expired" ||
         err.code === "auth/invalid-id-token" ||
