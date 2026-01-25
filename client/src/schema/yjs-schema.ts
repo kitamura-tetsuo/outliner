@@ -16,7 +16,7 @@ export type Comment = {
 
 export type CommentValueType = string | number;
 
-// コメントコレクション（Y.Array<Y.Map>）用ラッパ
+// Wrapper for comment collection (Y.Array<Y.Map>)
 export class Comments {
     private readonly yArray: Y.Array<Y.Map<CommentValueType>>;
     constructor(yArray: Y.Array<Y.Map<CommentValueType>>, private readonly itemId: string) {
@@ -113,7 +113,7 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
-    // 添付ファイル: Y.Array<string> を保証して返す
+    // Attachments: Ensure Y.Array<string> is returned
     get attachments(): Y.Array<string> {
         let arr = this.value.get("attachments") as Y.Array<string> | undefined;
         if (!arr) {
@@ -123,7 +123,7 @@ export class Item {
         return arr;
     }
 
-    // 添付を追加（重複は無視）。テスト同期用に CustomEvent も発火
+    // Add attachment (ignore duplicates). Also fires CustomEvent for test synchronization
     addAttachment(url: string) {
         const arr = this.attachments;
         const existing = arr.toArray();
@@ -140,7 +140,7 @@ export class Item {
         }
     }
 
-    // 添付を削除
+    // Remove attachment
     removeAttachment(url: string) {
         const arr = this.attachments;
         const existing = arr.toArray();
@@ -158,7 +158,7 @@ export class Item {
         }
     }
 
-    // コメント: 専用のクラスでラップする
+    // Comments: wrap in a dedicated class
     get comments() {
         // server implements Comments class wrapper, here we can simplify or assume mapped
         // Ideally we should match server implementation structure if complex
@@ -340,7 +340,7 @@ export class Project {
         return undefined;
     }
 
-    // Fluid互換API: ページ（最上位アイテム）を追加
+    // Fluid compatible API: Add page (top-level item)
     addPage(title: string, author: string): Item {
         const page = this.items.addNode(author ?? "user");
         page.updateText(title ?? "");
@@ -535,7 +535,7 @@ export class Project {
     }
 }
 
-// 内部: Items を配列風アクセス可能にする Proxy でラップ
+// Internal: Wrap Items with Proxy to enable array-like access
 function wrapArrayLike(items: Items): Items {
     type PropertyKey = string | number | symbol;
     const isIndex = (p: PropertyKey): boolean => (typeof p === "number") || (typeof p === "string" && /^\d+$/.test(p));
