@@ -1,6 +1,5 @@
 id: ENV-a1b2c3d4
 title: Coverage backup and move-to-backup scripts
-title-ja: カバレッジバックアップと移動スクリプト
 description: 'Two scripts manage coverage backups to prevent disk space bloat:
 
   - backup-coverage.js: Copies coverage to coverage-backups (keeps 10 most recent)

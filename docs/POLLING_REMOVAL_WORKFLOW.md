@@ -1,85 +1,85 @@
-# ポーリング削除ワークフロー
+# Polling Removal Workflow
 
-## 概要
+## Overview
 
-このドキュメントでは、`docs/polling-analysis-report.md` を使用して、不要なポーリングを安全に削除する具体的な手順を説明します。
+This document describes the specific steps to safely remove unnecessary polling using `docs/polling-analysis-report.md`.
 
-## 現状
+## Current Status
 
-分析の結果:
+Analysis results:
 
-- **総ポーリング数**: 104件
-- **疑わしいポーリング**: 78件（削除候補）
-- **テスト専用ポーリング**: 26件
+- **Total Polling Count**: 104
+- **Suspicious Polling**: 78 (Candidates for removal)
+- **Test-Only Polling**: 26
 
-## 削除の優先順位
+## Removal Priority
 
-### 高優先度（すぐに削除すべき）
+### High Priority (Remove Immediately)
 
-1. **短い間隔のポーリング** (100ms以下)
-   - パフォーマンスへの影響が大きい
-   - 多くの場合、Yjs observeやSvelteリアクティビティで代替可能
+1. **Short Interval Polling** (100ms or less)
+   - High impact on performance
+   - Often replaceable with Yjs observe or Svelte reactivity
 
-2. **"暫定"、"フォールバック"とマークされたポーリング**
-   - 試行錯誤の残骸である可能性が高い
-   - 本来の実装で置き換えるべき
+2. **Polling marked as "Tentative" or "Fallback"**
+   - Likely remnants of trial and error
+   - Should be replaced with proper implementation
 
-3. **E2E安定化のためのポーリング**
-   - テスト環境でのみ必要
-   - 本番環境では不要
+3. **Polling for E2E Stabilization**
+   - Only needed in test environment
+   - Unnecessary in production environment
 
-### 中優先度（検証後に削除）
+### Medium Priority (Remove after Verification)
 
-1. **明確な目的がないポーリング**
-   - コメントがない、または不明確
-   - 削除してテストを実行して確認
+1. **Polling without clear purpose**
+   - No comments or unclear
+   - Remove and run tests to verify
 
-2. **重複しているポーリング**
-   - 同じ目的で複数のポーリングが存在
-   - 統合または削除
+2. **Duplicate Polling**
+   - Multiple pollings existing for the same purpose
+   - Consolidate or remove
 
-### 低優先度（慎重に検討）
+### Low Priority (Consider Carefully)
 
-1. **長い間隔のポーリング** (1秒以上)
-   - パフォーマンスへの影響は小さい
-   - 削除の優先度は低い
+1. **Long Interval Polling** (1 second or more)
+   - Low impact on performance
+   - Low priority for removal
 
-## 削除手順
+## Removal Steps
 
-### ステップ1: レポートを確認
+### Step 1: Check Report
 
 ```bash
 cd client
 npm run analyze:polling
 ```
 
-生成されたレポート `docs/polling-analysis-report.md` を開いて、削除候補を確認します。
+Open the generated report `docs/polling-analysis-report.md` and check the removal candidates.
 
-### ステップ2: 個別のポーリングを調査
+### Step 2: Investigate Individual Polling
 
-各ポーリングについて:
+For each polling:
 
-1. **コンテキストを確認**
-   - なぜこのポーリングが存在するのか?
-   - 代替手段はあるか?
+1. **Check Context**
+   - Why does this polling exist?
+   - Is there an alternative?
 
-2. **使用箇所を確認**
+2. **Check Usage**
    ```bash
    cd client
    grep -r "setInterval" src/components/OutlinerItem.svelte
    ```
 
-3. **関連するテストを確認**
+3. **Check Related Tests**
    ```bash
    cd client
    npm run test:e2e -- e2e/core/itm-*.spec.ts
    ```
 
-### ステップ3: ポーリングを削除または置き換え
+### Step 3: Remove or Replace Polling
 
-#### パターン1: Yjs Observeで置き換え
+#### Pattern 1: Replace with Yjs Observe
 
-**削除前:**
+**Before Removal:**
 
 ```typescript
 onMount(() => {
@@ -90,7 +90,7 @@ onMount(() => {
 });
 ```
 
-**削除後:**
+**After Removal:**
 
 ```typescript
 onMount(() => {
@@ -105,9 +105,9 @@ onMount(() => {
 });
 ```
 
-#### パターン2: Svelte $derivedで置き換え
+#### Pattern 2: Replace with Svelte $derived
 
-**削除前:**
+**Before Removal:**
 
 ```typescript
 let value = $state(0);
@@ -119,18 +119,18 @@ onMount(() => {
 });
 ```
 
-**削除後:**
+**After Removal:**
 
 ```typescript
 let value = $derived(store.getValue());
 ```
 
-#### パターン3: 単純に削除
+#### Pattern 3: Simply Remove
 
-**削除前:**
+**Before Removal:**
 
 ```typescript
-// E2E安定化: 入力DOMの値をポーリング
+// E2E stabilization: Poll input DOM value
 onMount(() => {
     const iv = setInterval(() => {
         const inputEl = document.querySelector("input");
@@ -142,36 +142,36 @@ onMount(() => {
 });
 ```
 
-**削除後:**
+**After Removal:**
 
 ```typescript
-// bind:valueで十分
+// bind:value is sufficient
 <input bind:value={newText} />;
 ```
 
-### ステップ4: テストを実行
+### Step 4: Run Tests
 
-削除後、必ず関連するテストを実行します:
+Always run related tests after removal:
 
 ```bash
 cd client
 
-# 単体テスト
+# Unit tests
 npm run test:unit
 
-# 統合テスト
+# Integration tests
 npm run test:integration
 
-# E2Eテスト（該当ファイルのみ）
+# E2E tests (only relevant files)
 npm run test:e2e -- e2e/core/itm-*.spec.ts
 
-# 完全なテストスイート
+# Full test suite
 npm test
 ```
 
-### ステップ5: コミット
+### Step 5: Commit
 
-テストが成功したら、変更をコミットします:
+If tests pass, commit the changes:
 
 ```bash
 git add .
@@ -182,117 +182,117 @@ git commit -m "refactor: Remove unnecessary polling in OutlinerItem.svelte
 - All tests passing"
 ```
 
-## 具体的な削除候補
+## Specific Removal Candidates
 
-### 最優先: OutlinerItem.svelte のポーリング
+### Top Priority: Polling in OutlinerItem.svelte
 
-**ファイル**: `client/src/components/OutlinerItem.svelte`
+**File**: `client/src/components/OutlinerItem.svelte`
 
-1. **行340付近: aliasLastConfirmedPulse ポーリング**
-   - 間隔: 100ms
-   - 目的: E2E安定化
-   - 代替: Yjs observe + data属性の直接設定
-   - 推奨: **削除**
+1. **Around line 340: aliasLastConfirmedPulse polling**
+   - Interval: 100ms
+   - Purpose: E2E stabilization
+   - Alternative: Yjs observe + direct setting of data attributes
+   - Recommendation: **Remove**
 
-2. **行1765付近: E2Eファイルドロップポーリング**
-   - 間隔: 不明
-   - 目的: E2Eテストのワークアラウンド
-   - 代替: Playwrightの正式なファイルドロップAPI
-   - 推奨: **削除**
+2. **Around line 1765: E2E file drop polling**
+   - Interval: Unknown
+   - Purpose: E2E test workaround
+   - Alternative: Official Playwright file drop API
+   - Recommendation: **Remove**
 
-### 高優先度: OutlinerItemAlias.svelte のポーリング
+### High Priority: Polling in OutlinerItemAlias.svelte
 
-**ファイル**: `client/src/components/OutlinerItemAlias.svelte`
+**File**: `client/src/components/OutlinerItemAlias.svelte`
 
-1. **行50付近: aliasLastConfirmedPulse ポーリング**
-   - 間隔: 100ms
-   - 目的: E2E安定化
-   - 代替: Yjs observe
-   - 推奨: **削除**
+1. **Around line 50: aliasLastConfirmedPulse polling**
+   - Interval: 100ms
+   - Purpose: E2E stabilization
+   - Alternative: Yjs observe
+   - Recommendation: **Remove**
 
-### 高優先度: CommentThread.svelte のポーリング
+### High Priority: Polling in CommentThread.svelte
 
-**ファイル**: `client/src/components/CommentThread.svelte`
+**File**: `client/src/components/CommentThread.svelte`
 
-1. **行147付近: 入力値ポーリング**
-   - 間隔: 120ms
-   - 目的: bind:valueが効かない環境への対応
-   - 代替: bind:valueの修正
-   - 推奨: **削除**
+1. **Around line 147: Input value polling**
+   - Interval: 120ms
+   - Purpose: Handling environment where bind:value doesn't work
+   - Alternative: Fix bind:value
+   - Recommendation: **Remove**
 
-### 中優先度: EditorOverlay.svelte のポーリング
+### Medium Priority: Polling in EditorOverlay.svelte
 
-**ファイル**: `client/src/components/EditorOverlay.svelte`
+**File**: `client/src/components/EditorOverlay.svelte`
 
-1. **行213付近: 位置更新ポーリング**
-   - 間隔: 16ms (60fps)
-   - 目的: カーソル位置の更新
-   - 代替: MutationObserver（既に実装済み）
-   - 推奨: **検証後に削除**
+1. **Around line 213: Position update polling**
+   - Interval: 16ms (60fps)
+   - Purpose: Cursor position update
+   - Alternative: MutationObserver (Already implemented)
+   - Recommendation: **Remove after verification**
 
-## トラブルシューティング
+## Troubleshooting
 
-### テストが失敗する場合
+### If Tests Fail
 
-1. **エラーメッセージを確認**
+1. **Check Error Message**
    ```bash
    cd client
    npm run test:e2e -- e2e/core/itm-*.spec.ts 2>&1 | tee test-output.log
    ```
 
-2. **ポーリングが本当に必要か確認**
-   - 一時的にポーリングを復活させてテスト
-   - 成功すれば、ポーリングは必要
+2. **Verify if polling is really needed**
+   - Temporarily revive polling and test
+   - If successful, polling is necessary
 
-3. **代替実装を確認**
-   - Yjs observeが正しく設定されているか
-   - 初期化タイミングは適切か
+3. **Check alternative implementation**
+   - Is Yjs observe correctly configured?
+   - Is initialization timing appropriate?
 
-### パフォーマンスが悪化する場合
+### If Performance Degrades
 
-1. **ポーリング削除前後でプロファイリング**
+1. **Profile before and after polling removal**
    ```javascript
-   // ブラウザコンソールで
+   // In browser console
    performance.mark("start");
-   // 操作を実行
+   // Execute operation
    performance.mark("end");
    performance.measure("operation", "start", "end");
    console.log(performance.getEntriesByType("measure"));
    ```
 
-2. **代替実装の最適化**
-   - Yjs observeのイベントフィルタリング
-   - $derivedの依存関係の最適化
+2. **Optimize alternative implementation**
+   - Event filtering for Yjs observe
+   - Dependency optimization for $derived
 
-## 進捗管理
+## Progress Management
 
-削除の進捗を追跡するために、以下のチェックリストを使用します:
+Use the following checklist to track removal progress:
 
 ### OutlinerItem.svelte
 
-- [ ] aliasLastConfirmedPulse ポーリング (行340)
-- [ ] E2Eファイルドロップポーリング (行1765)
+- [ ] aliasLastConfirmedPulse Polling (Line 340)
+- [ ] E2E file drop polling (Line 1765)
 
 ### OutlinerItemAlias.svelte
 
-- [ ] aliasLastConfirmedPulse ポーリング (行50)
+- [ ] aliasLastConfirmedPulse Polling (Line 50)
 
 ### CommentThread.svelte
 
-- [ ] 入力値ポーリング (行147)
+- [ ] Input value polling (Line 147)
 
 ### EditorOverlay.svelte
 
-- [ ] 位置更新ポーリング (行213)
+- [ ] Position update polling (Line 213)
 
-### その他
+### Others
 
-- [ ] Checklist.svelte の自動リセットポーリング
-- [ ] AliasPicker.svelte のフォーカスポーリング
-- [ ] AuthComponent.svelte のローディング状態ポーリング
+- [ ] Automatic reset polling in Checklist.svelte
+- [ ] Focus polling in AliasPicker.svelte
+- [ ] Loading state polling in AuthComponent.svelte
 
-## 参考資料
+## References
 
-- [POLLING_ANALYSIS_GUIDE.md](./POLLING_ANALYSIS_GUIDE.md) - 詳細なガイド
-- [polling-analysis-report.md](./polling-analysis-report.md) - 分析レポート
-- [AGENTS.md](../AGENTS.md) - プロジェクトガイドライン
+- [POLLING_ANALYSIS_GUIDE.md](./POLLING_ANALYSIS_GUIDE.md) - Detailed guide
+- [polling-analysis-report.md](./polling-analysis-report.md) - Analysis report
+- [AGENTS.md](../AGENTS.md) - Project guidelines

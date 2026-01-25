@@ -1,84 +1,84 @@
-# ポーリング削除依頼プロンプト
+# Polling Removal Request Prompt
 
-## 基本プロンプト (推奨)
-
-```
-[ファイル名]のポーリングを削除して下さい。
-
-1. npm run analyze:polling でポーリングを特定
-2. 各ポーリングをリアクティブパターンに置き換え
-3. テストで回帰がないことを確認
-
-テストに回帰がある場合は、ポーリングが必要な理由を分析して報告して下さい。
-```
-
-## 詳細プロンプト (複雑なケース向け)
+## Basic Prompt (Recommended)
 
 ```
-[ファイル名]の不要なポーリングを削除して、テストに回帰がない事を確認して下さい。
+Please remove polling in [filename].
 
-作業手順:
-1. npm run analyze:polling で対象ファイルのポーリングを特定
-2. 各ポーリングについて:
-   - setInterval/setTimeout → Svelte $derived/$effect または Yjs observe
-   - requestAnimationFrame → MutationObserver/ResizeObserver (可能な場合)
-3. テスト実行:
+1. Identify polling with npm run analyze:polling
+2. Replace each polling with a reactive pattern
+3. Verify no regression with tests
+
+If there is a regression in tests, please analyze and report why polling is necessary.
+```
+
+## Detailed Prompt (For complex cases)
+
+```
+Please remove unnecessary polling in [filename] and verify there is no regression in tests.
+
+Procedure:
+1. Identify polling in the target file with npm run analyze:polling
+2. For each polling:
+   - setInterval/setTimeout → Svelte $derived/$effect or Yjs observe
+   - requestAnimationFrame → MutationObserver/ResizeObserver (if possible)
+3. Run tests:
    - npm run test:unit
    - npm run test:e2e:basic
-   - 関連するE2Eテスト
-4. 回帰がある場合:
-   - ポーリングが必要な理由を分析
-   - 代替手段を検討
-   - 結果を報告
+   - Related E2E tests
+4. If there is regression:
+   - Analyze why polling is necessary
+   - Consider alternative means
+   - Report results
 
-テストに回帰があるならば、ポーリングの弁別精度を向上させる方法を実装して下さい。
+If there is a regression in tests, implement a method to improve the discrimination accuracy of polling.
 ```
 
-## 使用例
+## Usage Examples
 
-### 単一ファイル
-
-```
-OutlinerItemAlias.svelte のポーリングを削除して下さい。
-
-1. npm run analyze:polling でポーリングを特定
-2. 各ポーリングをリアクティブパターンに置き換え
-3. テストで回帰がないことを確認
-
-テストに回帰がある場合は、ポーリングが必要な理由を分析して報告して下さい。
-```
-
-### 複数ファイル
+### Single File
 
 ```
-以下のファイルのポーリングを削除して下さい:
+Please remove polling in OutlinerItemAlias.svelte.
+
+1. Identify polling with npm run analyze:polling
+2. Replace each polling with a reactive pattern
+3. Verify no regression with tests
+
+If there is a regression in tests, please analyze and report why polling is necessary.
+```
+
+### Multiple Files
+
+```
+Please remove polling in the following files:
 - CommentThread.svelte
 - EditorOverlay.svelte
 
-1. npm run analyze:polling でポーリングを特定
-2. 各ポーリングをリアクティブパターンに置き換え
-3. テストで回帰がないことを確認
+1. Identify polling with npm run analyze:polling
+2. Replace each polling with a reactive pattern
+3. Verify no regression with tests
 
-テストに回帰がある場合は、ポーリングが必要な理由を分析して報告して下さい。
+If there is a regression in tests, please analyze and report why polling is necessary.
 ```
 
-### 特定のポーリングタイプ
+### Specific Polling Type
 
 ```
-EditorOverlay.svelte の位置更新ポーリング (16ms間隔) を削除して下さい。
+Please remove the position update polling (16ms interval) in EditorOverlay.svelte.
 
-1. npm run analyze:polling でポーリングを特定
-2. MutationObserver または ResizeObserver に置き換え
-3. テストで回帰がないことを確認
+1. Identify polling with npm run analyze:polling
+2. Replace with MutationObserver or ResizeObserver
+3. Verify no regression with tests
 
-テストに回帰がある場合は、ポーリングが必要な理由を分析して報告して下さい。
+If there is a regression in tests, please analyze and report why polling is necessary.
 ```
 
-## 置き換えパターン
+## Replacement Patterns
 
-### setInterval/setTimeout → Svelte リアクティビティ
+### setInterval/setTimeout → Svelte Reactivity
 
-**削除前**:
+**Before Removal**:
 
 ```typescript
 setInterval(() => {
@@ -89,7 +89,7 @@ setInterval(() => {
 }, 100);
 ```
 
-**削除後**:
+**After Removal**:
 
 ```typescript
 let reactiveValue = $derived(someStore.getValue());
@@ -103,7 +103,7 @@ $effect(() => {
 
 ### setInterval/setTimeout → Yjs observe
 
-**削除前**:
+**Before Removal**:
 
 ```typescript
 setInterval(() => {
@@ -115,7 +115,7 @@ setInterval(() => {
 }, 100);
 ```
 
-**削除後**:
+**After Removal**:
 
 ```typescript
 onMount(() => {
@@ -133,7 +133,7 @@ onMount(() => {
 
 ### requestAnimationFrame → MutationObserver
 
-**削除前**:
+**Before Removal**:
 
 ```typescript
 function checkPosition() {
@@ -144,7 +144,7 @@ function checkPosition() {
 requestAnimationFrame(checkPosition);
 ```
 
-**削除後**:
+**After Removal**:
 
 ```typescript
 const observer = new MutationObserver(() => {
@@ -159,52 +159,52 @@ observer.observe(element, {
 onDestroy(() => observer.disconnect());
 ```
 
-## 注意事項
+## Notes
 
-### 削除してはいけないポーリング
+### Polling that MUST NOT be removed
 
-以下のケースでは、ポーリングが必要な場合があります:
+In the following cases, polling may be necessary:
 
-1. **ブラウザのレンダリングサイクルに依存する処理**
-   - フォーカス設定の複数回試行
-   - カーソル位置の設定
-   - 例: `requestAnimationFrame(() => { setTimeout(() => { element.focus(); }, 10); })`
+1. **Processes dependent on browser rendering cycles**
+   - Multiple attempts at focus setting
+   - Setting cursor position
+   - Example: `requestAnimationFrame(() => { setTimeout(() => { element.focus(); }, 10); })`
 
-2. **外部システムのポーリング**
-   - ログローテーション (定期実行が必要)
-   - アイドルタイムアウト (一定時間後の処理)
-   - 例: `setInterval(() => { rotateLog(); }, 3600000);`
+2. **Polling external systems**
+   - Log rotation (periodic execution required)
+   - Idle timeout (processing after a certain time)
+   - Example: `setInterval(() => { rotateLog(); }, 3600000);`
 
-3. **カーソル点滅**
-   - UI表現として必要
-   - 例: `setInterval(() => { toggleCursor(); }, 500);`
+3. **Cursor blinking**
+   - Necessary as UI expression
+   - Example: `setInterval(() => { toggleCursor(); }, 500);`
 
-### テスト回帰時の対応
+### Handling Test Regressions
 
-テストが失敗した場合:
+If tests fail:
 
-1. **ポーリングの目的を再確認**
-   - コメントやコミット履歴を確認
-   - なぜポーリングが導入されたのか
+1. **Reconfirm the purpose of polling**
+   - Check comments and commit history
+   - Why was polling introduced?
 
-2. **代替手段を検討**
-   - イベントベースの実装は可能か
-   - オブザーバーパターンは使えるか
-   - リアクティブシステムで対応できるか
+2. **Consider alternative means**
+   - Is event-based implementation possible?
+   - Can the observer pattern be used?
+   - Can the reactive system handle it?
 
-3. **必要性を判断**
-   - 本当にポーリングが必要か
-   - テスト側の問題ではないか
-   - E2E専用のワークアラウンドではないか
+3. **Determine necessity**
+   - Is polling really necessary?
+   - Is it not a problem on the test side?
+   - Is it a workaround specific to E2E?
 
-4. **結果を報告**
-   - ポーリングが必要な理由
-   - 代替手段の検討結果
-   - 推奨される対応
+4. **Report results**
+   - Reason why polling is necessary
+   - Result of considering alternative means
+   - Recommended action
 
-## 参考資料
+## Reference Information
 
-- [ポーリング分析ガイド](./POLLING_ANALYSIS_GUIDE.md)
-- [ポーリング削除ワークフロー](./POLLING_REMOVAL_WORKFLOW.md)
-- [ポーリング削除結果](./POLLING_REMOVAL_RESULTS.md)
-- [ポーリングツールインデックス](./POLLING_TOOLS_INDEX.md)
+- [Polling Analysis Guide](./POLLING_ANALYSIS_GUIDE.md)
+- [Polling Removal Workflow](./POLLING_REMOVAL_WORKFLOW.md)
+- [Polling Removal Results](./POLLING_REMOVAL_RESULTS.md)
+- [Polling Tool Index](./POLLING_TOOLS_INDEX.md)

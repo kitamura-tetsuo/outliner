@@ -1,6 +1,5 @@
 id: ENV-0010
 title: Pre-push formatting check
-title-ja: pre-pushでフォーマットを検証
 description: A git pre-push hook runs dprint to ensure changed files are formatted before pushing.
 category: environment
 status: implemented

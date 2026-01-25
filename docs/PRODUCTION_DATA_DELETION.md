@@ -1,31 +1,31 @@
-# 本番環境データ削除機能
+# Production Data Deletion Feature
 
-本番環境のすべてのデータを安全に削除するための機能とスクリプトです。
+Feature and scripts to safely delete all data in the production environment.
 
-## ⚠️ 重要な警告
+## ⚠️ Important Warning
 
-**この機能は本番環境のすべてのデータを完全に削除します。削除されたデータは復元できません。**
+**This feature completely deletes all data in the production environment. Deleted data cannot be restored.**
 
-- Firebase Firestore のすべてのコレクション
-- Firebase Auth のすべてのユーザー
-- Firebase Storage のすべてのファイル
+- All Firebase Firestore collections
+- All Firebase Auth users
+- All Firebase Storage files
 
-実行前に必ずバックアップを取得してください。
+Please ensure you create a backup before execution.
 
-## 機能概要
+## Feature Overview
 
-### 1. Firebase Functions APIエンドポイント
+### 1. Firebase Functions API Endpoint
 
-**エンドポイント**: `/api/deleteAllProductionData`
+**Endpoint**: `/api/deleteAllProductionData`
 
-本番環境のデータを削除するためのAPIエンドポイントです。
+API endpoint to delete production data.
 
-#### 認証
+#### Authentication
 
-- **管理者トークン**: `ADMIN_DELETE_ALL_DATA_2024`
-- **確認コード**: `DELETE_ALL_PRODUCTION_DATA_CONFIRM`
+- **Admin Token**: `ADMIN_DELETE_ALL_DATA_2024`
+- **Confirmation Code**: `DELETE_ALL_PRODUCTION_DATA_CONFIRM`
 
-#### リクエスト例
+#### Request Example
 
 ```bash
 curl -X POST https://us-central1-outliner-d57b0.cloudfunctions.net/deleteAllProductionData \
@@ -36,7 +36,7 @@ curl -X POST https://us-central1-outliner-d57b0.cloudfunctions.net/deleteAllProd
   }'
 ```
 
-#### レスポンス例
+#### Response Example
 
 ```json
 {
@@ -67,158 +67,158 @@ curl -X POST https://us-central1-outliner-d57b0.cloudfunctions.net/deleteAllProd
 }
 ```
 
-### 2. 管理スクリプト
+### 2. Management Scripts
 
-#### 統合管理スクリプト（推奨）
+#### Unified Management Script (Recommended)
 
 ```bash
-# ヘルプ表示
+# Show help
 node scripts/production-data-manager.js help
 
-# 環境チェック
+# Check environment
 node scripts/production-data-manager.js check
 
-# データバックアップ
+# Backup data
 node scripts/production-data-manager.js backup
 
-# データ削除（確認付き）
+# Delete data (with confirmation)
 node scripts/production-data-manager.js delete --confirm
 
-# データ削除（強制実行）
+# Delete data (force execution)
 node scripts/production-data-manager.js delete --confirm --force
 
-# 完全ワークフロー（チェック→バックアップ→削除）
+# Full workflow (Check -> Backup -> Delete)
 node scripts/production-data-manager.js full --confirm
 ```
 
-#### 個別スクリプト
+#### Individual Scripts
 
 ```bash
-# 環境チェック
+# Check environment
 node scripts/check-production-environment.js
 
-# データバックアップ
+# Backup data
 node scripts/backup-production-data.js
 
-# データ削除
+# Delete data
 node scripts/delete-production-data.js --confirm
 ```
 
-## 安全性機能
+## Safety Features
 
-### 1. 環境チェック
+### 1. Environment Check
 
-- 本番環境かどうかの自動判定
-- エミュレーター環境の検出
-- Firebase Functions/Hosting の接続確認
+- Automatic determination of production environment
+- Detection of emulator environment
+- Connection check for Firebase Functions/Hosting
 
-### 2. バックアップ機能
+### 2. Backup Feature
 
-削除前に以下のデータをバックアップします：
+Backs up the following data before deletion:
 
-- **Firestore**: 全コレクションのドキュメント
-- **Firebase Auth**: 全ユーザー情報
-- **Firebase Storage**: ファイルリスト（メタデータ）
+- **Firestore**: Documents of all collections
+- **Firebase Auth**: All user information
+- **Firebase Storage**: File list (metadata)
 
-バックアップは `backups/production-backup-{timestamp}/` に保存されます。
+Backups are saved in `backups/production-backup-{timestamp}/`.
 
-### 3. 確認機能
+### 3. Confirmation Feature
 
-- 管理者トークンによる認証
-- 確認コードによる二重確認
-- 本番環境でのみ実行可能
-- インタラクティブな確認プロンプト
+- Authentication with Admin Token
+- Double confirmation with Confirmation Code
+- Executable only in production environment
+- Interactive confirmation prompts
 
-## 使用手順
+## Usage Instructions
 
-### 推奨手順（統合スクリプト使用）
+### Recommended Procedure (Using Unified Script)
 
-1. **環境確認**
+1. **Check Environment**
    ```bash
    node scripts/production-data-manager.js check
    ```
 
-2. **バックアップ作成**
+2. **Create Backup**
    ```bash
    node scripts/production-data-manager.js backup
    ```
 
-3. **データ削除**
+3. **Delete Data**
    ```bash
    node scripts/production-data-manager.js delete --confirm
    ```
 
-### ワンステップ実行
+### One-Step Execution
 
 ```bash
-# 全工程を一度に実行（チェック→バックアップ→削除）
+# Execute all steps at once (Check -> Backup -> Delete)
 node scripts/production-data-manager.js full --confirm
 ```
 
-## エラーハンドリング
+## Error Handling
 
-### よくあるエラー
+### Common Errors
 
 1. **401 Unauthorized**
-   - 管理者トークンが間違っている
-   - 解決: 正しいトークンを使用
+   - Incorrect Admin Token
+   - Solution: Use the correct token
 
 2. **400 Invalid confirmation code**
-   - 確認コードが間違っている
-   - 解決: 正しい確認コードを使用
+   - Incorrect Confirmation Code
+   - Solution: Use the correct confirmation code
 
 3. **400 This endpoint only works in production environment**
-   - テスト環境で実行しようとしている
-   - 解決: 本番環境で実行
+   - Attempting to run in a test environment
+   - Solution: Run in the production environment
 
-### ログ確認
+### Checking Logs
 
-Firebase Functions のログを確認：
+Check Firebase Functions logs:
 
 ```bash
 firebase functions:log --project outliner-d57b0
 ```
 
-## テスト
+## Testing
 
-テスト環境での動作確認：
+Verification in test environment:
 
 ```bash
 cd scripts
 npm test -- tests/production-data-deletion.spec.js tests/environment-check.spec.js
 ```
 
-## セキュリティ考慮事項
+## Security Considerations
 
-1. **認証トークン**: 管理者トークンは秘匿情報として扱う
-2. **アクセス制限**: 本番環境でのみ実行可能
-3. **ログ記録**: すべての操作がログに記録される
-4. **バックアップ**: 削除前に必ずバックアップを作成
+1. **Auth Token**: Treat the Admin Token as confidential information
+2. **Access Control**: Executable only in production environment
+3. **Logging**: All operations are logged
+4. **Backup**: Always create a backup before deletion
 
-## 復旧手順
+## Recovery Procedure
 
-データを誤って削除した場合：
+If data is accidentally deleted:
 
-1. **バックアップからの復元**
-   - `backups/` ディレクトリから最新のバックアップを確認
-   - Firebase Console から手動でデータを復元
+1. **Restore from Backup**
+   - Check the latest backup in the `backups/` directory
+   - Manually restore data from the Firebase Console
 
-2. **Firebase プロジェクトの再構築**
-   - 必要に応じて新しいFirebaseプロジェクトを作成
-   - バックアップデータを使用してデータを復元
+2. **Rebuild Firebase Project**
+   - Create a new Firebase project if necessary
+   - Restore data using the backup data
 
-## 関連ファイル
+## Related Files
 
-- `functions/index.js` - APIエンドポイント実装
-- `scripts/production-data-manager.js` - 統合管理スクリプト
-- `scripts/delete-production-data.js` - データ削除スクリプト
-- `scripts/backup-production-data.js` - バックアップスクリプト
-- `scripts/check-production-environment.js` - 環境チェックスクリプト
-- `scripts/tests/` - テストファイル
+- `functions/index.js` - API endpoint implementation
+- `scripts/production-data-manager.js` - Unified management script
+- `scripts/delete-production-data.js` - Data deletion script
+- `scripts/backup-production-data.js` - Backup script
+- `scripts/check-production-environment.js` - Environment check script
+- `scripts/tests/` - Test files
 
-## 注意事項
+## Notes
 
-- この機能は緊急時やプロジェクト終了時にのみ使用してください
-- 削除されたデータは復元できません
-- 実行前に必ず関係者に確認を取ってください
-- バックアップの作成を忘れずに行ってください
+- Use this feature only in emergencies or when terminating the project
+- Deleted data cannot be restored
+- Ensure you have approval from relevant parties before execution
+- Do not forget to create a backup

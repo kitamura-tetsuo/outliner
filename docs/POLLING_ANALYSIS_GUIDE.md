@@ -1,64 +1,64 @@
-# ポーリング分析・削除ガイド
+# Polling Analysis and Removal Guide
 
-このガイドでは、コードベース内の不要なポーリングを特定して削除する方法を説明します。
+This guide explains how to identify and remove unnecessary polling in the codebase.
 
-## 概要
+## Overview
 
-コードベースには多数の `setInterval`、`setTimeout`、`requestAnimationFrame` によるポーリング処理が存在します。これらの中には:
+There are numerous polling processes using `setInterval`, `setTimeout`, and `requestAnimationFrame` in the codebase. Among them are:
 
-- **必要なポーリング**: カーソル点滅、ログローテーションなど、明確な目的がある
-- **不要なポーリング**: 試行錯誤の残骸、E2Eテストのワークアラウンドなど
-- **置き換え可能なポーリング**: Yjs observerやSvelteリアクティビティで代替可能
+- **Necessary Polling**: Clear purpose such as cursor blinking, log rotation, etc.
+- **Unnecessary Polling**: Remnants of trial and error, E2E test workarounds, etc.
+- **Replaceable Polling**: Can be replaced with Yjs observer or Svelte reactivity.
 
-このツールセットは、これらを自動的に分析し、安全に削除できるポーリングを特定します。
+This toolset automatically analyzes these and identifies pollings that can be safely removed.
 
-## ツールの構成
+## Tool Composition
 
-### 1. 静的分析ツール (`analyze-polling.ts`)
+### 1. Static Analysis Tool (`analyze-polling.ts`)
 
-コードベースをスキャンして、すべてのポーリング処理を検出・分類します。
+Scans the codebase to detect and classify all polling processes.
 
-**実行方法:**
+**Execution Method:**
 
 ```bash
 npm run analyze:polling
 ```
 
-**出力:**
+**Output:**
 
-- `docs/polling-analysis-report.md`: 分析レポート
+- `docs/polling-analysis-report.md`: Analysis report
 
-**分類:**
+**Classification:**
 
-- **必要なポーリング**: 削除すべきでないもの
-- **疑わしいポーリング**: 削除候補
-- **テスト専用ポーリング**: テスト環境でのみ実行
+- **Necessary Polling**: Should not be removed
+- **Suspicious Polling**: Candidates for removal
+- **Test-Only Polling**: Executed only in test environments
 
-### 2. ランタイム監視ツール (`pollingMonitor.ts`)
+### 2. Runtime Monitoring Tool (`pollingMonitor.ts`)
 
-ブラウザ内でポーリング呼び出しをインターセプトして追跡します。
+Intercepts and tracks polling calls within the browser.
 
-**使用方法:**
+**Usage:**
 
 ```typescript
 import { pollingMonitor } from "$lib/pollingMonitor";
 
-// モニタリング開始
+// Start monitoring
 pollingMonitor.start();
 
-// 統計取得
+// Get statistics
 const stats = pollingMonitor.getStats();
 console.log(stats);
 
-// レポート生成
+// Generate report
 console.log(pollingMonitor.generateReport());
 ```
 
-### 3. E2Eテストヘルパー (`pollingTestHelper.ts`)
+### 3. E2E Test Helper (`pollingTestHelper.ts`)
 
-特定のポーリングを無効化してテストを実行し、影響を確認します。
+Executes tests with specific pollings disabled to check the impact.
 
-**使用方法:**
+**Usage:**
 
 ```typescript
 import { testWithoutPolling } from "../utils/pollingTestHelper";
@@ -66,140 +66,140 @@ import { testWithoutPolling } from "../utils/pollingTestHelper";
 const result = await testWithoutPolling(
     page,
     "Test name",
-    /ファイル名.*ポーリング識別子/,
+    /Filename.*PollingIdentifier/,
     async () => {
-        // テストコード
+        // Test code
     },
 );
 
-// result.isRemovable が true なら削除可能
+// If result.isRemovable is true, it can be removed
 ```
 
-### 4. ポーリング削除可能性テスト
+### 4. Polling Removability Test
 
-実際にポーリングを無効化してE2Eテストを実行します。
+Actually disables polling and runs E2E tests.
 
-**実行方法:**
+**Execution Method:**
 
 ```bash
 npm run test:polling
 ```
 
-**出力:**
+**Output:**
 
-- `docs/polling-removability-report.md`: 削除可能性レポート
+- `docs/polling-removability-report.md`: Removability report
 
-## 使用ワークフロー
+## Usage Workflow
 
-### ステップ1: 静的分析を実行
+### Step 1: Run Static Analysis
 
 ```bash
 cd client
 npm run analyze:polling
 ```
 
-これにより `docs/polling-analysis-report.md` が生成されます。
+This generates `docs/polling-analysis-report.md`.
 
-### ステップ2: 分析レポートをレビュー
+### Step 2: Review Analysis Report
 
-`docs/polling-analysis-report.md` を開いて、以下を確認:
+Open `docs/polling-analysis-report.md` and check:
 
-- **疑わしいポーリング**セクションを重点的にレビュー
-- 各ポーリングのコンテキストを確認
-- 削除候補をリストアップ
+- Review the **Suspicious Polling** section intensively
+- Check the context of each polling
+- List removal candidates
 
-### ステップ3: 削除可能性テストを実行
+### Step 3: Run Removability Test
 
 ```bash
 cd client
 npm run test:polling
 ```
 
-これにより、各疑わしいポーリングを無効化してテストを実行します。
+This disables each suspicious polling and runs tests.
 
-### ステップ4: テスト結果をレビュー
+### Step 4: Review Test Results
 
-`docs/polling-removability-report.md` を開いて:
+Open `docs/polling-removability-report.md` and:
 
-- **削除可能なポーリング**セクションを確認
-- これらは無効化してもテストが成功したポーリング
-- 安全に削除できる可能性が高い
+- Check the **Removable Polling** section
+- These are pollings where tests passed even when disabled
+- High possibility that they can be safely removed
 
-### ステップ5: ポーリングを削除
+### Step 5: Remove Polling
 
-削除可能と判定されたポーリングを実際に削除します。
+Actually remove the polling determined to be removable.
 
-**例: OutlinerItem.svelte の 340行目のポーリング**
+**Example: Polling at line 340 of OutlinerItem.svelte**
 
-削除前:
+Before Removal:
 
 ```typescript
 onMount(() => {
     const iv = setInterval(() => {
-        // ポーリング処理
+        // Polling process
     }, 100);
     onDestroy(() => clearInterval(iv));
 });
 ```
 
-削除後:
+After Removal:
 
 ```typescript
-// ポーリングを削除し、Yjs observeで代替
+// Remove polling and replace with Yjs observe
 onMount(() => {
     const observer = () => {
-        // 同じ処理
+        // Same process
     };
     ymap.observe(observer);
     onDestroy(() => ymap.unobserve(observer));
 });
 ```
 
-### ステップ6: 完全なテストスイートを実行
+### Step 6: Run Full Test Suite
 
 ```bash
 cd client
 npm test
 ```
 
-すべてのテストが成功することを確認します。
+Ensure all tests pass.
 
-## 分類基準
+## Classification Criteria
 
-### 必要なポーリング
+### Necessary Polling
 
-以下の特徴があるポーリングは削除すべきではありません:
+Pollings with the following characteristics should not be removed:
 
-- カーソル点滅 (530ms間隔)
-- ログローテーション (12時間間隔)
-- アイドルタイムアウト監視
-- 明確なコメントで目的が説明されている
+- Cursor blinking (530ms interval)
+- Log rotation (12 hour interval)
+- Idle timeout monitoring
+- Purpose is explained with clear comments
 
-### 疑わしいポーリング（削除候補）
+### Suspicious Polling (Removal Candidates)
 
-以下の特徴があるポーリングは削除を検討すべきです:
+Removal should be considered for pollings with the following characteristics:
 
-- 短い間隔 (<200ms)
-- "フォールバック"、"暫定"、"E2E安定化"などのコメント
-- 明確な目的がない
-- 試行錯誤の残骸と思われる
+- Short interval (<200ms)
+- Comments like "fallback", "tentative", "E2E stabilization"
+- No clear purpose
+- Appears to be a remnant of trial and error
 
-### テスト専用ポーリング
+### Test-Only Polling
 
-以下の特徴があるポーリングはテスト環境でのみ実行されます:
+Pollings with the following characteristics are executed only in test environments:
 
-- `__E2E__` や `VITE_IS_TEST` の条件分岐内
-- E2Eテストのワークアラウンド
-- テスト環境でのみ必要な処理
+- Within `__E2E__` or `VITE_IS_TEST` conditional branches
+- E2E test workarounds
+- Processes needed only in test environments
 
-## ポーリングの代替手段
+## Alternative Means to Polling
 
 ### 1. Yjs Observer
 
-ポーリングの代わりにYjsのobserveを使用:
+Use Yjs observe instead of polling:
 
 ```typescript
-// Before: ポーリング
+// Before: Polling
 setInterval(() => {
     const value = ymap.get("key");
     localState = value;
@@ -215,10 +215,10 @@ ymap.observe((event) => {
 
 ### 2. Svelte 5 Reactivity
 
-ポーリングの代わりにSvelte 5の `$derived` を使用:
+Use Svelte 5's `$derived` instead of polling:
 
 ```typescript
-// Before: ポーリング
+// Before: Polling
 let value = $state(0);
 setInterval(() => {
     value = store.getValue();
@@ -230,10 +230,10 @@ let value = $derived(store.getValue());
 
 ### 3. MutationObserver
 
-DOMの変更を監視する場合:
+When monitoring DOM changes:
 
 ```typescript
-// Before: ポーリング
+// Before: Polling
 setInterval(() => {
     const el = document.querySelector(".target");
     if (el) updatePosition(el);
@@ -247,52 +247,52 @@ const observer = new MutationObserver(() => {
 observer.observe(document.body, { childList: true, subtree: true });
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### テストが失敗する場合
+### If Tests Fail
 
-1. **ポーリングが実際に必要**
-   - レポートの「必要なポーリング」セクションに移動
-   - 削除しない
+1. **Polling is actually necessary**
+   - Move to "Necessary Polling" section of the report
+   - Do not remove
 
-2. **代替手段が不完全**
-   - Yjs observeやSvelteリアクティビティで完全に置き換えられているか確認
-   - 初期化タイミングを確認
+2. **Alternative means is incomplete**
+   - Check if completely replaced by Yjs observe or Svelte reactivity
+   - Check initialization timing
 
-3. **テスト環境固有の問題**
-   - テスト環境でのみ失敗する場合、テスト側の修正を検討
+3. **Issue specific to test environment**
+   - If it fails only in test environment, consider fixing the test side
 
-### ポーリングが検出されない場合
+### If Polling is Not Detected
 
-1. **動的に生成されるポーリング**
-   - ランタイム監視ツールを使用
-   - ブラウザコンソールで `window.__pollingMonitor.getStats()` を実行
+1. **Dynamically generated polling**
+   - Use Runtime Monitoring Tool
+   - Run `window.__pollingMonitor.getStats()` in browser console
 
-2. **外部ライブラリのポーリング**
-   - 分析対象外（node_modules除外）
-   - 必要に応じて手動で確認
+2. **External library polling**
+   - Out of scope for analysis (exclude node_modules)
+   - Manually check if necessary
 
-## ベストプラクティス
+## Best Practices
 
-1. **段階的に削除**
-   - 一度に多数のポーリングを削除しない
-   - 1つずつ削除してテストを実行
+1. **Remove Incrementally**
+   - Do not remove many pollings at once
+   - Remove one by one and run tests
 
-2. **コミットを分ける**
-   - 各ポーリング削除を個別のコミットに
-   - ロールバックしやすくする
+2. **Separate Commits**
+   - Make each polling removal a separate commit
+   - Make it easy to rollback
 
-3. **理由を文書化**
-   - 削除できない場合はコメントで理由を説明
-   - 将来の開発者のために
+3. **Document Reasons**
+   - Explain reason in comments if removal is not possible
+   - For future developers
 
-4. **定期的に実行**
-   - 新しいポーリングが追加されていないか定期的にチェック
-   - CI/CDに組み込むことを検討
+4. **Run Regularly**
+   - Check regularly if new pollings are added
+   - Consider incorporating into CI/CD
 
-## 参考情報
+## Reference Information
 
-- [AGENTS.md](../AGENTS.md) - プロジェクトガイドライン
-- [docs/dev-features/pol-polling-analysis-and-removal-tool-a1b2c3d4.yaml](./dev-features/pol-polling-analysis-and-removal-tool-a1b2c3d4.yaml) - 機能仕様
-- [Yjs Documentation](https://docs.yjs.dev/) - Yjs observeの詳細
-- [Svelte 5 Runes](https://svelte.dev/docs/svelte/$derived) - Svelteリアクティビティの詳細
+- [AGENTS.md](../AGENTS.md) - Project guidelines
+- [docs/dev-features/pol-polling-analysis-and-removal-tool-a1b2c3d4.yaml](./dev-features/pol-polling-analysis-and-removal-tool-a1b2c3d4.yaml) - Feature specifications
+- [Yjs Documentation](https://docs.yjs.dev/) - Details on Yjs observe
+- [Svelte 5 Runes](https://svelte.dev/docs/svelte/$derived) - Details on Svelte reactivity

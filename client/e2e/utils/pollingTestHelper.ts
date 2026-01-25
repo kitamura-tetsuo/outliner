@@ -1,8 +1,7 @@
 /**
- * ポーリングテストヘルパー
+ * Polling Test Helper
  *
- * E2Eテストでポーリングモニターを使用して、
- * 不要なポーリングを特定するためのユーティリティ
+ * Utility to identify unnecessary polling using PollingMonitor in E2E tests
  */
 
 import type { Page } from "@playwright/test";
@@ -24,11 +23,11 @@ export interface PollingTestResult {
 }
 
 /**
- * ポーリングモニターを初期化
+ * Initialize Polling Monitor
  */
 export async function initPollingMonitor(page: Page) {
     await page.addInitScript(() => {
-        // pollingMonitor.tsの内容をインライン化
+        // Inline pollingMonitor.ts content
         class PollingMonitor {
             private calls: Map<number, any> = new Map();
             private nextId = 1;
@@ -141,7 +140,7 @@ export async function initPollingMonitor(page: Page) {
 }
 
 /**
- * ポーリングモニターを開始
+ * Start Polling Monitor
  */
 export async function startPollingMonitor(page: Page) {
     await page.evaluate(() => {
@@ -150,7 +149,7 @@ export async function startPollingMonitor(page: Page) {
 }
 
 /**
- * ポーリング統計を取得
+ * Get Polling Stats
  */
 export async function getPollingStats(page: Page) {
     return await page.evaluate(() => {
@@ -159,7 +158,7 @@ export async function getPollingStats(page: Page) {
 }
 
 /**
- * 特定のパターンのポーリングを無効化
+ * Disable polling matching a specific pattern
  */
 export async function disablePollingPattern(page: Page, pattern: RegExp) {
     await page.evaluate((patternStr) => {
@@ -169,7 +168,7 @@ export async function disablePollingPattern(page: Page, pattern: RegExp) {
 }
 
 /**
- * 無効化パターンをクリア
+ * Clear disable patterns
  */
 export async function clearDisablePatterns(page: Page) {
     await page.evaluate(() => {
@@ -178,7 +177,7 @@ export async function clearDisablePatterns(page: Page) {
 }
 
 /**
- * ポーリングモニターをリセット
+ * Reset Polling Monitor
  */
 export async function resetPollingMonitor(page: Page) {
     await page.evaluate(() => {
@@ -187,7 +186,7 @@ export async function resetPollingMonitor(page: Page) {
 }
 
 /**
- * 特定のポーリングを無効化してテストを実行
+ * Run test with specific polling disabled
  */
 export async function testWithoutPolling(
     page: Page,
@@ -203,7 +202,7 @@ export async function testWithoutPolling(
         isRemovable: false,
     };
 
-    // 1. ポーリングありでテスト
+    // 1. Test WITH polling
     console.log(`\n[${testName}] Testing WITH polling...`);
     await clearDisablePatterns(page);
     await resetPollingMonitor(page);
@@ -221,7 +220,7 @@ export async function testWithoutPolling(
         console.log(`  ✗ Failed: ${error.message}`);
     }
 
-    // 2. ポーリングなしでテスト
+    // 2. Test WITHOUT polling
     console.log(`[${testName}] Testing WITHOUT polling...`);
     await page.reload();
     await disablePollingPattern(page, pollingPattern);
@@ -240,59 +239,59 @@ export async function testWithoutPolling(
         console.log(`  ✗ Failed: ${error.message}`);
     }
 
-    // 3. 結果を判定
+    // 3. Determine Result
     result.isRemovable = result.withPolling.passed && result.withoutPolling.passed;
 
     if (result.isRemovable) {
-        console.log(`[${testName}] ✓ このポーリングは削除可能です`);
+        console.log(`[${testName}] ✓ This polling is removable`);
     } else if (!result.withPolling.passed) {
-        console.log(`[${testName}] ⚠ テスト自体が失敗しています`);
+        console.log(`[${testName}] ⚠ The test itself failed`);
     } else {
-        console.log(`[${testName}] ✗ このポーリングは必要です`);
+        console.log(`[${testName}] ✗ This polling is necessary`);
     }
 
     return result;
 }
 
 /**
- * レポートを生成
+ * Generate Report
  */
 export function generatePollingTestReport(results: PollingTestResult[]): string {
-    let report = "# ポーリング削除可能性テストレポート\n\n";
-    report += `生成日時: ${new Date().toISOString()}\n\n`;
-    report += `## 概要\n\n`;
-    report += `- テスト実行数: ${results.length}\n`;
-    report += `- 削除可能: ${results.filter(r => r.isRemovable).length}\n`;
-    report += `- 必要: ${results.filter(r => !r.isRemovable).length}\n\n`;
+    let report = "# Polling Removability Test Report\n\n";
+    report += `Generated at: ${new Date().toISOString()}\n\n`;
+    report += `## Overview\n\n`;
+    report += `- Tests Executed: ${results.length}\n`;
+    report += `- Removable: ${results.filter(r => r.isRemovable).length}\n`;
+    report += `- Necessary: ${results.filter(r => !r.isRemovable).length}\n\n`;
 
     const removable = results.filter(r => r.isRemovable);
     if (removable.length > 0) {
-        report += `## 削除可能なポーリング\n\n`;
+        report += `## Removable Polling\n\n`;
         for (const result of removable) {
             report += `### ${result.testName}\n\n`;
-            report += `- **パターン**: \`${result.pollingPattern.source}\`\n`;
-            report += `- **ポーリングあり**: ${result.withPolling.duration}ms\n`;
-            report += `- **ポーリングなし**: ${result.withoutPolling.duration}ms\n`;
-            report += `- **推奨**: このポーリングは削除しても問題ありません\n\n`;
+            report += `- **Pattern**: \`${result.pollingPattern.source}\`\n`;
+            report += `- **With Polling**: ${result.withPolling.duration}ms\n`;
+            report += `- **Without Polling**: ${result.withoutPolling.duration}ms\n`;
+            report += `- **Recommendation**: This polling can be safely removed\n\n`;
         }
     }
 
     const necessary = results.filter(r => !r.isRemovable);
     if (necessary.length > 0) {
-        report += `## 必要なポーリング\n\n`;
+        report += `## Necessary Polling\n\n`;
         for (const result of necessary) {
             report += `### ${result.testName}\n\n`;
-            report += `- **パターン**: \`${result.pollingPattern.source}\`\n`;
-            report += `- **ポーリングあり**: ${
+            report += `- **Pattern**: \`${result.pollingPattern.source}\`\n`;
+            report += `- **With Polling**: ${
                 result.withPolling.passed ? "✓" : "✗"
             } (${result.withPolling.duration}ms)\n`;
-            report += `- **ポーリングなし**: ${
+            report += `- **Without Polling**: ${
                 result.withoutPolling.passed ? "✓" : "✗"
             } (${result.withoutPolling.duration}ms)\n`;
             if (result.withoutPolling.error) {
-                report += `- **エラー**: ${result.withoutPolling.error}\n`;
+                report += `- **Error**: ${result.withoutPolling.error}\n`;
             }
-            report += `- **推奨**: このポーリングは必要です\n\n`;
+            report += `- **Recommendation**: This polling is necessary\n\n`;
         }
     }
 

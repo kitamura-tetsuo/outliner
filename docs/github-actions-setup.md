@@ -1,126 +1,126 @@
-# GitHub Actions Setup for Claude Code Integration（←アーカイブ）
+# GitHub Actions Setup for Claude Code Integration (Archived)
 
-**📌 重要**: このドキュメントはアーカイブされました。Gemini CI ワークフローは無効化されており、現在self-hosted runnerは使用されていません。
+**📌 Important**: This document has been archived. The Gemini CI workflow has been disabled, and self-hosted runners are currently not in use.
 
-**現在の状況**:
+**Current Status**:
 
-- ✅ GitHub-hosted runners に移行済み
-- ✅ Gemini CI ワークフロー無効化（`.disabled` ファイルとして保存）
-- ✅ 全てのCI/CD機能はGitHub-hosted runnersで継続稼働
+- ✅ Migrated to GitHub-hosted runners
+- ✅ Gemini CI workflow disabled (saved as `.disabled` file)
+- ✅ All CI/CD features continue to operate on GitHub-hosted runners
 
-**新しいドキュメント**:
+**New Document**:
 
-- 英語版: `docs/github-actions-setup-en.md`
-- 日本語版（現在のアーカイブ情報）: `docs/gemini-cli-setup.md`
+- English version: `docs/github-actions-setup-en.md`
+- Japanese version (current archive info): `docs/gemini-cli-setup.md`
 
 ---
 
-**以前の情報**: このドキュメントでは、issue作成時にClaude Code Actionがself-hosted runnerで実行され、claude-code-routerを使ってGemini CLIが動作するように設定する手順を説明していました。
+**Previous Information**: This document described the procedure to set up Gemini CLI to work using `claude-code-router` when a Claude Code Action is executed on a self-hosted runner during issue creation.
 
-## 概要
+## Overview
 
-### Issue分析機能
+### Issue Analysis Feature
 
-- **ワークフロー**: `.github/workflows/issue-claude-action.yml`
-- **トリガー**: Issue作成・編集時、または`@claude`を含むコメント作成時
-- **実行環境**: Self-hosted runner
-- **AI モデル**: Gemini 2.5 Pro (Gemini CLI経由)
-- **ルーティング**: Claude Code Router使用
+- **Workflow**: `.github/workflows/issue-claude-action.yml`
+- **Trigger**: Upon Issue creation/edit, or comment creation containing `@claude`
+- **Execution Environment**: Self-hosted runner
+- **AI Model**: Gemini 2.5 Pro (via Gemini CLI)
+- **Routing**: Uses Claude Code Router
 
-### PR自動テスト修正機能
+### PR Automated Test Fix Feature
 
-- **ワークフロー**: `.github/workflows/pr-test-fix.yml`
-- **トリガー**: PRのテストが失敗した時
-- **実行環境**: Self-hosted runner
-- **AI モデル**: Gemini 2.5 Pro (Gemini CLI経由)
-- **機能**: テスト失敗を自動分析・修正し、テストがパスするまで繰り返し実行
+- **Workflow**: `.github/workflows/pr-test-fix.yml`
+- **Trigger**: When a PR test fails
+- **Execution Environment**: Self-hosted runner
+- **AI Model**: Gemini 2.5 Pro (via Gemini CLI)
+- **Feature**: Automatically analyzes and fixes test failures, repeating until tests pass
 
-## 前提条件
+## Prerequisites
 
-### 1. Self-hosted Runnerの設定
+### 1. Self-hosted Runner Setup
 
-GitHub リポジトリにself-hosted runnerを追加する必要があります：
+You need to add a self-hosted runner to your GitHub repository:
 
-1. リポジトリの Settings > Actions > Runners に移動
-2. "New self-hosted runner" をクリック
-3. 指示に従ってrunnerを設定
+1. Go to Repository Settings > Actions > Runners
+2. Click "New self-hosted runner"
+3. Follow the instructions to configure the runner
 
-### 2. Runner環境の準備
+### 2. Runner Environment Preparation
 
-Self-hosted runner上で以下の環境を準備してください：
+Prepare the following environment on the self-hosted runner:
 
 ```bash
-# Node.js 22+ のインストール
+# Install Node.js 22+
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# 必要なグローバルパッケージのインストール
+# Install required global packages
 npm install -g @google/gemini-cli
 npm install -g @musistudio/claude-code-router
 
-# Git設定（GitHub Actions用）
+# Git configuration (for GitHub Actions)
 git config --global user.email "github-actions[bot]@users.noreply.github.com"
 git config --global user.name "GitHub Actions Bot"
 ```
 
-### 3. Gemini CLI認証の設定
+### 3. Gemini CLI Authentication Setup
 
-#### 方法1: OAuth認証（推奨）
+#### Method 1: OAuth Authentication (Recommended)
 
-Runner上で以下を実行：
+Run the following on the runner:
 
 ```bash
 gemini auth login
 ```
 
-ブラウザが開くので、Googleアカウントでログインし、認証を完了してください。
-認証情報は `~/.gemini/oauth_creds.json` に保存されます。
+A browser will open; login with your Google account and complete the authentication.
+Authentication credentials will be saved in `~/.gemini/oauth_creds.json`.
 
-#### 方法2: API Key認証
+#### Method 2: API Key Authentication
 
-1. [Google AI Studio](https://aistudio.google.com/app/apikey) でAPI Keyを取得
-2. GitHubリポジトリの Settings > Secrets and variables > Actions に移動
-3. `GEMINI_API_KEY` という名前でAPI Keyを追加
+1. Get an API Key at [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Go to GitHub repository Settings > Secrets and variables > Actions
+3. Add the API Key with the name `GEMINI_API_KEY`
 
-## ワークフローの動作
+## Workflow Behavior
 
-### Issue分析ワークフロー
+### Issue Analysis Workflow
 
-#### トリガー条件
+#### Trigger Conditions
 
-以下の場合にワークフローが実行されます：
+The workflow is executed when:
 
-- Issue が作成または編集された時
-- Issue コメントが作成され、`@claude` が含まれている時
+- An Issue is created or edited
+- An Issue comment is created and contains `@claude`
 
-### PR自動テスト修正ワークフロー
+### PR Automated Test Fix Workflow
 
-#### トリガー条件
+#### Trigger Conditions
 
-以下の場合にワークフローが実行されます：
+The workflow is executed when:
 
-- PRのテストワークフローが失敗で完了した時
-- 対象のPRがオープン状態である時
+- A PR test workflow completes with failure
+- The target PR is open
 
-### 実行ステップ
+### Execution Steps
 
-1. **環境準備**: Node.js、Git設定
-2. **Claude Code Router設定**: 設定ファイル作成、transformer取得
-3. **Gemini CLI認証確認**: OAuth認証またはAPI Key認証の確認
-4. **Router起動**: バックグラウンドでClaude Code Routerを起動
-5. **Claude Code Action実行**: Issue分析とレスポンス生成
-6. **クリーンアップ**: Routerプロセスの終了
+1. **Environment Prep**: Node.js, Git settings
+2. **Claude Code Router Setup**: Create config file, retrieve transformer
+3. **Gemini CLI Auth Check**: Verify OAuth or API Key authentication
+4. **Start Router**: Start Claude Code Router in the background
+5. **Run Claude Code Action**: Analyze Issue and generate response
+6. **Cleanup**: Terminate Router process
 
-### 設定ファイル
+### Configuration File
 
-ワークフローは以下の設定でClaude Code Routerを起動します：
+The workflow starts Claude Code Router with the following settings:
 
-**重要な設定項目：**
+**Important Settings:**
 
-- **カスタムTransformer**: 実際のGemini CLIコマンドを呼び出すカスタムtransformerを使用
-- `forceModel: true`: Gemini CLIに`--force-model`オプションを渡してモデル強制使用
-- `"forceModel": "gemini-2.5-pro"`: Routerレベルで特定のモデルを強制指定
-- **MCP対応**: 実際のGemini CLIを使用することでMCP等の高度な機能をサポート
+- **Custom Transformer**: Uses a custom transformer to invoke the actual Gemini CLI command
+- `forceModel: true`: Passes `--force-model` option to Gemini CLI to enforce model usage
+- `"forceModel": "gemini-2.5-pro"`: Enforces specific model at the Router level
+- **MCP Support**: Supports advanced features like MCP by using the actual Gemini CLI
 
 ```json
 {
@@ -156,72 +156,72 @@ gemini auth login
 }
 ```
 
-### カスタムGemini CLI Transformer
+### Custom Gemini CLI Transformer
 
-このプロジェクトでは、実際のGemini CLIコマンドを呼び出すカスタムtransformerを使用しています：
+This project uses a custom transformer that calls the actual Gemini CLI command:
 
-**特徴：**
+**Features:**
 
-- **実際のGemini CLI実行**: Google Cloud Code APIではなく、実際の`gemini`コマンドを実行
-- **MCP対応**: Gemini CLIの全機能（MCP等）をサポート
-- **Force-Model対応**: `--force-model`オプションでモデル強制使用
-- **JSON出力**: `--format json`で構造化された出力を取得
-- **一時ファイル管理**: 会話データを一時ファイルで管理し、実行後に自動削除
+- **Actual Gemini CLI Execution**: Executes `gemini` command instead of Google Cloud Code API
+- **MCP Support**: Supports full capabilities of Gemini CLI (MCP etc.)
+- **Force-Model Support**: Enforces model usage with `--force-model` option
+- **JSON Output**: Retrieves structured output with `--format json`
+- **Temp File Management**: Manages conversation data in temporary files and automatically deletes them after execution
 
-**実行例：**
+**Execution Example:**
 
 ```bash
 gemini --model gemini-2.5-pro --force-model --project outliner-d57b0 --format json --file /tmp/conversation.json
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### 認証エラー
+### Authentication Error
 
 ```
 ❌ No Gemini CLI credentials found
 ```
 
-**解決方法**:
+**Solution**:
 
-1. Runner上で `gemini auth login` を実行
-2. または `GEMINI_API_KEY` シークレットを設定
+1. Run `gemini auth login` on the Runner
+2. Or set the `GEMINI_API_KEY` secret
 
-### Router起動エラー
+### Router Start Error
 
 ```
 ❌ Claude Code Router failed to start within 30 seconds
 ```
 
-**解決方法**:
+**Solution**:
 
-1. Runner上で手動で `ccr start` を実行してエラーを確認
-2. ポート3456が使用可能か確認
-3. ログファイル `~/.claude-code-router.log` を確認
+1. Manually run `ccr start` on the Runner to check for errors
+2. Check if port 3456 is available
+3. Check the log file `~/.claude-code-router.log`
 
-### ネットワークエラー
+### Network Error
 
-**解決方法**:
+**Solution**:
 
-1. Runner環境からGoogle APIへのアクセスが可能か確認
-2. プロキシ設定が必要な場合は設定ファイルに追加
+1. Check if access to Google API is possible from the Runner environment
+2. Add proxy settings to the configuration file if necessary
 
-## セキュリティ考慮事項
+## Security Considerations
 
-- Self-hosted runnerは信頼できる環境で実行してください
-- API Keyは適切にシークレット管理してください
-- OAuth認証情報は適切なファイル権限で保護してください
-- ログファイルに機密情報が含まれないよう注意してください
+- Execute self-hosted runners in a trusted environment
+- Manage API Keys appropriately as secrets
+- Protect OAuth credentials with appropriate file permissions
+- Ensure log files do not contain sensitive information
 
-## 使用方法
+## Usage
 
-1. 新しいIssueを作成すると自動的にClaude Code Actionが実行されます
-2. 既存のIssueに `@claude` を含むコメントを追加すると分析が実行されます
-3. 分析結果はIssueコメントとして追加されます
+1. Claude Code Action runs automatically when a new Issue is created
+2. Analysis runs when a comment containing `@claude` is added to an existing Issue
+3. Analysis results are added as Issue comments
 
-## 制限事項
+## Limitations
 
-- Self-hosted runnerでのみ動作します
-- Gemini CLI認証が必要です
-- インターネット接続が必要です
-- 同時実行数は1つのIssueあたり1つに制限されています
+- Works only on self-hosted runners
+- Requires Gemini CLI authentication
+- Requires internet connection
+- Concurrent execution is limited to one per Issue

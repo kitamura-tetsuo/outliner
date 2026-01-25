@@ -1,15 +1,9 @@
 id: ENV-POLL-0001
 title: Polling Analysis and Removal Tool
-title-ja: ポーリング分析・削除ツール
 status: implemented
 priority: high
 category: development-tools
 description: "A comprehensive toolset for analyzing, testing, and removing unnecessary polling \nin the codebase. This tool helps identify polling that can be safely removed \nwithout affecting test results.\n"
-description-ja: 'コードベース内の不要なポーリングを分析、テスト、削除するための包括的なツールセット。
-
-  テスト結果に影響を与えずに安全に削除できるポーリングを特定します。
-
-  '
 components:
 - 'name: analyze-polling.ts'
 - 'name: env-polling-analysis-test-removability-a1b2c3d4.spec.ts'
@@ -19,61 +13,50 @@ usage:
   static-analysis:
     command: npm run analyze:polling
     description: Scan codebase and generate polling analysis report
-    description-ja: コードベースをスキャンしてポーリング分析レポートを生成
     output: docs/polling-analysis-report.md
   runtime-testing:
     command: npm run test:polling
     description: Run E2E tests to validate polling removability
-    description-ja: ポーリングの削除可能性を検証するE2Eテストを実行
     output: docs/polling-removability-report.md
 workflow:
 - step: 1
   action: Run static analysis
   command: npm run analyze:polling
   description: Identify all polling instances and categorize them
-  description-ja: すべてのポーリングインスタンスを特定して分類
 - step: 2
   action: Review analysis report
   file: docs/polling-analysis-report.md
   description: Review suspicious polling candidates
-  description-ja: 疑わしいポーリング候補をレビュー
 - step: 3
   action: Run removability tests
   command: npm run test:polling
   description: Test each suspicious polling by disabling it
-  description-ja: 各疑わしいポーリングを無効化してテスト
 - step: 4
   action: Review test results
   file: docs/polling-removability-report.md
   description: Identify polling that can be safely removed
-  description-ja: 安全に削除できるポーリングを特定
 - step: 5
   action: Remove unnecessary polling
   description: Remove polling marked as removable in the report
-  description-ja: レポートで削除可能とマークされたポーリングを削除
 - step: 6
   action: Run full test suite
   command: npm test
   description: Verify that removal didn't break anything
-  description-ja: 削除によって何も壊れていないことを確認
 categorization:
   necessary:
     description: Polling with clear purpose that should not be removed
-    description-ja: 明確な目的があり削除すべきでないポーリング
     examples:
     - Cursor blinking (530ms interval)
     - Log rotation (12 hour interval)
     - Idle timeout monitoring
   suspicious:
     description: Polling that may be unnecessary or could be replaced with reactive patterns
-    description-ja: 不要な可能性があるか、リアクティブパターンで置き換え可能なポーリング
     examples:
     - Short interval polling (<200ms)
-    - Polling marked as "fallback" or "暫定"
+    - Polling marked as "fallback" or "tentative"
     - Polling without clear purpose in comments
   test-only:
     description: Polling that only runs in test environments
-    description-ja: テスト環境でのみ実行されるポーリング
     examples:
     - E2E workarounds
     - Test environment detection polling
@@ -82,11 +65,6 @@ benefits:
 - Better code maintainability by removing workarounds
 - Clearer understanding of polling usage in the codebase
 - Safer refactoring with automated testing
-benefits-ja:
-- 不要なタイマーコールバックを削減してパフォーマンス向上
-- ワークアラウンドを削除してコードの保守性向上
-- コードベース内のポーリング使用状況の明確な理解
-- 自動テストによる安全なリファクタリング
 notes: '- Always run the full test suite after removing polling
 
   - Some polling may be necessary for browser compatibility
@@ -94,15 +72,6 @@ notes: '- Always run the full test suite after removing polling
   - Consider replacing polling with Yjs observers or Svelte reactivity
 
   - Document the reason if polling cannot be removed
-
-  '
-notes-ja: '- ポーリング削除後は必ず完全なテストスイートを実行
-
-  - ブラウザ互換性のために必要なポーリングもある
-
-  - ポーリングをYjs observerやSvelteリアクティビティで置き換えることを検討
-
-  - ポーリングを削除できない場合は理由を文書化
 
   '
 related-features:

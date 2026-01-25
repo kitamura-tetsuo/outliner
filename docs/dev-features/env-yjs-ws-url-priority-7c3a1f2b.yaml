@@ -1,6 +1,5 @@
 id: ENV-7c3a1f2b
 title: Yjs WebSocket URL priority and single source of truth
-title-ja: Yjs WebSocket URL の優先順位と単一化
 category: env
 status: implemented
 components:
@@ -10,13 +9,13 @@ components:
 priority:
 - VITE_YJS_WS_URL > VITE_YJS_PORT > default(7093)
 notes:
-- client/src/lib/yjs/connection.ts の getWsBase() を WS ベース URL の単一の取得元とする
-- E2E 環境では VITE_YJS_DISABLE_WS と VITE_IS_TEST/localStorage により WebSocket 接続を抑止
-- 既存のハードコード（ポート直指定等）は撤廃・抑制
+- Use getWsBase() in client/src/lib/yjs/connection.ts as the single source for the WS base URL
+- In E2E environments, suppress WebSocket connections using VITE_YJS_DISABLE_WS and VITE_IS_TEST/localStorage
+- Eliminate/suppress existing hardcoded values (like direct port specification)
 - Production sourcing: VITE_YJS_WS_URL is provided from GitHub Actions repository Variable (YJS_WS_URL) via .github/workflows/deploy.yml
 verification:
-- client/e2e/core/nav-outlinerbase-min-visibility-7a3c91e2.spec.ts で最低限の可視性と WS 誤接続なしを確認
-- getWsBase() の優先順位: VITE_YJS_WS_URL を最優先、無ければ VITE_YJS_PORT、最後に 7093 を既定
+- Verify minimum visibility and absence of erroneous WS connections in client/e2e/core/nav-outlinerbase-min-visibility-7a3c91e2.spec.ts
+- Priority of getWsBase(): VITE_YJS_WS_URL is highest, then VITE_YJS_PORT, and finally 7093 as default
 changelog:
 - Implemented getWsBase() as single source and updated related code paths
 - Suppressed noisy ERROR logs on empty pages in standard flow (downgraded to WARN)
@@ -25,15 +24,15 @@ examples:
   - VITE_YJS_WS_URL=wss://yjs.example.com
   - VITE_YJS_PORT=443
   e2e:
-  - '"VITE_YJS_DISABLE_WS=true" を .env.test または localStorage に設定して Yjs WS を抑止'
-  - Playwright では page.on('websocket', ...) で WS を収集し、Yjs 系 (port 7093, /yjs, /projects/) の接続本数が 0 であることを確認
+  - 'Set "VITE_YJS_DISABLE_WS=true" in .env.test or localStorage to suppress Yjs WS'
+  - 'In Playwright, collect WS using page.on(''websocket'', ...) and confirm that the number of Yjs-related connections (port 7093, /yjs, /projects/) is 0'
 ws-enabled-priority:
-- '1) 強制有効: localStorage.VITE_YJS_FORCE_WS === ''true'' → 常に有効（テスト/E2E用。無効化より優先）'
-- '2) 無効化: VITE_YJS_DISABLE_WS（env または localStorage のいずれかが ''true''）→ 無効'
-- '3) 明示有効: localStorage.VITE_YJS_ENABLE_WS === ''true'' → 有効（2) が無い場合のみ）'
-- '4) テスト既定: MODE===''test'' または VITE_IS_TEST===''true'' → 既定で有効（2) があればそちらを優先）'
-- '5) 既定: 上記に該当しなければ有効'
+- '1) Force Enable: localStorage.VITE_YJS_FORCE_WS === ''true'' -> Always enabled (For Test/E2E. Prioritized over disable)'
+- '2) Disable: VITE_YJS_DISABLE_WS (Either env or localStorage is ''true'') -> Disabled'
+- '3) Explicit Enable: localStorage.VITE_YJS_ENABLE_WS === ''true'' -> Enabled (Only if (2) is not present)'
+- '4) Test Default: MODE===''test'' or VITE_IS_TEST===''true'' -> Enabled by default (Prioritizes (2) if present)'
+- '5) Default: Enabled if none of the above apply'
 usage:
-- .env.test では VITE_YJS_DISABLE_WS=true を推奨（Yjs WS ハンドシェイクのノイズ抑止）
-- WS を必要とする E2E は page.addInitScript 等で localStorage に VITE_YJS_FORCE_WS=true を設定して強制接続
-- 本番では localStorage オーバーライド（ENABLE/ FORCE）は原則使用しない。必要時は環境変数での制御を優先
+- Recommend VITE_YJS_DISABLE_WS=true in .env.test (Suppress Yjs WS handshake noise)
+- For E2E requiring WS, force connection by setting VITE_YJS_FORCE_WS=true in localStorage using page.addInitScript etc.
+- In production, do not use localStorage overrides (ENABLE/FORCE) in principle. Prioritize control via environment variables when necessary

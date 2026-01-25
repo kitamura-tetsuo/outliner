@@ -1,6 +1,5 @@
 id: FTR-e1f2a3b4
 title: Refactor unit/integration tests to Yjs
-title-ja: ユニット/統合テストをYjsへ移行
 description: 'Removed Fluid Framework dependencies from unit and integration tests, migrated
 
   verification to Yjs or neutral abstractions, and deleted Fluid-only tests with
