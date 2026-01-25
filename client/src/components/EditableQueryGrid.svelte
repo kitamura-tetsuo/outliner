@@ -9,7 +9,7 @@ let editingCell = $state<{ rowIndex: number; columnKey: string; } | null>(null);
 let draggedColumnIndex = $state<number | null>(null);
 let draggedRowIndex = $state<number | null>(null);
 
-// Svelte 5 の購読は明示的に onMount/onDestroy で管理
+// Svelte 5 subscription managed explicitly in onMount/onDestroy
 let __unsubscribe: (() => void) | null = null;
 onMount(() => {
     try {
@@ -154,7 +154,7 @@ function handleRowDragOver(e: DragEvent) {
             </tbody>
         </table>
     {:else}
-        <p>クエリを実行してください</p>
+        <p>Please run a query</p>
     {/if}
 </div>
 

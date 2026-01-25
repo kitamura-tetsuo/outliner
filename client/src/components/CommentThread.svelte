@@ -53,8 +53,8 @@ function e2eLog(entry: E2ELogEntry) {
     } catch {}
 }
 
-// 
-//  
+//
+//
 let lastNotifiedCount = $state(-1);
 
 
@@ -62,13 +62,13 @@ let lastNotifiedCount = $state(-1);
 
 // initial recompute deferred until commentsSubscriber is initialized
 
-// Yjs の最小粒度 observe による購読（Y.Array<Y.Map> を deep 監視）
+// Yjs minimum granularity observe: Watch Y.Array<Y.Map> deeply
 onMount(() => {
     let unobserve: (() => void) | undefined;
     try {
-        // 1) Comments ラッパがあれば内部の yArray を取得（private だが JS では参照可能）
+        // 1) If Comments wrapper exists, get internal yArray (private but accessible in JS)
         let yarr: Y.Array<Y.Map<unknown>> | undefined = (comments as Comments | undefined)?.yArray;
-        // 2) なければ item 経由で Y.Map -> "comments" を確保
+        // 2) If not, ensure Y.Map -> "comments" via item
         if (!yarr && props.item) {
             const item = props.item as ItemLike;
             const tree = item?.tree;
@@ -112,7 +112,7 @@ onMount(() => {
             };
             yarr.observeDeep(handler);
             unobserve = () => { try { yarr.unobserveDeep(handler); } catch {} };
-            // 初期反映
+            // Initial reflection
             handler();
         }
     } catch {}
@@ -120,7 +120,7 @@ onMount(() => {
 });
 
 
-// Yjsの自動同期は一旦停止（CMT-0001 安定化のため、add/remove 時の即時通知に限定）
+// Yjs automatic synchronization stopped (Limited to immediate notification on add/remove for CMT-0001 stabilization)
 // $effect(() => {
 //     try {
 //         const list = (commentsSubscriber.current as any) ?? [];
@@ -130,16 +130,16 @@ onMount(() => {
 //     } catch {}
 // });
 
-// クリック委譲（安全網）: ボタンのonclickが効かない環境でも確実にadd()を呼ぶ
-// 軽量オートシンク: Y.Doc 更新時に toPlain → recompute → onCountChanged(length 変化時のみ)
+// Click delegation (safety net): Ensure add() is called even in environments where button onclick doesn't work
+// Lightweight auto-sync: toPlain -> recompute -> onCountChanged (only when length changes) on Y.Doc update
 
 
-// カウント通知は親（OutlinerItem）のYjs由来購読に委譲する。
-// ここではDOM直接書き換えや副作用を行わない（$effect撤去）。
+// Delegate count notification to parent (OutlinerItem) Yjs-derived subscription.
+// Do not perform direct DOM rewriting or side effects here ($effect removed).
 
     try { logger.debug('[CommentThread] mount props', { hasComments: !!props?.comments, hasDoc: !!props?.doc }); } catch {}
 
-// フォールバック削除: onMount のクリック委譲/自動追加/グローバル委譲を撤去
+// Fallback removal: Remove click delegation/auto-add/global delegation in onMount
 
 
 // Click delegation safety net to ensure add() fires in all environments
@@ -180,7 +180,7 @@ onMount(() => {
     };
 });
 
-// E2E安定化: 入力DOMの値をポーリングして自動追加（環境によってbind:valueが効かない場合の最終手段）
+// E2E stabilization: Poll input DOM value and auto-add (Last resort when bind:value doesn't work depending on environment)
 onMount(() => {
     let fired = false;
     const iv = setInterval(() => {
@@ -200,7 +200,7 @@ onMount(() => {
 });
 
 
-// ここではローカル更新を優先し、Yjs側の同期は後続のトランザクションで反映される想定
+// Assume local update priority here, and Yjs synchronization will be reflected in subsequent transactions
 
 function add() {
     try {
@@ -209,7 +209,7 @@ function add() {
         const cid = container?.getAttribute('data-item-id') || props.item?.id || '';
         e2eLog({ tag: 'add:start', id: cid, before, newText });
     } catch {}
-    // DOMからも値を取得して、bind:value が効かない環境でも追加できるようにする
+    // Get value from DOM as well to allow adding even in environments where bind:value doesn't work
     let text = newText;
     if (!text) {
         try {
@@ -244,7 +244,7 @@ function add() {
     logger.debug('[CommentThread] add comment, newText=', newText);
     logger.debug('[CommentThread] comments object:', commentsObj, 'props.item?', !!props.item, 'item?.comments?', !!props.item?.comments);
 
-    // comments オブジェクトが不正でも UI は進める（DOM/イベントで確実に反映）
+    // Proceed with UI even if comments object is invalid (Ensure reflection with DOM/event)
     const time = Date.now();
     let id: string;
     if (commentsObj && typeof commentsObj.addComment === 'function') {
@@ -256,7 +256,7 @@ function add() {
         id = `local-${time}-${Math.random().toString(36).slice(2)}`;
     }
 
-    // 予測即時反映: 現在のDOMから+1を推定し、直ちにバッジを更新（通常経路の前に走らせる）
+    // Predictive immediate reflection: Estimate +1 from current DOM and update badge immediately (Run before normal path)
     try {
         const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
         const threadEl = container?.querySelector('[data-testid="comment-thread"]') as HTMLElement | null;
@@ -268,7 +268,7 @@ function add() {
             nodes.forEach(el => { (el as HTMLElement).textContent = String(predicted); });
         }
     } catch {}
-    // 楽観的ローカル追加で即時にDOMへ反映
+    // Immediate reflection to DOM with optimistic local addition
     try {
         const optimistic: Comment = { id, author: user, text: newText, created: time, lastChanged: time };
         localComments = [...localComments, optimistic];
@@ -276,10 +276,10 @@ function add() {
     } catch {}
 
 
-    // 正常経路: Yjs 追加後に state を同期し、親に厳密件数で通知
+    // Normal path: Sync state after Yjs addition and notify parent with exact count
     try {
-        // Yjs debaeadf1c8ecb7f4b7L
-        // Yjs  
+        // Yjs  d e b ae ad f1 c8 ec b7 f4 b7 L
+        // Yjs
 
         // Calculate the count directly from the Yjs array which should be updated immediately after add
         let countNow = 0;
@@ -299,7 +299,7 @@ function add() {
         // Only notify if count actually changed to prevent infinite loops
         if (countNow !== lastNotifiedCount) {
             lastNotifiedCount = countNow;
-            // 親(OutlinerItem) へ props 経由 + バブリングイベントで通知
+            // Notify parent (OutlinerItem) via props + bubbling event
             try { onCountChanged?.(countNow); } catch {}
             try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
             try { dispatch('comment-count-changed', { count: countNow }); } catch {}
@@ -317,7 +317,7 @@ function add() {
     }
 
 
-                    //  onCountChanged 
+                    //          onCountChanged
 
 
 
@@ -350,7 +350,7 @@ function remove(id: string) {
         }
     }
     try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error('[CommentThread] deleteComment error', e); }
-    try { /* Yjs  derived updates; no direct assignment to commentsList */ } catch (e) { logger.error('[CommentThread] toPlain after delete error', e); }
+    try { /* Yjs    derived updates; no direct assignment to commentsList */ } catch (e) { logger.error('[CommentThread] toPlain after delete error', e); }
     localComments = localComments.filter(c => c.id !== id);
 
     const countNow = renderCommentsState.length;

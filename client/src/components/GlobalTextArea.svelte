@@ -1,252 +1,34 @@
 <script lang="ts">
 import {
-    onDestroy,
-    onMount,
-} from "svelte";
+    store,
+    type TextAreaPosition,
+} from "../stores/store.svelte";
+import { onMount, onDestroy } from "svelte";
 import { KeyEventHandler } from "../lib/KeyEventHandler";
-import { Items } from "../schema/app-schema";
-import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
-import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
-let textareaRef: HTMLTextAreaElement;
-let isComposing = false; // eslint-disable-line @typescript-eslint/no-unused-vars
-let measureCanvas: HTMLCanvasElement | null = null;
+let textareaRef: HTMLTextAreaElement | null = $state(null);
+let isComposing = $state(false);
 let measureCtx: CanvasRenderingContext2D | null = null;
 
-// Note: Removed reactive effect on activeItemId to avoid potential
-// update-depth loops during E2E when alias picker and focus logic interact.
-// Focus management is handled in onMount and OutlinerItem.startEditing().
-
-// global textarea をストアに登録
 onMount(() => {
-    // Initialize measurement canvas on client only
-    // Node.jsテスト環境ではCanvas APIがサポートされていない可能性があるため、
-    // 存在チェックをしてから初期化する
-    if (typeof document !== 'undefined' && typeof HTMLCanvasElement !== 'undefined') {
-        try {
-            measureCanvas = document.createElement("canvas");
-            // テスト環境ではgetContextが実装されていない場合があるため、try-catchで対応
-            measureCtx = measureCanvas.getContext("2d");
-            if (!measureCtx) {
-                console.warn('GlobalTextArea: Canvas 2D context not available, text measurement may be affected');
-            }
-        } catch (error) {
-            // テスト環境や特定のブラウザではCanvas APIが利用できない場合がある
-            console.warn('GlobalTextArea: Canvas API not available, text measurement may be affected:', error);
-            measureCtx = null;
-        }
-    } else {
-        console.warn('GlobalTextArea: Canvas API not available in this environment, text measurement may be affected');
-    }
-
     store.setTextareaRef(textareaRef);
-    // generalStore にも参照を保持（コマンドパレットのフォールバックで利用）
-    try { generalStore.textareaRef = textareaRef; } catch {}
-    console.log("GlobalTextArea: Textarea reference set in store");
+    // Measure context creation
+    const canvas = document.createElement("canvas");
+    measureCtx = canvas.getContext("2d");
 
-    // KeyEventHandler をグローバルに公開（テスト用）
-    if (typeof window !== "undefined") {
-        window.KeyEventHandler = KeyEventHandler;
-    }
-
-    // 初期フォーカスを設定
-    if (textareaRef) {
-        textareaRef.focus();
-        console.log("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
-
-        // フォーカス確保のための追加試行
-        requestAnimationFrame(() => {
-            if (textareaRef) {
-                textareaRef.focus();
-                console.log("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
-
-                setTimeout(() => {
-                    if (textareaRef) {
-                        textareaRef.focus();
-                        const isFocused = document.activeElement === textareaRef;
-                        console.log("GlobalTextArea: Final focus set, focused:", isFocused);
-                    }
-                }, 10);
-            }
-        });
-    }
-
-    // テスト用にKeyEventHandlerをグローバルに公開
-    if (typeof window !== "undefined") {
-        window.__KEY_EVENT_HANDLER__ = KeyEventHandler;
-        window.Items = Items;
-        window.generalStore = generalStore;
-    }
-
-    // エイリアスピッカー可視時のキーを常にピッカーへフォワード（フォーカスに依存しない）
-    try {
-        const forward = (ev: KeyboardEvent) => {
-            if (!aliasPickerStore.isVisible) return;
-            const k = ev.key;
-            if (k !== "ArrowDown" && k !== "ArrowUp" && k !== "Enter" && k !== "Escape") return;
-            const picker = document.querySelector(".alias-picker") as HTMLElement | null;
-            if (!picker) return;
-            // すでにエイリアスピッカー配下で発生したイベントは二重転送しない
-            const t = ev.target as Node | null;
-            if (t && picker.contains(t)) return;
-            try { console.log("GlobalTextArea: forward key to alias-picker:", k); } catch {}
-            const forwarded = new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true });
-            picker.dispatchEvent(forwarded);
-            ev.preventDefault();
-        };
-        window.addEventListener("keydown", forward, { capture: true });
-        // onDestroyで解除
-        window.__ALIAS_FWD__ = forward;
-    } catch {}
-
-    // フォールバック: スラッシュ押下で常にパレットを表示（内部リンク直後はKeyEventHandler側で抑止）
-    try {
-        const slashListener = (ev: KeyboardEvent) => {
-            if (ev.key !== "/") return;
-            // 既に表示中なら何もしない
-            if (window.commandPaletteStore?.isVisible) return;
-            try {
-                const pos = commandPaletteStore.getCursorScreenPosition();
-                commandPaletteStore.show(pos || { top: 0, left: 0 });
-            } catch {}
-        };
-        window.addEventListener("keydown", slashListener, { capture: true });
-        window.__SLASH_FWD__ = slashListener;
-    } catch {}
-
-    // 直近のキー入力を常に記録（/ch のような連続入力を検出するため）
-    try {
-        const recordKeys = (ev: KeyboardEvent) => {
-            if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-            const k = ev.key;
-            if (typeof k === "string" && k.length === 1) {
-                const w = window;
-                w.__KEYSTREAM__ = (w.__KEYSTREAM__ || "") + k;
-                if (w.__KEYSTREAM__ && w.__KEYSTREAM__.length > 256) {
-                    w.__KEYSTREAM__ = w.__KEYSTREAM__.slice(-256);
-                }
-            }
-        };
-        window.addEventListener("keydown", recordKeys, { capture: true });
-        window.__KEYSTREAM_FWD__ = recordKeys;
-    } catch {}
-    // フォールバック: テキストエリアにフォーカスがない場合でも入力を反映
-    try {
-        const typingFallback = (ev: KeyboardEvent) => {
-            try { console.log("typingFallback fired:", ev.key, "active=", !!store.getActiveItem()); } catch {}
-            // IME 合成中や修飾キー付きは無視（ただし Alt+Shift+Arrow は矩形選択のため許可）
-            const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
-                (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
-            if (ev.isComposing || (!isBoxSelectionKey && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
-            // エイリアスピッカー/コマンドパレット表示中是既存のフォワーダーに任せる
-            if (aliasPickerStore.isVisible || window.commandPaletteStore?.isVisible) return;
-
-            const activeId = store.getActiveItem();
-            const ta = textareaRef;
-            // 既にtextareaがフォーカスされているなら通常の処理に任せる
-            if (document.activeElement === ta) return;
-            if (!activeId) return;
-
-            // 単一文字の入力
-            const k = ev.key;
-            if (k.length === 1) {
-                const cursors = store.getCursorInstances();
-                try { console.log("typingFallback chars:", k, "cursors=", cursors.length); } catch {}
-                if (cursors.length > 0 && ta) {
-                    ev.preventDefault();
-                    // まず直接モデルを更新（信頼性重視）
-                    try { cursors.forEach(c => c.insertText(k)); } catch {}
-
-                    // 併せてテキストエリアに実入力として反映し、InputEventを発火（通常フロー維持）
-                    const prev = ta.value ?? "";
-                    const selStart = typeof ta.selectionStart === "number" ? ta.selectionStart : prev.length;
-                    const selEnd = typeof ta.selectionEnd === "number" ? ta.selectionEnd : selStart;
-                    ta.value = prev.slice(0, selStart) + k + prev.slice(selEnd);
-                    // キャレットを1文字進める
-                    try { ta.selectionStart = ta.selectionEnd = selStart + 1; } catch {}
-                    const ie = new InputEvent("input", { data: k, inputType: "insertText", bubbles: true, cancelable: true, composed: true });
-                    ta.dispatchEvent(ie);
-                    // フォーカス外でも確実にモデル更新させる
-                    try { KeyEventHandler.handleInput(ie as unknown as Event); } catch {}
-                    store.startCursorBlink();
-                }
-                return;
-            }
-
-            // Enter / Backspace / Delete の簡易フォールバック
-            const cursors = store.getCursorInstances();
-            if (cursors.length === 0) return;
-            if (k === "Enter") {
-                ev.preventDefault();
-                cursors.forEach(c => c.insertLineBreak());
-                return;
-            }
-            if (k === "Backspace") {
-                ev.preventDefault();
-                cursors.forEach(c => c.deleteBackward());
-                return;
-            }
-            if (k === "Delete") {
-                ev.preventDefault();
-                cursors.forEach(c => c.deleteForward());
-                return;
-            }
-        };
-        window.addEventListener("keydown", typingFallback, { capture: true });
-        window.__TYPING_FWD__ = typingFallback;
-    } catch {}
-
-
-    // フォールバック: パレット表示中はグローバルkeydownから直接文字入力/移動/確定を転送
+    // Global: Backup to call KeyEventHandler regardless of focus position
     try {
         const paletteTypeForwarder = (ev: KeyboardEvent) => {
-            const cps = window.commandPaletteStore ?? commandPaletteStore;
-            if (!cps?.isVisible) return;
+            const w: any = window as any;
+            if (!w.__SLASH_PALETTE_ACTIVE__) return;
+            const cps: any = w.commandPaletteStore;
+            if (!cps || !cps.isVisible) return;
+
             const k = ev.key;
-            if (!ev.ctrlKey && !ev.metaKey && !ev.altKey && k.length === 1 && k !== "/") {
-                // 軽量入力でUIだけを即時更新（モデルは変更しない）
-                cps.inputLight(k);
-                ev.preventDefault();
-                return;
-            }
-            if (k === "Backspace") { cps.backspaceLight(); ev.preventDefault(); return; }
-            if (k === "Enter") {
-                try {
-                    // フィルタ結果が単一で Alias の場合は直接 insert してから閉じる（確実にピッカーを出す）
-                    const list = cps.filtered ?? [];
-                    const sel = list?.[cps.selectedIndex ?? 0];
-                    const q = String(cps.query || (cps.deriveQueryFromDoc?.() || "")).toLowerCase();
-                    const isAliasOnly = Array.isArray(list) && list.length === 1 && (list[0]?.type === "alias");
-                    const looksAlias = q === "alias" || /^(?:al|ali|alia|alias)$/.test(q);
-
-                    // 直接 textarea の値からも厳密に検出
-                    let textSaysAlias = false;
-                    try {
-                        const ta: HTMLTextAreaElement | null | undefined = window.generalStore?.textareaRef;
-                        if (ta && typeof ta.value === "string") {
-                            const before = ta.value.slice(0, typeof ta.selectionStart === "number" ? ta.selectionStart : ta.value.length);
-                            textSaysAlias = /\/(?:al|ali|alia|alias)$/i.test(before);
-                        }
-                    } catch {}
-
-                    if (isAliasOnly || looksAlias || textSaysAlias) {
-                        try { console.log("GlobalTextArea: palette Enter forcing alias insert (q=", q, ", textSaysAlias=", textSaysAlias, ")"); } catch {}
-                        cps.insert("alias");
-                        cps.hide();
-                        ev.preventDefault();
-                        return;
-                    }
-                    // それ以外は通常の確定
-                    if (sel) {
-                        try { console.log("GlobalTextArea: palette Enter confirming sel=", sel?.type); } catch {}
-                        cps.confirm();
-                        ev.preventDefault();
-                        return;
-                    }
-                } catch {}
-                // フォールバック
+            if (k === "Escape") { cps.close(); ev.preventDefault(); return; }
+            if (k === "Enter" && !ev.isComposing) {
                 cps.confirm();
                 ev.preventDefault();
                 return;
@@ -258,16 +40,16 @@ onMount(() => {
         window.__PALETTE_FWD__ = paletteTypeForwarder;
     } catch {}
 
-    // グローバル: フォーカス位置に関わらず KeyEventHandler を呼ぶバックアップ
+    // Global: Backup to call KeyEventHandler regardless of focus position
     try {
         const globalKeyForwarder = (ev: KeyboardEvent) => {
-            // 既に他で処理済みは尊重
+            // Respect already processed events
             if (ev.defaultPrevented) return;
-            // IME/修飾キーは無視（ただし Alt+Shift+Arrow は矩形選択のため許可）
+            // Ignore IME/modifier keys (except Alt+Shift+Arrow for box selection)
             const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
                 (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
             if (ev.isComposing || (!isBoxSelectionKey && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
-            // 常に KeyEventHandler へ委譲（内部で必要時のみ処理される）
+            // Always delegate to KeyEventHandler (processed internally only when necessary)
             KeyEventHandler.handleKeyDown(ev);
         };
         window.addEventListener("keydown", globalKeyForwarder);
@@ -290,9 +72,9 @@ onDestroy(() => {
 
 function updateCompositionWidth(text: string) {
     if (!textareaRef || !measureCtx) {
-        // フォールバック：measureCtxが利用できない場合は固定幅を設定
+        // Fallback: Set fixed width if measureCtx is unavailable
         if (textareaRef) {
-            textareaRef.style.width = `${(text.length * 10) + 4}px`; // テキスト長に応じた適当な幅
+            textareaRef.style.width = `${(text.length * 10) + 4}px`; // Appropriate width according to text length
         }
         return;
     }
@@ -311,7 +93,7 @@ function handleCompositionStart(event: CompositionEvent) {
     KeyEventHandler.handleCompositionStart(event);
 }
 
-// キーダウンイベントを KeyEventHandler へ委譲
+// Delegate keydown event to KeyEventHandler
 function handleKeyDown(event: KeyboardEvent) {
     console.log("GlobalTextArea.handleKeyDown called with key:", event.key);
     console.log("GlobalTextArea.handleKeyDown: event.target:", event.target);
@@ -338,7 +120,7 @@ function handleKeyDown(event: KeyboardEvent) {
     } catch {}
 }
 
-// 入力イベントを KeyEventHandler へ委譲
+// Delegate input event to KeyEventHandler
 function handleInput(event: Event) {
     console.log("GlobalTextArea.handleInput called with event:", event);
     console.log("GlobalTextArea.handleInput: event.target:", event.target);
@@ -349,7 +131,7 @@ function handleInput(event: Event) {
     KeyEventHandler.handleInput(event);
 }
 
-// CompositionEnd イベントを KeyEventHandler へ委譲
+// Delegate CompositionEnd event to KeyEventHandler
 function handleCompositionEnd(event: CompositionEvent) {
     KeyEventHandler.handleCompositionEnd(event);
     isComposing = false;
@@ -359,46 +141,46 @@ function handleCompositionEnd(event: CompositionEvent) {
     textareaRef.style.width = "1px";
 }
 
-// CompositionUpdate イベントを KeyEventHandler へ委譲
+// Delegate CompositionUpdate event to KeyEventHandler
 function handleCompositionUpdate(event: CompositionEvent) {
     updateCompositionWidth(event.data || "");
     KeyEventHandler.handleCompositionUpdate(event);
 }
 
-// コピーイベントを KeyEventHandler へ委譲
+// Delegate copy event to KeyEventHandler
 function handleCopy(event: ClipboardEvent) {
     KeyEventHandler.handleCopy(event);
 }
 
-// カットイベントを KeyEventHandler へ委譲
+// Delegate cut event to KeyEventHandler
 function handleCut(event: ClipboardEvent) {
     KeyEventHandler.handleCut(event);
 }
 
 /**
- * ペーストイベントを KeyEventHandler に委譲する非同期ハンドラ。
- * `KeyEventHandler.handlePaste` は Promise を返すため `await` して
- * 権限拒否や読み取り失敗を捕捉し、`clipboard-permission-denied`
- * または `clipboard-read-error` を dispatch してユーザーにはペーストされない。
+ * Async handler delegating paste event to KeyEventHandler.
+ * `KeyEventHandler.handlePaste` returns a Promise, so `await` it
+ * Catch permission denial or read failure, and dispatch `clipboard-permission-denied`
+ * or `clipboard-read-error` so that paste is not performed for the user.
  */
 async function handlePaste(event: ClipboardEvent) {
     await KeyEventHandler.handlePaste(event);
 }
 
-// フォーカス喪失時の処理を追加
+// Add processing when focus is lost
 function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-eslint/no-unused-vars
     const activeItemId = store.getActiveItem();
-    // エイリアスピッカー表示中はフォーカス復元しない
+    // Do not restore focus while alias picker is visible
     if (aliasPickerStore.isVisible) {
         return;
     }
     if (activeItemId) {
-        // フォーカスを確実に設定するための複数の試行
+        // Multiple attempts to ensure focus is set
         setTimeout(() => {
             if (textareaRef && !aliasPickerStore.isVisible) {
                 textareaRef.focus();
 
-                // デバッグ情報
+                // Debug information
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     console.log(
                         `GlobalTextArea: focus restored after blur. Active element is textarea: ${

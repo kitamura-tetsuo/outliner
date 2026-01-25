@@ -1,134 +1,85 @@
 <script lang="ts">
-import { onDestroy, onMount } from "svelte";
+import {
+    getPreviewContent,
+    type PreviewContent,
+} from "../services/linkPreviewService";
 import { getLogger } from "$lib/logger";
-import { store } from "../stores/store.svelte";
-import type { Item } from "../schema/app-schema";
+import {
+    onDestroy,
+    onMount,
+} from "svelte";
 
 const logger = getLogger("LinkPreview");
 
 interface Props {
-    pageName: string | undefined;
-    projectName?: string | undefined;
+    targetId: string;
+    targetName: string;
 }
 
-let { pageName = "", projectName }: Props = $props();
+let { targetId, targetName }: Props = $props();
 
-// プレビュー表示用の状態
 let isVisible = $state(false);
-let previewContent = $state<Item | null>(null);
 let isLoading = $state(false);
+let previewContent = $state<PreviewContent | null>(null);
 let error = $state<string | null>(null);
+let timer: ReturnType<typeof setTimeout>;
+let previewElement: HTMLDivElement | undefined = $state();
 let previewPosition = $state({ top: 0, left: 0 });
-let previewElement = $state<HTMLElement | null>(null);
 
-// プレビューを表示する
 function showPreview(event: MouseEvent) {
-    isVisible = true;
-    updatePosition(event);
-    loadPreviewContent();
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+
+    previewPosition = {
+        top: rect.bottom + window.scrollY + 5,
+        left: rect.left + window.scrollX
+    };
+
+    timer = setTimeout(() => {
+        isVisible = true;
+        loadPreview();
+    }, 500);
 }
 
-// プレビューを非表示にする
 function hidePreview() {
+    clearTimeout(timer);
     isVisible = false;
-    previewContent = null;
-    error = null;
 }
 
-// プレビューの位置を更新する
-function updatePosition(event: MouseEvent) {
-    if (!previewElement) return;
-
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // プレビューの幅と高さを取得（まだレンダリングされていない場合はデフォルト値を使用）
-    const previewWidth = previewElement.offsetWidth || 300;
-    const previewHeight = previewElement.offsetHeight || 200;
-
-    // 初期位置（リンクの下）
-    let top = rect.bottom + window.scrollY + 10;
-    let left = rect.left + window.scrollX;
-
-    // 画面の右端を超える場合は左に調整
-    if (left + previewWidth > viewportWidth) {
-        left = viewportWidth - previewWidth - 20;
-    }
-
-    // 画面の下端を超える場合は上に表示
-    if (top + previewHeight > viewportHeight + window.scrollY) {
-        top = rect.top + window.scrollY - previewHeight - 10;
-    }
-
-    previewPosition = { top, left };
-}
-
-// プレビュー用のページ内容を読み込む
-async function loadPreviewContent() {
-    if (!store.pages) return;
+async function loadPreview() {
+    if (previewContent) return;
 
     isLoading = true;
     error = null;
-    previewContent = null;
 
     try {
-        // プロジェクト内リンクの場合
-        if (projectName) {
-            // 現在のプロジェクトと異なる場合は、プレビューを表示しない
-            // 注: 将来的には他プロジェクトのデータも取得できるように拡張する
-            if (projectName !== store.project?.title) {
-                error = "別プロジェクトのページはプレビューできません";
-                isLoading = false;
-                return;
-            }
-        }
-
-        // ページを検索
-        const foundPage = findPageByName(pageName);
-        if (foundPage) {
-            previewContent = foundPage;
-        } else {
-            error = "ページが見つかりません";
-        }
-    } catch (err) {
-        logger.error("Failed to load preview content:", err);
-        error = "プレビューの読み込みに失敗しました";
-    } finally {
+        logger.info(`Loading preview for: ${targetName} (${targetId})`);
+        previewContent = await getPreviewContent(targetId, targetName);
+    }
+    catch (err) {
+        logger.error("Failed to load preview:", err);
+        error = "Failed to load preview";
+    }
+    finally {
         isLoading = false;
     }
 }
 
-// ページ名からページを検索する
-function findPageByName(name: string): Item | null {
-    if (!store.pages) return null;
-
-    // ページ名が一致するページを検索
-    for (const page of store.pages.current) {
-        if (page.text.toLowerCase() === name.toLowerCase()) {
-            return page;
+onMount(() => {
+    // Check if we need to adjust position to keep it within viewport
+    if (isVisible && previewElement) {
+        const rect = previewElement.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            previewPosition.left = window.innerWidth - rect.width - 20;
+        }
+        if (rect.bottom > window.innerHeight) {
+            previewPosition.top = (previewPosition.top - rect.height - 40);
         }
     }
-
-    return null;
-}
-
-// ページが存在するかどうかを確認する
-export function pageExists(name: string, project?: string): boolean {
-    // プロジェクト指定がある場合は、現在のプロジェクトと一致するか確認
-    if (project && store.project?.title !== project) {
-        return false;
-    }
-
-    return findPageByName(name) !== null;
-}
-
-onMount(() => {
-    // マウント時の処理
 });
 
 onDestroy(() => {
-    // クリーンアップ処理
+    // Cleanup processing
 });
 </script>
 
@@ -138,6 +89,7 @@ onDestroy(() => {
     onmouseenter={showPreview}
     onmouseleave={hidePreview}
 >
+    <slot></slot>
 
     {#if isVisible}
         <div
@@ -148,7 +100,7 @@ onDestroy(() => {
             {#if isLoading}
                 <div class="preview-loading">
                     <div class="loader"></div>
-                    <p>読み込み中...</p>
+                    <p>Loading...</p>
                 </div>
             {:else if error}
                 <div class="preview-error">
@@ -169,13 +121,13 @@ onDestroy(() => {
                                 {/if}
                             </ul>
                         {:else}
-                            <p class="empty-page">このページには内容がありません</p>
+                            <p class="empty-page">This page has no content</p>
                         {/if}
                     </div>
                 </div>
             {:else}
                 <div class="preview-not-found">
-                    <p>ページが見つかりません</p>
+                    <p>Page not found</p>
                 </div>
             {/if}
         </div>

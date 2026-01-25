@@ -15,7 +15,7 @@
             "@playwright/test"
         ],
         "noUnusedLocals": false // loosen unused checks for tests
-        // "noUnusedParameters": true // 未使用のパラメータをエラーに
+        // "noUnusedParameters": true // Error on unused parameters
     },
     "include": [
         "src/vite-env.d.ts",

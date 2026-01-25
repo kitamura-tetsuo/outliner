@@ -48,7 +48,7 @@ function handleSqlChange(event: Event) {
         bind:value={sql}
         rows="4"
         class="border p-2 w-full"
-        placeholder="SQLクエリを入力してください"
+        placeholder="Enter SQL query"
         oninput={handleSqlChange}
     ></textarea>
     <button 

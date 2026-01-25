@@ -3,23 +3,16 @@ import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async ({ request }) => {
     try {
-        const { idToken, projectId } = await request.json();
+        const body = await request.json();
 
-        if (!idToken || !projectId) {
-            return json({ error: "Missing required parameters" }, { status: 400 });
-        }
-
-        // Firebase Functionsのエンドポイントにプロキシ
+        // Proxy to Firebase Functions endpoint
         const apiBaseUrl = process.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
-        const response = await fetch(`${apiBaseUrl}/api/save-project`, {
+        const response = await fetch(`${apiBaseUrl}/api/deleteProject`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                idToken,
-                projectId,
-            }),
+            body: JSON.stringify(body),
         });
 
         if (!response.ok) {
@@ -30,7 +23,7 @@ export const POST: RequestHandler = async ({ request }) => {
         const result = await response.json();
         return json(result);
     } catch (error) {
-        console.error("Save container API error:", error);
+        console.error("Delete project API error:", error);
         return json({ error: "Internal server error" }, { status: 500 });
     }
 };

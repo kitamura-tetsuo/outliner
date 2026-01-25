@@ -1,96 +1,52 @@
 import type { HocuspocusProvider } from "@hocuspocus/provider";
-import { userManager } from "../../auth/UserManager";
+import type { UserManager } from "../../auth/UserManager";
+import { getLogger } from "../logger";
 
-// Type for provider that supports token refresh
-type TokenRefreshableProvider = HocuspocusProvider & {
-    __wsDisabled?: boolean;
-    status?: string;
-    configuration?: {
-        websocketProvider?: {
-            status?: string;
-        };
-    };
-};
+const logger = getLogger("tokenRefresh");
 
-export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () => Promise<void> {
-    return async () => {
-        try {
-            console.log("[tokenRefresh] refreshAuthAndReconnect triggered");
-            const t = await userManager.auth.currentUser?.getIdToken(true);
-            console.log("[tokenRefresh] Got new token:", !!t);
-            // HocuspocusProvider handles token via the token function passed at creation
-            // To refresh, we can call sendToken() which will invoke the token function
-            // WS が無効化されている場合は再接続を行わない（テスト環境抑止）
-            if (provider?.__wsDisabled === true) {
-                console.log("[tokenRefresh] WS disabled, skipping");
-                return;
-            }
-            // If no token (user disconnected), explicitly reconnect
-            if (!t) {
-                console.log("[tokenRefresh] No token, forcing reconnect sequence");
-                try {
-                    provider.disconnect();
-                } catch {}
-                try {
-                    await provider.connect();
-                } catch {}
-                return;
-            }
-            // For HocuspocusProvider, we call sendToken() to refresh authentication
-            // This will invoke the token function and send the new token to the server
+/**
+ * Periodically refresh authentication token and update Hocuspocus provider
+ * @param provider Hocuspocus provider
+ * @param userManager User manager
+ */
+export function attachTokenRefresh(provider: HocuspocusProvider, userManager: UserManager) {
+    // Update token when user authentication state changes
+    userManager.addEventListener(async (result) => {
+        if (result?.user) {
+            try {
+                // Get new token
+                const token = await userManager.auth.currentUser?.getIdToken(true);
+                if (token) {
+                    logger.debug("Updating auth token for Yjs connection");
 
-            // Check status - if disconnected, just connect (which picks up new token)
-            // HocuspocusProvider status getter
-            let status = provider.status as string;
-            // Fallback for some Hocuspocus versions or test environments where status getter might be missing
-            if (!status && provider.configuration?.websocketProvider) {
-                status = provider.configuration.websocketProvider.status;
-            }
-            console.log(`[tokenRefresh] Provider status: ${status}`);
+                    // Update provider token
+                    provider.configuration.token = token;
 
-            if (status === "disconnected" || status === "connecting") {
-                console.log(`[tokenRefresh] Provider ${status}, ensuring connection`);
-                // If currently connecting, disconnect first to ensure we use the fresh token
-                // (the previous attempt might have used an old/expired token)
-                if (status === "connecting") {
-                    try {
-                        provider.disconnect();
-                        console.log("[tokenRefresh] Interrupted connecting state to force fresh token");
-                    } catch (e) {
-                        console.warn("[tokenRefresh] Disconnect failed:", e);
+                    // Send authentication message if connected
+                    if (provider.isConnected) {
+                        provider.sendStateless(JSON.stringify({
+                            type: "auth",
+                            token,
+                        }));
                     }
                 }
-
-                try {
-                    await provider.connect();
-                    console.log("[tokenRefresh] connect() called");
-                } catch (e) {
-                    console.error("[tokenRefresh] connect() failed:", e);
-                }
-                return;
+            } catch (error) {
+                logger.error("Failed to refresh token:", error);
             }
-
-            try {
-                console.log("[tokenRefresh] Calling provider.sendToken()");
-                await provider.sendToken();
-                console.log("[tokenRefresh] provider.sendToken() success");
-            } catch (e) {
-                console.log("[tokenRefresh] provider.sendToken() failed:", e);
-                // If sendToken fails, try reconnecting
-                provider.disconnect();
-                console.log("[tokenRefresh] Calling provider.connect()");
-                await provider.connect();
-            }
-        } catch (err) {
-            console.error("[tokenRefresh] Error in refreshAuthAndReconnect:", err);
         }
-    };
-}
-
-export function attachTokenRefresh(provider: TokenRefreshableProvider): () => void {
-    const handler = refreshAuthAndReconnect(provider);
-    // auth 状態通知にフックして再認証・再接続を行う（引数は未使用）
-    return userManager.addEventListener(() => {
-        void handler();
     });
+
+    // Also set up periodic refresh (every 50 minutes)
+    const intervalId = setInterval(async () => {
+        if (userManager.isAuthenticated()) {
+            await userManager.refreshToken();
+        }
+    }, 50 * 60 * 1000);
+
+    // Stop interval on provider destroy
+    const originalDestroy = provider.destroy.bind(provider);
+    provider.destroy = () => {
+        clearInterval(intervalId);
+        originalDestroy();
+    };
 }

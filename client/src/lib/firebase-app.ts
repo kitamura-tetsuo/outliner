@@ -1,120 +1,60 @@
-import { type FirebaseApp, getApp, getApps, initializeApp } from "firebase/app";
+import { getApps, initializeApp } from "firebase/app";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
+import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 import { getLogger } from "./logger";
 
-const logger = getLogger();
+const logger = getLogger("firebase-app");
 
-// Firebase設定の検証
-function validateFirebaseConfig() {
-    const requiredEnvVars = [
-        "VITE_FIREBASE_API_KEY",
-        "VITE_FIREBASE_AUTH_DOMAIN",
-        "VITE_FIREBASE_PROJECT_ID",
-        "VITE_FIREBASE_STORAGE_BUCKET",
-        "VITE_FIREBASE_MESSAGING_SENDER_ID",
-        "VITE_FIREBASE_APP_ID",
-    ];
-
-    const metaEnv = ((typeof import.meta !== "undefined" && import.meta.env) || {}) as any;
-    const missingVars = requiredEnvVars.filter(varName => !metaEnv[varName]);
-
-    if (missingVars.length > 0) {
-        const errorMessage = `Missing required Firebase environment variables: ${missingVars.join(", ")}`;
-        logger.error(errorMessage);
-        throw new Error(errorMessage);
-    }
-}
-
-// Firebase設定
-function getFirebaseConfig() {
-    validateFirebaseConfig();
-
-    const metaEnv = ((typeof import.meta !== "undefined" && import.meta.env) || {}) as any;
-
-    const getProjectId = () => {
-        if (typeof window !== "undefined") {
-            const stored = window.localStorage?.getItem?.("VITE_FIREBASE_PROJECT_ID");
-            if (stored) return stored;
-        }
-        return metaEnv.VITE_FIREBASE_PROJECT_ID || "outliner-d57b0";
-    };
-
-    return {
-        apiKey: metaEnv.VITE_FIREBASE_API_KEY || "demo-api-key",
-        authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || "outliner-d57b0.firebaseapp.com",
-        projectId: getProjectId(),
-        storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || "outliner-d57b0.appspot.com",
-        messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-        appId: metaEnv.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef",
-        measurementId: metaEnv.VITE_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
-    };
-}
-
-// グローバルキャッシュ（HMR・SSR対応）
-const globalKey = "__firebase_client_app__";
-const globalRef = globalThis as typeof globalThis & {
-    [globalKey]?: FirebaseApp;
+const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-/**
- * グローバルなFirebaseアプリインスタンスを取得または初期化する
- * SSR環境での重複初期化を防ぐための中央管理機能
- *
- * 実装指針：
- * 1. globalThis キャッシュでHMR・SSR対応
- * 2. getApps() で既存インスタンス確認
- * 3. 重複エラー時の安全なフォールバック
- */
-export function getFirebaseApp(): FirebaseApp {
-    // 1段目: globalThis キャッシュ（HMR・SSR対策）
-    if (globalRef[globalKey]) {
-        logger.debug("Firebase app: Using globalThis cached instance");
-        return globalRef[globalKey]!;
-    }
+// Initialize Firebase (singleton)
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const functions = getFunctions(app);
 
-    // 2段目: Firebase SDK内部キャッシュ
-    const existingApps = getApps();
-    if (existingApps.length > 0) {
-        const app = getApp();
-        globalRef[globalKey] = app;
-        logger.info("Firebase app: Using existing SDK instance");
-        return app;
-    }
+// Connect to emulator if necessary
+if (typeof window !== "undefined") {
+    const isTest = window.localStorage?.getItem("VITE_IS_TEST") === "true";
+    const useEmulator = window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true"
+        || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true";
 
-    try {
-        // 新しいアプリを初期化
-        const firebaseConfig = getFirebaseConfig();
-        const app = initializeApp(firebaseConfig);
-        globalRef[globalKey] = app;
-        logger.info("Firebase app: Initialized new instance");
-        return app;
-    } catch (error: unknown) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Firebase app initialization error");
+    if (useEmulator) {
+        logger.info("Connecting to Firebase Emulator...");
 
-        // 重複アプリエラーの場合は既存のアプリを使用
-        if (
-            error && typeof error === "object" && "code" in error
-                && (error as { code?: string; }).code === "app/duplicate-app"
-            || error && typeof error === "object" && "message" in error
-                && (error as { message?: string; }).message?.includes("already exists")
-        ) {
-            logger.info("Firebase app: Duplicate app error, attempting recovery");
-            const existingApps = getApps();
-            if (existingApps.length > 0) {
-                const app = getApp();
-                globalRef[globalKey] = app;
-                logger.info("Firebase app: Successfully recovered from duplicate error");
-                return app;
+        const host = import.meta.env.VITE_FIREBASE_EMULATOR_HOST || "localhost";
+        const authPort = import.meta.env.VITE_AUTH_EMULATOR_PORT
+            ? parseInt(import.meta.env.VITE_AUTH_EMULATOR_PORT)
+            : 9099;
+        const firestorePort = import.meta.env.VITE_FIRESTORE_EMULATOR_PORT
+            ? parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT)
+            : 8080;
+        // Functions emulator via hosting or direct port?
+        // Assuming hosting or separate port.
+
+        // Connect Auth emulator
+        // Check if already connected (no direct check API, so manage with flag)
+        if (!(window as any).__FIREBASE_EMULATOR_CONNECTED__) {
+            try {
+                connectAuthEmulator(auth, `http://${host}:${authPort}`, { disableWarnings: true });
+                connectFirestoreEmulator(db, host, firestorePort);
+                // Functions emulator connection (assuming 5001 or as configured)
+                // connectFunctionsEmulator(functions, host, 5001);
+
+                (window as any).__FIREBASE_EMULATOR_CONNECTED__ = true;
+                logger.info("Connected to Firebase Emulator");
+            } catch (e) {
+                logger.warn("Failed to connect to Firebase Emulator (already connected?)", e);
             }
         }
-
-        throw error;
     }
-}
-
-/**
- * Firebaseアプリインスタンスをリセットする（テスト用）
- */
-export function resetFirebaseApp(): void {
-    globalRef[globalKey] = undefined;
 }

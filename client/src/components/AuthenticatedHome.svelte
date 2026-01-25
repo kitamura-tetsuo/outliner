@@ -31,20 +31,20 @@
     <h1>Outliner</h1>
 
     <div class="welcome-message">
-        <p>Outlinerへようこそ！</p>
-        <p>以下のオプションから選択してください：</p>
+        <p>Welcome to Outliner!</p>
+        <p>Please select from the following options:</p>
     </div>
 
-    <!-- プロジェクトセレクター -->
+    <!-- Project selector -->
     <div class="project-selector-wrapper">
-        <h2>既存のアウトライナーを開く</h2>
+        <h2>Open existing outliner</h2>
         <ProjectSelector onProjectSelected={handleProjectSelected} />
     </div>
 
-    <!-- 新規プロジェクト作成リンク -->
+    <!-- New project creation link -->
     <div class="action-buttons">
         <a href="/projects" class="new-project-button">
-            <span class="icon">+</span> 新しいアウトライナーを作成
+            <span class="icon">+</span> Create new outliner
         </a>
     </div>
 </main>

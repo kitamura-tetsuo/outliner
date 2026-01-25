@@ -12,7 +12,7 @@
     import AliasPicker from "./AliasPicker.svelte";
 
     interface Props {
-        pageItem?: Item; // undefined を許容して常時マウント可能に
+        pageItem?: Item; // Allow undefined to be always mountable
         projectName: string;
         pageName: string;
         isReadOnly?: boolean;
@@ -32,18 +32,18 @@
     // moved to onMount to avoid initial-value capture warnings
 
     // Fallback: if pageItem is not yet provided, ensure a minimal page from global store
-    // props.pageItem が無い間は global store の currentPage を自動採用
+    // Automatically adopt currentPage from global store while props.pageItem is missing
     let effectivePageItem: Item | undefined = $derived.by(() => {
         const byProp = pageItem as Item | undefined;
         if (byProp) return byProp;
         return (generalStore.currentPage as Item | undefined) ?? undefined;
     });
 
-    // マウント時に最低限の currentPage を補完（以後は effectivePageItem が追従）
+    // Complement minimum currentPage on mount (effectivePageItem follows thereafter)
     onMount(() => {
         console.log("OutlinerBase effectivePageItem:", effectivePageItem);
 
-        // コメント数更新のプロトタイプパッチ（テスト安定化用・決定的反映）
+        // Prototype patch for comment count update (for test stabilization / deterministic reflection)
         try {
             window.addEventListener("item-comment-count", (e: Event) => {
                 try {
@@ -190,7 +190,7 @@
                     return result;
                 };
 
-                // Items.at() から返る Item へ一時的に add/deleteComment フックを注入
+                // Temporarily inject add/deleteComment hook into Item returned from Items.at()
                 const patchItems = () => {
                     try {
                         const gs: any =
@@ -344,7 +344,7 @@
         <div class="outliner-item">Loading...</div>
     {/if}
 
-    <!-- グローバルテキストエリア -->
+    <!-- Global Text Area -->
     <GlobalTextArea />
     <SlashCommandPalette />
     <AliasPicker />

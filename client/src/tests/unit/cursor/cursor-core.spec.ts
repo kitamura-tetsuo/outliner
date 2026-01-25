@@ -86,7 +86,7 @@ describe("Cursor", () => {
 
     describe("Constructor", () => {
         it("should create a cursor with the correct properties", () => {
-            const cursor = new Cursor("cursor-1", {
+            console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                 itemId: "item-1",
                 offset: 5,
                 isActive: true,
@@ -104,7 +104,7 @@ describe("Cursor", () => {
 
     describe("findTarget", () => {
         it("should find the target item in the current page", () => {
-            const cursor = new Cursor("cursor-1", {
+            console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                 itemId: "test-item-1",
                 offset: 0,
                 isActive: true,
@@ -116,7 +116,7 @@ describe("Cursor", () => {
         });
 
         it("should return undefined if target item is not found", () => {
-            const cursor = new Cursor("cursor-1", {
+            console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                 itemId: "non-existent-item",
                 offset: 0,
                 isActive: true,
@@ -135,7 +135,7 @@ describe("Cursor", () => {
 
         describe("moveLeft", () => {
             it("should move the cursor left within the same item", () => {
-                const cursor = new Cursor("cursor-1", {
+                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
                     isActive: true,
@@ -150,7 +150,7 @@ describe("Cursor", () => {
             });
 
             it("should not move the cursor left if already at the beginning", () => {
-                const cursor = new Cursor("cursor-1", {
+                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 0,
                     isActive: true,
@@ -169,7 +169,7 @@ describe("Cursor", () => {
         describe("moveRight", () => {
             it("should move the cursor right within the same item", () => {
                 mockItem.text = "Test text";
-                const cursor = new Cursor("cursor-1", {
+                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
                     isActive: true,
@@ -185,7 +185,7 @@ describe("Cursor", () => {
 
             it("should not move the cursor right if already at the end", () => {
                 mockItem.text = "Test";
-                const cursor = new Cursor("cursor-1", {
+                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 4,
                     isActive: true,
@@ -206,7 +206,7 @@ describe("Cursor", () => {
                 mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
-                const cursor = new Cursor("cursor-1", {
+                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
                     isActive: true,
@@ -227,7 +227,7 @@ describe("Cursor", () => {
                 mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
-                const cursor = new Cursor("cursor-1", {
+                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 6,
                     isActive: true,
@@ -248,7 +248,7 @@ describe("Cursor", () => {
                 mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
-                const cursor = new Cursor("cursor-1", {
+                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
                     isActive: true,
@@ -269,7 +269,7 @@ describe("Cursor", () => {
         describe("moveToLineStart", () => {
             it("should move cursor to the start of the current line", () => {
                 mockItem.text = "First line\nSecond line\nThird line";
-                const cursor = new Cursor("cursor-1", {
+                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 15, // Middle of "Second line"
                     isActive: true,
@@ -287,7 +287,7 @@ describe("Cursor", () => {
         describe("moveToLineEnd", () => {
             it("should move cursor to the end of the current line", () => {
                 mockItem.text = "First line\nSecond line\nThird line";
-                const cursor = new Cursor("cursor-1", {
+                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 15, // Middle of "Second line"
                     isActive: true,
@@ -306,7 +306,7 @@ describe("Cursor", () => {
     describe("Selection methods", () => {
         describe("clearSelection", () => {
             it("should clear the selection for the user", () => {
-                const cursor = new Cursor("cursor-1", {
+                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage); const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
                     isActive: true,

@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ url }) => {
             return json({ error: "Missing required parameters" }, { status: 400 });
         }
 
-        // Firebase Functionsのエンドポイントにプロキシ
+        // Proxy to Firebase Functions endpoint
         const apiBaseUrl = process.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
         const response = await fetch(`${apiBaseUrl}/api/list-schedules`, {
             method: "POST",

@@ -1,110 +1,29 @@
-class AsyncLock {
-    private _queue: (() => void)[];
-    private _locked: boolean;
-    constructor() {
-        this._queue = [];
-        this._locked = false;
+/**
+ * Simple lock mechanism (Mutex)
+ */
+export class Mutex {
+    private mutex = Promise.resolve();
+
+    lock(): PromiseLike<() => void> {
+        let begin: (unlock: () => void) => void = () => {};
+
+        this.mutex = this.mutex.then(() => {
+            return new Promise(resolve => {
+                begin = resolve;
+            });
+        });
+
+        return new Promise(resolve => {
+            resolve(begin);
+        });
     }
 
-    async acquire(): Promise<void> {
-        if (!this._locked) {
-            this._locked = true;
-            return;
-        }
-        return new Promise<void>(resolve => this._queue.push(resolve));
-    }
-
-    release() {
-        if (this._queue.length > 0) {
-            // shift() never returns undefined here because length > 0
-            const resolve = this._queue.shift()!;
-            resolve();
-        } else {
-            this._locked = false;
-        }
-    }
-
-    async runExclusive<T>(callback: () => Promise<T> | T) {
-        await this.acquire();
+    async dispatch<T>(fn: (() => T) | (() => PromiseLike<T>)): Promise<T> {
+        const unlock = await this.lock();
         try {
-            return await callback();
+            return await Promise.resolve(fn());
         } finally {
-            this.release();
+            unlock();
         }
     }
 }
-
-export class AsyncLockManager {
-    locks: Map<unknown, AsyncLock>;
-    constructor() {
-        this.locks = new Map<unknown, AsyncLock>();
-    }
-
-    getLock<T = unknown>(key: T) {
-        if (!this.locks.has(key as unknown)) {
-            this.locks.set(key as unknown, new AsyncLock());
-        }
-        return this.locks.get(key as unknown);
-    }
-
-    async runExclusive<T, R>(key: T, callback: () => Promise<R> | R) {
-        const lock = this.getLock(key);
-        if (!lock) {
-            throw new Error(`Lock not initialized for key: ${String(key)}`);
-        }
-        return lock.runExclusive(callback);
-    }
-}
-
-// // 使い方の例
-// class MyService {
-//     lockManager: AsyncLockManager;
-//     constructor() {
-//         this.lockManager = new AsyncLockManager();
-//     }
-
-//     async methodA() {
-//         return this.lockManager.runExclusive('methodA', async () => {
-//             console.log('methodA start');
-//             await new Promise(r => setTimeout(r, 1000));
-//             console.log('methodA end');
-//         });
-//     }
-
-//     async methodB() {
-//         return this.lockManager.runExclusive('methodB', async () => {
-//             console.log('methodB start');
-//             await new Promise(r => setTimeout(r, 500));
-//             console.log('methodB end');
-//         });
-//     }
-
-//     // 任意キーでもロック可能
-//     async runWithCustomLock(key: string, fn: { (): Promise<void>; (): Promise<void>; }) {
-//         return this.lockManager.runExclusive(key, fn);
-//     }
-// }
-
-// // 動作テスト
-// (async () => {
-//     const service = new MyService();
-
-//     // methodA は排他制御される
-//     service.methodA();
-//     service.methodA();
-
-//     // methodB は別ロックなので同時実行可能
-//     service.methodB();
-
-//     // 任意のキーでのロック
-//     service.runWithCustomLock('custom', async () => {
-//         console.log('custom lock start');
-//         await new Promise(r => setTimeout(r, 700));
-//         console.log('custom lock end');
-//     });
-//     service.runWithCustomLock('custom', async () => {
-//         console.log('custom lock 2 start');
-//         await new Promise(r => setTimeout(r, 700));
-//         console.log('custom lock 2 end');
-//     });
-// })();

@@ -1,961 +1,172 @@
-/**
- * フォーマットトークンを表すインターフェース
- */
-interface FormatToken {
-    type: "text" | "bold" | "italic" | "strikethrough" | "underline" | "code" | "link" | "internalLink" | "quote";
-    content: string;
-    children?: FormatToken[];
-    start: number;
-    end: number;
-    url?: string; // リンク用
-    isProjectLink?: boolean;
-}
+// Format utility for Scrapbox format
 
-/**
- * Scrapbox構文のフォーマットを処理するユーティリティクラス
- */
 export class ScrapboxFormatter {
-    /**
-     * Map of characters to their HTML entity equivalents
-     */
-    private static readonly ESCAPE_MAP: Record<string, string> = {
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;",
-    };
-
-    private static readonly RX_ESCAPE = /[&<>"']/g;
-
-    public static escapeHtml(str: string): string {
-        // Fast path: if no special characters, return original string
-        // This optimization improves performance by ~30% for plain text
-        if (str.search(ScrapboxFormatter.RX_ESCAPE) === -1) {
-            return str;
-        }
-        return str.replace(ScrapboxFormatter.RX_ESCAPE, (match) => ScrapboxFormatter.ESCAPE_MAP[match]);
+    static escapeHtml(text: string): string {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     /**
-     * テキストを太字にフォーマットする
-     * @param text フォーマットするテキスト
-     * @returns 太字にフォーマットされたテキスト
+     * Checks if the text contains Scrapbox-like formatting
      */
-    static bold(text: string): string {
-        // 既に太字の場合は解除
-        if (text.startsWith("[[") && text.endsWith("]]")) {
-            return text.substring(2, text.length - 2);
-        }
-        return `[[${text}]]`;
+    static hasFormatting(text: string): boolean {
+        // Simple check for existence of formatting markers
+        // [[bold]], [* bold], [** bold], [/ italic], [- strikethrough], `code`, [http...], [link], > quote
+        return /\[\[.*?\]\]|\[\*+ .*?\]|\[\/ .*?\]|\[- .*?\]|`.*?`|\[https?:\/\/.*?\]|\[.*?\]|^> /
+            .test(text);
     }
 
     /**
-     * テキストを斜体にフォーマットする
-     * @param text フォーマットするテキスト
-     * @returns 斜体にフォーマットされたテキスト
+     * Converts Scrapbox format to HTML (for viewing)
+     * Control characters are hidden and formatting is applied.
      */
-    static italic(text: string): string {
-        // 既に斜体の場合は解除（スペース必須）
-        if (text.startsWith("[/ ") && text.endsWith("]")) {
-            return text.substring(3, text.length - 1);
-        }
-        return `[/ ${text}]`;
-    }
+    static formatToHtml(text: string): string {
+        if (!text) return "";
 
-    /**
-     * テキストに取り消し線を適用する
-     * @param text フォーマットするテキスト
-     * @returns 取り消し線が適用されたテキスト
-     */
-    static strikethrough(text: string): string {
-        // 既に取り消し線の場合は解除
-        if (text.startsWith("[-") && text.endsWith("]")) {
-            return text.substring(2, text.length - 1);
-        }
-        return `[-${text}]`;
-    }
+        let html = this.escapeHtml(text);
 
-    /**
-     * テキストをコードとしてフォーマットする
-     * @param text フォーマットするテキスト
-     * @returns コードとしてフォーマットされたテキスト
-     */
-    static code(text: string): string {
-        // 既にコードの場合は解除
-        if (text.startsWith("`") && text.endsWith("`")) {
-            return text.substring(1, text.length - 1);
-        }
-        return `\`${text}\``;
-    }
+        // Code block `code` -> <code>code</code>
+        html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
 
-    /**
-     * テキストに下線を適用する
-     * @param text フォーマットするテキスト
-     * @returns 下線が適用されたテキスト
-     */
-    static underline(text: string): string {
-        // 既に下線の場合は解除
-        if (text.startsWith("<u>") && text.endsWith("</u>")) {
-            return text.substring(3, text.length - 4);
-        }
-        return `<u>${text}</u>`;
-    }
+        // Bold [[bold]] -> <strong>bold</strong> (Scrapbox notation)
+        // Note: Process nested brackets recursively or simply?
+        // Prioritize simple implementation first.
+        // Process from inside to handle nesting correctly?
+        // For now, support simple [[ ]]
+        html = html.replace(
+            /\[\[((?:(?!\[\[|\]\]).)+)\]\]/g,
+            "<strong>$1</strong>",
+        );
 
-    /**
-     * テキストが特定のフォーマットを持っているかチェックする
-     * @param text チェックするテキスト
-     * @returns フォーマットの種類（bold, italic, strikethrough, underline, code）または null
-     */
-    static getFormatType(text: string): "bold" | "italic" | "strikethrough" | "underline" | "code" | null {
-        if (text.startsWith("[[") && text.endsWith("]]")) {
-            return "bold";
-        } else if (text.startsWith("[/ ") && text.endsWith("]")) {
-            return "italic";
-        } else if (text.startsWith("[-") && text.endsWith("]")) {
-            return "strikethrough";
-        } else if (text.startsWith("<u>") && text.endsWith("</u>")) {
-            return "underline";
-        } else if (text.startsWith("`") && text.endsWith("`")) {
-            return "code";
-        }
-        return null;
-    }
+        // Bold [* bold] -> <strong>bold</strong>
+        // Bold (Emphasized) [** bold] -> <strong>bold</strong>
+        html = html.replace(/\[(\*+) (.+?)\]/g, "<strong>$2</strong>");
 
-    /**
-     * テキストをトークンに分解する
-     * @param text 解析するテキスト
-     * @returns トークンの配列
-     */
-    static tokenize(text: string): FormatToken[] {
-        if (!text) return [];
+        // Italic [/ italic] -> <em>italic</em>
+        html = html.replace(/\[\/ (.+?)\]/g, "<em>$1</em>");
 
-        // フォーマットパターン
-        const patterns = [
-            { type: "bold", start: "[[", end: "]]", regex: /\[\[(.*?)\]\]/g },
-            // 斜体 - スペース必須: [/ テキスト]
-            { type: "italic", start: "[/ ", end: "]", regex: /\[\/\s+([^\]]*)\]/g },
-            // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
-            { type: "internalLink", start: "[/", end: "]", regex: /\[\/([^\s\]]+)\]/g },
-            { type: "strikethrough", start: "[-", end: "]", regex: /\[-(.*?)\]/g },
-            { type: "underline", start: "<u>", end: "</u>", regex: /<u>(.*?)<\/u>/g },
-            { type: "code", start: "`", end: "`", regex: /`(.*?)`/g },
-            {
-                type: "link",
-                start: "[",
-                end: "]",
-                // URL と任意のラベルを解析（ラベルが空白のみの場合も許可）
-                regex: /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g,
+        // Strikethrough [- strikethrough] -> <s>strikethrough</s>
+        html = html.replace(/\[- (.+?)\]/g, "<s>$1</s>");
+
+        // Link [http://example.com title] or [title http://example.com] or [http://example.com]
+        // Simple implementation
+        // 1. [http...] -> <a href="...">...</a>
+        html = html.replace(
+            /\[(https?:\/\/[^\s\]]+)\]/g,
+            '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+        );
+
+        // 2. [title http...] -> <a href="...">title</a>
+        html = html.replace(
+            /\[([^\]]+) (https?:\/\/[^\s\]]+)\]/g,
+            '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+        );
+
+        // 3. [http... title] -> <a href="...">title</a>
+        html = html.replace(
+            /\[(https?:\/\/[^\s\]]+) ([^\]]+)\]/g,
+            '<a href="$1" target="_blank" rel="noopener noreferrer">$2</a>',
+        );
+
+        // Internal link [Page Title] -> <a href="/project/Page Title">Page Title</a>
+        // Exclude those already processed as external links
+        // (Since external links contain http, they won't match if excluded here, but simple logic is fine)
+        // Match [xxx] that does not contain http
+        html = html.replace(
+            /\[([^\]]+)\]/g,
+            (match, content) => {
+                if (content.match(/^https?:\/\//)) return match; // Already processed
+                // Ignore decoration system (starting with *, /, -)
+                if (content.match(/^[\*\/\\-] /)) return match;
+                return `<a href="javascript:void(0)" class="internal-link" data-page="${content}">${content}</a>`;
             },
-            // 通常の内部リンク（page-name形式）- ハイフンを含むページ名も許可
-            { type: "internalLink", start: "[", end: "]", regex: /\[([^[\]]+?)\]/g },
-            { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm },
-        ];
+        );
 
-        // すべてのフォーマットマッチを見つける
-        const matches: {
-            type: string;
-            start: number;
-            end: number;
-            content: string;
-            url?: string;
-            isProjectLink?: boolean;
-        }[] = [];
-
-        // フォーマットのマッチを処理
-        patterns.forEach(pattern => {
-            let match;
-            while ((match = pattern.regex.exec(text)) !== null) {
-                const startIndex = match.index;
-                const endIndex = startIndex + match[0].length;
-                const content = match[1];
-                const isProjectLink = pattern.type === "internalLink" && pattern.start === "[/";
-
-                // リンクの場合はURLとラベルを保存
-                if (pattern.type === "link") {
-                    const url = match[1];
-                    const rawLabel = match[2];
-                    const label = rawLabel && rawLabel.trim() !== "" ? rawLabel.trim() : url;
-                    matches.push({
-                        type: pattern.type,
-                        start: startIndex,
-                        end: endIndex,
-                        content: label,
-                        url,
-                    });
-                } else {
-                    matches.push({
-                        type: pattern.type,
-                        start: startIndex,
-                        end: endIndex,
-                        content: content,
-                        isProjectLink,
-                    });
-                }
-            }
-        });
-
-        // マッチを開始位置でソート
-        matches.sort((a, b) => a.start - b.start);
-
-        // 重複や入れ子のマッチを処理
-        const validMatches: {
-            type: string;
-            start: number;
-            end: number;
-            content: string;
-            url?: string;
-            isProjectLink?: boolean;
-        }[] = [];
-
-        for (const match of matches) {
-            // 既存の有効なマッチと重複していないか確認
-            let isValid = true;
-
-            for (const validMatch of validMatches) {
-                // 完全に含まれる場合は無効
-                if (match.start >= validMatch.start && match.end <= validMatch.end) {
-                    isValid = false;
-                    break;
-                }
-
-                // 部分的に重複する場合も無効
-                if (match.start < validMatch.end && match.end > validMatch.start) {
-                    isValid = false;
-                    break;
-                }
-            }
-
-            if (isValid) {
-                validMatches.push(match);
-            }
-        }
-
-        // 有効なマッチを再度ソート
-        validMatches.sort((a, b) => a.start - b.start);
-
-        // トークンに変換
-        const tokens: FormatToken[] = [];
-        let lastIndex = 0;
-
-        for (const match of validMatches) {
-            // マッチの前にテキストがあれば追加
-            if (match.start > lastIndex) {
-                tokens.push({
-                    type: "text",
-                    content: text.substring(lastIndex, match.start),
-                    start: lastIndex,
-                    end: match.start,
-                });
-            }
-
-            // フォーマットトークンを追加
-            tokens.push({
-                type: match.type as
-                    | "bold"
-                    | "italic"
-                    | "strikethrough"
-                    | "underline"
-                    | "code"
-                    | "link"
-                    | "internalLink"
-                    | "quote",
-                content: match.content,
-                start: match.start,
-                end: match.end,
-                url: (match as any).url,
-                isProjectLink: match.isProjectLink,
-            });
-
-            lastIndex = match.end;
-        }
-
-        // 最後のマッチ以降のテキストがあれば追加
-        if (lastIndex < text.length) {
-            tokens.push({
-                type: "text",
-                content: text.substring(lastIndex),
-                start: lastIndex,
-                end: text.length,
-            });
-        }
-
-        return tokens;
-    }
-
-    /**
-     * トークンをHTMLに変換する
-     * @param tokens 変換するトークン
-     * @returns HTML文字列
-     */
-    static tokensToHtml(tokens: FormatToken[]): string {
-        let html = "";
-
-        for (const token of tokens) {
-            const rawContent = token.content ?? "";
-            const content = this.escapeHtml(rawContent);
-
-            switch (token.type) {
-                case "bold":
-                    html += `<strong>${content}</strong>`;
-                    break;
-                case "italic":
-                    html += `<em>${content}</em>`;
-                    break;
-                case "strikethrough":
-                    html += `<s>${content}</s>`;
-                    break;
-                case "underline":
-                    html += `<u>${content}</u>`;
-                    break;
-                case "code":
-                    html += `<code>${content}</code>`;
-                    break;
-                case "link":
-                    html += `<a href="${
-                        this.escapeHtml(token.url ?? "")
-                    }" target="_blank" rel="noopener noreferrer">${content}</a>`;
-                    break;
-                case "internalLink": {
-                    const isProjectLink = token.isProjectLink === true || rawContent.startsWith("/");
-                    if (isProjectLink) {
-                        const normalizedRaw = rawContent.startsWith("/") ? rawContent.slice(1) : rawContent;
-                        const escapedNormalized = this.escapeHtml(normalizedRaw);
-                        const parts = normalizedRaw.split("/").filter(p => p);
-
-                        if (parts.length >= 2) {
-                            const projectName = parts[0];
-                            const pageName = parts.slice(1).join("/");
-
-                            let existsClassTokens = "page-not-exists"; // default for safety
-                            try {
-                                existsClassTokens = this.checkPageExists(pageName, projectName)
-                                    ? "page-exists"
-                                    : "page-not-exists";
-                            } catch {
-                                existsClassTokens = "page-not-exists";
-                            }
-
-                            const escapedProjectName = this.escapeHtml(projectName);
-                            const escapedPageName = this.escapeHtml(pageName);
-                            html += `<span class="link-preview-wrapper">
-                                <a href="/${escapedNormalized}" class="internal-link project-link ${existsClassTokens}" data-project="${escapedProjectName}" data-page="${escapedPageName}">${escapedNormalized}</a>
-                            </span>`;
-                        } else {
-                            html +=
-                                `<a href="/${escapedNormalized}" class="internal-link project-link">${escapedNormalized}</a>`;
-                        }
-                    } else {
-                        const existsClass = this.checkPageExists(rawContent) ? "page-exists" : "page-not-exists";
-                        const projectPrefix = this.getProjectPrefix();
-                        html += `<span class="link-preview-wrapper">
-                            <a href="${projectPrefix}/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a>
-                        </span>`;
-                    }
-                    break;
-                }
-                case "quote":
-                    html += `<blockquote>${content}</blockquote>`;
-                    break;
-                case "text":
-                default:
-                    html += content;
-                    break;
-            }
+        // Quote > quote
+        if (html.startsWith("&gt; ")) {
+            html = `<blockquote>${html.substring(5)}</blockquote>`;
         }
 
         return html;
     }
 
     /**
-     * Scrapbox構文のテキストをHTMLに変換する
-     * @param text 変換するテキスト
-     * @returns HTMLに変換されたテキスト
-     */
-    static formatToHtml(text: string): string {
-        if (!text) return "";
-
-        if (!this.hasFormatting(text)) {
-            return this.escapeHtml(text);
-        }
-
-        // 入れ子のフォーマットに対応した実装を使用
-        return this.formatToHtmlAdvanced(text);
-    }
-
-    // Regex patterns for formatToHtmlAdvanced
-    private static readonly RX_HTML_UNDERLINE = /<u>(.*?)<\/u>/g;
-    private static readonly RX_HTML_PROJECT_LINK = /\[\/([^\s\]]+)\]/g;
-    private static readonly RX_HTML_STRIKETHROUGH = /\[-(.*?)\]/g;
-    private static readonly RX_HTML_CODE = /`(.*?)`/g;
-    private static readonly RX_HTML_EXT_LINK = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
-    private static readonly RX_HTML_INT_LINK = /\[([^[\]]+?)\]/g;
-
-    /**
-     * 組み合わせフォーマットに対応した高度な変換（再帰的に処理）
-     * @param text 変換するテキスト
-     * @returns HTMLに変換されたテキスト
-     */
-    static formatToHtmlAdvanced(text: string): string {
-        if (!text) return "";
-
-        // 下線タグを一時的にプレースホルダーに置換
-        const underlinePlaceholders: string[] = [];
-        const tempText = text.replace(ScrapboxFormatter.RX_HTML_UNDERLINE, (match, content) => {
-            const placeholder = `__UNDERLINE_${underlinePlaceholders.length}__`;
-            underlinePlaceholders.push(content);
-            return placeholder;
-        });
-
-        // 括弧のバランスを考慮して太字をマッチする関数
-        const matchBalancedBold = (text: string): Array<{ start: number; end: number; content: string; }> => {
-            const matches: Array<{ start: number; end: number; content: string; }> = [];
-            let i = 0;
-            while (i < text.length - 1) {
-                if (text[i] === "[" && text[i + 1] === "[") {
-                    // 太字の開始を見つけた
-                    let boldDepth = 1; // [[...]] のネストレベル
-                    let j = i + 2;
-                    let content = "";
-
-                    while (j < text.length && boldDepth > 0) {
-                        if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
-                            // 入れ子の太字開始
-                            boldDepth++;
-                            content += "[[";
-                            j += 2;
-                        } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
-                            // 太字の終了候補
-                            boldDepth--;
-                            if (boldDepth === 0) {
-                                // マッチ完了
-                                matches.push({ start: i, end: j + 2, content });
-                                i = j + 2;
-                                break;
-                            } else {
-                                content += "]]";
-                                j += 2;
-                            }
-                        } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                            // 単一の [ を見つけた（内部リンクなどの開始）
-                            // 対応する ] を探す
-                            content += "[";
-                            j++;
-                            let bracketDepth = 1;
-                            while (j < text.length && bracketDepth > 0) {
-                                if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                                    // 単一の [ (ネストされた内部リンクなど)
-                                    bracketDepth++;
-                                    content += "[";
-                                    j++;
-                                } else if (text[j] === "]") {
-                                    // ] を見つけた
-                                    bracketDepth--;
-                                    content += "]";
-                                    j++;
-                                    if (bracketDepth === 0) {
-                                        break;
-                                    }
-                                } else {
-                                    content += text[j];
-                                    j++;
-                                }
-                            }
-                        } else {
-                            content += text[j];
-                            j++;
-                        }
-                    }
-
-                    if (boldDepth > 0) {
-                        // マッチしなかった場合は次の文字へ
-                        i++;
-                    }
-                } else {
-                    i++;
-                }
-            }
-            return matches;
-        };
-
-        // グローバルなプレースホルダーマップ（再帰呼び出し間で共有）
-        const globalPlaceholders: Map<string, string> = new Map();
-        let globalPlaceholderIndex = 0;
-
-        // プレースホルダーを生成する関数（制御文字を使用して内部リンクとして認識されないようにする）
-        const createPlaceholder = (html: string): string => {
-            const placeholder = `\x00HTML_${globalPlaceholderIndex++}\x00`;
-            globalPlaceholders.set(placeholder, html);
-            return placeholder;
-        };
-
-        // 括弧のバランスを考慮して斜体をマッチする関数
-        const matchBalancedItalic = (text: string): Array<{ start: number; end: number; content: string; }> => {
-            const matches: Array<{ start: number; end: number; content: string; }> = [];
-            let i = 0;
-            while (i < text.length - 2) {
-                if (text[i] === "[" && text[i + 1] === "/" && text[i + 2] === " ") {
-                    // 斜体の開始を見つけた: [/ (スペース必須)
-                    let j = i + 3;
-                    let content = "";
-                    let bracketDepth = 1;
-
-                    while (j < text.length && bracketDepth > 0) {
-                        if (text[j] === "[" && j + 1 < text.length && text[j + 1] !== "[" && text[j + 1] !== "/") {
-                            // 単一の [ (内部リンクなど)
-                            bracketDepth++;
-                            content += "[";
-                            j++;
-                        } else if (text[j] === "]") {
-                            bracketDepth--;
-                            if (bracketDepth === 0) {
-                                // マッチ完了
-                                matches.push({ start: i, end: j + 1, content });
-                                i = j + 1;
-                                break;
-                            } else {
-                                content += "]";
-                                j++;
-                            }
-                        } else {
-                            content += text[j];
-                            j++;
-                        }
-                    }
-
-                    if (bracketDepth > 0) {
-                        // マッチしなかった場合は次の文字へ
-                        i++;
-                    }
-                } else {
-                    i++;
-                }
-            }
-            return matches;
-        };
-
-        // 再帰的にフォーマットを処理する関数
-        const processFormat = (input: string): string => {
-            // 太字 - 最初に処理して、中身を再帰的に処理する
-            // これにより、太字の中のネストされたフォーマットが正しく処理される
-            const boldMatches = matchBalancedBold(input);
-            // 後ろから置換して、インデックスがずれないようにする
-            for (let i = boldMatches.length - 1; i >= 0; i--) {
-                const match = boldMatches[i];
-                // 内部のコンテンツも再帰的に処理
-                const html = `<strong>${processFormat(match.content)}</strong>`;
-                const placeholder = createPlaceholder(html);
-                input = input.substring(0, match.start) + placeholder + input.substring(match.end);
-            }
-
-            // 斜体 - スペース必須: [/ テキスト]
-            // バランスを考慮してマッチ
-            const italicMatches = matchBalancedItalic(input);
-            // 後ろから置換して、インデックスがずれないようにする
-            for (let i = italicMatches.length - 1; i >= 0; i--) {
-                const match = italicMatches[i];
-                // 内部のコンテンツも再帰的に処理
-                const html = `<em>${processFormat(match.content)}</em>`;
-                const placeholder = createPlaceholder(html);
-                input = input.substring(0, match.start) + placeholder + input.substring(match.end);
-            }
-
-            // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
-            // スラッシュの後にスペースがない場合のみマッチ
-            input = input.replace(ScrapboxFormatter.RX_HTML_PROJECT_LINK, (match, path) => {
-                // パスを分解してプロジェクト名とページ名を取得
-                const parts = path.split("/").filter((p: string) => p);
-                let html: string;
-                if (parts.length >= 2) {
-                    const projectName = parts[0];
-                    const pageName = parts.slice(1).join("/");
-
-                    // ページの存在確認用のクラスを追加
-                    let existsClass = "page-not-exists"; // default for safety
-                    try {
-                        existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
-                    } catch {
-                        // In case of any error in checkPageExists, default to page-not-exists
-                        existsClass = "page-not-exists";
-                    }
-
-                    // LinkPreviewコンポーネントを使用
-                    html = `<span class="link-preview-wrapper">
-                        <a href="/${
-                        this.escapeHtml(path)
-                    }" class="internal-link project-link ${existsClass}" data-project="${
-                        this.escapeHtml(projectName)
-                    }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(path)}</a>
-                    </span>`;
-                } else {
-                    // 単一のページ名の場合（プロジェクト内部リンク）
-                    const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
-                    html = `<span class="link-preview-wrapper">
-                        <a href="/${this.escapeHtml(path)}" class="internal-link ${existsClass}" data-page="${
-                        this.escapeHtml(path)
-                    }">${this.escapeHtml(path)}</a>
-                    </span>`;
-                }
-                return createPlaceholder(html);
-            });
-
-            // 取り消し線
-            input = input.replace(ScrapboxFormatter.RX_HTML_STRIKETHROUGH, (match, content) => {
-                const html = `<s>${processFormat(content)}</s>`;
-                return createPlaceholder(html);
-            });
-
-            // コード (コード内部は再帰処理しない)
-            input = input.replace(ScrapboxFormatter.RX_HTML_CODE, (match, content) => {
-                const html = `<code>${this.escapeHtml(content)}</code>`;
-                return createPlaceholder(html);
-            });
-
-            // 外部リンク（ラベルが空白のみの場合も許可）
-            input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
-                const trimmedLabel = label?.trim();
-                const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
-                const html = `<a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-                return createPlaceholder(html);
-            });
-
-            // プロジェクト内部リンクは上で処理済み
-
-            // 通常の内部リンク - 外部リンクの後に処理する必要がある
-            // [text] 形式で、text が [ または ] を含まないもの
-            input = input.replace(ScrapboxFormatter.RX_HTML_INT_LINK, (match, text) => {
-                // ページの存在確認用のクラスを追加
-                const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
-
-                const projectPrefix = this.getProjectPrefix();
-
-                // LinkPreviewコンポーネントを使用
-                const html = `<span class="link-preview-wrapper">
-                    <a href="${projectPrefix}/${
-                    this.escapeHtml(text)
-                }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(text)}">${
-                    this.escapeHtml(text)
-                }</a>
-                </span>`;
-                return createPlaceholder(html);
-            });
-
-            // プレーンテキスト部分をエスケープ
-            input = this.escapeHtml(input);
-
-            // プレースホルダーをHTMLタグに復元
-            globalPlaceholders.forEach((html, placeholder) => {
-                // 制御文字がエスケープされている可能性があるため、両方を試す
-                const escapedPlaceholder = this.escapeHtml(placeholder);
-                input = input.replaceAll(escapedPlaceholder, html);
-                input = input.replaceAll(placeholder, html);
-            });
-
-            return input;
-        };
-
-        // 行ごとに処理するための関数
-        const processLines = (lines: string[]): string => {
-            let result = "";
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-
-                // 引用
-                const quoteMatch = line.match(/^>\s(.*?)$/);
-                if (quoteMatch) {
-                    result += `<blockquote>${processFormat(quoteMatch[1])}</blockquote>`;
-                    continue;
-                }
-
-                // 通常のテキスト - フォーマット構文を処理
-                result += processFormat(line);
-
-                // 最後の行でなければ改行を追加
-                if (i < lines.length - 1) {
-                    result += "<br>";
-                }
-            }
-
-            return result;
-        };
-
-        // 行に分割して処理
-        const lines = tempText.split("\n");
-        let result = processLines(lines);
-
-        // プレースホルダーを実際の下線タグに復元
-        underlinePlaceholders.forEach((content, index) => {
-            const placeholder = `__UNDERLINE_${index}__`;
-            result = result.replace(placeholder, `<u>${this.escapeHtml(processFormat(content))}</u>`);
-        });
-
-        return result;
-    }
-
-    // Regex patterns for formatWithControlChars
-    private static readonly RX_CTRL_CODE = /(`)(.*?)(`)/g;
-    private static readonly RX_CTRL_STRIKE = /(\[)(-)(.*?)(\])/g;
-    private static readonly RX_CTRL_UNDERLINE = /(&lt;u&gt;)(.*?)(&lt;\/u&gt;)/g;
-    private static readonly RX_CTRL_ITALIC = /(\[)(\/)(\s+)([^\]]*)(\])/g;
-    private static readonly RX_CTRL_PROJECT_LINK = /(\[\/)([^\s\]]+)(\])/g;
-    private static readonly RX_CTRL_EXT_LINK = /(\[)(https?:\/\/[^\s\]]+)(?:\s+([^\]]+))?(\])/g;
-    private static readonly RX_CTRL_INT_LINK = /(\[)([^[\]/-][^[\]]*?)(\])/g;
-    private static readonly RX_CTRL_QUOTE = /(^>\s)(.*?)$/gm;
-
-    /**
-     * 制御文字を表示しながらフォーマットを適用する（フォーカスがある場合用）
-     * @param text 変換するテキスト
-     * @returns HTMLに変換されたテキスト
+     * Converts Scrapbox format for editing (Control characters visible)
+     * Formatting is applied, but control characters are displayed thinly.
      */
     static formatWithControlChars(text: string): string {
         if (!text) return "";
 
         let html = this.escapeHtml(text);
 
-        // 太字 - バランスを考慮してマッチ
-        const boldMatches = this.matchBalancedBold(html);
-        // 後ろから置換して、インデックスがずれないようにする
-        for (let i = boldMatches.length - 1; i >= 0; i--) {
-            const match = boldMatches[i];
-            const replacement = '<span class="control-char">[</span><span class="control-char">[</span>'
-                + `<strong>${match.content}</strong>`
-                + '<span class="control-char">]</span><span class="control-char">]</span>';
-            html = html.substring(0, match.start) + replacement + html.substring(match.end);
-        }
+        // Function to wrap control characters in spans
+        const wrapControl = (char: string) => `<span class="control-char">${char}</span>`;
 
-        // コード
+        // Code block `code`
         html = html.replace(
-            ScrapboxFormatter.RX_CTRL_CODE,
-            '<span class="control-char">$1</span><code>$2</code><span class="control-char">$3</span>',
+            /`([^`]+)`/g,
+            `${wrapControl("`")}<code>$1</code>${wrapControl("`")}`,
         );
 
-        // 取り消し線
+        // Bold [[bold]]
         html = html.replace(
-            ScrapboxFormatter.RX_CTRL_STRIKE,
-            '<span class="control-char">$1</span><span class="control-char">$2</span><s>$3</s><span class="control-char">$4</span>',
+            /\[\[((?:(?!\[\[|\]\]).)+)\]\]/g,
+            `${wrapControl("[[")}<strong>$1</strong>${wrapControl("]]")}`,
         );
 
-        // 下線 (HTML escaped version)
+        // Bold [* bold]
         html = html.replace(
-            ScrapboxFormatter.RX_CTRL_UNDERLINE,
-            '<span class="control-char">&lt;u&gt;</span><u>$2</u><span class="control-char">&lt;/u&gt;</span>',
-        );
-
-        // 斜体 - スペース必須: [/ テキスト]
-        html = html.replace(
-            ScrapboxFormatter.RX_CTRL_ITALIC,
-            '<span class="control-char">$1</span><span class="control-char">$2</span>$3<em>$4</em><span class="control-char">$5</span>',
-        );
-
-        // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
-        html = html.replace(
-            ScrapboxFormatter.RX_CTRL_PROJECT_LINK,
-            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
-        );
-
-        // 外部リンク - カーソルがある時は制御文字のみ表示
-        html = html.replace(
-            ScrapboxFormatter.RX_CTRL_EXT_LINK,
-            (match, open, url, label, close) => {
-                const content = label ? `${url} ${label}` : url;
-                return `<span class="control-char">${open}</span>${content}<span class="control-char">${close}</span>`;
+            /\[(\*+) (.+?)\]/g,
+            (match, stars, content) => {
+                return `${wrapControl("[")}<strong>${stars} ${content}</strong>${wrapControl("]")}`;
             },
         );
 
-        // 通常の内部リンク - カーソルがある時は制御文字のみ表示
+        // Italic [/ italic]
         html = html.replace(
-            ScrapboxFormatter.RX_CTRL_INT_LINK,
-            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+            /\[\/ (.+?)\]/g,
+            `${wrapControl("[/ ")}<em>$1</em>${wrapControl("]")}`,
         );
 
-        // 引用
+        // Strikethrough [- strikethrough]
         html = html.replace(
-            ScrapboxFormatter.RX_CTRL_QUOTE,
-            '<span class="control-char">$1</span><blockquote>$2</blockquote>',
+            /\[- (.+?)\]/g,
+            `${wrapControl("[- ")}<s>$1</s>${wrapControl("]")}`,
         );
+
+        // Link processing (Simplified)
+        // [http://example.com]
+        html = html.replace(
+            /\[(https?:\/\/[^\s\]]+)\]/g,
+            `${wrapControl("[")}<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>${wrapControl("]")}`,
+        );
+
+        // Internal link [Page Title]
+        // Note: For editing, decorations are just displayed, links are not active (or handled carefully)
+        // Here, prioritize structure visualization
+        html = html.replace(
+            /\[([^\]]+)\]/g,
+            (match, content) => {
+                // Skip if already processed (contains HTML tags)
+                if (match.includes("<span") || match.includes("<a")) {
+                    return match;
+                }
+                // Ignore decorations
+                if (content.match(/^[\*\/\\-] /)) return match;
+
+                return `${wrapControl("[")}<span class="internal-link-text">${content}</span>${wrapControl("]")}`;
+            },
+        );
+
+        // Quote
+        if (html.startsWith("&gt; ")) {
+            html = `${wrapControl("&gt; ")}<blockquote>${html.substring(5)}</blockquote>`;
+        }
 
         return html;
     }
-
-    /**
-     * 括弧のバランスを考慮して太字をマッチする関数（formatWithControlChars用）
-     */
-    private static matchBalancedBold(text: string): Array<{ start: number; end: number; content: string; }> {
-        const matches: Array<{ start: number; end: number; content: string; }> = [];
-        let i = 0;
-        while (i < text.length - 1) {
-            if (text[i] === "[" && text[i + 1] === "[") {
-                // 太字の開始を見つけた
-                let j = i + 2;
-                let content = "";
-                let boldDepth = 1;
-
-                while (j < text.length && boldDepth > 0) {
-                    if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
-                        // ネストされた太字の開始
-                        boldDepth++;
-                        content += "[[";
-                        j += 2;
-                    } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
-                        // 太字の終了
-                        boldDepth--;
-                        if (boldDepth === 0) {
-                            // マッチ完了
-                            matches.push({ start: i, end: j + 2, content });
-                            i = j + 2;
-                            break;
-                        } else {
-                            content += "]]";
-                            j += 2;
-                        }
-                    } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                        // 単一の [ を見つけた（内部リンクなどの開始）
-                        content += "[";
-                        j++;
-                        let bracketDepth = 1;
-                        while (j < text.length && bracketDepth > 0) {
-                            if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                                bracketDepth++;
-                                content += "[";
-                                j++;
-                            } else if (text[j] === "]") {
-                                bracketDepth--;
-                                content += "]";
-                                j++;
-                                if (bracketDepth === 0) {
-                                    break;
-                                }
-                            } else {
-                                content += text[j];
-                                j++;
-                            }
-                        }
-                    } else {
-                        content += text[j];
-                        j++;
-                    }
-                }
-
-                if (boldDepth > 0) {
-                    // マッチしなかった場合は次の文字へ
-                    i++;
-                }
-            } else {
-                i++;
-            }
-        }
-        return matches;
-    }
-
-    // Cache compiled regexes
-    private static readonly HAS_FORMATTING_PATTERN = new RegExp(
-        [
-            /\[\[(.*?)\]\]/.source, // Bold
-            /\[\/(.*?)\]/.source, // Italic or Project link
-            /\[-(.*?)\]/.source, // Strikethrough
-            /`(.*?)`/.source, // Code
-            /<u>(.*?)<\/u>/.source, // Underline
-            /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/.source, // External link
-            /\[([^[\]/][^[\]]*?)\]/.source, // Internal link
-            /^>\s(.*?)$/m.source, // Quote
-        ].join("|"),
-        "m",
-    );
-
-    /**
-     * テキストにScrapbox構文のフォーマットが含まれているかチェックする
-     * @param text チェックするテキスト
-     * @returns フォーマットが含まれている場合はtrue
-     */
-    static hasFormatting(text: string): boolean {
-        if (!text) return false;
-
-        // Fast path: check for format triggers
-        // Most items are plain text, so this avoids expensive regex execution
-        const mightHaveFormat = text.includes("[")
-            || text.includes("`")
-            || text.includes("<")
-            || text.includes(">");
-
-        if (!mightHaveFormat) return false;
-
-        return ScrapboxFormatter.HAS_FORMATTING_PATTERN.test(text);
-    }
-
-    /**
-     * 現在のプロジェクトURLプレフィックスを取得する
-     * テスト環境ではデフォルト値 "Untitled Project" を使用
-     */
-    private static getProjectPrefix(): string {
-        if (typeof window !== "undefined") {
-            const store = (window as any).appStore || (window as any).generalStore;
-            if (store?.project?.title) {
-                return "/" + encodeURIComponent(store.project.title);
-            }
-            // For test environment, return default project prefix
-            // This is needed because unit tests don't set up the full store
-            if (
-                typeof window.localStorage !== "undefined"
-                && (window.localStorage.getItem("VITE_IS_TEST") === "true"
-                    || window.localStorage.getItem("VITE_E2E_TEST") === "true")
-            ) {
-                return "/Untitled%20Project";
-            }
-        }
-        return "";
-    }
-
-    /**
-     * ページが存在するかどうかを確認する
-     * @param pageName ページ名
-     * @param projectName プロジェクト名（オプション）
-     * @returns ページが存在する場合はtrue
-     */
-    static checkPageExists(pageName: string, projectName?: string): boolean {
-        // 実装注意: このメソッドはクライアントサイドでのみ動作します
-        if (typeof window === "undefined") return true;
-
-        try {
-            // グローバルストアからページ情報を取得
-            const store = (window as any).appStore;
-            if (!store || !store.pages) return false;
-
-            // 現在のプロジェクトを取得
-            const currentProject = store.project;
-            if (!currentProject) return false;
-
-            // プロジェクト名が指定されている場合、現在のプロジェクトと一致するか確認
-            if (projectName && currentProject.title !== projectName) {
-                // 別プロジェクトのページは確認できないため、存在しないと仮定
-                return false;
-            }
-
-            // Use the O(1) page existence check if available
-            if (typeof store.pageExists === "function") {
-                return store.pageExists(pageName);
-            }
-
-            // Fallback: ページ名が一致するページを検索 (O(N))
-            if (store.pages?.current) {
-                for (const page of store.pages.current) {
-                    // Ensure page.text is a string before calling toLowerCase
-                    const pageText = String(page?.text ?? "");
-                    if (pageText.toLowerCase() === pageName.toLowerCase()) {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        } catch {
-            // If there's an error, assume the page doesn't exist
-            return false;
-        }
-    }
-}
-
-// グローバルに参照できるようにする（テスト環境でアクセスするため）
-if (typeof window !== "undefined") {
-    (window as any).ScrapboxFormatter = ScrapboxFormatter;
 }

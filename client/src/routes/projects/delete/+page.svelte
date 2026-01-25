@@ -1,159 +1,177 @@
 <script lang="ts">
-    import { onMount } from "svelte";
-    import * as yjsService from "../../../lib/yjsService.svelte";
-    import {
-        projectStore,
-        type ProjectInfo,
-    } from "../../../stores/projectStore.svelte";
+    import { onDestroy, onMount } from "svelte";
+    import { userManager } from "../../../auth/UserManager";
+    import AuthComponent from "../../../components/AuthComponent.svelte";
+    import { deleteProject, listProjects } from "../../../lib/yjsService.svelte";
 
-    let selectedProjects = $state(new Set<string>());
+    let projects: any[] = $state([]);
+    let loading = $state(true);
+    let selectedProjects: Set<string> = $state(new Set());
+    let error: string | null = $state(null);
+    let message: string | null = $state(null);
 
-    let loading = $state(false);
-    let error: string | undefined = $state(undefined);
-    let success: string | undefined = $state(undefined);
-
-    // Mirror project store data locally so the table reacts to store updates
-    let projects = $state<Array<ProjectInfo>>([]);
-
-    function syncProjects(): void {
-        const next = projectStore.projects;
-        projects = next.length > 0 ? [...next] : [];
+    // Process on auth success
+    async function handleAuthSuccess(authResult: any) {
+        console.log("Authentication successful:", authResult);
+        await loadProjects();
     }
 
-    onMount(() => {
-        syncProjects();
-
-        if (typeof window === "undefined") {
-            return () => {};
+    async function loadProjects() {
+        loading = true;
+        error = null;
+        try {
+            projects = await listProjects();
+        } catch (e: any) {
+            error = e.message;
+        } finally {
+            loading = false;
         }
-
-        const onProjectStoreUpdated = () => syncProjects();
-        const onFirestoreUcChanged = () => syncProjects(); // test-only fallback event
-
-        // Listen to new event name
-        window.addEventListener("project-store-updated", onProjectStoreUpdated);
-        window.addEventListener("firestore-uc-changed", onFirestoreUcChanged);
-
-        return () => {
-            window.removeEventListener(
-                "project-store-updated",
-                onProjectStoreUpdated,
-            );
-            window.removeEventListener(
-                "firestore-uc-changed",
-                onFirestoreUcChanged,
-            );
-        };
-    });
+    }
 
     async function deleteSelected() {
-        const targets = projects.filter((p) => selectedProjects.has(p.id));
-        if (targets.length === 0) return;
-        loading = true;
-        error = undefined;
-        success = undefined;
+        if (
+            !confirm(
+                `Are you sure you want to delete ${selectedProjects.size} projects? This cannot be undone.`,
+            )
+        ) {
+            return;
+        }
 
+        loading = true;
+        message = null;
+        error = null;
+        const toDelete = Array.from(selectedProjects);
         let deletedCount = 0;
-        for (const p of targets) {
+
+        for (const projectId of toDelete) {
             try {
-                const ok = await yjsService.deleteProject(p.id);
-                if (ok) {
-                    selectedProjects.delete(p.id);
-                    deletedCount++;
-                } else {
-                    error = `削除に失敗しました: ${p.name}`;
-                    break;
-                }
-            } catch (err) {
-                error = `削除エラー: ${p.name} - ${err instanceof Error ? err.message : String(err)}`;
-                break;
+                await deleteProject(projectId);
+                deletedCount++;
+            } catch (e: any) {
+                console.error(`Failed to delete project ${projectId}:`, e);
+                error =
+                    `Failed to delete some projects. Error: ${e.message}`;
             }
         }
 
-        if (!error && deletedCount > 0) {
-            success = "選択したプロジェクトを削除しました";
-            // 削除後にプロジェクトリストを更新するため、少し待ってからページをリロード
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        }
-
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Reassignment to trigger Svelte reactivity, not creating new reactive state
-        selectedProjects = new Set(selectedProjects);
-        loading = false;
+        message = `Deleted ${deletedCount} projects.`;
+        selectedProjects = new Set();
+        await loadProjects();
     }
-</script>
 
-<svelte:head>
-    <title>Delete Projects</title>
-</svelte:head>
+    function toggleSelection(projectId: string) {
+        if (selectedProjects.has(projectId)) {
+            selectedProjects.delete(projectId);
+        } else {
+            selectedProjects.add(projectId);
+        }
+        // Reassign for Svelte reactivity
+        selectedProjects = new Set(selectedProjects);
+    }
+
+    onMount(() => {
+        // If already authenticated, load projects
+        if (userManager.getCurrentUser()) {
+            loadProjects();
+        }
+    });
+</script>
 
 <main class="p-4">
     <h1 class="text-2xl font-bold mb-4">Delete Projects</h1>
 
+    <div class="mb-4">
+        <AuthComponent onAuthSuccess={handleAuthSuccess} />
+    </div>
+
     {#if error}
-        <div class="mb-2 text-red-600">{error}</div>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+        </div>
     {/if}
-    {#if success}
-        <div class="mb-2 text-green-600">{success}</div>
+
+    {#if message}
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+            {message}
+        </div>
     {/if}
+
+    <div class="mb-4">
+        <button
+            onclick={loadProjects}
+            disabled={loading}
+            class="bg-blue-500 text-white px-4 py-2 rounded mr-2"
+        >
+            Refresh List
+        </button>
+        <button
+            onclick={deleteSelected}
+            disabled={loading || selectedProjects.size === 0}
+            class="bg-red-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+            Delete Selected ({selectedProjects.size})
+        </button>
+    </div>
+
     {#if loading}
         <p>Loading...</p>
-    {/if}
-    {#if projects.length > 0}
-        <table class="min-w-full border mb-4">
+    {:else if projects.length > 0}
+        <table class="w-full border-collapse border border-gray-300">
             <thead>
-                <tr>
-                    <th class="px-2">Select</th>
-                    <th class="px-2">Title</th>
-                    <th class="px-2">ID</th>
+                <tr class="bg-gray-100">
+                    <th class="border border-gray-300 px-4 py-2 w-10">
+                        <input
+                            type="checkbox"
+                            onchange={(e) => {
+                                if (e.currentTarget.checked) {
+                                    selectedProjects = new Set(
+                                        projects.map((p) => p.id),
+                                    );
+                                } else {
+                                    selectedProjects = new Set();
+                                }
+                            }}
+                            checked={selectedProjects.size === projects.length &&
+                                projects.length > 0}
+                        />
+                    </th>
+                    <th class="border border-gray-300 px-4 py-2">Name</th>
+                    <th class="border border-gray-300 px-4 py-2">ID</th>
+                    <th class="border border-gray-300 px-4 py-2">Created At</th>
+                    <th class="border border-gray-300 px-4 py-2">Owner</th>
                 </tr>
             </thead>
             <tbody>
-                {#each projects as project (project.id)}
-                    <tr>
-                        <td class="px-2 text-center">
+                {#each projects as project}
+                    <tr class="hover:bg-gray-50">
+                        <td class="border border-gray-300 px-4 py-2 text-center">
                             <input
                                 type="checkbox"
                                 checked={selectedProjects.has(project.id)}
-                                onchange={(e) => {
-                                    const target = e.target as HTMLInputElement;
-                                    if (target.checked) {
-                                        selectedProjects.add(project.id);
-                                    } else {
-                                        selectedProjects.delete(project.id);
-                                    }
-                                    // Svelteのリアクティビティのために再代入
-                                    selectedProjects = new Set(
-                                        selectedProjects,
-                                    );
-                                }}
+                                onchange={() => toggleSelection(project.id)}
                             />
                         </td>
-                        <td class="px-2">{project.name || "(loading...)"}</td>
-                        <td class="px-2">{project.id}</td>
+                        <td class="border border-gray-300 px-4 py-2">
+                            {project.title || "(Untitled)"}
+                        </td>
+                        <td class="border border-gray-300 px-4 py-2 font-mono text-xs">
+                            {project.id}
+                        </td>
+                        <td class="border border-gray-300 px-4 py-2 text-sm">
+                            {project.createdAt
+                                ? new Date(
+                                    project.createdAt._seconds * 1000,
+                                ).toLocaleString()
+                                : "-"}
+                        </td>
+                        <td class="border border-gray-300 px-4 py-2 text-sm">
+                            {project.ownerId || "-"}
+                        </td>
                     </tr>
                 {/each}
             </tbody>
         </table>
-        <button
-            onclick={deleteSelected}
-            disabled={loading || selectedProjects.size === 0}
-            class="bg-red-500 text-white px-4 py-2 rounded">Delete</button
-        >
     {:else}
         <p>No projects found.</p>
     {/if}
 </main>
-
-<style>
-    table {
-        border-collapse: collapse;
-        width: 100%;
-    }
-    th,
-    td {
-        border: 1px solid #ccc;
-        padding: 4px;
-    }
-</style>

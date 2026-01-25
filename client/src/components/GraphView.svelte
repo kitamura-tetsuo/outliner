@@ -91,10 +91,10 @@
                 console.warn("Failed to parse existing layout:", e);
             }
 
-            // EChartsの内部状態から実際の位置を取得
+            // Get actual position from ECharts internal state
             const currentNodes = nodes
                 .map((node) => {
-                    // EChartsの内部状態から位置を取得
+                    // Get position from ECharts internal state
                     const actualPosition = chart?.convertFromPixel(
                         { seriesIndex: 0 },
                         [node.x ?? 0, node.y ?? 0],
@@ -115,7 +115,7 @@
                     (node): node is GraphLayout["nodes"][number] =>
                         typeof node.x === "number" &&
                         typeof node.y === "number",
-                ); // 位置が定義されているノードのみ保存
+                ); // Save only nodes with defined position
 
             const currentNodesMap = new Map(currentNodes.map((n) => [n.id, n]));
 
@@ -184,7 +184,7 @@
 
         const { nodes, links } = buildGraph(pages, project);
 
-        // 保存されたレイアウトを適用
+        // Apply saved layout
         const nodesWithLayout = loadLayout(nodes as GraphNodeWithLayout[]);
 
         chart.setOption({
@@ -198,7 +198,7 @@
                     links,
                     label: { position: "right" },
                     force: {
-                        // 固定ノードの位置を尊重する設定
+                        // Setting to respect position of fixed nodes
                         initLayout: "circular",
                         repulsion: 100,
                         gravity: 0.1,
@@ -233,15 +233,15 @@
             }
         });
 
-        // ノードの位置が変更されたときにレイアウトを保存
+        // Save layout when node position changes
         chart.on("finished", () => {
-            // レイアウト計算完了後に少し待ってから保存
+            // Wait a little after layout calculation is complete before saving
             setTimeout(() => {
                 saveLayout();
             }, 100);
         });
 
-        // ドラッグ終了時にも保存
+        // Save also on drag end
         chart.on("brushEnd", () => {
             saveLayout();
         });

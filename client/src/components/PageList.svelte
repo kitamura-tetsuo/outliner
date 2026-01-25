@@ -9,7 +9,7 @@ import {
 
 interface Props {
     project: Project;
-    rootItems: Items; // 最上位のアイテムリスト（ページリスト）
+    rootItems: Items; // Top-level item list (page list)
     currentUser?: string;
     onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
 }
@@ -23,19 +23,19 @@ let {
 
 const dispatch = createEventDispatcher();
 
-// 開発環境ではデフォルトのタイトルを提案
+// Propose default title in development environment
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
-let pageTitle = $state(isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : "");
+let pageTitle = $state(isDev ? `New Page ${new Date().toLocaleTimeString()}` : "");
 
 function handleCreatePage() {
     if (!pageTitle.trim() && !isDev) {
-        pageTitle = "新しいページ " + new Date().toLocaleString();
+        pageTitle = "New Page " + new Date().toLocaleString();
     }
 
-    // プロジェクトに直接ページを追加
+    // Add page directly to project
     const newPage = project.addPage(pageTitle, currentUser);
     selectPage(newPage);
-    pageTitle = isDev ? `新しいページ ${new Date().toLocaleTimeString()}` : "";
+    pageTitle = isDev ? `New Page ${new Date().toLocaleTimeString()}` : "";
 }
 
 function handleKeyDown(e: KeyboardEvent) {
@@ -45,7 +45,7 @@ function handleKeyDown(e: KeyboardEvent) {
 }
 
 function selectPage(page: Item) {
-    // イベントを発火
+    // Fire event
     if (onPageSelected) {
         const event = new CustomEvent("pageSelected", {
             detail: {
@@ -56,14 +56,14 @@ function selectPage(page: Item) {
         onPageSelected(event);
     }
 
-    // カスタムイベントをディスパッチ
+    // Dispatch custom event
     dispatch("pageSelected", {
         pageId: page.id,
         pageName: page.text,
     });
 }
 
-// // ページリストの更新処理
+// // Page list update processing
 // function updatePageList() {
 // 	if (rootItems) {
 // 		displayItems = [...rootItems];
@@ -72,7 +72,7 @@ function selectPage(page: Item) {
 // }
 
 onMount(() => {
-    // rootItemsが存在する場合、変更を監視
+    // Monitor changes if rootItems exists
     if (rootItems) {
         // 	const unsubscribe = Tree.on(rootItems, 'treeChanged', updatePageList);
         // 	return () => {
@@ -81,36 +81,36 @@ onMount(() => {
     }
 });
 
-// 初期表示時にリストを更新
-// Svelte 5ではrunは不要になりました
+// Update list on initial display
+// run is no longer needed in Svelte 5
 </script>
 
 <div class="page-list">
-    <h2>ページ一覧</h2>
+    <h2>Page List</h2>
 
     <div class="page-create">
         <input
             type="text"
             bind:value={pageTitle}
-            placeholder="新しいページ名"
-            aria-label="新しいページ名"
+            placeholder="New page name"
+            aria-label="New page name"
             onkeydown={handleKeyDown}
         />
-        <button type="button" onclick={handleCreatePage}>作成</button>
+        <button type="button" onclick={handleCreatePage}>Create</button>
     </div>
 
     <ul>
         {#each rootItems as page (page.id)}
             <li>
                 <button type="button" class="page-item-button" onclick={() => selectPage(page)}>
-                    <span class="page-title">{page.text || "無題のページ"}</span>
+                    <span class="page-title">{page.text || "Untitled Page"}</span>
                     <span class="page-date">{new Date(page.lastChanged).toLocaleDateString()}</span>
                 </button>
             </li>
         {/each}
 
         {#if rootItems.length === 0}
-            <li class="empty">ページがありません。新しいページを作成してください。</li>
+            <li class="empty">No pages found. Please create a new page.</li>
         {/if}
     </ul>
 </div>

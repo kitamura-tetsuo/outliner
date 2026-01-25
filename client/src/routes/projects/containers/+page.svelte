@@ -22,22 +22,22 @@ let containerName = $state("");
 let isAuthenticated = $state(false);
 let createdContainerId: string | undefined = $state(undefined);
 
-// 認証成功時の処理
+// Process on auth success
 async function handleAuthSuccess(authResult) {
-    logger.info("認証成功:", authResult);
+    logger.info("Authentication successful:", authResult);
     isAuthenticated = true;
 }
 
-// 認証ログアウト時の処理
+// Process on auth logout
 function handleAuthLogout() {
-    logger.info("ログアウトしました");
+    logger.info("Logged out");
     isAuthenticated = false;
 }
 
-// 新規コンテナを作成する
+// Create new container
 async function createNewContainer() {
     if (!containerName.trim()) {
-        error = "アウトライナー名を入力してください";
+        error = "Please enter an outliner name";
         return;
     }
 
@@ -46,43 +46,43 @@ async function createNewContainer() {
     success = undefined;
 
     try {
-        // 現在のクライアントを破棄してリセット
+        // Destroy current client and reset
         const client = yjsStore.yjsClient as any;
         if (client) {
             client.dispose?.();
             yjsStore.yjsClient = undefined;
         }
 
-        // 1. IDを先に生成
+        // 1. Generate ID first
         const newProjectId = uuidv4();
-        createdContainerId = newProjectId; // UIに即座に反映
+        createdContainerId = newProjectId; // Immediately reflect in UI
 
-        // 2. サーバーに保存してアクセス権を確定させる（WebSocket接続前に行うのが重要）
+        // 2. Save to server to confirm access rights (Important to do before WebSocket connection)
         logger.info(`Saving new container ID ${newProjectId} to server...`);
         const saveResult = await saveContainerId(newProjectId);
         if (!saveResult) {
-            throw new Error("サーバーへのコンテナID保存に失敗しました");
+            throw new Error("Failed to save container ID to server");
         }
 
-        // 3. 権限が確定してからWebSocket接続を開始
+        // 3. Start WebSocket connection after rights are confirmed
         logger.info(`Connecting to WebSocket for ${newProjectId}...`);
         const newClient = await yjsHighService.createNewProject(containerName, newProjectId);
 
-        // ストアを更新
+        // Update store
         yjsStore.yjsClient = newClient as any;
 
-        success = `新しいアウトライナーが作成されました！ (ID: ${createdContainerId})`;
+        success = `New outliner created! (ID: ${createdContainerId})`;
 
-        // 1.5秒後に作成したプロジェクトのページに移動
+        // Navigate to created project page after 1.5 seconds
         setTimeout(() => {
             goto("/" + containerName);
         }, 1500);
     }
     catch (err) {
-        logger.error("新規アウトライナー作成エラー:", err);
+        logger.error("Create new outliner error:", err);
         error = err instanceof Error
             ? err.message
-            : "新規アウトライナーの作成中にエラーが発生しました。";
+            : "An error occurred while creating a new outliner.";
     }
     finally {
         isLoading = false;
@@ -90,23 +90,23 @@ async function createNewContainer() {
 }
 
 onMount(() => {
-    // UserManagerの認証状態を確認
+    // Check UserManager auth state
 
     isAuthenticated = userManager.getCurrentUser() !== null;
 });
 
 onDestroy(() => {
-    // 必要に応じてクリーンアップコード
+    // Cleanup code if needed
 });
 </script>
 
 <svelte:head>
-    <title>新規アウトライナー作成 - Outliner</title>
+    <title>Create New Outliner - Outliner</title>
 </svelte:head>
 
 <main class="container mx-auto px-4 py-8">
     <h1 class="mb-6 text-center text-3xl font-bold">
-        新規アウトライナーの作成
+        Create New Outliner
     </h1>
 
     <div class="auth-section mb-8">
@@ -119,7 +119,7 @@ onDestroy(() => {
     {#if isAuthenticated}
         <div class="mx-auto max-w-md rounded-lg bg-white p-6 shadow-md">
             <h2 class="mb-4 text-xl font-semibold">
-                新しいアウトライナーを作成
+                Create a new outliner
             </h2>
 
             <div class="mb-4">
@@ -127,13 +127,13 @@ onDestroy(() => {
                     for="containerName"
                     class="mb-1 block text-sm font-medium text-gray-700"
                 >
-                    アウトライナー名
+                    Outliner Name
                 </label>
                 <input
                     type="text"
                     id="containerName"
                     bind:value={containerName}
-                    placeholder="マイアウトライナー"
+                    placeholder="My Outliner"
                     class="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
             </div>
@@ -166,25 +166,25 @@ onDestroy(() => {
                 "
             >
                 {#if isLoading}
-                    <span class="mr-2 inline-block animate-spin">⏳</span> 作成中...
+                    <span class="mr-2 inline-block animate-spin">⏳</span> Creating...
                 {:else}
-                    作成する
+                    Create
                 {/if}
             </button>
 
             {#if createdContainerId}
                 <div class="mt-4 rounded-md bg-gray-100 p-3">
                     <p class="text-sm text-gray-700">
-                        作成されたコンテナID: <code class="rounded bg-gray-200 px-1 py-0.5">{createdContainerId}</code>
+                        Created Container ID: <code class="rounded bg-gray-200 px-1 py-0.5">{createdContainerId}</code>
                     </p>
                 </div>
             {/if}
         </div>
     {:else}
         <div class="mx-auto max-w-md rounded-lg bg-yellow-50 p-6 shadow-md">
-            <h2 class="mb-2 text-xl font-semibold">認証が必要です</h2>
+            <h2 class="mb-2 text-xl font-semibold">Authentication Required</h2>
             <p class="mb-4 text-gray-700">
-                新しいアウトライナーを作成するには、まず上部のログインボタンからログインしてください。
+                To create a new outliner, please login from the login button above first.
             </p>
         </div>
     {/if}
@@ -194,11 +194,11 @@ onDestroy(() => {
             href="/"
             class="rounded-md px-2 py-1 text-blue-600 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-            ホームに戻る
+            Back to Home
         </a>
     </div>
 </main>
 
 <style>
-/* スタイリングが必要な場合は追加 */
+/* Add styles if needed */
 </style>

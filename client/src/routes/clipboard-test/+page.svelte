@@ -1,8 +1,7 @@
 <script lang="ts">
-// SSRを無効化（クリップボードAPIはブラウザ環境でのみ動作）
 import { onMount } from "svelte";
 
-// 状態管理
+// Test states
 let clipboardText = $state("");
 let execCommandText = $state("");
 let playwrightText = $state("");
@@ -12,90 +11,48 @@ let permissionResult = $state("");
 let playwrightResult = $state("");
 let logs = $state<string[]>([]);
 
-// ログ関数
 function log(message: string) {
-    console.log(message);
-    logs = [...logs, `${new Date().toLocaleTimeString()}: ${message}`];
+    const timestamp = new Date().toLocaleTimeString();
+    logs = [`[${timestamp}] ${message}`, ...logs];
+    console.log(`[ClipboardTest] ${message}`);
 }
 
-// 結果表示関数
-function showResult(
-    resultVar: "clipboard" | "execCommand" | "permission" | "playwright",
-    message: string,
-    isSuccess = true,
-) {
-    const resultText = isSuccess ? `✅ ${message}` : `❌ ${message}`;
+function showResult(type: string, message: string, success = true) {
+    const prefix = success ? "✅ " : "❌ ";
+    const msg = prefix + message;
 
-    switch (resultVar) {
-        case "clipboard":
-            clipboardResult = resultText;
-            break;
-        case "execCommand":
-            execCommandResult = resultText;
-            break;
-        case "permission":
-            permissionResult = resultText;
-            break;
-        case "playwright":
-            playwrightResult = resultText;
-            break;
-    }
+    if (type === "clipboard") clipboardResult = msg;
+    else if (type === "execCommand") execCommandResult = msg;
+    else if (type === "permission") permissionResult = msg;
+    else if (type === "playwright") playwrightResult = msg;
 }
 
-// 1. navigator.clipboard APIテスト
+// 1. navigator.clipboard API test
 async function handleClipboardCopy() {
     try {
-        // グローバル変数に保存（テスト用）
-        if (typeof window !== "undefined") {
-            (window as any).lastCopyText = clipboardText;
-        }
-
-        // 両方の方法を試す
-        try {
-            // 方法1: ClipboardEvent
-            const clipboardEvent = new ClipboardEvent("copy", {
-                clipboardData: new DataTransfer(),
-                bubbles: true,
-                cancelable: true,
-            });
-            clipboardEvent.clipboardData?.setData("text/plain", clipboardText);
-
-            // イベントをディスパッチ
-            const textarea = document.getElementById("clipboard-text") as HTMLTextAreaElement;
-            textarea.dispatchEvent(clipboardEvent);
-
-            log(`ClipboardEvent 'copy' をディスパッチしました`);
-        }
-        catch (clipboardEventError) {
-            log(`ClipboardEvent 'copy' ディスパッチ失敗: ${clipboardEventError.message}`);
-        }
-
-        // 方法2: navigator.clipboard API
         await navigator.clipboard.writeText(clipboardText);
+        showResult("clipboard", `Copy successful: ${clipboardText}`);
+        log(`navigator.clipboard.writeText successful: ${clipboardText}`);
 
-        // 結果を表示
-        showResult("clipboard", `コピー成功: ${clipboardText}`);
-        log(`navigator.clipboard.writeText 成功: ${clipboardText}`);
-
-        // DOMを強制的に更新（テスト用）
+        // Force DOM update (for testing)
         setTimeout(() => {
             const resultElement = document.querySelector(".test-section:first-child .result");
             if (resultElement) {
-                resultElement.textContent = `✅ コピー成功: ${clipboardText}`;
+                resultElement.textContent = `✅ Copy successful: ${clipboardText}`;
                 resultElement.classList.add("success");
                 resultElement.classList.remove("error");
             }
         }, 100);
     }
-    catch (err) {
-        showResult("clipboard", `コピー失敗: ${err.message}`, false);
-        log(`navigator.clipboard.writeText 失敗: ${err.message}`);
+    catch (err: any) {
+        showResult("clipboard", `Copy failed: ${err.message}`, false);
+        log(`navigator.clipboard.writeText failed: ${err.message}`);
 
-        // DOMを強制的に更新（テスト用）
+        // Force DOM update (for testing)
         setTimeout(() => {
             const resultElement = document.querySelector(".test-section:first-child .result");
             if (resultElement) {
-                resultElement.textContent = `❌ コピー失敗: ${err.message}`;
+                resultElement.textContent = `❌ Copy failed: ${err.message}`;
                 resultElement.classList.add("error");
                 resultElement.classList.remove("success");
             }
@@ -105,59 +62,59 @@ async function handleClipboardCopy() {
 
 async function handleClipboardPaste() {
     try {
-        // 両方の方法を試す
+        // Try both methods
         try {
-            // 方法1: ClipboardEvent
+            // Method 1: ClipboardEvent
             const clipboardEvent = new ClipboardEvent("paste", {
                 clipboardData: new DataTransfer(),
                 bubbles: true,
                 cancelable: true,
             });
 
-            // グローバル変数から取得（テスト用）
+            // Get from global variable (for testing)
             const globalText = typeof window !== "undefined" ? (window as any).lastCopyText || "" : "";
             if (globalText) {
                 clipboardEvent.clipboardData?.setData("text/plain", globalText);
-                log(`グローバル変数からテキストを取得: ${globalText}`);
+                log(`Got text from global variable: ${globalText}`);
             }
 
-            // イベントをディスパッチ
+            // Dispatch event
             const textarea = document.getElementById("clipboard-text") as HTMLTextAreaElement;
             textarea.dispatchEvent(clipboardEvent);
 
-            log(`ClipboardEvent 'paste' をディスパッチしました`);
+            log(`Dispatched ClipboardEvent 'paste'`);
         }
         catch (clipboardEventError: any) {
-            log(`ClipboardEvent 'paste' ディスパッチ失敗: ${clipboardEventError.message}`);
+            log(`ClipboardEvent 'paste' dispatch failed: ${clipboardEventError.message}`);
         }
 
-        // 方法2: navigator.clipboard API
+        // Method 2: navigator.clipboard API
         const text = await navigator.clipboard.readText();
         clipboardText = text;
 
-        // 結果を表示
-        showResult("clipboard", `ペースト成功: ${text}`);
-        log(`navigator.clipboard.readText 成功: ${text}`);
+        // Show result
+        showResult("clipboard", `Paste successful: ${text}`);
+        log(`navigator.clipboard.readText successful: ${text}`);
 
-        // DOMを強制的に更新（テスト用）
+        // Force DOM update (for testing)
         setTimeout(() => {
             const resultElement = document.querySelector(".test-section:first-child .result");
             if (resultElement) {
-                resultElement.textContent = `✅ ペースト成功: ${text}`;
+                resultElement.textContent = `✅ Paste successful: ${text}`;
                 resultElement.classList.add("success");
                 resultElement.classList.remove("error");
             }
         }, 100);
     }
     catch (err: any) {
-        showResult("clipboard", `ペースト失敗: ${err.message}`, false);
-        log(`navigator.clipboard.readText 失敗: ${err.message}`);
+        showResult("clipboard", `Paste failed: ${err.message}`, false);
+        log(`navigator.clipboard.readText failed: ${err.message}`);
 
-        // DOMを強制的に更新（テスト用）
+        // Force DOM update (for testing)
         setTimeout(() => {
             const resultElement = document.querySelector(".test-section:first-child .result");
             if (resultElement) {
-                resultElement.textContent = `❌ ペースト失敗: ${err.message}`;
+                resultElement.textContent = `❌ Paste failed: ${err.message}`;
                 resultElement.classList.add("error");
                 resultElement.classList.remove("success");
             }
@@ -165,24 +122,24 @@ async function handleClipboardPaste() {
     }
 }
 
-// 2. document.execCommand APIテスト
+// 2. document.execCommand API test
 function handleExecCommandCopy() {
     try {
         const textarea = document.getElementById("execcommand-text") as HTMLTextAreaElement;
         textarea.select();
         const success = document.execCommand("copy");
         if (success) {
-            showResult("execCommand", `コピー成功: ${execCommandText}`);
-            log(`document.execCommand("copy") 成功: ${execCommandText}`);
+            showResult("execCommand", `Copy successful: ${execCommandText}`);
+            log(`document.execCommand("copy") successful: ${execCommandText}`);
         }
         else {
-            showResult("execCommand", "コピー失敗", false);
-            log('document.execCommand("copy") 失敗');
+            showResult("execCommand", "Copy failed", false);
+            log('document.execCommand("copy") failed');
         }
     }
-    catch (err) {
-        showResult("execCommand", `コピー失敗: ${err.message}`, false);
-        log(`document.execCommand("copy") 失敗: ${err.message}`);
+    catch (err: any) {
+        showResult("execCommand", `Copy failed: ${err.message}`, false);
+        log(`document.execCommand("copy") failed: ${err.message}`);
     }
 }
 
@@ -193,26 +150,26 @@ function handleExecCommandPaste() {
         const success = document.execCommand("paste");
         if (success) {
             execCommandText = textarea.value;
-            showResult("execCommand", `ペースト成功: ${execCommandText}`);
-            log(`document.execCommand("paste") 成功: ${execCommandText}`);
+            showResult("execCommand", `Paste successful: ${execCommandText}`);
+            log(`document.execCommand("paste") successful: ${execCommandText}`);
         }
         else {
-            showResult("execCommand", "ペースト失敗", false);
-            log('document.execCommand("paste") 失敗');
+            showResult("execCommand", "Paste failed", false);
+            log('document.execCommand("paste") failed');
         }
     }
-    catch (err) {
-        showResult("execCommand", `ペースト失敗: ${err.message}`, false);
-        log(`document.execCommand("paste") 失敗: ${err.message}`);
+    catch (err: any) {
+        showResult("execCommand", `Paste failed: ${err.message}`, false);
+        log(`document.execCommand("paste") failed: ${err.message}`);
     }
 }
 
-// 3. クリップボード権限テスト
+// 3. Clipboard permission test
 async function checkPermissions() {
     try {
         if (!navigator.permissions) {
-            showResult("permission", "navigator.permissions APIがサポートされていません", false);
-            log("navigator.permissions APIがサポートされていません");
+            showResult("permission", "navigator.permissions API is not supported", false);
+            log("navigator.permissions API is not supported");
             return;
         }
 
@@ -222,24 +179,24 @@ async function checkPermissions() {
         showResult("permission", `clipboard-read: ${clipboardRead.state}, clipboard-write: ${clipboardWrite.state}`);
         log(`clipboard-read: ${clipboardRead.state}, clipboard-write: ${clipboardWrite.state}`);
     }
-    catch (err) {
-        showResult("permission", `権限確認失敗: ${err.message}`, false);
-        log(`権限確認失敗: ${err.message}`);
+    catch (err: any) {
+        showResult("permission", `Permission check failed: ${err.message}`, false);
+        log(`Permission check failed: ${err.message}`);
     }
 }
 
-// 4. Playwrightテスト用
+// 4. Playwright test
 async function handlePlaywrightCopy() {
     try {
         await navigator.clipboard.writeText(playwrightText);
-        showResult("playwright", `コピー成功: ${playwrightText}`);
-        log(`Playwright用コピー成功: ${playwrightText}`);
-        // グローバル変数に保存（テスト用）
+        showResult("playwright", `Copy successful: ${playwrightText}`);
+        log(`Copy for Playwright successful: ${playwrightText}`);
+        // Save to global variable (for testing)
         (window as any).lastCopiedText = playwrightText;
     }
-    catch (err) {
-        showResult("playwright", `コピー失敗: ${err.message}`, false);
-        log(`Playwright用コピー失敗: ${err.message}`);
+    catch (err: any) {
+        showResult("playwright", `Copy failed: ${err.message}`, false);
+        log(`Copy for Playwright failed: ${err.message}`);
     }
 }
 
@@ -247,49 +204,49 @@ async function handlePlaywrightPaste() {
     try {
         const text = await navigator.clipboard.readText();
         playwrightText = text;
-        showResult("playwright", `ペースト成功: ${text}`);
-        log(`Playwright用ペースト成功: ${text}`);
-        // グローバル変数に保存（テスト用）
+        showResult("playwright", `Paste successful: ${text}`);
+        log(`Paste for Playwright successful: ${text}`);
+        // Save to global variable (for testing)
         (window as any).lastPastedText = text;
     }
-    catch (err) {
-        showResult("playwright", `ペースト失敗: ${err.message}`, false);
-        log(`Playwright用ペースト失敗: ${err.message}`);
+    catch (err: any) {
+        showResult("playwright", `Paste failed: ${err.message}`, false);
+        log(`Paste for Playwright failed: ${err.message}`);
     }
 }
 
-// ページ読み込み時の処理
+// On page load
 onMount(() => {
-    log("ページが読み込まれました");
-    // クリップボードAPIのサポート状況を確認
+    log("Page loaded");
+    // Check clipboard API support status
     if (navigator.clipboard) {
-        log("navigator.clipboard APIがサポートされています");
+        log("navigator.clipboard API is supported");
     }
     else {
-        log("navigator.clipboard APIがサポートされていません");
+        log("navigator.clipboard API is not supported");
     }
 });
 </script>
 
 <svelte:head>
-    <title>クリップボードAPIテスト</title>
+    <title>Clipboard API Test</title>
 </svelte:head>
 
 <main>
-    <h1>クリップボードAPIテスト</h1>
-    <p>このページはクリップボードAPIのテストを行うためのものです。</p>
+    <h1>Clipboard API Test</h1>
+    <p>This page is for testing Clipboard API.</p>
 
     <div class="container">
         <div class="test-section">
-            <h2>1. navigator.clipboard APIテスト</h2>
+            <h2>1. navigator.clipboard API Test</h2>
             <textarea
                 id="clipboard-text"
                 bind:value={clipboardText}
-                placeholder="ここにコピーするテキストを入力してください"
+                placeholder="Enter text to copy here"
             ></textarea>
             <div>
-                <button onclick={handleClipboardCopy}>コピー</button>
-                <button onclick={handleClipboardPaste}>ペースト</button>
+                <button onclick={handleClipboardCopy}>Copy</button>
+                <button onclick={handleClipboardPaste}>Paste</button>
             </div>
             <div
                 class="result"
@@ -301,15 +258,15 @@ onMount(() => {
         </div>
 
         <div class="test-section">
-            <h2>2. document.execCommand APIテスト</h2>
+            <h2>2. document.execCommand API Test</h2>
             <textarea
                 id="execcommand-text"
                 bind:value={execCommandText}
-                placeholder="ここにコピーするテキストを入力してください"
+                placeholder="Enter text to copy here"
             ></textarea>
             <div>
-                <button onclick={handleExecCommandCopy}>コピー</button>
-                <button onclick={handleExecCommandPaste}>ペースト</button>
+                <button onclick={handleExecCommandCopy}>Copy</button>
+                <button onclick={handleExecCommandPaste}>Paste</button>
             </div>
             <div
                 class="result"
@@ -321,8 +278,8 @@ onMount(() => {
         </div>
 
         <div class="test-section">
-            <h2>3. クリップボード権限テスト</h2>
-            <button onclick={checkPermissions}>クリップボード権限を確認</button>
+            <h2>3. Clipboard Permission Test</h2>
+            <button onclick={checkPermissions}>Check Clipboard Permissions</button>
             <div
                 class="result"
                 class:success={permissionResult.startsWith("✅")}
@@ -333,15 +290,15 @@ onMount(() => {
         </div>
 
         <div class="test-section">
-            <h2>4. Playwrightテスト用</h2>
+            <h2>4. Playwright Test</h2>
             <textarea
                 id="playwright-text"
                 bind:value={playwrightText}
-                placeholder="Playwrightからのテキストがここに表示されます"
+                placeholder="Text from Playwright will be displayed here"
             ></textarea>
             <div>
-                <button onclick={handlePlaywrightCopy}>コピー</button>
-                <button onclick={handlePlaywrightPaste}>ペースト</button>
+                <button onclick={handlePlaywrightCopy}>Copy</button>
+                <button onclick={handlePlaywrightPaste}>Paste</button>
             </div>
             <div
                 class="result"
@@ -354,7 +311,7 @@ onMount(() => {
     </div>
 
     <div class="log-container">
-        <h3>ログ</h3>
+        <h3>Log</h3>
         <div id="log">
             {#each logs as logEntry, index (index)}
                 <div>{logEntry}</div>

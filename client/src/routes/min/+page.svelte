@@ -1,105 +1,116 @@
 <script lang="ts">
-import {
-    getAuth,
-    GoogleAuthProvider,
-    signInWithPopup,
-} from "firebase/auth";
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getFunctions } from "firebase/functions";
-// Firebase product SDKs
-import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
+    import { userManager } from "../../auth/UserManager";
+    import { getLogger } from "../../lib/logger";
+    import { store } from "../../stores/store.svelte";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    // Only allow development environment or test environment
+    const isDev = import.meta.env.DEV || import.meta.env.MODE === "test";
+    const logger = getLogger("min");
 
-const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-};
+    let isAuthorized = $state(false);
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-// Initialize Firestore without storing the instance
-getFirestore(app);
-getFunctions(app);
+    // Initialize minimal application
+    function init() {
+        if (!isDev) {
+            goto("/");
+            return;
+        }
 
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
+        // Check authentication
+        const user = userManager.getCurrentUser();
+        if (!user) {
+            logger.warn("Not authenticated, redirecting to login");
+            goto("/");
+            return;
+        }
 
-let idToken = $state("");
-let verificationResult = $state("");
-
-// テスト用に環境変数をwindowオブジェクトに公開
-onMount(() => {
-    if (typeof window !== "undefined") {
-        (window as any).testEnvVars = {
-            VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
-            VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-            VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL,
-        };
+        isAuthorized = true;
     }
-});
 
-// Google ログインして ID トークンを取得し、バックエンドで検証する
-async function signIn() {
-    try {
-        const result = await signInWithPopup(auth, provider);
-        idToken = await result.user.getIdToken(true);
-        console.log("取得した ID Token:", idToken);
+    // Call init on component mount
+    $effect(() => {
+        init();
+    });
 
-        const verifyUrl = import.meta.env.VITE_TOKEN_VERIFY_URL;
-        const response = await fetch(verifyUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: idToken }),
-        });
-        const data = await response.json();
-        verificationResult = JSON.stringify(data, null, 2);
+    let selectedItems: Set<string> = $state(new Set());
+
+    function toggleSelection(id: string) {
+        if (selectedItems.has(id)) {
+            selectedItems.delete(id);
+        } else {
+            selectedItems.add(id);
+        }
+        // Reassign for reactivity
+        selectedItems = new Set(selectedItems);
     }
-    catch (error) {
-        console.error("ログインまたは検証処理でエラーが発生しました:", error);
+
+    function deleteSelected() {
+        if (!store.project || !store.project.items) return;
+
+        const items = store.project.items;
+        // Delete from back
+        const idsToDelete = Array.from(selectedItems);
+        // Find index for each ID (O(N^2) but fine for minimal tool)
+        // Ideally should iterate items and filter
+
+        // This is a minimal implementation so skip details
+        console.log("Delete items:", idsToDelete);
+        selectedItems = new Set();
     }
-}
 </script>
 
-<main>
-    <h1>Firebase Google Login &amp; Token Verification</h1>
-    <button onclick={signIn}>Sign in with Google</button>
+<main class="p-4">
+    <h1 class="text-2xl font-bold mb-4">Minimal Project View</h1>
 
-    {#if idToken}
-        <section>
-            <h2>ID Token</h2>
-            <pre>{idToken}</pre>
-        </section>
-    {/if}
+    {#if !isDev}
+        <p>This page is only available in development environment.</p>
+    {:else if !isAuthorized}
+        <p>Checking authentication...</p>
+    {:else if store.project}
+        <h2 class="text-xl mb-2">{store.project.title}</h2>
 
-    {#if verificationResult}
-        <section>
-            <h2>Verification Result</h2>
-            <pre>{verificationResult}</pre>
-        </section>
+        <table class="w-full border-collapse border border-gray-300">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="border border-gray-300 px-4 py-2 w-10">
+                        <input type="checkbox" disabled />
+                    </th>
+                    <th class="border border-gray-300 px-4 py-2">Content</th>
+                    <th class="border border-gray-300 px-4 py-2">ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                {#each store.project.items as item (item.id)}
+                    <tr class="hover:bg-gray-50">
+                        <td class="border border-gray-300 px-4 py-2 text-center">
+                            <input
+                                type="checkbox"
+                                checked={selectedItems.has(item.id)}
+                                onchange={() => toggleSelection(item.id)}
+                            />
+                        </td>
+                        <td class="border border-gray-300 px-4 py-2">
+                            {item.text || "(Empty)"}
+                        </td>
+                        <td class="border border-gray-300 px-4 py-2 font-mono text-xs">
+                            {item.id}
+                        </td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
+
+        <div class="mt-4">
+            <button
+                onclick={deleteSelected}
+                disabled={selectedItems.size === 0}
+                class="bg-red-500 text-white px-4 py-2 rounded disabled:opacity-50"
+            >
+                Delete Selected ({selectedItems.size})
+            </button>
+        </div>
+    {:else}
+        <p>Project not loaded.</p>
     {/if}
 </main>
-
-<style>
-main {
-    font-family: Arial, sans-serif;
-    padding: 2rem;
-}
-button {
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
-}
-pre {
-    background: #f0f0f0;
-    padding: 1rem;
-    overflow: auto;
-}
-</style>

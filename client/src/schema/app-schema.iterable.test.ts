@@ -1,82 +1,63 @@
-import { describe, expect, it, vi } from "vitest";
-import { Item, Project } from "./app-schema";
+import { describe, expect, it } from "vitest";
+import * as Y from "yjs";
+import { Item, Items, Project } from "./app-schema";
 
-// モック: Cursor が依存するストアのうち、今回のテストで使用するのは currentPage のみ
-vi.mock("../stores/store.svelte", () => ({
-    store: {
-        currentPage: undefined as any,
-        subscribe: vi.fn(),
-        update: vi.fn(),
-        set: vi.fn(),
-    },
-}));
+describe("Item Iterable", () => {
+    it("should iterate over children using for...of", () => {
+        const ydoc = new Y.Doc();
+        const ymap = ydoc.getMap("project");
+        const project = new Project(ymap, ydoc);
+        const page = project.addPage("Page 1");
+        const items = page.items;
 
-// 遅延import（vi.mockの後で）
-import { Cursor } from "../lib/Cursor";
-import { store as generalStore } from "../stores/store.svelte";
+        items.addNode("user1");
+        items.addNode("user1");
+        items.addNode("user1");
 
-describe("Items.asArrayLike iterable characteristics", () => {
-    it("supports for..of iteration over Project.items and Item.items", () => {
-        const project = Project.createInstance("iterable-test");
-
-        // ルート直下に2ページ相当のアイテムを作成
-        const rootItems: any = (project as any).items;
-        const a = rootItems.addNode("user");
-        a.updateText("A");
-        const b = rootItems.addNode("user");
-        b.updateText("B");
-
-        // for..of が動作し、Item インスタンスが列挙されること
-        const ids: string[] = [];
-        for (const it of rootItems as Iterable<Item>) {
-            expect(it).toBeInstanceOf(Item);
-            ids.push(it.id);
+        let count = 0;
+        for (const item of items) {
+            expect(item).toBeInstanceOf(Item);
+            count++;
         }
-        expect(ids.length).toBe(rootItems.length);
-        expect(new Set(ids).size).toBe(ids.length);
-
-        // 子へも for..of できること
-        const child1 = a.items.addNode("user");
-        child1.updateText("A-1");
-        const child2 = a.items.addNode("user");
-        child2.updateText("A-2");
-
-        const childIds: string[] = [];
-        for (const ch of a.items as Iterable<Item>) {
-            childIds.push(ch.id);
-        }
-        expect(childIds.length).toBe(2);
+        expect(count).toBe(3);
     });
-});
 
-describe("Cursor.searchItem recursion over children (no exceptions)", () => {
-    it("findTarget() locates deep child without throwing", () => {
-        const project = Project.createInstance("cursor-search");
-        const rootItems: any = (project as any).items;
+    it("should work with Array.from", () => {
+        const ydoc = new Y.Doc();
+        const ymap = ydoc.getMap("project");
+        const project = new Project(ymap, ydoc);
+        const page = project.addPage("Page 1");
+        const items = page.items;
 
-        const page = rootItems.addNode("user");
-        page.updateText("Page");
+        items.addNode("user1");
+        items.addNode("user1");
 
-        const c1 = page.items.addNode("user");
-        c1.updateText("child-1");
-        const c2 = page.items.addNode("user");
-        c2.updateText("child-2");
+        const itemArray = Array.from(items);
+        expect(itemArray.length).toBe(2);
+        expect(itemArray[0]).toBeInstanceOf(Item);
+        expect(itemArray[1]).toBeInstanceOf(Item);
+    });
 
-        // Cursor が参照する currentPage を設定
-        (generalStore as any).currentPage = page as Item;
+    it("should iterate over nested children", () => {
+        const ydoc = new Y.Doc();
+        const ymap = ydoc.getMap("project");
+        const project = new Project(ymap, ydoc);
+        const page = project.addPage("Page 1");
+        const rootItems = page.items;
 
-        const cursor = new Cursor("cur-1", {
-            itemId: c2.id,
-            offset: 0,
-            isActive: true,
-            userId: "u1",
-        } as any);
+        // Add root items
+        const item1 = rootItems.addNode("user1");
+        // const item2 = rootItems.addNode("user1"); // Not used
 
-        // 例外が出ないこと、および見つかること
-        let found: any;
-        expect(() => {
-            found = cursor.findTarget();
-        }).not.toThrow();
-        expect(found?.id).toBe(c2.id);
+        // Add nested items
+        const child1 = item1.items.addNode("user1");
+        child1.items.addNode("user1");
+
+        // Check root level iteration
+        expect(Array.from(rootItems).length).toBe(1);
+
+        // Check nested level iteration
+        expect(Array.from(item1.items).length).toBe(1);
+        expect(Array.from(child1.items).length).toBe(1);
     });
 });

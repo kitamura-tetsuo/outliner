@@ -1,89 +1,56 @@
-import { SvelteMap } from "svelte/reactivity";
+// Custom keyboard shortcut map
+// Customize key bindings
 
-export class CustomKeySvelteMap<T, V> {
-    // 内部では文字列をキーとする Map を保持
-    private map = new SvelteMap<string, V>();
-    // オリジナルのキーを保持する配列
-    private keys: T[] = [];
-    // シリアライズされたキーとオリジナルキーのマッピング
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal bookkeeping map, not reactive state
-    private keyMap = new Map<string, T>();
+import { getLogger } from "./logger";
 
-    // キーを JSON.stringify して文字列に変換するヘルパー関数
-    private serialize(key: T): string {
-        return JSON.stringify(key);
+const logger = getLogger("CustomKeyMap");
+
+export interface KeyBinding {
+    key: string;
+    ctrl?: boolean;
+    shift?: boolean;
+    alt?: boolean;
+    meta?: boolean;
+    command: string;
+}
+
+export class CustomKeyMap {
+    private bindings: KeyBinding[] = [];
+
+    constructor() {
+        // Default settings
+        this.addBinding({ key: "Enter", command: "newItem" });
+        this.addBinding({ key: "Tab", command: "indent" });
+        this.addBinding({ key: "Tab", shift: true, command: "unindent" });
+        this.addBinding({ key: "ArrowUp", command: "moveUp" });
+        this.addBinding({ key: "ArrowDown", command: "moveDown" });
+        this.addBinding({ key: "ArrowLeft", command: "moveLeft" });
+        this.addBinding({ key: "ArrowRight", command: "moveRight" });
+        this.addBinding({ key: "Backspace", command: "deleteItem" });
+
+        // Add more default shortcuts...
     }
 
-    // 値を設定するメソッド
-    set(key: T, value: V): this {
-        const serializedKey = this.serialize(key);
-        this.map.set(serializedKey, value);
+    addBinding(binding: KeyBinding) {
+        this.bindings.push(binding);
+    }
 
-        // オリジナルのキーを保存
-        if (!this.keyMap.has(serializedKey)) {
-            this.keys.push(key);
-            this.keyMap.set(serializedKey, key);
+    getCommand(event: KeyboardEvent): string | null {
+        // Find matching binding
+        const match = this.bindings.find(b =>
+            b.key.toLowerCase() === event.key.toLowerCase()
+            && !!b.ctrl === (event.ctrlKey || event.metaKey) // Treat Ctrl/Meta (Command) same
+            && !!b.shift === event.shiftKey
+            && !!b.alt === event.altKey
+        );
+
+        if (match) {
+            logger.debug(`Key matched: ${event.key} -> ${match.command}`);
+            return match.command;
         }
 
-        return this;
-    }
-
-    // キーに対応する値を取得するメソッド
-    get(key: T): V | undefined {
-        return this.map.get(this.serialize(key));
-    }
-
-    // 指定したキーが存在するかチェックするメソッド
-    has(key: T): boolean {
-        return this.map.has(this.serialize(key));
-    }
-
-    // 指定したキーを削除するメソッド
-    delete(key: T): boolean {
-        const serializedKey = this.serialize(key);
-        const result = this.map.delete(serializedKey);
-
-        // オリジナルのキーも削除
-        if (result) {
-            const index = this.keys.findIndex(k => this.serialize(k) === serializedKey);
-            if (index !== -1) {
-                this.keys.splice(index, 1);
-            }
-            this.keyMap.delete(serializedKey);
-        }
-
-        return result;
-    }
-
-    // 全ての要素をクリアするメソッド
-    clear(): void {
-        this.map.clear();
-        this.keys = [];
-        this.keyMap.clear();
-    }
-
-    // 内部の Map のサイズを返すゲッター
-    get size(): number {
-        return this.map.size;
-    }
-
-    // インデックスでキーを取得するメソッド
-    getKeyAtIndex(index: number): T | undefined {
-        return this.keys[index];
-    }
-
-    // 全てのキーを配列として取得するメソッド
-    getAllKeys(): T[] {
-        return [...this.keys];
-    }
-
-    // 全ての値を配列として取得するメソッド
-    getAllValues(): V[] {
-        return Array.from(this.map.values());
-    }
-
-    // キーと値のペアを配列として取得するメソッド
-    getEntries(): [T, V][] {
-        return this.keys.map(key => [key, this.get(key)!] as [T, V]);
+        return null;
     }
 }
+
+export const keyMap = new CustomKeyMap();
