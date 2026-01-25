@@ -437,6 +437,17 @@ export class Items implements Iterable<Item> {
         };
     }
 
+    /**
+     * Iterate over items without sorting.
+     * Use this when order doesn't matter for better performance (O(N) vs O(N log N)).
+     */
+    *iterateUnordered(): IterableIterator<Item> {
+        const keys = this.tree.getNodeChildrenFromKey(this.parentKey);
+        for (const key of keys) {
+            yield new Item(this.ydoc, this.tree, key);
+        }
+    }
+
     indexOf(item: Item): number {
         return this.childrenKeys().indexOf(item.key!);
     }

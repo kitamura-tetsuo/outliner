@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 
 /**
- * 本番環境データバックアップスクリプト
+ * Production Data Backup Script
  *
- * 使用方法:
+ * Usage:
  * node scripts/backup-production-data.js
  *
- * このスクリプトは本番環境のデータをバックアップします。
- * データ削除前に必ず実行してください。
+ * This script backs up production data.
+ * Please execute this before deleting data.
  */
 
 const fs = require("fs").promises;
 const path = require("path");
 
-// 色付きログ出力
+// Colored log output
 const colors = {
     red: "\x1b[31m",
     yellow: "\x1b[33m",
@@ -26,13 +26,13 @@ function log(message, color = "reset") {
     console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-// Firebase Admin SDK の初期化（テスト環境では無効化）
+// Initialize Firebase Admin SDK (Disabled in test environment)
 let admin, db, auth, storage;
 
 try {
     admin = require("firebase-admin");
 
-    // サービスアカウントファイルの存在確認
+    // Check for service account file existence
     const serviceAccountPath = path.join(__dirname, "..", "server", "firebase-adminsdk.json");
 
     try {
@@ -47,15 +47,15 @@ try {
         auth = admin.auth();
         storage = admin.storage();
     } catch (serviceError) {
-        log(`サービスアカウントファイルが見つかりません: ${serviceAccountPath}`, "yellow");
-        log("テスト環境ではバックアップをスキップします", "yellow");
+        log(`Service account file not found: ${serviceAccountPath}`, "yellow");
+        log("Skipping backup in test environment", "yellow");
     }
 } catch (adminError) {
-    log("firebase-admin モジュールが見つかりません", "yellow");
-    log("テスト環境ではバックアップをスキップします", "yellow");
+    log("firebase-admin module not found", "yellow");
+    log("Skipping backup in test environment", "yellow");
 }
 
-// バックアップディレクトリの作成
+// Create backup directory
 async function createBackupDirectory() {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const backupDir = path.join(__dirname, "..", "backups", `production-backup-${timestamp}`);
@@ -64,12 +64,12 @@ async function createBackupDirectory() {
     return backupDir;
 }
 
-// Firestoreデータのバックアップ
+// Backup Firestore data
 async function backupFirestore(backupDir) {
-    log("Firestore データをバックアップしています...", "blue");
+    log("Backing up Firestore data...", "blue");
 
     if (!db) {
-        log("Firebase Admin SDK が初期化されていません。テスト環境用のダミーデータを作成します。", "yellow");
+        log("Firebase Admin SDK is not initialized. Creating dummy data for test environment.", "yellow");
         const firestoreBackup = {
             users: [{ id: "test-user-1", data: { name: "Test User", email: "test@example.com" } }],
             containers: [{ id: "test-container-1", data: { title: "Test Container" } }],
@@ -81,7 +81,7 @@ async function backupFirestore(backupDir) {
         const firestorePath = path.join(backupDir, "firestore.json");
         await fs.writeFile(firestorePath, JSON.stringify(firestoreBackup, null, 2));
 
-        log("テスト用 Firestore バックアップ完了", "green");
+        log("Test Firestore backup complete", "green");
         return firestoreBackup;
     }
 
@@ -101,9 +101,9 @@ async function backupFirestore(backupDir) {
             });
 
             firestoreBackup[collectionName] = documents;
-            log(`  - ${collectionName}: ${documents.length}件のドキュメント`, "green");
+            log(`  - ${collectionName}: ${documents.length} documents`, "green");
         } catch (error) {
-            log(`  - ${collectionName}: エラー - ${error.message}`, "red");
+            log(`  - ${collectionName}: Error - ${error.message}`, "red");
             firestoreBackup[collectionName] = { error: error.message };
         }
     }
@@ -111,16 +111,16 @@ async function backupFirestore(backupDir) {
     const firestorePath = path.join(backupDir, "firestore.json");
     await fs.writeFile(firestorePath, JSON.stringify(firestoreBackup, null, 2));
 
-    log(`Firestore バックアップ完了: ${firestorePath}`, "green");
+    log(`Firestore backup complete: ${firestorePath}`, "green");
     return firestoreBackup;
 }
 
-// Firebase Authユーザーのバックアップ
+// Backup Firebase Auth users
 async function backupAuth(backupDir) {
-    log("Firebase Auth ユーザーをバックアップしています...", "blue");
+    log("Backing up Firebase Auth users...", "blue");
 
     if (!auth) {
-        log("Firebase Admin SDK が初期化されていません。テスト環境用のダミーデータを作成します。", "yellow");
+        log("Firebase Admin SDK is not initialized. Creating dummy data for test environment.", "yellow");
         const users = [
             {
                 uid: "test-user-1",
@@ -138,7 +138,7 @@ async function backupAuth(backupDir) {
         const authPath = path.join(backupDir, "auth-users.json");
         await fs.writeFile(authPath, JSON.stringify(users, null, 2));
 
-        log("テスト用 Firebase Auth バックアップ完了", "green");
+        log("Test Firebase Auth backup complete", "green");
         return users;
     }
 
@@ -172,20 +172,20 @@ async function backupAuth(backupDir) {
         const authPath = path.join(backupDir, "auth-users.json");
         await fs.writeFile(authPath, JSON.stringify(users, null, 2));
 
-        log(`Firebase Auth バックアップ完了: ${users.length}人のユーザー`, "green");
+        log(`Firebase Auth backup complete: ${users.length} users`, "green");
         return users;
     } catch (error) {
-        log(`Firebase Auth バックアップエラー: ${error.message}`, "red");
+        log(`Firebase Auth backup error: ${error.message}`, "red");
         return { error: error.message };
     }
 }
 
-// Firebase Storageファイルのリスト作成
+// Create list of Firebase Storage files
 async function backupStorageList(backupDir) {
-    log("Firebase Storage ファイルリストを作成しています...", "blue");
+    log("Creating Firebase Storage file list...", "blue");
 
     if (!storage) {
-        log("Firebase Admin SDK が初期化されていません。テスト環境用のダミーデータを作成します。", "yellow");
+        log("Firebase Admin SDK is not initialized. Creating dummy data for test environment.", "yellow");
         const fileList = [
             {
                 name: "attachments/test-container/test-item/test-file.txt",
@@ -200,7 +200,7 @@ async function backupStorageList(backupDir) {
         const storagePath = path.join(backupDir, "storage-files.json");
         await fs.writeFile(storagePath, JSON.stringify(fileList, null, 2));
 
-        log("テスト用 Firebase Storage ファイルリスト作成完了", "green");
+        log("Test Firebase Storage file list creation complete", "green");
         return fileList;
     }
 
@@ -220,15 +220,15 @@ async function backupStorageList(backupDir) {
         const storagePath = path.join(backupDir, "storage-files.json");
         await fs.writeFile(storagePath, JSON.stringify(fileList, null, 2));
 
-        log(`Firebase Storage ファイルリスト作成完了: ${fileList.length}個のファイル`, "green");
+        log(`Firebase Storage file list creation complete: ${fileList.length} files`, "green");
         return fileList;
     } catch (error) {
-        log(`Firebase Storage バックアップエラー: ${error.message}`, "red");
+        log(`Firebase Storage backup error: ${error.message}`, "red");
         return { error: error.message };
     }
 }
 
-// バックアップサマリーの作成
+// Create backup summary
 async function createBackupSummary(backupDir, firestoreData, authData, storageData) {
     const summary = {
         timestamp: new Date().toISOString(),
@@ -254,47 +254,47 @@ async function createBackupSummary(backupDir, firestoreData, authData, storageDa
     return summary;
 }
 
-// メイン処理
+// Main process
 async function main() {
     log("=".repeat(60), "blue");
-    log("本番環境データバックアップスクリプト", "blue");
+    log("Production Data Backup Script", "blue");
     log("=".repeat(60), "blue");
     log("");
 
     try {
-        // バックアップディレクトリの作成
+        // Create backup directory
         const backupDir = await createBackupDirectory();
-        log(`バックアップディレクトリ: ${backupDir}`, "yellow");
+        log(`Backup directory: ${backupDir}`, "yellow");
         log("");
 
-        // 各データのバックアップ
+        // Backup each data
         const firestoreData = await backupFirestore(backupDir);
         const authData = await backupAuth(backupDir);
         const storageData = await backupStorageList(backupDir);
 
-        // サマリーの作成
+        // Create summary
         const summary = await createBackupSummary(backupDir, firestoreData, authData, storageData);
 
         log("");
-        log("📊 バックアップサマリー:", "blue");
+        log("📊 Backup Summary:", "blue");
         log(
-            `  Firestore: ${summary.firestore.collections}コレクション, ${summary.firestore.totalDocuments}ドキュメント`,
+            `  Firestore: ${summary.firestore.collections} collections, ${summary.firestore.totalDocuments} documents`,
             "green",
         );
-        log(`  Firebase Auth: ${summary.auth.totalUsers}ユーザー`, "green");
-        log(`  Firebase Storage: ${summary.storage.totalFiles}ファイル`, "green");
+        log(`  Firebase Auth: ${summary.auth.totalUsers} users`, "green");
+        log(`  Firebase Storage: ${summary.storage.totalFiles} files`, "green");
         log("");
-        log(`✅ バックアップ完了: ${backupDir}`, "green");
+        log(`✅ Backup complete: ${backupDir}`, "green");
     } catch (error) {
-        log(`❌ バックアップエラー: ${error.message}`, "red");
+        log(`❌ Backup error: ${error.message}`, "red");
         process.exit(1);
     }
 }
 
-// スクリプト実行
+// Execute script
 if (require.main === module) {
     main().catch(error => {
-        log(`❌ 予期しないエラー: ${error.message}`, "red");
+        log(`❌ Unexpected error: ${error.message}`, "red");
         process.exit(1);
     });
 }

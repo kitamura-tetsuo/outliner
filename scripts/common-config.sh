@@ -1,7 +1,7 @@
 #!/bin/bash
 # Common configuration for all scripts
 
-# ポート番号のデフォルト値
+# Default port numbers
 : "${TEST_FLUID_PORT:=7092}"
 : "${TEST_API_PORT:=7091}"
 : "${VITE_PORT:=7090}"

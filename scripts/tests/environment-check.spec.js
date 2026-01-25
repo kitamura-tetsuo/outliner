@@ -1,26 +1,26 @@
 /**
- * 環境チェック機能のテスト
+ * Tests for environment check function
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { checkProductionHealth, detectEmulatorEnvironment } from "../check-production-environment.js";
 
-describe("環境チェック機能", () => {
+describe("Environment Check Function", () => {
     let originalEnv;
 
     beforeAll(() => {
-        // 環境変数を保存
+        // Save environment variables
         originalEnv = { ...process.env };
     });
 
     afterAll(() => {
-        // 環境変数を復元
+        // Restore environment variables
         process.env = originalEnv;
     });
 
-    describe("エミュレーター環境検出", () => {
-        it("すべてのエミュレーター変数が未設定の場合、エミュレーター環境ではないと判定する", () => {
-            // エミュレーター変数をクリア
+    describe("Emulator Environment Detection", () => {
+        it("determines not emulator environment if all emulator variables are unset", () => {
+            // Clear emulator variables
             delete process.env.FUNCTIONS_EMULATOR;
             delete process.env.FIRESTORE_EMULATOR_HOST;
             delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
@@ -35,7 +35,7 @@ describe("環境チェック機能", () => {
             expect(result.emulatorStatus.FIREBASE_STORAGE_EMULATOR_HOST.exists).toBe(false);
         });
 
-        it("FUNCTIONS_EMULATORが設定されている場合、エミュレーター環境と判定する", () => {
+        it("determines emulator environment if FUNCTIONS_EMULATOR is set", () => {
             process.env.FUNCTIONS_EMULATOR = "true";
 
             const result = detectEmulatorEnvironment();
@@ -45,7 +45,7 @@ describe("環境チェック機能", () => {
             expect(result.emulatorStatus.FUNCTIONS_EMULATOR.value).toBe("true");
         });
 
-        it("FIRESTORE_EMULATOR_HOSTが設定されている場合、エミュレーター環境と判定する", () => {
+        it("determines emulator environment if FIRESTORE_EMULATOR_HOST is set", () => {
             delete process.env.FUNCTIONS_EMULATOR;
             process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
 
@@ -56,7 +56,7 @@ describe("環境チェック機能", () => {
             expect(result.emulatorStatus.FIRESTORE_EMULATOR_HOST.value).toBe("localhost:58080");
         });
 
-        it("複数のエミュレーター変数が設定されている場合、正しく検出する", () => {
+        it("correctly detects if multiple emulator variables are set", () => {
             process.env.FUNCTIONS_EMULATOR = "true";
             process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
             process.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:59099";
@@ -71,8 +71,8 @@ describe("環境チェック機能", () => {
         });
     });
 
-    describe("環境変数チェック", () => {
-        it("NODE_ENVが正しく読み取られる", () => {
+    describe("Environment Variable Check", () => {
+        it("correctly reads NODE_ENV", () => {
             process.env.NODE_ENV = "test";
             expect(process.env.NODE_ENV).toBe("test");
 
@@ -83,7 +83,7 @@ describe("環境チェック機能", () => {
             expect(process.env.NODE_ENV).toBe("development");
         });
 
-        it("FIREBASE_PROJECT_IDが正しく読み取られる", () => {
+        it("correctly reads FIREBASE_PROJECT_ID", () => {
             process.env.FIREBASE_PROJECT_ID = "test-project-id";
             expect(process.env.FIREBASE_PROJECT_ID).toBe("test-project-id");
 
@@ -92,9 +92,9 @@ describe("環境チェック機能", () => {
         });
     });
 
-    describe("本番環境判定", () => {
-        it("本番環境の条件を正しく判定する", () => {
-            // 本番環境の設定
+    describe("Production Environment Determination", () => {
+        it("correctly determines production environment conditions", () => {
+            // Production environment settings
             process.env.NODE_ENV = "production";
             delete process.env.FUNCTIONS_EMULATOR;
             delete process.env.FIRESTORE_EMULATOR_HOST;
@@ -107,8 +107,8 @@ describe("環境チェック機能", () => {
             expect(isProduction).toBe(true);
         });
 
-        it("開発環境の条件を正しく判定する", () => {
-            // 開発環境の設定
+        it("correctly determines development environment conditions", () => {
+            // Development environment settings
             process.env.NODE_ENV = "development";
             process.env.FUNCTIONS_EMULATOR = "true";
 
@@ -118,8 +118,8 @@ describe("環境チェック機能", () => {
             expect(isProduction).toBe(false);
         });
 
-        it("テスト環境の条件を正しく判定する", () => {
-            // テスト環境の設定
+        it("correctly determines test environment conditions", () => {
+            // Test environment settings
             process.env.NODE_ENV = "test";
             process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
 
@@ -130,28 +130,28 @@ describe("環境チェック機能", () => {
         });
     });
 
-    describe("本番環境ヘルスチェック", () => {
-        it("checkProductionHealth関数が存在する", () => {
+    describe("Production Environment Health Check", () => {
+        it("checkProductionHealth function exists", () => {
             expect(typeof checkProductionHealth).toBe("function");
         });
 
-        it("checkProductionHealth関数がPromiseを返す", () => {
+        it("checkProductionHealth function returns a Promise", () => {
             const result = checkProductionHealth();
             expect(result).toBeInstanceOf(Promise);
 
-            // テスト環境では実際のリクエストを送信せずにPromiseをキャンセル
+            // In test environment, cancel Promise without sending actual request
             result.catch(() => {
-                // エラーは期待される（テスト環境のため）
+                // Error is expected (because of test environment)
             });
         });
     });
 
-    describe("エラーハンドリング", () => {
-        it("環境変数が未定義の場合、適切にハンドリングする", () => {
+    describe("Error Handling", () => {
+        it("handles appropriately if environment variables are undefined", () => {
             delete process.env.NODE_ENV;
             delete process.env.FIREBASE_PROJECT_ID;
 
-            // 環境変数が未定義でもエラーが発生しないことを確認
+            // Confirm no error occurs even if environment variables are undefined
             expect(() => {
                 const emulatorInfo = detectEmulatorEnvironment();
                 expect(emulatorInfo).toHaveProperty("hasEmulator");
@@ -159,7 +159,7 @@ describe("環境チェック機能", () => {
             }).not.toThrow();
         });
 
-        it("不正な環境変数値でもエラーが発生しない", () => {
+        it("does not error on invalid environment variable values", () => {
             process.env.NODE_ENV = "";
             process.env.FIREBASE_PROJECT_ID = "";
             process.env.FUNCTIONS_EMULATOR = "";
@@ -171,8 +171,8 @@ describe("環境チェック機能", () => {
         });
     });
 
-    describe("戻り値の形式", () => {
-        it("detectEmulatorEnvironment関数が正しい形式のオブジェクトを返す", () => {
+    describe("Return Value Format", () => {
+        it("detectEmulatorEnvironment function returns object in correct format", () => {
             const result = detectEmulatorEnvironment();
 
             expect(result).toHaveProperty("hasEmulator");
@@ -180,7 +180,7 @@ describe("環境チェック機能", () => {
             expect(typeof result.hasEmulator).toBe("boolean");
             expect(typeof result.emulatorStatus).toBe("object");
 
-            // emulatorStatusの各プロパティをチェック
+            // Check each property of emulatorStatus
             const expectedKeys = [
                 "FUNCTIONS_EMULATOR",
                 "FIRESTORE_EMULATOR_HOST",
