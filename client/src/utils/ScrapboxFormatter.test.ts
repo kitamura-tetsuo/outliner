@@ -103,7 +103,7 @@ describe("ScrapboxFormatter", () => {
                 const input = "[test-page]";
                 const result = ScrapboxFormatter.formatToHtml(input);
 
-                // Verify that HTML for internal links is generated correctly
+                // 内部リンクのHTMLが正しく生成されることを確認
                 // Test environment initializes project title as "Untitled Project" via store.svelte.ts
                 expect(result).toMatch(
                     /<a href="\/Untitled%20Project\/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page<\/a>/,
@@ -126,7 +126,7 @@ describe("ScrapboxFormatter", () => {
                 const input = "[/project-name/page-name]";
                 const result = ScrapboxFormatter.formatToHtml(input);
 
-                // Verify that HTML for project internal links is generated correctly
+                // プロジェクト内部リンクのHTMLが正しく生成されることを確認
                 expect(result).toMatch(
                     /<a href="\/project-name\/page-name"[^>]*class="[^"]*internal-link[^"]*project-link[^"]*"[^>]*>project-name\/page-name<\/a>/,
                 );
@@ -150,7 +150,7 @@ describe("ScrapboxFormatter", () => {
                 const input = "This is [test-page] and [/project/other-page]";
                 const result = ScrapboxFormatter.formatToHtml(input);
 
-                // Verify that both links are generated correctly
+                // 両方のリンクが正しく生成されることを確認
                 expect(result).toMatch(
                     /<a href="\/Untitled%20Project\/test-page"[^>]*class="[^"]*internal-link[^"]*"[^>]*>test-page<\/a>/,
                 );
@@ -209,8 +209,8 @@ describe("ScrapboxFormatter", () => {
                 console.log("Bold with internal link result:", result);
 
                 expect(result).toContain("<strong>");
-                // When there is an internal link inside bold text, use more flexible matching
-                // as the HTML structure becomes complex
+                // 太字の中に内部リンクがある場合、HTMLの構造が複雑になるため、
+                // より柔軟なマッチングを使用
                 expect(result).toContain('href="/Untitled%20Project/internal-link');
                 expect(result).toContain('class="internal-link');
                 expect(result).toContain(">internal-link");
@@ -220,9 +220,9 @@ describe("ScrapboxFormatter", () => {
                 const input = "[/ italic] and [/project/page]";
                 const result = ScrapboxFormatter.formatToHtml(input);
 
-                // Processed as italic (with space)
+                // 斜体として処理される（スペースあり）
                 expect(result).toContain("<em>italic</em>");
-                // Processed as project internal link (no space)
+                // プロジェクト内部リンクとして処理される（スペースなし）
                 expect(result).toMatch(
                     /<a href="\/project\/page"[^>]*class="[^"]*internal-link[^"]*project-link[^"]*"[^>]*>project\/page<\/a>/,
                 );
@@ -241,7 +241,7 @@ describe("ScrapboxFormatter", () => {
 
                 console.log("Bold with italic result:", result);
 
-                // Verify that combination of bold and italic is processed correctly
+                // 太字と斜体の組み合わせが正しく処理されることを確認
                 expect(result).toContain("<strong>");
                 expect(result).toContain("太字と");
                 expect(result).toContain("<em>");
@@ -249,7 +249,7 @@ describe("ScrapboxFormatter", () => {
                 expect(result).toContain("</em>");
                 expect(result).toContain("の組み合わせ");
                 expect(result).toContain("</strong>");
-                // Verify that it is not recognized as an internal link
+                // 内部リンクとして認識されていないことを確認
                 expect(result).not.toContain('class="internal-link');
             });
         });

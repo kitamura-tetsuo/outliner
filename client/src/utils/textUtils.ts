@@ -1,10 +1,10 @@
 // Utility functions for text measuring and cursor positioning
 
-// getClickPosition: Receives Text Element, MouseEvent, and content, and returns the offset
+// getClickPosition: Text Element と MouseEvent, content を受け取り、オフセットを返す
 export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content: string): number {
     const x = event.clientX;
     const y = event.clientY;
-    // Try Caret API
+    // Caret API を試す
     if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
         let range: Range | null = null;
         if (document.caretRangeFromPoint) {
@@ -21,7 +21,7 @@ export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content
             return Math.min(Math.max(0, range.startOffset), content.length);
         }
     }
-    // Fallback: measure width using span
+    // フォールバック: span を使って幅測定
     const rect = textEl.getBoundingClientRect();
     const relX = x - rect.left;
     const span = document.createElement("span");
@@ -49,7 +49,7 @@ export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content
     return best;
 }
 
-// pixelPositionToTextPosition: Receives screen X coordinate and display element, and returns text offset
+// pixelPositionToTextPosition: 画面X座標と表示要素を受け取り、テキストオフセットを返す
 export function pixelPositionToTextPosition(screenX: number, displayRef: HTMLElement): number {
     const textElement = displayRef.querySelector(".item-text") as HTMLElement;
     if (!textElement) return 0;

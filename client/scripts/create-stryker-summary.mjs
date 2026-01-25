@@ -83,7 +83,7 @@ function renderStatusTable(statusMap) {
 
 function renderSurvivorList(survivors, limit = 5) {
     if (survivors.length === 0) {
-        return "All mutations were detected.";
+        return "すべてのミューテーションが検出されました。";
     }
 
     const top = survivors.slice(0, limit);
@@ -96,7 +96,7 @@ function renderSurvivorList(survivors, limit = 5) {
     });
 
     if (survivors.length > limit) {
-        lines.push(`- ...and ${survivors.length - limit} more`);
+        lines.push(`- ...他 ${survivors.length - limit} 件`);
     }
 
     return lines.join("\n");
@@ -111,14 +111,14 @@ async function main() {
     const summary = collectMutants(report);
     const mdLines = [
         "### Mutation Score",
-        `- Score: ${summary.score.toFixed(2)}%`,
-        `- Total mutations: ${summary.total}`,
-        `- Ignored: ${summary.ignored}`,
+        `- スコア: ${summary.score.toFixed(2)}%`,
+        `- 総ミューテーション数: ${summary.total}`,
+        `- 対象外 (Ignored): ${summary.ignored}`,
         "",
-        "### Breakdown by Status",
+        "### ステータス別内訳",
         renderStatusTable(summary.statuses),
         "",
-        "### Surviving Mutations (Top)",
+        "### 生存ミューテーション (上位)",
         renderSurvivorList(summary.survivors),
     ];
 

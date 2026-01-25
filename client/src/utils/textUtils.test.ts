@@ -1,4 +1,4 @@
-// @ts-expect-error: jsdom does not have type definitions
+// @ts-expect-error: jsdom に型定義がありません
 import { JSDOM } from "jsdom";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getClickPosition, pixelPositionToTextPosition } from "./textUtils";
@@ -7,20 +7,20 @@ let originalGetBoundingClientRect: any;
 let originalGetComputedStyle: any;
 
 beforeAll(() => {
-    // Set DOM globally
+    // グローバルに DOM をセット
     const dom = new JSDOM("<!DOCTYPE html><body></body>");
     (global as any).window = dom.window;
     (global as any).document = dom.window.document;
     (global as any).Element = dom.window.Element;
     (global as any).HTMLElement = dom.window.HTMLElement;
     (global as any).Node = dom.window.Node;
-    // Mock getBoundingClientRect: textContent length * 10px
+    // getBoundingClientRect をモック: textContent 長さ * 10px
     originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
     Element.prototype.getBoundingClientRect = function() {
         const width = (this.textContent?.length || 0) * 10;
         return { width, left: 0, top: 0, right: width, bottom: 0, height: 0, x: 0, y: 0, toJSON() {} };
     };
-    // Mock necessary properties of getComputedStyle
+    // getComputedStyle の必要プロパティをモック
     originalGetComputedStyle = window.getComputedStyle;
     window.getComputedStyle = () => ({
         fontFamily: "",
@@ -31,7 +31,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-    // Restore mocks
+    // モック解除
     Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
     window.getComputedStyle = originalGetComputedStyle;
 });
@@ -43,7 +43,7 @@ describe("getClickPosition", () => {
         div.textContent = content;
         document.body.appendChild(div);
 
-        // Click x=25 => 10*2=20 and 10*3=30 are closest (difference 5), returns 2 which is found first
+        // クリック x=25 => 10*2=20 と 10*3=30 が最接近 (差5)、先に見つかる2が返る
         const offset = getClickPosition(div, { clientX: 25, clientY: 0 } as MouseEvent, content);
         expect(offset).toBe(2);
 
@@ -61,7 +61,7 @@ describe("pixelPositionToTextPosition", () => {
         container.appendChild(span);
         document.body.appendChild(container);
 
-        // screenX=55 => 10*5=50 and 10*6=60, difference is minimum 5 => 5
+        // screenX=55 => 10*5=50 と 10*6=60 の差が最小 5 => 5
         const offset = pixelPositionToTextPosition(55, container);
         expect(offset).toBe(5);
 

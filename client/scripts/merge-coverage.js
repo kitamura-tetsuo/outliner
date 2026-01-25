@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 /**
- * Script to merge coverage reports
+ * カバレッジレポートを統合するスクリプト
  *
- * Merges coverage for unit/integration/e2e tests and
- * generates a unified report.
+ * unit/integration/e2eテストのカバレッジを統合し、
+ * 統一されたレポートを生成します。
  *
- * Usage:
+ * 使用方法:
  *   node scripts/merge-coverage.js
  *
- * Prerequisites:
- *   - unit/integration/e2e tests must be executed
- *   - Coverage data for each test must be generated
+ * 前提条件:
+ *   - unit/integration/e2eテストが実行済みであること
+ *   - 各テストのカバレッジデータが生成されていること
  */
 
 import fs from "fs";
@@ -27,7 +27,7 @@ const libCoverage = require("istanbul-lib-coverage");
 const libReport = require("istanbul-lib-report");
 const reports = require("istanbul-reports");
 
-// Path to coverage directory
+// カバレッジディレクトリのパス
 const workspaceDir = path.resolve(__dirname, "../..");
 const coverageDir = path.join(workspaceDir, "coverage");
 const unitAndIntegrationCoverageFile = path.join(coverageDir, "unit_and_integration", "coverage-final.json");
@@ -35,19 +35,19 @@ const e2eCoverageFile = path.join(coverageDir, "e2e", "coverage-final.json");
 const mergedCoverageFile = path.join(coverageDir, "merged", "coverage-final.json");
 const mergedReportDir = path.join(coverageDir, "merged");
 
-console.log("Starting coverage report merge...");
+console.log("カバレッジレポートの統合を開始します...");
 
-// Create coverage map
+// カバレッジマップを作成
 const coverageMap = libCoverage.createCoverageMap();
 
-// Read and merge each coverage file
+// 各カバレッジファイルを読み込んで統合
 let filesFound = 0;
 const coverageSources = [];
 
-// Add Unit/Integration test coverage
-// Vitest merges coverage for all projects into a single file
+// Unit/Integrationテストのカバレッジを追加
+// Vitestは全プロジェクトのカバレッジを1つのファイルに統合します
 if (fs.existsSync(unitAndIntegrationCoverageFile)) {
-    console.log("Loading Unit/Integration test coverage...");
+    console.log("Unit/Integrationテストのカバレッジを読み込んでいます...");
     const unitAndIntegrationCoverage = JSON.parse(fs.readFileSync(unitAndIntegrationCoverageFile, "utf8"));
     const files = Object.keys(unitAndIntegrationCoverage);
     const jsFiles = files.filter((f) => !f.includes(".css"));
@@ -61,17 +61,17 @@ if (fs.existsSync(unitAndIntegrationCoverageFile)) {
         jsFiles: jsFiles.length,
         cssFiles: cssFiles.length,
     });
-    console.log(`  ✓ Added coverage for ${files.length} files`);
-    console.log(`    - JavaScript: ${jsFiles.length} entries`);
-    console.log(`    - CSS: ${cssFiles.length} entries`);
+    console.log(`  ✓ ${files.length} ファイルのカバレッジを追加しました`);
+    console.log(`    - JavaScript: ${jsFiles.length} 個`);
+    console.log(`    - CSS: ${cssFiles.length} 個`);
 } else {
-    console.log("  ⚠ Unit/Integration test coverage not found");
-    console.log(`     Searched path: ${unitAndIntegrationCoverageFile}`);
+    console.log("  ⚠ Unit/Integrationテストのカバレッジが見つかりません");
+    console.log(`     探したパス: ${unitAndIntegrationCoverageFile}`);
 }
 
-// Add E2E test coverage
+// E2Eテストのカバレッジを追加
 if (fs.existsSync(e2eCoverageFile)) {
-    console.log("Loading E2E test coverage...");
+    console.log("E2Eテストのカバレッジを読み込んでいます...");
     const e2eCoverage = JSON.parse(fs.readFileSync(e2eCoverageFile, "utf8"));
     const files = Object.keys(e2eCoverage);
     const jsFiles = files.filter((f) => !f.includes(".css"));
@@ -85,85 +85,85 @@ if (fs.existsSync(e2eCoverageFile)) {
         jsFiles: jsFiles.length,
         cssFiles: cssFiles.length,
     });
-    console.log(`  ✓ Added coverage for ${files.length} files`);
-    console.log(`    - JavaScript: ${jsFiles.length} entries`);
-    console.log(`    - CSS: ${cssFiles.length} entries`);
+    console.log(`  ✓ ${files.length} ファイルのカバレッジを追加しました`);
+    console.log(`    - JavaScript: ${jsFiles.length} 個`);
+    console.log(`    - CSS: ${cssFiles.length} 個`);
 
-    // Verify E2E coverage: Check if JavaScript files are included
+    // E2Eカバレッジの検証: JavaScriptファイルが含まれているか確認
     if (jsFiles.length === 0 && cssFiles.length > 0) {
-        console.error("\n❌ Error: E2E coverage does not contain JavaScript files");
-        console.error("   Only CSS files are included.");
-        console.error("   This may be an issue during E2E coverage generation.");
-        console.error("\n   Please check the following:");
-        console.error("   1. entryFilter setting in scripts/generate-e2e-coverage.js");
-        console.error("   2. sourceFilter setting in scripts/generate-e2e-coverage.js");
-        console.error("   3. monocart-coverage-reports version");
+        console.error("\n❌ エラー: E2EカバレッジにJavaScriptファイルが含まれていません");
+        console.error("   CSSファイルのみが含まれています。");
+        console.error("   これは E2E カバレッジ生成時に問題が発生した可能性があります。");
+        console.error("\n   以下を確認してください:");
+        console.error("   1. scripts/generate-e2e-coverage.js の entryFilter 設定");
+        console.error("   2. scripts/generate-e2e-coverage.js の sourceFilter 設定");
+        console.error("   3. monocart-coverage-reports のバージョン");
         process.exit(1);
     }
 } else {
-    console.log("  ⚠ E2E test coverage not found");
-    console.log(`     Searched path: ${e2eCoverageFile}`);
+    console.log("  ⚠ E2Eテストのカバレッジが見つかりません");
+    console.log(`     探したパス: ${e2eCoverageFile}`);
 }
 
 if (filesFound === 0) {
-    console.error("\nError: Coverage files not found");
-    console.error("First, please run tests with the following commands:");
+    console.error("\nエラー: カバレッジファイルが見つかりませんでした");
+    console.error("まず、以下のコマンドでテストを実行してください:");
     console.error("  npm run test:unit");
     console.error("  npm run test:integration");
     console.error("  COVERAGE=true npm run test:e2e");
     process.exit(1);
 }
 
-// Save merged coverage
-console.log("\nSaving merged coverage...");
+// 統合されたカバレッジを保存
+console.log("\n統合されたカバレッジを保存しています...");
 fs.mkdirSync(mergedReportDir, { recursive: true });
 fs.writeFileSync(mergedCoverageFile, JSON.stringify(coverageMap.toJSON(), null, 2));
-console.log(`  ✓ Saved to ${mergedCoverageFile}`);
+console.log(`  ✓ ${mergedCoverageFile} に保存しました`);
 
-// Generate reports
-console.log("\nGenerating reports...");
+// レポートを生成
+console.log("\nレポートを生成しています...");
 const context = libReport.createContext({
     dir: mergedReportDir,
     coverageMap: coverageMap,
 });
 
-// HTML Report
-console.log("  - HTML Report");
+// HTML レポート
+console.log("  - HTML レポート");
 const htmlReport = reports.create("html", {});
 htmlReport.execute(context);
 
-// Text Report (Console output)
-console.log("  - Text Report");
+// テキスト レポート (コンソール出力)
+console.log("  - テキスト レポート");
 const textReport = reports.create("text", {});
 textReport.execute(context);
 
-// LCOV Report (For CI/CD)
-console.log("  - LCOV Report");
+// LCOV レポート (CI/CD用)
+console.log("  - LCOV レポート");
 const lcovReport = reports.create("lcov", {});
 lcovReport.execute(context);
 
-// JSON Report
-console.log("  - JSON Report");
+// JSON レポート
+console.log("  - JSON レポート");
 const jsonReport = reports.create("json", {});
 jsonReport.execute(context);
 
-console.log("\n✓ Coverage report merge completed");
-console.log(`\nReport location: ${mergedReportDir}/index.html`);
+console.log("\n✓ カバレッジレポートの統合が完了しました");
+console.log(`\nレポートの場所: ${mergedReportDir}/index.html`);
 
-// Display coverage source summary
+// カバレッジソースのサマリーを表示
 if (coverageSources.length > 0) {
-    console.log("\nCoverage sources:");
+    console.log("\nカバレッジソース:");
     for (const source of coverageSources) {
         console.log(`  ${source.name}:`);
-        console.log(`    - Total files: ${source.totalFiles}`);
-        console.log(`    - JavaScript: ${source.jsFiles} entries`);
-        console.log(`    - CSS: ${source.cssFiles} entries`);
+        console.log(`    - 総ファイル数: ${source.totalFiles}`);
+        console.log(`    - JavaScript: ${source.jsFiles} 個`);
+        console.log(`    - CSS: ${source.cssFiles} 個`);
     }
 }
 
-console.log("\nCoverage Summary:");
+console.log("\nカバレッジサマリー:");
 
-// Display summary
+// サマリーを表示
 const summary = coverageMap.getCoverageSummary();
 console.log(
     `  Statements   : ${

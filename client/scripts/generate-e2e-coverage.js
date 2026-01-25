@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Script to generate E2E test coverage reports
+ * E2Eテストのカバレッジレポートを生成するスクリプト
  *
- * Usage:
+ * 使用方法:
  *   node scripts/generate-e2e-coverage.js
  *
- * Prerequisites:
- *   - E2E tests must be executed with COVERAGE=true
- *   - Coverage data must exist in coverage/e2e/raw/
+ * 前提条件:
+ *   - E2Eテストが COVERAGE=true で実行済みであること
+ *   - coverage/e2e/raw/ にカバレッジデータが存在すること
  */
 
 import fs from "fs";
@@ -23,13 +23,13 @@ const workspaceDir = path.resolve(__dirname, "../..");
 const rawCoverageDir = path.join(workspaceDir, "coverage", "e2e", "raw");
 const e2eCoverageDir = path.join(workspaceDir, "coverage", "e2e");
 
-console.log("Generating E2E coverage report...");
+console.log("E2Eカバレッジレポートを生成しています...");
 
-// Check if coverage data exists
+// カバレッジデータが存在するか確認
 if (!fs.existsSync(rawCoverageDir)) {
-    console.error("Error: Coverage data not found");
-    console.error(`Searched path: ${rawCoverageDir}`);
-    console.error("\nFirst, please run E2E tests with the following command:");
+    console.error("エラー: カバレッジデータが見つかりません");
+    console.error(`探したパス: ${rawCoverageDir}`);
+    console.error("\nまず、以下のコマンドでE2Eテストを実行してください:");
     console.error("  COVERAGE=true npm run test:e2e");
     process.exit(1);
 }
@@ -37,36 +37,36 @@ if (!fs.existsSync(rawCoverageDir)) {
 const coverageFiles = fs.readdirSync(rawCoverageDir).filter((f) => f.endsWith(".json"));
 
 if (coverageFiles.length === 0) {
-    console.error("Error: Coverage data not found");
-    console.error(`Searched path: ${rawCoverageDir}`);
+    console.error("エラー: カバレッジデータが見つかりません");
+    console.error(`探したパス: ${rawCoverageDir}`);
     process.exit(1);
 }
 
-console.log(`  ✓ Found ${coverageFiles.length} coverage files`);
+console.log(`  ✓ ${coverageFiles.length} 個のカバレッジファイルを見つけました`);
 
-// Prepare coverage report (output destination, etc.)
+// カバレッジレポート（出力先など）の準備
 const coverageReport = new CoverageReport({
     name: "E2E Coverage Report",
     outputDir: e2eCoverageDir,
-    // Output only JSON (Istanbul map) and console-summary to save memory
+    // メモリを抑えるため JSON(Istanbul map) と console-summary のみを出力
     reports: ["json", "console-summary"],
-    // sourceFilter: Filter source files extracted from source maps
-    // NOTE: entryFilter is not used. V8 coverage entry filtering is performed manually
-    //       before add(). This avoids the issue where JavaScript files are excluded
-    //       by the internal processing of monocart-coverage-reports.
+    // sourceFilter: ソースマップから抽出されたソースファイルをフィルタリング
+    // NOTE: entryFilterは使用しない。V8カバレッジエントリのフィルタリングは
+    //       add()前に手動で行う。これにより、monocart-coverage-reportsの
+    //       内部処理でJavaScriptファイルが除外される問題を回避する。
     sourceFilter: (sourcePath) => {
-        // Exclude node_modules/
-        // NOTE: sourcePath can be just the filename or the full path
-        //       If it is just the filename, include all (already filtered by entryFilter)
+        // node_modules/を除外
+        // NOTE: sourcePathはファイル名のみの場合とフルパスの場合がある
+        //       ファイル名のみの場合は、全て含める（entryFilterで既にフィルタリング済み）
         if (sourcePath.includes("/node_modules/") || sourcePath.includes("node_modules/")) {
             return false;
         }
-        // Include all (already filtered to under src/ by entryFilter)
+        // 全て含める（entryFilterで既にsrc/配下のみに絞り込み済み）
         return true;
     },
 });
 
-// Sequentially add and release each file to avoid large memory consumption
+// 大量メモリ消費を避けるため、ファイルごとに逐次 add して解放する
 let totalEntries = 0;
 let jsEntries = 0;
 let cssEntries = 0;
@@ -77,28 +77,29 @@ for (const file of coverageFiles) {
     try {
         data = JSON.parse(text);
     } catch (e) {
-        console.warn(`[MCR] Skipping due to JSON parse failure: ${filePath}`);
+        console.warn(`[MCR] JSON のパースに失敗したためスキップします: ${filePath}`);
         console.warn(`${e}`);
         continue;
     }
 
-    // Expected format: V8(Array) or Istanbul(Object). Skip others
+    // 期待フォーマット: V8(Array) または Istanbul(Object)。それ以外はスキップ
     if (Array.isArray(data)) {
-        // Manually filter V8 coverage data
-        // NOTE: Using monocart-coverage-reports entryFilter has an issue where
-        //       JavaScript files are excluded, so perform filtering manually before add()
+        // V8カバレッジデータを手動でフィルタリング
+        // NOTE: monocart-coverage-reportsのentryFilterを使用すると、
+        //       JavaScriptファイルが除外される問題があるため、
+        //       add()前に手動でフィルタリングを行う
         const filtered = data.filter((entry) => {
             const url = entry?.url || "";
-            // Target only files under src/ (exclude node_modules/)
-            // Exclude empty URLs (anonymous scripts)
+            // src/配下のファイルのみを対象とする（node_modules/を除外）
+            // 空のURLは除外（匿名スクリプト）
             if (!url) return false;
             if (url.includes("/node_modules/")) return false;
-            // Include files under src/ or CSS files
+            // src/配下のファイルまたはCSSファイルを含める
             return url.includes("/src/");
         });
 
         totalEntries += data.length;
-        // Count JavaScript and CSS entries
+        // JavaScriptとCSSのエントリ数をカウント
         for (const entry of filtered) {
             const url = entry?.url || "";
             if (url.includes(".css")) {
@@ -112,22 +113,22 @@ for (const file of coverageFiles) {
             await coverageReport.add(filtered);
         }
     } else if (data && typeof data === "object") {
-        // Add as is for Istanbul format (Object)
+        // Istanbul 形式（オブジェクト）の場合はそのまま追加
         await coverageReport.add(data);
-        // Do not sum up as the count is unknown
+        // 件数は不明なので合算しない
     } else {
         console.warn(`[MCR] Skip unsupported coverage format: ${filePath}`);
     }
 }
 
-console.log(`  ✓ Loaded ${totalEntries} coverage entries`);
-console.log(`    - JavaScript: ${jsEntries} entries`);
-console.log(`    - CSS: ${cssEntries} entries`);
+console.log(`  ✓ ${totalEntries} 個のカバレッジエントリを読み込みました`);
+console.log(`    - JavaScript: ${jsEntries} 個`);
+console.log(`    - CSS: ${cssEntries} 個`);
 
-// Prepare for fixing function execution counts before generate() to keep V8 coverage data
-// Note: Since the raw directory might be deleted after generate(),
-//       extract function execution counts from V8 coverage data in advance
-console.log("\nExtracting function execution counts from V8 coverage...");
+// V8カバレッジデータを保持するため、generate()の前に関数実行回数の修正準備を行う
+// 注意: generate()後にrawディレクトリが削除される可能性があるため、
+//       V8カバレッジデータから関数実行回数を抽出しておく
+console.log("\nV8カバレッジから関数実行回数を抽出しています...");
 const functionCounts = new Map(); // Map<fileName, Map<functionName, count>>
 
 function normalizeUrl(url) {
@@ -178,68 +179,68 @@ for (const file of coverageFiles) {
     }
 }
 
-console.log(`  ✓ Extracted function execution counts from ${functionCounts.size} files`);
+console.log(`  ✓ ${functionCounts.size} 個のファイルから関数実行回数を抽出しました`);
 
 const istanbulJson = path.join(e2eCoverageDir, "coverage-final.json");
 
 try {
     await coverageReport.generate();
-    console.log("\n✓ E2E coverage report generation completed");
+    console.log("\n✓ E2Eカバレッジレポートの生成が完了しました");
     if (fs.existsSync(istanbulJson)) {
         console.log(`\nIstanbul JSON: ${istanbulJson}`);
 
-        // Verify coverage conversion: Check if JavaScript files are included
-        console.log("\nVerifying coverage conversion...");
+        // カバレッジ変換の検証: JavaScriptファイルが含まれているか確認
+        console.log("\nカバレッジ変換の検証を実行しています...");
         const coverageData = JSON.parse(fs.readFileSync(istanbulJson, "utf8"));
         const files = Object.keys(coverageData);
         const jsFiles = files.filter((f) => !f.includes(".css"));
         const cssFiles = files.filter((f) => f.includes(".css"));
 
-        console.log(`  - Total files: ${files.length}`);
-        console.log(`  - JavaScript files: ${jsFiles.length}`);
-        console.log(`  - CSS files: ${cssFiles.length}`);
+        console.log(`  - 総ファイル数: ${files.length}`);
+        console.log(`  - JavaScriptファイル: ${jsFiles.length}`);
+        console.log(`  - CSSファイル: ${cssFiles.length}`);
 
-        // Error if JavaScript entries existed but 0 JavaScript files
+        // JavaScriptエントリが存在したのにJavaScriptファイルが0の場合はエラー
         if (jsEntries > 0 && jsFiles.length === 0) {
-            console.error("\n❌ Error: JavaScript file coverage lost during conversion");
-            console.error(`   ${jsEntries} JavaScript entries existed in raw coverage,`);
-            console.error("   but converted coverage contains no JavaScript files.");
-            console.error("\n   This may be an issue with monocart-coverage-reports configuration.");
-            console.error("   Check entryFilter and sourceFilter settings.");
+            console.error("\n❌ エラー: JavaScriptファイルのカバレッジが変換時に失われました");
+            console.error(`   rawカバレッジには ${jsEntries} 個のJavaScriptエントリが存在しましたが、`);
+            console.error("   変換後のカバレッジにはJavaScriptファイルが含まれていません。");
+            console.error("\n   これは monocart-coverage-reports の設定に問題がある可能性があります。");
+            console.error("   entryFilter と sourceFilter の設定を確認してください。");
             process.exit(1);
         }
 
-        // Warning: If JavaScript files are few
+        // 警告: JavaScriptファイルが少ない場合
         if (jsEntries > 0 && jsFiles.length < jsEntries * 0.1) {
-            console.warn("\n⚠️  Warning: Fewer JavaScript files than expected");
-            console.warn(`   Raw coverage: ${jsEntries} JavaScript entries`);
-            console.warn(`   Converted: ${jsFiles.length} JavaScript files`);
-            console.warn("   Some files may have been excluded.");
+            console.warn("\n⚠️  警告: JavaScriptファイルの数が予想より少ないです");
+            console.warn(`   rawカバレッジ: ${jsEntries} 個のJavaScriptエントリ`);
+            console.warn(`   変換後: ${jsFiles.length} 個のJavaScriptファイル`);
+            console.warn("   一部のファイルが除外されている可能性があります。");
         }
 
-        console.log("\n✓ Coverage conversion verification completed");
+        console.log("\n✓ カバレッジ変換の検証が完了しました");
     } else {
-        // In case MCR json output filename differs, search for top-level .json and save as coverage-final.json
+        // MCR の json 出力ファイル名が異なる場合に備えて、トップレベルの .json を探索して coverage-final.json として保存
         const candidates = fs
             .readdirSync(e2eCoverageDir)
             .filter((f) => f.endsWith(".json") && f !== "coverage-final.json");
         if (candidates.length > 0) {
             const src = path.join(e2eCoverageDir, candidates[0]);
             fs.copyFileSync(src, istanbulJson);
-            console.warn(`[MCR] Note: Copied ${candidates[0]} to coverage-final.json`);
+            console.warn(`[MCR] 注意: ${candidates[0]} を coverage-final.json にコピーしました`);
             console.log(`\nIstanbul JSON: ${istanbulJson}`);
         } else {
-            console.log(`\nOutput directory: ${e2eCoverageDir}`);
-            console.warn("[MCR] Note: coverage-final.json not found. Check json output name.");
+            console.log(`\n出力先: ${e2eCoverageDir}`);
+            console.warn("[MCR] 注意: coverage-final.json が見つかりません。json 出力名の確認が必要です。");
         }
     }
 } catch (error) {
-    console.error("Error: Failed to generate coverage report:", error);
+    console.error("エラー: カバレッジレポートの生成に失敗しました:", error);
     process.exit(1);
 }
 
-// Fix function execution counts lost during V8 coverage to Istanbul format conversion
-console.log("\nFixing function execution counts from V8 coverage...");
+// V8カバレッジからIstanbul形式への変換時に失われた関数実行回数を修正
+console.log("\nV8カバレッジから関数実行回数を修正しています...");
 try {
     const istanbulCoverage = JSON.parse(fs.readFileSync(istanbulJson, "utf8"));
     let totalFixed = 0;
@@ -265,20 +266,20 @@ try {
 
                 if (oldCount === 0 && v8Count > 0) {
                     console.log(
-                        `  Fix: ${fileName} - ${functionName}: ${oldCount} -> ${v8Count}`,
+                        `  修正: ${fileName} - ${functionName}: ${oldCount} -> ${v8Count}`,
                     );
                 }
             }
         }
     }
 
-    console.log(`  ✓ Fixed execution counts for ${totalFixed} out of ${totalFunctions} functions`);
+    console.log(`  ✓ ${totalFunctions} 個の関数のうち ${totalFixed} 個の実行回数を修正しました`);
 
-    // Save fixed coverage data
+    // 修正したカバレッジデータを保存
     fs.writeFileSync(istanbulJson, JSON.stringify(istanbulCoverage, null, 2));
-    console.log(`  ✓ Saved to ${istanbulJson}`);
-    console.log("\n✓ Fix of function execution counts completed");
+    console.log(`  ✓ ${istanbulJson} に保存しました`);
+    console.log("\n✓ 関数実行回数の修正が完了しました");
 } catch (error) {
-    console.error("⚠ Failed to fix function execution counts:", error.message);
-    console.error("  Coverage data has been generated, but some function execution counts may be inaccurate");
+    console.error("⚠ 関数実行回数の修正に失敗しました:", error.message);
+    console.error("  カバレッジデータは生成されていますが、一部の関数実行回数が不正確な可能性があります");
 }

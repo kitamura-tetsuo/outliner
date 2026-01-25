@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-    // ドラッグ開始位置（全アイテムで共有）
+    // Drag start position (shared among all items)
     let dragStartClientX = 0;
     let dragStartClientY = 0;
 
@@ -116,8 +116,8 @@ onMount(() => {
     } catch {}
 });
 onMount(() => {
-    // Yjs 接続切替などで openCommentItemId が現在のページに存在しない場合、
-    // インデックス優先で自動的に再オープン（E2E 安定化）
+    // If openCommentItemId does not exist in the current page due to Yjs connection switch etc.,
+    // automatically re-open prioritizing index (E2E stabilization)
     try {
         const gs: any = generalStore as any;
         // Optimization: Only perform the expensive existence check if this item is a candidate for auto-reopen
@@ -247,14 +247,14 @@ let {
 
 const dispatch = createEventDispatcher();
 
-// Stateの管理
+// State management
 
 let lastCursorPosition = $state(0);
 
-// 注: 編集モードフラグはカーソル状態から導出されるため、独立した変数は不要
-// 代わりに hasActiveCursor() 関数を使用
+// Note: Edit mode flag is derived from cursor state, so independent variable is not needed
+// Use hasActiveCursor() function instead
 
-// ドラッグ関連の状態
+// Drag related state
 let isDragging = $state(false);
 let dragStartPosition = $state(0);
 
@@ -262,12 +262,12 @@ let isDropTarget = $state(false);
 let dropTargetPosition = $state<"top" | "middle" | "bottom" | null>(null);
 
 let item = $derived.by(() => model.original);
-// CommentThread 用に comments を必ず評価してから渡す（getter 副作用で Y.Array を初期化）
+// For CommentThread, always evaluate comments before passing (initialize Y.Array with getter side effect)
 let ensuredComments = $derived.by(() => item.comments);
 
-// コメント数の購読（Yjsに直接追従）
+// Subscribe to comment count (follow Yjs directly)
 
-// コメントスレッドの開閉状態（Svelte 5 の $derived で明示的に購読）
+// Comment thread open/close state (explicitly subscribe with Svelte 5 $derived)
 let openCommentItemId = $derived.by(() => (generalStore as any).openCommentItemId);
 let openCommentItemIndex = $derived.by(() => (generalStore as any).openCommentItemIndex);
 
@@ -280,11 +280,11 @@ let isCommentsVisible = $derived(
 );
 
 
-// コメント数のローカル状態（確実にUIへ反映するため）
+// Local state of comment count (to ensure reflection in UI)
 let commentCountLocal = $state(0);
 
 /**
- * Yjs comments 配列から正規化されたコメント数を取得
+ * Get normalized comment count from Yjs comments array
  */
 function normalizeCommentCount(arr: any): number {
     if (!arr || typeof arr.length !== "number") return 0;
@@ -292,7 +292,7 @@ function normalizeCommentCount(arr: any): number {
 }
 
 /**
- * item.comments が Y.Array であることを確認し、なければ初期化
+ * Ensure item.comments is a Y.Array, initialize if missing
  */
 function ensureCommentsArray(): any {
     try {
@@ -300,7 +300,7 @@ function ensureCommentsArray(): any {
         if (!it) return null;
         let arr = it.comments;
         if (!arr) {
-            // comments プロパティが存在しない場合は初期化
+            // Initialize if comments property does not exist
             if (typeof it.setComments === "function") {
                 it.setComments([]);
                 arr = it.comments;
@@ -313,7 +313,7 @@ function ensureCommentsArray(): any {
 }
 
 /**
- * Yjs の comments 配列から最新のコメント数を取得してローカル状態に反映
+ * Get latest comment count from Yjs comments array and reflect in local state
  */
 function syncCommentCountFromItem() {
     try {
@@ -337,7 +337,7 @@ function syncCommentCountFromItem() {
 }
 
 /**
- * コメント数をローカル状態に適用（observe コールバック用）
+ * Apply comment count to local state (for observe callback)
  */
 function applyCommentCount(arrOrCount: any) {
     let newCount: number;
@@ -352,7 +352,7 @@ function applyCommentCount(arrOrCount: any) {
 }
 
 /**
- * Yjs comments 配列の observe を設定
+ * Set observe for Yjs comments array
  */
 function attachCommentObserver(): (() => void) | null {
     try {
@@ -403,7 +403,7 @@ onMount(() => {
     };
 });
 
-// 表示用カウントはYjs由来の単一路線に統一
+// Unified display count source to Yjs
 const commentCountVisual = $derived.by(() => Number(commentCountLocal ?? 0));
 
 
@@ -415,7 +415,7 @@ const commentCountVisual = $derived.by(() => Number(commentCountLocal ?? 0));
 
 
 
-// aliasTargetId の Y.Map を最小粒度 observe
+// Minimal granularity observe of aliasTargetId Y.Map
 let aliasTargetId = $state<string | undefined>(item.aliasTargetId);
 onMount(() => {
     try {
@@ -430,7 +430,7 @@ onMount(() => {
                 } catch {}
             };
             ymap.observe(obs);
-            // 初期反映
+            // Initial reflection
             obs();
             onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
         }
@@ -509,12 +509,12 @@ const aliasTargetIdEffective = $derived.by(() => {
     return undefined;
 });
 
-// aliasTarget $derived変数は削除（OutlinerItemAlias.svelteに移動済み）
-// 添付ファイル関連の重複コードは削除（OutlinerItemAttachments.svelteに移動済み）
-// addAttachmentToDomTargetOrModel関数のみ残す（ドラッグ&ドロップで使用）
+// aliasTarget $derived variable removed (moved to OutlinerItemAlias.svelte)
+// Attachment related duplicate code removed (moved to OutlinerItemAttachments.svelte)
+// Keep only addAttachmentToDomTargetOrModel function (used in drag & drop)
 
 
-// DOM からドロップ対象の outliner-item を特定して、その Item に添付を追加する（トップレベル定義）
+// Identify drop target outliner-item from DOM and add attachment to that Item (top-level definition)
 function addAttachmentToDomTargetOrModel(ev: DragEvent, url: string) {
     try {
         const w: any = (typeof window !== 'undefined') ? (window as any) : null;
@@ -529,8 +529,8 @@ function addAttachmentToDomTargetOrModel(ev: DragEvent, url: string) {
             }
         }
         const itm: any = targetItem || (model?.original as any);
-        // まず正式APIを試み、失敗・未定義なら直接Y.Arrayへpushするフォールバック
-        // 重複防止
+        // Try official API first, fallback to pushing directly to Y.Array if failed or undefined
+        // Prevent duplicates
         try {
             const exists = !!(itm?.attachments?.toArray?.()?.includes?.(url));
             if (!exists) {
@@ -539,23 +539,23 @@ function addAttachmentToDomTargetOrModel(ev: DragEvent, url: string) {
         } catch {
             try { itm?.addAttachment?.(url); } catch { try { itm?.attachments?.push?.([url]); } catch {} }
         }
-        // テスト環境ではイベントを発火
+        // Fire event in test environment
         try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(itm?.id || model.id) } })); } } catch {}
     } catch {}
 }
 
 
 
-// 添付ファイル関連のonMountブロックと$derived変数は削除（OutlinerItemAttachments.svelteに移動済み）
+// Attachment related onMount block and $derived variables removed (moved to OutlinerItemAttachments.svelte)
 
 
 
-// エイリアス関連の重複コードは削除（OutlinerItemAlias.svelteに移動済み）
+// Alias related duplicate code removed (moved to OutlinerItemAlias.svelte)
 
-// コンポーネントタイプの状態管理
+// Component type state management
 let componentType = $state<string | undefined>(undefined);
 
-// コンポーネントタイプが変更された時にアイテムを更新
+// Update item when component type changes
 function handleComponentTypeChange(newType: string) {
     if (!item) return;
 
@@ -574,17 +574,17 @@ function handleComponentTypeChange(newType: string) {
     };
 
     const value = newType === "none" ? undefined : newType;
-    // app-schema の場合は setter があるので優先して使う
+    // Use setter preferentially if it exists in app-schema
     if ("componentType" in (item as any)) {
         try { (item as any).componentType = value; } catch {}
     }
-    // yjs-schema / フォールバック
+    // yjs-schema / fallback
     setMapField(item as any, "componentType", value);
     // Optimistically update local state so UI reflects the change without waiting for Yjs propagation
     componentType = value as any;
 }
 
-// Yjs 最小粒度 observe による同期
+// Sync by Yjs minimal granularity observe
 let textString = $state<string>("");
 let compTypeValue = $state<string | undefined>(undefined);
 
@@ -598,7 +598,7 @@ onMount(() => {
         if (t && typeof t.observe === "function") {
             const h1 = () => { try { textString = t.toString?.() ?? ""; } catch {} };
             t.observe(h1); unsubs.push(() => { try { t.unobserve(h1); } catch {} });
-            // 初期反映
+            // Initial reflection
             h1();
         }
         if (m && typeof m.observe === "function") {
@@ -612,7 +612,7 @@ onMount(() => {
             m.observe(h2); unsubs.push(() => { try { m.unobserve(h2); } catch {} });
             h2();
         } else {
-            // フォールバック: 直接取得
+            // Fallback: direct retrieval
             try { compTypeValue = (anyItem as any).componentType; } catch {}
         }
     } catch {}
@@ -640,17 +640,17 @@ let formattedHtml = $derived(
         : ScrapboxFormatter.escapeHtml(textString)
 );
 
-// 表示エリアのref
+// Ref for display area
 let displayRef: HTMLDivElement;
-// アイテム全体のDOMエレメントのref
+// Ref for item's DOM element
 let itemRef: HTMLDivElement;
 
-// グローバルテキストエリアの参照
+// Reference to global textarea
 let hiddenTextareaRef: HTMLTextAreaElement;
 
 
 
-// カーソル状態に基づいて判定する関数
+// Function to determine based on cursor state
 function hasCursorBasedOnState(): boolean {
     // Depend on overlayPulse so we recompute when editorOverlayStore notifies changes
     const { cursors, isActive } = editorOverlayStore.getItemCursorsAndSelections(model.id);
@@ -659,7 +659,7 @@ function hasCursorBasedOnState(): boolean {
 }
 
 
-// グローバル textarea 要素を参照にセット
+// Set global textarea element to reference
 onMount(() => {
     const globalTextarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
     if (globalTextarea) {
@@ -670,10 +670,10 @@ onMount(() => {
 function getClickPosition(event: MouseEvent, content: string): number {
     const x = event.clientX;
     const y = event.clientY;
-    // テキスト要素を特定
+    // Identify text element
     const textEl = displayRef.querySelector(".item-text") as HTMLElement;
 
-    // Caret APIを試す (Fast Path)
+    // Try Caret API (Fast Path)
     // Only use if rendered text length matches raw content length (avoids issues with hidden formatting/links)
     if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint) && textEl.textContent?.length === content.length) {
         let range: Range | null = null;
@@ -695,15 +695,15 @@ function getClickPosition(event: MouseEvent, content: string): number {
         }
     }
 
-    // フォールバック: spanを使った幅測定
-    // テキスト要素がない場合はコンテンツ全体を使用
+    // Fallback: width measurement using span
+    // Use entire content if no text element
     const targetElement = textEl || displayRef;
     const rect = targetElement.getBoundingClientRect();
     const relX = x - rect.left;
 
-    // クリック位置がテキスト領域外の場合の処理
+    // Handling when click position is outside text area
     if (relX < 0) {
-        return 0; // テキストの左側をクリックした場合は先頭
+        return 0; // Start if clicked on the left side of text
     }
 
     const span = getMeasurementSpan();
@@ -732,14 +732,14 @@ function toggleCollapse() {
 }
 
 /**
- * カーソルを設定する
- * @param event マウスイベント（クリック位置からカーソル位置を計算）
- * @param initialCursorPosition 初期カーソル位置（指定がある場合）
+ * Set cursor
+ * @param event Mouse event (calculate cursor position from click position)
+ * @param initialCursorPosition Initial cursor position (if specified)
  */
 function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     if (isReadOnly) return;
 
-    // グローバル textarea を取得（ストアから、なければDOMからフォールバック）
+    // Get global textarea (from store, fallback to DOM if not found)
     let textareaEl = editorOverlayStore.getTextareaRef();
     if (!textareaEl) {
         textareaEl = document.querySelector(".global-textarea") as HTMLTextAreaElement | null;
@@ -747,18 +747,18 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
             logger.error("Global textarea not found");
             return;
         }
-        // ストアに再登録
+        // Re-register to store
         editorOverlayStore.setTextareaRef(textareaEl);
     }
 
-    // グローバルテキストエリアにフォーカスを設定（最優先）
+    // Set focus to global textarea (highest priority)
     textareaEl.focus();
     logger.debug(
         "OutlinerItem startEditing: Focus set to global textarea, activeElement:",
         document.activeElement === textareaEl,
     );
 
-    // フォーカス確保のための追加試行
+    // Additional attempts to ensure focus
     requestAnimationFrame(() => {
         textareaEl.focus();
 
@@ -767,7 +767,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
 
         }, 10);
     });
-    // テキスト内容を同期
+    // Sync text content
     textareaEl.value = textString;
     textareaEl.focus();
     logger.debug(
@@ -779,16 +779,16 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     let cursorPosition = initialCursorPosition;
 
     if (event) {
-        // クリック位置に基づいてカーソル位置を設定
+        // Set cursor position based on click position
         cursorPosition = getClickPosition(event, textString);
     }
     else if (initialCursorPosition === undefined) {
-        // デフォルトでは末尾にカーソルを配置（外部から指定がない場合のみ）
+        // Default to placing cursor at end (only if not specified externally)
         cursorPosition = textString.length;
     }
 
     if (cursorPosition !== undefined) {
-        // カーソル位置を textarea に設定
+        // Set cursor position to textarea
         textareaEl.setSelectionRange(cursorPosition, cursorPosition);
     }
 
@@ -797,34 +797,34 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
         document.dispatchEvent(new CustomEvent('mobile-toolbar-show'));
     }
 
-    // 現在アクティブなアイテムのカーソルをクリア
+    // Clear cursor of currently active item
     const activeItemId = editorOverlayStore.getActiveItem();
     if (activeItemId && activeItemId !== model.id) {
         editorOverlayStore.clearCursorForItem(activeItemId);
     }
 
-    // Alt+Clickで追加されたカーソルを保持するかどうかを判断
-    // event が undefined または Alt キーが押されていない場合は通常の削除処理
+    // Determine whether to keep cursor added by Alt+Click
+    // Normal delete processing if event is undefined or Alt key is not pressed
     const preserveAltClick = event?.altKey === true;
 
-    // デバッグ情報
+    // Debug info
     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
         // Intentionally empty: placeholder for debug logging
     }
 
-    // 全てのカーソルをクリアしてから新しいカーソルを設定
-    // Alt+Clickでのマルチカーソル追加の場合は、既存のカーソルを保持する
+    // Clear all cursors then set new cursor
+    // Keep existing cursors if adding multi-cursor with Alt+Click
     editorOverlayStore.clearCursorAndSelection("local", false, preserveAltClick);
 
-    // 現在のアイテムの既存のカーソルをクリア（Alt+Clickの場合は保持）
+    // Clear existing cursor of current item (keep if Alt+Click)
     if (!preserveAltClick) {
         editorOverlayStore.clearCursorForItem(model.id);
     }
 
-    // アクティブアイテムを設定
+    // Set active item
     editorOverlayStore.setActiveItem(model.id);
 
-    // 新しいカーソルを設定
+    // Set new cursor
     editorOverlayStore.setCursor({
         itemId: model.id,
         offset: cursorPosition !== undefined ? cursorPosition : 0,
@@ -832,17 +832,17 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
         userId: "local",
     });
 
-    // カーソル点滅を開始
+    // Start cursor blinking
     editorOverlayStore.startCursorBlink();
 
-    // フォーカスを再確認
+    // Recheck focus
     if (document.activeElement !== textareaEl) {
         textareaEl.focus();
     }
 }
 
 /**
- * カーソル位置と選択範囲を更新する共通関数
+ * Common function to update cursor position and selection range
  */
 function updateSelectionAndCursor() {
     if (!hiddenTextareaRef) return;
@@ -850,9 +850,9 @@ function updateSelectionAndCursor() {
     const currentStart = hiddenTextareaRef.selectionStart;
     const currentEnd = hiddenTextareaRef.selectionEnd;
 
-    // 選択範囲がない場合
+    // If no selection range
     if (currentStart === currentEnd) {
-        // カーソル位置を設定
+        // Set cursor position
         editorOverlayStore.setCursor({
             itemId: model.id,
             offset: currentStart,
@@ -860,13 +860,13 @@ function updateSelectionAndCursor() {
             userId: "local",
         });
 
-        // 選択範囲をクリア
+        // Clear selection range
         const selections = Object.values(editorOverlayStore.selections).filter(s =>
             s.userId === "local" && s.startItemId === model.id && s.endItemId === model.id
         );
 
         if (selections.length > 0) {
-            // 選択範囲を削除
+            // Remove selection range
             const filteredEntries = [];
             for (const [key, s] of Object.entries(editorOverlayStore.selections)) {
                 if (!(s.userId === "local" && s.startItemId === model.id && s.endItemId === model.id)) {
@@ -876,17 +876,17 @@ function updateSelectionAndCursor() {
             editorOverlayStore.selections = Object.fromEntries(filteredEntries);
         }
 
-        // グローバルテキストエリアの選択範囲をクリア
+        // Clear global textarea selection range
         if (hiddenTextareaRef) {
             hiddenTextareaRef.setSelectionRange(currentStart, currentStart);
         }
     }
     else {
-        // 選択範囲がある場合
+        // If there is a selection range
         const isReversed = hiddenTextareaRef.selectionDirection === "backward";
         const cursorOffset = isReversed ? currentStart : currentEnd;
 
-        // カーソル位置を設定
+        // Set cursor position
         editorOverlayStore.setCursor({
             itemId: model.id,
             offset: cursorOffset,
@@ -894,7 +894,7 @@ function updateSelectionAndCursor() {
             userId: "local",
         });
 
-        // 選択範囲を設定
+        // Set selection range
         editorOverlayStore.setSelection({
             startItemId: model.id,
             endItemId: model.id,
@@ -904,7 +904,7 @@ function updateSelectionAndCursor() {
             isReversed: isReversed,
         });
 
-        // グローバルテキストエリアの選択範囲を設定
+        // Set global textarea selection range
         if (hiddenTextareaRef) {
             hiddenTextareaRef.setSelectionRange(
                 currentStart,
@@ -919,7 +919,7 @@ function updateSelectionAndCursor() {
         (hiddenTextareaRef.selectionDirection === "backward" ? currentStart : currentEnd);
 }
 
-// アイテム全体のキーダウンイベントハンドラ
+// Keydown event handler for the entire item
 
 
 
@@ -982,8 +982,8 @@ function handleContentClick(e: MouseEvent) {
 }
 
 /**
- * クリック時のハンドリング: Alt+Click でマルチカーソル追加、それ以外は編集開始
- * @param event マウスイベント
+ * Handle click: Alt+Click adds multi-cursor, otherwise start editing
+ * @param event Mouse event
  */
 function handleClick(event: MouseEvent) {
     // Anchor click: navigate to link without entering edit mode
@@ -991,22 +991,22 @@ function handleClick(event: MouseEvent) {
         return;
     }
 
-    // Alt+Click: 新しいカーソルを追加
+    // Alt+Click: Add new cursor
     if (event.altKey) {
-        // イベントの伝播を確実に停止
+        // Ensure event propagation is stopped
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
 
-        // クリック位置を取得
+        // Get click position
         const pos = getClickPosition(event, textString);
 
-        // デバッグ情報
+        // Debug info
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             // Intentionally empty: placeholder for debug logging
         }
 
-        // 新しいカーソルを追加（既存のカーソルチェックはaddCursor内で行う）
+        // Add new cursor (check for existing cursor is done inside addCursor)
         editorOverlayStore.addCursor({
             itemId: model.id,
             offset: pos,
@@ -1014,29 +1014,29 @@ function handleClick(event: MouseEvent) {
             userId: "local",
         });
 
-        // デバッグ情報
+        // Debug info
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             // Intentionally empty: placeholder for debug logging
         }
 
-        // アクティブアイテムを設定
+        // Set active item
         editorOverlayStore.setActiveItem(model.id);
 
-        // グローバルテキストエリアにフォーカス（より確実な方法）
+        // Focus global textarea (more reliable method)
         const textarea = editorOverlayStore.getTextareaRef();
         if (textarea) {
-            // フォーカスを確実に設定するための複数の試行
+            // Multiple attempts to ensure focus
             textarea.focus();
 
-            // requestAnimationFrameを使用してフォーカスを設定
+            // Use requestAnimationFrame to set focus
             requestAnimationFrame(() => {
                 textarea.focus();
 
-                // さらに確実にするためにsetTimeoutも併用
+                // Use setTimeout as well for extra reliability
                 setTimeout(() => {
                     textarea.focus();
 
-                    // フォーカスが設定されたかチェック
+                    // Check if focus was set
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         // Intentionally empty: placeholder for debug logging
                     }
@@ -1047,25 +1047,25 @@ function handleClick(event: MouseEvent) {
             logger.error("Global textarea not found");
         }
 
-        // カーソル点滅を開始
+        // Start cursor blinking
         editorOverlayStore.startCursorBlink();
         return;
     }
 
-    // 通常クリック: 編集開始
+    // Normal click: start editing
     event.preventDefault();
     event.stopPropagation();
 
-    // 編集開始（内部でカーソルクリアと設定を行う）
+    // Start editing (clears and sets cursor internally)
     startEditing(event);
 }
 
 /**
- * マウスダウン時のハンドリング: ドラッグ開始
- * @param event マウスイベント
+ * Handle mousedown: Start drag
+ * @param event Mouse event
  */
 function handleMouseDown(event: MouseEvent) {
-    // 右クリックは無視
+    // Ignore right click
     if (event.button !== 0) return;
 
     // Anchor click should not trigger editing or dragging
@@ -1078,32 +1078,32 @@ function handleMouseDown(event: MouseEvent) {
         return;
     }
 
-    // Shift+クリックの場合は選択範囲を拡張
+    // Shift+Click extends selection
     if (event.shiftKey) {
         event.preventDefault();
         event.stopPropagation();
 
-        // 現在のアクティブアイテムを取得
+        // Get current active item
         const activeItemId = editorOverlayStore.getActiveItem();
         if (!activeItemId) {
-            // アクティブアイテムがない場合は通常のクリック処理
+            // If no active item, handle as normal click
             startEditing(event);
             return;
         }
 
-        // 現在の選択範囲を取得
+        // Get current selection
         const existingSelection = Object.values(editorOverlayStore.selections).find(s => s.userId === "local");
 
         if (!existingSelection) {
-            // 選択範囲がない場合は通常のクリック処理
+            // If no selection, handle as normal click
             startEditing(event);
             return;
         }
 
-        // クリック位置を取得
+        // Get click position
         const clickPosition = getClickPosition(event, textString);
 
-        // 選択範囲を拡張
+        // Extend selection
         const isReversed = activeItemId === model.id ?
             clickPosition < existingSelection.startOffset :
             false;
@@ -1117,7 +1117,7 @@ function handleMouseDown(event: MouseEvent) {
             isReversed: isReversed,
         });
 
-        // カーソル位置を更新
+        // Update cursor position
         editorOverlayStore.setCursor({
             itemId: model.id,
             offset: clickPosition,
@@ -1125,22 +1125,22 @@ function handleMouseDown(event: MouseEvent) {
             userId: "local",
         });
 
-        // アクティブアイテムを設定
+        // Set active item
         editorOverlayStore.setActiveItem(model.id);
 
-        // カーソル点滅を開始
+        // Start cursor blinking
         editorOverlayStore.startCursorBlink();
 
         return;
     }
 
-    // 通常のマウスダウン: ドラッグ開始準備
+    // Normal mousedown: prepare for drag start
     const clickPosition = getClickPosition(event, textString);
     dragStartPosition = clickPosition;
     dragStartClientX = event.clientX;
     dragStartClientY = event.clientY;
 
-    // 編集モードを開始
+    // Start edit mode
     if (!hasCursorBasedOnState()) {
         startEditing(event);
     }
@@ -1148,43 +1148,43 @@ function handleMouseDown(event: MouseEvent) {
 }
 
 /**
- * マウスムーブ時のハンドリング: ドラッグ中の選択範囲更新
- * @param event マウスイベント
+ * Handle mousemove: Update selection during drag
+ * @param event Mouse event
  */
 function handleMouseMove(event: MouseEvent) {
-    // 左ボタンが押されていない場合は無視
+    // Ignore if left button is not pressed
     if (event.buttons !== 1) return;
 
-    // 編集中でない場合は無視
+    // Ignore if not editing
     if (!hasCursorBasedOnState()) return;
 
-    // ドラッグ中フラグを設定
+    // Set dragging flag
     isDragging = true;
 
-    // 現在のマウス位置を取得
+    // Get current mouse position
     const currentPosition = getClickPosition(event, textString);
 
-    // Alt+Shift+ドラッグの場合は矩形選択（ボックス選択）
+    // Alt+Shift+Drag for box selection
     if (event.altKey && event.shiftKey) {
-        // 矩形選択の処理
+        // Process box selection
         handleBoxSelection(event, currentPosition);
         return;
     }
 
-    // 通常の選択範囲を更新
+    // Update normal selection range
     if (hiddenTextareaRef) {
         const start = Math.min(dragStartPosition, currentPosition);
         const end = Math.max(dragStartPosition, currentPosition);
         const isReversed = currentPosition < dragStartPosition;
 
-        // テキストエリアの選択範囲を設定
+        // Set textarea selection range
         hiddenTextareaRef.setSelectionRange(
             start,
             end,
             isReversed ? "backward" : "forward",
         );
 
-        // 選択範囲をストアに反映
+        // Reflect selection to store
         editorOverlayStore.setSelection({
             startItemId: model.id,
             startOffset: start,
@@ -1194,7 +1194,7 @@ function handleMouseMove(event: MouseEvent) {
             isReversed: isReversed,
         });
 
-        // カーソル位置を更新
+        // Update cursor position
         editorOverlayStore.setCursor({
             itemId: model.id,
             offset: isReversed ? start : end,
@@ -1202,7 +1202,7 @@ function handleMouseMove(event: MouseEvent) {
             userId: "local",
         });
 
-        // ドラッグイベントを発火
+        // Fire drag event
         dispatch("drag", {
             itemId: model.id,
             offset: currentPosition,
@@ -1211,50 +1211,50 @@ function handleMouseMove(event: MouseEvent) {
 }
 
 /**
- * 矩形選択（ボックス選択）の処理
- * @param event マウスイベント
- * @param currentPosition 現在のカーソル位置
+ * Process box selection
+ * @param event Mouse event
+ * @param currentPosition Current cursor position
  */
 function handleBoxSelection(event: MouseEvent, currentPosition: number) {
-    // デバッグ情報
+    // Debug info
     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
         // Intentionally empty: placeholder for debug logging
     }
 
-    // 矩形選択の開始位置と終了位置（ピクセル単位）
+    // Start and end positions of box selection (in pixels)
     const startPixelX = Math.min(dragStartClientX, event.clientX);
     const endPixelX = Math.max(dragStartClientX, event.clientX);
 
-    // ドラッグの開始位置と現在位置のY座標（ピクセル単位）
+    // Y coordinates of drag start and current position (in pixels)
     const startPixelY = dragStartClientY;
     const endPixelY = event.clientY;
 
-    // 選択範囲のY座標の上限と下限
+    // Upper and lower bounds of selection range Y coordinates
     const topY = Math.min(startPixelY, endPixelY);
     const bottomY = Math.max(startPixelY, endPixelY);
 
-    // 矩形選択の範囲内にあるアイテムを特定
+    // Identify items within box selection range
     const itemsInRange: Array<{
         itemId: string;
         element: HTMLElement;
         rect: DOMRect;
     }> = [];
 
-    // 表示されているすべてのアイテムを取得し、矩形選択の範囲内かどうかを判定
-    // DOM順は視覚順と一致すると仮定し、高コストなソートを回避
-    // Array.from(document.querySelectorAll)によるコピーも避け、forEachを直接使用
+    // Get all displayed items and determine if they are within the box selection range
+    // Assume DOM order matches visual order to avoid expensive sorting
+    // Avoid copying with Array.from(document.querySelectorAll) and use forEach directly
     document.querySelectorAll(".outliner-item").forEach(itemElement => {
         const itemId = itemElement.getAttribute("data-item-id");
         if (!itemId) return;
 
         const rect = itemElement.getBoundingClientRect();
 
-        // アイテムが矩形選択の範囲内にあるかどうかを判定
-        // Y座標が範囲内にあるアイテムを選択（部分的に重なっている場合も含む）
-        // ただし、完全に範囲外のものは除外
+        // Determine if item is within box selection range
+        // Select items whose Y coordinate is within range (including partial overlap)
+        // However, exclude those completely outside range
         const verticalOverlap = Math.max(0, Math.min(rect.bottom, bottomY) - Math.max(rect.top, topY));
         
-        // 少なくとも1ピクセル以上重なっている、または現在のアイテムである場合
+        // If overlapping by at least 1 pixel, or is current item
         if (itemId === model.id || verticalOverlap > 0) {
             itemsInRange.push({
                 itemId,
@@ -1264,34 +1264,34 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         }
     });
 
-    // 矩形選択の範囲内にあるアイテムがない場合は何もしない
+    // Do nothing if no items in box selection range
     if (itemsInRange.length === 0) return;
 
-    // 各アイテムの選択範囲を計算
+    // Calculate selection range for each item
     const boxSelectionRanges: Array<{
         itemId: string;
         startOffset: number;
         endOffset: number;
     }> = [];
 
-    // 計測用スパンを一度だけ作成して再利用（DOM操作の最適化）
+    // Create measurement span once and reuse (DOM manipulation optimization)
     const span = getMeasurementSpan();
 
-    // 各アイテムについて、選択範囲を計算
+    // Calculate selection range for each item
     itemsInRange.forEach(item => {
         const textElement = item.element.querySelector(".item-text") as HTMLElement;
         if (!textElement) return;
 
         const textContent = textElement.textContent || "";
 
-        // 選択範囲の開始位置と終了位置を計算
+        // Calculate start and end positions of selection range
         const rect = textElement.getBoundingClientRect();
 
-        // 矩形選択の左端と右端の相対X座標（テキスト要素基準）
+        // Relative X coordinates of left and right edges of box selection (text element basis)
         const relStartX = startPixelX - rect.left;
         const relEndX = endPixelX - rect.left;
 
-        // 文字単位での位置を計算
+        // Calculate position in character units
         const style = window.getComputedStyle(textElement);
 
         // Only update styles if they differ
@@ -1306,21 +1306,21 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
             span.style.letterSpacing = style.letterSpacing;
         }
 
-        // 開始位置（オフセット）を計算
+        // Calculate start position (offset)
         const startPos = findBestOffsetBinary(textContent, relStartX, span);
 
-        // 終了位置（オフセット）を計算
+        // Calculate end position (offset)
         const endPos = findBestOffsetBinary(textContent, relEndX, span);
 
-        // 計算した位置を使用
+        // Use calculated positions
         let itemStartOffset = Math.min(startPos, endPos);
         let itemEndOffset = Math.max(startPos, endPos);
 
-        // 範囲外の場合は修正
+        // Correct if out of range
         if (itemStartOffset < 0) itemStartOffset = 0;
         if (itemEndOffset > textContent.length) itemEndOffset = textContent.length;
 
-        // 最低1文字は選択されるように調整（極端に狭いドラッグ対策）
+        // Adjust to ensure at least 1 character is selected (for extremely narrow drag)
         if (itemStartOffset === itemEndOffset) {
             if (itemEndOffset < textContent.length) {
                 itemEndOffset += 1;
@@ -1329,7 +1329,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
             }
         }
 
-        // 選択範囲が有効な場合のみ追加
+        // Add only if selection range is valid
         if (itemStartOffset < itemEndOffset) {
             boxSelectionRanges.push({
                 itemId: item.itemId,
@@ -1339,13 +1339,13 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         }
     });
 
-    // 矩形選択を設定
+    // Set box selection
     if (boxSelectionRanges.length > 0) {
-        // 最初と最後のアイテムを取得
+        // Get first and last items
         const firstItem = boxSelectionRanges[0];
         const lastItem = boxSelectionRanges[boxSelectionRanges.length - 1];
 
-        // 矩形選択を設定
+        // Set box selection
         editorOverlayStore.setBoxSelection(
             firstItem.itemId,
             firstItem.startOffset,
@@ -1355,7 +1355,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
             "local",
         );
 
-        // 選択確定のたびに矩形選択テキストを計算して lastCopiedText に保持（paste フォールバックのため）
+        // Calculate box selection text on every confirmation and keep in lastCopiedText (for paste fallback)
         try {
             if (typeof window !== 'undefined') {
                 const lines: string[] = [];
@@ -1363,7 +1363,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                     const el = document.querySelector(`[data-item-id="${r.itemId}"] .item-text`) as HTMLElement | null;
                     let full = el?.textContent || '';
                     if (!full) {
-                        // generalStore からのフォールバック
+                        // Fallback from generalStore
                         const w: any = (window as any);
                         const items: any = w?.generalStore?.currentPage?.items;
                         const len = items?.length ?? 0;
@@ -1380,7 +1380,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
             }
         } catch {}
 
-        // カーソル位置を更新
+        // Update cursor position
         editorOverlayStore.setCursor({
             itemId: model.id,
             offset: currentPosition,
@@ -1388,7 +1388,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
             userId: "local",
         });
 
-        // ドラッグイベントを発火
+        // Fire drag event
         dispatch("box-selection", {
             startItemId: firstItem.itemId,
             endItemId: lastItem.itemId,
@@ -1398,22 +1398,22 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
 }
 
 /**
- * マウスアップ時のハンドリング: ドラッグ終了
+ * Handle mouseup: End drag
  */
 function handleMouseUp() {
-    // ドラッグ中でない場合は無視
+    // Ignore if not dragging
     if (!isDragging) return;
 
-    // ドラッグ終了
+    // End drag
     isDragging = false;
 
-    // 選択範囲を確定
+    // Confirm selection range
     updateSelectionAndCursor();
 
-    // カーソル点滅を開始
+    // Start cursor blinking
     editorOverlayStore.startCursorBlink();
 
-    // ドラッグ終了イベントを発火
+    // Fire drag end event
     dispatch("drag-end", {
         itemId: model.id,
         offset: lastCursorPosition,
@@ -1421,42 +1421,42 @@ function handleMouseUp() {
 }
 
 /**
- * ドラッグ開始時のハンドリング
- * @param event ドラッグイベント
+ * Handle drag start
+ * @param event Drag event
  */
 function handleDragStart(event: DragEvent) {
-    // 選択範囲がある場合は選択範囲をドラッグ
+    // If there is a selection, drag the selection
     const selection = Object.values(editorOverlayStore.selections).find(s =>
         s.userId === "local" && (s.startItemId === model.id || s.endItemId === model.id)
     );
 
     if (selection) {
-        // 選択範囲のテキストを取得
+        // Get selected text
         const selectedText = editorOverlayStore.getSelectedText("local");
 
-        // ドラッグデータを設定
+        // Set drag data
         if (event.dataTransfer) {
             event.dataTransfer.setData("text/plain", selectedText);
             event.dataTransfer.setData("application/x-outliner-selection", JSON.stringify(selection));
             event.dataTransfer.effectAllowed = "move";
         }
 
-        // ドラッグ中フラグを設定
+        // Set dragging flag
         isDragging = true;
     }
     else {
-        // 単一アイテムのテキストをドラッグ
+        // Drag single item text
         if (event.dataTransfer) {
             event.dataTransfer.setData("text/plain", textString);
             event.dataTransfer.setData("application/x-outliner-item", model.id);
             event.dataTransfer.effectAllowed = "move";
         }
 
-        // ドラッグ中フラグを設定
+        // Set dragging flag
         isDragging = true;
     }
 
-    // ドラッグ開始イベントを発火
+    // Fire drag start event
     dispatch("drag-start", {
         itemId: model.id,
         selection: selection || null,
@@ -1464,25 +1464,25 @@ function handleDragStart(event: DragEvent) {
 }
 
 /**
- * ドラッグオーバー時のハンドリング
- * @param event ドラッグイベント
+ * Handle dragover
+ * @param event Drag event
  */
 function handleDragOver(event: DragEvent) {
-    // デフォルト動作を防止（ドロップを許可）
+    // Prevent default action (allow drop)
     event.preventDefault();
 
-    // ドロップ効果を設定
+    // Set drop effect
     if (event.dataTransfer) {
         event.dataTransfer.dropEffect = "move";
     }
 
-    // ドロップターゲットの位置を計算
+    // Calculate drop target position
     const rect = displayRef.getBoundingClientRect();
     const y = event.clientY;
     const relativeY = y - rect.top;
     const height = rect.height;
 
-    // 上部、中央、下部のどこにドロップするかを決定
+    // Determine whether to drop at top, middle, or bottom
     if (relativeY < height * 0.3) {
         dropTargetPosition = "top";
     }
@@ -1493,34 +1493,34 @@ function handleDragOver(event: DragEvent) {
         dropTargetPosition = "middle";
     }
 
-    // ドロップターゲットフラグを設定
+    // Set drop target flag
     isDropTarget = true;
 }
 
 /**
- * ドラッグエンター時のハンドリング
- * @param event ドラッグイベント
+ * Handle dragenter
+ * @param event Drag event
  */
 function handleDragEnter(event: DragEvent) {
-    // デフォルト動作を防止
+    // Prevent default action
     event.preventDefault();
 
-    // ドロップターゲットフラグを設定
+    // Set drop target flag
     isDropTarget = true;
 }
 
 /**
- * ドラッグリーブ時のハンドリング
+ * Handle dragleave
  */
 function handleDragLeave() {
-    // ドロップターゲットフラグをクリア
+    // Clear drop target flag
     isDropTarget = false;
     dropTargetPosition = null;
 }
 
 /**
- * ドロップ時のハンドリング
- * @param event ドラッグイベント
+ * Handle drop
+ * @param event Drag event
  */
 async function handleDrop(event: DragEvent | CustomEvent) {
     const maybeCustom = event as CustomEvent;
@@ -1552,19 +1552,19 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     }
 
     logger.debug("OutlinerItem handleDrop: event received", event);
-    // デフォルト動作を防止
+    // Prevent default action
     event.preventDefault();
     try { event.stopPropagation(); (event as any).stopImmediatePropagation?.(); } catch {}
 
 
-    // ドロップターゲットフラグをクリア
+    // Clear drop target flag
     isDropTarget = false;
 
 
-    // ドロップデータを取得（Playwright の isolated world では event.dataTransfer が欠落するケースに備えてフォールバックを用意）
+    // Get drop data (Fallback for cases where event.dataTransfer is missing in Playwright isolated world)
     const dt = event.dataTransfer as DataTransfer | null;
 
-    // ファイルドロップ（DataTransfer.files または DataTransfer.items(kind=file) の両対応、もしくは E2E フォールバック）
+    // File drop (Support both DataTransfer.files or DataTransfer.items(kind=file), or E2E fallback)
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
     const hasFileItems = !!dt && dt.items && Array.from(dt.items).some(it => it.kind === "file");
     const e2eFiles: File[] = (typeof window !== 'undefined' && (window as any).__E2E_LAST_FILES__ && Array.isArray((window as any).__E2E_LAST_FILES__)) ? (window as any).__E2E_LAST_FILES__ as File[] : [];
@@ -1583,13 +1583,13 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                     }
                 }
             } else if (hasE2eFiles) {
-                // Playwright フォールバック: 事前に DataTransfer.items.add で記録された最後のファイル群を使用
+                // Playwright fallback: Use last file group recorded in advance with DataTransfer.items.add
                 files.push(...e2eFiles);
                 try { (window as any).__E2E_LAST_FILES__ = []; } catch {}
             }
 
             if (files.length > 0) {
-                // コンテナIDの解決（優先度: FirestoreStore -> localStorage -> Yjsタイトル -> フォールバック）
+                // Resolve container ID (Priority: FirestoreStore -> localStorage -> Yjs Title -> Fallback)
                 let containerId: string | undefined = undefined;
                 try { containerId = await getDefaultContainerId(); } catch {}
                 if (!containerId && typeof window !== "undefined") {
@@ -1602,18 +1602,18 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                     try {
                         const url = await uploadAttachment(containerId, model.id, file);
                         addAttachmentToDomTargetOrModel(event, url);
-                        // 接続後Docへも反映
+                        // Reflect to post-connection Doc
                         try { mirrorAttachment(url); } catch {}
 
                     } catch (e) {
-                        // アップロードに失敗してもローカルプレビューでフォールバック（E2E 安定化）
+                        // Fallback to local preview even if upload fails (E2E stabilization)
                         try {
                             const localUrl = URL.createObjectURL(file);
                             try { model.original.addAttachment(localUrl); } catch { try { (model.original as any)?.attachments?.push?.([localUrl]); } catch {} }
                             try { mirrorAttachment(localUrl); } catch {}
-                            // テスト環境では自ミラーも即時更新 - attachmentsMirror is handled in OutlinerItemAttachments component
+                            // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
                             try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
-                            // 接続後Doc への補助反映（IDマップ経由）
+                            // Auxiliary reflection to post-connection Doc (via ID map)
                             try {
                                 const w:any = (typeof window !== 'undefined') ? (window as any) : null;
                                 const map = w?.__ITEM_ID_MAP__;
@@ -1630,8 +1630,8 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                     }
                 }
             } else {
-                // E2E最終フォールバック: DataTransfer からファイル取得できなかった場合でも、
-                // テスト環境ではダミー添付を追加して UI 経路（プレビュー表示）を検証可能にする
+                // E2E Final Fallback: Even if file cannot be obtained from DataTransfer,
+                // add dummy attachment in test environment to enable UI path (preview display) verification
                 if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
@@ -1648,7 +1648,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         return;
     }
 
-    // E2E最終最終フォールバック: DataTransfer が無い/空でもテストではダミー添付を追加
+    // E2E Final Final Fallback: Add dummy attachment in test even if DataTransfer is missing/empty
     if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) && (!dt || (((dt as any).files?.length ?? 0) === 0 && ((dt as any).items?.length ?? 0) === 0))) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
@@ -1671,13 +1671,13 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         return;
     }
 
-    // 非ファイルのドロップ（テキストやアプリ内データ）
+    // Drop non-file (text or in-app data)
     try {
         const plainText = (event.dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
         const selectionData = (event.dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
         const itemId = (event.dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
 
-        // ドロップイベントを発火
+        // Fire drop event
         dispatch("drop", {
             targetItemId: model.id,
             position: dropTargetPosition,
@@ -1686,14 +1686,14 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             sourceItemId: itemId || null,
         });
     } finally {
-        // ドロップ位置をクリア
+        // Clear drop position
         dropTargetPosition = null;
     }
 }
 
-// 安全策: レガシー onXXX ハンドラに加えて addEventListener でもバインド（Playwright drop 合成対応）
+// Safety measure: Bind with addEventListener in addition to legacy onXXX handlers (Playwright drop synthesis support)
 
-// 明示的に drop/dragover を addEventListener でも登録（Playwright の dispatchEvent 対策）
+// Explicitly register drop/dragover with addEventListener (Playwright dispatchEvent countermeasure)
 onMount(() => {
     let displayForward: ((ev: Event) => void) | null = null;
     let itemForward: ((ev: Event) => void) | null = null;
@@ -1760,7 +1760,7 @@ onMount(() => {
         } catch {}
     };
 });
-// E2E: dispatchEvent フックからの直接通知を受け取り、対象要素が自分の displayRef 配下なら handleDrop を実行
+// E2E: Receive direct notification from dispatchEvent hook, execute handleDrop if target element is under own displayRef
 onMount(() => {
     try {
         const anyWin: any = (typeof window !== 'undefined') ? window : undefined;
@@ -1775,7 +1775,7 @@ onMount(() => {
         };
         anyWin.__E2E_DROP_HANDLERS__.push(fn);
 
-        // E2E: 強制的に handleDrop を起動するグローバル関数（テスト専用）。要素が自分配下なら drop を合成して処理。
+        // E2E: Global function to force handleDrop (test only). If element is under self, synthesize drop and process.
         if (anyWin.__E2E__) {
             const selfInvoker = (el: Element) => {
                 try {
@@ -1792,7 +1792,7 @@ onMount(() => {
                 anyWin.__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
             }
 
-            // E2E: 直接添付を追加するテスト専用ヘルパー（DnDの最終結果を決定的に再現）
+            // E2E: Test-only helper to add attachment directly (deterministically reproduce DnD result)
             const selfAdd = (el: Element, text?: string) => {
                 try {
                     if (displayRef && (el === displayRef || displayRef.contains(el))) {
@@ -1800,7 +1800,7 @@ onMount(() => {
                         const localUrl = URL.createObjectURL(blob);
                         addAttachmentToDomTargetOrModel(new DragEvent('drop'), localUrl);
                         try { mirrorAttachment(localUrl); } catch {}
-                        // テスト環境では即時にミラーへ反映して可視性を担保
+                        // Immediate reflection to mirror in test environment to ensure visibility
                         try {
                             // Test environment immediate mirror update - attachmentsMirror is handled in OutlinerItemAttachments component
                             // if (IS_TEST) {
@@ -1863,7 +1863,7 @@ onMount(() => {
     };
 });
 
-// ドキュメントキャプチャでのフォールバック: 合成 drop を確実に拾う
+// Fallback for document capture: Ensure synthetic drop is picked up
 onMount(() => {
     const handler = (e: Event) => {
         try {
@@ -1882,23 +1882,23 @@ onMount(() => {
 });
 
 /**
- * ドラッグ終了時のハンドリング
+ * Handle drag end
  */
 function handleDragEnd() {
-    // ドラッグ中フラグをクリア
+    // Clear dragging flag
     isDragging = false;
 
 
 
 
-    // ドラッグ終了イベントを発火
+    // Fire drag end event
     dispatch("drag-end", {
         itemId: model.id,
     });
 }
 
-// 内部リンクのクリックイベントハンドラは削除
-// SvelteKitのルーティングを使用して内部リンクを処理
+// Internal link click event handler removed
+// Use SvelteKit routing to handle internal links
 
 
 
@@ -1906,7 +1906,7 @@ function handleDragEnd() {
 
 
 
-// 外部から呼び出されるカーソル位置設定メソッド
+// Cursor position setting method called from outside
 export function setSelectionPosition(start: number, end: number = start) {
     if (!hiddenTextareaRef || !hasCursorBasedOnState()) return;
 
@@ -1917,7 +1917,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     editorOverlayStore.startCursorBlink();
 }
 
-// 他のアイテムに移動するイベントを発火する
+// Fire event to move to other item
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -1978,7 +1978,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         {/if}
 
         <div class="item-content-container">
-            <!-- 表示用の要素 -->
+            <!-- Display element -->
             <div
                 bind:this={displayRef}
                 class="item-content"
@@ -1997,10 +1997,10 @@ export function setSelectionPosition(start: number, end: number = start) {
                 ondragend={handleDragEnd}
                 onclick={handleContentClick}
             >
-                <!-- テキスト表示（コンポーネントが表示されている時は非表示） -->
-                <!-- 一時的にコンポーネントタイプの条件分岐を無効化 -->
-                <!-- フォーカスがある場合：フォーマットを適用した上で制御文字を表示 -->
-                <!-- フォーカスがない場合：制御文字は非表示、フォーマットは適用 -->
+                <!-- Text display (hidden when component is displayed) -->
+                <!-- Temporarily disable component type conditional branching -->
+                <!-- If focused: Apply format and show control characters -->
+                <!-- If not focused: Control characters hidden, format applied -->
                 <span
                     class="item-text"
                     class:title-text={isPageTitle}
@@ -2037,10 +2037,10 @@ export function setSelectionPosition(start: number, end: number = start) {
                 {/if}
 
 
-                <!-- 添付ファイル表示 -->
+                <!-- Attachment display -->
                 <OutlinerItemAttachments modelId={model.id} item={item} />
 
-                <!-- コンポーネントタイプセレクター -->
+                <!-- Component type selector -->
                 {#if !isPageTitle}
                     <div class="component-selector">
                         <select
@@ -2055,14 +2055,14 @@ export function setSelectionPosition(start: number, end: number = start) {
                     </div>
                 {/if}
 
-                <!-- コンポーネント表示（テキストは非表示） -->
+                <!-- Component display (text hidden) -->
                 {#if (componentType ?? compTypeValue) === "table"}
                     <InlineJoinTable />
                 {:else if (componentType ?? compTypeValue) === "chart"}
                     <ChartQueryEditor item={model.original} />
                     <ChartPanel item={model.original} />
                 {/if}
-                <!-- エイリアス表示 -->
+                <!-- Alias display -->
                 <OutlinerItemAlias modelId={model.id} item={item} isReadOnly={isReadOnly} isCollapsed={isCollapsed} />
             </div>
         </div>
@@ -2119,7 +2119,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     margin: 0;
     padding-top: 4px;
     padding-bottom: 4px;
-    min-height: 24px; /* E2E安定化: 新規挿入直後も可視境界がゼロにならないようにする */
+    min-height: 24px; /* E2E stabilization: Prevent visible bounds from being zero immediately after new insertion */
 }
 
 .page-title {
@@ -2193,7 +2193,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     padding-bottom: 8px;
 }
 
-/* 編集中のスタイルは削除 */
+/* Removed editing style */
 
 .item-text {
     flex: 1;
@@ -2279,7 +2279,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     font-size: 1.2em;
 }
 
-/* フォーマットされたテキストのスタイル */
+/* Style for formatted text */
 :global(.item-text.formatted strong) {
     font-weight: bold;
 }
@@ -2299,7 +2299,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     border-radius: 3px;
 }
 
-/* リンクのスタイル */
+/* Link style */
 :global(.item-text.formatted a) {
     color: #0078d7;
     text-decoration: none;
@@ -2309,7 +2309,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     text-decoration: underline;
 }
 
-/* 引用のスタイル */
+/* Quote style */
 :global(.item-text.formatted blockquote) {
     margin: 0;
     padding-left: 10px;
@@ -2318,7 +2318,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     font-style: italic;
 }
 
-/* 制御文字のスタイル */
+/* Control character style */
 :global(.control-char) {
     color: #aaa;
     font-size: 0.9em;
@@ -2328,7 +2328,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     padding: 0 2px;
 }
 
-/* ドラッグ＆ドロップ関連のスタイル */
+/* Drag & Drop related styles */
 .item-content.dragging {
     opacity: 0.7;
     cursor: grabbing;
@@ -2366,8 +2366,8 @@ export function setSelectionPosition(start: number, end: number = start) {
     background-color: #0078d7;
     z-index: 10;
 }
-/* alias-path, alias-subtree, attachments, attachment-preview スタイルは削除 */
-/* OutlinerItemAlias.svelte と OutlinerItemAttachments.svelte に移動済み */
+/* alias-path, alias-subtree, attachments, attachment-preview styles removed */
+/* Moved to OutlinerItemAlias.svelte and OutlinerItemAttachments.svelte */
 
 .comment-count {
     background-color: #e3f2fd;

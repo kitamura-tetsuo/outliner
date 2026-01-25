@@ -1,27 +1,27 @@
 #!/bin/bash
 
-# Script to move registerAfterEachSnapshot import to the top in all e2e test files
+# 全てのe2eテストファイルで registerAfterEachSnapshot のインポートを先頭に移動するスクリプト
 
 set -e
 
 cd "$(dirname "$0")/.."
 
-# Find all .spec.ts files in the e2e directory
+# e2eディレクトリ内の全ての.spec.tsファイルを検索
 find e2e -name "*.spec.ts" | while read -r file; do
-    # Check if registerAfterEachSnapshot import exists
+    # registerAfterEachSnapshot のインポートが含まれているか確認
     if grep -q "registerAfterEachSnapshot" "$file"; then
         echo "Processing: $file"
         
-        # Create a temporary file
+        # 一時ファイルを作成
         temp_file=$(mktemp)
         
-        # Extract the registerAfterEachSnapshot import line
+        # registerAfterEachSnapshot のインポート行を抽出
         import_line=$(grep "registerAfterEachSnapshot" "$file" | head -1)
         
-        # Remove the registerAfterEachSnapshot import line
+        # registerAfterEachSnapshot のインポート行を削除
         grep -v "registerAfterEachSnapshot" "$file" > "$temp_file"
         
-        # Create new file: Add import line to the top
+        # 新しいファイルを作成: インポート行を先頭に追加
         {
             echo "$import_line"
             cat "$temp_file"

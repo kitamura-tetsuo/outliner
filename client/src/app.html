@@ -7,13 +7,13 @@
         %sveltekit.head%
     </head>
     <body data-sveltekit-preload-data="hover">
-        <!-- Minimal placeholder to allow E2E tests to detect even when SSR is disabled -->
+        <!-- SSR無効時でもE2Eが即座に検出できるように、最小限のプレースホルダーを用意 -->
         <div
             data-testid="main-toolbar"
             aria-hidden="true"
             style="
                 position: fixed; top: 0; left: 0; right: 0;
-                height: 0; /* Zero height to not interfere with real UI */
+                height: 0; /* 実UIに干渉しないようゼロ高さ */
                 overflow: hidden; z-index: 0; opacity: 0; pointer-events: none;
             "
         >
@@ -150,7 +150,7 @@
             })();
         </script>
         <script>
-            // Remove the placeholder when the real Toolbar is generated after hydration
+            // Hydration後に本物のToolbarが生成されたら、プレースホルダーを削除
             (function cleanupPlaceholder(){
               var removed=false;
               function tryRemove(){

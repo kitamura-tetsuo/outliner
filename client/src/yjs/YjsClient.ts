@@ -118,7 +118,7 @@ export class YjsClient {
     }
 
     public getConnectionStateString(): string {
-        return this.isContainerConnected ? "Connected" : "Disconnected";
+        return this.isContainerConnected ? "接続済み" : "切断";
     }
 
     // Debug helpers similar to FluidClient

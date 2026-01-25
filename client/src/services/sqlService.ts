@@ -23,7 +23,7 @@ let worker: SyncWorker | null = null;
 
 export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
 
-// テスト環境でqueryStoreをwindowオブジェクトに公開
+// Expose queryStore to window object in test environment
 declare global {
     interface Window {
         queryStore?: typeof queryStore;
@@ -39,7 +39,7 @@ export async function initDb() {
 
     console.log("Initializing SQL.js database...");
 
-    // テスト環境または本番環境では適切なパスでWASMを読み込み
+    // Load WASM from appropriate path in test or production environment
     if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
         const fs = await import("fs");
         const path = await import("path");
@@ -72,11 +72,11 @@ export async function initDb() {
             wasmBinary: wasmBinary,
         });
     } else {
-        // 開発環境ではViteのpublicディレクトリからWASMを読み込み
+        // Load WASM from Vite public directory in development environment
         SQL = await initSqlJs({
             locateFile: (file: string) => {
                 if (file.endsWith(".wasm")) {
-                    // 開発環境ではpublicディレクトリにあるWASMファイルを使用
+                    // Use WASM file in public directory in development environment
                     return `/node_modules/sql.js/dist/sql-wasm.wasm`;
                 }
                 return file;
@@ -96,7 +96,7 @@ export async function initDb() {
 function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: Record<string, string>; } {
     console.log("extendQuery called with:", sql);
 
-    // 最後のSELECT文のみを処理
+    // Process only the last SELECT statement
     const lastSelectIndex = sql.toUpperCase().lastIndexOf("SELECT");
     console.log("lastSelectIndex:", lastSelectIndex);
     if (lastSelectIndex === -1) {
@@ -108,7 +108,7 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
     const beforeSelect = sql.slice(0, lastSelectIndex);
     console.log("selectPart:", selectPart);
 
-    // FROMとJOINを分けて処理
+    // Process FROM and JOIN separately
     const fromRegex =
         /\bfrom\s+([a-zA-Z0-9_]+)(?:\s+(?:as\s+)?([a-zA-Z0-9_]+))?(?=\s+(?:join|where|group|order|limit|on|;|$)|\s*;|\s*$)/gi;
     const joinRegex =
@@ -116,7 +116,7 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
     const tableMap: Record<string, string> = {};
     let match;
     console.log("Testing regex against:", selectPart);
-    // FROM句の処理
+    // Process FROM clause
     while ((match = fromRegex.exec(selectPart)) !== null) {
         console.log("FROM match:", match);
         const table = match[1];
@@ -125,7 +125,7 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
         tableMap[alias] = table;
     }
 
-    // JOIN句の処理
+    // Process JOIN clause
     while ((match = joinRegex.exec(selectPart)) !== null) {
         console.log("JOIN match:", match);
         const table = match[1];
@@ -195,7 +195,7 @@ export function runQuery(sql: string) {
         let column = col;
         if (aliasMatch) {
             const alias = aliasMatch[1];
-            table = tableMap[alias] || alias; // エイリアスを実際のテーブル名に変換
+            table = tableMap[alias] || alias; // Convert alias to actual table name
             column = aliasMatch[2];
         }
         columnsMeta.push({ name: col, table, pkAlias: table ? pkAliases[aliasMatch?.[1] || ""] : undefined, column });
