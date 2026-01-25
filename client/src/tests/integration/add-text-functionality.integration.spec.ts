@@ -28,7 +28,7 @@ describe("add-text-functionality", () => {
         generalStore.currentPage = page;
         render(OutlinerTree, { pageItem: page, projectName: "test", pageName: "page" });
 
-        await user.click(screen.getByText("アイテム追加"));
+        await user.click(screen.getByText("Add Item"));
         const newItem = page.items.at(0);
         expect(newItem).toBeTruthy();
 

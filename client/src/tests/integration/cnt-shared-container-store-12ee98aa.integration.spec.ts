@@ -19,11 +19,11 @@ describe("CNT shared container store", () => {
         } as any);
         await tick();
         await tick();
-        // store 自体は更新されているか（デバッグ用アサーション）
+        // Is the store itself updated? (Assertion for debugging)
         expect(storeGlobal.userProject?.defaultProjectId).toBe("a");
-        // まずリスト表示を確認（リアクティブ更新の完了を待つ）
+        // Check list display first (wait for reactive update completion)
         expect(screen.getAllByRole("listitem").map(li => li.textContent)).toEqual(["a"]);
-        // その後、defaultProjectId の可視化を検証
+        // Then, verify visualization of defaultProjectId
         expect(screen.getByTestId("default").textContent).toBe("a");
 
         storeGlobal.setUserProject({
