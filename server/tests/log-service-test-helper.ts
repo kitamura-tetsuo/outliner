@@ -29,9 +29,6 @@ if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
     });
 }
 
-const userContainersCollection = db.collection("userContainers");
-const containerUsersCollection = db.collection("containerUsers");
-
 function getSafeOrigins(): string[] {
     const defaultOrigins = ["http://localhost:7070"];
 
@@ -95,6 +92,9 @@ app.post("/api/save-container", async (req, res) => {
         const decodedToken = await adminInstance.auth().verifyIdToken(idToken);
         const userId = decodedToken.uid;
 
+        // Use adminInstance to allow mocking
+        const firestore = typeof adminInstance.firestore === "function" ? adminInstance.firestore() : adminInstance.firestore;
+        const userContainersCollection = firestore.collection("userContainers");
         const userDocRef = userContainersCollection.doc(userId);
         const docSnapshot = await userDocRef.get();
 
@@ -147,6 +147,9 @@ app.post("/api/get-container-users", async (req, res) => {
             return res.status(403).json({ error: "Admin privileges required" });
         }
 
+        // Use adminInstance to allow mocking
+        const firestore = typeof adminInstance.firestore === "function" ? adminInstance.firestore() : adminInstance.firestore;
+        const containerUsersCollection = firestore.collection("containerUsers");
         const containerDoc = await containerUsersCollection.doc(containerId).get();
 
         if (!containerDoc.exists) {
@@ -170,7 +173,7 @@ app.post("/api/list-users", async (req, res) => {
             return res.status(400).json({ error: "ID token required" });
         }
 
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const decodedToken = await adminInstance.auth().verifyIdToken(idToken);
 
         if (decodedToken.role !== "admin") {
             return res.status(403).json({ error: "Admin privileges required" });

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, it } from "mocha";
 import sinon from "sinon";
 import request from "supertest";
 
-// テスト環境の設定
+// Setup test environment
 process.env.NODE_ENV = "test";
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
 process.env.GCLOUD_PROJECT = "test-project";
@@ -21,11 +21,11 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
     let getStub: sinon.SinonStub;
 
     beforeEach(function() {
-        // Firebase Auth のモック
+        // Mock Firebase Auth
         verifyStub = sinon.stub(admin.auth(), "verifyIdToken");
 
-        // Firestore のモック設定
-        // 既存のFirestoreインスタンスをモック
+        // Mock Firestore
+        // Mock existing Firestore instance
         const mockFirestore = {
             collection: sinon.stub(),
             settings: sinon.stub(),
@@ -46,7 +46,7 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
         docStub = sinon.stub();
         getStub = sinon.stub();
 
-        // モックチェーンの設定
+        // Setup mock chain
         collectionStub.withArgs("containerUsers").returns({
             doc: docStub,
         });
@@ -55,7 +55,7 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
             get: getStub,
         });
 
-        // admin.firestoreをモック
+        // Mock admin.firestore
         firestoreStub = sinon.stub(admin, "firestore").returns(mockFirestore);
     });
 
@@ -64,7 +64,7 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
     });
 
     it("returns 403 when user is not admin", async function() {
-        // 非管理者ユーザーのトークンをモック
+        // Mock token for non-admin user
         verifyStub.resolves({ uid: "user1", role: "user" });
 
         const res = await request(app)
@@ -76,7 +76,7 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
     });
 
     it("returns 403 when user has no role", async function() {
-        // roleプロパティがないユーザーのトークンをモック
+        // Mock token for user without role property
         verifyStub.resolves({ uid: "user1" });
 
         const res = await request(app)
@@ -87,8 +87,8 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
         expect(res.body).to.have.property("error", "Admin privileges required");
     });
 
-    // Firestoreに依存するテストは環境設定の問題でスキップ
-    // 基本的な管理者チェック機能は上記のテストで確認済み
+    // Skip tests depending on Firestore due to environment configuration issues
+    // Basic admin check functionality has been verified by the above tests
 
     it("returns 400 when containerId is missing", async function() {
         const res = await request(app)

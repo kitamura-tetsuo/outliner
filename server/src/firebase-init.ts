@@ -58,7 +58,7 @@ if (isDevelopment) {
 
 // Firebase service account configuration
 export function getServiceAccount() {
-    // Firebase Admin SDKファイルが指定されている場合はそれを使用
+    // If Firebase Admin SDK file is specified, use it
     if (process.env.FIREBASE_ADMIN_SDK_PATH) {
         // Try multiple paths:
         // 1. As absolute path or relative to CWD
@@ -87,8 +87,8 @@ export function getServiceAccount() {
         }
     }
 
-    // 環境変数から設定を読み取る（従来の方式）
-    // Secret Manager からの読み込みを優先
+    // Read configuration from environment variables (traditional method)
+    // Prioritize loading from Secret Manager
     const privateKey = secretManager.getSecret("FIREBASE_PRIVATE_KEY") || process.env.FIREBASE_PRIVATE_KEY || "";
 
     return {
@@ -166,24 +166,24 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
 async function clearFirestoreEmulatorData() {
     const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
     if (!isEmulator) {
-        logger.warn("Firestore エミュレータが検出されなかったため、データ消去をスキップします");
+        logger.warn("Skipping data clearing because Firestore emulator was not detected");
         return false;
     }
 
-    // Test環境でのみデータ消去を実行
+    // Execute data clearing only in Test environment
     if (process.env.NODE_ENV !== "test" && process.env.NODE_ENV !== "development") {
-        logger.info("Production環境ではFirestoreエミュレータのデータ消去をスキップします");
+        logger.info("Skipping Firestore emulator data clearing in Production environment");
         return false;
     }
 
     try {
-        logger.info("Firestore エミュレータのデータを消去しています...");
+        logger.info("Clearing Firestore emulator data...");
 
-        // Firebase Admin REST APIを使用してデータを消去（より効率的）
+        // Clear data using Firebase Admin REST API (more efficient)
         const projectId = process.env.FIREBASE_PROJECT_ID || "test-project-id";
         const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:58080";
 
-        // REST APIでデータベース全体をクリア
+        // Clear the entire database via REST API
         const clearUrl = `http://${emulatorHost}/emulator/v1/projects/${projectId}/databases/(default)/documents`;
 
         const response = await fetch(clearUrl, {
@@ -194,15 +194,15 @@ async function clearFirestoreEmulatorData() {
         });
 
         if (response.ok) {
-            logger.info("Firestore エミュレータのデータを全て消去しました");
+            logger.info("All Firestore emulator data has been cleared");
             return true;
         } else {
-            logger.warn(`Firestore データ消去のレスポンス: ${response.status} ${response.statusText}`);
+            logger.warn(`Firestore data clearing response: ${response.status} ${response.statusText}`);
             return false;
         }
     } catch (error: any) {
-        logger.error(`Firestore エミュレータのデータ消去中にエラーが発生しました: ${error.message}`);
-        // エラーが発生してもプロセスを継続
+        logger.error(`An error occurred while clearing Firestore emulator data: ${error.message}`);
+        // Continue process even if an error occurs
         return false;
     }
 }
@@ -248,9 +248,9 @@ export async function initializeFirebase() {
             .filter(([_, value]) => value)
             .map(([name, value]) => `${name}=${value}`);
         if (configuredEmulators.length > 0) {
-            logger.warn("⚠️ Firebase Emulator環境変数が設定されています。本番環境では問題になる可能性があります！");
-            logger.warn(`設定されているEmulator環境変数: ${configuredEmulators.join(", ")}`);
-            logger.warn("これらの環境変数は本来 .env.test に設定すべきもので、本番環境では設定しないでください。");
+            logger.warn("⚠️ Firebase Emulator environment variables are set. This may be an issue in production!");
+            logger.warn(`Configured Emulator environment variables: ${configuredEmulators.join(", ")}`);
+            logger.warn("These environment variables should be set in .env.test and should not be set in production.");
         }
         if (
             isEmulatorEnvironment
@@ -275,27 +275,27 @@ export async function initializeFirebase() {
         if (isDevelopment && devAuthHelper) {
             try {
                 const user = await devAuthHelper.setupTestUser();
-                logger.info(`開発環境用テストユーザーをセットアップしました: ${user.email} (${user.uid})`);
+                logger.info(`Setup development test user: ${user.email} (${user.uid})`);
                 const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
                 if (isEmulator) {
                     try {
-                        // Firestoreデータ消去を実行（改善版）
+                        // Execute Firestore data clearing (improved version)
                         const cleared = await clearFirestoreEmulatorData();
                         if (cleared) {
-                            logger.info("開発環境の Firestore エミュレータデータを消去しました");
+                            logger.info("Cleared development Firestore emulator data");
                         }
                     } catch (error: any) {
-                        logger.error(`Firestore エミュレータデータの消去に失敗しました: ${error.message}`);
-                        // エラーが発生してもプロセスを継続
-                        logger.info("Firestore データ消去に失敗しましたが、処理を継続します");
+                        logger.error(`Failed to clear Firestore emulator data: ${error.message}`);
+                        // Continue process even if an error occurs
+                        logger.info("Firestore data clearing failed, but continuing process");
                     }
                 }
             } catch (error: any) {
-                logger.warn(`テストユーザーのセットアップに失敗しました: ${error.message}`);
+                logger.warn(`Failed to setup test user: ${error.message}`);
             }
         }
     } catch (error: any) {
-        logger.error(`Firebase初期化エラー: ${error.message}`);
+        logger.error(`Firebase initialization error: ${error.message}`);
         throw error;
     }
 }

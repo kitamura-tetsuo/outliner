@@ -15,48 +15,48 @@ if (path.basename(serverRoot) === "dist") {
     serverRoot = path.resolve(serverRoot, "..");
 }
 
-// ログディレクトリのパス
+// Log directory path
 // server/logs
 const serverLogDir = path.join(serverRoot, "logs");
 // client/logs
 const clientLogDir = path.resolve(serverRoot, "..", "client", "logs");
 
-// ログファイルのパス
+// Log file path
 export const serverLogPath = path.join(serverLogDir, "log-service.log");
-// テスト環境かどうかをチェック
+// Check if it is a test environment
 const isTestEnv = process.env.NODE_ENV === "test";
 const clientLogFileName = isTestEnv ? "test-browser.log" : "browser.log";
 export const clientLogPath = path.join(clientLogDir, clientLogFileName);
-// telemetryログ用のファイルパス
+// File path for telemetry logs
 const telemetryLogFileName = isTestEnv ? "test-telemetry.log" : "telemetry.log";
 export const telemetryLogPath = path.join(clientLogDir, telemetryLogFileName);
 
-// ログディレクトリを確認・作成
+// Check and create log directories
 function ensureLogDirectories() {
     try {
-        // サーバーログディレクトリ
+        // Server log directory
         if (!fs.existsSync(serverLogDir)) {
             fs.mkdirSync(serverLogDir, { recursive: true });
-            console.log(`サーバーログディレクトリを作成しました: ${serverLogDir}`);
+            console.log(`Created server log directory: ${serverLogDir}`);
         }
 
-        // クライアントログディレクトリ
+        // Client log directory
         if (!fs.existsSync(clientLogDir)) {
             fs.mkdirSync(clientLogDir, { recursive: true });
-            console.log(`クライアントログディレクトリを作成しました: ${clientLogDir}`);
+            console.log(`Created client log directory: ${clientLogDir}`);
         }
     } catch (error: any) {
-        console.warn(`ログディレクトリの作成に失敗しました: ${error.message}`);
-        console.warn(`サーバーログディレクトリ: ${serverLogDir}`);
-        console.warn(`クライアントログディレクトリ: ${clientLogDir}`);
-        // エラーが発生してもアプリケーションを停止させない
+        console.warn(`Failed to create log directories: ${error.message}`);
+        console.warn(`Server log directory: ${serverLogDir}`);
+        console.warn(`Client log directory: ${clientLogDir}`);
+        // Do not stop the application even if an error occurs
     }
 }
 
-// ディレクトリを確保
+// Ensure directories
 ensureLogDirectories();
 
-// ファイル転送用と整形表示用のログストリームを設定
+// Setup log streams for file transfer and formatted display
 let serverLogStream: fs.WriteStream | null;
 let clientLogStream: fs.WriteStream | null;
 let telemetryLogStream: fs.WriteStream | null;
@@ -64,21 +64,21 @@ let telemetryLogStream: fs.WriteStream | null;
 try {
     serverLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
 } catch (error: any) {
-    console.warn(`サーバーログストリームの作成に失敗しました: ${error.message}`);
+    console.warn(`Failed to create server log stream: ${error.message}`);
     serverLogStream = null;
 }
 
 try {
     clientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
 } catch (error: any) {
-    console.warn(`クライアントログストリームの作成に失敗しました: ${error.message}`);
+    console.warn(`Failed to create client log stream: ${error.message}`);
     clientLogStream = null;
 }
 
 try {
     telemetryLogStream = fs.createWriteStream(telemetryLogPath, { flags: "a" });
 } catch (error: any) {
-    console.warn(`telemetryログストリームの作成に失敗しました: ${error.message}`);
+    console.warn(`Failed to create telemetry log stream: ${error.message}`);
     telemetryLogStream = null;
 }
 
@@ -89,46 +89,46 @@ const prettyStream = pretty({
 });
 prettyStream.pipe(process.stdout);
 
-// クライアントログ用のロガー設定
+// Logger setup for client logs
 const clientStreams = [];
 if (clientLogStream) {
-    clientStreams.push({ stream: clientLogStream }); // 生ログをクライアントログディレクトリに保存
+    clientStreams.push({ stream: clientLogStream }); // Save raw logs to client log directory
 }
-// ストリームが利用できない場合はコンソールのみ
+// Only console if stream is unavailable
 if (clientStreams.length === 0) {
     clientStreams.push({ stream: process.stdout });
 }
 
 export const clientLogger = pino(
     {
-        level: "trace", // すべてのレベルのログを収集
+        level: "trace", // Collect logs of all levels
         timestamp: pino.stdTimeFunctions.isoTime,
     },
     pino.multistream(clientStreams),
 );
 
-// telemetryログ用のロガー設定
+// Logger setup for telemetry logs
 const telemetryStreams = [];
 if (telemetryLogStream) {
-    telemetryStreams.push({ stream: telemetryLogStream }); // telemetryログを専用ファイルに保存
+    telemetryStreams.push({ stream: telemetryLogStream }); // Save telemetry logs to a dedicated file
 }
-// ストリームが利用できない場合はコンソールのみ
+// Only console if stream is unavailable
 if (telemetryStreams.length === 0) {
     telemetryStreams.push({ stream: process.stdout });
 }
 
 export const telemetryLogger = pino(
     {
-        level: "trace", // すべてのレベルのログを収集
+        level: "trace", // Collect logs of all levels
         timestamp: pino.stdTimeFunctions.isoTime,
     },
     pino.multistream(telemetryStreams),
 );
 
-// サーバー自身のロガー設定
-const serverStreams: pino.StreamEntry[] = [{ stream: prettyStream }]; // 整形ログをコンソールに表示
+// Logger setup for server itself
+const serverStreams: pino.StreamEntry[] = [{ stream: prettyStream }]; // Display formatted logs in console
 if (serverLogStream) {
-    serverStreams.push({ stream: serverLogStream }); // サーバーログをサーバーログディレクトリに保存
+    serverStreams.push({ stream: serverLogStream }); // Save server logs to server log directory
 }
 
 export const serverLogger = pino(
@@ -140,16 +140,16 @@ export const serverLogger = pino(
 );
 
 /**
- * ログファイルをローテーションする関数
- * @param {string} logFilePath - ローテーション対象のログファイルパス
- * @param {number} maxBackups - 保持する過去ログファイル数
- * @returns {Promise<boolean>} - 成功すればtrue
+ * Function to rotate log files
+ * @param {string} logFilePath - Path of the log file to rotate
+ * @param {number} maxBackups - Number of past log files to keep
+ * @returns {Promise<boolean>} - true if successful
  */
 export async function rotateLogFile(logFilePath: string, maxBackups = 2): Promise<boolean> {
     try {
-        // ログファイルが存在するか確認し、なければ作成
+        // Check if log file exists, create if not
         if (!await fsExtra.pathExists(logFilePath)) {
-            console.log(`ログファイルが存在しません。作成します: ${logFilePath}`);
+            console.log(`Log file does not exist. Creating: ${logFilePath}`);
             await fsExtra.ensureFile(logFilePath);
         }
 
@@ -158,56 +158,56 @@ export async function rotateLogFile(logFilePath: string, maxBackups = 2): Promis
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const timestamp = new Date().toISOString().replace(/:/g, "-");
 
-        // 古いバックアップファイルのリストを取得（.1, .2, ...のサフィックス）
+        // Get list of old backup files (suffixes .1, .2, ...)
         const files = await fsExtra.readdir(directory);
         const backupFiles = files
             .filter(file => file.startsWith(basename + "."))
             .map(file => ({
                 name: file,
                 path: path.join(directory, file),
-                // ファイル名からサフィックス番号を抽出して数値に変換
+                // Extract suffix number from filename and convert to number
                 suffix: parseInt(file.replace(basename + ".", ""), 10) || 0,
             }))
-            // 番号の降順にソート
+            // Sort by number descending
             .sort((a, b) => b.suffix - a.suffix);
 
-        // 最大保持数を超えるバックアップファイルを削除
+        // Delete backup files exceeding max retention count
         for (let i = maxBackups; i < backupFiles.length; i++) {
             await fsExtra.remove(backupFiles[i].path);
-            console.log(`古いログファイルを削除しました: ${backupFiles[i].path}`);
+            console.log(`Deleted old log file: ${backupFiles[i].path}`);
         }
 
-        // 既存のバックアップファイルのサフィックス番号を増やす
+        // Increment suffix number of existing backup files
         for (let i = 0; i < Math.min(backupFiles.length, maxBackups); i++) {
             const file = backupFiles[i];
             const newSuffix = file.suffix + 1;
             if (newSuffix <= maxBackups) {
                 const newPath = path.join(directory, `${basename}.${newSuffix}`);
                 await fsExtra.move(file.path, newPath, { overwrite: true });
-                console.log(`ログファイルをローテーションしました: ${file.path} -> ${newPath}`);
+                console.log(`Rotated log file: ${file.path} -> ${newPath}`);
             }
         }
 
-        // 現在のログファイルを .1 サフィックス付きにリネーム
+        // Rename current log file with .1 suffix
         const backupPath = path.join(directory, `${basename}.1`);
         await fsExtra.move(logFilePath, backupPath, { overwrite: true });
-        console.log(`現在のログファイルをバックアップしました: ${logFilePath} -> ${backupPath}`);
+        console.log(`Backed up current log file: ${logFilePath} -> ${backupPath}`);
 
-        // 新しい空のログファイルを作成
+        // Create new empty log file
         await fsExtra.ensureFile(logFilePath);
-        console.log(`新しいログファイルを作成しました: ${logFilePath}`);
+        console.log(`Created new log file: ${logFilePath}`);
 
         return true;
     } catch (error) {
-        console.error("ログローテーション中にエラーが発生しました:", error);
+        console.error("Error occurred during log rotation:", error);
         return false;
     }
 }
 
 /**
- * クライアントログファイルをローテーションする
- * @param {number} maxBackups - 保持するバックアップ数
- * @returns {Promise<boolean>} - 成功すればtrue
+ * Rotate client log files
+ * @param {number} maxBackups - Number of backups to keep
+ * @returns {Promise<boolean>} - true if successful
  */
 export async function rotateClientLogs(maxBackups = 2): Promise<boolean> {
     if (process.env.CI) {
@@ -217,9 +217,9 @@ export async function rotateClientLogs(maxBackups = 2): Promise<boolean> {
 }
 
 /**
- * telemetryログファイルをローテーションする
- * @param {number} maxBackups - 保持するバックアップ数
- * @returns {Promise<boolean>} - 成功すればtrue
+ * Rotate telemetry log files
+ * @param {number} maxBackups - Number of backups to keep
+ * @returns {Promise<boolean>} - true if successful
  */
 export async function rotateTelemetryLogs(maxBackups = 2): Promise<boolean> {
     if (process.env.CI) {
@@ -229,9 +229,9 @@ export async function rotateTelemetryLogs(maxBackups = 2): Promise<boolean> {
 }
 
 /**
- * サーバーログファイルをローテーションする
- * @param {number} maxBackups - 保持するバックアップ数
- * @returns {Promise<boolean>} - 成功すればtrue
+ * Rotate server log files
+ * @param {number} maxBackups - Number of backups to keep
+ * @returns {Promise<boolean>} - true if successful
  */
 export async function rotateServerLogs(maxBackups = 2): Promise<boolean> {
     if (process.env.CI) {
@@ -241,23 +241,23 @@ export async function rotateServerLogs(maxBackups = 2): Promise<boolean> {
 }
 
 /**
- * クライアントログストリームを更新する
- * ローテーション後に新しいストリームを作成するために使用
+ * Update client log stream
+ * Used to create new stream after rotation
  */
 export function refreshClientLogStream(): fs.WriteStream {
     try {
-        // 古いストリームを安全に閉じる
+        // Safely close old stream
         if (clientLogStream) {
             clientLogStream.end();
         }
 
-        // 新しいストリームを作成
+        // Create new stream
         const newClientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
 
-        // モジュール内のグローバル変数を更新
+        // Update global variable in module
         clientLogStream = newClientLogStream;
 
-        // pino-prettyストリームも再作成
+        // Recreate pino-pretty stream
         const newPrettyStream = pretty({
             colorize: true,
             translateTime: "SYS:standard",
@@ -265,13 +265,13 @@ export function refreshClientLogStream(): fs.WriteStream {
         });
         newPrettyStream.pipe(process.stdout);
 
-        // 新しいmultistreamを作成
+        // Create new multistream
         const newMultiStream = pino.multistream([
             { stream: newClientLogStream },
             { stream: newPrettyStream },
         ]);
 
-        // 新しいロガーインスタンスを作成
+        // Create new logger instance
         const newLogger = pino(
             {
                 level: "trace",
@@ -280,41 +280,41 @@ export function refreshClientLogStream(): fs.WriteStream {
             newMultiStream,
         );
 
-        // 既存のロガーオブジェクトのプロパティを新しいロガーのものに置き換え
+        // Replace properties of existing logger object with those of new logger
         Object.assign(clientLogger, newLogger);
 
-        console.log("クライアントログストリームを更新しました");
+        console.log("Updated client log stream");
         return newClientLogStream;
     } catch (error) {
-        console.error("クライアントログストリーム更新エラー:", error);
-        // エラーが発生した場合でも、新しいストリームを作成して返す
+        console.error("Client log stream update error:", error);
+        // Even if error occurs, create and return new stream
         return fs.createWriteStream(clientLogPath, { flags: "a" });
     }
 }
 
 /**
- * telemetryログストリームを更新する
- * ローテーション後に新しいストリームを作成するために使用
+ * Update telemetry log stream
+ * Used to create new stream after rotation
  */
 export function refreshTelemetryLogStream(): fs.WriteStream {
     try {
-        // 古いストリームを安全に閉じる
+        // Safely close old stream
         if (telemetryLogStream) {
             telemetryLogStream.end();
         }
 
-        // 新しいストリームを作成
+        // Create new stream
         const newTelemetryLogStream = fs.createWriteStream(telemetryLogPath, { flags: "a" });
 
-        // モジュール内のグローバル変数を更新
+        // Update global variable in module
         telemetryLogStream = newTelemetryLogStream;
 
-        // 新しいmultistreamを作成
+        // Create new multistream
         const newMultiStream = pino.multistream([
             { stream: newTelemetryLogStream },
         ]);
 
-        // 新しいロガーインスタンスを作成
+        // Create new logger instance
         const newLogger = pino(
             {
                 level: "trace",
@@ -323,36 +323,36 @@ export function refreshTelemetryLogStream(): fs.WriteStream {
             newMultiStream,
         );
 
-        // 既存のロガーオブジェクトのプロパティを新しいロガーのものに置き換え
+        // Replace properties of existing logger object with those of new logger
         Object.assign(telemetryLogger, newLogger);
 
-        console.log("telemetryログストリームを更新しました");
+        console.log("Updated telemetry log stream");
         return newTelemetryLogStream;
     } catch (error) {
-        console.error("telemetryログストリーム更新エラー:", error);
-        // エラーが発生した場合でも、新しいストリームを作成して返す
+        console.error("Telemetry log stream update error:", error);
+        // Even if error occurs, create and return new stream
         return fs.createWriteStream(telemetryLogPath, { flags: "a" });
     }
 }
 
 /**
- * サーバーログストリームを更新する
- * ローテーション後に新しいストリームを作成するために使用
+ * Update server log stream
+ * Used to create new stream after rotation
  */
 export function refreshServerLogStream(): fs.WriteStream {
     try {
-        // 古いストリームを安全に閉じる
+        // Safely close old stream
         if (serverLogStream) {
             serverLogStream.end();
         }
 
-        // 新しいストリームを作成
+        // Create new stream
         const newServerLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
 
-        // モジュール内のグローバル変数を更新
+        // Update global variable in module
         serverLogStream = newServerLogStream;
 
-        // pino-prettyストリームも再作成
+        // Recreate pino-pretty stream
         const newPrettyStream = pretty({
             colorize: true,
             translateTime: "SYS:standard",
@@ -360,13 +360,13 @@ export function refreshServerLogStream(): fs.WriteStream {
         });
         newPrettyStream.pipe(process.stdout);
 
-        // 新しいmultistreamを作成
+        // Create new multistream
         const newMultiStream = pino.multistream([
             { stream: newServerLogStream },
             { stream: newPrettyStream },
         ]);
 
-        // 新しいロガーインスタンスを作成
+        // Create new logger instance
         const newLogger = pino(
             {
                 level: process.env.NODE_ENV === "production" ? "info" : "debug",
@@ -375,14 +375,14 @@ export function refreshServerLogStream(): fs.WriteStream {
             newMultiStream,
         );
 
-        // 既存のロガーオブジェクトのプロパティを新しいロガーのものに置き換え
+        // Replace properties of existing logger object with those of new logger
         Object.assign(serverLogger, newLogger);
 
-        console.log("サーバーログストリームを更新しました");
+        console.log("Updated server log stream");
         return newServerLogStream;
     } catch (error) {
-        console.error("サーバーログストリーム更新エラー:", error);
-        // エラーが発生した場合でも、新しいストリームを作成して返す
+        console.error("Server log stream update error:", error);
+        // Even if error occurs, create and return new stream
         return fs.createWriteStream(serverLogPath, { flags: "a" });
     }
 }
