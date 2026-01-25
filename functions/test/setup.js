@@ -1,23 +1,23 @@
-// Jest テストセットアップファイル
+// Jest test setup file
 /* global jest, afterAll */
 const admin = require("firebase-admin");
 
-// Firebase Admin SDK のテスト用初期化
+// Initialize Firebase Admin SDK for testing
 if (!admin.apps.length) {
   admin.initializeApp({
     projectId: "test-project-id",
   });
 }
 
-// テスト用のFirestoreエミュレーターを使用
+// Use Firestore emulator for testing
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
 process.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
 
-// グローバルなテストタイムアウトを設定
+// Set global test timeout
 jest.setTimeout(30000);
 
-// テスト後のクリーンアップ
+// Cleanup after tests
 afterAll(async () => {
-  // Firebase Admin SDK のクリーンアップ
+  // Cleanup Firebase Admin SDK
   await admin.app().delete();
 });

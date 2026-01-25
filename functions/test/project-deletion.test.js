@@ -6,7 +6,6 @@ describe("deleteProject Logic Tests", () => {
   let myFunctions;
   let transactionUpdateSpy;
   let transactionDeleteSpy;
-  let transactionGetSpy;
 
   // Mock Data
   let mockUserProjects = {};
@@ -49,7 +48,6 @@ describe("deleteProject Logic Tests", () => {
     };
     transactionUpdateSpy = mockTransaction.update;
     transactionDeleteSpy = mockTransaction.delete;
-    transactionGetSpy = mockTransaction.get;
 
     const mockDb = {
       collection: jest.fn(),
