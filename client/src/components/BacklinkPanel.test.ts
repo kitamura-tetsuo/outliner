@@ -40,7 +40,7 @@ describe("BacklinkPanel Accessibility", () => {
     it("should have correct ARIA attributes on toggle button", async () => {
         render(BacklinkPanel, { pageName: "Target Page" });
 
-        const toggleButton = screen.getByRole("button", { name: /バックリンク/i }); // Matches text content or aria-label
+        const toggleButton = screen.getByRole("button", { name: /Backlinks/i }); // Matches text content or aria-label
 
         // Initial state (collapsed)
         expect(toggleButton).toHaveAttribute("aria-expanded", "false");
@@ -52,7 +52,7 @@ describe("BacklinkPanel Accessibility", () => {
     it("should have correct accessible structure when expanded", async () => {
         render(BacklinkPanel, { pageName: "Target Page" });
 
-        const toggleButton = screen.getByRole("button", { name: /バックリンク/i });
+        const toggleButton = screen.getByRole("button", { name: /Backlinks/i });
         await fireEvent.click(toggleButton);
 
         // Should be expanded
@@ -62,10 +62,10 @@ describe("BacklinkPanel Accessibility", () => {
         const contentPanel = document.getElementById("backlink-content-panel");
         expect(contentPanel).toBeInTheDocument();
         expect(contentPanel).toHaveAttribute("role", "region");
-        expect(contentPanel).toHaveAttribute("aria-label", "バックリンク");
+        expect(contentPanel).toHaveAttribute("aria-label", "Backlinks");
 
         // Refresh button should have aria-label (should fail initially)
-        const refreshButton = screen.getByTitle("再読み込み");
-        expect(refreshButton).toHaveAttribute("aria-label", "バックリンクを再読み込み");
+        const refreshButton = screen.getByTitle("Refresh");
+        expect(refreshButton).toHaveAttribute("aria-label", "Refresh backlinks");
     });
 });
