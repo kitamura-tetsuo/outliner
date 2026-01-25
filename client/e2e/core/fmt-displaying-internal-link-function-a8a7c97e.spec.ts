@@ -21,7 +21,7 @@ import { TreeValidator } from "../utils/treeValidation";
 test.describe("FMT-0007: 内部リンク機能", () => {
     const ensureOutlinerReady = async (page: Page, timeout = 30000): Promise<void> => {
         try {
-            await TestHelpers.waitForOutlinerItems(page, timeout);
+            await TestHelpers.waitForOutlinerItems(page, 1, timeout);
             return;
         } catch (error) {
             console.warn("waitForOutlinerItems fallback", error instanceof Error ? error.message : error);
