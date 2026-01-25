@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Delete old coverage JSON files to ensure fresh coverage data is obtained for each test run.
- * - Delete JSON files other than coverage-final.json from unit_and_integration/
- * - Delete all JSON files from e2e/raw/
- * - Delete old merged coverage data from merged/
+ * 古い coverage JSON ファイルを削除して、各テスト実行で fresh coverage データを取得できるようにします。
+ * - unit_and_integration/ から coverage-final.json 以外の JSON ファイルを削除
+ * - e2e/raw/ から全ての JSON ファイルを削除
+ * - merged/ から古いマージされた coverage データを削除
  */
 
 import fs from "fs";
@@ -17,7 +17,7 @@ const __dirname = path.dirname(__filename);
 const workspaceDir = path.resolve(__dirname, "../..");
 const coverageDir = path.join(workspaceDir, "coverage");
 
-// Configuration for each subdirectory
+// 各サブディレクトリの設定
 const cleanupDirs = [
     {
         name: "unit_and_integration",
@@ -25,20 +25,20 @@ const cleanupDirs = [
     },
     {
         name: "e2e/raw",
-        keepFile: null, // Delete all JSON files
+        keepFile: null, // 全てのJSONファイルを削除
     },
     {
         name: "merged",
-        keepFile: null, // Delete all JSON files
+        keepFile: null, // 全てのJSONファイルを削除
     },
 ];
 
 /**
- * Delete old JSON files from the specified directory
+ * 指定されたディレクトリから古い JSON ファイルを削除します
  */
 function cleanupDirectory(dirPath, keepFile = null) {
     if (!fs.existsSync(dirPath)) {
-        return 0; // Skip if directory does not exist
+        return 0; // ディレクトリが存在しない場合はスキップ
     }
 
     let removedCount = 0;
@@ -47,19 +47,19 @@ function cleanupDirectory(dirPath, keepFile = null) {
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
         for (const entry of entries) {
-            // Skip directories
+            // ディレクトリはスキップ
             if (entry.isDirectory()) {
                 continue;
             }
 
             const filePath = path.join(dirPath, entry.name);
 
-            // If keepFile is specified, do not delete that file
+            // keepFile が指定されている場合、そのファイルは削除しない
             if (keepFile && entry.name === keepFile) {
                 continue;
             }
 
-            // Delete only JSON files
+            // JSON ファイルのみ削除
             if (entry.name.endsWith(".json")) {
                 fs.unlinkSync(filePath);
                 console.log(`[coverage:cleanup] deleted: ${path.relative(workspaceDir, filePath)}`);
@@ -78,12 +78,12 @@ function main() {
 
     console.log("[coverage:cleanup] cleaning up old coverage files...");
 
-    // Process each directory
+    // 各ディレクトリを処理
     for (const dirConfig of cleanupDirs) {
         const dirPath = path.join(coverageDir, dirConfig.name);
 
         if (!fs.existsSync(dirPath)) {
-            // Skip without error if directory does not exist
+            // ディレクトリが存在しない場合はスキップしてエラーにしない
             continue;
         }
 
@@ -97,14 +97,14 @@ function main() {
 
     console.log("[coverage:cleanup] cleanup completed");
 
-    // Appropriate message if nothing found
+    // 何もない場合は適切なメッセージ
     if (totalRemoved === 0) {
         console.log("[coverage:cleanup] no old coverage files found to delete");
     } else {
         console.log(`[coverage:cleanup] total: ${totalRemoved} file(s) removed`);
     }
 
-    // Always exit with success status
+    // 常に成功ステータスで終了
     process.exit(0);
 }
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Back up the coverage directory with a timestamp.
- * - Move (not copy) the coverage directory to coverage-backups
- * - Automatically delete backups older than 10
- * Output destination: coverage-backups/<YYYYMMDD-HHMMSS>
- * Example: coverage-backups/2025-10-29-14-23-05
+ * coverage ディレクトリをタイムスタンプ付きでバックアップします。
+ * - coverageディレクトリをcoverage-backupsに移動（コピーではない）
+ * - 10個より古いバックアップを自動削除
+ * 出力先: coverage-backups/<YYYYMMDD-HHMMSS>
+ * 例: coverage-backups/2025-10-29-14-23-05
  *
- * This script is executed at the start of the test to move the previous coverage and save disk space.
+ * このスクリプトはテスト開始時に実行され、前回のcoverageを移動してディスク容量を節約します。
  */
 
 import fs from "fs";
@@ -30,7 +30,7 @@ function timestamp() {
 }
 
 /**
- * Delete old backups (keep the latest 10)
+ * 古いバックアップを削除（最新10個を保持）
  */
 function pruneOldBackups() {
     if (!fs.existsSync(backupsRoot)) {
@@ -46,9 +46,9 @@ function pruneOldBackups() {
                 path: path.join(backupsRoot, entry.name),
                 mtime: fs.statSync(path.join(backupsRoot, entry.name)).mtime,
             }))
-            .sort((a, b) => b.mtime - a.mtime); // Sort by newness
+            .sort((a, b) => b.mtime - a.mtime); // 新しい順にソート
 
-        // Delete backups older than 10
+        // 10個より古いバックアップを削除
         const toDelete = backupDirs.slice(10);
         if (toDelete.length > 0) {
             console.log(`[coverage:move-to-backup] pruning ${toDelete.length} old backup(s)...`);
@@ -59,7 +59,7 @@ function pruneOldBackups() {
         }
     } catch (e) {
         console.error("[coverage:move-to-backup] failed to prune old backups:", e);
-        // Continue backup process even if an error occurs
+        // エラーが発生してもバックアップ処理は続行
     }
 }
 
@@ -75,7 +75,7 @@ function main() {
     console.log(`[coverage:move-to-backup] moving: ${coverageDir} -> ${dest}`);
 
     try {
-        // Move coverage directory (not copy)
+        // coverageディレクトリを移動（コピーではなく移動）
         fs.renameSync(coverageDir, dest);
     } catch (e) {
         console.error("[coverage:move-to-backup] move failed:", e);
@@ -84,7 +84,7 @@ function main() {
 
     console.log("[coverage:move-to-backup] move completed");
 
-    // Delete old backups
+    // 古いバックアップを削除
     pruneOldBackups();
 
     console.log("[coverage:move-to-backup] done");

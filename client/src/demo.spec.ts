@@ -1,5 +1,5 @@
 /** @feature TST-0005
- *  Title   : テスト環境の初期化と準備
+ *  Title   : Test environment initialization and preparation
  *  Source  : docs/client-features.yaml
  */
 import { describe, expect, it } from "vitest";

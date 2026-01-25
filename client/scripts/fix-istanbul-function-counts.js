@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 
 /**
- * Script to fix function execution counts lost during conversion from V8 coverage to Istanbul format
+ * V8カバレッジからIstanbul形式への変換時に失われた関数実行回数を修正するスクリプト
  *
- * Problem:
- * When monocart-coverage-reports converts V8 coverage to Istanbul format,
- * execution counts for event handlers and callbacks are not converted correctly.
+ * 問題:
+ * monocart-coverage-reportsがV8カバレッジをIstanbul形式に変換する際、
+ * イベントハンドラやコールバックの実行回数が正しく変換されない。
  *
- * Solution:
- * Extract function execution counts from V8 coverage raw data and
- * reflect them in the Istanbul format coverage data.
+ * 解決策:
+ * V8カバレッジの生データから関数実行回数を抽出し、
+ * Istanbul形式のカバレッジデータに反映する。
  *
- * Usage:
+ * 使用方法:
  *   node scripts/fix-istanbul-function-counts.js
  *
- * Prerequisites:
- *   - V8 coverage data exists in coverage/e2e/raw/
- *   - Istanbul format coverage data exists in coverage/e2e/coverage-final.json
+ * 前提条件:
+ *   - coverage/e2e/raw/ にV8カバレッジデータが存在すること
+ *   - coverage/e2e/coverage-final.json にIstanbul形式のカバレッジデータが存在すること
  */
 
 import fs from "fs";
@@ -26,43 +26,43 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Support execution from client/scripts and workspace
+// client/scripts から実行される場合と workspace から実行される場合の両方に対応
 const isInClientDir = __dirname.includes("/client/scripts");
 const workspaceDir = isInClientDir ? path.resolve(__dirname, "../..") : path.resolve(__dirname, "..");
 const rawCoverageDir = path.join(workspaceDir, "coverage", "e2e", "raw");
 const istanbulCoverageFile = path.join(workspaceDir, "coverage", "e2e", "coverage-final.json");
 
-console.log("Starting fix of function execution counts from V8 coverage to Istanbul format...");
+console.log("V8カバレッジからIstanbul形式への関数実行回数の修正を開始します...");
 
-// Check if V8 coverage data exists
+// V8カバレッジデータが存在するか確認
 if (!fs.existsSync(rawCoverageDir)) {
-    console.error("Error: V8 coverage data not found");
-    console.error(`Searched path: ${rawCoverageDir}`);
+    console.error("エラー: V8カバレッジデータが見つかりません");
+    console.error(`探したパス: ${rawCoverageDir}`);
     process.exit(1);
 }
 
-// Check if Istanbul format coverage data exists
+// Istanbul形式のカバレッジデータが存在するか確認
 if (!fs.existsSync(istanbulCoverageFile)) {
-    console.error("Error: Istanbul format coverage data not found");
-    console.error(`Searched path: ${istanbulCoverageFile}`);
+    console.error("エラー: Istanbul形式のカバレッジデータが見つかりません");
+    console.error(`探したパス: ${istanbulCoverageFile}`);
     process.exit(1);
 }
 
-// Extract function execution counts from V8 coverage data
+// V8カバレッジデータから関数実行回数を抽出
 const coverageFiles = fs.readdirSync(rawCoverageDir).filter((f) => f.endsWith(".json"));
-console.log(`  ✓ Found ${coverageFiles.length} V8 coverage files`);
+console.log(`  ✓ ${coverageFiles.length} 個のV8カバレッジファイルを見つけました`);
 
-// Get normalized filename from URL
+// URLから正規化されたファイル名を取得
 function normalizeUrl(url) {
     // http://localhost:7090/src/components/OutlinerItem.svelte?t=1760180780335
     // -> OutlinerItem.svelte
     const match = url.match(/\/src\/[^?]+/);
     if (!match) return null;
-    const filePath = match[0].substring(5); // Remove "/src/"
+    const filePath = match[0].substring(5); // "/src/" を除去
     return path.basename(filePath);
 }
 
-// Extract function execution counts from V8 coverage
+// V8カバレッジから関数実行回数を抽出
 const functionCounts = new Map(); // Map<fileName, Map<functionName, count>>
 
 for (const file of coverageFiles) {
@@ -72,7 +72,7 @@ for (const file of coverageFiles) {
     try {
         data = JSON.parse(text);
     } catch (e) {
-        console.error(`Failed to parse JSON: ${filePath}`, e.message);
+        console.error(`JSON のパースに失敗しました: ${filePath}`, e.message);
         continue;
     }
 
@@ -94,13 +94,13 @@ for (const file of coverageFiles) {
             const functionName = func.functionName;
             if (!functionName) continue;
 
-            // In V8 coverage, function execution count is recorded in the count of the first range
+            // V8カバレッジでは、関数の実行回数は最初のrangeのcountに記録されている
             const ranges = func.ranges || [];
             if (ranges.length === 0) continue;
 
             const count = ranges[0].count || 0;
 
-            // Compare with existing count and adopt the larger one (when executed in multiple test files)
+            // 既存のカウントと比較して、大きい方を採用（複数のテストファイルで実行される場合）
             const existingCount = fileFunctionCounts.get(functionName) || 0;
             if (count > existingCount) {
                 fileFunctionCounts.set(functionName, count);
@@ -109,12 +109,12 @@ for (const file of coverageFiles) {
     }
 }
 
-console.log(`  ✓ Extracted function execution counts from ${functionCounts.size} files`);
+console.log(`  ✓ ${functionCounts.size} 個のファイルから関数実行回数を抽出しました`);
 
-// Load Istanbul format coverage data
+// Istanbul形式のカバレッジデータを読み込み
 const istanbulCoverage = JSON.parse(fs.readFileSync(istanbulCoverageFile, "utf8"));
 
-// Fix function execution counts
+// 関数実行回数を修正
 let totalFixed = 0;
 let totalFunctions = 0;
 
@@ -138,24 +138,24 @@ for (const [filePath, coverage] of Object.entries(istanbulCoverage)) {
 
             if (oldCount === 0 && v8Count > 0) {
                 console.log(
-                    `  Fix: ${fileName} - ${functionName}: ${oldCount} -> ${v8Count}`,
+                    `  修正: ${fileName} - ${functionName}: ${oldCount} -> ${v8Count}`,
                 );
             }
         }
     }
 }
 
-console.log(`  ✓ Fixed execution counts for ${totalFixed} out of ${totalFunctions} functions`);
+console.log(`  ✓ ${totalFunctions} 個の関数のうち ${totalFixed} 個の実行回数を修正しました`);
 
-// Save fixed coverage data
+// 修正したカバレッジデータを保存
 fs.writeFileSync(istanbulCoverageFile, JSON.stringify(istanbulCoverage, null, 2));
-console.log(`  ✓ Saved to ${istanbulCoverageFile}`);
+console.log(`  ✓ ${istanbulCoverageFile} に保存しました`);
 
-console.log("\n✓ Fix of function execution counts completed");
+console.log("\n✓ 関数実行回数の修正が完了しました");
 
-// Show list of fixed functions
+// 修正された関数の一覧を表示
 if (totalFixed > 0) {
-    console.log("\nFixed functions:");
+    console.log("\n修正された関数:");
     for (const [filePath, coverage] of Object.entries(istanbulCoverage)) {
         const fileName = path.basename(filePath);
         const fileFunctionCounts = functionCounts.get(fileName);
@@ -169,7 +169,7 @@ if (totalFixed > 0) {
             const v8Count = fileFunctionCounts.get(functionName);
 
             if (v8Count !== undefined && v8Count > 0 && f[fnId] === v8Count) {
-                console.log(`  - ${fileName}:${fnInfo.loc.start.line} ${functionName} (${v8Count} count)`);
+                console.log(`  - ${fileName}:${fnInfo.loc.start.line} ${functionName} (${v8Count}回)`);
             }
         }
     }
