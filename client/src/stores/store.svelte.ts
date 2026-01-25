@@ -21,9 +21,9 @@ export class GeneralStore {
             },
         };
     }
-    // 現在開いているコメントスレッドのアイテムID（同時に1つのみ表示）
+    // Item ID of the currently open comment thread (only one is displayed at a time)
     openCommentItemId: string | null = null;
-    // Fallback: 接続切替時などIDが変わるケースに備えてインデックスも保持
+    // Fallback: Also keep the index in case the ID changes, such as when switching connections
     openCommentItemIndex: number | null = null;
     private _project: Project | undefined;
     textareaRef: HTMLTextAreaElement | null = null;
@@ -34,13 +34,13 @@ export class GeneralStore {
     });
 
     public get currentPage(): Item | undefined {
-        // Svelte の $derived/by から購読可能にする
+        // Make it subscribeable from Svelte's $derived/by
         this._subscribeCurrentPage();
         return this._currentPage;
     }
     public set currentPage(v: Item | undefined) {
-        // E2E 安定化: テストが暫定プロジェクトのページを設定した場合でも、
-        // 接続済みプロジェクトへ同名ページを見つける/作成して置き換える
+        // E2E stabilization: Even if the test sets a page for a provisional project,
+        // find/create and replace with a page of the same name in the connected project
         try {
             const proj = this._project;
             const page = v;
@@ -62,7 +62,7 @@ export class GeneralStore {
                 // REMOVED: Legacy browser-based auto-creation. Tests should use TestHelpers.createAndSeedProject for data seeding.
                 // If page doesn't exist, do not auto-create it here - let tests fail if seeding was missed.
 
-                // 子行の移植（先行シードを反映）
+                // Porting child rows (reflecting preceding seed)
                 // DISABLED: Legacy browser-based auto-creation logic causes duplication in E2E tests
                 // with server-side seeding. Tests should rely on SeedClient and proper Yjs sync.
                 /*
@@ -115,7 +115,7 @@ export class GeneralStore {
                 }
                 */
                 this._currentPage = next;
-                // 通知
+                // Notify
                 this._currentPageSubscribers.forEach(fn => {
                     try {
                         fn();
@@ -125,7 +125,7 @@ export class GeneralStore {
             }
         } catch {}
         this._currentPage = v;
-        // 通知
+        // Notify
         this._currentPageSubscribers.forEach(fn => {
             try {
                 fn();
@@ -200,7 +200,7 @@ export class GeneralStore {
 
         saveProjectSnapshot(v);
 
-        // Yjs observeDeep でルートツリーを監視し、Svelteの購読にブリッジ
+        // Monitor the root tree with Yjs observeDeep and bridge to Svelte subscription
         const project = v;
         const ymap = project?.ydoc?.getMap?.("orderedTree");
 
@@ -273,12 +273,12 @@ export class GeneralStore {
 
 export const store = $state(new GeneralStore());
 
-// グローバルに参照できるようにする（ScrapboxFormatter.tsからアクセスするため）
+// Make it globally accessible (to be accessed from ScrapboxFormatter.ts)
 if (typeof window !== "undefined") {
     (window as unknown as { appStore: GeneralStore; }).appStore = store;
-    (window as unknown as { generalStore: GeneralStore; }).generalStore = store; // TestHelpersとの互換性のため
+    (window as unknown as { generalStore: GeneralStore; }).generalStore = store; // For compatibility with TestHelpers
 
-    // 起動直後に仮プロジェクトを用意（本接続が来れば yjsStore が置換）
+    // Prepare a provisional project immediately after startup (yjsStore will replace it when the actual connection arrives)
     // This ensures tests and direct navigation work even before Yjs connection is established
     try {
         if (!store.project) {
