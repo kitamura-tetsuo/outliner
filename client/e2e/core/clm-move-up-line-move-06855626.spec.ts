@@ -11,32 +11,22 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0004: 上へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Seed test data directly to avoid slow keyboard input
+        const longText =
+            "これは非常に長いテキストです。折り返しによって複数行になります。アイテムの幅に応じて自動的に折り返されて表示されるはずです。このテキストは十分に長いので、標準的な画面幅であれば少なくとも2行以上になるはずです。";
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [longText]);
 
-        // ページタイトルを優先的に使用
+        // Click on the first item (the seeded page title) to focus it
         const item = page.locator(".outliner-item.page-title");
-
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
-        if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
+        if (await item.count() > 0) {
+            await item.locator(".item-content").click({ force: true });
+        } else {
+            // Fallback: use first visible item
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
-        } else {
-            await item.locator(".item-content").click({ force: true });
         }
 
         // カーソルが表示されるまで待機
-        await TestHelpers.waitForCursorVisible(page);
-
-        // 長いテキストを入力して視覚的な折り返しを作成
-        await page.keyboard.type(
-            "これは非常に長いテキストです。折り返しによって複数行になります。アイテムの幅に応じて自動的に折り返されて表示されるはずです。このテキストは十分に長いので、標準的な画面幅であれば少なくとも2行以上になるはずです。",
-        );
-
-        // テキストが入力されるのを待機
-        await page.waitForTimeout(500);
-
-        // カーソルが再表示されるのを待機（テキスト入力後の再レンダリングのため）
         await TestHelpers.waitForCursorVisible(page);
     });
 
