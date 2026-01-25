@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SnapshotDiffModal from "../../components/SnapshotDiffModal.svelte";
 
-// services をモック（ユニット/統合テストでは限定的なモックを許容）
+// Mock services (limited mocking allowed for unit/integration tests)
 vi.mock("../../services", () => {
     const now = Date.now();
     const data = [{ id: "s1", timestamp: now - 1000, author: "user1", content: "old" }];
@@ -19,13 +19,13 @@ vi.mock("../../services", () => {
     };
 });
 
-describe("HDV: SnapshotDiffModal a11y - li に onclick を持たない", () => {
+describe("HDV: SnapshotDiffModal a11y - li does not have onclick", () => {
     beforeEach(() => {
-        // JSDOM/Testing Library 上では window の型がランタイムと一致しないことがあるため
-        // 以降の (window as any) 利用は Playwright/JSDOM の型不定性に伴う安全な緩和です。
+        // Since the window type may not match the runtime in JSDOM/Testing Library,
+        // subsequent use of (window as any) is a safe relaxation due to Playwright/JSDOM type ambiguity.
     });
 
-    it("スナップショット選択は button のクリックで動作し、li には onclick が無い", async () => {
+    it("Snapshot selection works by clicking button, and li does not have onclick", async () => {
         render(SnapshotDiffModal, {
             project: "p",
             page: "pg",
@@ -33,20 +33,20 @@ describe("HDV: SnapshotDiffModal a11y - li に onclick を持たない", () => {
             author: "user",
         });
 
-        // リスト項目（li）に onclick が設定されていないこと
+        // List item (li) does not have onclick set
         const items = await screen.findAllByRole("listitem");
         expect(items.length).toBeGreaterThan(0);
         for (const li of items) {
             expect(li.getAttribute("onclick")).toBeNull();
         }
 
-        // ボタンクリックで diff が表示されること（ins または del が描画される）
+        // Diff is displayed on button click (ins or del is rendered)
         const buttons = await screen.findAllByRole("button");
         const target = buttons.find(b => /user1/.test(b.textContent || "")) || buttons[0];
         await fireEvent.click(target);
 
-        // diff が描画されることを確認
-        // NOTE: diff-prettyHtml は <ins>/<del> を用いる
+        // Confirm diff is rendered
+        // NOTE: diff-prettyHtml uses <ins>/<del>
         const diffInserted = document.querySelector(".diff ins, .diff del");
         expect(diffInserted).not.toBeNull();
     });
