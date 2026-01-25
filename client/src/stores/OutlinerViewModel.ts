@@ -2,7 +2,7 @@ import { getLogger } from "../lib/logger";
 import { Item, Items } from "../schema/app-schema";
 
 const logger = getLogger();
-// E2E/テスト環境では冗長ログを抑止
+// Suppress verbose logs in E2E/test environments
 const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     || import.meta.env.MODE === "test"
     || import.meta.env.VITE_IS_TEST === "true";
@@ -21,10 +21,10 @@ const isItemLike = (obj: any): boolean => {
     }
 };
 
-// ビューモデルのインターフェース
+// View model interface
 export interface OutlinerItemViewModel {
     id: string;
-    original: Item; // 元のFluidオブジェクトへの参照
+    original: Item; // Reference to original Fluid object
     text: string;
     votes: string[];
     author: string;
@@ -33,7 +33,7 @@ export interface OutlinerItemViewModel {
     commentCount: number;
 }
 
-// 表示用のアイテム情報
+// Item information for display
 export interface DisplayItem {
     model: OutlinerItemViewModel;
     depth: number;
@@ -41,34 +41,34 @@ export interface DisplayItem {
 }
 
 /**
- * アウトライナーのビューモデルを管理するストア
- * DOMの再生成を避けるために、アイテムの参照同一性を維持する
+ * Store managing the view model of the outliner
+ * Maintains reference identity of items to avoid DOM regeneration
  */
 export class OutlinerViewModel {
-    // IDによるビューモデルマップ（参照同一性を維持）
+    // View model map by ID (maintains reference identity)
     private viewModels = new Map<string, OutlinerItemViewModel>();
 
-    // 表示順序を示すID配列
+    // ID array indicating display order
     private visibleOrder: string[] = [];
 
-    // アイテムの深度マップ
+    // Item depth map
     private depthMap = new Map<string, number>();
 
-    // 親アイテムIDのマップ
+    // Parent item ID map
     private parentMap = new Map<string, string | null>();
 
-    // 折りたたみ状態のマップ
+    // Collapse state map
     private collapsedMap = new Map<string, boolean>();
 
-    // 更新中フラグ
+    // Updating flag
     private _isUpdating = false;
 
     /**
-     * データモデルからビューモデルを更新する
-     * @param pageItem ルートアイテムのコレクション
+     * Update view model from data model
+     * @param pageItem Root item collection
      */
     updateFromModel(pageItem: Item): void {
-        // 更新中に既に処理中かどうかをチェック
+        // Check if already processing during update
         if (this._isUpdating) return;
 
         if (!pageItem) {
@@ -87,7 +87,7 @@ export class OutlinerViewModel {
                 (pageItem.items as any)?.length || 0,
             );
 
-            // 既存のビューモデルを更新または追加する
+            // Update or add existing view models
             this.ensureViewModelsItemExist(pageItem);
 
             console.error(
@@ -95,7 +95,7 @@ export class OutlinerViewModel {
                 this.viewModels.size,
             );
 
-            // 表示順序と深度を再計算 - pageItem自体から開始
+            // Recalculate order and depth - start from pageItem itself
             this.recalculateOrderAndDepthItem(pageItem);
 
             console.error(
@@ -113,7 +113,7 @@ export class OutlinerViewModel {
     }
 
     /**
-     * アイテムのビューモデルが存在することを確認し、必要に応じて作成または更新する
+     * Ensure item view models exist, creating or updating as necessary
      */
     private ensureViewModelsItemsExist(
         items: Items,
@@ -136,12 +136,12 @@ export class OutlinerViewModel {
             `OutlinerViewModel: ensureViewModelsItemExist for item "${item.text}" (id: ${item.id})`,
         );
 
-        // 既存のビューモデルを更新または新規作成
+        // Update or create existing view model
         const existingViewModel = this.viewModels.get(item.id);
         if (existingViewModel) {
-            // プロパティを更新（参照は維持）
-            // パフォーマンス最適化: lastChanged が変更された場合のみ再計算する
-            // Y.Text.toString() は高コストな操作であるため、不要な呼び出しを避ける
+            // Update properties (maintain reference)
+            // Performance optimization: recalculate only if lastChanged has changed
+            // Avoid unnecessary calls as Y.Text.toString() is expensive
             // Use safe type checking instead of explicit any casts
             const lastChangedProp = "lastChanged" in item ? item.lastChanged : undefined;
             const newLastChanged = typeof lastChangedProp === "number" ? lastChangedProp : 0;
@@ -167,7 +167,7 @@ export class OutlinerViewModel {
                 );
             }
         } else {
-            // 新しいビューモデルを作成
+            // Create new view model
             this.viewModels.set(item.id, {
                 id: item.id,
                 original: item,
@@ -183,10 +183,10 @@ export class OutlinerViewModel {
             );
         }
 
-        // 親の設定
+        // Set parent
         this.parentMap.set(item.id, parentId);
 
-        // 子アイテムも処理
+        // Process child items
         if (((it: any) => (it && typeof it.length === "number" && typeof it.at === "function"))((item as any).items)) {
             const children = item.items;
             debugLog(
@@ -198,7 +198,7 @@ export class OutlinerViewModel {
         }
     }
     /**
-     * 表示順序と深度を再計算する
+     * Recalculate display order and depth
      */
     private recalculateOrderAndDepth(
         items: Items,
@@ -207,7 +207,7 @@ export class OutlinerViewModel {
     ): void {
         if (!items) return;
 
-        // 表示順序と深度を最初に初期化
+        // Initialize visible order and depth first
         if (depth === 0) {
             this.visibleOrder = [];
         }
@@ -217,7 +217,7 @@ export class OutlinerViewModel {
         }
     }
     /**
-     * 表示順序と深度を再計算する（単一アイテム用）
+     * Recalculate display order and depth (for single item)
      */
     private recalculateOrderAndDepthItem(
         item: Item,
@@ -226,7 +226,7 @@ export class OutlinerViewModel {
     ): void {
         if (!isItemLike(item)) return;
 
-        // 表示順序を最初に初期化（ルートアイテムの場合のみ）
+        // Initialize visible order first (only for root item)
         if (depth === 0) {
             this.visibleOrder = [];
         }
@@ -235,17 +235,17 @@ export class OutlinerViewModel {
             `OutlinerViewModel: recalculateOrderAndDepthItem for "${item.text.toString()}" (depth: ${depth})`,
         );
 
-        // 表示順序に追加
+        // Add to visible order
         this.visibleOrder.push(item.id);
 
-        // 深度を設定
+        // Set depth
         this.depthMap.set(item.id, depth);
         const vm = this.viewModels.get(item.id);
         if (vm) {
             vm.commentCount = (item as any).comments?.length ?? 0;
         }
 
-        // 子アイテムを処理（折りたたまれていない場合のみ）
+        // Process child items (only if not collapsed)
         const isCollapsed = this.collapsedMap.get(item.id);
         const ch: any = (item as any).items;
         const hasChildren = !!(ch && typeof ch.length === "number" && typeof ch.at === "function" && ch.length > 0);
@@ -274,13 +274,13 @@ export class OutlinerViewModel {
     }
 
     /**
-     * アイテムの折りたたみ状態を切り替える
+     * Toggle collapse state of an item
      */
     toggleCollapsed(itemId: string): void {
         const isCollapsed = this.collapsedMap.get(itemId) || false;
         this.collapsedMap.set(itemId, !isCollapsed);
 
-        // モデルから表示情報を再計算（アイテムインスタンスは維持）
+        // Recalculate display info from model (item instances are maintained)
         const rootItem = this.findRootItem(itemId);
         if (!rootItem) return;
         if (
@@ -293,7 +293,7 @@ export class OutlinerViewModel {
     }
 
     /**
-     * ルートアイテムを見つける
+     * Find root item
      */
     private findRootItem(itemId: string): Item | null {
         const item = this.viewModels.get(itemId)?.original;
@@ -311,7 +311,7 @@ export class OutlinerViewModel {
     }
 
     /**
-     * 表示用のアイテムリストを取得する
+     * Get list of items for display
      */
     getVisibleItems(): DisplayItem[] {
         return this.visibleOrder
@@ -332,14 +332,14 @@ export class OutlinerViewModel {
     }
 
     /**
-     * アイテムの折りたたみ状態を取得
+     * Get collapse state of an item
      */
     isCollapsed(itemId: string): boolean {
         return this.collapsedMap.get(itemId) || false;
     }
 
     /**
-     * アイテムが子を持っているかを確認
+     * Check if item has children
      */
     hasChildren(itemId: string): boolean {
         const model = this.viewModels.get(itemId);
@@ -349,14 +349,14 @@ export class OutlinerViewModel {
     }
 
     /**
-     * ビューモデルを直接取得
+     * Get view model directly
      */
     getViewModel(id: string): OutlinerItemViewModel | undefined {
         return this.viewModels.get(id);
     }
 
     /**
-     * リソースの解放
+     * Release resources
      */
     dispose(): void {
         this.viewModels.clear();
