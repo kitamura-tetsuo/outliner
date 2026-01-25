@@ -29,9 +29,9 @@ test.describe("Chart Component E2E", () => {
         const componentSelector = await page.locator(".component-selector select").nth(1);
         await expect(componentSelector).toBeVisible();
 
-        // Check if "チャート" option is available (Japanese text)
+        // Check if "Chart" option is available
         const options = await componentSelector.locator("option").allTextContents();
-        expect(options).toContain("チャート");
+        expect(options).toContain("Chart");
     });
 
     test.fixme("should show chart editor and panel when chart component is selected", async ({ page }) => {
