@@ -80,7 +80,11 @@ export async function startServer(
 
     // Additional check to ensure Persistence is ready
     if (persistence) {
-        logger.info({ event: "persistence_ready" }, "Persistence initialized");
+        logger.info({ event: "persistence_ready" }, "Persistence initialized: ENABLED");
+        console.log("Persistence: ENABLED (SQLite)");
+    } else {
+        logger.warn({ event: "persistence_disabled" }, "Persistence initialized: DISABLED");
+        console.log("Persistence: DISABLED");
     }
 
     const intervals: NodeJS.Timeout[] = [];

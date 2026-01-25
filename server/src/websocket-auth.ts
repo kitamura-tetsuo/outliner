@@ -112,6 +112,21 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
         tokenCache.set(token, { decoded, exp });
         return decoded;
     } catch (e: any) {
+        // Debug: Decode token to see why it failed
+        try {
+            const parts = token.split(".");
+            if (parts.length === 3) {
+                const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
+                const nowSec = Math.floor(Date.now() / 1000);
+                console.error(
+                    `[Auth] Verification failed. Token debug: exp=${payload.exp}, iat=${payload.iat}, now=${nowSec}, diff=${
+                        payload.exp - nowSec
+                    }, uid=${payload.uid || payload.user_id}`,
+                );
+            }
+        } catch (parseErr) {
+            console.error("[Auth] Failed to parse failed token for debug");
+        }
         console.error(`[Auth] Token verification failed: ${e.message}`);
         throw e;
     }
