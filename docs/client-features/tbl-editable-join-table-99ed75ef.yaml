@@ -17,13 +17,13 @@ tests:
 - src/tests/sqlService.test.ts
 - src/tests/syncWorker.test.ts
 acceptance:
-- JOINクエリで編集した値が正しいテーブルに反映される
-- PKエイリアスを利用してJOIN結果の各行が編集対象テーブルに正しくマッピングされる
-- SQLクエリ結果をグリッド表示する
-- クエリ実行後、ChartPanelが表示される
-- セル編集後、ChartPanelに変更が表示される
-- セル編集後、queryStoreのデータが更新される
-- セル編集後に再実行したクエリ結果も更新される
-- 編集内容がFluid経由で同期される
-- 編集後チャートが自動更新される
+- Values edited in JOIN queries are reflected in the correct table
+- Each row of the JOIN result is correctly mapped to the table to be edited using the PK alias
+- Display SQL query results in a grid
+- ChartPanel is displayed after query execution
+- Changes are displayed in ChartPanel after cell editing
+- queryStore data is updated after cell editing
+- Query results re-executed after cell editing are also updated
+- Edits are synced via Fluid
+- Chart updates automatically after editing
 title-ja: 編集可能な結合テーブル

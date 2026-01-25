@@ -1,12 +1,12 @@
 id: USR-baaa8b62
 title: User deletion function
-description: ユーザーアカウントとそれに関連するデータを削除する機能
+description: Function to delete a user account and its related data
 category: user-management
 status: implemented
 acceptance:
-- Firebase Authからユーザーアカウントが削除される
-- ユーザーがアクセス可能だったコンテナからユーザーIDが削除される
-- ユーザーが最後のアクセス者だったコンテナは完全に削除される
-- ユーザーに関連するコンテナ情報が削除される
-- ユーザーアカウントを削除できる
+- User account is deleted from Firebase Auth
+- User ID is removed from containers the user had access to
+- Containers where the user was the last accessor are completely deleted
+- Container information related to the user is deleted
+- Can delete the user account
 title-ja: ユーザー削除機能

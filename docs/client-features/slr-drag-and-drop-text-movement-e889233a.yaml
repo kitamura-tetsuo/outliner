@@ -1,14 +1,14 @@
 id: SLR-0009
 title: Drag and drop text movement
-description: 選択範囲のテキストをドラッグ＆ドロップで移動する機能
+description: Feature to move text in selection ranges by drag and drop
 category: selection-range
 status: implemented
 acceptance:
-- アイテム全体をドラッグ＆ドロップで移動できる
-- ドラッグ中に視覚的なフィードバックが表示される
-- ドロップ位置に応じて適切にテキストが挿入される
-- 単一アイテム内の選択範囲をドラッグ＆ドロップで移動できる
-- 複数アイテムにまたがる選択範囲をドラッグ＆ドロップで移動できる
+- Entire items can be moved by drag and drop
+- Visual feedback is displayed during drag
+- Text is inserted appropriately according to the drop position
+- Selection ranges within a single item can be moved by drag and drop
+- Selection ranges spanning multiple items can be moved by drag and drop
 tests:
 - client/e2e/core/slr-drag-drop-item-e889233a.spec.ts
 - client/e2e/core/slr-drag-drop-selection-e889233a.spec.ts

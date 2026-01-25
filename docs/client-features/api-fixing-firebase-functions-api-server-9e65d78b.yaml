@@ -1,22 +1,22 @@
 id: API-0001
 title: Fixing Firebase Functions API Server
-description: Firebase Functions APIサーバーのローカルテスト時のエラーを修正し、正常に動作するようにする機能
+description: Feature to fix errors during local testing of Firebase Functions API server so it operates correctly.
 category: api-server
 status: implemented
 acceptance:
-- CORS設定が正しく構成され、クロスオリジンリクエストが正常に処理される
-- Firebase Functions エミュレーターが正常に起動する
-- Firebase Hosting経由でのリクエストが正しくFunctionsにルーティングされる
-- deleteContainerエンドポイント（/api/deleteContainer）が認証エラーを適切に処理する
-- deleteUserエンドポイント（/api/deleteUser）が認証エラーを適切に処理する
-- getUserContainersエンドポイント（/api/getUserContainers）が認証エラーを適切に処理する
-- save-containerエンドポイント（/api/save-container）が認証エラーを適切に処理する
-- ヘルスチェックエンドポイント（/health）が正常に応答する
-- 'ポート設定が正しく構成される（Hosting: 57000）'
-- 必須パラメータが不足している場合に400エラーが返される
-- 無効なHTTPメソッドに対して405エラーが返される
-- 環境変数が正しく読み込まれ、Azure Fluid Relay設定が適用される
-- 認証に失敗した場合に401または500エラーが返される
+- CORS settings are configured correctly and cross-origin requests are processed normally
+- Firebase Functions emulator starts normally
+- Requests via Firebase Hosting are correctly routed to Functions
+- deleteContainer endpoint (/api/deleteContainer) handles auth errors appropriately
+- deleteUser endpoint (/api/deleteUser) handles auth errors appropriately
+- getUserContainers endpoint (/api/getUserContainers) handles auth errors appropriately
+- save-container endpoint (/api/save-container) handles auth errors appropriately
+- Health check endpoint (/health) responds normally
+- Port settings are configured correctly (Hosting: 57000)
+- Returns 400 error if required parameters are missing
+- Returns 405 error for invalid HTTP methods
+- Environment variables are loaded correctly and Azure Fluid Relay settings are applied
+- Returns 401 or 500 error if authentication fails
 tests:
 - client/e2e/core/api-fixing-firebase-functions-api-server-9e65d78b.spec.ts
 - functions/test/firebase-functions.test.js

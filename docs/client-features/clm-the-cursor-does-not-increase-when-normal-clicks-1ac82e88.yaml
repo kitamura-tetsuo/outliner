@@ -1,12 +1,12 @@
 id: CLM-0100
 title: The cursor does not increase when normal clicks
-description: アイテム間を移動する際に、カーソルが増えないようにします。
+description: Ensures that the cursor does not increase when moving between items.
 category: cursor-management
 status: implemented
 tests:
 - client/e2e/core/clm-the-cursor-does-not-increase-when-normal-clicks-1ac82e88.spec.ts
 acceptance:
-- アイテム間をクリックで移動しても、カーソルの数が増えない
-- 前のアイテムのカーソルは完全に削除される
-- 常に1つのカーソルだけが表示される
+- Cursor count does not increase when moving between items by clicking
+- The cursor in the previous item is completely removed
+- Only one cursor is displayed at all times
 title-ja: 通常クリックでカーソルが増えないこと

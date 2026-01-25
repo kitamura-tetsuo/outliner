@@ -1,16 +1,16 @@
 id: TST-0001
 title: SharedTree Data Verification Utility
-description: テストにおいてSharedTreeの内容をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ
+description: Utility to retrieve SharedTree content as JSON in tests and verify the results strictly and simply
 category: testing
 status: implemented
 acceptance:
-- SharedTreeのデータ構造をJSON形式で取得できる
-- スナップショットを取得して後で比較できる
-- ネストされた構造（親子関係）を正確に検証できる
-- 期待値と実際の値を厳密に比較できる
-- 期待値と実際の値を部分的に比較できる
-- 特定のパスのデータを検証できる
-- 特定のパスを無視して比較できる
+- Retrieve SharedTree data structure in JSON format
+- Take snapshots and compare later
+- Accurately verify nested structures (parent-child relationships)
+- Strictly compare expected and actual values
+- Partially compare expected and actual values
+- Verify data at a specific path
+- Ignore specific paths for comparison
 tests:
 - client/e2e/utils/tree-validation.spec.ts
 examples:

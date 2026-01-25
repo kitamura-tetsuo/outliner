@@ -1,20 +1,20 @@
 id: TST-0003
 title: Test Helper Utility
-description: テストにおいてカーソル状態の検証を容易にするヘルパー関数群
+description: Group of helper functions to facilitate cursor state verification in tests
 category: testing
 status: implemented
 acceptance:
-- DOM要素の可視性を強制的に確認できる（forceCheckVisibility）
-- class:editingセレクタの代わりにカーソル状態を検証できる
-- アイテムをクリックして編集モードに入れる（clickItemToEdit）
-- アクティブなアイテムIDを取得できる（getActiveItemId）
-- アクティブなアイテム要素を取得できる（getActiveItemLocator）
-- カーソルが表示されるまで待機できる（waitForCursorVisible）
-- カーソルデバッグ機能をセットアップできる（setupCursorDebugger）
-- バックリンクパネルを開くことができる（openBacklinkPanel）
-- マウスアウトイベントを強制的にシミュレートできる（forceMouseOutEvent）
-- マウスオーバーイベントを強制的にシミュレートできる（forceHoverEvent）
-- リンクプレビューを強制的に表示できる（forceLinkPreview）
+- Force check visibility of DOM elements (forceCheckVisibility)
+- Verify cursor state instead of class:editing selector
+- Click item to enter edit mode (clickItemToEdit)
+- Get active item ID (getActiveItemId)
+- Get active item element (getActiveItemLocator)
+- Wait until cursor is visible (waitForCursorVisible)
+- Setup cursor debug function (setupCursorDebugger)
+- Open backlink panel (openBacklinkPanel)
+- Force simulate mouse out event (forceMouseOutEvent)
+- Force simulate mouse over event (forceHoverEvent)
+- Force display link preview (forceLinkPreview)
 tests:
 - client/e2e/auth/auth.spec.ts
 - client/e2e/core/clm-click-to-enter-edit-mode-760e61d9.spec.ts

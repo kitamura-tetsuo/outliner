@@ -1,16 +1,16 @@
 id: FMT-0001
 title: Format display
-description: Scrapbox構文のフォーマットを視覚的に表示する機能
+description: Feature to visually display Scrapbox format syntax
 category: text-formatting
 status: implemented
 acceptance:
-- Scrapbox構文のUXをクローンし、編集中はプレーンテキスト、非編集時はフォーマット表示となる
-- カーソルがあるアイテムではプレーンテキストの入力内容がそのまま表示される
-- カーソルがないアイテムではフォーマットされた内容が表示される
-- コードフォーマット（`text`）が視覚的にコードスタイルで表示される
-- 取り消し線フォーマット（[- text]）が視覚的に取り消し線付きで表示される
-- 太字フォーマット（[[text]]）が視覚的に太字で表示される
-- 斜体フォーマット（[/ text]）が視覚的に斜体で表示される
+- Clones Scrapbox UX, showing plain text during editing and formatted display when not editing
+- Plain text input is displayed as is in the item with the cursor
+- Formatted content is displayed in items without the cursor
+- Code format (`text`) is visually displayed in code style
+- Strikethrough format ([- text]) is visually displayed with strikethrough
+- Bold format ([[text]]) is visually displayed in bold
+- Italic format ([/ text]) is visually displayed in italic
 tests:
 - client/e2e/core/fmt-format-display-048d107c.spec.ts
 title-ja: フォーマット表示

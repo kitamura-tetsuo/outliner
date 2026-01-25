@@ -1,13 +1,13 @@
 id: NAV-0001
 title: Project Selection and Page Navigation
-description: ルートページでプロジェクトを選択した場合にプロジェクトページへ遷移し、プロジェクトページからページリストを通じて個別ページへ遷移する機能
+description: Feature to navigate to the project page when a project is selected on the root page, and navigate to individual pages via the page list from the project page
 category: navigation
 status: implemented
 acceptance:
-- プロジェクトページ(/[project_name])のページリストから、対応するページ(/[project_name]/[page_name])へ遷移するリンクが機能する
-- プロジェクト選択後、プロジェクト内のページ一覧が表示される
-- ページリストの各ページ名をクリックすると、そのページの内容が表示される
-- ルートページ(/)でプロジェクトを選択すると、対応するプロジェクトページ(/[project_name])へ遷移する
+- Links from the page list on the project page (/[project_name]) to the corresponding page (/[project_name]/[page_name]) work
+- After selecting a project, a list of pages in the project is displayed
+- Clicking each page name in the page list displays the content of that page
+- Selecting a project on the root page (/) navigates to the corresponding project page (/[project_name])
 tests:
 - client/e2e/core/nav-project-selection-and-page-navigation-bf35d422.spec.ts
 title-ja: プロジェクト選択とページナビゲーション

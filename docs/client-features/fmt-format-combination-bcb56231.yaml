@@ -1,14 +1,14 @@
 id: FMT-0002
 title: Format combination
-description: Scrapbox構文の複数フォーマットの組み合わせを視覚的に表示する機能
+description: Feature to visually display combinations of multiple Scrapbox format syntaxes
 category: text-formatting
 status: implemented
 acceptance:
-- カーソルがあるアイテムでは組み合わせフォーマットもプレーンテキストで表示される
-- 太字と取り消し線の組み合わせが正しく表示される
-- 太字と斜体の組み合わせが正しく表示される
-- 斜体とコードの組み合わせが正しく表示される
-- 複数のフォーマットが入れ子になっている場合も正しく表示される
+- Combined formats are displayed as plain text in the item with the cursor
+- Combination of bold and strikethrough is displayed correctly
+- Combination of bold and italic is displayed correctly
+- Combination of italic and code is displayed correctly
+- Nested multiple formats are displayed correctly
 tests:
 - client/e2e/core/fmt-format-combination-bcb56231.spec.ts
 title-ja: フォーマット組み合わせ

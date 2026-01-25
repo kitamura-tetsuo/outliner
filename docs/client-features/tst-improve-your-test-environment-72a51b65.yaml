@@ -1,18 +1,18 @@
 id: TST-0004
 title: Improve your test environment
-description: テスト環境の安定性と信頼性を向上させるための改善
+description: Improvements to increase the stability and reliability of the test environment
 category: testing
 status: implemented
 acceptance:
-- DOM要素の検出と操作のためのヘルパー関数を提供する
-- テスト実行時のタイムアウト設定を延長し、テストの安定性を向上させる
-- テスト環境の制約を考慮したテスト条件の調整を行う
-- マウスイベントが正確に動作しない場合に代替手段を提供する
-- 要素の検出待機のタイムアウト設定を延長し、テストの安定性を向上させる
+- Provide helper functions for detecting and manipulating DOM elements
+- Extend timeout settings during test execution to improve test stability
+- Adjust test conditions considering test environment constraints
+- Provide alternatives when mouse events do not work accurately
+- Extend timeout settings for element detection waiting to improve test stability
 tests:
 - client/e2e/core/lnk-backlink-function-7976aef8.spec.ts
 - client/e2e/core/tst-improve-your-test-environment-72a51b65.spec.ts
 notes:
-- テスト環境ではマウスイベントやDOM要素の検出が不安定な場合があるため、専用のヘルパー関数を使用してテストを安定化
-- headlessモードでの実行時に一部の機能が正常に動作しない場合があるため、代替手段を提供
+- Use dedicated helper functions to stabilize tests as mouse events and DOM element detection may be unstable in the test environment
+- Provide alternative means as some functions may not work properly when running in headless mode
 title-ja: テスト環境の改善

@@ -1,10 +1,10 @@
 id: ITM-ff843c45
 title: Title and child align horizontally
-description: ページタイトルとその直下の子アイテムの表示位置は同じX座標になります。
+description: The page title and its immediate children are aligned at the same X coordinate.
 category: item-management
 status: implemented
 acceptance:
-- タイトルとその子アイテムのx座標が同じ
+- The title and its child items have the same x coordinate
 tests:
 - client/e2e/core/itm-title-child-aligned-x-position-ff843c45.spec.ts
 title-ja: タイトルと子アイテムの水平位置を揃える

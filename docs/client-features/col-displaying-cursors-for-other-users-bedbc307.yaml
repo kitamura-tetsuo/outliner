@@ -1,11 +1,11 @@
 id: COL-bedbc307
 title: Displaying cursors for other users
-description: 複数ユーザーが同じページを編集しているとき、他ユーザーのカーソル位置をリアルタイムに表示する
+description: Real-time display of other users' cursor positions when multiple users are editing the same page
 category: collaboration
 status: implemented
 acceptance:
-- Fluid Framework の signal 機能でカーソル位置を同期する
-- 他ユーザーがカーソルを移動すると、その位置が表示される
+- Sync cursor positions using Fluid Framework's signal feature
+- When other users move their cursor, that position is displayed
 tests:
 - client/e2e/core/col-displaying-cursors-for-other-users-bedbc307.spec.ts
 title-ja: 他ユーザーのカーソル表示

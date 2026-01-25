@@ -1,6 +1,6 @@
 id: SRE-001
 title: Advanced Search & Replace
-description: 正規表現や範囲指定に対応した検索・置換機能
+description: Search and replace function supporting regular expressions and range specification
 category: search
 status: implemented
 components:

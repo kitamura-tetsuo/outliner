@@ -1,15 +1,15 @@
 id: NAV-0002
 title: Link function to project page
-description: ページ表示時にプロジェクトページへのリンクをパンくずナビゲーションとして表示する機能
+description: Feature to display a link to the project page as breadcrumb navigation when displaying a page
 category: navigation
 status: implemented
 acceptance:
-- パンくずナビゲーションにプロジェクトページへのリンクが表示される
-- パンくずナビゲーションにホームへのリンクが表示される
-- パンくずナビゲーションに現在のページ名が表示される
-- プロジェクトページへのリンクをクリックするとプロジェクトページに遷移する
-- ページ表示時にパンくずナビゲーションが表示される
-- ホームへのリンクをクリックするとホームページに遷移する
+- A link to the project page is displayed in breadcrumb navigation
+- A link to home is displayed in breadcrumb navigation
+- The current page name is displayed in breadcrumb navigation
+- Clicking the project page link navigates to the project page
+- Breadcrumb navigation is displayed when displaying a page
+- Clicking the home link navigates to the home page
 tests:
 - client/e2e/core/nav-link-function-to-project-page-a0e7d28a.spec.ts
 title-ja: プロジェクトページへのリンク機能

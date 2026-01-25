@@ -1,16 +1,16 @@
 id: TST-0002
 title: Cursor Information Verification Utility
-description: テストにおいてカーソル情報をJSONとして取得し、結果を厳密かつ簡易に判定するユーティリティ
+description: Utility to retrieve cursor information as JSON in tests and verify the results strictly and simply
 category: testing
 status: implemented
 acceptance:
-- アクティブなアイテムIDを検証できる
-- カーソルの数を検証できる
-- カーソル情報をJSON形式で取得できる
-- スナップショットを取得して後で比較できる
-- 期待値と実際の値を厳密に比較できる
-- 期待値と実際の値を部分的に比較できる
-- 特定のパスのデータを検証できる
+- Verify active item ID
+- Verify number of cursors
+- Retrieve cursor information in JSON format
+- Take snapshots and compare later
+- Strictly compare expected and actual values
+- Partially compare expected and actual values
+- Verify data at a specific path
 tests:
 - client/e2e/utils/cursor-validation.spec.ts
 examples:

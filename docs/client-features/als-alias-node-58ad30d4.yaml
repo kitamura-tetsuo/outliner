@@ -4,11 +4,11 @@ title-ja: 既存アイテムを参照するエイリアスノード
 category: outline
 status: implemented
 acceptance:
-- エイリアスは参照先アイテムへのパスを表示する
-- エイリアスノードを作成できる
-- エイリアスピッカーをキーボードで操作し確定できる
-- エイリアス展開時に参照先のサブツリーを編集できる
-- 変更は元のアイテムに反映される
+- Alias displays the path to the referenced item
+- Can create an alias node
+- Can operate the alias picker with keyboard and confirm
+- Can edit the referenced subtree when expanding the alias
+- Changes are reflected in the original item
 components:
 - client/src/components/AliasPicker.svelte
 - client/src/components/OutlinerItem.svelte

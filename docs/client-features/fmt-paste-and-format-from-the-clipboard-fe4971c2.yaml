@@ -1,14 +1,14 @@
 id: FMT-0004
 title: Paste and format from the clipboard
-description: クリップボードからのテキストペーストとフォーマット保持機能
+description: Text paste from clipboard and format preservation function
 category: text-formatting
 status: implemented
 acceptance:
-- カーソル位置にテキストがペーストされる
-- フォーマット構文を含むテキストのペーストが正しく機能する
-- プレーンテキストのペーストが正しく機能する
-- ペーストされたフォーマット構文が視覚的に正しく表示される
-- 複数行テキストのペーストが正しく機能する
+- Text is pasted at the cursor position
+- Pasting text containing format syntax works correctly
+- Pasting plain text works correctly
+- Pasted format syntax is visually displayed correctly
+- Pasting multi-line text works correctly
 tests:
 - client/e2e/core/fmt-paste-and-format-from-the-clipboard-fe4971c2.spec.ts
 title-ja: クリップボードからのペーストとフォーマット

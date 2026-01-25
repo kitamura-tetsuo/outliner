@@ -4,7 +4,7 @@ status: implemented
 tests:
 - client/e2e/core/ime-japanese-input-using-ime-59109b4a.spec.ts
 acceptance:
-- IMEを使用した日本語入力が可能になる
-- 入力途中の文字がカーソル位置に表示される
-- 変換候補がカーソル位置に表示される
+- Enable Japanese input using IME
+- Characters in progress are displayed at the cursor position
+- Conversion candidates are displayed at the cursor position
 title-ja: IMEを使用した日本語入力

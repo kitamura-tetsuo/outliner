@@ -1,17 +1,17 @@
 id: SLR-0100
 title: Box Selection (Rectangle Selection) Function - Keyboard
-shortcut: Alt+Shift+矢印キー
-description: Alt+Shift+矢印キーによる矩形選択機能
+shortcut: Alt+Shift+Arrow keys
+description: Box selection function using Alt+Shift+Arrow keys
 category: selection-range
 status: implemented
 acceptance:
-- Alt+Shift+矢印キーで矩形選択を開始できる
-- Escキーで矩形選択をキャンセルできる
-- 矩形選択の範囲が視覚的に表示される
-- 矩形選択の範囲を矢印キーで拡張できる
-- 矩形選択範囲にテキストをペーストできる
-- 矩形選択範囲のテキストをコピーできる
-- 複数アイテムにまたがる矩形選択を作成できる
+- Box selection can be started with Alt+Shift+Arrow keys
+- Box selection can be cancelled with Esc key
+- Box selection range is visually displayed
+- Box selection range can be extended with arrow keys
+- Text can be pasted into the box selection range
+- Text in the box selection range can be copied
+- Box selection spanning multiple items can be created
 tests:
 - client/e2e/core/slr-box-selection-rectangle-selection-function-keyboard-50ee5e3d.spec.ts
 title-ja: ボックス選択（矩形選択）機能 - キーボード
