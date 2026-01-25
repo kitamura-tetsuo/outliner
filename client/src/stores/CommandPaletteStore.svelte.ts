@@ -14,10 +14,10 @@ class CommandPaletteStore {
     query = "";
     selectedIndex = 0;
 
-    // CommandPalette専用のカーソル状態
+    // Cursor state dedicated to CommandPalette
     private commandCursorItemId: string | null = null;
     private commandCursorOffset: number = 0;
-    private commandStartOffset: number = 0; // スラッシュの位置
+    private commandStartOffset: number = 0; // Position of slash
 
     readonly commands = [
         { label: "Table", type: "table" as const },
@@ -25,7 +25,7 @@ class CommandPaletteStore {
         { label: "Alias", type: "alias" as const },
     ];
 
-    // 可視リストは getter で計算
+    // Visible list is calculated by getter
     get visible() {
         const fallback = this.isVisible && !this.query ? this.deriveQueryFromDoc() : this.query;
         const q = (fallback || "").toLowerCase();
@@ -35,7 +35,7 @@ class CommandPaletteStore {
                 this.commands.filter(c => c.label.toLowerCase().includes(q)).map(c => c.label),
             );
         } catch {}
-        // チャートコマンドの特別なフィルタリング
+        // Special filtering for chart commands
         if (q === "ch") {
             return this.commands.filter(c => c.type === "chart");
         }
@@ -47,7 +47,7 @@ class CommandPaletteStore {
             const w: any = typeof window !== "undefined" ? (window as any) : null;
             const gs: any = w?.generalStore ?? null;
 
-            // 1) 直近の入力ストリームから推測
+            // 1) Infer from recent input stream
             const stream: string = typeof gs?.__lastInputStream === "string" ? gs.__lastInputStream : "";
             if (stream) {
                 const lastSlash = stream.lastIndexOf("/");
@@ -55,12 +55,12 @@ class CommandPaletteStore {
                     const seg = stream.slice(lastSlash + 1);
                     if (seg && seg.length <= 8) {
                         console.log("[deriveQueryFromDoc] Using stream:", seg);
-                        return seg; // ノイズ抑制
+                        return seg; // Noise suppression
                     }
                 }
             }
 
-            // 2) テキストエリアの内容から直接取得
+            // 2) Obtain directly from text area content
             const ta: HTMLTextAreaElement | null | undefined = gs?.textareaRef ?? null;
             if (ta && typeof ta.value === "string") {
                 const caret = typeof ta.selectionStart === "number" ? ta.selectionStart : ta.value.length;
@@ -73,7 +73,7 @@ class CommandPaletteStore {
                 }
             }
 
-            // 3) window のキーストリームからのフォールバック
+            // 3) Fallback from window keystream
             try {
                 const wAny: any = typeof window !== "undefined" ? (window as any) : null;
                 const ks: string = typeof wAny?.__KEYSTREAM__ === "string" ? wAny.__KEYSTREAM__ : "";
@@ -89,7 +89,7 @@ class CommandPaletteStore {
                 }
             } catch {}
 
-            // 4) モデル側（ノードテキスト）からのフォールバック
+            // 4) Fallback from model side (node text)
             const cursors = editorOverlayStore.getCursorInstances();
             if (cursors.length === 0) {
                 console.log("[deriveQueryFromDoc] No cursors found");
@@ -121,7 +121,7 @@ class CommandPaletteStore {
         const fallback = this.isVisible && !this.query ? this.deriveQueryFromDoc() : this.query;
         const q = (fallback || "").toLowerCase();
         console.log("[CommandPaletteStore.filtered] q:", q);
-        // チャートコマンドの特別なフィルタリング
+        // Special filtering for chart commands
         if (q === "ch") {
             const result = this.commands.filter(c => c.type === "chart");
             console.log('[CommandPaletteStore.filtered] Special filtering for "ch", result:', result.map(c => c.label));
@@ -138,13 +138,13 @@ class CommandPaletteStore {
         this.selectedIndex = 0;
         this.isVisible = true;
 
-        // 現在のカーソル位置を記録
+        // Record current cursor position
         const cursors = editorOverlayStore.getCursorInstances();
         if (cursors.length > 0) {
             const cursor = cursors[0];
             this.commandCursorItemId = cursor.itemId;
             this.commandCursorOffset = cursor.offset;
-            this.commandStartOffset = cursor.offset - 1; // スラッシュの位置
+            this.commandStartOffset = cursor.offset - 1; // Position of slash
         }
     }
 
@@ -161,7 +161,7 @@ class CommandPaletteStore {
         this.selectedIndex = 0;
     }
 
-    // モデルを書き換えずにクエリだけ更新する軽量入力
+    // Lightweight input that updates only the query without rewriting the model
     inputLight(ch: string) {
         console.log("[CommandPaletteStore] inputLight:", ch);
         this.query = (this.query || "") + ch;
@@ -175,8 +175,8 @@ class CommandPaletteStore {
     }
 
     /**
-     * カーソルとしてふるまい、コマンド文字列を蓄積する
-     * @param inputData 入力された文字
+     * Act as a cursor and accumulate command strings
+     * @param inputData input character
      */
     handleCommandInput(inputData: string) {
         if (!this.isVisible || !this.commandCursorItemId) return;
@@ -188,24 +188,24 @@ class CommandPaletteStore {
         const node = cursor.findTarget();
         if (!node) return;
 
-        // 現在のテキストからコマンド部分を抽出
+        // Extract command part from current text
         const text = node.text || "";
         const beforeSlash = text.slice(0, this.commandStartOffset);
         const afterCursor = text.slice(cursor.offset);
 
-        // 新しいコマンド文字列を構築
+        // Construct new command string
         const newCommandText = this.query + inputData;
         const newText = beforeSlash + "/" + newCommandText + afterCursor;
 
-        // テキストを更新
+        // Update text
         node.updateText(newText);
 
-        // カーソル位置を更新
+        // Update cursor position
         const newOffset = this.commandStartOffset + 1 + newCommandText.length;
         cursor.offset = newOffset;
         this.commandCursorOffset = newOffset;
 
-        // クエリを更新
+        // Update query
         this.query = newCommandText;
         this.selectedIndex = 0;
         try {
@@ -217,16 +217,16 @@ class CommandPaletteStore {
             );
         } catch {}
 
-        // カーソルを適用
+        // Apply cursor
         cursor.applyToStore();
 
-        // 位置を更新
+        // Update position
         const pos = this.getCursorScreenPosition();
         if (pos) this.updatePosition(pos);
     }
 
     /**
-     * バックスペースでコマンド文字列を削除
+     * Delete command string with backspace
      */
     handleCommandBackspace() {
         if (!this.isVisible || !this.commandCursorItemId) return;
@@ -238,17 +238,17 @@ class CommandPaletteStore {
         const node = cursor.findTarget();
         if (!node) return;
 
-        // クエリが空の場合はスラッシュも削除してコマンドパレットを非表示
+        // If query is empty, delete slash as well and hide command palette
         if (this.query.length === 0) {
             const text = node.text || "";
             const beforeSlash = text.slice(0, this.commandStartOffset);
             const afterCursor = text.slice(cursor.offset);
 
-            // スラッシュを削除
+            // Delete slash
             const newText = beforeSlash + afterCursor;
             node.updateText(newText);
 
-            // カーソル位置をスラッシュの位置に戻す
+            // Return cursor position to slash position
             cursor.offset = this.commandStartOffset;
             cursor.applyToStore();
 
@@ -256,31 +256,31 @@ class CommandPaletteStore {
             return;
         }
 
-        // 現在のテキストからコマンド部分を削除
+        // Delete command part from current text
         const text = node.text || "";
         const beforeSlash = text.slice(0, this.commandStartOffset);
         const afterCursor = text.slice(cursor.offset);
 
-        // 新しいコマンド文字列を構築（最後の文字を削除）
+        // Construct new command string (delete last character)
         const newCommandText = this.query.slice(0, -1);
         const newText = beforeSlash + "/" + newCommandText + afterCursor;
 
-        // テキストを更新
+        // Update text
         node.updateText(newText);
 
-        // カーソル位置を更新
+        // Update cursor position
         const newOffset = this.commandStartOffset + 1 + newCommandText.length;
         cursor.offset = newOffset;
         this.commandCursorOffset = newOffset;
 
-        // クエリを更新
+        // Update query
         this.query = newCommandText;
         this.selectedIndex = 0;
 
-        // カーソルを適用
+        // Apply cursor
         cursor.applyToStore();
 
-        // 位置を更新
+        // Update position
         const pos = this.getCursorScreenPosition();
         if (pos) this.updatePosition(pos);
     }
@@ -343,7 +343,7 @@ class CommandPaletteStore {
         if (cursors.length === 0) return;
         const cursor = cursors[0];
 
-        // コマンド文字列全体（スラッシュ含む）を削除
+        // Delete entire command string (including slash)
         if (this.commandCursorItemId) {
             const node = cursor.findTarget();
             if (node) {
@@ -352,17 +352,17 @@ class CommandPaletteStore {
                 const beforeSlash = text.slice(0, this.commandStartOffset);
                 const afterCursor = text.slice(cursor.offset);
 
-                // スラッシュとコマンド文字列を削除
+                // Delete slash and command string
                 const newText = beforeSlash + afterCursor;
                 node.updateText(newText);
 
-                // カーソル位置をスラッシュの位置に戻す
+                // Return cursor position to slash position
                 cursor.offset = this.commandStartOffset;
                 cursor.applyToStore();
             }
         }
 
-        // 常にページ内容のアイテムリストに追加する
+        // Always add to item list of page content
         const generalStore = (window as any).generalStore;
         if (!generalStore?.currentPage?.items) {
             return;
@@ -375,8 +375,8 @@ class CommandPaletteStore {
             return;
         }
 
-        // テキストは空にして、コンポーネントタイプを設定
-        // yjs-schema / app-schema の両方で動作するように updateText を使用
+        // Empty text and set component type
+        // Use updateText to work with both yjs-schema / app-schema
         if (typeof (newItem as any).updateText === "function") (newItem as any).updateText("");
         else (newItem as any).text = "";
 
@@ -403,7 +403,7 @@ class CommandPaletteStore {
             } catch {}
             aliasPickerStore.show(newItem.id);
         } else {
-            // componentType を安全に設定
+            // Set componentType safely
             if (!setMapField(newItem, "componentType", type)) {
                 (newItem as any).componentType = type;
             }
@@ -415,7 +415,7 @@ class CommandPaletteStore {
         cursor.applyToStore();
         editorOverlayStore.startCursorBlink();
 
-        // 追加直後の即時描画を促す（E2E安定化）
+        // Prompt immediate rendering immediately after addition (E2E stabilization)
         try {
             window.dispatchEvent(new CustomEvent("outliner-items-changed"));
         } catch {}
@@ -430,7 +430,7 @@ class CommandPaletteStore {
             } catch {}
         }, 0);
 
-        // デバッグ用にコンポーネントタイプをログ出力
+        // Output component type to log for debugging
         console.log("CommandPaletteStore.insert: Set componentType to", type, "for item", newItem.id);
     }
 }
