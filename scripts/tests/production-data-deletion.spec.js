@@ -1,29 +1,29 @@
 /**
- * 本番環境データ削除機能のテスト
+ * Tests for production data deletion function
  *
- * 注意: このテストはテスト環境でのみ実行されます
+ * Note: This test is executed only in test environments
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { detectEmulatorEnvironment } from "../check-production-environment.js";
 import { ADMIN_TOKEN, CONFIRMATION_CODE, makeRequest } from "../delete-production-data.js";
 
-describe("本番環境データ削除機能", () => {
+describe("Production Data Deletion Function", () => {
     let originalEnv;
 
     beforeAll(() => {
-        // 環境変数を保存
+        // Save environment variables
         originalEnv = { ...process.env };
     });
 
     afterAll(() => {
-        // 環境変数を復元
+        // Restore environment variables
         process.env = originalEnv;
     });
 
-    describe("環境チェック", () => {
-        it("エミュレーター環境を正しく検出する", () => {
-            // テスト環境の設定
+    describe("Environment Check", () => {
+        it("correctly detects emulator environment", () => {
+            // Emulator environment settings
             process.env.FUNCTIONS_EMULATOR = "true";
             process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
 
@@ -34,8 +34,8 @@ describe("本番環境データ削除機能", () => {
             expect(result.emulatorStatus.FIRESTORE_EMULATOR_HOST.exists).toBe(true);
         });
 
-        it("本番環境を正しく検出する", () => {
-            // 本番環境の設定（エミュレーター変数を削除）
+        it("correctly detects production environment", () => {
+            // Production environment settings (remove emulator variables)
             delete process.env.FUNCTIONS_EMULATOR;
             delete process.env.FIRESTORE_EMULATOR_HOST;
             delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
@@ -48,55 +48,55 @@ describe("本番環境データ削除機能", () => {
         });
     });
 
-    describe("認証とセキュリティ", () => {
-        it("正しい管理者トークンが設定されている", () => {
+    describe("Authentication and Security", () => {
+        it("correct admin token is set", () => {
             expect(ADMIN_TOKEN).toBe("ADMIN_DELETE_ALL_DATA_2024");
             expect(typeof ADMIN_TOKEN).toBe("string");
             expect(ADMIN_TOKEN.length).toBeGreaterThan(10);
         });
 
-        it("正しい確認コードが設定されている", () => {
+        it("correct confirmation code is set", () => {
             expect(CONFIRMATION_CODE).toBe("DELETE_ALL_PRODUCTION_DATA_CONFIRM");
             expect(typeof CONFIRMATION_CODE).toBe("string");
             expect(CONFIRMATION_CODE.length).toBeGreaterThan(10);
         });
     });
 
-    describe("APIリクエスト構造", () => {
-        it("makeRequest関数が正しい形式でリクエストを作成する", () => {
+    describe("API Request Structure", () => {
+        it("makeRequest function creates request in correct format", () => {
             const testData = {
                 adminToken: "test-token",
                 confirmationCode: "test-code",
             };
 
-            // makeRequest関数の存在と型をチェック
+            // Check makeRequest function existence and type
             expect(typeof makeRequest).toBe("function");
 
-            // 実際のリクエストはテスト環境では送信しない
-            // 代わりに関数の構造をテスト
+            // Do not send actual request in test environment
+            // Instead check function structure
             expect(() => {
-                // 関数が呼び出し可能であることを確認
+                // Confirm function is callable
                 const promise = makeRequest(testData);
                 expect(promise).toBeInstanceOf(Promise);
             }).not.toThrow();
         });
     });
 
-    describe("エラーハンドリング", () => {
-        it("不正な管理者トークンでエラーが発生する", async () => {
-            // テスト環境でのモックレスポンス
+    describe("Error Handling", () => {
+        it("errors on invalid admin token", async () => {
+            // Mock response in test environment
             const mockResponse = {
                 statusCode: 401,
                 data: { error: "Unauthorized" },
             };
 
-            // 実際のAPIコールの代わりにモックレスポンスをテスト
+            // Test mock response instead of actual API call
             expect(mockResponse.statusCode).toBe(401);
             expect(mockResponse.data.error).toBe("Unauthorized");
         });
 
-        it("不正な確認コードでエラーが発生する", async () => {
-            // テスト環境でのモックレスポンス
+        it("errors on invalid confirmation code", async () => {
+            // Mock response in test environment
             const mockResponse = {
                 statusCode: 400,
                 data: { error: "Invalid confirmation code" },
@@ -107,8 +107,8 @@ describe("本番環境データ削除機能", () => {
         });
     });
 
-    describe("レスポンス形式", () => {
-        it("成功時のレスポンス形式が正しい", () => {
+    describe("Response Format", () => {
+        it("success response format is correct", () => {
             const expectedSuccessResponse = {
                 success: true,
                 message: "Production data deletion completed",
@@ -120,7 +120,7 @@ describe("本番環境データ削除機能", () => {
                 timestamp: expect.any(String),
             };
 
-            // レスポンス構造の検証
+            // Validate response structure
             expect(expectedSuccessResponse.success).toBe(true);
             expect(expectedSuccessResponse.message).toBe("Production data deletion completed");
             expect(expectedSuccessResponse.results).toHaveProperty("firestore");
@@ -130,9 +130,9 @@ describe("本番環境データ削除機能", () => {
         });
     });
 
-    describe("安全性チェック", () => {
-        it("テスト環境では実際の削除が実行されない", () => {
-            // テスト環境の設定
+    describe("Safety Check", () => {
+        it("does not execute actual deletion in test environment", () => {
+            // Test environment settings
             process.env.FUNCTIONS_EMULATOR = "true";
             process.env.NODE_ENV = "test";
 
@@ -143,8 +143,8 @@ describe("本番環境データ削除機能", () => {
             expect(isProduction).toBe(false);
         });
 
-        it("本番環境の条件が正しく判定される", () => {
-            // 本番環境の設定
+        it("correctly determines production environment conditions", () => {
+            // Production environment settings
             delete process.env.FUNCTIONS_EMULATOR;
             delete process.env.FIRESTORE_EMULATOR_HOST;
             process.env.NODE_ENV = "production";
@@ -157,25 +157,25 @@ describe("本番環境データ削除機能", () => {
         });
     });
 
-    describe("データ削除対象", () => {
-        it("削除対象のコレクションが正しく定義されている", () => {
+    describe("Data Deletion Targets", () => {
+        it("deletion target collections are correctly defined", () => {
             const expectedCollections = ["users", "containers", "projects", "schedules", "user-containers"];
 
-            // 各コレクション名が文字列であることを確認
+            // Confirm each collection name is string
             expectedCollections.forEach(collection => {
                 expect(typeof collection).toBe("string");
                 expect(collection.length).toBeGreaterThan(0);
             });
 
-            // 重複がないことを確認
+            // Confirm no duplicates
             const uniqueCollections = [...new Set(expectedCollections)];
             expect(uniqueCollections.length).toBe(expectedCollections.length);
         });
     });
 
-    describe("ログ出力", () => {
-        it("重要な操作でログが出力される", () => {
-            // ログメッセージの形式をテスト
+    describe("Log Output", () => {
+        it("logs output on critical operations", () => {
+            // Test log message format
             const criticalLogMessage = "CRITICAL: Starting production data deletion process";
             const completionLogMessage = "CRITICAL: Production data deletion process completed";
 

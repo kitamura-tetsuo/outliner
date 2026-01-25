@@ -1,29 +1,29 @@
 #!/usr/bin/env node
 
 /**
- * 本番環境データ全削除スクリプト
+ * Production Data Deletion Script
  *
- * 使用方法:
+ * Usage:
  * node scripts/delete-production-data.js --confirm
  *
- * 注意: このスクリプトは本番環境のすべてのデータを削除します。
- * 実行前に必ずバックアップを取得してください。
+ * Note: This script deletes ALL data in the production environment.
+ * Be sure to create a backup before execution.
  */
 
 const https = require("https");
 const readline = require("readline");
 
-// 設定
+// Settings
 const PRODUCTION_URL = "https://us-central1-outliner-d57b0.cloudfunctions.net/deleteAllProductionData";
 const ADMIN_TOKEN = "ADMIN_DELETE_ALL_DATA_2024";
 const CONFIRMATION_CODE = "DELETE_ALL_PRODUCTION_DATA_CONFIRM";
 
-// コマンドライン引数の解析
+// Parse command line arguments
 const args = process.argv.slice(2);
 const confirmFlag = args.includes("--confirm");
 const forceFlag = args.includes("--force");
 
-// 色付きログ出力
+// Colored log output
 const colors = {
     red: "\x1b[31m",
     yellow: "\x1b[33m",
@@ -36,7 +36,7 @@ function log(message, color = "reset") {
     console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-// HTTPSリクエストを送信する関数
+// Function to send HTTPS request
 function makeRequest(data) {
     return new Promise((resolve, reject) => {
         const postData = JSON.stringify(data);
@@ -77,7 +77,7 @@ function makeRequest(data) {
     });
 }
 
-// ユーザー確認を求める関数
+// Function to ask for user confirmation
 function askConfirmation(question) {
     return new Promise((resolve) => {
         const rl = readline.createInterface({
@@ -92,112 +92,115 @@ function askConfirmation(question) {
     });
 }
 
-// メイン処理
+// Main process
 async function main() {
     log("=".repeat(80), "red");
-    log("本番環境データ全削除スクリプト", "red");
+    log("Production Data Deletion Script", "red");
     log("=".repeat(80), "red");
     log("");
 
-    log("⚠️  警告: このスクリプトは本番環境のすべてのデータを削除します！", "yellow");
-    log("   - Firebase Firestore のすべてのコレクション", "yellow");
-    log("   - Firebase Auth のすべてのユーザー", "yellow");
-    log("   - Firebase Storage のすべてのファイル", "yellow");
+    log("⚠️  WARNING: This script will delete ALL data in the production environment!", "yellow");
+    log("   - All Firebase Firestore collections", "yellow");
+    log("   - All Firebase Auth users", "yellow");
+    log("   - All Firebase Storage files", "yellow");
     log("");
 
-    // 確認フラグのチェック
+    // Check confirmation flag
     if (!confirmFlag) {
-        log("エラー: --confirm フラグが必要です", "red");
-        log("使用方法: node scripts/delete-production-data.js --confirm", "blue");
+        log("Error: --confirm flag is required", "red");
+        log("Usage: node scripts/delete-production-data.js --confirm", "blue");
         process.exit(1);
     }
 
-    // 強制実行フラグがない場合は追加確認
+    // Additional confirmation if force flag is missing
     if (!forceFlag) {
-        log("本当に本番環境のすべてのデータを削除しますか？", "red");
-        log("この操作は取り消すことができません。", "red");
+        log("Are you sure you want to delete all data in the production environment?", "red");
+        log("This operation cannot be undone.", "red");
         log("");
 
-        const confirmed = await askConfirmation('続行するには "yes" と入力してください: ');
+        const confirmed = await askConfirmation('Type "yes" to continue: ');
 
         if (!confirmed) {
-            log("操作がキャンセルされました。", "green");
+            log("Operation cancelled.", "green");
             process.exit(0);
         }
     }
 
     log("");
-    log("本番環境データ削除を開始します...", "yellow");
+    log("Starting production data deletion...", "yellow");
     log("");
 
     try {
-        // API呼び出し
+        // API call
         const response = await makeRequest({
             adminToken: ADMIN_TOKEN,
             confirmationCode: CONFIRMATION_CODE,
         });
 
         if (response.statusCode === 200) {
-            log("✅ データ削除が正常に完了しました", "green");
+            log("✅ Data deletion completed successfully", "green");
             log("");
 
             if (response.data && response.data.results) {
                 const results = response.data.results;
 
-                // Firestore結果
-                log("📊 削除結果:", "blue");
+                // Firestore results
+                log("📊 Deletion Results:", "blue");
                 log(
-                    `Firestore: ${results.firestore.success ? "成功" : "失敗"}`,
+                    `Firestore: ${results.firestore.success ? "Success" : "Failed"}`,
                     results.firestore.success ? "green" : "red",
                 );
 
                 if (results.firestore.deletedCollections) {
                     results.firestore.deletedCollections.forEach(col => {
-                        log(`  - ${col.name}: ${col.count}件のドキュメントを削除`, "blue");
+                        log(`  - ${col.name}: Deleted ${col.count} documents`, "blue");
                     });
                 }
 
                 if (results.firestore.error) {
-                    log(`  エラー: ${results.firestore.error}`, "red");
+                    log(`  Error: ${results.firestore.error}`, "red");
                 }
 
-                // Firebase Auth結果
-                log(`Firebase Auth: ${results.auth.success ? "成功" : "失敗"}`, results.auth.success ? "green" : "red");
-                log(`  - ${results.auth.deletedUsers}人のユーザーを削除`, "blue");
+                // Firebase Auth results
+                log(
+                    `Firebase Auth: ${results.auth.success ? "Success" : "Failed"}`,
+                    results.auth.success ? "green" : "red",
+                );
+                log(`  - Deleted ${results.auth.deletedUsers} users`, "blue");
 
                 if (results.auth.error) {
-                    log(`  エラー: ${results.auth.error}`, "red");
+                    log(`  Error: ${results.auth.error}`, "red");
                 }
 
-                // Firebase Storage結果
+                // Firebase Storage results
                 log(
-                    `Firebase Storage: ${results.storage.success ? "成功" : "失敗"}`,
+                    `Firebase Storage: ${results.storage.success ? "Success" : "Failed"}`,
                     results.storage.success ? "green" : "red",
                 );
-                log(`  - ${results.storage.deletedFiles}個のファイルを削除`, "blue");
+                log(`  - Deleted ${results.storage.deletedFiles} files`, "blue");
 
                 if (results.storage.error) {
-                    log(`  エラー: ${results.storage.error}`, "red");
+                    log(`  Error: ${results.storage.error}`, "red");
                 }
             }
 
             log("");
-            log(`実行時刻: ${response.data.timestamp || new Date().toISOString()}`, "blue");
+            log(`Execution time: ${response.data.timestamp || new Date().toISOString()}`, "blue");
         } else {
-            log(`❌ データ削除に失敗しました (HTTP ${response.statusCode})`, "red");
-            log(`エラー: ${JSON.stringify(response.data, null, 2)}`, "red");
+            log(`❌ Data deletion failed (HTTP ${response.statusCode})`, "red");
+            log(`Error: ${JSON.stringify(response.data, null, 2)}`, "red");
             process.exit(1);
         }
     } catch (error) {
-        log(`❌ リクエストエラー: ${error.message}`, "red");
+        log(`❌ Request error: ${error.message}`, "red");
         process.exit(1);
     }
 }
 
-// スクリプト実行
+// Execute script
 if (require.main === module) {
     main().catch(error => {
-        log(`❌ 予期しないエラー: ${error.message}`, "red");
+        log(`❌ Unexpected error: ${error.message}`, "red");
         process.exit(1);
     });
 }

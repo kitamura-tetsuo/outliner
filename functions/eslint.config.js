@@ -41,7 +41,7 @@ module.exports = [
       "no-unused-vars": "warn",
       "comma-dangle": "off",
 
-      // 🚫 禁止: svelte/store の直接利用
+      // 🚫 Forbidden: Direct use of svelte/store
       "no-restricted-imports": ["error", {
         paths: [
           {
