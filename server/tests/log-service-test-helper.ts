@@ -96,7 +96,9 @@ app.post("/api/save-container", async (req, res) => {
         const userId = decodedToken.uid;
 
         // Use currentAdmin to allow mocking
-        const firestore = typeof currentAdmin.firestore === "function" ? currentAdmin.firestore() : currentAdmin.firestore;
+        const firestore = typeof currentAdmin.firestore === "function"
+            ? currentAdmin.firestore()
+            : currentAdmin.firestore;
         const userContainersCollection = firestore.collection("userContainers");
         const userDocRef = userContainersCollection.doc(userId);
         const docSnapshot = await userDocRef.get();
@@ -152,7 +154,9 @@ app.post("/api/get-container-users", async (req, res) => {
         }
 
         // Use currentAdmin to allow mocking
-        const firestore = typeof currentAdmin.firestore === "function" ? currentAdmin.firestore() : currentAdmin.firestore;
+        const firestore = typeof currentAdmin.firestore === "function"
+            ? currentAdmin.firestore()
+            : currentAdmin.firestore;
         const containerUsersCollection = firestore.collection("containerUsers");
         const containerDoc = await containerUsersCollection.doc(containerId).get();
 
