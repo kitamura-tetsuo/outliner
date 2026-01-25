@@ -318,9 +318,7 @@ try {
   logger.info(`AZURE_TENANT_ID: ${process.env.AZURE_TENANT_ID || "not set"}`);
   logger.info(`AZURE_ENDPOINT: ${process.env.AZURE_ENDPOINT || "not set"}`);
   logger.info(
-    `AZURE_PRIMARY_KEY: ${
-      process.env.AZURE_PRIMARY_KEY ? "set" : "not set"
-    }`,
+    `AZURE_PRIMARY_KEY: ${process.env.AZURE_PRIMARY_KEY ? "set" : "not set"}`,
   );
   logger.info(
     `AZURE_SECONDARY_KEY: ${

@@ -2,15 +2,20 @@
 
 ## Overview
 
-This directory contains the Firebase Functions used in the Outliner application. The main functions are as follows:
+This directory contains the Firebase Functions used in the Outliner application.
+The main functions are as follows:
 
 1. `/api/save-container` - Endpoint to save user's container ID
-2. `/api/get-user-containers` - Endpoint to get the list of container IDs accessible by the user
+2. `/api/get-user-containers` - Endpoint to get the list of container IDs
+   accessible by the user
 3. `/health` - Health check endpoint
-4. `/api/azure-health-check` - Endpoint to check the operation of Azure Fluid Relay keys
-5. `/api/create-schedule` - Endpoint to register a publishing schedule for a specified page
+4. `/api/azure-health-check` - Endpoint to check the operation of Azure Fluid
+   Relay keys
+5. `/api/create-schedule` - Endpoint to register a publishing schedule for a
+   specified page
 6. `/api/update-schedule` - Endpoint to update an existing schedule
-7. `/api/list-schedules` - Endpoint to get a list of schedules created by the user
+7. `/api/list-schedules` - Endpoint to get a list of schedules created by the
+   user
 8. `/api/cancel-schedule` - Endpoint to cancel a schedule
 
 ### Samples
@@ -70,7 +75,8 @@ firebase deploy --only functions
 
 ## Environment Variable Configuration
 
-In the production environment, you need to set environment variables for Firebase Functions:
+In the production environment, you need to set environment variables for
+Firebase Functions:
 
 ```bash
 firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="https://us.fluidrelay.azure.com" azure.primary_key="your-primary-key"
@@ -80,7 +86,9 @@ firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="h
 
 ### `/api/azure-health-check`
 
-Endpoint to check the operation of Azure Fluid Relay keys. It allows verifying if the Azure Fluid Relay settings are working correctly in the production environment.
+Endpoint to check the operation of Azure Fluid Relay keys. It allows verifying
+if the Azure Fluid Relay settings are working correctly in the production
+environment.
 
 **Method**: GET
 
@@ -126,4 +134,5 @@ Endpoint to check the operation of Azure Fluid Relay keys. It allows verifying i
 
 - Firebase Functions uses Node.js 22 runtime
 - Please configure appropriate security rules in the production environment
-- Azure Fluid Relay settings must be set as environment variables for Firebase Functions
+- Azure Fluid Relay settings must be set as environment variables for Firebase
+  Functions
