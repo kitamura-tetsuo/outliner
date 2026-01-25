@@ -80,7 +80,7 @@
         "tinylicious": "^6.0.0",
         "ts-prune": "^0.10.3",
         "typescript": "^5.9.3",
-        "typescript-eslint": "^8.39.1",
+        "typescript-eslint": "^8.53.1",
         "vite": "^7.3.1",
         "vitest": "4.0.17",
         "ws": "^8.18.3"
