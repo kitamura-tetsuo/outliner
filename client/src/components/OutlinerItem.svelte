@@ -131,7 +131,9 @@ onMount(() => {
             let exists = false;
             if (items) {
                 // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
-                for (const it of items) {
+                // Use iterateUnordered if available for O(N) instead of O(N log N)
+                const iter = items.iterateUnordered ? items.iterateUnordered() : items;
+                for (const it of iter) {
                     if (it?.id === targetId) { exists = true; break; }
                 }
             }
@@ -524,7 +526,9 @@ function addAttachmentToDomTargetOrModel(ev: DragEvent, url: string) {
         if (w && targetId && w.generalStore?.currentPage?.items) {
             const items: any = w.generalStore.currentPage.items;
             // Use efficient iterator to avoid O(N^2) complexity
-            for (const cand of items) {
+            // Use iterateUnordered if available for O(N) instead of O(N log N)
+            const iter = items.iterateUnordered ? items.iterateUnordered() : items;
+            for (const cand of iter) {
                 if (String(cand?.id) === String(targetId)) { targetItem = cand; break; }
             }
         }
