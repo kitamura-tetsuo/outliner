@@ -10,7 +10,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// テスト前に.envファイルを読み込む
+// Load .env file before testing
 dotenv.config({ path: path.join(__dirname, "..", ".env.test") });
 
 // Mock global jest object if undefined
@@ -48,8 +48,8 @@ import { admin, app, setAdmin } from "./log-service-test-helper.js";
 
 const sandbox = sinon.createSandbox();
 
-describe("認証サービスのテスト", () => {
-    // テスト前の準備
+describe("Auth Service Tests", () => {
+    // Setup before tests
     before(() => {
         // Stub firebase-admin methods
         const authStub = {
@@ -136,14 +136,14 @@ describe("認証サービスのテスト", () => {
         sandbox.resetHistory();
     });
 
-    // テスト後のクリーンアップ
+    // Cleanup after tests
     after(() => {
         sandbox.restore();
     });
 
-    // /api/save-container エンドポイントのテスト
+    // Test /api/save-container endpoint
     describe("POST /api/save-container", () => {
-        it("コンテナIDを保存できる", async () => {
+        it("should save container ID", async () => {
             const response = await request(app)
                 .post("/api/save-container")
                 .send({
@@ -158,7 +158,7 @@ describe("認証サービスのテスト", () => {
             expect(response.body).to.have.property("containerId", "new-container-id");
         });
 
-        it("コンテナIDなしで400エラーを返す", async () => {
+        it("should return 400 error if container ID is missing", async () => {
             const response = await request(app)
                 .post("/api/save-container")
                 .send({ idToken: "valid-token" })
@@ -168,7 +168,7 @@ describe("認証サービスのテスト", () => {
             expect(response.body).to.have.property("error", "Container ID is required");
         });
 
-        it("無効なIDトークンで401エラーを返す", async () => {
+        it("should return 401 error if ID token is invalid", async () => {
             const response = await request(app)
                 .post("/api/save-container")
                 .send({
@@ -182,9 +182,9 @@ describe("認証サービスのテスト", () => {
         });
     });
 
-    // ヘルスチェックエンドポイントのテスト
+    // Test health check endpoint
     describe("GET /health", () => {
-        it("ヘルスチェックエンドポイントが200を返す", async () => {
+        it("health check endpoint should return 200", async () => {
             const response = await request(app)
                 .get("/health")
                 .expect("Content-Type", /json/)
@@ -195,10 +195,10 @@ describe("認証サービスのテスト", () => {
         });
     });
 
-    // デバッグ用エンドポイントのテスト (非本番環境のみ)
+    // Test debug endpoint (non-production environment only)
     describe("GET /debug/token-info", () => {
-        it("トークン情報を取得できる", async () => {
-            // テスト用のJWTトークンを生成
+        it("should retrieve token information", async () => {
+            // Generate JWT token for testing
             const testToken = jwt.sign(
                 { uid: "test-user", exp: Math.floor(Date.now() / 1000) + 3600 },
                 "test-secret",
@@ -215,7 +215,7 @@ describe("認証サービスのテスト", () => {
             expect(response.body.payload).to.have.property("uid", "test-user");
         });
 
-        it("トークンなしで400エラーを返す", async () => {
+        it("should return 400 error if token is missing", async () => {
             const response = await request(app)
                 .get("/debug/token-info")
                 .expect("Content-Type", /json/)
@@ -225,9 +225,9 @@ describe("認証サービスのテスト", () => {
         });
     });
 
-    // /api/list-users エンドポイントのテスト
+    // Test /api/list-users endpoint
     describe("POST /api/list-users", () => {
-        it("管理者以外は403を返す", async () => {
+        it("should return 403 for non-admin users", async () => {
             const response = await request(app)
                 .post("/api/list-users")
                 .send({ idToken: "valid-token" })
@@ -238,9 +238,9 @@ describe("認証サービスのテスト", () => {
         });
     });
 
-    // /api/get-container-users エンドポイントのテスト (管理者限定)
+    // Test /api/get-container-users endpoint (admin only)
     describe("POST /api/get-container-users", () => {
-        it("非管理者は403を受け取る", async () => {
+        it("should return 403 for non-admin users", async () => {
             const res = await request(app)
                 .post("/api/get-container-users")
                 .send({ idToken: "valid-token", containerId: "cont-1" });
@@ -249,7 +249,7 @@ describe("認証サービスのテスト", () => {
             expect(res.body).to.have.property("error", "Admin privileges required");
         });
 
-        it("管理者はユーザー一覧を取得できる", async () => {
+        it("admin users should be able to get user list", async () => {
             const res = await request(app)
                 .post("/api/get-container-users")
                 .send({ idToken: "admin-token", containerId: "cont-1" })
@@ -260,17 +260,17 @@ describe("認証サービスのテスト", () => {
             expect(res.body.users).to.deep.equal(["user1", "user2"]);
         });
 
-        it("存在しないコンテナIDで404を返す", async () => {
+        it("should return 404 for non-existent container ID", async () => {
             const res = await request(app)
                 .post("/api/get-container-users")
                 .send({ idToken: "admin-token", containerId: "non-existent-container" });
 
-            // 現在のモック設定では200が返される可能性があるため、
-            // このテストは実装に依存する
+            // Since the current mock setting may return 200,
+            // this test depends on the implementation
             expect([200, 404]).to.include(res.status);
         });
 
-        it("containerIdが無い場合400を返す", async () => {
+        it("should return 400 if containerId is missing", async () => {
             const res = await request(app)
                 .post("/api/get-container-users")
                 .send({ idToken: "admin-token" });

@@ -180,8 +180,8 @@ function startLogService() {
         try {
             const logData = req.body;
             if (!logData || !logData.level || !logData.log) {
-                logger.warn(`無効なログ形式を受信しました: ${JSON.stringify({ receivedData: logData })}`);
-                return res.status(400).json({ error: "無効なログ形式" });
+                logger.warn(`Received invalid log format: ${JSON.stringify({ receivedData: logData })}`);
+                return res.status(400).json({ error: "Invalid log format" });
             }
 
             const enrichedLog = {
@@ -219,8 +219,8 @@ function startLogService() {
 
             return res.status(200).json({ success: true });
         } catch (error: any) {
-            logger.error(`ログ処理エラー: ${error.message}`);
-            return res.status(500).json({ error: "ログ処理に失敗しました" });
+            logger.error(`Log processing error: ${error.message}`);
+            return res.status(500).json({ error: "Failed to process log" });
         }
     });
 
@@ -228,7 +228,7 @@ function startLogService() {
         app.get("/api/telemetry-logs", (req, res): any => {
             try {
                 if (!fs.existsSync(telemetryLogPath)) {
-                    return res.status(404).json({ error: "Telemetryログファイルが見つかりません" });
+                    return res.status(404).json({ error: "Telemetry log file not found" });
                 }
 
                 const stats = fs.statSync(telemetryLogPath);
@@ -239,8 +239,8 @@ function startLogService() {
 
                 fs.open(telemetryLogPath, "r", (err, fd) => {
                     if (err) {
-                        logger.error(`Telemetryログファイルを開けませんでした: ${err.message}`);
-                        res.status(500).json({ error: "ファイルを開けませんでした" });
+                        logger.error(`Failed to open Telemetry log file: ${err.message}`);
+                        res.status(500).json({ error: "Failed to open file" });
                         return;
                     }
 
@@ -249,8 +249,8 @@ function startLogService() {
                         fs.close(fd, () => {});
 
                         if (err) {
-                            logger.error(`Telemetryログファイルの読み込みに失敗しました: ${err.message}`);
-                            res.status(500).json({ error: "ファイルの読み込みに失敗しました" });
+                            logger.error(`Failed to read Telemetry log file: ${err.message}`);
+                            res.status(500).json({ error: "Failed to read file" });
                             return;
                         }
 
@@ -273,8 +273,8 @@ function startLogService() {
                     });
                 });
             } catch (error: any) {
-                logger.error(`Telemetryログ取得エラー: ${error.message}`);
-                return res.status(500).json({ error: "Telemetryログの取得に失敗しました" });
+                logger.error(`Telemetry log retrieval error: ${error.message}`);
+                return res.status(500).json({ error: "Failed to retrieve Telemetry log" });
             }
         });
     }
@@ -303,7 +303,7 @@ function startLogService() {
                 timestamp: new Date().toISOString(),
             });
 
-            logger.info(`ログファイルをローテーションしました: ${
+            logger.info(`Rotated log files: ${
                 JSON.stringify({
                     clientRotated,
                     telemetryRotated,
@@ -312,7 +312,7 @@ function startLogService() {
                 })
             }`);
         } catch (error: any) {
-            logger.error(`ログローテーション中にエラーが発生しました: ${error.message}`);
+            logger.error(`Error occurred during log rotation: ${error.message}`);
             res.status(500).json({
                 success: false,
                 error: error.message,
@@ -326,13 +326,13 @@ function startLogService() {
                 const { token } = req.query;
 
                 if (!token) {
-                    return res.status(400).json({ error: "トークンが必要です" });
+                    return res.status(400).json({ error: "Token is required" });
                 }
 
                 const decoded = jwt.decode(token as string, { complete: true });
 
                 if (!decoded) {
-                    return res.status(400).json({ error: "無効なJWTトークンです" });
+                    return res.status(400).json({ error: "Invalid JWT token" });
                 }
 
                 const payload = decoded.payload as jwt.JwtPayload;
@@ -343,7 +343,7 @@ function startLogService() {
                     issuedAt: payload.iat ? new Date(payload.iat * 1000).toISOString() : "N/A",
                 });
             } catch (error: any) {
-                return res.status(500).json({ error: `トークン情報の取得に失敗しました: ${error.message}` });
+                return res.status(500).json({ error: `Failed to retrieve token information: ${error.message}` });
             }
         });
     }

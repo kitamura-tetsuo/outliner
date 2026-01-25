@@ -29,9 +29,6 @@ if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
     });
 }
 
-const userContainersCollection = db.collection("userContainers");
-const containerUsersCollection = db.collection("containerUsers");
-
 function getSafeOrigins(): string[] {
     const defaultOrigins = ["http://localhost:7070"];
 
@@ -83,6 +80,8 @@ let adminInstance = admin;
 export const setAdmin = (mock: any) => {
     adminInstance = mock;
 };
+// Helper to get the current admin instance (real or mock)
+const getAdmin = () => adminInstance;
 
 app.post("/api/save-container", async (req, res) => {
     try {
@@ -92,16 +91,22 @@ app.post("/api/save-container", async (req, res) => {
             return res.status(400).json({ error: "Container ID is required" });
         }
 
-        const decodedToken = await adminInstance.auth().verifyIdToken(idToken);
+        const currentAdmin = getAdmin();
+        const decodedToken = await currentAdmin.auth().verifyIdToken(idToken);
         const userId = decodedToken.uid;
 
+        // Use currentAdmin to allow mocking
+        const firestore = typeof currentAdmin.firestore === "function"
+            ? currentAdmin.firestore()
+            : currentAdmin.firestore;
+        const userContainersCollection = firestore.collection("userContainers");
         const userDocRef = userContainersCollection.doc(userId);
         const docSnapshot = await userDocRef.get();
 
         if (docSnapshot.exists) {
             await userDocRef.update({
                 defaultContainerId: containerId,
-                updatedAt: adminInstance.firestore.FieldValue.serverTimestamp(),
+                updatedAt: currentAdmin.firestore.FieldValue.serverTimestamp(),
             });
 
             return res.status(200).json({
@@ -113,8 +118,8 @@ app.post("/api/save-container", async (req, res) => {
             await userDocRef.set({
                 userId,
                 defaultContainerId: containerId,
-                createdAt: adminInstance.firestore.FieldValue.serverTimestamp(),
-                updatedAt: adminInstance.firestore.FieldValue.serverTimestamp(),
+                createdAt: currentAdmin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: currentAdmin.firestore.FieldValue.serverTimestamp(),
             });
 
             return res.status(200).json({
@@ -141,12 +146,18 @@ app.post("/api/get-container-users", async (req, res) => {
             return res.status(400).json({ error: "Container ID is required" });
         }
 
-        const decodedToken = await adminInstance.auth().verifyIdToken(idToken);
+        const currentAdmin = getAdmin();
+        const decodedToken = await currentAdmin.auth().verifyIdToken(idToken);
 
         if (decodedToken.role !== "admin") {
             return res.status(403).json({ error: "Admin privileges required" });
         }
 
+        // Use currentAdmin to allow mocking
+        const firestore = typeof currentAdmin.firestore === "function"
+            ? currentAdmin.firestore()
+            : currentAdmin.firestore;
+        const containerUsersCollection = firestore.collection("containerUsers");
         const containerDoc = await containerUsersCollection.doc(containerId).get();
 
         if (!containerDoc.exists) {
@@ -170,13 +181,14 @@ app.post("/api/list-users", async (req, res) => {
             return res.status(400).json({ error: "ID token required" });
         }
 
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const currentAdmin = getAdmin();
+        const decodedToken = await currentAdmin.auth().verifyIdToken(idToken);
 
         if (decodedToken.role !== "admin") {
             return res.status(403).json({ error: "Admin privileges required" });
         }
 
-        const result = await adminInstance.auth().listUsers();
+        const result = await currentAdmin.auth().listUsers();
         const users = result.users.map(u => ({
             uid: u.uid,
             email: u.email,

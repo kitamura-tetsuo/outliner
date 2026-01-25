@@ -1,4 +1,4 @@
-// NOTE: Fluid Framework 実装は削除。Yjs + yjs-orderedtree 版のみ提供します。
+// NOTE: Fluid Framework implementation has been removed. Only Yjs + yjs-orderedtree version is provided.
 
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
@@ -14,7 +14,7 @@ export type Comment = {
     lastChanged: number;
 };
 
-// コメントコレクション（Y.Array<Y.Map>）用ラッパ
+// Wrapper for comment collection (Y.Array<Y.Map>)
 export class Comments {
     private readonly yArray: Y.Array<Y.Map<CommentValueType>>;
     constructor(yArray: Y.Array<Y.Map<CommentValueType>>) {
@@ -78,7 +78,7 @@ export class Comments {
     }
 }
 
-// 1ノード（アイテム）ラッパ
+// Wrapper for a single node (item)
 export class Item {
     public readonly ydoc: Y.Doc;
     public readonly tree: YTree;
@@ -229,7 +229,7 @@ export class Item {
     }
 
     addAttachment(url: string) {
-        // 1) もし現在の Item が仮Doc(接続前)で、接続後のDocが存在する場合は、対応するノードにも反映する
+        // 1) If the current Item is a temporary Doc (before connection) and a connected Doc exists, reflect it in the corresponding node as well
         try {
             interface WindowWithStore extends Window {
                 generalStore?: {
@@ -244,7 +244,7 @@ export class Item {
             const targetDoc = currentPage?.ydoc;
             if (currentPage && thisDoc && targetDoc && thisDoc !== targetDoc) {
                 const items = currentPage.items;
-                // 1) IDマップ経由で対応先を探す
+                // 1) Search for the destination via ID map
                 try {
                     const map = w?.__ITEM_ID_MAP__;
                     const mappedId = map ? map[String(this.id)] : undefined;
@@ -262,7 +262,7 @@ export class Item {
                     }
                 } catch (e) {
                     if (e instanceof Error && String(e.message) !== "__DONE__") {
-                        // 2) フォールバック: テキスト一致
+                        // 2) Fallback: Text match
                         const text = this.text;
                         const len2 = items?.length ?? 0;
                         for (let i = 0; i < len2; i++) {
@@ -282,7 +282,7 @@ export class Item {
             }
         } catch {}
 
-        // 2) このノード自身にも通常通り追加
+        // 2) Add to this node itself as usual
         const arr = this.attachments; // ensure exists
         try {
             console.debug("[Item.addAttachment] pushing url=", url, "id=", this.id);
@@ -332,10 +332,10 @@ export class Item {
         try {
             const arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
             const len = arr?.length ?? 0;
-            // Y.Map にプリミティブ数値をキャッシュして確実に反映させる
+            // Cache the primitive number in Y.Map to ensure reflection
             this.value.set("commentCountCache", len);
             this.value.set("lastChanged", Date.now());
-            // Window ブロードキャスト（UI への即時反映用・決定的）
+            // Window broadcast (for immediate reflection to UI, deterministic)
             try {
                 if (typeof window !== "undefined") {
                     console.info("[Item.addComment] dispatch item-comment-count id=", this.id, "count=", len);
@@ -374,14 +374,14 @@ export class Item {
         return wrapArrayLike(new Items(this.ydoc, this.tree, this.key));
     }
 
-    // 親の子集合（Items）。ルート直下は null
+    // Parent's child set (Items). null directly under the root
     get parent(): Items | null {
         const parentKey = this.tree.getNodeParentFromKey(this.key);
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree, parentKey);
     }
 
-    // 親内でのインデックス（親がない場合は -1）
+    // Index within the parent (-1 if there is no parent)
     indexInParent(): number {
         const p = this.parent;
         if (!p) return -1;
@@ -393,7 +393,7 @@ export class Item {
     }
 }
 
-// 子ノード集合ラッパ
+// Wrapper for child node collection
 export class Items implements Iterable<Item> {
     public readonly ydoc: Y.Doc;
     public readonly tree: YTree;
@@ -445,7 +445,7 @@ export class Items implements Iterable<Item> {
         if (key) this.tree.deleteNodeAndDescendants(key);
     }
 
-    // 新規ノード作成。index 指定時は並び順を調整
+    // Create a new node. Adjust the order if index is specified
     addNode(author: string, index?: number): Item {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
@@ -495,7 +495,7 @@ export class Items implements Iterable<Item> {
     }
 }
 
-// プロジェクト（Y.Doc）全体のラッパ
+// Wrapper for the entire project (Y.Doc)
 export class Project {
     public readonly ydoc: Y.Doc;
     public readonly tree: YTree;
@@ -527,12 +527,12 @@ export class Project {
         this.ydoc.getMap("metadata").set("title", v);
     }
 
-    // ルート直下のItems（親キー 'root'）
+    // Items directly under the root (parent key 'root')
     get items(): Items {
         return wrapArrayLike(new Items(this.ydoc, this.tree, "root"));
     }
 
-    // ページ（最上位アイテム）を追加し、textにタイトルを設定
+    // Add a page (top-level item) and set the title to text
     addPage(title: string, author: string) {
         const page = (this.items as Items).addNode(author);
         page.updateText(title);
@@ -544,10 +544,10 @@ export class Project {
     }
 }
 
-// Fluid 実装は削除済み。互換のためのスタブのみ残す。
+// Fluid implementation has been removed. Only stubs remain for compatibility.
 export const appTreeConfiguration: undefined = undefined;
 
-// 内部: Items を配列風アクセス可能にする Proxy でラップ
+// Internal: Wrap Items with Proxy to enable array-like access
 function wrapArrayLike(items: Items): Items {
     type PropertyKey = string | number | symbol;
     const isIndex = (p: PropertyKey): boolean => (typeof p === "number") || (typeof p === "string" && /^\d+$/.test(p));

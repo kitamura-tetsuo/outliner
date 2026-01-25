@@ -1,76 +1,76 @@
-# Outliner 認証サーバー
+# Outliner Authentication Server
 
-## 概要
+## Overview
 
-このサーバーは以下の機能を提供します：
+This server provides the following functions:
 
-1. Firebase認証トークンの検証
-2. **Hocuspocus (Yjs)** を使用したリアルタイム同期とデータの永続化
+1. Verification of Firebase authentication tokens
+2. Real-time synchronization and data persistence using **Hocuspocus (Yjs)**
 
-## セットアップ
+## Setup
 
-1. 依存関係をインストール:
+1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-2. `.env` ファイルを作成:
+2. Create `.env` file:
 
 ```bash
 cp .env.example .env
 ```
 
-3. 環境変数を設定:
-   - サーバー設定（`PORT`、`ORIGIN_ALLOWLIST`など）
-   - `LOCAL_HOST` をローカルネットワークのIPアドレスに設定（デフォルトは`localhost`）
+3. Configure environment variables:
+   - Server configuration (`PORT`, `ORIGIN_ALLOWLIST`, etc.)
+   - Set `LOCAL_HOST` to the IP address of the local network (default is `localhost`)
 
-4. Firebase Admin SDK JSONファイルをダウンロードして配置:
-   - `firebase-adminsdk.json` をこのディレクトリに配置
+4. Download and place the Firebase Admin SDK JSON file:
+   - Place `firebase-adminsdk.json` in this directory
 
-## 構成 (Environment Variables)
+## Configuration (Environment Variables)
 
-サーバーの動作は以下の環境変数で制御できます (`server/src/config.ts` 参照):
+Server behavior can be controlled with the following environment variables (see `server/src/config.ts`):
 
-### 基本設定
+### Basic Settings
 
-- `PORT`: サーバーのポート番号 (デフォルト: `3000` または `7093` など)
-- `LOG_LEVEL`: ログレベル (`fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`. デフォルト: `info`)
-- `ORIGIN_ALLOWLIST`: 許可するオリジンのカンマ区切りリスト (空の場合は制限なし)
+- `PORT`: Server port number (default: `3000` or `7093`, etc.)
+- `LOG_LEVEL`: Log level (`fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`. default: `info`)
+- `ORIGIN_ALLOWLIST`: Comma-separated list of allowed origins (no restriction if empty)
 
-### Hocuspocus / Yjs 設定
+### Hocuspocus / Yjs Settings
 
-- `MAX_MESSAGE_SIZE_BYTES`: WebSocketメッセージの最大サイズ (デフォルト: `1000000`)
-- `IDLE_TIMEOUT_MS`: 切断までのアイドル時間 (デフォルト: `60000`)
-- `ROOM_PREFIX_ENFORCE`: ルーム名のプレフィックス強制 (デフォルト: `false`)
+- `MAX_MESSAGE_SIZE_BYTES`: Maximum size of WebSocket messages (default: `1000000`)
+- `IDLE_TIMEOUT_MS`: Idle time before disconnection (default: `60000`)
+- `ROOM_PREFIX_ENFORCE`: Force room name prefix (default: `false`)
 
-### 制限・レートリミット
+### Limits / Rate Limiting
 
-- `MAX_SOCKETS_TOTAL`: サーバー全体での最大接続数 (デフォルト: `1000`)
-- `MAX_SOCKETS_PER_IP`: IPアドレスごとの最大接続数 (デフォルト: `1000000` - 実質無効化)
-- `MAX_SOCKETS_PER_ROOM`: ルームごとの最大接続数 (デフォルト: `100`)
-- `RATE_LIMIT_WINDOW_MS`: レートリミットのウィンドウ時間(ms) (デフォルト: `60000`)
-- `RATE_LIMIT_MAX_REQUESTS`: ウィンドウ内の最大リクエスト数 (デフォルト: `1000000` - 実質無効化)
+- `MAX_SOCKETS_TOTAL`: Maximum number of connections for the entire server (default: `1000`)
+- `MAX_SOCKETS_PER_IP`: Maximum number of connections per IP address (default: `1000000` - effectively disabled)
+- `MAX_SOCKETS_PER_ROOM`: Maximum number of connections per room (default: `100`)
+- `RATE_LIMIT_WINDOW_MS`: Rate limit window time (ms) (default: `60000`)
+- `RATE_LIMIT_MAX_REQUESTS`: Maximum number of requests within the window (default: `1000000` - effectively disabled)
 
-## Firebase認証の設定
+## Firebase Authentication Setup
 
-1. [Firebase Console](https://console.firebase.google.com/)でプロジェクトを作成または選択
-2. 「Authentication」セクションに移動
-3. 「Sign-in method」タブでGoogleログインを有効化
-4. 「Project settings」から「Service accounts」タブを選択
-5. 「Generate new private key」をクリックしてサービスアカウントキーをダウンロード
-6. ダウンロードしたJSONファイルを `firebase-adminsdk.json` としてサーバーディレクトリに配置
+1. Create or select a project in [Firebase Console](https://console.firebase.google.com/)
+2. Go to the "Authentication" section
+3. Enable Google Sign-in in the "Sign-in method" tab
+4. Select the "Service accounts" tab from "Project settings"
+5. Click "Generate new private key" to download the service account key
+6. Place the downloaded JSON file as `firebase-adminsdk.json` in the server directory
 
-## クライアント側Firebase設定
+## Client-side Firebase Setup
 
-1. Firebase Consoleの「Project settings」に移動
-2. 「Your apps」セクションで「Add app」をクリック（Webアプリ）
-3. アプリを登録し、Firebaseの設定情報を取得
-4. クライアントプロジェクトの `.env` ファイルに以下の情報を設定:
+1. Go to "Project settings" in Firebase Console
+2. Click "Add app" in the "Your apps" section (Web app)
+3. Register the app and get the Firebase configuration information
+4. Set the following information in the `.env` file of the client project:
 
-## systemd でのデプロイ
+## Deployment with systemd
 
-1. 専用ユーザーとディレクトリを作成:
+1. Create a dedicated user and directory:
 
 ```bash
 sudo groupadd --system outliner
@@ -79,7 +79,7 @@ sudo mkdir -p /srv/outliner
 sudo chown outliner:outliner /srv/outliner
 ```
 
-2. サービスと環境ファイルを配置:
+2. Place service and environment files:
 
 ```bash
 sudo cp server/systemd/outliner.service /etc/systemd/system/
@@ -87,14 +87,14 @@ sudo mkdir -p /etc/outliner
 sudo cp server/systemd/outliner.env.example /etc/outliner/outliner.env
 ```
 
-3. サービスを有効化して起動:
+3. Enable and start the service:
 
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now outliner.service
 ```
 
-このユニットは `Restart=on-failure` で自動再起動し、`NoNewPrivileges` や `ProtectSystem=strict` などのハードニングを有効化しています。
+This unit automatically restarts with `Restart=on-failure` and enables hardening such as `NoNewPrivileges` and `ProtectSystem=strict`.
 
 ## Docker Quickstart
 
