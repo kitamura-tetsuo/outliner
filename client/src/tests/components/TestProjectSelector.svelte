@@ -14,13 +14,13 @@
 
     let { onProjectSelected = () => {} }: Props = $props();
 
-    // イベントレス: $state/$derived 依存で再計算
+    // Eventless: Recalculate dependent on $state/$derived
     let userProject = $derived.by(() => {
-        void (firestoreStore as any).ucVersion; // 依存関係
+        void (firestoreStore as any).ucVersion; // Dependency
         return firestoreStore.userProject;
     });
 
-    // projectStore.projects は getter なので、userProject の変更依存で再計算
+    // projectStore.projects is a getter, so recalculate based on userProject changes
     let projects = $derived.by(() => {
         void userProject;
         return projectStore.projects;
