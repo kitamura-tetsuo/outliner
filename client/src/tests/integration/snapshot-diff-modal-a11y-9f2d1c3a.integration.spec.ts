@@ -3,23 +3,23 @@ import { beforeEach, describe, expect, it } from "vitest";
 import SnapshotDiffModal from "../../components/SnapshotDiffModal.svelte";
 import { addSnapshot, setCurrentContent } from "../../services";
 
-// 最小回帰テスト: フォーカス維持とキーボード操作（Enter）で差分表示が行えること
+// Minimal regression test: Maintain focus and allow diff display with keyboard operation (Enter)
 
 describe("SnapshotDiffModal A11y: focus & keyboard minimal regression", () => {
     const project = "p1";
     const page = "PageA";
 
     beforeEach(() => {
-        // ローカルストレージをクリア
+        // Clear local storage
         if (typeof localStorage !== "undefined") localStorage.clear();
-        // スナップショットを2件用意
+        // Prepare 2 snapshots
         addSnapshot(project, page, "old content", "alice");
         addSnapshot(project, page, "new content", "bob");
-        // 現在の内容
+        // Current content
         setCurrentContent(project, page, "current content");
     });
 
-    it("リスト項目にフォーカス後、Enterで差分が表示される", async () => {
+    it("Focus on list item, then Enter key displays diff", async () => {
         render(SnapshotDiffModal, {
             project,
             page,
@@ -27,23 +27,23 @@ describe("SnapshotDiffModal A11y: focus & keyboard minimal regression", () => {
             author: "tester",
         });
 
-        // 最初のスナップショットボタンを取得 (Add/Revert以外)
+        // Get the first snapshot button (excluding Add/Revert)
         const buttons = await screen.findAllByRole("button");
         const snapshotBtns = buttons.filter(b => !/Add Snapshot|Revert/.test(b.textContent || ""));
         const first = snapshotBtns[0];
 
-        // フォーカスを当てる
+        // Focus
         (first as HTMLButtonElement).focus();
         expect(document.activeElement).toBe(first);
 
-        // Enter キーでアクション（click相当）
+        // Action with Enter key (equivalent to click)
         await fireEvent.keyDown(first, { key: "Enter", code: "Enter" });
         // Native button click behavior via Enter needs fireEvent.click in JSDOM usually, but let's try strict Enter
         // JSDOM might not automatically fire click on Enter for buttons in all versions.
         // But for <button>, Enter triggers click.
         await fireEvent.click(first);
 
-        // 差分領域にHTMLが描画されていること
+        // HTML should be rendered in the diff area
         const diff = document.querySelector(".diff-view") as HTMLElement;
         expect(diff).toBeTruthy();
 
