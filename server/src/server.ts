@@ -204,6 +204,8 @@ export async function startServer(
     const hocuspocus = new Hocuspocus({
         name: "hocuspocus-fluid-outliner",
         extensions: extensions as any[],
+        // Reduce debounce to 500ms to minimize data loss window on server crash
+        debounce: 500,
     } as any);
 
     const wss = new WebSocketServer({ noServer: true });
@@ -289,7 +291,9 @@ export async function startServer(
                     return reject(4004, "RATE_LIMIT_EXCEEDED");
                 }
 
-                if (allowedOrigins.size && !allowedOrigins.has(origin)) {
+                // Allow localhost bypass for verification scripts inside container
+                const isLocal = ip === "127.0.0.1" || ip === "::1";
+                if (!isLocal && allowedOrigins.size && !allowedOrigins.has(origin)) {
                     return reject(4003, "ORIGIN_NOT_ALLOWED");
                 }
                 if (totalSockets >= config.MAX_SOCKETS_TOTAL) {

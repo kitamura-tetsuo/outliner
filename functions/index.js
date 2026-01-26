@@ -1,4 +1,4 @@
-// Use Firebase Secrets in production for Firebase Functions
+// Use Firebase Secrets in production for Firebase Functions (Redeploy trigger)
 // Load .env with dotenvx in test/emulator environments
 try {
   if (

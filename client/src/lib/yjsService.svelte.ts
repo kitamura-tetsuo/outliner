@@ -139,10 +139,53 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     // Save project ID to server-side persistence (Firestore)
     // This is critical for the server to grant access (checkContainerAccess)
     try {
-        if (!isTest) { // Skip in test mode if using mocks, or ensure test mock handles it
-            console.log(`[yjsService] Saving project ID ${projectId} to server...`);
-            await saveProjectIdToServer(projectId);
-            console.log(`[yjsService] Project ID ${projectId} saved to server.`);
+        if (!isTest) {
+            console.log(
+                "[yjsService] Saving project ID to server (Legacy + New):",
+                projectId,
+                "User:",
+                userId,
+                "v=DualSaveFix",
+            );
+            try {
+                // Call both New and Legacy endpoints to ensure compatibility with all server versions
+                // Note: saveContainerIdToServer is aliased to saveProjectId but connects to saveContainer in index.js?
+                // Wait, Step 340 showed: export const saveContainerId = saveProjectId;
+                // It aliases the FUNCTION, which calls /api/saveProject.
+                // This is WRONG. I need to implement a REAL saveContainer call.
+                // I cannot use saveContainerIdToServer from firestoreStore if it's just an alias.
+
+                // I will implement raw fetch here for legacy support.
+                const fnUrl = getFirebaseFunctionUrl("saveContainer");
+                const idToken = await userManager.auth.currentUser?.getIdToken();
+
+                const legacySavePromise = fetch(fnUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ idToken, containerId: projectId }),
+                }).then(r => r.json()).then(d => d.success === true).catch(e => {
+                    console.error("[yjsService] Legacy save failed:", e);
+                    return false;
+                });
+
+                const [savedNew, savedLegacy] = await Promise.all([
+                    saveProjectIdToServer(projectId),
+                    legacySavePromise,
+                ]);
+
+                if (savedNew && savedLegacy) {
+                    console.log("[yjsService] Project ID saved successfully (Dual Save).");
+                } else if (savedNew) {
+                    console.warn("[yjsService] Project ID saved to New API only.");
+                } else if (savedLegacy) {
+                    console.warn("[yjsService] Project ID saved to Legacy API only.");
+                } else {
+                    console.error("[yjsService] Failed to save project ID to both APIs.");
+                    // Silent fail for user, but log error.
+                }
+            } catch (saveError) {
+                console.error("[yjsService] Exception saving project ID:", saveError);
+            }
         }
     } catch (e) {
         console.error(`[yjsService] Failed to save project ID ${projectId} to server:`, e);
@@ -206,6 +249,32 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
         console.log(`[getClientByProjectTitle] YjsClient.connect completed`);
         registry.set(keyFor(userId, projectId), [client, project]);
         return client;
+    }
+
+    // Check if the projectTitle is actually a UUID (Direct Access)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(projectTitle)) {
+        console.log(`[getClientByProjectTitle] projectTitle looks like a UUID, using as projectId: ${projectTitle}`);
+        const projectId = projectTitle; // Treat title as ID
+        const user = userManager.getCurrentUser();
+        let userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
+
+        if (userId) {
+            // Register project access before connecting (critical for WebSocket auth)
+            if (!isTestEnvironment()) {
+                try {
+                    console.log(`[getClientByProjectTitle] Registering access for projectId=${projectId}`);
+                    await saveProjectIdToServer(projectId);
+                } catch (e) {
+                    console.warn("[getClientByProjectTitle] Failed to register project access:", e);
+                    // Continue anyway - might already be registered
+                }
+            }
+            const project = Project.createInstance(projectId);
+            const client = await YjsClient.connect(projectId, project);
+            registry.set(keyFor(userId, projectId), [client, project]);
+            return client;
+        }
     }
 
     // In test environment, attempt to auto-connect if we can derive the ID

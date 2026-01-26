@@ -9,6 +9,7 @@ import * as Y from "yjs";
 class CustomWebSocket extends WebSocket {
     constructor(url, protocols) {
         super(url, protocols, {
+            origin: "https://outliner-d57b0.web.app",
             headers: {
                 "Origin": "https://outliner-d57b0.web.app",
             },

@@ -271,7 +271,7 @@
                 Reload current project
             </button>
 
-            <a href={resolve("/projects")} class="new-project-link">
+            <a href={resolve("/projects/new")} class="new-project-link">
                 Create New
             </a>
         </div>

@@ -43,7 +43,7 @@
 
     <!-- 新規プロジェクト作成リンク -->
     <div class="action-buttons">
-        <a href="/projects" class="new-project-button">
+        <a href="/projects/new" class="new-project-button">
             <span class="icon">+</span> 新しいアウトライナーを作成
         </a>
     </div>

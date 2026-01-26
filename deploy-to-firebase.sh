@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 echo "Starting deployment to Firebase Hosting + Functions..."
 
 echo "1. Cleaning up old build files if they exist..."
