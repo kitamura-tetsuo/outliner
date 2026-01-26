@@ -198,9 +198,20 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     }
 
     // HocuspocusProvider uses a token function for dynamic token refresh
+    // eslint-disable-next-line prefer-const
+    let provider: HocuspocusProvider;
     const tokenFn = async () => {
         try {
-            return await getFreshIdToken();
+            const t = await getFreshIdToken();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const config = provider.configuration as any;
+            if (provider && config?.url && typeof config.url === "string" && t) {
+                const urlObj = new URL(config.url);
+                urlObj.searchParams.set("token", t);
+                config.url = urlObj.toString();
+                console.log("[connectPageDoc] Updated provider URL with fresh token");
+            }
+            return t;
         } catch {
             return "";
         }
@@ -221,7 +232,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         initialToken = await getFreshIdToken();
     } catch {}
 
-    const provider = new HocuspocusProvider({
+    provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
@@ -324,9 +335,12 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     };
 
     // Attach fatal error handling for page doc
+    // Attach fatal error handling for page doc
     provider.on("close", (event: { code: number; reason: string; }) => {
         console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
-        if ([4001, 4003, 4004, 4006, 4008].includes(event.code)) {
+        // Fatal errors: 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
+        // REMOVED 4001/4003/4004 to allow retry with fresh token
+        if ([4006, 4008].includes(event.code)) {
             console.error(`[yjs-conn] FATAL ERROR: ${event.code} ${event.reason}. Stopping reconnection for ${room}`);
             provider.destroy();
         }
@@ -350,9 +364,20 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     }
 
     // HocuspocusProvider uses a token function for dynamic token refresh
+    // eslint-disable-next-line prefer-const
+    let provider: HocuspocusProvider;
     const tokenFn = async () => {
         try {
-            return await getFreshIdToken();
+            const t = await getFreshIdToken();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const config = provider.configuration as any;
+            if (provider && config?.url && typeof config.url === "string" && t) {
+                const urlObj = new URL(config.url);
+                urlObj.searchParams.set("token", t);
+                config.url = urlObj.toString();
+                console.log("[createProjectConnection] Updated provider URL with fresh token");
+            }
+            return t;
         } catch {
             return "";
         }
@@ -364,7 +389,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         initialToken = await getFreshIdToken();
     } catch {}
 
-    const provider = new HocuspocusProvider({
+    provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
@@ -376,8 +401,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     provider.on("status", (event: { status: string; }) => console.log(`[yjs-conn] ${room} status: ${event.status}`));
     provider.on("close", (event: { code: number; reason: string; }) => {
         console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
-        // Fatal errors: 4001 (Unauthorized), 4003 (Forbidden), 4004 (Rate Limit), 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
-        if ([4001, 4003, 4004, 4006, 4008].includes(event.code)) {
+        // Fatal errors: 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
+        // REMOVED 4001/4003/4004 to allow retry with fresh token
+        if ([4006, 4008].includes(event.code)) {
             console.error(`[yjs-conn] FATAL ERROR: ${event.code} ${event.reason}. Stopping reconnection for ${room}`);
             provider.configuration.token = async () => Promise.resolve(""); // Prevent further auth attempts
             provider.disconnect(); // Ensure completely stopped
@@ -621,9 +647,18 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     }
 
     // HocuspocusProvider uses a token function for dynamic token refresh
+    // eslint-disable-next-line prefer-const
+    let provider: HocuspocusProvider;
     const tokenFn = async () => {
         try {
-            return await getFreshIdToken();
+            const t = await getFreshIdToken();
+            if (provider && provider.configuration?.url && typeof provider.configuration.url === "string" && t) {
+                const urlObj = new URL(provider.configuration.url);
+                urlObj.searchParams.set("token", t);
+                provider.configuration.url = urlObj.toString();
+                console.log("[connectProjectDoc] Updated provider URL with fresh token");
+            }
+            return t;
         } catch (e) {
             console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
             return "";
@@ -638,7 +673,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
     }
 
-    const provider = new HocuspocusProvider({
+    provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
@@ -678,9 +713,17 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     }
 
     // HocuspocusProvider uses a token function for dynamic token refresh
+    // eslint-disable-next-line prefer-const
+    let provider: HocuspocusProvider;
     const tokenFn = async () => {
         try {
-            return await getFreshIdToken();
+            const t = await getFreshIdToken();
+            if (provider && provider.configuration?.url && typeof provider.configuration.url === "string" && t) {
+                const urlObj = new URL(provider.configuration.url);
+                urlObj.searchParams.set("token", t);
+                provider.configuration.url = urlObj.toString();
+            }
+            return t;
         } catch {
             return "";
         }
@@ -692,7 +735,7 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         initialToken = await getFreshIdToken();
     } catch {}
 
-    const provider = new HocuspocusProvider({
+    provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
