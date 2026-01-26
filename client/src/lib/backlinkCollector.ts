@@ -1,7 +1,4 @@
 import * as Y from "yjs";
-import { getLogger } from "./logger";
-
-const logger = getLogger("backlinkCollector");
 
 // Remove unused 'Y' import warning by not importing it if not used,
 // but here we use it for type definitions usually.
@@ -84,7 +81,7 @@ function extractLinks(text: string): string[] {
         // Filter out URLs
         if (content.match(/^https?:\/\//)) continue;
         // Filter out decorations
-        if (content.match(/^[\*\/\\-] /)) continue; // Removed unnecessary escape for *
+        if (content.match(/^[*\\/\\-] /)) continue;
 
         links.push(content);
     }

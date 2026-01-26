@@ -1,7 +1,5 @@
 <script lang="ts">
     import "../app.css";
-    import { onMount } from "svelte";
-    import { page } from "$app/stores";
     import { userPreferencesStore } from "$stores/userPreferencesStore.svelte";
     import Sidebar from "$components/Sidebar.svelte";
 

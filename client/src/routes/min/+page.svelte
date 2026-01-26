@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { SvelteSet } from "svelte/reactivity";
 
-    let items = new SvelteSet<string>(); // Use SvelteSet instead of built-in Set
+    let items = new SvelteSet<string>(); // SvelteSet is already reactive
 
     onMount(() => {
         items.add("Item 1");
@@ -13,7 +13,7 @@
 <div class="p-4">
     <h1 class="text-xl font-bold">Min Page</h1>
     <ul>
-        {#each items as item}
+        {#each [...items] as item (item)}
             <li>{item}</li>
         {/each}
     </ul>

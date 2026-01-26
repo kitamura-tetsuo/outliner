@@ -1,9 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { get } from "svelte/store";
-    import { page } from "$app/stores";
     import { firestoreStore } from "$stores/firestoreStore.svelte";
-    import { getFirebaseApp } from "$lib/firebase-app"; // Just to verify import
 
     let debugInfo = $state("");
     let projects: any[] = $state([]);

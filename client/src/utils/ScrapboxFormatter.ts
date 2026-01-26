@@ -81,7 +81,7 @@ export class ScrapboxFormatter {
             (match, content) => {
                 if (content.match(/^https?:\/\//)) return match; // Already processed
                 // Ignore decoration system (starting with *, /, -)
-                if (content.match(/^[\*\/\\-] /)) return match;
+                if (content.match(/^[*\\/\\-] /)) return match;
                 return `<a href="javascript:void(0)" class="internal-link" data-page="${content}">${content}</a>`;
             },
         );
@@ -156,7 +156,7 @@ export class ScrapboxFormatter {
                     return match;
                 }
                 // Ignore decorations
-                if (content.match(/^[\*\/\\-] /)) return match;
+                if (content.match(/^[*\\/\\-] /)) return match;
 
                 return `${wrapControl("[")}<span class="internal-link-text">${content}</span>${wrapControl("]")}`;
             },

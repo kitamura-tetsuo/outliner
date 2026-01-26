@@ -1155,16 +1155,22 @@ export class Cursor implements CursorEditingContext {
             isReversed = startOffset > endOffset;
         } // 異なるアイテムの場合、DOM上の順序で方向を決定
         else {
-            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-            const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
-            const startIdx = allItemIds.indexOf(startItemId);
-            const endIdx = allItemIds.indexOf(endItemId);
+            let isReversedCalculated = false;
+            if (typeof document !== "undefined") {
+                const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
+                const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
+                const startIdx = allItemIds.indexOf(startItemId);
+                const endIdx = allItemIds.indexOf(endItemId);
 
-            // インデックスが見つからない場合はデフォルトで正方向
-            if (startIdx === -1 || endIdx === -1) {
+                // インデックスが見つからない場合はデフォルトで正方向
+                if (startIdx !== -1 && endIdx !== -1) {
+                    isReversed = startIdx > endIdx;
+                    isReversedCalculated = true;
+                }
+            }
+
+            if (!isReversedCalculated) {
                 isReversed = false;
-            } else {
-                isReversed = startIdx > endIdx;
             }
         }
 
@@ -1212,38 +1218,6 @@ export class Cursor implements CursorEditingContext {
                 }
             }, 150); // タイムアウトを150msに増やして、DOMの更新を待つ時間を長くする
         }
-    }
-
-    // カーソルを行の先頭に移動
-    moveToLineStart() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        const text = this.getTargetText(target);
-        const currentLineIndex = getCurrentLineIndex(text, this.offset);
-
-        // 現在の行の開始位置に移動
-        this.offset = getLineStartOffset(text, currentLineIndex);
-        this.applyToStore();
-
-        // カーソルが正しく更新されたことを確認
-        store.startCursorBlink();
-    }
-
-    // カーソルを行の末尾に移動
-    moveToLineEnd() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        const text = this.getTargetText(target);
-        const currentLineIndex = getCurrentLineIndex(text, this.offset);
-
-        // 現在の行の終了位置に移動
-        this.offset = getLineEndOffset(text, currentLineIndex);
-        this.applyToStore();
-
-        // カーソルが正しく更新されたことを確認
-        store.startCursorBlink();
     }
 
     // 選択範囲を行頭まで拡張
@@ -1874,7 +1848,7 @@ export class Cursor implements CursorEditingContext {
 
             // If we're at the end of the current item and still don't have a next item,
             // try additional DOM-based approaches with broader selectors
-            if (atEndOfCurrentItem && !nextItem) {
+            if (atEndOfCurrentItem && !nextItem && typeof document !== "undefined") {
                 // Try to get all potential item elements, with a broader selector
                 const allItemElements = Array.from(
                     document.querySelectorAll(
@@ -1913,7 +1887,7 @@ export class Cursor implements CursorEditingContext {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
                 }
-            } else if (atEndOfCurrentItem) {
+            } else if (atEndOfCurrentItem && typeof document !== "undefined") {
                 // DOM-based approach to find the next item by looking for visually adjacent elements
                 try {
                     // Most direct approach: Find the element with the current item ID and get its next sibling
@@ -2027,7 +2001,7 @@ export class Cursor implements CursorEditingContext {
 
                 // ABSOLUTE LAST RESORT: If itemChanged is still false after all attempts,
                 // try to get all items from the DOM directly and move to the visually next one
-                if (!itemChanged) {
+                if (!itemChanged && typeof document !== "undefined") {
                     try {
                         // Get all elements with data-item-id attributes
                         const allElements = Array.from(document.querySelectorAll("[data-item-id]"));
