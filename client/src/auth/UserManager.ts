@@ -5,7 +5,7 @@ import {
     createUserWithEmailAndPassword,
     getAuth,
     GoogleAuthProvider,
-    onAuthStateChanged,
+    onIdTokenChanged,
     signInWithEmailAndPassword,
     signInWithPopup,
     signOut,
@@ -347,19 +347,19 @@ export class UserManager {
             // ... existing logic ...
             logger.debug("Firebase Auth initialized, setting up listener");
 
-            this.unsubscribeAuth = onAuthStateChanged(auth, async firebaseUser => {
+            this.unsubscribeAuth = onIdTokenChanged(auth, async firebaseUser => {
                 // ... existing logic ...
-                logger.debug("onAuthStateChanged triggered", {
+                logger.debug("onIdTokenChanged triggered", {
                     hasUser: !!firebaseUser,
                     userId: firebaseUser?.uid,
                     email: firebaseUser?.email,
                 });
 
                 if (firebaseUser) {
-                    logger.info("User signed in via onAuthStateChanged", { userId: firebaseUser.uid });
+                    logger.info("User signed in/token refreshed via onIdTokenChanged", { userId: firebaseUser.uid });
                     await this.handleUserSignedIn(firebaseUser);
                 } else {
-                    logger.info("User signed out via onAuthStateChanged");
+                    logger.info("User signed out via onIdTokenChanged");
                     this.handleUserSignedOut();
                 }
             });

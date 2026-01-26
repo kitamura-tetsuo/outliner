@@ -57,15 +57,9 @@ async function createNewContainer() {
         const newProjectId = uuidv4();
         createdContainerId = newProjectId; // UIに即座に反映
 
-        // 2. サーバーに保存してアクセス権を確定させる（WebSocket接続前に行うのが重要）
-        logger.info(`Saving new container ID ${newProjectId} to server...`);
-        const saveResult = await saveContainerId(newProjectId);
-        if (!saveResult) {
-            throw new Error("サーバーへのコンテナID保存に失敗しました");
-        }
-
-        // 3. 権限が確定してからWebSocket接続を開始
-        logger.info(`Connecting to WebSocket for ${newProjectId}...`);
+        // 2. createNewProject でサーバー登録とWebSocket接続を一括で行う
+        // (内部で saveProjectIdToServer のリトライロジックが動く)
+        logger.info(`Creating new project ${containerName} (ID: ${newProjectId})...`);
         const newClient = await yjsHighService.createNewProject(containerName, newProjectId);
 
         // ストアを更新
@@ -75,7 +69,7 @@ async function createNewContainer() {
 
         // 1.5秒後に作成したプロジェクトのページに移動
         setTimeout(() => {
-            goto("/" + containerName);
+            goto("/" + createdContainerId);
         }, 1500);
     }
     catch (err) {
