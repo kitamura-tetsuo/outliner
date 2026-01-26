@@ -3,7 +3,7 @@
         "@dotenvx/dotenvx": "^1.51.1",
         "@hocuspocus/provider": "^3.4.3",
         "@sentry/sveltekit": "^10.34.0",
-        "@sinclair/typebox": "^0.34.41",
+        "@sinclair/typebox": "^0.34.48",
         "diff-match-patch": "^1.0.5",
         "echarts": "^5.6.0",
         "firebase": "^12.6.0",
