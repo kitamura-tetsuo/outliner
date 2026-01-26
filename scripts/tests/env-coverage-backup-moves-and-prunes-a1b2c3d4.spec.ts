@@ -18,7 +18,7 @@ const backupScript = path.join(repoRoot, "client", "scripts", "backup-coverage.j
 const moveScript = path.join(repoRoot, "client", "scripts", "move-coverage-to-backup.js");
 
 beforeEach(() => {
-    // Cleanup
+    // クリーンアップ
     if (fs.existsSync(coverageDir)) {
         fs.rmSync(coverageDir, { recursive: true, force: true });
     }
@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    // Post-test cleanup
+    // テスト後のクリーンアップ
     if (fs.existsSync(coverageDir)) {
         fs.rmSync(coverageDir, { recursive: true, force: true });
     }
@@ -38,22 +38,22 @@ afterEach(() => {
 });
 
 test("backup script copies coverage directory to coverage-backups", () => {
-    // Create test coverage directory
+    // テスト用のcoverageディレクトリを作成
     fs.mkdirSync(path.join(coverageDir, "test-data"), { recursive: true });
     fs.writeFileSync(path.join(coverageDir, "test-data", "test.txt"), "test coverage data");
 
-    // Execute backup script
+    // バックアップスクリプトを実行
     execSync(`node ${backupScript}`, { cwd: repoRoot });
 
-    // Confirm coverage directory still exists (since it's a copy)
+    // coverageディレクトリがまだ存在することを確認（コピーなので）
     expect(fs.existsSync(coverageDir)).toBe(true);
 
-    // Confirm backup created in coverage-backups directory
+    // coverage-backupsディレクトリにバックアップが作成されたことを確認
     expect(fs.existsSync(backupsRoot)).toBe(true);
     const backups = fs.readdirSync(backupsRoot);
     expect(backups.length).toBe(1);
 
-    // Confirm backed up data is correct
+    // バックアップされたデータが正しいことを確認
     const backupDir = path.join(backupsRoot, backups[0]);
     const testFile = path.join(backupDir, "test-data", "test.txt");
     expect(fs.existsSync(testFile)).toBe(true);
@@ -61,26 +61,26 @@ test("backup script copies coverage directory to coverage-backups", () => {
 });
 
 test("backup script keeps only 10 most recent backups", () => {
-    // Create 11 backups
+    // 11個のバックアップを作成
     for (let i = 0; i < 11; i++) {
-        // Create test coverage directory
+        // テスト用のcoverageディレクトリを作成
         fs.mkdirSync(path.join(coverageDir, `test-data-${i}`), { recursive: true });
         fs.writeFileSync(path.join(coverageDir, `test-data-${i}`, `test${i}.txt`), `test data ${i}`);
 
-        // Execute backup script
+        // バックアップスクリプトを実行
         execSync(`node ${backupScript}`, { cwd: repoRoot });
 
-        // Wait slightly to ensure different timestamps
+        // タイムスタンプが異なることを保証するために少し待機
         if (i < 10) {
             execSync("sleep 1");
         }
     }
 
-    // Confirm only 10 backups remain
+    // バックアップが10個だけ残っていることを確認
     const backups = fs.readdirSync(backupsRoot);
     expect(backups.length).toBe(10);
 
-    // Confirm 10 most recent backups remain
+    // 最新の10個のバックアップが残っていることを確認
     const backupDirs = backups
         .map((name) => ({
             name,
@@ -89,32 +89,32 @@ test("backup script keeps only 10 most recent backups", () => {
         }))
         .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 
-    // Confirm latest backup contains test-data-10
+    // 最新のバックアップにtest-data-10が含まれていることを確認
     const latestBackup = backupDirs[0];
     expect(fs.existsSync(path.join(latestBackup.path, "test-data-10", "test10.txt"))).toBe(true);
 
-    // Confirm oldest backup contains test-data-1
+    // 最も古いバックアップにtest-data-1が含まれていることを確認
     const oldestBackup = backupDirs[9];
     expect(fs.existsSync(path.join(oldestBackup.path, "test-data-1", "test1.txt"))).toBe(true);
 }, 30000);
 
 test("move-to-backup script moves coverage directory to coverage-backups", () => {
-    // Create test coverage directory
+    // テスト用のcoverageディレクトリを作成
     fs.mkdirSync(path.join(coverageDir, "test-data"), { recursive: true });
     fs.writeFileSync(path.join(coverageDir, "test-data", "test.txt"), "test coverage data");
 
-    // Execute move-to-backup script
+    // move-to-backupスクリプトを実行
     execSync(`node ${moveScript}`, { cwd: repoRoot });
 
-    // Confirm coverage directory was moved
+    // coverageディレクトリが移動されたことを確認
     expect(fs.existsSync(coverageDir)).toBe(false);
 
-    // Confirm backup created in coverage-backups directory
+    // coverage-backupsディレクトリにバックアップが作成されたことを確認
     expect(fs.existsSync(backupsRoot)).toBe(true);
     const backups = fs.readdirSync(backupsRoot);
     expect(backups.length).toBe(1);
 
-    // Confirm backed up data is correct
+    // バックアップされたデータが正しいことを確認
     const backupDir = path.join(backupsRoot, backups[0]);
     const testFile = path.join(backupDir, "test-data", "test.txt");
     expect(fs.existsSync(testFile)).toBe(true);
@@ -122,26 +122,26 @@ test("move-to-backup script moves coverage directory to coverage-backups", () =>
 });
 
 test("move-to-backup script keeps only 10 most recent backups", () => {
-    // Create 11 backups
+    // 11個のバックアップを作成
     for (let i = 0; i < 11; i++) {
-        // Create test coverage directory
+        // テスト用のcoverageディレクトリを作成
         fs.mkdirSync(path.join(coverageDir, `test-data-${i}`), { recursive: true });
         fs.writeFileSync(path.join(coverageDir, `test-data-${i}`, `test${i}.txt`), `test data ${i}`);
 
-        // Execute move-to-backup script
+        // move-to-backupスクリプトを実行
         execSync(`node ${moveScript}`, { cwd: repoRoot });
 
-        // Wait slightly to ensure different timestamps
+        // タイムスタンプが異なることを保証するために少し待機
         if (i < 10) {
             execSync("sleep 1");
         }
     }
 
-    // Confirm only 10 backups remain
+    // バックアップが10個だけ残っていることを確認
     const backups = fs.readdirSync(backupsRoot);
     expect(backups.length).toBe(10);
 
-    // Confirm 10 most recent backups remain
+    // 最新の10個のバックアップが残っていることを確認
     const backupDirs = backups
         .map((name) => ({
             name,
@@ -150,33 +150,33 @@ test("move-to-backup script keeps only 10 most recent backups", () => {
         }))
         .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 
-    // Confirm latest backup contains test-data-10
+    // 最新のバックアップにtest-data-10が含まれていることを確認
     const latestBackup = backupDirs[0];
     expect(fs.existsSync(path.join(latestBackup.path, "test-data-10", "test10.txt"))).toBe(true);
 
-    // Confirm oldest backup contains test-data-1
+    // 最も古いバックアップにtest-data-1が含まれていることを確認
     const oldestBackup = backupDirs[9];
     expect(fs.existsSync(path.join(oldestBackup.path, "test-data-1", "test1.txt"))).toBe(true);
 }, 30000);
 
 test("backup script skips when coverage directory does not exist", () => {
-    // Execute script with no coverage directory
+    // coverageディレクトリが存在しない状態でスクリプトを実行
     const output = execSync(`node ${backupScript}`, { cwd: repoRoot }).toString();
 
-    // Confirm skip message output
+    // スキップメッセージが出力されることを確認
     expect(output).toContain("skip: no coverage directory");
 
-    // Confirm coverage-backups directory not created
+    // coverage-backupsディレクトリが作成されないことを確認
     expect(fs.existsSync(backupsRoot)).toBe(false);
 });
 
 test("move-to-backup script skips when coverage directory does not exist", () => {
-    // Execute script with no coverage directory
+    // coverageディレクトリが存在しない状態でスクリプトを実行
     const output = execSync(`node ${moveScript}`, { cwd: repoRoot }).toString();
 
-    // Confirm skip message output
+    // スキップメッセージが出力されることを確認
     expect(output).toContain("skip: no coverage directory");
 
-    // Confirm coverage-backups directory not created
+    // coverage-backupsディレクトリが作成されないことを確認
     expect(fs.existsSync(backupsRoot)).toBe(false);
 });

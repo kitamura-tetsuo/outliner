@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Gemini CLI Setup Script for Self-Hosted GitHub Actions Runner
-# This script sets up Gemini CLI authentication on a self-hosted runner
+# このスクリプトはself-hosted runnerでGemini CLIの認証を設定します
 
 set -e
 
@@ -35,17 +35,17 @@ print_header() {
 
 # Check if running as root and determine target user
 if [ "$EUID" -eq 0 ]; then
-    print_warning "Running as root user"
+    print_warning "rootユーザーで実行されています"
 
     # Check if runner user exists
     if id "runner" >/dev/null 2>&1; then
-        print_info "Runner user found. Configuring for runner user"
+        print_info "runnerユーザーが見つかりました。runnerユーザー用に設定を行います"
         TARGET_USER="runner"
         TARGET_HOME="/home/runner"
     else
-        print_error "Runner user not found"
-        print_info "Please check the execution user of GitHub Actions runner"
-        print_info "Available users:"
+        print_error "runnerユーザーが見つかりません"
+        print_info "GitHub Actions runnerの実行ユーザーを確認してください"
+        print_info "利用可能なユーザー:"
         cut -d: -f1 /etc/passwd | grep -v "^root$" | head -10
         exit 1
     fi
@@ -54,15 +54,15 @@ else
     TARGET_HOME="$HOME"
 fi
 
-print_info "Target user: $TARGET_USER"
-print_info "Target home directory: $TARGET_HOME"
+print_info "対象ユーザー: $TARGET_USER"
+print_info "対象ホームディレクトリ: $TARGET_HOME"
 
 print_header "Gemini CLI Setup for Self-Hosted Runner"
 
 # Check if Node.js is available
 if ! command -v node >/dev/null 2>&1; then
-    print_error "Node.js not found"
-    print_info "Please install Node.js and try again"
+    print_error "Node.js が見つかりません"
+    print_info "Node.js をインストールしてから再実行してください"
     exit 1
 fi
 
@@ -71,22 +71,22 @@ print_info "NPM version: $(npm --version)"
 
 # Check if npm is available
 if ! command -v npm >/dev/null 2>&1; then
-    print_error "npm not found"
+    print_error "npm が見つかりません"
     exit 1
 fi
 
 # Install Gemini CLI if not available
 if ! command -v gemini >/dev/null 2>&1; then
-    print_info "Installing Gemini CLI..."
+    print_info "Gemini CLI をインストールしています..."
     if npm install -g @google/generative-ai-cli; then
-        print_success "Gemini CLI installation completed"
+        print_success "Gemini CLI のインストールが完了しました"
     else
-        print_error "Failed to install Gemini CLI"
-        print_info "Please install manually: npm install -g @google/generative-ai-cli"
+        print_error "Gemini CLI のインストールに失敗しました"
+        print_info "手動でインストールしてください: npm install -g @google/generative-ai-cli"
         exit 1
     fi
 else
-    print_success "Gemini CLI is already installed"
+    print_success "Gemini CLI は既にインストールされています"
     print_info "Version: $(gemini --version 2>/dev/null || echo 'version check failed')"
 fi
 
@@ -104,135 +104,135 @@ run_as_target_user() {
 # Check if authentication already exists
 OAUTH_FILE="$TARGET_HOME/.gemini/oauth_creds.json"
 if [ -f "$OAUTH_FILE" ]; then
-    print_success "Existing credentials found: $OAUTH_FILE"
+    print_success "既存の認証情報が見つかりました: $OAUTH_FILE"
 
     # Check file permissions
     PERMS=$(stat -c "%a" "$OAUTH_FILE" 2>/dev/null || stat -f "%A" "$OAUTH_FILE" 2>/dev/null || echo "unknown")
     if [ "$PERMS" = "600" ]; then
-        print_success "File permissions are correct (600)"
+        print_success "ファイル権限は適切です (600)"
     else
-        print_warning "Fixing file permissions..."
+        print_warning "ファイル権限を修正しています..."
         chmod 600 "$OAUTH_FILE"
         chown "$TARGET_USER:$TARGET_USER" "$OAUTH_FILE" 2>/dev/null || true
-        print_success "Set file permissions to 600"
+        print_success "ファイル権限を600に設定しました"
     fi
 
     # Test authentication
-    print_info "Testing authentication..."
+    print_info "認証をテストしています..."
     if run_as_target_user "timeout 10 gemini models list >/dev/null 2>&1"; then
-        print_success "Authentication test passed!"
-        print_success "Gemini CLI is ready to use"
+        print_success "認証テストが成功しました！"
+        print_success "Gemini CLI は使用可能です"
         exit 0
     else
-        print_warning "Authentication test failed. Re-authentication required"
+        print_warning "認証テストに失敗しました。再認証が必要です"
     fi
 fi
 
 # Check if API key is already set
 if [ -n "$GEMINI_API_KEY" ] || [ -n "$GOOGLE_API_KEY" ]; then
-    print_success "API Key is set"
-    print_info "Testing authentication..."
+    print_success "API Keyが設定されています"
+    print_info "認証をテストしています..."
     if run_as_target_user "timeout 10 gemini --version >/dev/null 2>&1"; then
-        print_success "Gemini CLI is ready to use"
+        print_success "Gemini CLI は使用可能です"
         exit 0
     else
-        print_warning "Authentication test with API Key failed"
+        print_warning "API Keyでの認証テストに失敗しました"
     fi
 fi
 
 # Perform OAuth authentication via browser (prioritized)
-print_header "Executing OAuth Authentication"
-print_info "Running Gemini CLI to authenticate via browser"
-print_info "Please login with your Google account when the browser opens"
-print_warning "Note: This operation requires browser access"
+print_header "OAuth認証の実行"
+print_info "Gemini CLIを実行して、ブラウザでの認証を行います"
+print_info "ブラウザが開いたらGoogleアカウントでログインしてください"
+print_warning "注意: この操作にはブラウザアクセスが必要です"
 
 # Create .gemini directory if it doesn't exist
 run_as_target_user "mkdir -p '$TARGET_HOME/.gemini'"
 
 # Check if we're in a CI environment and warn but continue
 if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; then
-    print_warning "CI environment detected"
-    print_info "Browser authentication may not work in CI environment"
-    print_info "If authentication fails, please use the following methods:"
+    print_warning "CI環境が検出されました"
+    print_info "CI環境ではブラウザ認証ができない場合があります"
+    print_info "認証に失敗した場合は、以下の方法を使用してください:"
     print_info ""
-    print_info "Method 1: Use API Key (Recommended)"
-    print_info "  1. Generate API Key at Google AI Studio (https://aistudio.google.com/apikey)"
-    print_info "  2. Register as GEMINI_API_KEY in GitHub Secrets"
+    print_info "方法1: API Keyを使用（推奨）"
+    print_info "  1. Google AI Studio (https://aistudio.google.com/apikey) でAPI Keyを生成"
+    print_info "  2. GitHub SecretsにGEMINI_API_KEYとして登録"
     print_info ""
-    print_info "Method 2: Transfer OAuth Credentials"
-    print_info "  1. Run 'gemini' on local machine to authenticate"
-    print_info "  2. Run scripts/generate-gemini-secret.sh to generate Base64 value"
-    print_info "  3. Register as GEMINI_OAUTH_B64 in GitHub Secrets"
+    print_info "方法2: OAuth認証情報を転送"
+    print_info "  1. ローカルマシンで 'gemini' を実行して認証"
+    print_info "  2. scripts/generate-gemini-secret.sh を実行してBase64値を生成"
+    print_info "  3. GitHub SecretsにGEMINI_OAUTH_B64として登録"
     print_info ""
-    print_info "See docs/gemini-cli-setup.md for details"
+    print_info "詳細は docs/gemini-cli-setup.md を参照してください"
     print_info ""
-    print_info "Attempting browser authentication..."
+    print_info "ブラウザ認証を試行します..."
 fi
 
 # Run gemini CLI to trigger browser authentication
-print_info "Running Gemini CLI..."
-print_info "When the authentication screen appears, follow instructions to login with Google account"
-print_info "After authentication completes, type 'exit' in CLI to finish"
+print_info "Gemini CLIを実行します..."
+print_info "認証画面が表示されたら、指示に従ってGoogleアカウントでログインしてください"
+print_info "認証完了後、CLIで 'exit' と入力して終了してください"
 
 if run_as_target_user "gemini"; then
-    print_success "Gemini CLI exited successfully"
+    print_success "Gemini CLIが正常に終了しました"
 else
-    print_info "Gemini CLI exited (authentication may be complete)"
+    print_info "Gemini CLIが終了しました（認証が完了している可能性があります）"
 fi
 
 # Check if authentication file was created
 if [ -f "$OAUTH_FILE" ]; then
     chmod 600 "$OAUTH_FILE"
     chown "$TARGET_USER:$TARGET_USER" "$OAUTH_FILE" 2>/dev/null || true
-    print_success "Authentication file created: $OAUTH_FILE"
-    print_success "Set authentication file permissions"
+    print_success "認証ファイルが作成されました: $OAUTH_FILE"
+    print_success "認証ファイルの権限を設定しました"
 
     # Test authentication
-    print_info "Testing authentication..."
+    print_info "認証をテストしています..."
     if run_as_target_user "timeout 10 gemini --version >/dev/null 2>&1"; then
-        print_success "Authentication test passed!"
-        print_success "Gemini CLI setup completed"
+        print_success "認証テストが成功しました！"
+        print_success "Gemini CLI のセットアップが完了しました"
     else
-        print_warning "Timeout occurred during authentication test, but authentication file was created"
-        print_info "Please check manually: gemini --version"
+        print_warning "認証テストでタイムアウトが発生しましたが、認証ファイルは作成されています"
+        print_info "手動で確認してください: gemini --version"
     fi
 else
-    print_warning "OAuth authentication file not found"
-    print_info "Authentication may not have completed"
+    print_warning "OAuth認証ファイルが見つかりません"
+    print_info "認証が完了していない可能性があります"
     print_info ""
-    print_info "Please try the following methods:"
+    print_info "以下の方法を試してください:"
     print_info ""
-    print_info "Method 1: Run browser authentication again"
-    print_info "  Run this script again"
+    print_info "方法1: 再度ブラウザ認証を実行"
+    print_info "  このスクリプトを再実行してください"
     print_info ""
-    print_info "Method 2: Use API Key"
-    print_info "  1. Generate API Key at https://aistudio.google.com/apikey"
-    print_info "  2. Set environment variable: export GEMINI_API_KEY='your-api-key'"
+    print_info "方法2: API Keyを使用"
+    print_info "  1. https://aistudio.google.com/apikey でAPI Keyを生成"
+    print_info "  2. export GEMINI_API_KEY='your-api-key' で環境変数を設定"
     print_info ""
-    print_info "Method 3: Run Gemini CLI manually"
-    print_info "  Run gemini command directly to complete authentication"
+    print_info "方法3: 手動でGemini CLIを実行"
+    print_info "  gemini コマンドを直接実行して認証を完了してください"
 
     if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; then
         print_info ""
-        print_info "In CI environment, using GitHub Secrets is recommended"
-        print_info "See docs/gemini-cli-setup.md for details"
+        print_info "CI環境では、GitHub Secretsを使用することを推奨します"
+        print_info "詳細は docs/gemini-cli-setup.md を参照してください"
     fi
 
     exit 1
 fi
 
-print_header "GitHub MCP Server Configuration"
-print_info "Configuring GitHub MCP Server..."
+print_header "GitHub MCP サーバーの設定"
+print_info "GitHub MCP サーバーを設定しています..."
 
 # Create GitHub MCP server configuration
 SETTINGS_FILE="$TARGET_HOME/.gemini/settings.json"
 if [ -f "$SETTINGS_FILE" ]; then
-    print_info "Existing settings.json found"
+    print_info "既存のsettings.jsonが見つかりました"
     # Backup existing settings
     cp "$SETTINGS_FILE" "$SETTINGS_FILE.backup.$(date +%Y%m%d_%H%M%S)"
-    print_info "Backed up existing settings"
+    print_info "既存設定をバックアップしました"
 else
-    print_info "Creating new settings.json"
+    print_info "新しいsettings.jsonを作成します"
     run_as_target_user "mkdir -p '$TARGET_HOME/.gemini'"
 fi
 
@@ -264,22 +264,22 @@ EOF
 chown "$TARGET_USER:$TARGET_USER" "$SETTINGS_FILE" 2>/dev/null || true
 chmod 600 "$SETTINGS_FILE"
 
-print_success "GitHub MCP Server configuration completed"
-print_info "Configuration file: $SETTINGS_FILE"
+print_success "GitHub MCP サーバーの設定が完了しました"
+print_info "設定ファイル: $SETTINGS_FILE"
 
-print_header "Setup Completed"
-print_success "Gemini CLI is now ready to use in GitHub Actions"
-print_info "Credentials location: $OAUTH_FILE"
-print_info "Target user: $TARGET_USER"
-print_info "Usage limits: 60 RPM / 1,000 RPD (OAuth Free Tier)"
+print_header "セットアップ完了"
+print_success "Gemini CLI が GitHub Actions で使用可能になりました"
+print_info "認証情報の場所: $OAUTH_FILE"
+print_info "対象ユーザー: $TARGET_USER"
+print_info "使用制限: 60 RPM / 1,000 RPD (OAuth無料枠)"
 
 # Display next steps
-print_header "Next Steps"
-echo "1. Create GitHub Personal Access Token (PAT)"
+print_header "次のステップ"
+echo "1. GitHub Personal Access Token (PAT) を作成"
 echo "   - GitHub > Settings > Developer settings > Personal access tokens"
-echo "   - Required permissions: repo, issues, pull_requests"
-echo "2. Register as GEMINI_GITHUB_PAT in GitHub Secrets"
-echo "3. Run GitHub Actions workflow to verify operation"
-echo "4. Perform similar setup on other runners if needed"
+echo "   - 必要な権限: repo, issues, pull_requests"
+echo "2. GitHub SecretsにGEMINI_GITHUB_PATとして登録"
+echo "3. GitHub Actions ワークフローを実行して動作確認"
+echo "4. 必要に応じて他のrunnerでも同様の設定を実行"
 
-print_info "For detailed information, see docs/gemini-cli-setup.md"
+print_info "詳細な情報は docs/gemini-cli-setup.md を参照してください"

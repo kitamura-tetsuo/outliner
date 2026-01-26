@@ -5,11 +5,11 @@ import { fileURLToPath } from "url";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 /** @feature TST-0006
- *  Title   : feature-map removal script
+ *  Title   : feature-map削除スクリプト
  *  Source  : docs/dev-features.yaml
  */
 
-describe("TST-0006: feature-map removal script", () => {
+describe("TST-0006: feature-map削除スクリプト", () => {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const repoRoot = path.resolve(__dirname, "..", "..");

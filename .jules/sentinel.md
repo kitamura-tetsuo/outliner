@@ -63,9 +63,3 @@
 **Vulnerability:** The Sentry DSN was hardcoded in `functions/index.js` as a fallback, exposing configuration details and preventing clean environment isolation.
 **Learning:** Hardcoding "non-secret" configuration like DSNs still couples code to specific environments/accounts and makes open-sourcing or forking difficult. It also risks sending dev/test errors to production projects.
 **Prevention:** Initialize third-party services (Sentry, Analytics) strictly conditionally based on the presence of their specific environment variables. Fail/log gracefully if missing.
-
-## 2026-01-25 - Production Misconfiguration Risks
-
-**Vulnerability:** The server exposes detailed environment information and headers via the `/health` endpoint and allows bypassing authentication via `ALLOW_TEST_ACCESS` without guarding against production deployment.
-**Learning:** Default "debug" endpoints and test flags are significant risks in production if not explicitly guarded. Testing flags often get carried into production via environment variables or container configurations.
-**Prevention:** Explicitly check `NODE_ENV === 'production'` to guard sensitive endpoints and fail startup if dangerous test flags are detected in production.

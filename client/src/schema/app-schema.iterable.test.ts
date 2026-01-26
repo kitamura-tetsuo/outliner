@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { Item, Items, Project } from "./app-schema";
+import { Item, Project } from "./app-schema";
 
 describe("Item Iterable", () => {
     it("should iterate over children using for...of", () => {

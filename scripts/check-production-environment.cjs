@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 /**
- * Production Environment Check Script
+ * 本番環境チェックスクリプト
  *
- * Usage:
+ * 使用方法:
  * node scripts/check-production-environment.js
  *
- * This script checks if the current environment is a production environment.
+ * このスクリプトは現在の環境が本番環境かどうかをチェックします。
  */
 
 const https = require("https");
 
-// Colored log output
+// 色付きログ出力
 const colors = {
     red: "\x1b[31m",
     yellow: "\x1b[33m",
@@ -24,7 +24,7 @@ function log(message, color = "reset") {
     console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-// Production environment health check
+// 本番環境のヘルスチェック
 function checkProductionHealth() {
     return new Promise((resolve, reject) => {
         const options = {
@@ -64,7 +64,7 @@ function checkProductionHealth() {
     });
 }
 
-// Check Firebase project information
+// Firebase プロジェクト情報の確認
 function checkFirebaseProject() {
     return new Promise((resolve, reject) => {
         const options = {
@@ -91,7 +91,7 @@ function checkFirebaseProject() {
     });
 }
 
-// Check environment variables
+// 環境変数のチェック
 function checkEnvironmentVariables() {
     const requiredEnvVars = [
         "NODE_ENV",
@@ -110,7 +110,7 @@ function checkEnvironmentVariables() {
     return envStatus;
 }
 
-// Detect emulator environment
+// エミュレーター環境の検出
 function detectEmulatorEnvironment() {
     const emulatorVars = [
         "FUNCTIONS_EMULATOR",
@@ -134,15 +134,15 @@ function detectEmulatorEnvironment() {
     return { hasEmulator, emulatorStatus };
 }
 
-// Main process
+// メイン処理
 async function main() {
     log("=".repeat(60), "blue");
-    log("Production Environment Check Script", "blue");
+    log("本番環境チェックスクリプト", "blue");
     log("=".repeat(60), "blue");
     log("");
 
-    // Check environment variables
-    log("🔍 Environment Variable Check:", "blue");
+    // 環境変数のチェック
+    log("🔍 環境変数チェック:", "blue");
     const envVars = checkEnvironmentVariables();
 
     Object.entries(envVars).forEach(([key, info]) => {
@@ -152,84 +152,84 @@ async function main() {
     });
     log("");
 
-    // Detect emulator environment
-    log("🔍 Emulator Environment Check:", "blue");
+    // エミュレーター環境の検出
+    log("🔍 エミュレーター環境チェック:", "blue");
     const emulatorInfo = detectEmulatorEnvironment();
 
     if (emulatorInfo.hasEmulator) {
-        log("  ⚠️  Emulator environment detected", "yellow");
+        log("  ⚠️  エミュレーター環境が検出されました", "yellow");
         Object.entries(emulatorInfo.emulatorStatus).forEach(([key, info]) => {
             if (info.exists) {
                 log(`    - ${key}: ${info.value}`, "yellow");
             }
         });
     } else {
-        log("  ✅ Emulator environment not detected", "green");
+        log("  ✅ エミュレーター環境は検出されませんでした", "green");
     }
     log("");
 
-    // Determine production environment
+    // 本番環境判定
     const isProduction = process.env.NODE_ENV === "production" && !emulatorInfo.hasEmulator;
-    log("🎯 Environment Determination:", "blue");
-    log(`  Current Environment: ${isProduction ? "Production" : "Development/Test"}`, isProduction ? "red" : "green");
+    log("🎯 環境判定:", "blue");
+    log(`  現在の環境: ${isProduction ? "本番環境" : "開発/テスト環境"}`, isProduction ? "red" : "green");
     log("");
 
-    // Additional checks if production environment
+    // 本番環境の場合は追加チェック
     if (isProduction) {
-        log("🌐 Production Connection Check:", "blue");
+        log("🌐 本番環境接続チェック:", "blue");
 
         try {
-            // Firebase Functions Health Check
-            log("  Checking Firebase Functions...", "yellow");
+            // Firebase Functions ヘルスチェック
+            log("  Firebase Functions をチェック中...", "yellow");
             const healthResponse = await checkProductionHealth();
 
             if (healthResponse.statusCode === 200) {
-                log("  ✅ Firebase Functions: Normal", "green");
+                log("  ✅ Firebase Functions: 正常", "green");
                 if (healthResponse.data && healthResponse.data.status) {
-                    log(`    - Status: ${healthResponse.data.status}`, "blue");
-                    log(`    - Timestamp: ${healthResponse.data.timestamp}`, "blue");
+                    log(`    - ステータス: ${healthResponse.data.status}`, "blue");
+                    log(`    - タイムスタンプ: ${healthResponse.data.timestamp}`, "blue");
                 }
             } else {
-                log(`  ❌ Firebase Functions: Error (HTTP ${healthResponse.statusCode})`, "red");
+                log(`  ❌ Firebase Functions: エラー (HTTP ${healthResponse.statusCode})`, "red");
             }
         } catch (error) {
-            log(`  ❌ Firebase Functions: Connection Error - ${error.message}`, "red");
+            log(`  ❌ Firebase Functions: 接続エラー - ${error.message}`, "red");
         }
 
         try {
-            // Firebase Hosting Check
-            log("  Checking Firebase Hosting...", "yellow");
+            // Firebase Hosting チェック
+            log("  Firebase Hosting をチェック中...", "yellow");
             const hostingResponse = await checkFirebaseProject();
 
             if (hostingResponse.statusCode === 200) {
-                log("  ✅ Firebase Hosting: Normal", "green");
+                log("  ✅ Firebase Hosting: 正常", "green");
             } else {
-                log(`  ❌ Firebase Hosting: Error (HTTP ${hostingResponse.statusCode})`, "red");
+                log(`  ❌ Firebase Hosting: エラー (HTTP ${hostingResponse.statusCode})`, "red");
             }
         } catch (error) {
-            log(`  ❌ Firebase Hosting: Connection Error - ${error.message}`, "red");
+            log(`  ❌ Firebase Hosting: 接続エラー - ${error.message}`, "red");
         }
 
         log("");
-        log("⚠️  WARNING: Production environment detected", "red");
-        log("   Be sure to backup before performing data deletion operations.", "red");
-        log("   Backup command: node scripts/backup-production-data.js", "yellow");
+        log("⚠️  警告: 本番環境が検出されました", "red");
+        log("   データ削除操作を実行する前に、必ずバックアップを取得してください。", "red");
+        log("   バックアップコマンド: node scripts/backup-production-data.js", "yellow");
     } else {
-        log("ℹ️  Currently in Development/Test Environment", "blue");
-        log("   Data deletion operations in production environment will not be executed.", "blue");
+        log("ℹ️  現在は開発/テスト環境です", "blue");
+        log("   本番環境でのデータ削除操作は実行されません。", "blue");
     }
 
     log("");
-    log("Check completed", "green");
+    log("チェック完了", "green");
 
-    // Exit code (1 for production, 0 otherwise)
+    // 終了コード（本番環境の場合は1、それ以外は0）
     process.exit(isProduction ? 1 : 0);
 }
 
-// Execute script
+// スクリプト実行
 if (require.main === module) {
     main().catch(error => {
-        log(`❌ Unexpected error: ${error.message}`, "red");
+        log(`❌ 予期しないエラー: ${error.message}`, "red");
         process.exit(1);
     });
 }

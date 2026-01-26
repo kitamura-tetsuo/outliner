@@ -86,7 +86,6 @@ describe("Cursor", () => {
 
     describe("Constructor", () => {
         it("should create a cursor with the correct properties", () => {
-            console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
             const cursor = new Cursor("cursor-1", {
                 itemId: "item-1",
                 offset: 5,
@@ -105,7 +104,6 @@ describe("Cursor", () => {
 
     describe("findTarget", () => {
         it("should find the target item in the current page", () => {
-            console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
             const cursor = new Cursor("cursor-1", {
                 itemId: "test-item-1",
                 offset: 0,
@@ -118,7 +116,6 @@ describe("Cursor", () => {
         });
 
         it("should return undefined if target item is not found", () => {
-            console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
             const cursor = new Cursor("cursor-1", {
                 itemId: "non-existent-item",
                 offset: 0,
@@ -138,7 +135,6 @@ describe("Cursor", () => {
 
         describe("moveLeft", () => {
             it("should move the cursor left within the same item", () => {
-                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
@@ -154,7 +150,6 @@ describe("Cursor", () => {
             });
 
             it("should not move the cursor left if already at the beginning", () => {
-                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 0,
@@ -174,7 +169,6 @@ describe("Cursor", () => {
         describe("moveRight", () => {
             it("should move the cursor right within the same item", () => {
                 mockItem.text = "Test text";
-                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
@@ -191,7 +185,6 @@ describe("Cursor", () => {
 
             it("should not move the cursor right if already at the end", () => {
                 mockItem.text = "Test";
-                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 4,
@@ -213,7 +206,6 @@ describe("Cursor", () => {
                 mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
-                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
@@ -235,7 +227,6 @@ describe("Cursor", () => {
                 mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
-                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 6,
@@ -257,7 +248,6 @@ describe("Cursor", () => {
                 mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
-                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
@@ -279,7 +269,6 @@ describe("Cursor", () => {
         describe("moveToLineStart", () => {
             it("should move cursor to the start of the current line", () => {
                 mockItem.text = "First line\nSecond line\nThird line";
-                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 15, // Middle of "Second line"
@@ -298,7 +287,6 @@ describe("Cursor", () => {
         describe("moveToLineEnd", () => {
             it("should move cursor to the end of the current line", () => {
                 mockItem.text = "First line\nSecond line\nThird line";
-                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 15, // Middle of "Second line"
@@ -318,7 +306,6 @@ describe("Cursor", () => {
     describe("Selection methods", () => {
         describe("clearSelection", () => {
             it("should clear the selection for the user", () => {
-                console.log("Test before new Cursor. currentPage:", (generalStore as any).currentPage);
                 const cursor = new Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,

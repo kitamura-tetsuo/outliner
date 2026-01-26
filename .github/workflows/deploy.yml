@@ -136,7 +136,7 @@ jobs:
       - name: Clean up old Firebase Functions config
         if: github.actor != 'dependabot[bot]'
         run: |
-          # Remove existing Firebase Functions environment variables
+          # 既存のFirebase Functions環境変数を削除
           echo "Cleaning up old Firebase Functions config..."
           firebase functions:config:unset azure --project outliner-d57b0 || echo "No azure config to remove"
 

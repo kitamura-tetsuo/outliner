@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
 /**
- * Polling Disable Test Tool
+ * ポーリング無効化テストツール
  *
- * Temporarily disables specific polling to run tests and
- * checks if it affects the test results.
+ * 特定のポーリングを一時的に無効化してテストを実行し、
+ * テスト結果に影響があるかどうかを確認します。
  */
 
 import { execSync } from "child_process";
@@ -25,29 +25,29 @@ interface DisableConfig {
 }
 
 /**
- * Generate code to disable polling
+ * ポーリングを無効化するコードを生成
  */
 function generateDisabledCode(originalCode: string, type: string): string {
-    // Comment out to disable
+    // コメントアウトして無効化
     return `// [POLLING-TEST-DISABLED] ${originalCode}`;
 }
 
 /**
- * Temporarily replace a specific line in a file
+ * ファイルの特定行を一時的に置き換え
  */
 function disablePollingInFile(filePath: string, lineNumber: number, originalCode: string): DisableConfig {
     const content = fs.readFileSync(filePath, "utf-8");
     const lines = content.split("\n");
 
-    // Create backup
+    // バックアップを作成
     const backupPath = `${filePath}.polling-test-backup`;
     fs.writeFileSync(backupPath, content, "utf-8");
 
-    // Disable specific line
+    // 指定行を無効化
     const disabledCode = generateDisabledCode(lines[lineNumber - 1], "setInterval");
     lines[lineNumber - 1] = disabledCode;
 
-    // Update file
+    // ファイルを更新
     fs.writeFileSync(filePath, lines.join("\n"), "utf-8");
 
     return {
@@ -59,7 +59,7 @@ function disablePollingInFile(filePath: string, lineNumber: number, originalCode
 }
 
 /**
- * Restore file
+ * ファイルを元に戻す
  */
 function restoreFile(filePath: string) {
     const backupPath = `${filePath}.polling-test-backup`;
@@ -71,7 +71,7 @@ function restoreFile(filePath: string) {
 }
 
 /**
- * Run tests
+ * テストを実行
  */
 function runTests(testFile?: string): { passed: boolean; output: string; } {
     try {
@@ -82,7 +82,7 @@ function runTests(testFile?: string): { passed: boolean; output: string; } {
         const output = execSync(testCommand, {
             encoding: "utf-8",
             stdio: "pipe",
-            timeout: 300000, // 5 minutes timeout
+            timeout: 300000, // 5分タイムアウト
         });
 
         return {
@@ -98,7 +98,7 @@ function runTests(testFile?: string): { passed: boolean; output: string; } {
 }
 
 /**
- * Disable specific polling and test
+ * 特定のポーリングを無効化してテスト
  */
 async function testWithoutPolling(
     filePath: string,
@@ -107,22 +107,22 @@ async function testWithoutPolling(
     pollingId: string,
     testFile?: string,
 ): Promise<TestResult> {
-    console.log(`\nTest started: ${pollingId}`);
-    console.log(`  File: ${filePath}:${lineNumber}`);
-    console.log(`  Code: ${originalCode.trim()}`);
+    console.log(`\nテスト開始: ${pollingId}`);
+    console.log(`  ファイル: ${filePath}:${lineNumber}`);
+    console.log(`  コード: ${originalCode.trim()}`);
 
     let config: DisableConfig | null = null;
 
     try {
-        // Disable polling
-        console.log("  Disabling polling...");
+        // ポーリングを無効化
+        console.log("  ポーリングを無効化中...");
         config = disablePollingInFile(filePath, lineNumber, originalCode);
 
-        // Run tests
-        console.log("  Running tests...");
+        // テストを実行
+        console.log("  テストを実行中...");
         const result = runTests(testFile);
 
-        console.log(`  Result: ${result.passed ? "✓ PASSED" : "✗ FAILED"}`);
+        console.log(`  結果: ${result.passed ? "✓ PASSED" : "✗ FAILED"}`);
 
         return {
             pollingId,
@@ -130,7 +130,7 @@ async function testWithoutPolling(
             testOutput: result.output,
         };
     } catch (error: any) {
-        console.log(`  Error: ${error.message}`);
+        console.log(`  エラー: ${error.message}`);
 
         return {
             pollingId,
@@ -139,50 +139,50 @@ async function testWithoutPolling(
             error: error.message,
         };
     } finally {
-        // Restore file
+        // ファイルを元に戻す
         if (config) {
-            console.log("  Restoring file...");
+            console.log("  ファイルを復元中...");
             restoreFile(config.file);
         }
     }
 }
 
 /**
- * Generate report
+ * レポートを生成
  */
 function generateTestReport(results: TestResult[]): string {
-    let md = "# Polling Disable Test Report\n\n";
-    md += `Generated at: ${new Date().toISOString()}\n\n`;
-    md += `## Overview\n\n`;
-    md += `- Tests executed: ${results.length}\n`;
-    md += `- Passed even if disabled: ${results.filter(r => r.testPassed).length}\n`;
-    md += `- Failed if disabled: ${results.filter(r => !r.testPassed).length}\n\n`;
+    let md = "# ポーリング無効化テストレポート\n\n";
+    md += `生成日時: ${new Date().toISOString()}\n\n`;
+    md += `## 概要\n\n`;
+    md += `- テスト実行数: ${results.length}\n`;
+    md += `- 無効化しても成功: ${results.filter(r => r.testPassed).length}\n`;
+    md += `- 無効化すると失敗: ${results.filter(r => !r.testPassed).length}\n\n`;
 
-    // Polling that succeeded even if disabled (removal candidates)
+    // 無効化しても成功したポーリング（削除候補）
     const removable = results.filter(r => r.testPassed);
     if (removable.length > 0) {
-        md += `## Removable Polling\n\n`;
-        md += `Tests passed even when these pollings were disabled. Removal can be considered.\n\n`;
+        md += `## 削除可能なポーリング\n\n`;
+        md += `これらのポーリングは無効化してもテストが成功しました。削除を検討できます。\n\n`;
 
         for (const result of removable) {
             md += `### ${result.pollingId}\n\n`;
-            md += `- **Test Result**: ✓ PASSED\n`;
-            md += `- **Recommendation**: This polling is likely safe to remove\n\n`;
+            md += `- **テスト結果**: ✓ PASSED\n`;
+            md += `- **推奨**: このポーリングは削除しても問題ない可能性が高いです\n\n`;
         }
     }
 
-    // Polling that failed if disabled (necessary)
+    // 無効化すると失敗したポーリング（必要）
     const necessary = results.filter(r => !r.testPassed);
     if (necessary.length > 0) {
-        md += `## Necessary Polling\n\n`;
-        md += `Tests failed when these pollings were disabled. They should not be removed.\n\n`;
+        md += `## 必要なポーリング\n\n`;
+        md += `これらのポーリングは無効化するとテストが失敗しました。削除すべきではありません。\n\n`;
 
         for (const result of necessary) {
             md += `### ${result.pollingId}\n\n`;
-            md += `- **Test Result**: ✗ FAILED\n`;
-            md += `- **Recommendation**: This polling is necessary\n`;
+            md += `- **テスト結果**: ✗ FAILED\n`;
+            md += `- **推奨**: このポーリングは必要です\n`;
             if (result.error) {
-                md += `- **Error**: ${result.error}\n`;
+                md += `- **エラー**: ${result.error}\n`;
             }
             md += `\n`;
         }
@@ -192,38 +192,38 @@ function generateTestReport(results: TestResult[]): string {
 }
 
 /**
- * Main process
+ * メイン処理
  */
 async function main() {
     const args = process.argv.slice(2);
 
     if (args.length === 0) {
-        console.log("Usage:");
+        console.log("使用方法:");
         console.log("  npm run test:polling -- <polling-report.json>");
         console.log("");
-        console.log("Please run analyze-polling.ts first to generate a polling report.");
+        console.log("まず analyze-polling.ts を実行してポーリングレポートを生成してください。");
         process.exit(1);
     }
 
     const reportPath = args[0];
 
     if (!fs.existsSync(reportPath)) {
-        console.error(`Error: Report file not found: ${reportPath}`);
+        console.error(`エラー: レポートファイルが見つかりません: ${reportPath}`);
         process.exit(1);
     }
 
-    console.log("Starting polling disable test...\n");
+    console.log("ポーリング無効化テストを開始します...\n");
 
-    // Load report (assuming JSON format)
+    // レポートを読み込み（JSON形式を想定）
     const reportContent = fs.readFileSync(reportPath, "utf-8");
     const report = JSON.parse(reportContent);
 
     const results: TestResult[] = [];
 
-    // Test only suspicious polling
+    // 疑わしいポーリングのみをテスト
     const suspiciousPolling = report.categorized?.suspicious || [];
 
-    console.log(`Target: ${suspiciousPolling.length} suspicious pollings\n`);
+    console.log(`テスト対象: ${suspiciousPolling.length}件の疑わしいポーリング\n`);
 
     for (const polling of suspiciousPolling) {
         const result = await testWithoutPolling(
@@ -235,22 +235,22 @@ async function main() {
 
         results.push(result);
 
-        // Wait a bit between tests
+        // 各テスト間に少し待機
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // Generate report
+    // レポートを生成
     const markdown = generateTestReport(results);
     const outputPath = path.join(process.cwd(), "docs", "polling-test-report.md");
     fs.writeFileSync(outputPath, markdown, "utf-8");
 
-    console.log(`\nTest report saved: ${outputPath}`);
+    console.log(`\nテストレポートを保存しました: ${outputPath}`);
 
-    // Display summary
-    console.log("\n=== Summary ===");
-    console.log(`Tests executed: ${results.length}`);
-    console.log(`Removable: ${results.filter(r => r.testPassed).length}`);
-    console.log(`Necessary: ${results.filter(r => !r.testPassed).length}`);
+    // サマリーを表示
+    console.log("\n=== サマリー ===");
+    console.log(`テスト実行数: ${results.length}`);
+    console.log(`削除可能: ${results.filter(r => r.testPassed).length}`);
+    console.log(`必要: ${results.filter(r => !r.testPassed).length}`);
 }
 
 main().catch(console.error);

@@ -14,10 +14,10 @@ const __dirname = dirname(__filename);
 const configPath = path.join(__dirname, "..", "firebase.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
-// Change settings for emulator
+// エミュレータ用の設定に変更
 const emulatorConfig = { ...config };
 
-// Explicitly set project ID
+// プロジェクトIDを明示的に設定
 emulatorConfig.projectId = process.env.FIREBASE_PROJECT_ID || "outliner-d57b0";
 
 const rewriteRules = emulatorConfig.hosting.rewrites;
@@ -28,8 +28,8 @@ const rewriteRules = emulatorConfig.hosting.rewrites;
 // Keeping the original destination from firebase.json ensures the emulator starts
 // and API routes ("/api/*") are handled by Functions via rewrites.
 
-// Create temporary emulator configuration file
+// 一時的なエミュレータ用設定ファイルを作成
 const emulatorConfigPath = path.join(__dirname, "..", "firebase.emulator.json");
 fs.writeFileSync(emulatorConfigPath, JSON.stringify(emulatorConfig, null, 4));
 
-console.log("Generated Firebase configuration for emulator: firebase.emulator.json");
+console.log("エミュレータ用のFirebase設定を生成しました: firebase.emulator.json");

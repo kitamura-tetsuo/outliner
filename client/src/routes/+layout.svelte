@@ -1,4 +1,71 @@
-"main-content" class:with-sidebar={isSidebarOpen} tabindex="-1" style="outline: none;">
+<script lang="ts">
+    import "../app.css";
+    import { onMount } from "svelte";
+    import { page } from "$app/stores";
+    import { userPreferencesStore } from "$stores/userPreferencesStore.svelte";
+    import Sidebar from "$components/Sidebar.svelte";
+
+    let { children } = $props();
+
+    let currentTheme = $state("light");
+    let isSidebarOpen = $state(false);
+
+    // Update theme when store changes
+    $effect(() => {
+        currentTheme = userPreferencesStore.theme;
+        if (typeof document !== "undefined") {
+            if (currentTheme === "dark") {
+                document.documentElement.classList.add("dark");
+            } else {
+                document.documentElement.classList.remove("dark");
+            }
+        }
+    });
+
+    function toggleSidebar() {
+        isSidebarOpen = !isSidebarOpen;
+    }
+</script>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<!-- Sidebar Toggle Button -->
+<button
+    class="sidebar-toggle"
+    onclick={toggleSidebar}
+    aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+    aria-expanded={isSidebarOpen}
+>
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+    >
+        {#if isSidebarOpen}
+            <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+            />
+        {:else}
+            <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"
+            />
+        {/if}
+    </svg>
+</button>
+
+<!-- Sidebar Component -->
+<Sidebar isOpen={isSidebarOpen} />
+
+<div class="app-container min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <div id="main-content" class="main-content" class:with-sidebar={isSidebarOpen} tabindex="-1" style="outline: none;">
         {@render children()}
     </div>
 

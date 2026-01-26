@@ -3,7 +3,7 @@ import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
-// List of ports to kill
+// 終了したいポートのリスト
 const PORTS_TO_KILL = [
     7070,
     7071,
@@ -27,7 +27,7 @@ const PORTS_TO_KILL = [
 ];
 
 /**
- * Kill process running on specified port
+ * 指定したポートで実行中のプロセスを終了する
  */
 async function killProcessOnPort(port) {
     console.log(`Checking for processes on port ${port}...`);
@@ -60,13 +60,13 @@ async function killProcessOnPort(port) {
     }
 }
 
-// Main execution function
+// メイン実行関数
 async function main() {
     console.log("Starting cleanup of development processes...");
 
     let successCount = 0;
 
-    // Process for each port
+    // 各ポートに対して処理を実行
     for (const port of PORTS_TO_KILL) {
         const success = await killProcessOnPort(port);
         if (success) successCount++;
@@ -75,7 +75,7 @@ async function main() {
     console.log(`Cleanup completed. Successfully processed ${successCount}/${PORTS_TO_KILL.length} ports.`);
 }
 
-// Execute script
+// スクリプト実行
 main().catch(error => {
     console.error("Unexpected error during execution:", error);
     process.exit(1);

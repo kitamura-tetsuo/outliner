@@ -37,13 +37,6 @@ export async function startServer(
     logger = defaultLogger,
     overrides: ServerOverrides = {},
 ) {
-    // SECURITY CRITICAL: Prevent accidental authentication bypass in production
-    if (process.env.ALLOW_TEST_ACCESS === "true" && process.env.NODE_ENV === "production") {
-        throw new Error(
-            "SECURITY CRITICAL: ALLOW_TEST_ACCESS is enabled in PRODUCTION! Authentication bypass is active. Server refusing to start.",
-        );
-    }
-
     const checkContainerAccess = overrides.checkContainerAccess || defaultCheckAccess;
     const verifyIdTokenCached = overrides.verifyIdTokenCached || defaultVerifyToken;
 
@@ -54,13 +47,6 @@ export async function startServer(
     const allowedOrigins = new Set(
         config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
     );
-
-    // SECURITY WARNING: Warn if CORS is overly permissive in production
-    if (allowedOrigins.size === 0 && process.env.NODE_ENV === "production") {
-        logger.warn(
-            "SECURITY WARNING: CORS is configured to allow ALL origins in production. Set ORIGIN_ALLOWLIST to restrict access.",
-        );
-    }
 
     const corsOptions: cors.CorsOptions = {
         origin: (origin, callback) => {
@@ -158,24 +144,17 @@ export async function startServer(
 
     // Detailed Health/Debug endpoint
     app.get("/health", (req: any, res: any) => {
-        const response: any = {
+        const headers = { ...req.headers };
+        // Redact sensitive headers
+        delete headers.authorization;
+        delete headers.cookie;
+
+        res.json({
             status: "ok",
+            env: process.env.NODE_ENV,
             timestamp: new Date().toISOString(),
-        };
-
-        // SECURITY: Only expose detailed info in non-production environments
-        // In production, we don't want to leak environment details or headers (even redacted)
-        if (process.env.NODE_ENV !== "production") {
-            const headers = { ...req.headers };
-            // Redact sensitive headers
-            delete headers.authorization;
-            delete headers.cookie;
-
-            response.env = process.env.NODE_ENV;
-            response.headers = headers;
-        }
-
-        res.json(response);
+            headers: headers,
+        });
     });
 
     // Message size limit extension

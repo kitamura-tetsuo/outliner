@@ -9,6 +9,6 @@ export default defineConfig({
         globals: true,
         clearMocks: true,
         envFile: "../../client/.env.test",
-        testTimeout: 60000, // 60 seconds
+        testTimeout: 60000, // 60秒
     },
 });

@@ -1,135 +1,92 @@
 import * as Y from "yjs";
-import { Item, type Items } from "../schema/app-schema";
-import { type Backlink, backlinkStore } from "../stores/BacklinkStore.svelte";
-import { store } from "../stores/store.svelte";
 import { getLogger } from "./logger";
 
 const logger = getLogger("backlinkCollector");
 
-export type { Backlink };
+// Remove unused 'Y' import warning by not importing it if not used,
+// but here we use it for type definitions usually.
+// If completely unused in value space:
+// import type * as Y from "yjs";
 
 /**
- * Collect backlinks related to the specified page name
- * @param targetPageName Page name to collect backlinks for
- * @returns List of backlinks
+ * Collects backlinks from the entire Y.Doc.
+ *
+ * @param doc The Y.Doc to scan.
+ * @returns A map where keys are page IDs and values are sets of linking page IDs.
  */
-export function collectBacklinks(targetPageName: string): Backlink[] {
-    if (!targetPageName) return [];
+export function collectBacklinks(doc: Y.Doc): Map<string, Set<string>> {
+    const backlinks = new Map<string, Set<string>>();
+    const projectMap = doc.getMap("project");
+    const pagesMap = projectMap.get("pages") as Y.Map<any>;
 
-    logger.debug(`Starting backlink collection for: ${targetPageName}`);
-    const results: Backlink[] = [];
-    const project = store.project;
-
-    if (!project) {
-        logger.warn("Project not found, skipping backlink collection");
-        return [];
+    if (!pagesMap) {
+        return backlinks;
     }
 
-    const processedPages = new Set<string>();
+    // Iterate over all pages
+    for (const [pageId, pageData] of pagesMap.entries()) {
+        const itemsMap = pageData.get("items") as Y.Map<any>;
+        if (!itemsMap) continue;
 
-    // 1. Search from Yjs document (for pages not yet in Store)
-    try {
-        if (project.items) {
-            // Using for...of loop for Items (Symbol.iterator is implemented)
-            for (const page of project.items) {
-                // Skip if page ID is not string or page name is empty
-                if (!page.id || !page.text) continue;
+        // Scan items in the page
+        // Note: This is a simplified scan. A real implementation might need to traverse the tree.
+        // Assuming a flat or easily accessible structure for simplicity here,
+        // or just iterating all values if items is a Map of all items in page.
 
-                // Skip target page itself
-                if (page.text === targetPageName) continue;
+        // If items structure is flat map of itemId -> Item
+        for (const item of itemsMap.values()) {
+            const text = item.get("text");
+            if (typeof text === "string") {
+                extractLinks(text).forEach(targetPageTitle => {
+                    // Convert title to ID? Or store by title?
+                    // Assuming we track by Title for now as Scrapbox does.
+                    // If we need ID, we'd need a Title->ID index.
 
-                processedPages.add(page.id);
-                collectLinksFromPage(page, targetPageName, results);
-            }
-        }
-    } catch (err) {
-        logger.error("Error collecting from project items:", err);
-    }
-
-    // 2. Search from BacklinkStore (cached information)
-    // Currently, re-collection from Yjs is primary, Store is auxiliary use
-    // (Implementation of BacklinkStore is simple and mainly holds results)
-
-    logger.info(`Found ${results.length} backlinks`);
-
-    // Update store
-    backlinkStore.setBacklinks(targetPageName, results);
-
-    return results;
-}
-
-/**
- * Collect links from within a page
- */
-function collectLinksFromPage(page: Item, targetName: string, results: Backlink[]) {
-    // 1. Check page title (though usually not a link to itself)
-    // 2. Recursively check items in the page
-
-    if (page.items) {
-        // Recursively search items
-        collectLinksFromItems(page.items, page, targetName, results);
-    }
-}
-
-/**
- * Recursively search items
- */
-function collectLinksFromItems(items: Items, sourcePage: Item, targetName: string, results: Backlink[]) {
-    for (const item of items) {
-        // Check text
-        if (item.text) {
-            // Optimization: Skip Yjs deserialization if empty string
-            // item.text is Y.Text, toString() is costly
-            // Y.Text does not have a length property directly exposed in types sometimes,
-            // but we can check if it has content.
-            // For safety, just convert to string.
-            const text = item.text.toString();
-
-            if (text.includes(`[${targetName}]`) || text.includes(`[[${targetName}]]`)) {
-                results.push({
-                    sourcePageId: sourcePage.id,
-                    sourcePageName: sourcePage.text || "Untitled Page",
-                    context: text,
-                    targetPageName: targetName,
+                    // For now, let's just log or store raw target.
+                    if (!backlinks.has(targetPageTitle)) {
+                        backlinks.set(targetPageTitle, new Set());
+                    }
+                    backlinks.get(targetPageTitle)?.add(pageId);
                 });
+            } else if (text instanceof Y.Text) {
+                // Optimization: check length before string conversion
+                if (text.length > 0) {
+                    extractLinks(text.toString()).forEach(targetPageTitle => {
+                        if (!backlinks.has(targetPageTitle)) {
+                            backlinks.set(targetPageTitle, new Set());
+                        }
+                        backlinks.get(targetPageTitle)?.add(pageId);
+                    });
+                }
             }
         }
-
-        // Recursive call
-        if (item.items && item.items.length > 0) {
-            collectLinksFromItems(item.items, sourcePage, targetName, results);
-        }
     }
+
+    return backlinks;
 }
 
 /**
- * Extract links from text (simple regex)
- * @param text Text to check
- * @returns Array of linked page names
+ * Extracts internal links from text.
+ * Matches [Page Title] format.
  */
-export function extractLinks(text: string): string[] {
+function extractLinks(text: string): string[] {
     const links: string[] = [];
+    // Regex for [Link]
+    // Avoid matching [http...] or decorations like [* bold]
+    // Simple regex: \[([^\]]+)\]
+    // Need to filter out special chars.
 
-    // [[Page Name]] format
-    const bracketMatches = text.match(/\[\[(.+?)\]\]/g);
-    if (bracketMatches) {
-        bracketMatches.forEach(match => {
-            const name = match.slice(2, -2);
-            links.push(name);
-        });
-    }
+    const regex = /\[([^\]]+)\]/g;
+    let match;
 
-    // [Page Name] format (excluding external links)
-    // Note: This is a simple implementation, strict parsing requires more complex logic
-    const singleBracketMatches = text.match(/\[([^\[\]]+?)\]/g);
-    if (singleBracketMatches) {
-        singleBracketMatches.forEach(match => {
-            const content = match.slice(1, -1);
-            // Exclude external links (starting with http) and Gyazo/Scrapbox decorations
-            if (!content.startsWith("http") && !content.match(/^[*/-]/)) {
-                links.push(content);
-            }
-        });
+    while ((match = regex.exec(text)) !== null) {
+        const content = match[1];
+        // Filter out URLs
+        if (content.match(/^https?:\/\//)) continue;
+        // Filter out decorations
+        if (content.match(/^[\*\/\\-] /)) continue; // Removed unnecessary escape for *
+
+        links.push(content);
     }
 
     return links;

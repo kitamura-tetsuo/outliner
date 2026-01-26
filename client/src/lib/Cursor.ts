@@ -31,7 +31,7 @@ export class Cursor implements CursorEditingContext {
     offset: number;
     isActive: boolean;
     userId: string;
-    // Initial column position used during up/down key operations
+    // 上下キー操作時に使用する初期列位置
     private readonly editor: CursorEditor;
     private initialColumn: number | null = null;
 
@@ -61,7 +61,7 @@ export class Cursor implements CursorEditingContext {
         this.editor = new CursorEditor(this as any);
     }
 
-    // Recursively search for Item on SharedTree
+    // SharedTree 上の Item を再帰検索
     private _findTarget(): Item | undefined {
         const root = generalStore.currentPage as Item | undefined;
         if (root) {
@@ -85,7 +85,7 @@ export class Cursor implements CursorEditingContext {
         return undefined;
     }
 
-    // Recursively search for Item on SharedTree (CursorEditingContext interface implementation)
+    // SharedTree 上の Item を再帰検索 (CursorEditingContext interface implementation)
     findTarget(): any {
         return this._findTarget();
     }
@@ -102,14 +102,14 @@ export class Cursor implements CursorEditingContext {
     }
 
     applyToStore() {
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(
                 `Cursor.applyToStore called for cursorId=${this.cursorId}, itemId=${this.itemId}, offset=${this.offset}`,
             );
         }
 
-        // Update existing cursor
+        // 既存のカーソルを更新
         store.updateCursor({
             cursorId: this.cursorId,
             itemId: this.itemId,
@@ -118,7 +118,7 @@ export class Cursor implements CursorEditingContext {
             userId: this.userId,
         });
 
-        // Create new cursor instance if it doesn't exist
+        // カーソルインスタンスが存在しない場合は新しく作成
         const inst = store.cursorInstances.get(this.cursorId);
         if (!inst) {
             const cursorId = store.setCursor({
@@ -130,25 +130,25 @@ export class Cursor implements CursorEditingContext {
             this.cursorId = cursorId;
         }
 
-        // Set active item
+        // アクティブアイテムを設定
         if (this.isActive) {
             store.setActiveItem(this.itemId);
 
-            // Set focus to global textarea
+            // グローバルテキストエリアにフォーカスを設定
             const textarea = store.getTextareaRef();
             if (textarea) {
-                // Multiple attempts to ensure focus is set
+                // フォーカスを確実に設定するための複数の試行
                 textarea.focus();
 
-                // Set focus using requestAnimationFrame
+                // requestAnimationFrameを使用してフォーカスを設定
                 requestAnimationFrame(() => {
                     textarea.focus();
 
-                    // Use setTimeout as well for extra certainty
+                    // さらに確実にするためにsetTimeoutも併用
                     setTimeout(() => {
                         textarea.focus();
 
-                        // Debug info
+                        // デバッグ情報
                         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                             console.log(
                                 `Cursor.applyToStore: Focus set. Active element is textarea: ${
@@ -159,7 +159,7 @@ export class Cursor implements CursorEditingContext {
                     }, 10);
                 });
             } else {
-                // Log error if textarea is not found
+                // テキストエリアが見つからない場合はエラーログ
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.error(`Cursor.applyToStore: Global textarea not found`);
                 }
@@ -167,13 +167,13 @@ export class Cursor implements CursorEditingContext {
         }
     }
 
-    // Reset initial column position when operations other than up/down keys are performed
+    // 上下キー以外の操作が行われたときに初期列位置をリセット
     private resetInitialColumn() {
         this.initialColumn = null;
     }
 
     moveLeft() {
-        // Reset initial column position since this is not an up/down key operation
+        // 上下キー以外の操作なので初期列位置をリセット
         this.resetInitialColumn();
 
         const target = this.findTarget();
@@ -183,16 +183,16 @@ export class Cursor implements CursorEditingContext {
             this.offset = Math.max(0, this.offset - 1);
             this.applyToStore();
 
-            // Confirm cursor is updated correctly
+            // カーソルが正しく更新されたことを確認
             store.startCursorBlink();
         } else {
-            // Move to previous item at start of line
+            // 行頭で前アイテムへ移動
             this.navigateToItem("left");
         }
     }
 
     moveRight() {
-        // Reset initial column position since this is not an up/down key operation
+        // 上下キー以外の操作なので初期列位置をリセット
         this.resetInitialColumn();
 
         const target = this.findTarget();
@@ -218,7 +218,7 @@ export class Cursor implements CursorEditingContext {
                             // Update the store to reflect the changes
                             this.applyToStore();
 
-                            // Start cursor blinking
+                            // カーソル点滅を開始
                             store.startCursorBlink();
 
                             // Exit early since we've manually handled the navigation
@@ -235,7 +235,7 @@ export class Cursor implements CursorEditingContext {
             this.offset = this.offset + 1;
             this.applyToStore();
 
-            // Confirm cursor is updated correctly
+            // カーソルが正しく更新されたことを確認
             store.startCursorBlink();
         } else {
             // Empty text case - try to move to next item
@@ -243,25 +243,47 @@ export class Cursor implements CursorEditingContext {
         }
     }
 
+    moveToLineStart() {
+        this.resetInitialColumn();
+        const target = this.findTarget();
+        const text = this.getTargetText(target);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+        const lineStartOffset = getLineStartOffset(text, currentLineIndex);
+        this.offset = lineStartOffset;
+        this.applyToStore();
+        store.startCursorBlink();
+    }
+
+    moveToLineEnd() {
+        this.resetInitialColumn();
+        const target = this.findTarget();
+        const text = this.getTargetText(target);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+        const lineEndOffset = getLineEndOffset(text, currentLineIndex);
+        this.offset = lineEndOffset;
+        this.applyToStore();
+        store.startCursorBlink();
+    }
+
     moveUp() {
         const target = this.findTarget();
         if (!target) return;
 
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`moveUp called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
-        // Get visual line info
+        // 視覚的な行の情報を取得
         const visualLineInfo = getVisualLineInfo(this.itemId, this.offset);
 
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
 
         if (!visualLineInfo) {
-            // Fallback: Logical line processing (based on newline characters)
+            // フォールバック: 論理的な行での処理（改行文字ベース）
             const text = this.getTargetText(target);
             const currentLineIndex = getCurrentLineIndex(text, this.offset);
             if (currentLineIndex > 0) {
@@ -277,18 +299,18 @@ export class Cursor implements CursorEditingContext {
 
         const { lineIndex, lineStartOffset, totalLines } = visualLineInfo;
 
-        // Calculate current column position (position within visual line)
+        // 現在の列位置を計算（視覚的な行内での位置）
         const currentColumn = this.offset - lineStartOffset;
 
-        // Set or update initial column position
+        // 初期列位置を設定または更新
         if (this.initialColumn === null) {
             this.initialColumn = currentColumn;
         }
 
-        // Column position to use (initial column position)
+        // 使用する列位置（初期列位置）
         const targetColumn = this.initialColumn;
 
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
@@ -296,26 +318,26 @@ export class Cursor implements CursorEditingContext {
         }
 
         if (lineIndex > 0) {
-            // Move to previous visual line within same item
+            // 同じアイテム内の上の視覚的な行に移動
             const prevLineRange = getVisualLineOffsetRange(this.itemId, lineIndex - 1);
             if (prevLineRange) {
                 const prevLineLength = prevLineRange.endOffset - prevLineRange.startOffset;
-                // Move to shorter of initial column position or line length
+                // 初期列位置か行の長さの短い方に移動
                 this.offset = prevLineRange.startOffset + Math.min(targetColumn, prevLineLength);
                 this.applyToStore();
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `Moved to previous visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
                     );
                 }
 
-                // Start cursor blinking
+                // カーソル点滅を開始
                 store.startCursorBlink();
             }
         } else {
-            // Find previous item
+            // 前のアイテムを探す
             const prevItem = findPreviousItem(this.itemId);
             // Also check for parent item when there's no previous sibling
             // Note: item.parent returns Items (collection), not Item. We need to find the parent Item.
@@ -334,24 +356,24 @@ export class Cursor implements CursorEditingContext {
             const hasParentToNavigateTo = !prevItem && parentItemInstance && parentItemInstance.id;
 
             if (prevItem || hasParentToNavigateTo) {
-                // Move to previous item or parent item
+                // 前のアイテムまたは親アイテムに移動
                 // navigateToItem("up") will handle both cases
                 this.navigateToItem("up");
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
             } else {
-                // If no previous item and no parent item, move to start of current item
+                // 前のアイテムも親アイテムもない場合は、同じアイテムの先頭に移動
                 if (this.offset > 0) {
                     this.offset = 0;
                     this.applyToStore();
 
-                    // Confirm cursor is updated correctly
+                    // カーソルが正しく更新されたことを確認
                     store.startCursorBlink();
 
-                    // Debug info
+                    // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`Moved to start of current item: offset=${this.offset}`);
                     }
@@ -364,21 +386,21 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`moveDown called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
-        // Get visual line info
+        // 視覚的な行の情報を取得
         const visualLineInfo = getVisualLineInfo(this.itemId, this.offset);
 
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
 
         if (!visualLineInfo) {
-            // Fallback: Logical line processing (based on newline characters)
+            // フォールバック: 論理的な行での処理（改行文字ベース）
             const text = this.getTargetText(target);
             const lines = text.split("\n");
             const currentLineIndex = getCurrentLineIndex(text, this.offset);
@@ -395,18 +417,18 @@ export class Cursor implements CursorEditingContext {
 
         const { lineIndex, lineStartOffset, totalLines } = visualLineInfo;
 
-        // Calculate current column position (position within visual line)
+        // 現在の列位置を計算（視覚的な行内での位置）
         const currentColumn = this.offset - lineStartOffset;
 
-        // Set or update initial column position
+        // 初期列位置を設定または更新
         if (this.initialColumn === null) {
             this.initialColumn = currentColumn;
         }
 
-        // Column position to use (initial column position)
+        // 使用する列位置（初期列位置）
         const targetColumn = this.initialColumn;
 
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
@@ -414,46 +436,46 @@ export class Cursor implements CursorEditingContext {
         }
 
         if (lineIndex < totalLines - 1) {
-            // Move to next visual line within same item
+            // 同じアイテム内の下の視覚的な行に移動
             const nextLineRange = getVisualLineOffsetRange(this.itemId, lineIndex + 1);
             if (nextLineRange) {
                 const nextLineLength = nextLineRange.endOffset - nextLineRange.startOffset;
-                // Move to shorter of initial column position or line length
+                // 初期列位置か行の長さの短い方に移動
                 this.offset = nextLineRange.startOffset + Math.min(targetColumn, nextLineLength);
                 this.applyToStore();
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `Moved to next visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
                     );
                 }
 
-                // Start cursor blinking
+                // カーソル点滅を開始
                 store.startCursorBlink();
             }
         } else {
-            // Find next item
+            // 次のアイテムを探す
             const nextItem = findNextItem(this.itemId);
             if (nextItem) {
-                // Move to first visual line of next item
+                // 次のアイテムの最初の視覚的な行に移動
                 this.navigateToItem("down");
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
             } else {
-                // If no next item, move to end of current item
+                // 次のアイテムがない場合は、同じアイテムの末尾に移動
                 const text = this.getTargetText(target);
                 if (this.offset < text.length) {
                     this.offset = text.length;
                     this.applyToStore();
 
-                    // Confirm cursor is updated correctly
+                    // カーソルが正しく更新されたことを確認
                     store.startCursorBlink();
 
-                    // Debug info
+                    // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`Moved to end of current item: offset=${this.offset}`);
                     }
@@ -463,8 +485,8 @@ export class Cursor implements CursorEditingContext {
     }
 
     /**
-     * Insert text
-     * @param ch Text to insert
+     * テキストを挿入する
+     * @param ch 挿入するテキスト
      */
     insertText(ch: string) {
         this.resetInitialColumn();
@@ -472,7 +494,7 @@ export class Cursor implements CursorEditingContext {
     }
 
     /**
-     * Delete character before cursor
+     * カーソル位置の前の文字を削除する
      */
     deleteBackward() {
         this.resetInitialColumn();
@@ -480,7 +502,7 @@ export class Cursor implements CursorEditingContext {
     }
 
     /**
-     * Delete character after cursor
+     * カーソル位置の後の文字を削除する
      */
     deleteForward() {
         this.resetInitialColumn();
@@ -500,21 +522,21 @@ export class Cursor implements CursorEditingContext {
     }
 
     /**
-     * Handle keyboard event
-     * @param event Keyboard event
-     * @returns Whether event was handled
+     * キーボードイベントを処理する
+     * @param event キーボードイベント
+     * @returns イベントを処理したかどうか
      */
     onKeyDown(event: KeyboardEvent): boolean {
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`onKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}`);
         }
 
-        // Check if there is a selection
+        // 選択範囲の有無を確認
         const hasSelection = this.hasSelection();
         const activeSelection = hasSelection ? this.getSelection() : undefined;
 
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Has selection: ${hasSelection}`);
             if (activeSelection) {
@@ -522,7 +544,7 @@ export class Cursor implements CursorEditingContext {
             }
         }
 
-        // Special operations if Ctrl/Cmd key is pressed
+        // Ctrl/Cmd キーが押されている場合は特殊操作
         if (event.ctrlKey || event.metaKey) {
             switch (event.key) {
                 case "a":
@@ -539,7 +561,7 @@ export class Cursor implements CursorEditingContext {
                     return true;
                 case "v":
                 case "V":
-                    // Let browser default handle paste
+                    // ペースト処理はブラウザのデフォルト動作に任せる
                     return false;
                 case "ArrowLeft":
                     this.moveWordLeft();
@@ -575,7 +597,7 @@ export class Cursor implements CursorEditingContext {
                 default:
                     return false;
             }
-        } // Extend selection if Shift key is pressed
+        } // Shift キーが押されている場合は選択範囲を拡張
         else if (event.shiftKey) {
             switch (event.key) {
                 case "ArrowLeft":
@@ -603,11 +625,11 @@ export class Cursor implements CursorEditingContext {
                     return false;
             }
         } else {
-            // Normal cursor movement
+            // 通常のカーソル移動
             switch (event.key) {
                 case "ArrowLeft":
                     if (hasSelection) {
-                        // If selection exists, move cursor to start of selection and clear selection
+                        // 選択範囲がある場合は、選択範囲の開始位置にカーソルを移動して選択範囲をクリア
                         this.clearSelection();
                     } else {
                         this.moveLeft();
@@ -615,7 +637,7 @@ export class Cursor implements CursorEditingContext {
                     break;
                 case "ArrowRight":
                     if (hasSelection) {
-                        // If selection exists, move cursor to end of selection and clear selection
+                        // 選択範囲がある場合は、選択範囲の終了位置にカーソルを移動して選択範囲をクリア
                         this.clearSelection();
                     } else {
                         this.moveRight();
@@ -623,78 +645,78 @@ export class Cursor implements CursorEditingContext {
                     break;
                 case "ArrowUp":
                     if (hasSelection) {
-                        // If selection exists, clear selection then move
+                        // 選択範囲がある場合は、選択範囲をクリアしてから移動
                         this.clearSelection();
                     }
                     this.moveUp();
                     break;
                 case "ArrowDown":
                     if (hasSelection) {
-                        // If selection exists, clear selection then move
+                        // 選択範囲がある場合は、選択範囲をクリアしてから移動
                         this.clearSelection();
                     }
                     this.moveDown();
                     break;
                 case "Home":
                     if (hasSelection) {
-                        // If selection exists, clear selection then move
+                        // 選択範囲がある場合は、選択範囲をクリアしてから移動
                         this.clearSelection();
                     }
                     this.moveToLineStart();
                     break;
                 case "End":
                     if (hasSelection) {
-                        // If selection exists, clear selection then move
+                        // 選択範囲がある場合は、選択範囲をクリアしてから移動
                         this.clearSelection();
                     }
                     this.moveToLineEnd();
                     break;
                 case "Backspace":
-                    // If selection exists, delete selection
+                    // 選択範囲がある場合は、選択範囲を削除
                     if (hasSelection) {
                         const selection = this.getSelection();
                         if (selection) {
-                            // If selection spans multiple items
+                            // 複数アイテムにまたがる選択範囲の場合
                             if (selectionSpansMultipleItems(selection)) {
                                 this.deleteMultiItemSelection(selection);
                             } else {
-                                // If selection is within single item
+                                // 単一アイテム内の選択範囲の場合
                                 this.deleteSelection();
                             }
                         }
                     } else {
-                        // Normal Backspace processing
+                        // 通常のBackspace処理
                         this.deleteBackward();
                     }
                     break;
                 case "Delete":
-                    // If selection exists, delete selection
+                    // 選択範囲がある場合は、選択範囲を削除
                     if (hasSelection) {
                         const selection = this.getSelection();
                         if (selection) {
-                            // If selection spans multiple items
+                            // 複数アイテムにまたがる選択範囲の場合
                             if (selectionSpansMultipleItems(selection)) {
                                 this.deleteMultiItemSelection(selection);
                             } else {
-                                // If selection is within single item
+                                // 単一アイテム内の選択範囲の場合
                                 this.deleteSelection();
                             }
                         }
                     } else {
-                        // Normal Delete processing
+                        // 通常のDelete処理
                         this.deleteForward();
                     }
                     break;
                 case "Enter":
-                    // If selection exists, delete selection then insert line break
+                    // 選択範囲がある場合は、選択範囲を削除してから改行を挿入
                     if (hasSelection) {
                         const selection = this.getSelection();
                         if (selection) {
-                            // If selection spans multiple items
+                            // 複数アイテムにまたがる選択範囲の場合
                             if (selectionSpansMultipleItems(selection)) {
                                 this.deleteMultiItemSelection(selection);
                             } else {
-                                // If selection is within single item
+                                // 単一アイテム内の選択範囲の場合
                                 this.deleteSelection();
                             }
                         }
@@ -709,29 +731,29 @@ export class Cursor implements CursorEditingContext {
             }
         }
 
-        // Start cursor blinking
+        // カーソル点滅を開始
         store.startCursorBlink();
         return true;
     }
 
-    // Extend selection left
+    // 選択範囲を左に拡張
     extendSelectionLeft() {
         const target = this.findTarget();
         if (!target) return;
 
-        // Get current selection
+        // 現在の選択範囲を取得
         const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
         if (existingSelection) {
-            // Extend existing selection
+            // 既存の選択範囲がある場合は拡張
             if (existingSelection.isReversed) {
-                // Move start position for reversed selection
+                // 逆方向の選択範囲の場合、開始位置を移動
                 startItemId = existingSelection.startItemId;
                 startOffset = existingSelection.startOffset;
 
-                // Move cursor left
+                // カーソルを左に移動
                 const oldItemId = this.itemId;
                 const oldOffset = this.offset;
                 this.moveLeft();
@@ -740,7 +762,7 @@ export class Cursor implements CursorEditingContext {
                 endOffset = this.offset;
                 isReversed = true;
 
-                // If selection disappears, reverse direction
+                // 選択範囲が消滅した場合は方向を反転
                 if (startItemId === endItemId && startOffset === endOffset) {
                     this.itemId = oldItemId;
                     this.offset = oldOffset;
@@ -753,18 +775,18 @@ export class Cursor implements CursorEditingContext {
                     isReversed = true;
                 }
             } else {
-                // Move end position for normal selection
+                // 正方向の選択範囲の場合、終了位置を移動
                 startItemId = existingSelection.startItemId;
                 startOffset = existingSelection.startOffset;
 
-                // Move cursor left
+                // カーソルを左に移動
                 this.moveLeft();
 
                 endItemId = this.itemId;
                 endOffset = this.offset;
                 isReversed = false;
 
-                // If selection disappears, reverse direction
+                // 選択範囲が消滅した場合は方向を反転
                 if (startItemId === endItemId && startOffset === endOffset) {
                     isReversed = true;
                     const temp = startItemId;
@@ -777,11 +799,11 @@ export class Cursor implements CursorEditingContext {
                 }
             }
         } else {
-            // Create new selection
+            // 新規選択範囲の作成
             startItemId = this.itemId;
             startOffset = this.offset;
 
-            // Move cursor left
+            // カーソルを左に移動
             this.moveLeft();
 
             endItemId = this.itemId;
@@ -789,7 +811,7 @@ export class Cursor implements CursorEditingContext {
             isReversed = true;
         }
 
-        // Clear existing selection for user and set new range
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
         store.clearSelectionForUser(this.userId);
         store.setSelection({
             startItemId,
@@ -800,28 +822,28 @@ export class Cursor implements CursorEditingContext {
             isReversed,
         });
 
-        // Set global textarea selection
+        // グローバルテキストエリアの選択範囲を設定
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
     }
 
-    // Extend selection right
+    // 選択範囲を右に拡張
     extendSelectionRight() {
         const target = this.findTarget();
         if (!target) return;
 
-        // Get current selection
+        // 現在の選択範囲を取得
         const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
         if (existingSelection) {
-            // Extend existing selection
+            // 既存の選択範囲がある場合は拡張
             if (!existingSelection.isReversed) {
-                // Move end position for normal selection
+                // 正方向の選択範囲の場合、終了位置を移動
                 startItemId = existingSelection.startItemId;
                 startOffset = existingSelection.startOffset;
 
-                // Move cursor right
+                // カーソルを右に移動
                 const oldItemId = this.itemId;
                 const oldOffset = this.offset;
                 this.moveRight();
@@ -830,7 +852,7 @@ export class Cursor implements CursorEditingContext {
                 endOffset = this.offset;
                 isReversed = false;
 
-                // If selection disappears, reverse direction
+                // 選択範囲が消滅した場合は方向を反転
                 if (startItemId === endItemId && startOffset === endOffset) {
                     this.itemId = oldItemId;
                     this.offset = oldOffset;
@@ -843,18 +865,18 @@ export class Cursor implements CursorEditingContext {
                     isReversed = false;
                 }
             } else {
-                // Move start position for reversed selection
+                // 逆方向の選択範囲の場合、開始位置を移動
                 endItemId = existingSelection.endItemId;
                 endOffset = existingSelection.endOffset;
 
-                // Move cursor right
+                // カーソルを右に移動
                 this.moveRight();
 
                 startItemId = this.itemId;
                 startOffset = this.offset;
                 isReversed = true;
 
-                // If selection disappears, reverse direction
+                // 選択範囲が消滅した場合は方向を反転
                 if (startItemId === endItemId && startOffset === endOffset) {
                     isReversed = false;
                     const temp = startItemId;
@@ -867,11 +889,11 @@ export class Cursor implements CursorEditingContext {
                 }
             }
         } else {
-            // Create new selection
+            // 新規選択範囲の作成
             startItemId = this.itemId;
             startOffset = this.offset;
 
-            // Move cursor right
+            // カーソルを右に移動
             this.moveRight();
 
             endItemId = this.itemId;
@@ -879,9 +901,9 @@ export class Cursor implements CursorEditingContext {
             isReversed = false;
         }
 
-        // Clear existing selection for user and set new range
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
         store.clearSelectionForUser(this.userId);
-        // Set selection
+        // 選択範囲を設定
         store.setSelection({
             startItemId,
             startOffset,
@@ -891,28 +913,28 @@ export class Cursor implements CursorEditingContext {
             isReversed,
         });
 
-        // Set global textarea selection
+        // グローバルテキストエリアの選択範囲を設定
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
     }
 
-    // Extend selection up
+    // 選択範囲を上に拡張
     extendSelectionUp(): void {
         const target = this.findTarget();
         if (!target) return;
 
-        // Get current selection
+        // 現在の選択範囲を取得
         const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
         if (existingSelection) {
-            // Extend existing selection
+            // 既存の選択範囲がある場合は拡張
             if (existingSelection.isReversed) {
-                // Move start position for reversed selection
+                // 逆方向の選択範囲の場合、開始位置を移動
                 startItemId = existingSelection.startItemId;
                 startOffset = existingSelection.startOffset;
 
-                // Move cursor up
+                // カーソルを上に移動
                 const oldItemId = this.itemId;
                 const oldOffset = this.offset;
                 this.moveUp();
@@ -921,7 +943,7 @@ export class Cursor implements CursorEditingContext {
                 endOffset = this.offset;
                 isReversed = true;
 
-                // If selection disappears, reverse direction
+                // 選択範囲が消滅した場合は方向を反転
                 if (startItemId === endItemId && startOffset === endOffset) {
                     this.itemId = oldItemId;
                     this.offset = oldOffset;
@@ -934,11 +956,11 @@ export class Cursor implements CursorEditingContext {
                     isReversed = false;
                 }
             } else {
-                // Move end position for normal selection
+                // 正方向の選択範囲の場合、終了位置を移動
                 endItemId = existingSelection.endItemId;
                 endOffset = existingSelection.endOffset;
 
-                // Move cursor up
+                // カーソルを上に移動
                 const oldItemId = this.itemId;
                 const oldOffset = this.offset;
                 this.moveUp();
@@ -947,7 +969,7 @@ export class Cursor implements CursorEditingContext {
                 startOffset = this.offset;
                 isReversed = false;
 
-                // If selection disappears, reverse direction
+                // 選択範囲が消滅した場合は方向を反転
                 if (startItemId === endItemId && startOffset === endOffset) {
                     this.itemId = oldItemId;
                     this.offset = oldOffset;
@@ -961,11 +983,11 @@ export class Cursor implements CursorEditingContext {
                 }
             }
         } else {
-            // Create new selection
+            // 新規選択範囲の作成
             startItemId = this.itemId;
             startOffset = this.offset;
 
-            // Move cursor up
+            // カーソルを上に移動
             this.moveUp();
 
             endItemId = this.itemId;
@@ -973,9 +995,9 @@ export class Cursor implements CursorEditingContext {
             isReversed = true;
         }
 
-        // Clear existing selection for user and set new range
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
         store.clearSelectionForUser(this.userId);
-        // Set selection
+        // 選択範囲を設定
         store.setSelection({
             startItemId,
             startOffset,
@@ -985,33 +1007,33 @@ export class Cursor implements CursorEditingContext {
             isReversed,
         });
 
-        // Set global textarea selection
+        // グローバルテキストエリアの選択範囲を設定
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
     }
 
-    // Extend selection down
+    // 選択範囲を下に拡張
     extendSelectionDown() {
         const target = this.findTarget();
         if (!target) return;
 
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`extendSelectionDown called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
-        // Get current selection
+        // 現在の選択範囲を取得
         const existingSelection = this.getSelectionForCurrentItem();
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
         if (existingSelection) {
-            // Extend existing selection
+            // 既存の選択範囲がある場合は拡張
             if (!existingSelection.isReversed) {
-                // Move end position for normal selection
+                // 正方向の選択範囲の場合、終了位置を移動
                 startItemId = existingSelection.startItemId;
                 startOffset = existingSelection.startOffset;
 
-                // Move cursor down
+                // カーソルを下に移動
                 const oldItemId = this.itemId;
                 const oldOffset = this.offset;
                 this.moveDown();
@@ -1020,14 +1042,14 @@ export class Cursor implements CursorEditingContext {
                 endOffset = this.offset;
                 isReversed = false;
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `Extending forward selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
                 }
 
-                // If selection disappears, reverse direction
+                // 選択範囲が消滅した場合は方向を反転
                 if (startItemId === endItemId && startOffset === endOffset) {
                     this.itemId = oldItemId;
                     this.offset = oldOffset;
@@ -1039,7 +1061,7 @@ export class Cursor implements CursorEditingContext {
                     endOffset = this.offset;
                     isReversed = false;
 
-                    // Debug info
+                    // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(
                             `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
@@ -1047,11 +1069,11 @@ export class Cursor implements CursorEditingContext {
                     }
                 }
             } else {
-                // Move start position for reversed selection
+                // 逆方向の選択範囲の場合、開始位置を移動
                 endItemId = existingSelection.endItemId;
                 endOffset = existingSelection.endOffset;
 
-                // Move cursor down
+                // カーソルを下に移動
                 const oldItemId = this.itemId;
                 const oldOffset = this.offset;
                 this.moveDown();
@@ -1060,14 +1082,14 @@ export class Cursor implements CursorEditingContext {
                 startOffset = this.offset;
                 isReversed = true;
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `Extending reversed selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
                 }
 
-                // If selection disappears, reverse direction
+                // 選択範囲が消滅した場合は方向を反転
                 if (startItemId === endItemId && startOffset === endOffset) {
                     this.itemId = oldItemId;
                     this.offset = oldOffset;
@@ -1079,7 +1101,7 @@ export class Cursor implements CursorEditingContext {
                     startOffset = this.offset;
                     isReversed = false;
 
-                    // Debug info
+                    // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(
                             `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
@@ -1088,37 +1110,37 @@ export class Cursor implements CursorEditingContext {
                 }
             }
         } else {
-            // Create new selection
+            // 新規選択範囲の作成
             startItemId = this.itemId;
             startOffset = this.offset;
 
-            // Save current position
+            // 現在位置を保存
             const oldItemId = this.itemId;
             // const oldOffset = this.offset; // Not used
 
-            // Move cursor down
+            // カーソルを下に移動
             this.moveDown();
 
-            // If target is in same item, select all text
+            // 移動先が同じアイテム内の場合は、全テキストを選択
             if (this.itemId === oldItemId) {
                 // const text = this.getTargetText(target); // Not used
                 endItemId = this.itemId;
                 endOffset = this.offset;
                 isReversed = false;
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `New selection within same item: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
                     );
                 }
             } else {
-                // If moved to another item
+                // 別のアイテムに移動した場合
                 endItemId = this.itemId;
-                endOffset = this.offset; // Select up to current position in next item
+                endOffset = this.offset; // 次のアイテムの現在位置まで選択（以前は0固定だった）
                 isReversed = false;
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `New selection across items: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
@@ -1127,18 +1149,18 @@ export class Cursor implements CursorEditingContext {
             }
         }
 
-        // Set selection direction appropriately
-        // If start and end are same item, determine direction by offset
+        // 選択範囲の方向を適切に設定（テスト用の強制設定を削除）
+        // 開始と終了が同じアイテムの場合、オフセットで方向を決定
         if (startItemId === endItemId) {
             isReversed = startOffset > endOffset;
-        } // If different items, determine direction by DOM order
+        } // 異なるアイテムの場合、DOM上の順序で方向を決定
         else {
             const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
             const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
             const startIdx = allItemIds.indexOf(startItemId);
             const endIdx = allItemIds.indexOf(endItemId);
 
-            // Default to normal direction if index not found
+            // インデックスが見つからない場合はデフォルトで正方向
             if (startIdx === -1 || endIdx === -1) {
                 isReversed = false;
             } else {
@@ -1146,7 +1168,7 @@ export class Cursor implements CursorEditingContext {
             }
         }
 
-        // Clear existing selection for user and set new range
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
         store.clearSelectionForUser(this.userId);
         const selectionId = store.setSelection({
             startItemId,
@@ -1157,16 +1179,16 @@ export class Cursor implements CursorEditingContext {
             isReversed,
         });
 
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Selection created with ID: ${selectionId}, isReversed=${isReversed}`);
             console.log(`Current selections:`, store.selections);
         }
 
-        // Set global textarea selection
+        // グローバルテキストエリアの選択範囲を設定
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
-        // Wait a bit for DOM reflection to confirm selection creation
+        // 選択範囲が正しく作成されたことを確認するために、DOMに反映されるまで少し待つ
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
@@ -1174,7 +1196,7 @@ export class Cursor implements CursorEditingContext {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
 
-                // If selection not visible, set selection again
+                // 選択範囲が表示されていない場合は、再度選択範囲を設定
                 if (selectionElements.length === 0) {
                     store.setSelection({
                         startItemId,
@@ -1185,12 +1207,266 @@ export class Cursor implements CursorEditingContext {
                         isReversed,
                     });
 
-                    // Force update selection display
+                    // 選択範囲の表示を強制的に更新
                     store.forceUpdate();
                 }
-            }, 150); // Increase timeout to 150ms to wait longer for DOM update
+            }, 150); // タイムアウトを150msに増やして、DOMの更新を待つ時間を長くする
+        }
+    }
 
-            // Additional confirmation and update
+    // カーソルを行の先頭に移動
+    moveToLineStart() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = this.getTargetText(target);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+
+        // 現在の行の開始位置に移動
+        this.offset = getLineStartOffset(text, currentLineIndex);
+        this.applyToStore();
+
+        // カーソルが正しく更新されたことを確認
+        store.startCursorBlink();
+    }
+
+    // カーソルを行の末尾に移動
+    moveToLineEnd() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        const text = this.getTargetText(target);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+
+        // 現在の行の終了位置に移動
+        this.offset = getLineEndOffset(text, currentLineIndex);
+        this.applyToStore();
+
+        // カーソルが正しく更新されたことを確認
+        store.startCursorBlink();
+    }
+
+    // 選択範囲を行頭まで拡張
+    extendSelectionToLineStart() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`extendSelectionToLineStart called for itemId=${this.itemId}, offset=${this.offset}`);
+        }
+
+        // 現在の選択範囲を取得
+        const existingSelection = this.getSelectionForCurrentItem();
+
+        let startItemId, startOffset, endItemId, endOffset, isReversed;
+        const text = this.getTargetText(target);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+        const lineStartOffset = getLineStartOffset(text, currentLineIndex);
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `Current line index: ${currentLineIndex}, lineStartOffset: ${lineStartOffset}, text: "${text}"`,
+            );
+        }
+
+        // 現在のカーソル位置が既に行頭にある場合は何もしない
+        if (this.offset === lineStartOffset && !existingSelection) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Already at line start, no selection created`);
+            }
+            return;
+        }
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は拡張
+            if (existingSelection.isReversed) {
+                // 逆方向の選択範囲の場合、開始位置を移動
+                startItemId = existingSelection.startItemId;
+                startOffset = existingSelection.startOffset;
+
+                // カーソルを行頭に移動
+                endItemId = this.itemId;
+                endOffset = lineStartOffset;
+                isReversed = true;
+            } else {
+                // 正方向の選択範囲の場合、終了位置を移動
+                endItemId = existingSelection.endItemId;
+                endOffset = existingSelection.endOffset;
+
+                // カーソルを行頭に移動
+                startItemId = this.itemId;
+                startOffset = lineStartOffset;
+                isReversed = false;
+            }
+        } else {
+            // 新規選択範囲の作成
+            // 現在位置から行頭までを選択
+            startItemId = this.itemId;
+            endItemId = this.itemId;
+
+            // 現在位置と行頭の位置関係に基づいて方向を決定
+            if (this.offset > lineStartOffset) {
+                // 通常の場合（カーソルが行の途中にある）
+                startOffset = this.offset;
+                endOffset = lineStartOffset;
+                isReversed = true; // 行頭に向かって選択するので逆方向
+            } else {
+                // カーソルが行頭にある場合（通常はここに入らない）
+                startOffset = lineStartOffset;
+                endOffset = this.offset;
+                isReversed = false;
+            }
+        }
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
+            );
+        }
+
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
+        store.clearSelectionForUser(this.userId);
+        // 選択範囲を設定
+        store.setSelection({
+            startItemId,
+            startOffset,
+            endItemId,
+            endOffset,
+            userId: this.userId,
+            isReversed,
+        });
+
+        // カーソル位置を行頭に移動
+        this.offset = lineStartOffset;
+        this.applyToStore();
+
+        // グローバルテキストエリアの選択範囲を設定
+        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+    }
+
+    // 選択範囲を行末まで拡張
+    extendSelectionToLineEnd() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`extendSelectionToLineEnd called for itemId=${this.itemId}, offset=${this.offset}`);
+        }
+
+        // 現在の選択範囲を取得
+        const existingSelection = this.getSelectionForCurrentItem();
+
+        let startItemId, startOffset, endItemId, endOffset, isReversed;
+        const text = this.getTargetText(target);
+        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+        const lineEndOffset = getLineEndOffset(text, currentLineIndex);
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`Current line index: ${currentLineIndex}, lineEndOffset: ${lineEndOffset}, text: "${text}"`);
+        }
+
+        // 現在のカーソル位置が既に行末にある場合は何もしない
+        if (this.offset === lineEndOffset && !existingSelection) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Already at line end, no selection created`);
+            }
+            return;
+        }
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は拡張
+            if (!existingSelection.isReversed) {
+                // 正方向の選択範囲の場合、終了位置を移動
+                startItemId = existingSelection.startItemId;
+                startOffset = existingSelection.startOffset;
+
+                // カーソルを行末に移動
+                endItemId = this.itemId;
+                endOffset = lineEndOffset;
+                isReversed = false;
+            } else {
+                // 逆方向の選択範囲の場合、開始位置を移動
+                endItemId = existingSelection.endItemId;
+                endOffset = existingSelection.endOffset;
+
+                // カーソルを行末に移動
+                startItemId = this.itemId;
+                startOffset = lineEndOffset;
+                isReversed = true;
+            }
+        } else {
+            // 新規選択範囲の作成
+            startItemId = this.itemId;
+            startOffset = this.offset;
+
+            // 行末までを選択
+            endItemId = this.itemId;
+            endOffset = lineEndOffset;
+            isReversed = this.offset > lineEndOffset;
+        }
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
+            );
+        }
+
+        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
+        store.clearSelectionForUser(this.userId);
+        // 選択範囲を設定
+        const selectionId = store.setSelection({
+            startItemId,
+            startOffset,
+            endItemId,
+            endOffset,
+            userId: this.userId,
+            isReversed,
+        });
+
+        // デバッグ情報
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`Selection created with ID: ${selectionId}`);
+            console.log(`Current selections:`, store.selections);
+        }
+
+        // カーソル位置を行末に移動
+        this.offset = lineEndOffset;
+        this.applyToStore();
+
+        // グローバルテキストエリアの選択範囲を設定
+        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+
+        // 選択範囲が正しく作成されたことを確認するために、DOMに反映されるまで少し待つ
+        if (typeof window !== "undefined") {
+            setTimeout(() => {
+                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(`Selection elements in DOM: ${selectionElements.length}`);
+                }
+
+                // 選択範囲が表示されていない場合は、再度選択範囲を設定
+                if (selectionElements.length === 0) {
+                    store.setSelection({
+                        startItemId,
+                        startOffset,
+                        endItemId,
+                        endOffset,
+                        userId: this.userId,
+                        isReversed,
+                    });
+
+                    // 選択範囲の表示を強制的に更新
+                    store.forceUpdate();
+                }
+            }, 100); // タイムアウトを100msに増やして、DOMの更新を待つ時間を長くする
+
+            // 追加の確認と更新
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
                 if (selectionElements.length === 0) {
@@ -1198,7 +1474,7 @@ export class Cursor implements CursorEditingContext {
                         console.log(`Selection still not visible after 100ms, forcing update again`);
                     }
 
-                    // Reset selection
+                    // 選択範囲を再設定
                     store.setSelection({
                         startItemId,
                         startOffset,
@@ -1208,7 +1484,7 @@ export class Cursor implements CursorEditingContext {
                         isReversed,
                     });
 
-                    // Force update
+                    // 強制的に更新
                     store.forceUpdate();
                 }
             }, 200);
@@ -1216,16 +1492,16 @@ export class Cursor implements CursorEditingContext {
     }
 
     /**
-     * Clear selection
+     * 選択範囲をクリアする
      */
     clearSelection() {
-        // Clear selection
+        // 選択範囲をクリア
         store.clearSelectionForUser(this.userId);
     }
 
     // --- Extended navigation commands ---
 
-    // Move left word by word
+    // 単語単位で左へ移動
     moveWordLeft() {
         const target = this.findTarget();
         if (!target) return;
@@ -1248,7 +1524,7 @@ export class Cursor implements CursorEditingContext {
         store.startCursorBlink();
     }
 
-    // Move right word by word
+    // 単語単位で右へ移動
     moveWordRight() {
         const target = this.findTarget();
         if (!target) return;
@@ -1272,7 +1548,7 @@ export class Cursor implements CursorEditingContext {
         store.startCursorBlink();
     }
 
-    // Jump to matching bracket
+    // 対応する角括弧へジャンプ
     jumpToMatchingBracket() {
         const target = this.findTarget();
         if (!target) return;
@@ -1307,7 +1583,7 @@ export class Cursor implements CursorEditingContext {
         store.startCursorBlink();
     }
 
-    // Move to start of document
+    // ドキュメント先頭に移動
     moveToDocumentStart() {
         const root = generalStore.currentPage;
         if (!root) return;
@@ -1324,7 +1600,7 @@ export class Cursor implements CursorEditingContext {
         store.startCursorBlink();
     }
 
-    // Move to end of document
+    // ドキュメント末尾に移動
     moveToDocumentEnd() {
         const root = generalStore.currentPage;
         if (!root) return;
@@ -1343,7 +1619,7 @@ export class Cursor implements CursorEditingContext {
         store.startCursorBlink();
     }
 
-    // PageUp/PageDown equivalent movement (10 lines)
+    // PageUp/PageDown 相当の移動（10行単位）
     pageUp() {
         for (let i = 0; i < 10; i++) this.moveUp();
     }
@@ -1352,7 +1628,7 @@ export class Cursor implements CursorEditingContext {
         for (let i = 0; i < 10; i++) this.moveDown();
     }
 
-    // Scroll operations
+    // スクロール操作
     scrollUp() {
         if (typeof window !== "undefined") window.scrollBy(0, -100);
     }
@@ -1369,10 +1645,10 @@ export class Cursor implements CursorEditingContext {
         if (typeof window !== "undefined") window.scrollBy(0, window.innerHeight);
     }
 
-    // Formatting methods are defined in CursorEditor delegation or below
+    // フォーマットメソッドは下部で定義されています
 
     /**
-     * Select all text in current item
+     * 現在のアイテムのテキストを全選択する
      */
     selectAll() {
         const target = this.findTarget();
@@ -1380,7 +1656,7 @@ export class Cursor implements CursorEditingContext {
 
         const text = this.getTargetText(target);
 
-        // Set selection
+        // 選択範囲を設定
         store.setSelection({
             startItemId: this.itemId,
             startOffset: 0,
@@ -1390,18 +1666,18 @@ export class Cursor implements CursorEditingContext {
             isReversed: false,
         });
 
-        // Set global textarea selection
+        // グローバルテキストエリアの選択範囲を設定
         this.updateGlobalTextareaSelection(this.itemId, 0, this.itemId, text.length);
 
-        // Set cursor position to end
+        // カーソル位置を末尾に設定
         this.offset = text.length;
         this.applyToStore();
 
-        // Start cursor blinking
+        // カーソル点滅を開始
         store.startCursorBlink();
     }
 
-    // Shift+Alt+Right to expand selection
+    // Shift+Alt+Right で選択範囲を拡張
     expandSelection() {
         const target = this.findTarget();
         if (!target) return;
@@ -1427,7 +1703,7 @@ export class Cursor implements CursorEditingContext {
         store.startCursorBlink();
     }
 
-    // Shift+Alt+Left to shrink selection
+    // Shift+Alt+Left で選択範囲を縮小
     shrinkSelection() {
         const selection = this.getSelection();
         if (!selection) return;
@@ -1440,7 +1716,7 @@ export class Cursor implements CursorEditingContext {
         store.startCursorBlink();
     }
 
-    // Ctrl+L to select current line
+    // Ctrl+L で現在行を選択
     selectLine() {
         const target = this.findTarget();
         if (!target) return;
@@ -1467,59 +1743,59 @@ export class Cursor implements CursorEditingContext {
     }
 
     /**
-     * Copy selected text
+     * 選択されたテキストをコピーする
      */
     copySelectedText() {
         this.editor.copySelectedText();
     }
 
     /**
-     * Cut selected text
+     * 選択されたテキストをカットする
      */
     cutSelectedText() {
         this.editor.cutSelectedText();
     }
 
     /**
-     * Delete selection spanning multiple items
+     * 複数アイテムにまたがる選択範囲を削除する
      */
 
     /**
-     * Delete selection
+     * 選択範囲を削除する
      */
     deleteSelection() {
         this.editor.deleteSelection();
     }
 
     /**
-     * Navigate between items
-     * @param direction Direction to move
+     * アイテム間を移動する
+     * @param direction 移動方向
      */
     private navigateToItem(direction: "left" | "right" | "up" | "down") {
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(
                 `navigateToItem called with direction=${direction}, itemId=${this.itemId}, offset=${this.offset}`,
             );
         }
 
-        // Navigate to prev/next item only updates store, event emission handled by component
+        // 前後アイテムへの移動はストア更新のみ行い、イベント発行はコンポーネントで処理
         const oldItemId = this.itemId;
-        let newItemId = this.itemId; // Default is current item
-        let newOffset = this.offset; // Default is current offset
+        let newItemId = this.itemId; // デフォルトは現在のアイテム
+        let newOffset = this.offset; // デフォルトは現在のオフセット
         let itemChanged = false;
 
-        // Get text of current item
+        // 現在のアイテムのテキストを取得
         const currentTarget = this.findTarget();
         const currentText = this.getTargetText(currentTarget);
         const currentColumn = getCurrentColumn(currentText, this.offset);
 
-        // Debug info
+        // デバッグ情報
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`Current column: ${currentColumn}, current text: "${currentText}"`);
         }
 
-        // Handle item navigation
+        // アイテム間移動の処理
         if (direction === "left") {
             let prevItem = findPreviousItem(this.itemId);
 
@@ -1567,17 +1843,17 @@ export class Cursor implements CursorEditingContext {
                 newOffset = prevItem.text?.length || 0;
                 itemChanged = true;
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
                 }
             } else if (!itemChanged) {
-                // If no previous item, move to start of current item
+                // 前のアイテムがない場合は、同じアイテムの先頭に移動
                 const target = this.findTarget();
                 if (target) {
                     newOffset = 0;
 
-                    // Debug info
+                    // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                     }
@@ -1633,7 +1909,7 @@ export class Cursor implements CursorEditingContext {
                 newOffset = 0;
                 itemChanged = true;
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
                 }
@@ -1683,7 +1959,7 @@ export class Cursor implements CursorEditingContext {
                                 newOffset = 0; // Start at the beginning of the next item
                                 itemChanged = true;
 
-                                // Debug info
+                                // デバッグ情報
                                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                                     console.log(
                                         `Moving right to next item (DOM direct lookup): id=${nextItemId}, offset=${newOffset}`,
@@ -1801,7 +2077,7 @@ export class Cursor implements CursorEditingContext {
                 if (target) {
                     newOffset = this.getTargetText(target).length;
 
-                    // Debug info
+                    // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
@@ -1861,10 +2137,10 @@ export class Cursor implements CursorEditingContext {
                     );
                 }
             } else {
-                // If no previous item, move to start of current item
+                // 前のアイテムがない場合は、同じアイテムの先頭に移動
                 newOffset = 0;
 
-                // Debug info
+                // デバッグ情報
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                 }
@@ -1886,17 +2162,17 @@ export class Cursor implements CursorEditingContext {
                 const firstLineEnd = getLineEndOffset(nextText, firstLineIndex);
                 const firstLineLength = firstLineEnd - firstLineStart;
 
-                // Calculate position with smallest x-coordinate change
-                // Select position closest to initial or current column position
-                // Ensure not to exceed length of first line of next item
+                // x座標の変化が最も小さい位置を計算
+                // 初期列位置または現在の列位置に最も近い位置を選択
+                // 次のアイテムの最初の行の長さを超えないようにする
                 const targetColumn = Math.min(
                     this.initialColumn !== null ? this.initialColumn : currentColumn,
                     firstLineLength,
                 );
                 newOffset = firstLineStart + targetColumn;
 
-                // Special case: If current cursor is at end of line (offset is text length),
-                // move to end of first line of next item
+                // 特殊ケース: 現在のカーソルが行の末尾（オフセットがテキスト長）にある場合は、
+                // 次のアイテムの最初の行の末尾に移動
                 const currentTarget = this.findTarget();
                 const currentText = this.getTargetText(currentTarget);
                 if (this.offset === currentText.length) {
@@ -1905,7 +2181,7 @@ export class Cursor implements CursorEditingContext {
 
                 itemChanged = true;
 
-                // Debug info
+                // デバッグ情報
                 console.log(
                     `navigateToItem down - Moving to next item's first line: itemId=${nextItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}`,
                 );
@@ -1915,12 +2191,12 @@ export class Cursor implements CursorEditingContext {
                     );
                 }
             } else {
-                // If no next item, move to end of current item
+                // 次のアイテムがない場合は、同じアイテムの末尾に移動
                 const target = this.findTarget();
                 if (target) {
                     newOffset = this.getTargetText(target).length;
 
-                    // Debug info
+                    // デバッグ情報
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
@@ -1928,50 +2204,50 @@ export class Cursor implements CursorEditingContext {
             }
         }
 
-        // Execute only if item changed
+        // アイテムが変更された場合のみ処理を実行
         if (itemChanged) {
-            // Debug info
+            // デバッグ情報
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
             }
 
-            // Ensure old item cursor is removed before move
+            // 移動前に古いアイテムのカーソルを確実に削除
             store.clearCursorForItem(oldItemId);
 
-            // Remove other cursors of same user (maintain single cursor mode)
-            // Note: Clear only cursors of same user, not all cursors
+            // 同じユーザーの他のカーソルも削除（単一カーソルモードを維持）
+            // 注意: 全てのカーソルをクリアするのではなく、同じユーザーのカーソルのみをクリア
             const cursorEntries = store.cursors ? Object.values(store.cursors) : [];
             const cursorsToRemove = cursorEntries
                 .filter(c => c.userId === this.userId && c.cursorId !== this.cursorId)
                 .map(c => c.cursorId);
 
-            // Debug info
+            // デバッグ情報
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Removing cursors: ${cursorsToRemove.join(", ")}`);
             }
 
-            // Clear selection
+            // 選択範囲をクリア
             store.clearSelectionForUser(this.userId);
 
-            // Remove existing cursor in target item (prevent duplication)
-            // Note: Delete only cursors of same user
+            // 移動先アイテムの既存のカーソルも削除（重複防止）
+            // 注意: 同じユーザーのカーソルのみを削除
             const cursorsInTargetItem = cursorEntries
                 .filter(c => c.itemId === newItemId && c.userId === this.userId)
                 .map(c => c.cursorId);
 
-            // Debug info
+            // デバッグ情報
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
             }
 
-            // Set new item and offset
+            // 新しいアイテムとオフセットを設定
             this.itemId = newItemId;
             this.offset = newOffset;
 
-            // Update active item
+            // アクティブアイテムを更新
             store.setActiveItem(this.itemId);
 
-            // Create new cursor
+            // 新しいカーソルを作成
             const cursorId = store.setCursor({
                 itemId: this.itemId,
                 offset: this.offset,
@@ -1979,13 +2255,13 @@ export class Cursor implements CursorEditingContext {
                 userId: this.userId,
             });
 
-            // Update cursorId
+            // cursorIdを更新
             this.cursorId = cursorId;
 
-            // Start cursor blinking
+            // カーソル点滅を開始
             store.startCursorBlink();
 
-            // Emit custom event
+            // カスタムイベントを発行
             if (typeof document !== "undefined") {
                 const event = new CustomEvent("navigate-to-item", {
                     bubbles: true,
@@ -1993,18 +2269,18 @@ export class Cursor implements CursorEditingContext {
                         direction,
                         fromItemId: oldItemId,
                         toItemId: this.itemId,
-                        cursorScreenX: 0, // Cursor X coordinate (specify 0 when moving between items)
+                        cursorScreenX: 0, // カーソルのX座標（アイテム間移動時は0を指定）
                     },
                 });
                 document.dispatchEvent(event);
             }
         } else {
-            // Update cursor state even if item did not change
+            // アイテムが変更されなかった場合でも、カーソルの状態を更新
             this.offset = newOffset;
             this.applyToStore();
             store.startCursorBlink();
 
-            // Debug info
+            // デバッグ情報
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Item not changed, updated offset: ${newOffset}`);
             }
@@ -2012,18 +2288,18 @@ export class Cursor implements CursorEditingContext {
     }
 
     /**
-     * Set global textarea selection
-     * @param startItemId Start item ID
-     * @param startOffset Start offset
-     * @param endItemId End item ID
-     * @param endOffset End offset
+     * グローバルテキストエリアの選択範囲を設定する
+     * @param startItemId 開始アイテムID
+     * @param startOffset 開始オフセット
+     * @param endItemId 終了アイテムID
+     * @param endOffset 終了オフセット
      */
     updateGlobalTextareaSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number) {
-        // Get global textarea
+        // グローバルテキストエリアを取得
         const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
         if (!textarea) return;
 
-        // Get item text
+        // アイテムのテキストを取得
         const startItemEl = document.querySelector(`[data-item-id="${startItemId}"] .item-text`) as HTMLElement;
         const endItemEl = document.querySelector(`[data-item-id="${endItemId}"] .item-text`) as HTMLElement;
 
@@ -2032,30 +2308,30 @@ export class Cursor implements CursorEditingContext {
         const startItemText = startItemEl.textContent || "";
         // const endItemText = endItemEl.textContent || ""; // Not used
 
-        // If selection is within a single item
+        // 単一アイテム内の選択範囲の場合
         if (startItemId === endItemId) {
-            // Update textarea content
+            // テキストエリアの内容を更新
             textarea.value = startItemText;
 
-            // Set selection
+            // 選択範囲を設定
             textarea.setSelectionRange(startOffset, endOffset);
         } else {
-            // If selection spans multiple items
-            // Get all items
+            // 複数アイテムにまたがる選択範囲の場合
+            // 全てのアイテムを取得
             const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
             const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
 
-            // Get indices of start and end items
+            // 開始アイテムと終了アイテムのインデックスを取得
             const startIdx = allItemIds.indexOf(startItemId);
             const endIdx = allItemIds.indexOf(endItemId);
 
             if (startIdx === -1 || endIdx === -1) return;
 
-            // Normalize start and end indices
+            // 開始インデックスと終了インデックスを正規化
             const firstIdx = Math.min(startIdx, endIdx);
             const lastIdx = Math.max(startIdx, endIdx);
 
-            // Concatenate text of items in selection
+            // 選択範囲内のアイテムのテキストを連結
             let combinedText = "";
             for (let i = firstIdx; i <= lastIdx; i++) {
                 const itemId = allItemIds[i];
@@ -2066,18 +2342,18 @@ export class Cursor implements CursorEditingContext {
                 }
             }
 
-            // Update textarea content
+            // テキストエリアの内容を更新
             textarea.value = combinedText;
 
-            // Calculate start and end positions of selection
+            // 選択範囲の開始位置と終了位置を計算
             let selectionStart = 0;
             let selectionEnd = 0;
 
-            // Calculate text length from start item to start position
+            // 開始アイテムから開始位置までのテキスト長を計算
             if (startIdx === firstIdx) {
                 selectionStart = startOffset;
             } else {
-                // If start item is after end item (reversed selection)
+                // 開始アイテムが終了アイテムより後にある場合（逆方向選択）
                 let textBeforeStart = 0;
                 for (let i = firstIdx; i < startIdx; i++) {
                     const itemId = allItemIds[i];
@@ -2089,7 +2365,7 @@ export class Cursor implements CursorEditingContext {
                 selectionStart = textBeforeStart + startOffset;
             }
 
-            // Calculate text length from end item to end position
+            // 終了アイテムから終了位置までのテキスト長を計算
             if (endIdx === lastIdx) {
                 let textBeforeEnd = 0;
                 for (let i = firstIdx; i < endIdx; i++) {
@@ -2101,69 +2377,69 @@ export class Cursor implements CursorEditingContext {
                 }
                 selectionEnd = textBeforeEnd + endOffset;
             } else {
-                // If end item is before start item (reversed selection)
+                // 終了アイテムが開始アイテムより前にある場合（逆方向選択）
                 selectionEnd = endOffset;
             }
 
-            // Set selection
+            // 選択範囲を設定
             textarea.setSelectionRange(selectionStart, selectionEnd);
         }
     }
 
     /**
-     * Change selected text to bold (Scrapbox syntax: [[text]])
+     * 選択範囲のテキストを太字に変更する（Scrapbox構文: [[text]]）
      */
     formatBold() {
         this.editor.formatBold();
     }
 
     /**
-     * Change selected text to italic (Scrapbox syntax: [/ text])
+     * 選択範囲のテキストを斜体に変更する（Scrapbox構文: [/ text]）
      */
     formatItalic() {
         this.editor.formatItalic();
     }
 
     /**
-     * Add underline to selected text (using HTML tag)
+     * 選択範囲のテキストに下線を追加する（HTML タグを使用）
      */
     formatUnderline() {
         this.editor.formatUnderline();
     }
 
     /**
-     * Add strikethrough to selected text (Scrapbox syntax: [- text])
+     * 選択範囲のテキストに取り消し線を追加する（Scrapbox構文: [- text]）
      */
     formatStrikethrough() {
         this.editor.formatStrikethrough();
     }
 
     /**
-     * Change selected text to code (Scrapbox syntax: `text`)
+     * 選択範囲のテキストをコードに変更する（Scrapbox構文: `text`）
      */
     formatCode() {
         this.editor.formatCode();
     }
 
     /**
-     * Common method to apply formatting to selection
-     * @param markdownPrefix Markdown format prefix
-     * @param markdownSuffix Markdown format suffix
-     * @param scrapboxPrefix Scrapbox format prefix
-     * @param scrapboxSuffix Scrapbox format suffix
+     * 選択範囲にフォーマットを適用する共通メソッド
+     * @param markdownPrefix Markdown形式のプレフィックス
+     * @param markdownSuffix Markdown形式のサフィックス
+     * @param scrapboxPrefix Scrapbox形式のプレフィックス
+     * @param scrapboxSuffix Scrapbox形式のサフィックス
      */
 
     /**
-     * Apply Scrapbox syntax formatting to selection
-     * @param formatType Type of formatting ('bold', 'italic', 'strikethrough', 'underline', 'code')
+     * 選択範囲にScrapbox構文のフォーマットを適用する
+     * @param formatType フォーマットの種類（'bold', 'italic', 'strikethrough', 'underline', 'code'）
      */
 
     /**
-     * Apply formatting to selection spanning multiple items
+     * 複数アイテムにまたがる選択範囲にフォーマットを適用する
      */
 
     /**
-     * Apply Scrapbox syntax formatting to selection spanning multiple items
+     * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
      */
 
     /**

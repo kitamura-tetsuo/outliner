@@ -1,120 +1,76 @@
+import * as Y from "yjs";
 import { userManager } from "../auth/UserManager";
-import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
+import { YjsClient } from "../yjs/YjsClient";
+import { getFirebaseFunctionUrl } from "./firebase-app";
 import { getLogger } from "./logger";
 
 const logger = getLogger("yjsService");
 
-// Project management functions
+class YjsService {
+    private client: YjsClient | null = null;
+    private projectId: string | null = null;
 
-export async function createProject(title: string): Promise<string> {
-    try {
-        const user = userManager.getCurrentUser();
-        if (!user) {
-            throw new Error("User not authenticated");
+    constructor() {}
+
+    initialize(projectId: string) {
+        if (this.client && this.projectId === projectId) {
+            return;
         }
 
-        const idToken = await userManager.auth.currentUser?.getIdToken();
-        const url = getFirebaseFunctionUrl("createProject");
-
-        logger.info(`Creating project: ${title}`);
-
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ title }),
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || "Failed to create project");
+        if (this.client) {
+            this.client.destroy();
         }
 
-        const result = await response.json();
-        return result.projectId;
-    } catch (error) {
-        logger.error("Error creating project:", error);
-        throw error;
+        this.projectId = projectId;
+
+        // Use YjsClient to connect
+        // Note: YjsClient is currently implemented to connect to a specific room (project)
+        // If the implementation of YjsClient changes, this will need to be updated.
+        // Currently, it seems designed to manage a single connection.
+        this.client = new YjsClient(projectId);
     }
-}
 
-export async function listProjects(): Promise<any[]> {
-    try {
-        const user = userManager.getCurrentUser();
-        if (!user) {
-            // Return empty list if not logged in
-            return [];
+    destroy() {
+        if (this.client) {
+            this.client.destroy();
+            this.client = null;
         }
-
-        const idToken = await userManager.auth.currentUser?.getIdToken();
-        const url = getFirebaseFunctionUrl("listProjects");
-
-        const response = await fetch(url, {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${idToken}`,
-            },
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || "Failed to list projects");
-        }
-
-        const result = await response.json();
-        return result.projects;
-    } catch (error) {
-        logger.error("Error listing projects:", error);
-        // Return empty list on error (to not break UI)
-        return [];
+        this.projectId = null;
     }
-}
 
-export async function deleteProject(projectId: string): Promise<void> {
-    try {
-        const user = userManager.getCurrentUser();
-        if (!user) {
-            throw new Error("User not authenticated");
-        }
+    getDoc(): Y.Doc | null {
+        return this.client ? this.client.doc : null;
+    }
 
-        const idToken = await userManager.auth.currentUser?.getIdToken();
-        const url = getFirebaseFunctionUrl("deleteProject");
+    /**
+     * Calls a cloud function to create a new project.
+     * This is a placeholder. Actual implementation depends on the backend.
+     */
+    async createProject(title: string): Promise<string> {
+        try {
+            const createProjectFn = getFirebaseFunctionUrl("createProject");
+            const token = await userManager.auth.currentUser?.getIdToken();
 
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ projectId }),
-        });
+            const response = await fetch(createProjectFn, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({ title }),
+            });
 
-        if (!response.ok) {
-            // Log full response for debugging
-            logger.error(`deleteProject response status: ${response.status} ${response.statusText}`);
-            let errorMessage = "Failed to delete project";
-            try {
-                const errorData = await response.json();
-                logger.error("deleteProject error data:", errorData);
-                errorMessage = errorData.message || errorData.error || errorMessage;
-            } catch (e) {
-                const text = await response.text();
-                logger.error("deleteProject response text:", text);
-                // If text is HTML (e.g. 500 error page), use generic message
-                if (text.includes("<!DOCTYPE html>")) {
-                    errorMessage = `Server Error (${response.status}): ${response.statusText}`;
-                } else if (text) {
-                    errorMessage = text;
-                }
+            if (!response.ok) {
+                throw new Error(`Failed to create project: ${response.statusText}`);
             }
-            throw new Error(errorMessage);
-        }
 
-        logger.info(`Project deleted: ${projectId}`);
-    } catch (error) {
-        logger.error("[yjsService] deleteProject exception", error);
-        throw error;
+            const data = await response.json();
+            return data.projectId;
+        } catch (error) { // 'e' was unused, renamed to 'error'
+            logger.error("Error creating project", error);
+            throw error;
+        }
     }
 }
+
+export const yjsService = new YjsService();

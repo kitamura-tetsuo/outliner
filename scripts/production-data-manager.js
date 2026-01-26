@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Production Data Management Integration Script
+ * 本番環境データ管理統合スクリプト
  *
- * Usage:
+ * 使用方法:
  * node scripts/production-data-manager.js [command] [options]
  *
- * Commands:
- * - check: Check environment
- * - backup: Backup data
- * - delete: Delete data (requires confirmation)
- * - help: Show help
+ * コマンド:
+ * - check: 環境チェック
+ * - backup: データバックアップ
+ * - delete: データ削除（要確認）
+ * - help: ヘルプ表示
  */
 
 import { spawn } from "child_process";
@@ -21,7 +21,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Colored log output
+// 色付きログ出力
 const colors = {
     red: "\x1b[31m",
     yellow: "\x1b[33m",
@@ -35,7 +35,7 @@ function log(message, color = "reset") {
     console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-// Function to run child process
+// 子プロセスを実行する関数
 function runScript(scriptPath, args = []) {
     return new Promise((resolve, reject) => {
         const child = spawn("node", [scriptPath, ...args], {
@@ -57,73 +57,73 @@ function runScript(scriptPath, args = []) {
     });
 }
 
-// Show help
+// ヘルプ表示
 function showHelp() {
     log("=".repeat(70), "cyan");
-    log("Production Data Management Integration Script", "cyan");
+    log("本番環境データ管理統合スクリプト", "cyan");
     log("=".repeat(70), "cyan");
     log("");
-    log("Usage:", "blue");
+    log("使用方法:", "blue");
     log("  node scripts/production-data-manager.js [command] [options]", "yellow");
     log("");
-    log("Commands:", "blue");
-    log("  check                    - Check current environment", "green");
-    log("  backup                   - Backup production data", "green");
-    log("  delete --confirm         - Delete production data (requires confirmation)", "red");
-    log("  delete --confirm --force - Delete production data (force execution)", "red");
-    log("  help                     - Show this help", "green");
+    log("コマンド:", "blue");
+    log("  check                    - 現在の環境をチェック", "green");
+    log("  backup                   - 本番環境データをバックアップ", "green");
+    log("  delete --confirm         - 本番環境データを削除（要確認）", "red");
+    log("  delete --confirm --force - 本番環境データを削除（強制実行）", "red");
+    log("  help                     - このヘルプを表示", "green");
     log("");
-    log("Examples:", "blue");
+    log("例:", "blue");
     log("  node scripts/production-data-manager.js check", "yellow");
     log("  node scripts/production-data-manager.js backup", "yellow");
     log("  node scripts/production-data-manager.js delete --confirm", "yellow");
     log("");
-    log("⚠️  Warnings:", "red");
-    log("  - The delete command deletes all data in the production environment", "red");
-    log("  - Be sure to create a backup with the backup command before execution", "red");
-    log("  - The deletion operation cannot be undone", "red");
+    log("⚠️  注意事項:", "red");
+    log("  - delete コマンドは本番環境のすべてのデータを削除します", "red");
+    log("  - 実行前に必ず backup コマンドでバックアップを取得してください", "red");
+    log("  - 削除操作は取り消すことができません", "red");
     log("");
 }
 
-// Execute environment check
+// 環境チェック実行
 async function runCheck() {
-    log("🔍 Running environment check...", "blue");
+    log("🔍 環境チェックを実行しています...", "blue");
     log("");
 
     try {
         await runScript(path.join(__dirname, "check-production-environment.js"));
         log("");
-        log("✅ Environment check complete", "green");
+        log("✅ 環境チェック完了", "green");
     } catch (error) {
         if (error.message.includes("code 1")) {
             log("");
-            log("⚠️  Production environment detected", "yellow");
-            log("   Please be very careful when manipulating data", "yellow");
+            log("⚠️  本番環境が検出されました", "yellow");
+            log("   データ操作を行う場合は十分注意してください", "yellow");
         } else {
             throw error;
         }
     }
 }
 
-// Execute backup
+// バックアップ実行
 async function runBackup() {
-    log("💾 Running data backup...", "blue");
+    log("💾 データバックアップを実行しています...", "blue");
     log("");
 
     try {
         await runScript(path.join(__dirname, "backup-production-data.js"));
         log("");
-        log("✅ Backup complete", "green");
+        log("✅ バックアップ完了", "green");
     } catch (error) {
         log("");
-        log("❌ Backup failed", "red");
+        log("❌ バックアップに失敗しました", "red");
         throw error;
     }
 }
 
-// Execute data deletion
+// データ削除実行
 async function runDelete(options) {
-    log("🗑️  Running data deletion...", "red");
+    log("🗑️  データ削除を実行しています...", "red");
     log("");
 
     const args = [];
@@ -133,43 +133,43 @@ async function runDelete(options) {
     try {
         await runScript(path.join(__dirname, "delete-production-data.js"), args);
         log("");
-        log("✅ Data deletion complete", "green");
+        log("✅ データ削除完了", "green");
     } catch (error) {
         log("");
-        log("❌ Data deletion failed", "red");
+        log("❌ データ削除に失敗しました", "red");
         throw error;
     }
 }
 
-// Execute full workflow
+// 完全なワークフロー実行
 async function runFullWorkflow(options) {
-    log("🚀 Running full data deletion workflow", "cyan");
+    log("🚀 完全なデータ削除ワークフローを実行します", "cyan");
     log("");
 
     try {
-        // 1. Environment check
-        log("Step 1/3: Environment check", "blue");
+        // 1. 環境チェック
+        log("ステップ 1/3: 環境チェック", "blue");
         await runCheck();
         log("");
 
-        // 2. Backup
-        log("Step 2/3: Data backup", "blue");
+        // 2. バックアップ
+        log("ステップ 2/3: データバックアップ", "blue");
         await runBackup();
         log("");
 
-        // 3. Data deletion
-        log("Step 3/3: Data deletion", "blue");
+        // 3. データ削除
+        log("ステップ 3/3: データ削除", "blue");
         await runDelete(options);
         log("");
 
-        log("🎉 All processes completed", "green");
+        log("🎉 すべての処理が完了しました", "green");
     } catch (error) {
-        log("❌ Workflow interrupted", "red");
+        log("❌ ワークフローが中断されました", "red");
         throw error;
     }
 }
 
-// Main process
+// メイン処理
 async function main() {
     const args = process.argv.slice(2);
     const command = args[0];
@@ -192,8 +192,8 @@ async function main() {
 
             case "delete":
                 if (!options.confirm) {
-                    log("❌ The delete command requires the --confirm flag", "red");
-                    log("Usage: node scripts/production-data-manager.js delete --confirm", "yellow");
+                    log("❌ delete コマンドには --confirm フラグが必要です", "red");
+                    log("使用方法: node scripts/production-data-manager.js delete --confirm", "yellow");
                     process.exit(1);
                 }
 
@@ -206,8 +206,8 @@ async function main() {
 
             case "full":
                 if (!options.confirm) {
-                    log("❌ The full command requires the --confirm flag", "red");
-                    log("Usage: node scripts/production-data-manager.js full --confirm", "yellow");
+                    log("❌ full コマンドには --confirm フラグが必要です", "red");
+                    log("使用方法: node scripts/production-data-manager.js full --confirm", "yellow");
                     process.exit(1);
                 }
                 await runFullWorkflow(options);
@@ -223,7 +223,7 @@ async function main() {
                 if (!command) {
                     showHelp();
                 } else {
-                    log(`❌ Unknown command: ${command}`, "red");
+                    log(`❌ 不明なコマンド: ${command}`, "red");
                     log("");
                     showHelp();
                     process.exit(1);
@@ -231,17 +231,17 @@ async function main() {
                 break;
         }
     } catch (error) {
-        log(`❌ An error occurred: ${error.message}`, "red");
+        log(`❌ エラーが発生しました: ${error.message}`, "red");
         process.exit(1);
     }
 }
 
-// Execute script
+// スクリプト実行
 const isMainModule = process.argv[1] && new URL(process.argv[1], "file://").pathname === __filename;
 
 if (isMainModule) {
     main().catch(error => {
-        log(`❌ Unexpected error: ${error.message}`, "red");
+        log(`❌ 予期しないエラー: ${error.message}`, "red");
         process.exit(1);
     });
 }

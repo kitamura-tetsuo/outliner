@@ -1,7 +1,7 @@
 import { getApps, initializeApp } from "firebase/app";
 import { connectAuthEmulator, getAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
-import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
+import { getFunctions } from "firebase/functions";
 import { getLogger } from "./logger";
 
 const logger = getLogger("firebase-app");
@@ -22,9 +22,10 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app);
 
+export const getFirebaseApp = () => app;
+
 // Connect to emulator if necessary
 if (typeof window !== "undefined") {
-    const isTest = window.localStorage?.getItem("VITE_IS_TEST") === "true";
     const useEmulator = window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true"
         || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true";
 
@@ -38,8 +39,6 @@ if (typeof window !== "undefined") {
         const firestorePort = import.meta.env.VITE_FIRESTORE_EMULATOR_PORT
             ? parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT)
             : 8080;
-        // Functions emulator via hosting or direct port?
-        // Assuming hosting or separate port.
 
         // Connect Auth emulator
         // Check if already connected (no direct check API, so manage with flag)
@@ -47,8 +46,6 @@ if (typeof window !== "undefined") {
             try {
                 connectAuthEmulator(auth, `http://${host}:${authPort}`, { disableWarnings: true });
                 connectFirestoreEmulator(db, host, firestorePort);
-                // Functions emulator connection (assuming 5001 or as configured)
-                // connectFunctionsEmulator(functions, host, 5001);
 
                 (window as any).__FIREBASE_EMULATOR_CONNECTED__ = true;
                 logger.info("Connected to Firebase Emulator");

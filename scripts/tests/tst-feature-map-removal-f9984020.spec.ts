@@ -1,5 +1,5 @@
 /** @feature TST-f9984020
- *  Title   : feature-map removal script
+ *  Title   : feature-map削除スクリプト
  *  Source  : docs/dev-features/tst-feature-map-removal-f9984020.yaml
  */
 /// <reference types="vitest" />

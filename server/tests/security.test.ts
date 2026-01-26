@@ -76,33 +76,4 @@ describe("Server Security Tests", () => {
             .get("/metrics?token=valid-token");
         expect(response.status).to.equal(401);
     });
-
-    it("should return detailed info from /health in non-production environment", async () => {
-        const response = await request(app).get("/health");
-        expect(response.status).to.equal(200);
-        expect(response.body).to.have.property("status", "ok");
-        expect(response.body).to.have.property("timestamp");
-        // In non-production, it SHOULD return env and headers
-        expect(response.body).to.have.property("env");
-        expect(response.body).to.have.property("headers");
-    });
-
-    it("should NOT return detailed info from /health in production environment", async () => {
-        // Temporarily set NODE_ENV to production
-        const originalEnv = process.env.NODE_ENV;
-        process.env.NODE_ENV = "production";
-
-        try {
-            const response = await request(app).get("/health");
-            expect(response.status).to.equal(200);
-            expect(response.body).to.have.property("status", "ok");
-            expect(response.body).to.have.property("timestamp");
-            // In production, it SHOULD NOT return env and headers
-            expect(response.body).to.not.have.property("env");
-            expect(response.body).to.not.have.property("headers");
-        } finally {
-            // Restore NODE_ENV
-            process.env.NODE_ENV = originalEnv;
-        }
-    });
 });

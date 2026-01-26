@@ -1,60 +1,60 @@
-# Firebase Deployment Settings with GitLab CI
+# GitLab CIでのFirebaseデプロイ設定
 
-This document describes how to automate deployment to Firebase Hosting + Functions using GitLab CI.
+このドキュメントでは、GitLab CIを使用してFirebase Hosting + Functionsへのデプロイを自動化する方法について説明します。
 
-## Prerequisites
+## 前提条件
 
-1. GitLab repository is configured
-2. Firebase project is created
-3. Firebase CLI is installed locally
+1. GitLabリポジトリが設定されていること
+2. Firebaseプロジェクトが作成されていること
+3. Firebase CLIがローカルにインストールされていること
 
-## Configuration Steps
+## 設定手順
 
-### 1. Get Firebase CLI Token
+### 1. Firebase CLIトークンの取得
 
-Run the following command to get the Firebase CLI token:
+Firebase CLIトークンを取得するには、以下のコマンドを実行します：
 
 ```bash
 firebase login:ci
 ```
 
-This command opens a browser and asks for authentication with your Google account. Upon successful authentication, the token will be displayed.
+このコマンドはブラウザを開き、Googleアカウントでの認証を求めます。認証が成功すると、トークンが表示されます。
 
-### 2. Configure GitLab CI Environment Variables
+### 2. GitLab CIの環境変数設定
 
-Set the following environment variables in your GitLab project under "Settings" -> "CI/CD" -> "Variables":
+GitLabプロジェクトの「Settings」→「CI/CD」→「Variables」で以下の環境変数を設定します：
 
-#### Azure Fluid Relay Related Variables
+#### Azure Fluid Relay関連の変数
 
-- `AZURE_TENANT_ID`: Azure Fluid Relay Tenant ID
-- `AZURE_FLUID_RELAY_ENDPOINT`: Azure Fluid Relay Endpoint URL
-- `AZURE_PRIMARY_KEY`: Azure Fluid Relay Primary Key
-- `AZURE_SECONDARY_KEY`: Azure Fluid Relay Secondary Key (Optional)
-- `AZURE_ACTIVE_KEY`: Key to use ("primary" or "secondary")
+- `AZURE_TENANT_ID`: Azure Fluid RelayのテナントID
+- `AZURE_FLUID_RELAY_ENDPOINT`: Azure Fluid RelayのエンドポイントURL
+- `AZURE_PRIMARY_KEY`: Azure Fluid Relayのプライマリキー
+- `AZURE_SECONDARY_KEY`: Azure Fluid Relayのセカンダリキー（オプション）
+- `AZURE_ACTIVE_KEY`: 使用するキー（"primary"または"secondary"）
 
-#### Firebase Related Variables
+#### Firebase関連の変数
 
-- `FIREBASE_TOKEN`: Firebase CLI Token
-- `FIREBASE_API_KEY`: Firebase Project Web API Key
-- `FIREBASE_AUTH_DOMAIN`: Firebase Auth Domain (e.g. `your-project.firebaseapp.com`)
-- `FIREBASE_PROJECT_ID`: Firebase Project ID
-- `FIREBASE_STORAGE_BUCKET`: Firebase Storage Bucket (e.g. `your-project.appspot.com`)
-- `FIREBASE_MESSAGING_SENDER_ID`: Firebase Messaging Sender ID
-- `FIREBASE_APP_ID`: Firebase App ID
-- `FIREBASE_MEASUREMENT_ID`: Firebase Analytics Measurement ID (e.g. `G-XXXXXXXXXX`)
+- `FIREBASE_TOKEN`: Firebase CLIトークン
+- `FIREBASE_API_KEY`: Firebaseプロジェクトのウェブ用APIキー
+- `FIREBASE_AUTH_DOMAIN`: Firebaseの認証ドメイン（例: `your-project.firebaseapp.com`）
+- `FIREBASE_PROJECT_ID`: FirebaseプロジェクトID
+- `FIREBASE_STORAGE_BUCKET`: Firebaseストレージバケット（例: `your-project.appspot.com`）
+- `FIREBASE_MESSAGING_SENDER_ID`: Firebaseメッセージング送信者ID
+- `FIREBASE_APP_ID`: FirebaseアプリID
+- `FIREBASE_MEASUREMENT_ID`: Firebase Analyticsの測定ID（例: `G-XXXXXXXXXX`）
 
-It is recommended to check "Protected" and "Masked" for all these variables to secure them. Especially `FIREBASE_TOKEN` and `AZURE_PRIMARY_KEY` are sensitive information, so be sure to mask them.
+これらの変数は全て「Protected」と「Masked」にチェックを入れて保護することをお勧めします。特に`FIREBASE_TOKEN`と`AZURE_PRIMARY_KEY`は機密情報なので、必ずマスクしてください。
 
-### 3. Configure .gitlab-ci.yml
+### 3. .gitlab-ci.ymlの設定
 
-Add the following deployment stage to your `.gitlab-ci.yml` file:
+`.gitlab-ci.yml`ファイルに以下のデプロイステージを追加します：
 
 ```yaml
 deploy-to-firebase:
     stage: deploy
     image: node:22-slim
     dependencies:
-        - e2e-tests # Run deployment only if test job succeeds
+        - e2e-tests # テストジョブが成功した場合のみデプロイを実行
     variables:
         FIREBASE_TOKEN: ${FIREBASE_TOKEN}
         AZURE_TENANT_ID: ${AZURE_TENANT_ID}
@@ -68,30 +68,30 @@ deploy-to-firebase:
         - 'echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR}"'
         - "mkdir -p ${CI_PROJECT_DIR}/logs/"
     script:
-        # Build client
+        # クライアントのビルド
         - "cd ${CI_PROJECT_DIR}/client"
         - "npm ci"
         - 'echo "Creating client .env file..."'
         - |
               cat > .env << EOF
-              # Azure Fluid Relay Settings
+              # Azure Fluid Relay 設定
               VITE_AZURE_TENANT_ID=${AZURE_TENANT_ID}
               VITE_AZURE_FLUID_RELAY_ENDPOINT=${AZURE_FLUID_RELAY_ENDPOINT}
               VITE_USE_FIREBASE_AUTH=true
               VITE_USE_API_AUTH=true
 
-              # Connection Service Selection
+              # 接続サービスの選択
               VITE_USE_TINYLICIOUS=false
               VITE_FORCE_AZURE=true
 
-              # API Settings - Firebase Functions Endpoint
+              # API設定 - Firebase Functionsのエンドポイント
               VITE_API_BASE_URL=https://outliner-d57b0.web.app
               VITE_API_SERVER_URL=https://outliner-d57b0.web.app
 
-              # Fluid Framework Telemetry Settings
+              # Fluid Framework Telemetry設定
               VITE_DISABLE_FLUID_TELEMETRY=true
 
-              # Firebase Settings
+              # Firebase設定
               VITE_FIREBASE_API_KEY=${FIREBASE_API_KEY}
               VITE_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}
               VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
@@ -102,90 +102,90 @@ deploy-to-firebase:
               EOF
         - "npm run build"
 
-        # Build Firebase Functions
+        # Firebase Functionsのビルド
         - "cd ${CI_PROJECT_DIR}/functions"
         - "npm ci"
 
-        # Create Firebase Functions environment variable file
+        # Firebase Functions環境変数ファイルの作成
         - "cd ${CI_PROJECT_DIR}"
         - 'echo "Creating Firebase Functions .env file..."'
         - |
               cat > functions/.env << EOF
-              # Azure Fluid Relay Settings
+              # Azure Fluid Relay設定
               AZURE_TENANT_ID=${AZURE_TENANT_ID}
               AZURE_FLUID_RELAY_ENDPOINT=${AZURE_FLUID_RELAY_ENDPOINT}
               AZURE_PRIMARY_KEY=${AZURE_PRIMARY_KEY}
               AZURE_SECONDARY_KEY=${AZURE_SECONDARY_KEY}
               AZURE_ACTIVE_KEY=${AZURE_ACTIVE_KEY}
 
-              # Production Environment Settings
+              # プロダクション環境設定
               NODE_ENV=production
               EOF
 
-        # Deploy to Firebase
+        # Firebaseへのデプロイ
         - 'firebase deploy --token "${FIREBASE_TOKEN}" --non-interactive'
     only:
-        - main # Run deployment only when pushed to main branch
+        - main # mainブランチにプッシュされた場合のみデプロイを実行
 ```
 
-### 4. Verify Build Settings
+### 4. ビルド設定の確認
 
-Ensure that the hosting section in `firebase.json` matches the build output destination in `client/svelte.config.js`:
+`firebase.json`のhostingセクションと`client/svelte.config.js`のビルド出力先が一致していることを確認します：
 
-- In `firebase.json` hosting section, `"public": "build"` should be set.
-- In `client/svelte.config.js` adapter section, `pages: '../build', assets: '../build'` should be set.
+- `firebase.json`のhostingセクションで`"public": "build"`が設定されていること
+- `client/svelte.config.js`のadapterセクションで`pages: '../build', assets: '../build'`が設定されていること
 
-### 5. Test Deployment
+### 5. デプロイのテスト
 
-Once configured, push to the main branch and verify that the deployment runs successfully. You can check the deployment progress in the GitLab CI pipeline logs.
+設定が完了したら、mainブランチにプッシュしてデプロイが正常に実行されるか確認します。GitLab CIのパイプラインログでデプロイの進行状況を確認できます。
 
-## Troubleshooting
+## トラブルシューティング
 
-### If Deployment Fails
+### デプロイが失敗する場合
 
-1. Check if GitLab CI environment variables are correctly set.
-2. Check if the Firebase CLI token is valid (regenerate if expired).
-3. Check the pipeline logs for specific error messages.
+1. GitLab CIの環境変数が正しく設定されているか確認
+2. Firebase CLIトークンが有効か確認（期限切れの場合は再取得）
+3. パイプラインのログを確認して具体的なエラーメッセージを確認
 
-### If Build Succeeds but Deployment Fails
+### ビルドは成功するがデプロイが失敗する場合
 
-1. Check Firebase project settings.
-2. Check if the correct project ID is set in `.firebaserc` file.
-3. Check if Firebase Functions environment variables are correctly set.
+1. Firebaseプロジェクトの設定を確認
+2. `.firebaserc`ファイルで正しいプロジェクトIDが設定されているか確認
+3. Firebase Functionsの環境変数が正しく設定されているか確認
 
-## About Firebase Functions v2 Environment Variables
+## Firebase Functions v2の環境変数について
 
-In Firebase Functions v2, the method for setting environment variables has changed. Previous versions used `firebase functions:config:set` command and `functions.config()`, but v2 uses `.env` files.
+Firebase Functions v2では、環境変数の設定方法が変更されています。以前のバージョンでは`firebase functions:config:set`コマンドと`functions.config()`を使用していましたが、v2では`.env`ファイルを使用します。
 
-### How to Set Environment Variables
+### 環境変数の設定方法
 
-1. **Local Development Environment**:
-   - Create `.env` file in Functions directory
-   - Set required environment variables in `KEY=VALUE` format
+1. **ローカル開発環境**:
+   - `.env`ファイルをFunctionsディレクトリに作成
+   - 必要な環境変数を`KEY=VALUE`形式で設定
 
-2. **CI/CD Environment**:
-   - Dynamically generate `.env` file using GitLab CI environment variables
-   - `.env` file is automatically loaded during deployment
+2. **CI/CD環境**:
+   - GitLab CIの環境変数を使用して`.env`ファイルを動的に生成
+   - デプロイ時に`.env`ファイルが自動的に読み込まれる
 
-3. **Production Environment**:
-   - Deploying to Firebase Functions sets the contents of `.env` file as environment variables
+3. **本番環境**:
+   - Firebase Functionsにデプロイすると、`.env`ファイルの内容が環境変数として設定される
 
-### How to Access Environment Variables
+### 環境変数へのアクセス方法
 
-In Firebase Functions v2, access environment variables using `process.env`:
+Firebase Functions v2では、`process.env`を使用して環境変数にアクセスします：
 
 ```javascript
-// Previous version (v1)
+// 以前のバージョン（v1）
 const config = functions.config();
 const tenantId = config.azure.tenant_id;
 
-// New version (v2)
+// 新しいバージョン（v2）
 const tenantId = process.env.AZURE_TENANT_ID;
 ```
 
-## Reference Links
+## 参考リンク
 
-- [Firebase CLI Reference](https://firebase.google.com/docs/cli)
-- [GitLab CI/CD Variables](https://docs.gitlab.com/ee/ci/variables/)
-- [Firebase Hosting + Functions Deployment Guide](https://firebase.google.com/docs/hosting/deploying)
-- [Firebase Functions v2 Environment Configuration Guide](https://firebase.google.com/docs/functions/config-env?gen=2nd)
+- [Firebase CLI リファレンス](https://firebase.google.com/docs/cli)
+- [GitLab CI/CD 環境変数](https://docs.gitlab.com/ee/ci/variables/)
+- [Firebase Hosting + Functions デプロイガイド](https://firebase.google.com/docs/hosting/deploying)
+- [Firebase Functions v2 環境変数ガイド](https://firebase.google.com/docs/functions/config-env?gen=2nd)
