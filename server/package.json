@@ -4,7 +4,7 @@
         "@google-cloud/secret-manager": "^6.1.1",
         "@hocuspocus/extension-logger": "^3.4.3",
         "@hocuspocus/extension-sqlite": "^3.4.3",
-        "@hocuspocus/server": "^3.4.3",
+        "@hocuspocus/server": "^3.4.4",
         "@sentry/node": "^10.36.0",
         "cors": "^2.8.6",
         "express": "^5.2.1",
