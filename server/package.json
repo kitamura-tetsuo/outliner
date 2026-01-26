@@ -24,7 +24,7 @@
     },
     "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
-        "@hocuspocus/provider": "^3.4.3",
+        "@hocuspocus/provider": "^3.4.4",
         "@jest/globals": "^30.2.0",
         "@types/chai": "^5.2.3",
         "@types/cors": "^2.8.19",
