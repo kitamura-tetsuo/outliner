@@ -224,6 +224,16 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     // Attach fatal error handling for page doc
     provider.on("close", (event: { code: number; reason: string; }) => {
         logger.info(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
+
+        // Handle Auth errors (4001: Unauthorized, 4003: Forbidden)
+        if ([4001, 4003].includes(event.code)) {
+            logger.info(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
+            // Force token refresh
+            void userManager.refreshToken().then(() => {
+                logger.info(`[yjs-conn] Token refresh triggered for ${room}`);
+            });
+            return;
+        }
         // Fatal errors: 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
         // REMOVED 4001/4003/4004 to allow retry with fresh token
         if ([4006, 4008].includes(event.code)) {
@@ -291,6 +301,16 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     provider.on("status", (event: { status: string; }) => logger.debug(`[yjs-conn] ${room} status: ${event.status}`));
     provider.on("close", (event: { code: number; reason: string; }) => {
         logger.info(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
+
+        // Handle Auth errors (4001: Unauthorized, 4003: Forbidden)
+        if ([4001, 4003].includes(event.code)) {
+            logger.info(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
+            // Force token refresh
+            void userManager.refreshToken().then(() => {
+                logger.info(`[yjs-conn] Token refresh triggered for ${room}`);
+            });
+            return;
+        }
         // Fatal errors: 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
         // REMOVED 4001/4003/4004 to allow retry with fresh token
         if ([4006, 4008].includes(event.code)) {
