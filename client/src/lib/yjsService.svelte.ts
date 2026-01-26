@@ -3,6 +3,7 @@ import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
+import { saveProjectIdToServer } from "../stores/firestoreStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
@@ -134,6 +135,19 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     console.log(
         `[yjsService] createNewProject: isTest=${isTest}, projectName="${projectName}", projectId="${projectId}"`,
     );
+
+    // Save project ID to server-side persistence (Firestore)
+    // This is critical for the server to grant access (checkContainerAccess)
+    try {
+        if (!isTest) { // Skip in test mode if using mocks, or ensure test mock handles it
+            console.log(`[yjsService] Saving project ID ${projectId} to server...`);
+            await saveProjectIdToServer(projectId);
+            console.log(`[yjsService] Project ID ${projectId} saved to server.`);
+        }
+    } catch (e) {
+        console.error(`[yjsService] Failed to save project ID ${projectId} to server:`, e);
+        // We continue anyway, but connection might fail with Access Denied
+    }
 
     const project = Project.createInstance(projectName);
     console.log(`[yjsService] createNewProject: Connecting to YjsClient for projectId "${projectId}"...`);
