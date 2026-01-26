@@ -272,6 +272,10 @@ export async function startServer(
             // --- Manual Connection Handling (Hooks Replacement) ---
             const ip = getClientIp(request);
             const origin = request.headers.origin || "";
+            if (process.env.NODE_ENV === "production") {
+                console.log("[DEBUG] Upgrade Headers:", JSON.stringify(request.headers, null, 2));
+                console.log("[DEBUG] Detected IP:", ip);
+            }
 
             // Helper to close
             const reject = (code: number, reason: string) => {

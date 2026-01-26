@@ -2,7 +2,7 @@ import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { userManager } from "../../auth/UserManager";
 
 // Type for provider that supports token refresh
-type TokenRefreshableProvider = HocuspocusProvider & {
+export type TokenRefreshableProvider = HocuspocusProvider & {
     __wsDisabled?: boolean;
     status?: string;
     configuration?: {
@@ -10,6 +10,7 @@ type TokenRefreshableProvider = HocuspocusProvider & {
             status?: string;
         };
     };
+    url?: string;
 };
 
 export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () => Promise<void> {
@@ -42,7 +43,10 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
                 const urlObj = new URL(provider.configuration.url);
                 urlObj.searchParams.set("token", t);
                 provider.configuration.url = urlObj.toString();
-                console.log("[tokenRefresh] Updated provider.configuration.url with fresh token");
+                if ((provider as TokenRefreshableProvider).url) {
+                    (provider as TokenRefreshableProvider).url = provider.configuration.url;
+                }
+                console.log("[tokenRefresh] Updated provider.configuration.url & provider.url with fresh token");
             }
 
             // For HocuspocusProvider, we call sendToken() to refresh authentication

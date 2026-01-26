@@ -5,7 +5,7 @@ import { userManager } from "../../auth/UserManager";
 import { createPersistence, waitForSync } from "../yjsPersistence";
 import { pageRoomPath, projectRoomPath } from "./roomPath";
 import { yjsService } from "./service";
-import { attachTokenRefresh } from "./tokenRefresh";
+import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefresh";
 
 // Minimal guarded debug logging for initial sync progress (disabled in production by default)
 function isConnDebugEnabled(): boolean {
@@ -209,6 +209,10 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
                 const urlObj = new URL(config.url);
                 urlObj.searchParams.set("token", t);
                 config.url = urlObj.toString();
+                // Also update the provider.url property if it exists, as some versions/usages might rely on it
+                if ((provider as TokenRefreshableProvider).url) {
+                    (provider as TokenRefreshableProvider).url = config.url;
+                }
                 console.log("[connectPageDoc] Updated provider URL with fresh token");
             }
             return t;
@@ -375,6 +379,10 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                 const urlObj = new URL(config.url);
                 urlObj.searchParams.set("token", t);
                 config.url = urlObj.toString();
+                // Also update the provider.url property if it exists
+                if ((provider as TokenRefreshableProvider).url) {
+                    (provider as TokenRefreshableProvider).url = config.url;
+                }
                 console.log("[createProjectConnection] Updated provider URL with fresh token");
             }
             return t;
@@ -454,7 +462,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     const unbind = yjsService.bindProjectPresence(awareness as Awareness);
 
     // Refresh auth param on token refresh
-    const unsub = attachTokenRefresh(provider as any);
+    const unsub = attachTokenRefresh(provider as TokenRefreshableProvider);
 
     const pages = new Map<string, PageConnection>();
 
@@ -656,6 +664,10 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
                 const urlObj = new URL(provider.configuration.url);
                 urlObj.searchParams.set("token", t);
                 provider.configuration.url = urlObj.toString();
+                // Also update the provider.url property if it exists
+                if ((provider as TokenRefreshableProvider).url) {
+                    (provider as TokenRefreshableProvider).url = provider.configuration.url;
+                }
                 console.log("[connectProjectDoc] Updated provider URL with fresh token");
             }
             return t;
@@ -691,7 +703,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         });
     }
     // Refresh auth param on token refresh
-    attachTokenRefresh(provider as any);
+    attachTokenRefresh(provider as TokenRefreshableProvider);
     return { provider, awareness };
 }
 
@@ -722,6 +734,9 @@ export async function createMinimalProjectConnection(projectId: string): Promise
                 const urlObj = new URL(provider.configuration.url);
                 urlObj.searchParams.set("token", t);
                 provider.configuration.url = urlObj.toString();
+                if ((provider as TokenRefreshableProvider).url) {
+                    (provider as TokenRefreshableProvider).url = provider.configuration.url;
+                }
             }
             return t;
         } catch {
