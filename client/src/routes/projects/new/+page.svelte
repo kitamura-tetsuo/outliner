@@ -69,7 +69,7 @@ async function createNewContainer() {
 
         // 1.5秒後に作成したプロジェクトのページに移動
         setTimeout(() => {
-            goto("/" + createdContainerId);
+            goto("/" + containerName);
         }, 1500);
     }
     catch (err) {

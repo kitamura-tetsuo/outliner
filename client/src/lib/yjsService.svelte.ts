@@ -7,7 +7,20 @@ import { saveProjectIdToServer } from "../stores/firestoreStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
-import { getContainerTitleFromMetaDoc, getProjectIdByTitle, setContainerTitleInMetaDoc } from "./metaDoc.svelte";
+import {
+    getContainerTitleFromMetaDoc,
+    getProjectIdByTitle,
+    metaDocLoaded,
+    setContainerTitleInMetaDoc,
+} from "./metaDoc.svelte";
+
+// Local memory cache for immediate title resolution (critical for post-creation redirect)
+const localTitleMap = new Map<string, string>();
+
+function setProjectTitle(id: string, title: string) {
+    localTitleMap.set(title, id);
+    setContainerTitleInMetaDoc(id, title);
+}
 
 interface ClientKey {
     type: "container" | "user";
@@ -188,7 +201,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
 
     // Save title to metadata Y.Doc for dropdown display
     // Save project title to metadata Y.Doc for persistence across page reloads
-    setContainerTitleInMetaDoc(projectId, projectName);
+    setProjectTitle(projectId, projectName);
 
     // update store
     yjsStore.yjsClient = client;
@@ -215,8 +228,20 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     }
 
     // If not in registry, try to find the projectId by title in metaDoc
-    const projectId = getProjectIdByTitle(projectTitle);
-    console.log(`[getClientByProjectTitle] projectId from metaDoc=${projectId}`);
+    console.log(`[getClientByProjectTitle] Called for title="${projectTitle}"`);
+
+    // 1. Check local memory cache first (fastest, handles redirect immediately after creation)
+    let projectId = localTitleMap.get(projectTitle);
+    if (projectId) {
+        console.log(`[getClientByProjectTitle] Found in localTitleMap: ${projectId}`);
+    } else {
+        // 2. Wait for IndexedDB to load (handles reload)
+        await metaDocLoaded;
+        // 3. Check persistent storage
+        projectId = getProjectIdByTitle(projectTitle);
+    }
+
+    console.log(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
 
     if (projectId) {
         const user = userManager.getCurrentUser();
@@ -323,7 +348,7 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     registry.set(keyFor(userId, resolvedId), [client, project]);
 
     // Save title to metadata Y.Doc for dropdown display
-    setContainerTitleInMetaDoc(resolvedId, title);
+    setProjectTitle(resolvedId, title);
 
     yjsStore.yjsClient = client;
     return client;
