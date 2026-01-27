@@ -10,12 +10,12 @@ import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @playwright
- * @title テキスト追加機能テスト
- * @description UI経由で新規アイテムと既存アイテムにテキストを追加できることを確認します。
+ * @title Add Text Functionality Test
+ * @description Verify that new items and existing items can be edited via the UI.
  */
 
-test.describe("テキスト追加機能テスト", () => {
-    const seedLines = ["既存のテストアイテム1", "既存のテストアイテム2", "既存のテストアイテム3"];
+test.describe("Add Text Functionality Test", () => {
+    const seedLines = ["Existing Test Item 1", "Existing Test Item 2", "Existing Test Item 3"];
 
     test.beforeEach(async ({ page }, testInfo) => {
         // Use HTTP-based seeding via SeedClient instead of legacy browser-based seeding
@@ -25,75 +25,71 @@ test.describe("テキスト追加機能テスト", () => {
     });
 
     /**
-     * @testcase 新規アイテムにUI経由でテキストを追加できる
-     * @description アイテム追加ボタンをクリックして新規アイテムを作成し、
-     * キーボード入力でテキストを追加できることを確認します。
+     * @testcase Can add text to new items via UI
+     * @description Verify that clicking the Add Item button creates a new item and allows text input.
      */
-    test("新規アイテムにUI経由でテキストを追加できる", async ({ page }) => {
-        // 初期のアイテム数を記録
+    test("should add text to new items via UI", async ({ page }) => {
+        // Record initial item count
         const initialItems = page.locator(".outliner-item[data-item-id]");
         const initialCount = await initialItems.count();
 
-        // アイテム追加ボタンをクリック（page-toolbar内のボタンを使用）
-        const addButton = page.getByTestId("page-toolbar").getByRole("button", { name: "アイテム追加" });
+        // Click Add Item button (use button in page-toolbar)
+        const addButton = page.getByTestId("page-toolbar").getByRole("button", { name: "Add Item" });
         await addButton.click();
         await page.waitForTimeout(500);
 
-        // 新しいアイテムが追加されたことを確認
+        // Verify new item added
         const items = page.locator(".outliner-item[data-item-id]");
         const newCount = await items.count();
         expect(newCount).toBeGreaterThan(initialCount);
 
-        // 新しく追加されたアイテムを取得（initialCount番目のアイテム、0-indexed）
+        // Select the newly added item (initialCount-th item, 0-indexed)
         const newItem = items.nth(initialCount);
         await newItem.locator(".item-content").click();
         await page.waitForTimeout(500);
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor
         await TestHelpers.waitForCursorVisible(page);
 
-        // テキストを入力
-        const testText = "新規アイテムのテキスト";
+        // Type text
+        const testText = "Text for new item";
         await page.keyboard.type(testText);
         await page.waitForTimeout(500);
 
-        // 入力したテキストが表示されていることを確認
-        // innerTextを使用してHTMLタグを除外したテキストを取得
+        // Verify text visible
         const itemText = await newItem.locator(".item-text").innerText();
         expect(itemText).toContain(testText);
     });
 
     /**
-     * @testcase 既存アイテムにUI経由でテキストを追加できる
-     * @description 既存のアイテムをクリックして編集モードに入り、
-     * キーボード入力でテキストを追加できることを確認します。
+     * @testcase Can add text to existing items via UI
+     * @description Verify that clicking an existing item enters edit mode and allows text changes.
      */
-    test("既存アイテムにUI経由でテキストを追加できる", async ({ page }) => {
-        // 既存のアイテムを取得（ページタイトル以外の最初のアイテム）
+    test("should add text to existing items via UI", async ({ page }) => {
+        // Get existing items (first item after page title)
         const items = page.locator(".outliner-item[data-item-id]");
         const itemCount = await items.count();
         expect(itemCount).toBeGreaterThan(0);
 
-        // 最初のアイテムをクリックして編集モードに入る
+        // Click first item to enter edit mode
         const firstItem = items.first();
         await firstItem.locator(".item-content").click();
         await page.waitForTimeout(500);
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor
         await TestHelpers.waitForCursorVisible(page);
 
-        // 既存のテキストをクリア
+        // Clear existing text
         await page.keyboard.press("Control+A");
         await page.keyboard.press("Backspace");
         await page.waitForTimeout(300);
 
-        // 新しいテキストを入力
-        const testText = "既存アイテムの新しいテキスト";
+        // Type new text
+        const testText = "New text for existing item";
         await page.keyboard.type(testText);
         await page.waitForTimeout(500);
 
-        // 入力したテキストが表示されていることを確認
-        // innerTextを使用してHTMLタグを除外したテキストを取得
+        // Verify text visible
         const itemText = await firstItem.locator(".item-text").innerText();
         expect(itemText).toContain(testText);
     });

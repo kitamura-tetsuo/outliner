@@ -7,6 +7,16 @@
     onMount(() => {
         items.add("Item 1");
         items.add("Item 2");
+
+        // Expose environment variables for E2E tests
+        if (typeof window !== "undefined") {
+            (window as any).testEnvVars = {
+                VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
+                VITE_FIREBASE_PROJECT_ID: import.meta.env
+                    .VITE_FIREBASE_PROJECT_ID,
+                VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL,
+            };
+        }
     });
 </script>
 

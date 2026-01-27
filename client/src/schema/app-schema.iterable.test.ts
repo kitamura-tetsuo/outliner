@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
-import * as Y from "yjs";
+// import * as Y from "yjs"; // Removed unused import
 import { Item, Project } from "./app-schema";
 
 describe("Item Iterable", () => {
     it("should iterate over children using for...of", () => {
-        const ydoc = new Y.Doc();
-        const ymap = ydoc.getMap("project");
-        const project = new Project(ymap, ydoc);
+        const project = Project.createInstance("Page 1");
         const page = project.addPage("Page 1");
         const items = page.items;
 
@@ -23,9 +21,7 @@ describe("Item Iterable", () => {
     });
 
     it("should work with Array.from", () => {
-        const ydoc = new Y.Doc();
-        const ymap = ydoc.getMap("project");
-        const project = new Project(ymap, ydoc);
+        const project = Project.createInstance("Page 1");
         const page = project.addPage("Page 1");
         const items = page.items;
 
@@ -39,9 +35,7 @@ describe("Item Iterable", () => {
     });
 
     it("should iterate over nested children", () => {
-        const ydoc = new Y.Doc();
-        const ymap = ydoc.getMap("project");
-        const project = new Project(ymap, ydoc);
+        const project = Project.createInstance("Page 1");
         const page = project.addPage("Page 1");
         const rootItems = page.items;
 

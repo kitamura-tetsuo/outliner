@@ -730,7 +730,7 @@ export class TestHelpers {
      */
     public static async setupTreeDebugger(page: Page): Promise<void> {
         try {
-            await page.evaluate(() => {
+            await page.addInitScript(() => {
                 // Yjs / app-store ベースのデバッグ関数を追加
                 const buildYjsSnapshot = () => {
                     try {
@@ -738,8 +738,6 @@ export class TestHelpers {
                         const proj = gs?.project;
                         if (!proj) return { error: "project not initialized" };
 
-                        // For tree validation, if there's a current page, return its items
-                        // Otherwise return the project root items (pages)
                         const currentPage = gs?.currentPage;
                         let root;
                         if (currentPage && currentPage.items) {
@@ -756,7 +754,8 @@ export class TestHelpers {
                                 const ch = children.at ? children.at(i) : children[i];
                                 if (ch) asArray.push(toPlain(ch));
                             }
-                            const textVal = item.text?.toString?.() ?? String(item.text ?? "");
+                            const textVal = item.text?.toString?.() || item.title?.toString?.()
+                                || String(item.text || item.title || "");
                             return { id: String(item.id), text: textVal, items: asArray };
                         };
 
@@ -786,8 +785,6 @@ export class TestHelpers {
                     }
                     return res;
                 };
-
-                // （Yjs ベース）
             });
         } catch (e) {
             console.log("TestHelper: setupTreeDebugger injection skipped:", (e as any)?.message ?? e);

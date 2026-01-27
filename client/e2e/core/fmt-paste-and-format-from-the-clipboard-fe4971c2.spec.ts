@@ -147,7 +147,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
         console.log("テキストエリアにテキストを入力しました");
 
         // コピーボタンをクリック
-        await clipboardPage.locator('button:has-text("コピー")').first().click();
+        await clipboardPage.locator('button:has-text("Copy")').first().click();
         console.log("コピーボタンをクリックしました");
 
         // 少し待機してコピー操作が完了するのを待つ
@@ -243,7 +243,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
         console.log("クリップボードテストページが読み込まれました");
 
         // クリップボード権限を確認
-        await clipboardPage.locator(".test-section").nth(2).locator('button:has-text("クリップボード権限を確認")')
+        await clipboardPage.locator(".test-section").nth(2).locator('button:has-text("Check Clipboard Permissions")')
             .click();
         await clipboardPage.waitForTimeout(1000);
         const permissionResult = await clipboardPage.locator(".test-section").nth(2).locator(".result").textContent();
@@ -254,7 +254,7 @@ test.describe("フォーマット文字列の入力と表示", () => {
         console.log("テキストエリアにテキストを入力しました");
 
         // コピーボタンをクリック
-        await clipboardPage.locator(".test-section").nth(3).locator('button:has-text("コピー")').click();
+        await clipboardPage.locator(".test-section").nth(3).locator('button:has-text("Copy")').click();
         console.log("コピーボタンをクリックしました");
 
         // 少し待機してコピー操作が完了するのを待つ

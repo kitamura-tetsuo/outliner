@@ -12,13 +12,13 @@
     import { yjsStore } from "../../../stores/yjsStore.svelte";
 
     import { store } from "../../../stores/store.svelte";
-    import {
-        createSnapshotClient,
-        loadProjectSnapshot,
-        snapshotToProject,
-        snapshotToMarkdown,
-        snapshotToOpml,
-    } from "../../../lib/projectSnapshot";
+    // import {
+    //     createSnapshotClient,
+    //     loadProjectSnapshot,
+    //     snapshotToProject,
+    //     snapshotToMarkdown,
+    //     snapshotToOpml,
+    // } from "../../../lib/projectSnapshot";
     import type { Project } from "../../../schema/app-schema";
 
     let project: Project | undefined = undefined;
@@ -46,27 +46,27 @@
     }
 
     function hydrateFromSnapshotIfNeeded() {
-        const projectName = $page.params.project as string | undefined;
-        if (!projectName) return;
-        if (!projectLooksLikePlaceholder(store.project as any)) return;
-        const snapshot = loadProjectSnapshot(projectName);
-        if (!snapshot) return;
-        try {
-            const hydrated = snapshotToProject(snapshot);
-            store.project = hydrated;
-            try {
-                store.currentPage = undefined;
-            } catch {}
-            if (!yjsStore.yjsClient) {
-                try {
-                    yjsStore.yjsClient = createSnapshotClient(
-                        projectName,
-                        hydrated,
-                    ) as any;
-                } catch {}
-            }
-            project = hydrated;
-        } catch {}
+        // const projectName = $page.params.project as string | undefined;
+        // if (!projectName) return;
+        // if (!projectLooksLikePlaceholder(store.project as any)) return;
+        // const snapshot = loadProjectSnapshot(projectName);
+        // if (!snapshot) return;
+        // try {
+        //     const hydrated = snapshotToProject(snapshot);
+        //     store.project = hydrated;
+        //     try {
+        //         store.currentPage = undefined;
+        //     } catch {}
+        //     if (!yjsStore.yjsClient) {
+        //         try {
+        //             yjsStore.yjsClient = createSnapshotClient(
+        //                 projectName,
+        //                 hydrated,
+        //             ) as any;
+        //         } catch {}
+        //     }
+        //     project = hydrated;
+        // } catch {}
     }
 
     function hasMeaningfulContent(content: string | undefined): boolean {
@@ -118,17 +118,17 @@
                 projectLooksLikePlaceholder(projectForExport as any)) &&
             projectName
         ) {
-            const snapshot = loadProjectSnapshot(projectName);
-            if (snapshot) {
-                console.log(
-                    "doExport: Hydrating project from snapshot for export",
-                    { projectName },
-                );
-                projectForExport = snapshotToProject(snapshot) as any;
-                try {
-                    store.project = projectForExport as any;
-                } catch {}
-            }
+            // const snapshot = loadProjectSnapshot(projectName);
+            // if (snapshot) {
+            //     console.log(
+            //         "doExport: Hydrating project from snapshot for export",
+            //         { projectName },
+            //     );
+            //     projectForExport = snapshotToProject(snapshot) as any;
+            //     try {
+            //         store.project = projectForExport as any;
+            //     } catch {}
+            // }
         }
 
         if (projectForExport) {
@@ -140,21 +140,21 @@
         }
 
         if (!hasMeaningfulContent(exportContent) && projectName) {
-            const snapshot = loadProjectSnapshot(projectName);
-            if (snapshot) {
-                console.log("doExport: Using snapshot fallback for export", {
-                    projectName,
-                });
-                exportContent =
-                    format === "opml"
-                        ? snapshotToOpml(snapshot)
-                        : snapshotToMarkdown(snapshot);
-                if (!projectForExport) {
-                    try {
-                        store.project = snapshotToProject(snapshot);
-                    } catch {}
-                }
-            }
+            // const snapshot = loadProjectSnapshot(projectName);
+            // if (snapshot) {
+            //     console.log("doExport: Using snapshot fallback for export", {
+            //         projectName,
+            //     });
+            //     exportContent =
+            //         format === "opml"
+            //             ? snapshotToOpml(snapshot)
+            //             : snapshotToMarkdown(snapshot);
+            //     if (!projectForExport) {
+            //         try {
+            //             store.project = snapshotToProject(snapshot);
+            //         } catch {}
+            //     }
+            // }
         }
 
         exportText = exportContent ?? "";

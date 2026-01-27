@@ -50,3 +50,21 @@ export function clearPreviewCache() {
     previewCache.clear();
     cacheTimestamps.clear();
 }
+
+/**
+ * Setup link preview handlers
+ */
+export function setupLinkPreviewHandlers() {
+    logger.debug("setupLinkPreviewHandlers: Initializing link preview listeners");
+    // This could optionally scan the DOM for links and attach hover listeners
+    // if we weren't using the Svelte component approach, but for now it's a stub
+    // to satisfy the imports in +page.svelte.
+}
+
+/**
+ * Cleanup link previews
+ */
+export function cleanupLinkPreviews() {
+    logger.debug("cleanupLinkPreviews: Cleaning up link preview resources");
+    clearPreviewCache();
+}

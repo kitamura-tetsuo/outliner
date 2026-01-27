@@ -12,7 +12,7 @@ describe("homepage-auth", () => {
     it("displays the Outliner App title", () => {
         render(HomePage);
         expect(
-            screen.getByRole("heading", { level: 1, name: "Outliner" }),
+            screen.getByRole("heading", { level: 1, name: "Welcome to Outliner" }),
         ).toBeTruthy();
     });
 });

@@ -18,7 +18,7 @@ test.describe("New Page Creation with Enter", () => {
         const newPageName = `Enter Page ${Date.now()}`;
 
         // Find the input field for new page name in PageList
-        const pageNameInput = page.locator('input[placeholder="新しいページ名"]');
+        const pageNameInput = page.locator('input[placeholder="New page name"]');
         await expect(pageNameInput).toBeVisible();
         await pageNameInput.fill(newPageName);
 

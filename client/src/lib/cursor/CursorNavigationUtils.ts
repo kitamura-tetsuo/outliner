@@ -1,4 +1,4 @@
-import type { Item } from "../../schema/yjs-schema";
+import type { Item } from "../../schema/app-schema";
 import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
@@ -34,10 +34,18 @@ export function isPageItem(item: Item): boolean {
  * Find the previous item in the tree relative to the provided ID.
  */
 export function findPreviousItem(currentItemId: string): Item | undefined {
-    const root = generalStore.currentPage as unknown as Item | undefined;
-    if (!root) return undefined;
-
-    return findPreviousItemRecursive(root, currentItemId);
+    const roots = generalStore.pages.current;
+    for (let i = 0; i < roots.length; i++) {
+        const root = roots[i];
+        if (root.id === currentItemId) {
+            return i > 0 ? getDeepestDescendant(roots[i - 1]) : undefined;
+        }
+        if (searchItem(root, currentItemId)) {
+            // Found in this root's tree
+            return findPreviousItemRecursive(root, currentItemId);
+        }
+    }
+    return undefined;
 }
 
 function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item): Item | undefined {
@@ -67,17 +75,22 @@ function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item
  * Find the next item in the tree relative to the provided ID.
  */
 export function findNextItem(currentItemId: string): Item | undefined {
-    const root = generalStore.currentPage as unknown as Item | undefined;
-    if (!root) return undefined;
+    const roots = generalStore.pages.current;
+    for (let i = 0; i < roots.length; i++) {
+        const root = roots[i];
+        if (root.id === currentItemId) {
+            const children = collectChildren(root);
+            return children.length > 0 ? children[0] : (i < roots.length - 1 ? roots[i + 1] : undefined);
+        }
 
-    // Special case: if the root itself is the target, return the first child
-    if (root.id === currentItemId) {
-        const children = collectChildren(root);
-        return children.length > 0 ? children[0] : undefined;
+        if (searchItem(root, currentItemId)) {
+            const next = findNextItemRecursive(root, currentItemId, []);
+            if (next) return next;
+            // If satisfied in subtree but returned undefined (end of subtree), go to next root
+            return i < roots.length - 1 ? roots[i + 1] : undefined;
+        }
     }
-
-    // Perform the search starting from the root
-    return findNextItemRecursive(root, currentItemId, []);
+    return undefined;
 }
 
 function findNextItemRecursive(node: Item, targetId: string, path: Item[]): Item | undefined {

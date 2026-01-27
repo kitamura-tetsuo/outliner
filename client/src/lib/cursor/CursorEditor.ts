@@ -1,7 +1,7 @@
-import type { Item } from "../../schema/yjs-schema";
-import { Items } from "../../schema/yjs-schema";
+import type { Item } from "../../schema/app-schema";
+import { Items } from "../../schema/app-schema";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
-import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
+
 import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
@@ -22,6 +22,7 @@ export interface CursorEditingContext {
     clearSelection(): void;
     applyToStore(): void;
     findTarget(): Item | undefined;
+    getStore(): any;
 }
 
 export class CursorEditor {
@@ -60,10 +61,10 @@ export class CursorEditor {
         }
 
         cursor.applyToStore();
-        store.triggerOnEdit();
+        cursor.getStore().triggerOnEdit();
 
         // Ensure the global textarea is in sync with the Yjs document state
-        const textarea = store.getTextareaRef();
+        const textarea = cursor.getStore().getTextareaRef();
         if (textarea) {
             textarea.value = node.text?.toString?.() ?? "";
             textarea.setSelectionRange(cursor.offset, cursor.offset);
@@ -108,7 +109,7 @@ export class CursorEditor {
 
         // Ensure the global textarea is in sync with the Yjs document state
         // before applying the cursor position and triggering edit
-        const textarea = store.getTextareaRef();
+        const textarea = cursor.getStore().getTextareaRef();
         if (textarea) {
             textarea.value = node.text?.toString?.() ?? "";
             textarea.setSelectionRange(cursor.offset, cursor.offset);
@@ -117,7 +118,7 @@ export class CursorEditor {
         cursor.applyToStore();
 
         // Trigger edit to ensure UI updates properly
-        store.triggerOnEdit();
+        cursor.getStore().triggerOnEdit();
     }
 
     deleteForward() {
@@ -158,9 +159,9 @@ export class CursorEditor {
         }
 
         cursor.applyToStore();
-        store.triggerOnEdit();
+        cursor.getStore().triggerOnEdit();
 
-        const textarea = store.getTextareaRef();
+        const textarea = cursor.getStore().getTextareaRef();
         if (textarea) {
             textarea.value = node.text?.toString?.() ?? "";
             textarea.setSelectionRange(cursor.offset, cursor.offset);
@@ -177,8 +178,12 @@ export class CursorEditor {
         const afterText = text.slice(cursor.offset);
         const pageTitle = isPageItem(target);
 
+        // Access store via context directly
+        const store = cursor.getStore();
+
         if (pageTitle) {
-            if (target.items && target.items instanceof Items) {
+            // Check if items exists (duck typing instead of instanceof check to avoid Proxy issues)
+            if (target.items) {
                 target.updateText(beforeText);
                 const newItem = target.items.addNode(cursor.userId, 0);
                 newItem.updateText(afterText);
@@ -314,7 +319,7 @@ export class CursorEditor {
         cursor.applyToStore();
 
         cursor.clearSelection();
-        store.startCursorBlink();
+        cursor.getStore().startCursorBlink();
     }
 
     deleteSelection() {
@@ -341,7 +346,7 @@ export class CursorEditor {
         cursor.applyToStore();
 
         cursor.clearSelection();
-        store.startCursorBlink();
+        cursor.getStore().startCursorBlink();
     }
 
     formatBold() {
@@ -389,6 +394,9 @@ export class CursorEditor {
         cursor.offset = newOffset;
 
         cursor.applyToStore();
+
+        // Use context store
+        const store = cursor.getStore();
         store.clearCursorForItem(oldItemId);
         store.setActiveItem(cursor.itemId);
         store.startCursorBlink();
@@ -519,6 +527,7 @@ export class CursorEditor {
             }
         }
 
+        const store = cursor.getStore();
         store.clearCursorForItem(cursor.itemId);
         (currentItem as any).delete();
 
@@ -540,16 +549,23 @@ export class CursorEditor {
         const cursor = this.cursor;
         if (!selection) return;
 
+        const store = cursor.getStore();
+
         if (!selectionSpansMultipleItems(selection)) {
             this.deleteSelection();
             return;
         }
 
-        const root = generalStore.currentPage;
-        if (!root) return;
+        let startItem: Item | undefined;
+        let endItem: Item | undefined;
 
-        const startItem = searchItem(root as any, selection.startItemId);
-        const endItem = searchItem(root as any, selection.endItemId);
+        // Search in all current page items (roots)
+        for (const root of generalStore.pages.current) {
+            if (!startItem) startItem = searchItem(root, selection.startItemId);
+            if (!endItem) endItem = searchItem(root, selection.endItemId);
+            if (startItem && endItem) break;
+        }
+
         if (!startItem || !endItem) return;
 
         const isReversed = !!selection.isReversed;
@@ -615,6 +631,7 @@ export class CursorEditor {
     private applyScrapboxFormatting(formatType: "bold" | "italic" | "strikethrough" | "underline" | "code") {
         const cursor = this.cursor;
         const selection = this.getSelection();
+        const store = cursor.getStore();
 
         if (!selection || !selectionHasRange(selection)) {
             return;
@@ -672,6 +689,7 @@ export class CursorEditor {
         const cursor = this.cursor;
         const { startItemId, endItemId, startOffset, endOffset } = selection;
         const isReversed = !!selection.isReversed;
+        const store = cursor.getStore();
 
         const allItemElements = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
         const allItemIds = allItemElements
@@ -687,7 +705,11 @@ export class CursorEditor {
 
         for (let i = firstIdx; i <= lastIdx; i++) {
             const itemId = allItemIds[i];
-            const item = searchItem(generalStore.currentPage as any, itemId);
+            let item: Item | undefined;
+            for (const root of generalStore.pages.current) {
+                item = searchItem(root, itemId);
+                if (item) break;
+            }
             if (!item) continue;
 
             const text = (item as any).text || "";

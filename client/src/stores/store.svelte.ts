@@ -12,9 +12,15 @@ export interface TextAreaPosition {
 export class Store {
     // Current project
     project = $state<Project | null>(null);
+    currentPage = $state<Item | null>(null);
 
     // Pages management
-    pages = $state<{ current: Item[]; }>({ current: [] });
+    pages = $derived.by(() => {
+        const items = this.project?.items;
+        if (!items) return { current: [] };
+        // Items behaves like an array via the Proxy wrapper in app-schema.ts
+        return { current: items as any };
+    });
     pagesVersion = $state(0);
 
     // Global textarea reference

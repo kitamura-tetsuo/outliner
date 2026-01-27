@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { firestoreStore } from "$stores/firestoreStore.svelte";
+    import { firestoreStore } from "../../stores/firestoreStore.svelte";
 
     let debugInfo = $state("");
     let projects: any[] = $state([]);
@@ -9,18 +9,20 @@
         debugInfo += `User: ${
             firestoreStore.currentUser ? firestoreStore.currentUser.uid : "None"
         }\n`;
-        debugInfo += `Accessible Projects: ${
-            JSON.stringify(firestoreStore.accessibleProjectIds)
-        }\n`;
+        debugInfo += `Accessible Projects: ${JSON.stringify(
+            firestoreStore.accessibleProjectIds,
+        )}\n`;
 
         // Wait a bit and reload
         setTimeout(() => {
             debugInfo += `User (after wait): ${
-                firestoreStore.currentUser ? firestoreStore.currentUser.uid : "None"
+                firestoreStore.currentUser
+                    ? firestoreStore.currentUser.uid
+                    : "None"
             }\n`;
-            debugInfo += `Accessible Projects (after wait): ${
-                JSON.stringify(firestoreStore.accessibleProjectIds)
-            }\n`;
+            debugInfo += `Accessible Projects (after wait): ${JSON.stringify(
+                firestoreStore.accessibleProjectIds,
+            )}\n`;
         }, 2000);
     });
 
@@ -37,7 +39,8 @@
 
     <div class="mb-8">
         <h2 class="text-xl font-semibold mb-2">Firestore Store State</h2>
-        <pre class="bg-gray-100 p-4 rounded border overflow-auto text-xs">{debugInfo}</pre>
+        <pre
+            class="bg-gray-100 p-4 rounded border overflow-auto text-xs">{debugInfo}</pre>
     </div>
 
     <div class="mb-8">

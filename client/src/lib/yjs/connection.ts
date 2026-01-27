@@ -1,6 +1,16 @@
 // Yjs connection management
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { Awareness } from "y-protocols/awareness";
+
+let ProviderClass: typeof HocuspocusProvider = HocuspocusProvider;
+
+export function setProviderClass(cls: typeof HocuspocusProvider) {
+    ProviderClass = cls;
+}
+
+export function resetProviderClass() {
+    ProviderClass = HocuspocusProvider;
+}
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
 import { getLogger } from "../logger";
@@ -120,7 +130,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
         initialToken = await getFreshIdToken();
     } catch {}
 
-    provider = new HocuspocusProvider({
+    provider = new ProviderClass({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
@@ -289,7 +299,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         initialToken = await getFreshIdToken();
     } catch {}
 
-    provider = new HocuspocusProvider({
+    provider = new ProviderClass({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
@@ -585,7 +595,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         logger.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
     }
 
-    provider = new HocuspocusProvider({
+    provider = new ProviderClass({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
@@ -650,7 +660,7 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         initialToken = await getFreshIdToken();
     } catch {}
 
-    provider = new HocuspocusProvider({
+    provider = new ProviderClass({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,

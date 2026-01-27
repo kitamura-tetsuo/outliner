@@ -60,7 +60,7 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
 
         // ページが表示されることを確認
         await expect(page.locator("body")).toBeVisible();
-        await expect(page.locator("h1")).toContainText("Firebase Google Login");
+        await expect(page.locator("h1")).toContainText("Min Page");
     });
 
     test("Environment variables configuration is correct", async ({ page }) => {

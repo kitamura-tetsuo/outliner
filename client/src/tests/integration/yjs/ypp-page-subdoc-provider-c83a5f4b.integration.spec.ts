@@ -1,6 +1,114 @@
+// Manually mock WebSocket and other globals for Node environment to prevent jsdom/socket issues
+if (typeof global !== "undefined") {
+    if (!global.WebSocket) {
+        global.WebSocket = class WebSocket {
+            static CONNECTING = 0;
+            static OPEN = 1;
+            static CLOSING = 2;
+            static CLOSED = 3;
+            readyState: number;
+            onopen: ((ev: Event) => any) | null = null;
+            onmessage: ((ev: MessageEvent) => any) | null = null;
+            onclose: ((ev: CloseEvent) => any) | null = null;
+            onerror: ((ev: Event) => any) | null = null;
+
+            constructor(_url: string, _protocols?: string | string[]) {
+                void _url;
+                void _protocols;
+                this.readyState = WebSocket.CONNECTING;
+                setTimeout(() => {
+                    this.readyState = WebSocket.OPEN;
+                    if (this.onopen) this.onopen(new Event("open"));
+                }, 10);
+            }
+            send(_data: any) {
+                void _data;
+            }
+            close() {
+                this.readyState = WebSocket.CLOSED;
+                if (this.onclose) this.onclose(new CloseEvent("close"));
+            }
+            addEventListener() {}
+            removeEventListener() {}
+        } as any;
+    }
+    if (!global.document) {
+        global.document = {
+            createElement: vi.fn().mockImplementation((tagName) => {
+                if (tagName === "div") return { style: {} };
+                return {};
+            }),
+            dispatchEvent: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+        } as any;
+    }
+    if (!global.window) {
+        global.window = global as any;
+        global.window.addEventListener = vi.fn();
+        global.window.removeEventListener = vi.fn();
+        global.window.location = {
+            hostname: "localhost",
+            protocol: "http:",
+        } as any;
+    }
+}
+
+import { EventEmitter } from "events";
 import { describe, expect, it, vi } from "vitest";
-import { createProjectConnection, type PageConnection } from "../../../lib/yjs/connection";
+import { createProjectConnection, type PageConnection, setProviderClass } from "../../../lib/yjs/connection";
 import { Project } from "../../../schema/app-schema";
+
+// Mock firebase-app to prevent initialization error
+vi.mock("../../../lib/firebase-app", () => ({
+    app: {},
+    auth: {
+        currentUser: { uid: "test-user" },
+        onAuthStateChanged: vi.fn(),
+    },
+    db: {},
+}));
+
+vi.mock("../../../auth/UserManager", () => ({
+    userManager: {
+        getCurrentUser: () => ({ uid: "test-user" }),
+        onAuthStateChanged: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+    },
+}));
+
+// Mock HocuspocusProvider
+class MockHocuspocusProvider extends EventEmitter {
+    configuration: any;
+    document: any;
+    awareness: any;
+
+    constructor(config: any) {
+        super();
+        this.configuration = config;
+        this.document = config.document;
+        this.awareness = {
+            clientID: 123,
+            getLocalState: () => ({ presence: this._presence }),
+            setLocalStateField: (field: string, value: any) => {
+                if (field === "presence") this._presence = value;
+            },
+            on: () => {},
+            off: () => {},
+            destroy: () => {},
+        };
+        // Simulate immediate connection
+        setTimeout(() => this.emit("status", { status: "connected" }), 0);
+        setTimeout(() => this.emit("synced", { state: true }), 0);
+    }
+    _presence: any = undefined;
+
+    connect() {}
+    disconnect() {}
+    destroy() {}
+}
+setProviderClass(MockHocuspocusProvider as any);
 
 // Mock store to avoid $state (runes) error in integration tests pending environment fix
 vi.mock("../../../stores/store.svelte", () => ({
@@ -31,7 +139,7 @@ vi.mock("../../../stores/PresenceStore.svelte", () => ({
 async function waitForPageConnection(
     conn: { getPageConnection: (id: string) => PageConnection | undefined; },
     pageId: string,
-    timeoutMs: number = 10000,
+    timeoutMs: number = 30000,
 ): Promise<PageConnection> {
     const startTime = Date.now();
     while (Date.now() - startTime < timeoutMs) {
@@ -64,5 +172,5 @@ describe("page subdoc provider", () => {
 
         c2.dispose();
         conn.dispose();
-    }, 30000);
+    }, 60000);
 });

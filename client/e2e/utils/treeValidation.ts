@@ -12,7 +12,48 @@ export class TreeValidator {
         return page.evaluate(() => {
             // デバッグ関数の存在確認（Yjs）
             if (typeof window.getYjsTreeDebugData !== "function") {
-                // フォールバック: appStore から基本的なデータを取得
+                console.warn(
+                    "TreeValidator: getYjsTreeDebugData not found. Current window keys:",
+                    Object.keys(window).filter(k =>
+                        k.toLowerCase().includes("tree") || k.toLowerCase().includes("store")
+                    ),
+                );
+
+                const store = (window as any).generalStore || (window as any).appStore;
+                if (store && store.project && store.project.items) {
+                    const project = store.project;
+                    const items = project.items;
+                    const result: any[] = [];
+
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items.at(i);
+                        if (item) {
+                            const subItems: any[] = [];
+                            const rawItems = item.items;
+                            if (rawItems && typeof rawItems.forEach === "function") {
+                                rawItems.forEach((subItem: any) => {
+                                    subItems.push({
+                                        id: String(subItem.id),
+                                        text: subItem.text?.toString() || "",
+                                    });
+                                });
+                            }
+
+                            result.push({
+                                id: String(item.id),
+                                text: item.text?.toString() || item.title?.toString() || "",
+                                items: subItems,
+                            });
+                        }
+                    }
+
+                    return {
+                        itemCount: result.length,
+                        items: result,
+                    };
+                }
+
+                // 2つ目のフォールバック: appStore.pages.current (古い実装用?)
                 const appStore = (window as any).appStore;
                 if (appStore && appStore.pages && appStore.pages.current) {
                     return {
@@ -23,7 +64,9 @@ export class TreeValidator {
                         })),
                     };
                 }
-                throw new Error("getYjsTreeDebugData function is not available and no fallback data found");
+                throw new Error(
+                    "getYjsTreeDebugData function is not available and no fallback data found on generalStore/appStore",
+                );
             }
 
             return window.getYjsTreeDebugData();

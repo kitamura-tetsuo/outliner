@@ -1,40 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
-import { createPersistence, waitForSync } from "../../../../src/lib/yjsPersistence";
-
-// Import the class from the mock
-import { IndexeddbPersistence } from "y-indexeddb";
-
-// Type for mock persistence object
-interface MockPersistence {
-    once: (eventName: "synced", callback: () => void) => void;
-    synced: boolean;
-    destroy: ReturnType<typeof vi.fn>;
-}
-
-// Mock IndexeddbPersistence from y-indexeddb
-vi.mock("y-indexeddb", () => {
-    const mockPersistence = {
-        once: vi.fn(),
-        synced: false,
-        destroy: vi.fn(),
-    };
-
-    return {
-        IndexeddbPersistence: vi.fn().mockImplementation(function(dbName: string, doc: Y.Doc) {
-            expect(dbName).toMatch(/^container-/);
-            expect(doc).toBeInstanceOf(Y.Doc);
-            return mockPersistence;
-        }),
-    };
-});
 
 describe("yjsPersistence", () => {
     let doc: Y.Doc;
+    let createPersistence: any;
+    let waitForSync: any;
+    let IndexeddbPersistenceMock: any;
 
-    beforeEach(() => {
+    beforeEach(async () => {
+        vi.resetModules();
         vi.clearAllMocks();
         doc = new Y.Doc();
+
+        // 1. Create the mock class function
+        const MockPersistenceClass = vi.fn().mockImplementation(function() {
+            return {
+                once: vi.fn(),
+                synced: false,
+                destroy: vi.fn(),
+            };
+        });
+
+        // 2. Setup the mock module using doMock
+        // This ensures that when the SUT imports "y-indexeddb", it gets this mock
+        vi.doMock("y-indexeddb", () => {
+            return {
+                IndexeddbPersistence: MockPersistenceClass,
+            };
+        });
+
+        // 3. Dynamically import the SUT (Subject Under Test)
+        // This forces re-evaluation of module dependencies, using the mocks defined above
+        const module = await import("../../../../src/lib/yjsPersistence");
+        createPersistence = module.createPersistence;
+        waitForSync = module.waitForSync;
+
+        // Expose the mock class for test assertions
+        IndexeddbPersistenceMock = MockPersistenceClass;
     });
 
     describe("createPersistence", () => {
@@ -43,6 +45,7 @@ describe("yjsPersistence", () => {
             const persistence = createPersistence(containerId, doc);
 
             expect(persistence).toBeDefined();
+            expect(IndexeddbPersistenceMock).toHaveBeenCalledWith("container-test-container-123", doc);
         });
 
         it("should set up synced event listener", () => {
@@ -56,22 +59,22 @@ describe("yjsPersistence", () => {
             const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
             const containerId = "test-container-789";
 
-            // Track the callback that was passed to once
             let syncCallback: () => void = () => {
                 throw new Error("sync callback not set");
             };
-            const mockPersistenceImpl: MockPersistence = {
-                once: vi.fn((event: string, callback: () => void) => {
-                    if (event === "synced") {
-                        syncCallback = callback;
-                    }
-                }),
-                synced: false,
-                destroy: vi.fn(),
-            };
 
-            vi.mocked(IndexeddbPersistence).mockImplementationOnce(function() {
-                return mockPersistenceImpl as unknown as IndexeddbPersistence;
+            // Setup the mock implementation for this specific test
+            // Since `IndexeddbPersistenceMock` is a vi.fn(), we can mock its implementation
+            vi.mocked(IndexeddbPersistenceMock).mockImplementationOnce(function() {
+                return {
+                    once: vi.fn((event: string, callback: () => void) => {
+                        if (event === "synced") {
+                            syncCallback = callback;
+                        }
+                    }),
+                    synced: false,
+                    destroy: vi.fn(),
+                } as any;
             });
 
             createPersistence(containerId, doc);
@@ -89,44 +92,57 @@ describe("yjsPersistence", () => {
 
     describe("waitForSync", () => {
         it("should resolve immediately if already synced", async () => {
-            const persistence: MockPersistence = {
-                synced: true,
-                once: vi.fn(),
-                destroy: vi.fn(),
-            };
+            // Setup mock to be synced
+            vi.mocked(IndexeddbPersistenceMock).mockImplementationOnce(function() {
+                return {
+                    synced: true,
+                    once: vi.fn(),
+                    destroy: vi.fn(),
+                } as any;
+            });
+
+            // We need to instantiate it manually or via createPersistence if we want to test waitForSync on a mock
+            // But waitForSync takes an interface. Let's create a persistence instance using the mock class.
+            const persistence = new IndexeddbPersistenceMock("test", doc);
 
             await expect(waitForSync(persistence)).resolves.toBeUndefined();
             expect(persistence.once).not.toHaveBeenCalled();
         });
 
         it("should wait for sync event if not synced", async () => {
-            const persistence: MockPersistence = {
-                synced: false,
-                once: vi.fn((event: string, callback: () => void) => {
-                    // Simulate sync happening after a short delay
-                    setTimeout(callback, 10);
-                }),
-                destroy: vi.fn(),
-            };
+            vi.mocked(IndexeddbPersistenceMock).mockImplementationOnce(function() {
+                return {
+                    synced: false,
+                    once: vi.fn((event: string, callback: () => void) => {
+                        setTimeout(callback, 10);
+                    }),
+                    destroy: vi.fn(),
+                } as any;
+            });
+
+            const persistence = new IndexeddbPersistenceMock("test", doc);
 
             await expect(waitForSync(persistence)).resolves.toBeUndefined();
             expect(persistence.once).toHaveBeenCalledWith("synced", expect.any(Function));
         });
 
         it("should handle multiple calls to waitForSync", async () => {
-            const persistence: MockPersistence = {
-                synced: false,
-                once: vi.fn((event: string, callback: () => void) => {
-                    // Simulate sync happening after a short delay
-                    setTimeout(callback, 10);
-                }),
-                destroy: vi.fn(),
-            };
+            vi.mocked(IndexeddbPersistenceMock).mockImplementationOnce(function() {
+                return {
+                    synced: false,
+                    once: vi.fn((event: string, callback: () => void) => {
+                        setTimeout(callback, 10);
+                    }),
+                    destroy: vi.fn(),
+                } as any;
+            });
+
+            const persistence = new IndexeddbPersistenceMock("test", doc);
 
             const waitPromise1 = waitForSync(persistence);
             const waitPromise2 = waitForSync(persistence);
 
-            // Both should be pending
+            // Both should be pending and call once
             expect(persistence.once).toHaveBeenCalledTimes(2);
 
             // Wait for both promises to resolve

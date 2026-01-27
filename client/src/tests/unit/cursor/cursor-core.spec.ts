@@ -1,9 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Cursor } from "../../../lib/Cursor";
 import type { Item } from "../../../schema/app-schema";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
-import { store as generalStore } from "../../../stores/store.svelte";
-import type { GeneralStore } from "../../../stores/store.svelte";
+
+// Create mock items at module scope so they can be accessed by the mock factory
+let mockItem: Item;
+let mockParentItem: Item;
+
+// Create mock store data at module scope
+const mockStoreData = {
+    currentPage: null as any,
+    project: null,
+    pages: { current: [] as Item[] },
+};
 
 // Mock the stores
 vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
@@ -27,22 +35,28 @@ vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
     };
 });
 
-vi.mock("../../../stores/store.svelte", () => {
-    return {
-        store: {
-            currentPage: null,
-            project: null,
-        },
-    };
-});
+// Dynamic mock for store.svelte that uses the module-scoped mockStoreData
+vi.doMock("../../../stores/store.svelte", () => ({
+    store: mockStoreData,
+}));
 
 describe("Cursor", () => {
-    let mockItem: Item;
-    let mockParentItem: Item;
+    beforeEach(async () => {
+        // Reset modules to ensure fresh imports with the mock
+        await vi.resetModules();
 
-    beforeEach(() => {
-        // Reset mocks
-        vi.clearAllMocks();
+        // Re-apply the store mock after reset
+        vi.doMock("../../../stores/store.svelte", () => ({
+            store: mockStoreData,
+        }));
+
+        // Re-import Cursor after setting up the mock
+        const { Cursor: FreshCursor } = await import("../../../lib/Cursor");
+        this.Cursor = FreshCursor;
+
+        // Reset mock store data
+        mockStoreData.currentPage = null;
+        mockStoreData.project = null;
 
         // Create mock items
         mockItem = {
@@ -76,8 +90,9 @@ describe("Cursor", () => {
         // Set up parent relationship
         (mockItem as unknown as { parent: Item | null; }).parent = mockParentItem;
 
-        // Mock the general store
-        (generalStore as GeneralStore).currentPage = mockParentItem;
+        // Set up the mock store with currentPage pointing to mockParentItem
+        mockStoreData.currentPage = mockParentItem;
+        mockStoreData.pages.current = [mockParentItem];
     });
 
     afterEach(() => {
@@ -86,7 +101,7 @@ describe("Cursor", () => {
 
     describe("Constructor", () => {
         it("should create a cursor with the correct properties", () => {
-            const cursor = new Cursor("cursor-1", {
+            const cursor = new this.Cursor("cursor-1", {
                 itemId: "item-1",
                 offset: 5,
                 isActive: true,
@@ -104,7 +119,7 @@ describe("Cursor", () => {
 
     describe("findTarget", () => {
         it("should find the target item in the current page", () => {
-            const cursor = new Cursor("cursor-1", {
+            const cursor = new this.Cursor("cursor-1", {
                 itemId: "test-item-1",
                 offset: 0,
                 isActive: true,
@@ -116,7 +131,7 @@ describe("Cursor", () => {
         });
 
         it("should return undefined if target item is not found", () => {
-            const cursor = new Cursor("cursor-1", {
+            const cursor = new this.Cursor("cursor-1", {
                 itemId: "non-existent-item",
                 offset: 0,
                 isActive: true,
@@ -135,7 +150,7 @@ describe("Cursor", () => {
 
         describe("moveLeft", () => {
             it("should move the cursor left within the same item", () => {
-                const cursor = new Cursor("cursor-1", {
+                const cursor = new this.Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
                     isActive: true,
@@ -150,7 +165,7 @@ describe("Cursor", () => {
             });
 
             it("should not move the cursor left if already at the beginning", () => {
-                const cursor = new Cursor("cursor-1", {
+                const cursor = new this.Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 0,
                     isActive: true,
@@ -169,7 +184,7 @@ describe("Cursor", () => {
         describe("moveRight", () => {
             it("should move the cursor right within the same item", () => {
                 mockItem.text = "Test text";
-                const cursor = new Cursor("cursor-1", {
+                const cursor = new this.Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
                     isActive: true,
@@ -185,7 +200,7 @@ describe("Cursor", () => {
 
             it("should not move the cursor right if already at the end", () => {
                 mockItem.text = "Test";
-                const cursor = new Cursor("cursor-1", {
+                const cursor = new this.Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 4,
                     isActive: true,
@@ -206,7 +221,7 @@ describe("Cursor", () => {
                 mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
-                const cursor = new Cursor("cursor-1", {
+                const cursor = new this.Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
                     isActive: true,
@@ -227,7 +242,7 @@ describe("Cursor", () => {
                 mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
-                const cursor = new Cursor("cursor-1", {
+                const cursor = new this.Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 6,
                     isActive: true,
@@ -248,7 +263,7 @@ describe("Cursor", () => {
                 mockItem.text = "Hello World";
                 mockItem.updateText = vi.fn();
 
-                const cursor = new Cursor("cursor-1", {
+                const cursor = new this.Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
                     isActive: true,
@@ -269,7 +284,7 @@ describe("Cursor", () => {
         describe("moveToLineStart", () => {
             it("should move cursor to the start of the current line", () => {
                 mockItem.text = "First line\nSecond line\nThird line";
-                const cursor = new Cursor("cursor-1", {
+                const cursor = new this.Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 15, // Middle of "Second line"
                     isActive: true,
@@ -287,7 +302,7 @@ describe("Cursor", () => {
         describe("moveToLineEnd", () => {
             it("should move cursor to the end of the current line", () => {
                 mockItem.text = "First line\nSecond line\nThird line";
-                const cursor = new Cursor("cursor-1", {
+                const cursor = new this.Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 15, // Middle of "Second line"
                     isActive: true,
@@ -306,7 +321,7 @@ describe("Cursor", () => {
     describe("Selection methods", () => {
         describe("clearSelection", () => {
             it("should clear the selection for the user", () => {
-                const cursor = new Cursor("cursor-1", {
+                const cursor = new this.Cursor("cursor-1", {
                     itemId: "test-item-1",
                     offset: 5,
                     isActive: true,

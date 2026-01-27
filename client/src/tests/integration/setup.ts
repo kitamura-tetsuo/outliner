@@ -3,6 +3,7 @@ import { vi } from "vitest";
 import { applyAwarenessUpdate, Awareness, encodeAwarenessUpdate } from "y-protocols/awareness";
 import * as Y from "yjs";
 
+console.log("DEBUG: setup.ts loaded");
 // Enhanced mock for HocuspocusProvider to simulate WebSocket connections in tests
 class MockHocuspocusProvider {
     public doc: Y.Doc;
@@ -44,6 +45,7 @@ class MockHocuspocusProvider {
         // Simulate connection in test environment
         setTimeout(() => {
             this.isSynced = true;
+            console.log("DEBUG: MockHocuspocusProvider synced event emitting for", this.name);
             // Emit synced event to simulate successful connection
             this.emit("synced", [{ state: true }]);
             this.emit("status", [{ status: "connected" }]);
@@ -172,6 +174,11 @@ class MockHocuspocusProvider {
     }
 
     public emit(event: string, args: unknown[] = []) {
+        console.log(
+            `DEBUG: MockHocuspocusProvider.emit event=${event} args=${
+                JSON.stringify(args)
+            } name=${this.name} listenerCount=${this.eventListeners.get(event)?.length || 0}`,
+        );
         const listeners = this.eventListeners.get(event);
         if (listeners) {
             listeners.forEach(callback => {

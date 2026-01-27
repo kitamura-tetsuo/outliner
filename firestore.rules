@@ -10,5 +10,11 @@ service cloud.firestore {
     match /userProjects/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Allow authenticated users to read projects
+    match /projects/{projectId} {
+      allow read: if request.auth != null;
+      // write is restricted (usually handled by server API or specific owner check)
+    }
   }
 }

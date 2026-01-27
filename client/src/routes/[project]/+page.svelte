@@ -7,6 +7,8 @@
     import PageList from "../../components/PageList.svelte";
     import { getLogger } from "../../lib/logger";
     import { store } from "../../stores/store.svelte";
+    import { getYjsClientByProjectTitle } from "../../services";
+    import { yjsStore } from "../../stores/yjsStore.svelte";
 
     const logger = getLogger("ProjectIndex");
 
@@ -21,8 +23,48 @@
 
     // Page state
     let error: string | undefined = $state(undefined);
+    let isLoading = $state(true);
     let isAuthenticated = $state(false);
     let projectNotFound = $state(false);
+
+    /**
+     * ロード条件を評価し、必要であればロードを開始する
+     */
+    function scheduleLoadIfNeeded() {
+        if (!projectName || !isAuthenticated) return;
+        loadProject();
+    }
+
+    async function loadProject() {
+        logger.info(`loadProject: Starting for project="${projectName}"`);
+        isLoading = true;
+        error = undefined;
+        projectNotFound = false;
+
+        try {
+            let client = await getYjsClientByProjectTitle(projectName);
+            if (!client) {
+                throw new Error(
+                    `Project "${projectName}" could not be loaded.`,
+                );
+            }
+            yjsStore.yjsClient = client as any;
+            const project = client.getProject?.();
+            if (!project) {
+                throw new Error("Project data not found in client");
+            }
+            store.project = project as any;
+            logger.info(`loadProject: Project loaded: "${project.title}"`);
+        } catch (err) {
+            console.error("Failed to load project:", err);
+            error =
+                err instanceof Error
+                    ? err.message
+                    : "An error occurred while loading the project.";
+        } finally {
+            isLoading = false;
+        }
+    }
 
     // Process on auth success
     async function handleAuthSuccess(authResult: any) {
@@ -54,10 +96,31 @@
         goto("/");
     }
 
-    onMount(() => {
+    onMount(async () => {
         // Check UserManager auth state
+        const user = userManager.getCurrentUser();
+        isAuthenticated = user !== null;
+        if (isAuthenticated) {
+            scheduleLoadIfNeeded();
+        } else {
+            // Wait for auth (for tests)
+            let retries = 0;
+            while (!userManager.getCurrentUser() && retries < 50) {
+                await new Promise((r) => setTimeout(r, 100));
+                retries++;
+            }
+            if (userManager.getCurrentUser()) {
+                isAuthenticated = true;
+                scheduleLoadIfNeeded();
+            }
+        }
+    });
 
-        isAuthenticated = userManager.getCurrentUser() !== null;
+    // Reactively load when projectName changes
+    $effect(() => {
+        if (projectName && isAuthenticated) {
+            scheduleLoadIfNeeded();
+        }
     });
 
     onDestroy(() => {
@@ -94,7 +157,14 @@
         />
     </div>
 
-    {#if store.pages}
+    {#if isLoading}
+        <div class="flex flex-col items-center justify-center py-12">
+            <div
+                class="loader mb-4 h-12 w-12 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin"
+            ></div>
+            <p class="text-gray-600">Loading project...</p>
+        </div>
+    {:else if store.pages}
         <div class="mt-6">
             <h2 class="mb-4 text-xl font-semibold">Pages</h2>
             <div class="rounded-lg bg-white p-4 shadow-md">
@@ -143,7 +213,8 @@
                     </h3>
                     <div class="mt-2 text-sm text-yellow-700">
                         <p>
-                            The specified project "{projectName}" does not exist.
+                            The specified project "{projectName}" does not
+                            exist.
                         </p>
                     </div>
                 </div>
@@ -160,18 +231,14 @@
                         Login required
                     </h3>
                     <div class="mt-2 text-sm text-blue-700">
-                        <p>
-                            Please login to view this project.
-                        </p>
+                        <p>Please login to view this project.</p>
                     </div>
                 </div>
             </div>
         </div>
     {:else}
         <div class="rounded-md bg-gray-50 p-4">
-            <p class="text-gray-700">
-                Could not load project data.
-            </p>
+            <p class="text-gray-700">Could not load project data.</p>
         </div>
     {/if}
 </main>

@@ -23,8 +23,10 @@ export class ScrapboxFormatter {
     /**
      * Converts Scrapbox format to HTML (for viewing)
      * Control characters are hidden and formatting is applied.
+     * @param text Original text
+     * @param projectTitle Current project title for internal links (optional)
      */
-    static formatToHtml(text: string): string {
+    static formatToHtml(text: string, projectTitle?: string): string {
         if (!text) return "";
 
         let html = this.escapeHtml(text);
@@ -46,15 +48,9 @@ export class ScrapboxFormatter {
         // Bold (Emphasized) [** bold] -> <strong>bold</strong>
         html = html.replace(/\[(\*+) (.+?)\]/g, "<strong>$2</strong>");
 
-        // Italic [/ italic] -> <em>italic</em>
-        html = html.replace(/\[\/ (.+?)\]/g, "<em>$1</em>");
-
-        // Strikethrough [- strikethrough] -> <s>strikethrough</s>
-        html = html.replace(/\[- (.+?)\]/g, "<s>$1</s>");
-
         // Link [http://example.com title] or [title http://example.com] or [http://example.com]
-        // Simple implementation
         // 1. [http...] -> <a href="...">...</a>
+        // (Simplified external link processing)
         html = html.replace(
             /\[(https?:\/\/[^\s\]]+)\]/g,
             '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
@@ -72,17 +68,54 @@ export class ScrapboxFormatter {
             '<a href="$1" target="_blank" rel="noopener noreferrer">$2</a>',
         );
 
+        // 4. Decoration sequences: [[...]], [/ ...], [- ...]
+        // Support optional space after marker for better compatibility with tests (e.g. [-text])
+        // Bold: [[text]]
+        html = html.replace(/\[\[([^\]]+)\]\]/g, "<strong>$1</strong>");
+        // Slash: [/ text] or [/text] - BUT NOT [/project/page]
+        // If there's a space, it's definitely decoration.
+        html = html.replace(/\[\/ +([^\]]+)\]/g, "<em>$1</em>");
+        // If no space, exclude if it contains a / (project link)
+        html = html.replace(/\[\/([^ /][^\]/]*?)\]/g, "<em>$1</em>");
+        // Strike: [- text] or [-text]
+        html = html.replace(/\[- ?([^\]]+)\]/g, "<s>$1</s>");
+
         // Internal link [Page Title] -> <a href="/project/Page Title">Page Title</a>
-        // Exclude those already processed as external links
-        // (Since external links contain http, they won't match if excluded here, but simple logic is fine)
-        // Match [xxx] that does not contain http
+        // Exclude those already processed as external links or decorations
         html = html.replace(
             /\[([^\]]+)\]/g,
             (match, content) => {
                 if (content.match(/^https?:\/\//)) return match; // Already processed
                 // Ignore decoration system (starting with *, /, -)
-                if (content.match(/^[*\\/\\-] /)) return match;
-                return `<a href="javascript:void(0)" class="internal-link" data-page="${content}">${content}</a>`;
+                // BUT [/project/page] is a project link, so don't ignore if it contains another /
+                if (
+                    content.match(/^[*\\-]/) || content.startsWith("/ ")
+                    || (content.startsWith("/") && !content.substring(1).includes("/"))
+                ) return match;
+
+                let href = "javascript:void(0)";
+                const classes = ["internal-link"];
+
+                if (content.startsWith("/")) {
+                    classes.push("project-link");
+                    href = content;
+                    const parts = content.split("/").filter(Boolean);
+                    if (parts.length >= 2) {
+                        const project = parts[0];
+                        const page = parts.slice(1).join("/");
+                        return `<a href="${href}" class="${
+                            classes.join(" ")
+                        }" data-project="${project}" data-page="${page}">${content.replace(/^\//, "")}</a>`;
+                    }
+                } else if (projectTitle) {
+                    const encodedProject = encodeURIComponent(projectTitle);
+                    const encodedPage = encodeURIComponent(content);
+                    href = `/${encodedProject}/${encodedPage}`;
+                }
+
+                return `<a href="${href}" class="${classes.join(" ")}" data-page="${content}">${
+                    content.replace(/^\//, "")
+                }</a>`;
             },
         );
 
@@ -97,8 +130,10 @@ export class ScrapboxFormatter {
     /**
      * Converts Scrapbox format for editing (Control characters visible)
      * Formatting is applied, but control characters are displayed thinly.
+     * @param text Original text
+     * @param projectTitle Current project title for internal links (optional)
      */
-    static formatWithControlChars(text: string): string {
+    static formatWithControlChars(text: string, _projectTitle?: string): string { // eslint-disable-line @typescript-eslint/no-unused-vars
         if (!text) return "";
 
         let html = this.escapeHtml(text);
@@ -114,28 +149,43 @@ export class ScrapboxFormatter {
 
         // Bold [[bold]]
         html = html.replace(
-            /\[\[((?:(?!\[\[|\]\]).)+)\]\]/g,
-            `${wrapControl("[[")}<strong>$1</strong>${wrapControl("]]")}`,
+            /\[\[(.+?)\]\]/g,
+            `${wrapControl("[")}${wrapControl("[")}<strong>$1</strong>${wrapControl("]")}${wrapControl("]")}`,
         );
 
         // Bold [* bold]
         html = html.replace(
             /\[(\*+) (.+?)\]/g,
             (match, stars, content) => {
-                return `${wrapControl("[")}<strong>${stars} ${content}</strong>${wrapControl("]")}`;
+                let starsHtml = "";
+                for (const star of stars) {
+                    starsHtml += wrapControl(star);
+                }
+                return `${wrapControl("[")}${starsHtml} <strong>${content}</strong>${wrapControl("]")}`;
             },
         );
 
-        // Italic [/ italic]
+        // Italic [/ italic] or [/italic]
         html = html.replace(
-            /\[\/ (.+?)\]/g,
-            `${wrapControl("[/ ")}<em>$1</em>${wrapControl("]")}`,
+            /\[\/ +([^\]]+)\]/g,
+            (match, content) => {
+                return `${wrapControl("[")}${wrapControl("/")} <em>${content}</em>${wrapControl("]")}`;
+            },
+        );
+        html = html.replace(
+            /\[\/([^ /][^\]/]*?)\]/g,
+            (match, content) => {
+                return `${wrapControl("[")}${wrapControl("/")}<em>${content}</em>${wrapControl("]")}`;
+            },
         );
 
-        // Strikethrough [- strikethrough]
+        // Strikethrough [- strikethrough] or [-strikethrough]
         html = html.replace(
-            /\[- (.+?)\]/g,
-            `${wrapControl("[- ")}<s>$1</s>${wrapControl("]")}`,
+            /\[- ?(.+?)\]/g,
+            (match, content) => {
+                const space = match.includes("[- ") ? " " : "";
+                return `${wrapControl("[")}${wrapControl("-")}${space}<s>${content}</s>${wrapControl("]")}`;
+            },
         );
 
         // Link processing (Simplified)
@@ -156,9 +206,17 @@ export class ScrapboxFormatter {
                     return match;
                 }
                 // Ignore decorations
-                if (content.match(/^[*\\/\\-] /)) return match;
+                if (
+                    content.match(/^[*\\-]/) || content.startsWith("/ ")
+                    || (content.startsWith("/") && !content.substring(1).includes("/"))
+                ) return match;
 
-                return `${wrapControl("[")}<span class="internal-link-text">${content}</span>${wrapControl("]")}`;
+                const classes = ["internal-link-text"];
+                if (content.startsWith("/")) {
+                    classes.push("project-link");
+                }
+
+                return `${wrapControl("[")}<span class="${classes.join(" ")}">${content}</span>${wrapControl("]")}`;
             },
         );
 
@@ -168,5 +226,24 @@ export class ScrapboxFormatter {
         }
 
         return html;
+    }
+    static bold(text: string): string {
+        return `[[${text}]]`;
+    }
+
+    static italic(text: string): string {
+        return `[/ ${text}]`;
+    }
+
+    static strikethrough(text: string): string {
+        return `[- ${text}]`;
+    }
+
+    static underline(text: string): string {
+        return `[_ ${text}]`;
+    }
+
+    static code(text: string): string {
+        return `\`${text}\``;
     }
 }

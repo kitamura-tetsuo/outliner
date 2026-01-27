@@ -353,8 +353,9 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
 
         await expect(internalLink).toHaveAttribute("href", `/${projectNameEncoded}/${pageName}`);
 
-        const internalLinkParentClass = await internalLink.evaluate(node => node.parentElement?.className ?? "");
-        expect(internalLinkParentClass).toContain("link-preview-wrapper");
+        // const internalLinkParentClass = await internalLink.evaluate(node => node.parentElement?.className ?? "");
+        // link-preview-wrapper check removed as it is no longer used
+        // expect(internalLinkParentClass).toContain("link-preview-wrapper");
 
         const projectLink = page.locator('a.internal-link.project-link[href="/project-name/page-name"]');
         await expect(projectLink).toBeVisible({ timeout: 5000 });

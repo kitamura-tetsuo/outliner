@@ -95,7 +95,7 @@ export class Item {
             const ymap = doc.getMap("orderedTree");
             const nextTree = new YTree(ymap);
 
-            const nodeKey = nextTree.generateNodeKey();
+            const nodeKey = uuid();
             const value = new Y.Map<ItemValueType>();
 
             value.set("id", plain?.id ?? nodeKey);
@@ -448,7 +448,7 @@ export class Items implements Iterable<Item> {
 
     // Create new node. Adjust order when index is specified
     addNode(author: string, index?: number): Item {
-        const nodeKey = this.tree.generateNodeKey();
+        const nodeKey = uuid();
         const now = Date.now();
 
         const value = new Y.Map<ItemValueType>();

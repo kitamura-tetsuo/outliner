@@ -84,14 +84,14 @@
 
     // 認証成功時の処理
     function handleAuthSuccess() {
-        logger.info("handleAuthSuccess: 認証成功");
+        logger.info("handleAuthSuccess: Auth success");
         isAuthenticated = true;
         scheduleLoadIfNeeded({ authenticated: true });
     }
 
     // 認証ログアウト時の処理
     function handleAuthLogout() {
-        logger.info("ログアウトしました");
+        logger.info("Logged out");
         isAuthenticated = false;
     }
 
@@ -146,18 +146,27 @@
             const findPage = () => {
                 const items = project.items as any;
                 if (items) {
-                    const len = (typeof items.length === "function") ? items.length() : (items.length ?? 0);
+                    const len =
+                        typeof items.length === "function"
+                            ? items.length()
+                            : (items.length ?? 0);
                     const titles: string[] = [];
                     for (let i = 0; i < len; i++) {
                         const p = items.at ? items.at(i) : items[i];
-                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        const t =
+                            p?.text?.toString?.() ?? String(p?.text ?? "");
                         titles.push(t);
-                        if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
+                        if (
+                            String(t).toLowerCase() ===
+                            String(pageName).toLowerCase()
+                        ) {
                             return p;
                         }
                     }
                     if (len > 0) {
-                        console.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
+                        console.error(
+                            `loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`,
+                        );
                     }
                 }
                 return null;
@@ -228,7 +237,7 @@
                 // 作成に失敗した場合など
                 pageNotFound = true;
                 logger.error(
-                    `loadProjectAndPage: Failed to find or create page "${pageName}"`,
+                    `loadProjectAndPage: Failed to find page "${pageName}"`,
                 );
             }
         } catch (err) {
@@ -236,7 +245,7 @@
             error =
                 err instanceof Error
                     ? err.message
-                    : "プロジェクトとページの読み込み中にエラーが発生しました。";
+                    : "An error occurred while loading the project and page.";
         } finally {
             isLoading = false;
             __loadingInProgress = false;
@@ -503,9 +512,8 @@
 
 <svelte:head>
     <title>
-        {pageName ? pageName : "ページ"} - {projectName
-            ? projectName
-            : "プロジェクト"} | Outliner
+        {pageName ? pageName : "Page"} - {projectName ? projectName : "Project"}
+        | Outliner
     </title>
 </svelte:head>
 
@@ -517,7 +525,7 @@
                 onclick={goHome}
                 class="text-blue-600 hover:text-blue-800 hover:underline"
             >
-                ホーム
+                Home
             </button>
             {#if projectName}
                 <span class="mx-2">/</span>
@@ -541,7 +549,7 @@
                     <span class="text-gray-600">{projectName} /</span>
                     {pageName}
                 {:else}
-                    ページ
+                    Page
                 {/if}
             </h1>
             <div class="flex items-center space-x-2" data-testid="page-toolbar">
@@ -550,26 +558,26 @@
                     class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     data-testid="search-toggle-button"
                 >
-                    検索
+                    Search
                 </button>
                 <button
                     onclick={addItemFromTopToolbar}
                     class="px-4 py-2 bg-slate-200 text-slate-800 rounded hover:bg-slate-300"
                 >
-                    アイテム追加
+                    Add Item
                 </button>
                 <button
                     onclick={goToSchedule}
                     class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                 >
-                    予約管理
+                    Schedule
                 </button>
                 <button
                     onclick={goToGraphView}
                     data-testid="graph-view-button"
                     class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
                 >
-                    グラフビュー
+                    Graph View
                 </button>
             </div>
         </div>
@@ -608,7 +616,7 @@
     />
     {#if isLoading}
         <div class="flex justify-center py-8">
-            <div class="loader">読み込み中...</div>
+            <div class="loader">Loading...</div>
         </div>
     {:else if error}
         <div class="rounded-md bg-red-50 p-4">
@@ -618,7 +626,7 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-red-800">
-                        エラーが発生しました
+                        Error occurred
                     </h3>
                     <div class="mt-2 text-sm text-red-700">
                         <p>{error}</p>
@@ -628,7 +636,7 @@
                             onclick={loadProjectAndPage}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >
-                            再試行
+                            Retry
                         </button>
                     </div>
                 </div>
@@ -642,11 +650,12 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-yellow-800">
-                        ページが見つかりません
+                        Page not found
                     </h3>
                     <div class="mt-2 text-sm text-yellow-700">
                         <p>
-                            指定されたページ「{pageName}」はプロジェクト「{projectName}」内に存在しません。
+                            The specified page "{pageName}" does not exist in
+                            project "{projectName}".
                         </p>
                     </div>
                 </div>
@@ -660,10 +669,10 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-blue-800">
-                        ログインが必要です
+                        Login required
                     </h3>
                     <div class="mt-2 text-sm text-blue-700">
-                        <p>このページを表示するには、ログインしてください。</p>
+                        <p>Please login to view this page.</p>
                     </div>
                 </div>
             </div>

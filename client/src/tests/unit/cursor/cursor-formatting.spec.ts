@@ -1,40 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Cursor } from "../../../lib/Cursor";
 import type { Item } from "../../../schema/app-schema";
-import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
-import type { EditorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
-import { store as generalStore } from "../../../stores/store.svelte";
-import type { GeneralStore } from "../../../stores/store.svelte";
+// Imports removed to avoid no-restricted-imports linter error
 import { ScrapboxFormatter } from "../../../utils/ScrapboxFormatter";
-
-// Mock the stores
-vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
-    const mockStore = {
-        updateCursor: vi.fn(),
-        setCursor: vi.fn(),
-        setActiveItem: vi.fn(),
-        getTextareaRef: vi.fn(),
-        clearCursorForItem: vi.fn(),
-        setSelection: vi.fn(),
-        clearSelectionForUser: vi.fn(),
-        startCursorBlink: vi.fn(),
-        triggerOnEdit: vi.fn(),
-        cursorInstances: new Map(),
-    };
-    return {
-        editorOverlayStore: mockStore,
-        store: mockStore,
-    };
-});
-
-vi.mock("../../../stores/store.svelte", () => {
-    return {
-        store: {
-            currentPage: null,
-            project: null,
-        },
-    };
-});
 
 // Mock the ScrapboxFormatter
 vi.mock("../../../utils/ScrapboxFormatter", () => {
@@ -51,10 +18,55 @@ vi.mock("../../../utils/ScrapboxFormatter", () => {
 
 describe("Cursor Formatting", () => {
     let mockItem: Item;
+    let Cursor: any;
+    let editorOverlayStore: any;
+    let generalStore: any;
 
-    beforeEach(() => {
-        // Reset mocks
-        vi.clearAllMocks();
+    beforeEach(async () => {
+        // Reset modules to ensure clean mocks
+        vi.resetModules();
+
+        // Setup mock implementations
+        const mockOverlayStore = {
+            updateCursor: vi.fn(),
+            setCursor: vi.fn(),
+            setActiveItem: vi.fn(),
+            getTextareaRef: vi.fn(),
+            clearCursorForItem: vi.fn(),
+            setSelection: vi.fn(),
+            clearSelectionForUser: vi.fn(),
+            startCursorBlink: vi.fn(),
+            triggerOnEdit: vi.fn(),
+            cursorInstances: new Map(),
+            selections: {},
+        };
+
+        const mockGeneralStore = {
+            currentPage: null,
+            project: null,
+        };
+
+        // Use doMock to mock modules for the upcoming import
+        // Mock both .svelte and .svelte.ts versions to catch all import variations
+        vi.doMock("../../../stores/EditorOverlayStore.svelte.ts", () => ({
+            editorOverlayStore: mockOverlayStore,
+            store: mockOverlayStore,
+        }));
+        vi.doMock("../../../stores/EditorOverlayStore.svelte", () => ({
+            editorOverlayStore: mockOverlayStore,
+            store: mockOverlayStore,
+        }));
+
+        vi.doMock("../../../stores/store.svelte.ts", () => ({ store: mockGeneralStore }));
+        vi.doMock("../../../stores/store.svelte", () => ({ store: mockGeneralStore }));
+
+        // Dynamically import Cursor after setting up mocks
+        const cursorModule = await import("../../../lib/Cursor");
+        Cursor = cursorModule.Cursor;
+
+        // Assign to local variables for use in tests
+        editorOverlayStore = mockOverlayStore as any;
+        generalStore = mockGeneralStore as any;
 
         // Create mock item
         mockItem = {
@@ -70,8 +82,8 @@ describe("Cursor Formatting", () => {
             delete: vi.fn(),
         } as unknown as Item;
 
-        // Mock the general store
-        (generalStore as GeneralStore).currentPage = {
+        // Setup general store state
+        generalStore.currentPage = {
             id: "page-1",
             text: "page",
             parent: null,
@@ -84,8 +96,7 @@ describe("Cursor Formatting", () => {
             delete: vi.fn(),
         } as unknown as Item;
 
-        // Setup editor overlay store mocks
-        // setCursor is already configured in the mock to return "new-cursor-id"
+        console.log("Test setup complete. General store currentPage:", generalStore.currentPage);
     });
 
     afterEach(() => {
@@ -97,7 +108,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as EditorOverlayStore).selections = {
+            editorOverlayStore.selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -128,7 +139,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as EditorOverlayStore).selections = {
+            editorOverlayStore.selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -159,7 +170,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as EditorOverlayStore).selections = {
+            editorOverlayStore.selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -190,7 +201,7 @@ describe("Cursor Formatting", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as EditorOverlayStore).selections = {
+            editorOverlayStore.selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",

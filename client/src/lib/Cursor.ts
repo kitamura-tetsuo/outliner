@@ -1,6 +1,16 @@
 import type { Item } from "../schema/app-schema";
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
-import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
+import { editorOverlayStore as defaultStore } from "../stores/EditorOverlayStore.svelte";
+
+let store = defaultStore;
+
+export function setEditorOverlayStore(s: typeof defaultStore) {
+    store = s;
+}
+
+export function resetEditorOverlayStore() {
+    store = defaultStore;
+}
 import { store as generalStore } from "../stores/store.svelte";
 import {
     findNextItem,
@@ -41,6 +51,10 @@ export class Cursor implements CursorEditingContext {
 
     private hasSelection() {
         return storeHasSelection(this.userId);
+    }
+
+    getStore() {
+        return store;
     }
 
     private getSelectionForCurrentItem() {
@@ -828,7 +842,9 @@ export class Cursor implements CursorEditingContext {
 
     // 選択範囲を右に拡張
     extendSelectionRight() {
+        console.log("DEBUG: extendSelectionRight called");
         const target = this.findTarget();
+        console.log("DEBUG: findTarget result:", !!target);
         if (!target) return;
 
         // 現在の選択範囲を取得

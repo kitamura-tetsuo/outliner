@@ -9,11 +9,12 @@ import {
     setDoc,
 } from "firebase/firestore";
 
+import { SvelteDate } from "svelte/reactivity";
 import { userManager } from "../auth/UserManager";
 import { getFirebaseApp } from "../lib/firebase-app";
 import { getFirebaseFunctionUrl } from "../lib/firebaseFunctionsUrl";
 import { getLogger } from "../lib/logger";
-const logger = getLogger();
+const logger = getLogger("firestoreStore");
 
 // User container type definition
 export interface UserProject {
@@ -109,7 +110,7 @@ class GeneralStore {
                             (firestoreStore as any).setUserProject(next); // Ensure ucVersion++ is reflected via API
                         } catch (e) {
                             const err = e instanceof Error ? e : new Error(String(e));
-                            logger.warn({ err }, "Failed to trigger userProject update after array mutation");
+                            logger.warn("Failed to trigger userProject update after array mutation", err);
                         }
                         return res;
                     };
@@ -172,8 +173,12 @@ class GeneralStore {
                             userId: data.userId || userId,
                             defaultProjectId: data.defaultProjectId,
                             accessibleProjectIds: data.accessibleProjectIds || [],
-                            createdAt: data.createdAt?.toDate() || new Date(),
-                            updatedAt: data.updatedAt?.toDate() || new Date(),
+                            createdAt: data.createdAt?.toDate()
+                                ? new SvelteDate(data.createdAt.toDate())
+                                : new SvelteDate(),
+                            updatedAt: data.updatedAt?.toDate()
+                                ? new SvelteDate(data.updatedAt.toDate())
+                                : new SvelteDate(),
                         };
 
                         // Stabilization for E2E tests: If userProject is already seeded by test helper
@@ -207,7 +212,7 @@ class GeneralStore {
                         return;
                     }
                     const err = error instanceof Error ? error : new Error(String(error));
-                    logger.error({ err }, "Firestore listening error");
+                    logger.error("Firestore listening error", err);
                 },
             );
 
@@ -220,7 +225,7 @@ class GeneralStore {
             };
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
-            logger.error({ err }, "Firestore observation setup error");
+            logger.error("Error starting Firestore sync", err);
             return () => {}; // Return cleanup function
         }
     }
@@ -306,9 +311,9 @@ try {
             // Connect to emulator
             connectFirestoreEmulator(db, emulatorHost, emulatorPort);
             logger.info("Successfully connected to Firestore emulator");
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error(String(err));
-            logger.error({ err: error }, "Failed to connect to Firestore emulator");
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            logger.error("Failed to connect to Firestore emulator", err);
 
             // Notify that we continue in offline mode if connection fails
             logger.warn("Continuing in offline mode. Data operations will be cached until connection is restored.");
@@ -316,7 +321,7 @@ try {
     }
 } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    logger.error({ err }, "Critical error initializing Firestore");
+    logger.error("Critical error initializing Firestore", err);
     // Ensure app continues to run even if database connection fails
     // Do nothing if app is undefined (handled properly in subsequent processing)
     if (!db && app) {
@@ -333,7 +338,7 @@ export async function saveProjectId(projectId: string): Promise<boolean> {
         }
 
         // Get Firebase ID token
-        const idToken = await userManager.auth.currentUser?.getIdToken();
+        const idToken = await userManager.getIdToken();
         if (!idToken) {
             throw new Error("Cannot get authentication token");
         }
@@ -364,7 +369,78 @@ export async function saveProjectId(projectId: string): Promise<boolean> {
         return result.success === true;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Error saving container ID");
+        logger.error("Error saving container ID", err);
+        return false;
+    }
+}
+
+// Delete project using server API
+export async function deleteProject(projectId: string): Promise<boolean> {
+    try {
+        const currentUser = userManager.getCurrentUser();
+        if (!currentUser) {
+            throw new Error("User is not logged in");
+        }
+
+        // In test environment, update directly in userProject store
+        if (
+            typeof window !== "undefined"
+            && (window.mockFluidClient === false
+                || import.meta.env.VITE_IS_TEST === "true"
+                || (window as any).__E2E__ === true)
+        ) {
+            logger.info(`Test environment detected, deleting project ID ${projectId} from mock store`);
+
+            if (firestoreStore.userProject) {
+                const updatedIds = (firestoreStore.userProject.accessibleProjectIds || [])
+                    .filter(id => id !== projectId);
+
+                let defaultProjectId = firestoreStore.userProject.defaultProjectId;
+                if (defaultProjectId === projectId) {
+                    defaultProjectId = updatedIds.length > 0 ? updatedIds[0] : null;
+                }
+
+                firestoreStore.setUserProject({
+                    ...firestoreStore.userProject,
+                    accessibleProjectIds: updatedIds,
+                    defaultProjectId: defaultProjectId,
+                    updatedAt: new SvelteDate(),
+                });
+            }
+            return true;
+        }
+
+        // Get Firebase ID token
+        const idToken = await userManager.getIdToken();
+        if (!idToken) {
+            throw new Error("Cannot get authentication token");
+        }
+
+        logger.info(`Deleting project ID via /api/deleteProject`);
+
+        const url = getFirebaseFunctionUrl("deleteProject");
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                idToken,
+                projectId,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error: ${response.status} ${errorText}`);
+        }
+
+        const result = await response.json();
+        return result.success === true;
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        logger.error("Error deleting project", err);
         return false;
     }
 }
@@ -409,7 +485,7 @@ export async function getDefaultProjectId(): Promise<string | undefined> {
             }
         } catch (firestoreError) {
             const err = firestoreError instanceof Error ? firestoreError : new Error(String(firestoreError));
-            logger.error({ err }, "Firestore access error");
+            logger.error("Firestore access error", err);
             // Firestore error is not fatal, so continue
         }
 
@@ -417,7 +493,7 @@ export async function getDefaultProjectId(): Promise<string | undefined> {
         return undefined;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Error getting default container ID");
+        logger.error("Error getting default container ID", err);
         return undefined;
     }
 }
@@ -452,21 +528,21 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
                         ? [...new Set([...firestoreStore.userProject.accessibleProjectIds, projectId])]
                         : [projectId],
                     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
-                    updatedAt: new Date(),
+                    updatedAt: new SvelteDate(),
                 }
                 : {
                     userId: "test-user-id",
                     defaultProjectId: projectId,
                     accessibleProjectIds: [projectId],
                     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
-                    createdAt: new Date(),
+                    createdAt: new SvelteDate(),
                     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
-                    updatedAt: new Date(),
+                    updatedAt: new SvelteDate(),
                 };
 
             // Update store
             firestoreStore.setUserProject(updatedData);
-            logger.info({ updatedData }, "Project ID saved to mock store");
+            logger.info("Project ID saved to mock store", updatedData);
 
             // Save current container ID to local storage as well
             window.localStorage.setItem("currentProjectId", projectId);
@@ -483,7 +559,7 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
         }
 
         // Get Firebase ID token
-        const idToken = await userManager.auth.currentUser?.getIdToken();
+        const idToken = await userManager.getIdToken();
         if (!idToken) {
             logger.warn("Cannot save project ID to server: Firebase user not available");
             return false;
@@ -515,7 +591,7 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
         return result.success === true;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Error saving project ID to server");
+        logger.error("Error saving project ID to server", err);
         return false;
     }
 }
