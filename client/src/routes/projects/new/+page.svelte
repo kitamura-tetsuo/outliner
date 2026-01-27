@@ -10,7 +10,6 @@ import {
 import AuthComponent from "../../../components/AuthComponent.svelte";
 import * as yjsHighService from "../../../lib/yjsService.svelte";
 import { getLogger } from "../../../lib/logger";
-import { saveContainerId } from "../../../stores/firestoreStore.svelte";
 import { yjsStore } from "../../../stores/yjsStore.svelte";
 import { v4 as uuidv4 } from "uuid";
 const logger = getLogger();

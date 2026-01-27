@@ -115,3 +115,4 @@ server/ydb
 .aider.tags.cache.v4/
 client/.eslintcache
 server/db
+.jdk/

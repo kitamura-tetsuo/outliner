@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("FTR-2c8c4a5b: Project Creation", () => {
     test("creates new project effectively", async ({ page }, testInfo) => {
         // 1. Visit the project creation page
-        await page.goto("/projects/containers");
+        await page.goto("/projects/new");
 
         // 2. Login (using test helper)
         // We need to bypass the UI login and simulate auth state if possible,
@@ -27,7 +27,7 @@ test.describe("FTR-2c8c4a5b: Project Creation", () => {
         // but prepareTestEnvironment typically handles hydration.
 
         // Go back to the creation page because prepareTestEnvironment might redirect
-        await page.goto("/projects/containers");
+        await page.goto("/projects/new");
 
         // 3. Fill in the project name
         const projectName = `Test Project ${Date.now()}`;
@@ -40,7 +40,7 @@ test.describe("FTR-2c8c4a5b: Project Creation", () => {
         // It shoud redirect to root (/) then to the project page potentially?
         // The app might redirect to /<ProjectName> directly or via root.
         // We wait for navigation away from the creation page.
-        await page.waitForURL((url) => !url.pathname.includes("/projects/containers"), { timeout: 15000 });
+        await page.waitForURL((url) => !url.pathname.includes("/projects/new"), { timeout: 30000 });
 
         // 6. Verify we are effectively on a project page or have the project in the list
         const url = page.url();

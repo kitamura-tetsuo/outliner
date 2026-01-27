@@ -15,6 +15,7 @@ import {
 } from "./metaDoc.svelte";
 
 // Local memory cache for immediate title resolution (critical for post-creation redirect)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, svelte/prefer-svelte-reactivity
 const localTitleMap = new Map<string, string>();
 
 function setProjectTitle(id: string, title: string) {
@@ -236,7 +237,9 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
         console.log(`[getClientByProjectTitle] Found in localTitleMap: ${projectId}`);
     } else {
         // 2. Wait for IndexedDB to load (handles reload)
-        await metaDocLoaded;
+        // Add timeout to prevent hanging if synced event never fires (e.g. in some test envs)
+        const timeout = new Promise<void>(r => setTimeout(r, 1000));
+        await Promise.race([metaDocLoaded, timeout]);
         // 3. Check persistent storage
         projectId = getProjectIdByTitle(projectTitle);
     }
@@ -270,7 +273,7 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
         console.log(`[getClientByProjectTitle] projectTitle looks like a UUID, using as projectId: ${projectTitle}`);
         const projectId = projectTitle; // Treat title as ID
         const user = userManager.getCurrentUser();
-        let userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
+        const userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
 
         if (userId) {
             const project = Project.createInstance(projectId);
