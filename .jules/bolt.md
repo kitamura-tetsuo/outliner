@@ -27,3 +27,8 @@
 
 **Learning:** `OutlinerViewModel.updateFromModel` was converting every item's `Y.Text` to string (`item.text.toString()`) on every tree update (triggered by `observeDeep`), which is O(N) for the whole tree. `Y.Text.toString()` involves traversing the Yjs structure and is expensive when done repeatedly for thousands of items.
 **Action:** Use `item.lastChanged` timestamp to skip property updates if the item hasn't changed since the last view model update.
+
+## 2026-02-15 - [Graph Construction Optimization]
+
+**Learning:** `buildGraph` in `graphUtils.ts` was performing O(N^2) `RegExp` construction for link detection. This created millions of temporary RegExp objects for large graphs.
+**Action:** Pre-calculate lowercase names for all nodes and use simple string `includes()` checks instead of RegExp. Only use RegExp when complex pattern matching is strictly necessary; for simple substring containment, `includes` is orders of magnitude faster.

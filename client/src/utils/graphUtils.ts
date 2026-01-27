@@ -3,14 +3,12 @@ export interface GraphData {
     links: Array<{ source: string; target: string; }>;
 }
 
-function escapeRegExp(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function containsLink(text: string, target: string, project: string): boolean {
-    const internal = new RegExp(`\\[${escapeRegExp(target)}\\]`, "i");
-    const projectPattern = new RegExp(`\\[\\/${escapeRegExp(project)}\\/${escapeRegExp(target)}\\]`, "i");
-    return internal.test(text) || projectPattern.test(text);
+    // text, target, and project are already lowercased.
+    // We check for simple string inclusion of the link formats:
+    // [target] or [/project/target]
+    // This avoids expensive RegExp construction and execution in the O(N^2) loop.
+    return text.includes(`[${target}]`) || text.includes(`[/${project}/${target}]`);
 }
 
 function toArray(p: any): any[] {
@@ -42,8 +40,20 @@ function getText(v: any): string {
 
 export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
     const pages = toArray(pagesMaybe);
+    const normalizedProjectTitle = (projectTitle || "").toLowerCase();
 
-    const nodes = pages.map((p: any) => ({ id: p.id, name: getText(p) }));
+    // Pre-calculate node names and their lowercase versions to avoid
+    // repeated toLowerCase() calls in the nested loop.
+    const pageNodes = pages.map((p: any) => {
+        const name = getText(p);
+        return {
+            id: p.id,
+            name: name,
+            lowerName: name.toLowerCase(),
+        };
+    });
+
+    const nodes = pageNodes.map(p => ({ id: p.id, name: p.name }));
     const links: { source: string; target: string; }[] = [];
 
     for (const src of pages) {
@@ -52,10 +62,13 @@ export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
         const childTexts = childArr.map((i: any) => getText(i).toLowerCase());
         const texts = [srcText, ...childTexts];
 
-        for (const dst of pages) {
+        for (const dst of pageNodes) {
             if (src.id === dst.id) continue;
-            const target = getText(dst).toLowerCase();
-            if (texts.some(t => containsLink(t, target, (projectTitle || "").toLowerCase()))) {
+            const target = dst.lowerName;
+
+            // Check if any text block in src contains a link to dst
+            // Using the optimized string inclusion check
+            if (texts.some(t => containsLink(t, target, normalizedProjectTitle))) {
                 links.push({ source: src.id, target: dst.id });
             }
         }
