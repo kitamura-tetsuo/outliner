@@ -2330,10 +2330,10 @@ exports.deleteAllProductionData = onRequest(
 
       // Use constant-time comparison to prevent timing attacks
       const isValidToken = (() => {
-        if (!adminToken || !adminSecret) return false;
+        if (!adminToken || !adminSecret) { return false; }
         const a = Buffer.from(adminToken);
         const b = Buffer.from(adminSecret);
-        if (a.length !== b.length) return false;
+        if (a.length !== b.length) { return false; }
         return crypto.timingSafeEqual(a, b);
       })();
 
