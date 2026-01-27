@@ -9,7 +9,7 @@ pipx ensurepath
 pipx install git+https://github.com/kitamura-tetsuo/auto-coder.git
 auto-coder --help
 
-pipx install git+https://github.com/kitamura-tetsuo/github-sub-issue.git --force
+pipx install git+https://github.com/kitamura-tetsuo/auto-coder.git#subdirectory=utils/github-sub-issue --force
 
 cd ~ && rm -rf gemini-cli && git clone https://github.com/kitamura-tetsuo/gemini-cli ; cd gemini-cli && git pull && npm install && npm run bundle && npm link && gemini -h
 

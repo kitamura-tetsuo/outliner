@@ -9,6 +9,13 @@ export const metaDoc = new Y.Doc();
 // Use a separate database name from container Y.Docs to avoid conflicts
 const persistence = new IndexeddbPersistence("outliner-meta", metaDoc);
 
+// Promise to track when metadata is loaded from IndexedDB
+export const metaDocLoaded = new Promise<void>((resolve) => {
+    persistence.once("synced", () => {
+        resolve();
+    });
+});
+
 // Y.Map structure for storing container metadata
 export const containersMap = metaDoc.getMap("containers");
 

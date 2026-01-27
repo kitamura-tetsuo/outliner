@@ -1,0 +1,21 @@
+FROM node:18-slim
+
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+RUN npm run build
+
+# Install SSH server, sudo, and debug tools
+RUN apt-get update && apt-get install -y openssh-server sudo curl vim net-tools wget && rm -rf /var/lib/apt/lists/*
+
+# Add node user to sudoers
+RUN echo "node ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+EXPOSE 1234 22
+
+CMD ["/usr/src/app/start-debug.sh"]

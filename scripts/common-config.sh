@@ -6,71 +6,50 @@
 : "${TEST_API_PORT:=7091}"
 : "${VITE_PORT:=7090}"
 : "${TEST_YJS_PORT:=7093}"
-: "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
 
-# Normalize Firebase emulator ports from firebase.emulator.json when available
-# This prevents drift and overrides any external mismatched env like 9100
+# Normalize from firebase.emulator.json when available
 if [ -n "${ROOT_DIR:-}" ] && [ -f "${ROOT_DIR}/firebase.emulator.json" ]; then
   # Use node to safely read JSON without jq dependency
-  AUTH_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.auth.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
-  FS_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.firestore.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
-  FN_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.functions.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
-  HS_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.hosting.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
-  ST_FROM_CFG=$(node -e 'try{const c=require(process.argv[1]);console.log(c.emulators.storage.port)}catch{process.exit(1)}' "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || true)
+  _JS_READ='try{const c=require(process.argv[1]);console.log(JSON.stringify({p:c.projectId,a:c.emulators.auth.port,f:c.emulators.firestore.port,fn:c.emulators.functions.port,h:c.emulators.hosting.port,s:c.emulators.storage.port}))}catch{process.exit(1)}'
+  _CFG_JSON=$(node -e "$_JS_READ" "${ROOT_DIR}/firebase.emulator.json" 2>/dev/null || echo "")
+  
+  if [ -n "$_CFG_JSON" ]; then
+    PROJECT_FROM_CFG=$(echo "$_CFG_JSON" | node -e 'const d=JSON.parse(require("fs").readFileSync(0)); console.log(d.p)')
+    AUTH_FROM_CFG=$(echo "$_CFG_JSON" | node -e 'const d=JSON.parse(require("fs").readFileSync(0)); console.log(d.a)')
+    FS_FROM_CFG=$(echo "$_CFG_JSON" | node -e 'const d=JSON.parse(require("fs").readFileSync(0)); console.log(d.f)')
+    FN_FROM_CFG=$(echo "$_CFG_JSON" | node -e 'const d=JSON.parse(require("fs").readFileSync(0)); console.log(d.fn)')
+    HS_FROM_CFG=$(echo "$_CFG_JSON" | node -e 'const d=JSON.parse(require("fs").readFileSync(0)); console.log(d.h)')
+    ST_FROM_CFG=$(echo "$_CFG_JSON" | node -e 'const d=JSON.parse(require("fs").readFileSync(0)); console.log(d.s)')
+  fi
 fi
 
-# Check if we're running in a test context before setting defaults
-# If VITE_IS_TEST is already set, we're in test environment
-if [ "${VITE_IS_TEST:-}" = "true" ] || [ "${NODE_ENV:-}" = "test" ]; then
-    # For test environment, standardization on outliner-d57b0 to match emulator
-    : "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
-else
-    # For non-test environments, use the default production project ID
-    : "${FIREBASE_PROJECT_ID:=outliner-d57b0}"
-fi
+# Force Project ID to match emulator config if present, otherwise fallback
+export FIREBASE_PROJECT_ID="${PROJECT_FROM_CFG:-outliner-d57b0}"
 
 # Firebase emulator ports (defaults fall back to config when present)
-: "${FIREBASE_AUTH_PORT:=${AUTH_FROM_CFG:-59099}}"
-: "${FIREBASE_FIRESTORE_PORT:=${FS_FROM_CFG:-58080}}"
-: "${FIREBASE_FUNCTIONS_PORT:=${FN_FROM_CFG:-57070}}"
-: "${FIREBASE_HOSTING_PORT:=${HS_FROM_CFG:-57000}}"
-: "${FIREBASE_STORAGE_PORT:=${ST_FROM_CFG:-59200}}"
+export FIREBASE_AUTH_PORT="${AUTH_FROM_CFG:-59099}"
+export FIREBASE_FIRESTORE_PORT="${FS_FROM_CFG:-58080}"
+export FIREBASE_FUNCTIONS_PORT="${FN_FROM_CFG:-57070}"
+export FIREBASE_HOSTING_PORT="${HS_FROM_CFG:-57000}"
+export FIREBASE_STORAGE_PORT="${ST_FROM_CFG:-59200}"
 
 # Environment settings
 export NODE_ENV=test
 export TEST_ENV=localhost
-export FIREBASE_PROJECT_ID
-export VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
-export VITE_YJS_PORT=${TEST_YJS_PORT}
+export VITE_FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID}"
+export VITE_YJS_PORT="${TEST_YJS_PORT}"
 export TEST_API_PORT
 
 # Firebase emulator settings for test environment
 export USE_FIREBASE_EMULATOR=true
 
-# If external env pre-sets a different port (e.g., 9100/9099), normalize to repo config
-_AUTH_HOST_CURRENT=${FIREBASE_AUTH_EMULATOR_HOST:-}
-_AUTH_HOST_EXPECTED="127.0.0.1:${FIREBASE_AUTH_PORT}"
-if [ -n "${_AUTH_HOST_CURRENT}" ] && [ "${_AUTH_HOST_CURRENT}" != "${_AUTH_HOST_EXPECTED}" ]; then
-  echo "Warning: Overriding FIREBASE_AUTH_EMULATOR_HOST (${_AUTH_HOST_CURRENT}) -> ${_AUTH_HOST_EXPECTED}"
-fi
-export FIREBASE_AUTH_EMULATOR_HOST=${_AUTH_HOST_EXPECTED}
-export AUTH_EMULATOR_HOST=${_AUTH_HOST_EXPECTED}  # legacy var used by some tools
+# Normalize helper hosts to match ports
+export FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:${FIREBASE_AUTH_PORT}"
+export AUTH_EMULATOR_HOST="${FIREBASE_AUTH_EMULATOR_HOST}"
+export FIRESTORE_EMULATOR_HOST="127.0.0.1:${FIREBASE_FIRESTORE_PORT}"
+export FIREBASE_EMULATOR_HOST="127.0.0.1:${FIREBASE_FUNCTIONS_PORT}"
 
-_FS_HOST_CURRENT=${FIRESTORE_EMULATOR_HOST:-}
-_FS_HOST_EXPECTED="127.0.0.1:${FIREBASE_FIRESTORE_PORT}"
-if [ -n "${_FS_HOST_CURRENT}" ] && [ "${_FS_HOST_CURRENT}" != "${_FS_HOST_EXPECTED}" ]; then
-  echo "Warning: Overriding FIRESTORE_EMULATOR_HOST (${_FS_HOST_CURRENT}) -> ${_FS_HOST_EXPECTED}"
-fi
-export FIRESTORE_EMULATOR_HOST=${_FS_HOST_EXPECTED}
-
-_FN_HOST_CURRENT=${FIREBASE_EMULATOR_HOST:-}
-_FN_HOST_EXPECTED="127.0.0.1:${FIREBASE_FUNCTIONS_PORT}"
-if [ -n "${_FN_HOST_CURRENT}" ] && [ "${_FN_HOST_CURRENT}" != "${_FN_HOST_EXPECTED}" ]; then
-  echo "Warning: Overriding FIREBASE_EMULATOR_HOST (${_FN_HOST_CURRENT}) -> ${_FN_HOST_EXPECTED}"
-fi
-export FIREBASE_EMULATOR_HOST=${_FN_HOST_EXPECTED}
-
-# Skip Paraglide compile in tests
+# Skip Paraglide compile in tests if needed
 : "${SKIP_PARAGLIDE_COMPILE:=}"
 
 # Log directories
@@ -93,3 +72,9 @@ REQUIRED_PORTS=(
   ${FIREBASE_HOSTING_PORT}
   ${FIREBASE_STORAGE_PORT}
 )
+
+# Java Environment for Firebase (Java 21+)
+if [ -d "${ROOT_DIR}/.jdk" ]; then
+    export JAVA_HOME="${ROOT_DIR}/.jdk"
+    export PATH="${JAVA_HOME}/bin:$PATH"
+fi

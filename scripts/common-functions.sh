@@ -172,20 +172,70 @@ install_global_packages() {
 
 }
 
+# Ensure JDK 21 is available locally
+ensure_jdk_21() {
+  local jdk_dir="${ROOT_DIR}/.jdk"
+  local version_target=21
+
+  if [ -x "${jdk_dir}/bin/java" ]; then
+    local current_v=$("${jdk_dir}/bin/java" -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
+    if [ "$current_v" -ge "$version_target" ] 2>/dev/null; then
+      echo "Local JDK ${current_v} found at ${jdk_dir}"
+      export JAVA_HOME="${jdk_dir}"
+      export PATH="${JAVA_HOME}/bin:$PATH"
+      return 0
+    fi
+  fi
+
+  echo "Installing OpenJDK 21 to ${jdk_dir}..."
+  mkdir -p "${jdk_dir}"
+  
+  # Determine architecture
+  local arch=$(uname -m)
+  local download_url=""
+  if [ "$arch" = "x86_64" ]; then
+    download_url="https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.6%2B7/OpenJDK21U-jre_x64_linux_hotspot_21.0.6_7.tar.gz"
+  elif [ "$arch" = "aarch64" ]; then
+    download_url="https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.6%2B7/OpenJDK21U-jre_aarch64_linux_hotspot_21.0.6_7.tar.gz"
+  else
+    echo "Unsupported architecture: $arch"
+    return 1
+  fi
+
+  local tmp_tar="/tmp/openjdk21.tar.gz"
+  curl -L -o "$tmp_tar" "$download_url"
+  
+  # Extract and move contents to .jdk without the nested top-level folder
+  local tmp_extract="/tmp/jdk_extract"
+  mkdir -p "$tmp_extract"
+  tar -xzf "$tmp_tar" -C "$tmp_extract"
+  
+  # Move the contents of the (only) child directory to .jdk
+  local subdir=$(ls "$tmp_extract")
+  rm -rf "${jdk_dir:?}"/*
+  cp -R "${tmp_extract}/${subdir}"/* "${jdk_dir}/"
+  
+  # Cleanup
+  rm -rf "$tmp_extract" "$tmp_tar"
+  
+  export JAVA_HOME="${jdk_dir}"
+  export PATH="${JAVA_HOME}/bin:$PATH"
+  
+  echo "OpenJDK 21 installed successfully to ${jdk_dir}"
+}
+
 # Install OS utilities if needed
 install_os_utilities() {
   # Check if Java is installed and compatible with Firebase
   if ! command -v java >/dev/null 2>&1; then
-    echo "Java not found. Installing OpenJDK 17 for Firebase compatibility..."
-    retry_apt_get update
-    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends openjdk-17-jre-headless
+    echo "Java not found. Ensuring JDK 21..."
+    ensure_jdk_21
   else
-    # Check Java version (Firebase requires Java 11+)
+    # Check Java version (Firebase requires Java 21+)
     java_version=$(java -version 2>&1 | head -n1 | cut -d'"' -f2 | cut -d'.' -f1)
-    if [ "$java_version" -lt 11 ] 2>/dev/null; then
-      echo "Java version $java_version is too old for Firebase. Installing OpenJDK 17..."
-      retry_apt_get update
-      DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends openjdk-17-jre-headless
+    if [ "$java_version" -lt 21 ] 2>/dev/null; then
+      echo "Java version $java_version is too old for Firebase (needs 21+). Ensuring JDK 21..."
+      ensure_jdk_21
     else
       echo "Java version $java_version is compatible with Firebase"
     fi

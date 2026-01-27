@@ -7,7 +7,21 @@ import { saveProjectIdToServer } from "../stores/firestoreStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
-import { getContainerTitleFromMetaDoc, getProjectIdByTitle, setContainerTitleInMetaDoc } from "./metaDoc.svelte";
+import {
+    getContainerTitleFromMetaDoc,
+    getProjectIdByTitle,
+    metaDocLoaded,
+    setContainerTitleInMetaDoc,
+} from "./metaDoc.svelte";
+
+// Local memory cache for immediate title resolution (critical for post-creation redirect)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, svelte/prefer-svelte-reactivity
+const localTitleMap = new Map<string, string>();
+
+function setProjectTitle(id: string, title: string) {
+    localTitleMap.set(title, id);
+    setContainerTitleInMetaDoc(id, title);
+}
 
 interface ClientKey {
     type: "container" | "user";
@@ -138,15 +152,46 @@ export async function createNewProject(projectName: string, existingProjectId?: 
 
     // Save project ID to server-side persistence (Firestore)
     // This is critical for the server to grant access (checkContainerAccess)
-    try {
-        if (!isTest) { // Skip in test mode if using mocks, or ensure test mock handles it
-            console.log(`[yjsService] Saving project ID ${projectId} to server...`);
-            await saveProjectIdToServer(projectId);
-            console.log(`[yjsService] Project ID ${projectId} saved to server.`);
+    // We MUST ensure this succeeds before attempting WebSocket connection
+    let registrationSuccess = false;
+    if (!isTest) {
+        const maxRetries = 3;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            console.log(
+                `[yjsService] Saving project ID to server (attempt ${attempt}/${maxRetries}):`,
+                projectId,
+                "User:",
+                userId,
+            );
+            try {
+                // Call saveProject API
+                const saved = await saveProjectIdToServer(projectId);
+                if (saved) {
+                    console.log(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
+                    registrationSuccess = true;
+                    // Wait for Firestore propagation (important for subsequent reads)
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    break;
+                } else {
+                    console.warn(`[yjsService] saveProjectIdToServer returned false on attempt ${attempt}.`);
+                }
+            } catch (saveError) {
+                console.error(`[yjsService] Exception saving project ID (attempt ${attempt}):`, saveError);
+            }
+
+            // Wait before retry
+            if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
         }
-    } catch (e) {
-        console.error(`[yjsService] Failed to save project ID ${projectId} to server:`, e);
-        // We continue anyway, but connection might fail with Access Denied
+
+        if (!registrationSuccess) {
+            console.error(
+                `[yjsService] Failed to register project after ${maxRetries} attempts. WebSocket connection may fail.`,
+            );
+            // Throw error to notify user instead of silently failing
+            throw new Error("プロジェクトの登録に失敗しました。ネットワーク接続を確認してください。");
+        }
     }
 
     const project = Project.createInstance(projectName);
@@ -157,7 +202,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
 
     // Save title to metadata Y.Doc for dropdown display
     // Save project title to metadata Y.Doc for persistence across page reloads
-    setContainerTitleInMetaDoc(projectId, projectName);
+    setProjectTitle(projectId, projectName);
 
     // update store
     yjsStore.yjsClient = client;
@@ -184,8 +229,22 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     }
 
     // If not in registry, try to find the projectId by title in metaDoc
-    const projectId = getProjectIdByTitle(projectTitle);
-    console.log(`[getClientByProjectTitle] projectId from metaDoc=${projectId}`);
+    console.log(`[getClientByProjectTitle] Called for title="${projectTitle}"`);
+
+    // 1. Check local memory cache first (fastest, handles redirect immediately after creation)
+    let projectId = localTitleMap.get(projectTitle);
+    if (projectId) {
+        console.log(`[getClientByProjectTitle] Found in localTitleMap: ${projectId}`);
+    } else {
+        // 2. Wait for IndexedDB to load (handles reload)
+        // Add timeout to prevent hanging if synced event never fires (e.g. in some test envs)
+        const timeout = new Promise<void>(r => setTimeout(r, 1000));
+        await Promise.race([metaDocLoaded, timeout]);
+        // 3. Check persistent storage
+        projectId = getProjectIdByTitle(projectTitle);
+    }
+
+    console.log(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
 
     if (projectId) {
         const user = userManager.getCurrentUser();
@@ -206,6 +265,22 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
         console.log(`[getClientByProjectTitle] YjsClient.connect completed`);
         registry.set(keyFor(userId, projectId), [client, project]);
         return client;
+    }
+
+    // Check if the projectTitle is actually a UUID (Direct Access)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(projectTitle)) {
+        console.log(`[getClientByProjectTitle] projectTitle looks like a UUID, using as projectId: ${projectTitle}`);
+        const projectId = projectTitle; // Treat title as ID
+        const user = userManager.getCurrentUser();
+        const userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
+
+        if (userId) {
+            const project = Project.createInstance(projectId);
+            const client = await YjsClient.connect(projectId, project);
+            registry.set(keyFor(userId, projectId), [client, project]);
+            return client;
+        }
     }
 
     // In test environment, attempt to auto-connect if we can derive the ID
@@ -270,12 +345,13 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     const title = typeof window !== "undefined"
         ? (((window as any).__CURRENT_PROJECT_TITLE__ as string | undefined) ?? "Test Project")
         : "Test Project";
+
     const project = Project.createInstance(title);
     const client = await YjsClient.connect(resolvedId, project);
     registry.set(keyFor(userId, resolvedId), [client, project]);
 
     // Save title to metadata Y.Doc for dropdown display
-    setContainerTitleInMetaDoc(resolvedId, title);
+    setProjectTitle(resolvedId, title);
 
     yjsStore.yjsClient = client;
     return client;
