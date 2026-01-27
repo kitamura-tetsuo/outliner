@@ -213,7 +213,7 @@ export function createSnapshotClient(projectName: string, project: Project): unk
             return "Connected";
         },
         getConnectionStateString() {
-            return "接続済み";
+            return "Connected";
         },
     };
     try {
