@@ -1,7 +1,7 @@
 /**
- * バックリンク収集ユーティリティ
+ * Backlink Collection Utility
  *
- * このモジュールは、ページへのバックリンク（他のページからのリンク）を収集するための機能を提供します。
+ * This module provides functionality to collect backlinks (links from other pages) to a page.
  */
 
 import type { Item } from "../schema/yjs-schema";
@@ -11,25 +11,25 @@ import { getLogger } from "./logger";
 const logger = getLogger("BacklinkCollector");
 
 /**
- * バックリンク情報の型定義
+ * Type definition for backlink information
  */
 export interface Backlink {
-    /** リンク元のページID */
+    /** Source Page ID */
     sourcePageId: string;
-    /** リンク元のページ名 */
+    /** Source Page Name */
     sourcePageName: string;
-    /** リンクを含むアイテムID */
+    /** Source Item ID containing the link */
     sourceItemId: string;
-    /** リンクを含むアイテムのテキスト */
+    /** Text of the source item containing the link */
     sourceItemText: string;
-    /** リンクの前後のコンテキスト */
+    /** Context surrounding the link */
     context: string;
 }
 
 /**
- * 指定したページへのバックリンクを収集する
- * @param targetPageName 対象のページ名
- * @returns バックリンクの配列
+ * Collects backlinks to the specified page
+ * @param targetPageName Name of the target page
+ * @returns Array of backlinks
  */
 export function collectBacklinks(targetPageName: string): Backlink[] {
     if (!store.pages || !targetPageName) {
@@ -39,13 +39,13 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
     const backlinks: Backlink[] = [];
     const normalizedTargetName = targetPageName.toLowerCase();
 
-    // 正規表現をループの外で作成（パフォーマンス最適化）
-    // [page-name] 形式
+    // Create regex outside the loop (performance optimization)
+    // [page-name] format
     const escapedTargetName = escapeRegExp(normalizedTargetName); // Note: RegExp "i" flag handles casing
     const internalLinkPattern = new RegExp(`\\[${escapedTargetName}\\]`, "i");
 
-    // プロジェクト内部リンクの正規表現パターン
-    // [/project-name/page-name] 形式
+    // Regex pattern for internal project links
+    // [/project-name/page-name] format
     const currentProject = store.project?.title || "";
     const escapedCurrentProject = escapeRegExp(currentProject);
     const projectLinkPattern = new RegExp(
@@ -53,12 +53,12 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
         "i",
     );
 
-    // extractContext 用の汎用パターン（プロジェクト名が異なる場合も考慮）
+    // Generic pattern for extractContext (considers different project names)
     // NOTE: extractContext logic used `\\[\\/.+\\/${escapeRegExp(targetPageName)}\\]` which matches any project
     const anyProjectLinkPattern = new RegExp(`\\[\\/.+\\/${escapedTargetName}\\]`, "i");
 
     try {
-        // すべてのページを検索
+        // Search all pages
         const pages = store.pages.current;
         if (!pages) {
             return backlinks;
@@ -70,12 +70,12 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             const pageHasText = pText && pText.length > 0;
             const pageText = pageHasText ? String(pText) : "";
 
-            // 対象ページ自身は除外
+            // Exclude the target page itself
             if (pageHasText && pageText.toLowerCase() === normalizedTargetName) {
                 continue;
             }
 
-            // ページ自身のテキストをチェック
+            // Check the page's own text
             // Fast path: check if text contains '[' before running regex
             if (
                 pageHasText && pageText.includes("[")
@@ -90,7 +90,7 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
                 });
             }
 
-            // 子アイテムをチェック
+            // Check child items
             const items = pageItem.items as Iterable<Item> & { iterateUnordered?: () => Iterator<Item>; };
             // Optimization: Iterate directly to avoid O(N log N) sorting caused by items.length check
             // (Items.length getter triggers a full sort of children keys in app-schema.ts)
@@ -132,16 +132,16 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
 }
 
 /**
- * リンクの前後のコンテキストを抽出する
- * @param text 元のテキスト
- * @param internalLinkPattern 内部リンクパターン
- * @param projectLinkPattern プロジェクトリンクパターン
- * @returns コンテキスト文字列
+ * Extracts context around the link
+ * @param text Original text
+ * @param internalLinkPattern Internal link pattern
+ * @param projectLinkPattern Project link pattern
+ * @returns Context string
  */
 function extractContext(text: string, internalLinkPattern: RegExp, projectLinkPattern: RegExp): string {
     if (!text) return "";
 
-    // リンクの位置を特定
+    // Identify link position
     const internalMatch = text.match(internalLinkPattern);
     const projectMatch = text.match(projectLinkPattern);
 
@@ -158,13 +158,13 @@ function extractContext(text: string, internalLinkPattern: RegExp, projectLinkPa
 
     if (linkPosition === -1) return text;
 
-    // リンクの前後20文字を抽出
+    // Extract 20 characters before and after the link
     const contextStart = Math.max(0, linkPosition - 20);
     const contextEnd = Math.min(text.length, linkPosition + linkLength + 20);
 
     let context = text.substring(contextStart, contextEnd);
 
-    // 前後に「...」を追加（必要な場合）
+    // Add "..." to the beginning/end (if necessary)
     if (contextStart > 0) {
         context = "..." + context;
     }
@@ -176,18 +176,18 @@ function extractContext(text: string, internalLinkPattern: RegExp, projectLinkPa
 }
 
 /**
- * 正規表現のために特殊文字をエスケープする
- * @param string エスケープする文字列
- * @returns エスケープされた文字列
+ * Escapes special characters for RegExp
+ * @param string String to escape
+ * @returns Escaped string
  */
 function escapeRegExp(string: string): string {
     return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
- * 指定したページへのバックリンクの数を取得する
- * @param pageName ページ名
- * @returns バックリンクの数
+ * Gets the count of backlinks to the specified page
+ * @param pageName Page name
+ * @returns Count of backlinks
  */
 export function getBacklinkCount(pageName: string): number {
     return collectBacklinks(pageName).length;
