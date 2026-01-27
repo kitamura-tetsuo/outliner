@@ -18,7 +18,7 @@ describe("buildGraph", () => {
             { id: "1", text: "Page One", items: [{ text: "Link to [/myproject/Page Two]" }] },
             { id: "2", text: "Page Two" },
         ];
-        const { nodes, links } = buildGraph(pages, "myproject");
+        const { links } = buildGraph(pages, "myproject");
         expect(links).toHaveLength(1);
         expect(links[0]).toEqual({ source: "1", target: "2" });
     });

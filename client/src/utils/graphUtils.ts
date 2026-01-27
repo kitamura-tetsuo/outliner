@@ -34,6 +34,7 @@ export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
     const pages = toArray(pagesMaybe);
 
     // Pre-calculate page data to avoid repeated getText checks and lowercase conversions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pageData = pages.map((p: any) => ({
         id: p.id,
         name: getText(p),
