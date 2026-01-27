@@ -24,6 +24,10 @@ export const functions = getFunctions(app);
 
 export const getFirebaseApp = () => app;
 
+if (typeof window !== "undefined") {
+    (window as any).__firebase_client_app__ = app;
+}
+
 // Connect to emulator if necessary
 if (typeof window !== "undefined") {
     const useEmulator = window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true"

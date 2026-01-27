@@ -813,6 +813,12 @@
     );
 
     $effect(() => {
+        if (typeof window !== "undefined" && (window as any).__E2E__) {
+            console.log(
+                `[OutlinerItem] $effect triggered for id=${model.id}. HTML=${!!formattedHtml} Ref=${!!displayRef}`,
+            );
+        }
+
         if (!formattedHtml || !displayRef || typeof document === "undefined")
             return;
         // Depend on pages so we re-check when pages change
@@ -826,6 +832,13 @@
         requestAnimationFrame(() => {
             try {
                 const pages = (generalStore as any).pages?.current;
+
+                if (typeof window !== "undefined" && (window as any).__E2E__) {
+                    console.log(
+                        `[OutlinerItem] RAF executing. Pages=${pages ? pages.length : "null"}`,
+                    );
+                }
+
                 if (!pages) return;
 
                 // Build a set of existing titles if needed, or iterate.
@@ -846,6 +859,15 @@
                             exists = true;
                             break;
                         }
+                    }
+
+                    if (
+                        typeof window !== "undefined" &&
+                        (window as any).__E2E__
+                    ) {
+                        console.log(
+                            `[OutlinerItem] Link validation: pageName="${pageName}" exists=${exists} checkedAgainst=${pages.length} pages. FirstPage="${pages[0]?.text}"`,
+                        );
                     }
 
                     if (!exists) {

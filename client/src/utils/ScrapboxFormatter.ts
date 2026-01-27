@@ -15,8 +15,8 @@ export class ScrapboxFormatter {
      */
     static hasFormatting(text: string): boolean {
         // Simple check for existence of formatting markers
-        // [[bold]], [* bold], [** bold], [/ italic], [- strikethrough], `code`, [http...], [link], > quote
-        return /\[\[.*?\]\]|\[\*+ .*?\]|\[\/ .*?\]|\[- .*?\]|`.*?`|\[https?:\/\/.*?\]|\[.*?\]|^> /
+        // [[bold]], [* bold], [** bold], [/ italic], [- strikethrough], [_ underline], `code`, [http...], [link], > quote
+        return /\[\[.*?\]\]|\[\*+ .*?\]|\[\/ .*?\]|\[- .*?\]|\[_ .*?\]|`.*?`|\[https?:\/\/.*?\]|\[.*?\]|^> /
             .test(text);
     }
 
@@ -79,6 +79,8 @@ export class ScrapboxFormatter {
         html = html.replace(/\[\/([^ /][^\]/]*?)\]/g, "<em>$1</em>");
         // Strike: [- text] or [-text]
         html = html.replace(/\[- ?([^\]]+)\]/g, "<s>$1</s>");
+        // Underline: [_ text] or [_text]
+        html = html.replace(/\[_ ?([^\]]+)\]/g, "<u>$1</u>");
 
         // Internal link [Page Title] -> <a href="/project/Page Title">Page Title</a>
         // Exclude those already processed as external links or decorations
@@ -188,6 +190,15 @@ export class ScrapboxFormatter {
             },
         );
 
+        // Underline [_ underline] or [_underline]
+        html = html.replace(
+            /\[_ ?(.+?)\]/g,
+            (match, content) => {
+                const space = match.includes("[_ ") ? " " : "";
+                return `${wrapControl("[")}${wrapControl("_")}${space}<u>${content}</u>${wrapControl("]")}`;
+            },
+        );
+
         // Link processing (Simplified)
         // [http://example.com]
         html = html.replace(
@@ -207,7 +218,7 @@ export class ScrapboxFormatter {
                 }
                 // Ignore decorations
                 if (
-                    content.match(/^[*\\-]/) || content.startsWith("/ ")
+                    content.match(/^[*\\-_]/) || content.startsWith("/ ")
                     || (content.startsWith("/") && !content.substring(1).includes("/"))
                 ) return match;
 
