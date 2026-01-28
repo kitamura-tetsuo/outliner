@@ -19,13 +19,13 @@ function dismiss() {
     >
         <div class="error-icon" aria-hidden="true">⚠️</div>
         <div class="error-content">
-            <h3>サーバー接続エラー</h3>
+            <h3>Server Connection Error</h3>
             <p>{error}</p>
             <div class="error-actions">
                 {#if retryCallback}
-                    <button class="retry-btn" onclick={retryCallback}>再試行</button>
+                    <button class="retry-btn" onclick={retryCallback}>Retry</button>
                 {/if}
-                <button class="dismiss-btn" onclick={dismiss}>閉じる</button>
+                <button class="dismiss-btn" onclick={dismiss}>Close</button>
             </div>
         </div>
     </div>

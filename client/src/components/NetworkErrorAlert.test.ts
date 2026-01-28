@@ -6,7 +6,7 @@ describe("NetworkErrorAlert", () => {
     it("should render error message when error prop is provided", () => {
         render(NetworkErrorAlert, { error: "Something went wrong" });
         expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-        expect(screen.getByText("サーバー接続エラー")).toBeInTheDocument();
+        expect(screen.getByText("Server Connection Error")).toBeInTheDocument();
     });
 
     it("should have alert role for accessibility", () => {
@@ -20,7 +20,7 @@ describe("NetworkErrorAlert", () => {
         const retryCallback = vi.fn();
         render(NetworkErrorAlert, { error: "Error", retryCallback });
 
-        const retryBtn = screen.getByText("再試行");
+        const retryBtn = screen.getByText("Retry");
         await fireEvent.click(retryBtn);
 
         expect(retryCallback).toHaveBeenCalled();
