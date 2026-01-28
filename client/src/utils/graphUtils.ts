@@ -3,16 +3,6 @@ export interface GraphData {
     links: Array<{ source: string; target: string; }>;
 }
 
-function escapeRegExp(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function containsLink(text: string, target: string, project: string): boolean {
-    const internal = new RegExp(`\\[${escapeRegExp(target)}\\]`, "i");
-    const projectPattern = new RegExp(`\\[\\/${escapeRegExp(project)}\\/${escapeRegExp(target)}\\]`, "i");
-    return internal.test(text) || projectPattern.test(text);
-}
-
 function toArray(p: any): any[] {
     try {
         if (Array.isArray(p)) return p;
@@ -43,8 +33,18 @@ function getText(v: any): string {
 export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
     const pages = toArray(pagesMaybe);
 
-    const nodes = pages.map((p: any) => ({ id: p.id, name: getText(p) }));
+    // Pre-calculate page data to avoid repeated getText checks and lowercase conversions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pageData = pages.map((p: any) => ({
+        id: p.id,
+        name: getText(p),
+        nameLower: getText(p).toLowerCase(),
+    }));
+
+    const nodes = pageData.map(p => ({ id: p.id, name: p.name }));
     const links: { source: string; target: string; }[] = [];
+
+    const projectLower = (projectTitle || "").toLowerCase();
 
     for (const src of pages) {
         const srcText = getText(src).toLowerCase();
@@ -52,10 +52,19 @@ export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
         const childTexts = childArr.map((i: any) => getText(i).toLowerCase());
         const texts = [srcText, ...childTexts];
 
-        for (const dst of pages) {
+        for (const dst of pageData) {
             if (src.id === dst.id) continue;
-            const target = getText(dst).toLowerCase();
-            if (texts.some(t => containsLink(t, target, (projectTitle || "").toLowerCase()))) {
+
+            const target = dst.nameLower;
+            // Optimization: Use includes instead of RegExp
+            // Since all inputs are lowercased, this is equivalent to case-insensitive match
+            // Avoiding RegExp construction in nested loop is a significant performance win
+            const internalLink = `[${target}]`;
+            const projectLink = `[/${projectLower}/${target}]`;
+
+            const hasLink = texts.some(t => t.includes(internalLink) || t.includes(projectLink));
+
+            if (hasLink) {
                 links.push({ source: src.id, target: dst.id });
             }
         }
