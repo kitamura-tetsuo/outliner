@@ -124,6 +124,16 @@ function setCorsHeaders(req, res) {
   // Security headers
   res.set("X-Content-Type-Options", "nosniff");
   res.set("X-Frame-Options", "DENY");
+  res.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  // HSTS (Strict-Transport-Security)
+  // Only enable in production to avoid issues with local development (HTTP)
+  if (process.env.NODE_ENV === "production") {
+    res.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains",
+    );
+  }
 }
 
 // Initialize Firebase Admin SDK
