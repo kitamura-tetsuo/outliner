@@ -17,7 +17,7 @@ test.describe("Debug Page Health Check", () => {
         await page.goto("/debug");
 
         // 3. Wait for UI to be ready
-        await expect(page.locator("text=Connection Status")).toBeVisible({ timeout: 15000 });
+        await expect(page.locator("h2:has-text('Connection Status')")).toBeVisible({ timeout: 15000 });
 
         // 4. Click Health Check button and intercept request
         // We verify that the request goes to localhost/127.0.0.1, not the hardcoded external URL

@@ -18,7 +18,7 @@ test.describe("Debug Page", () => {
 
         // 3. Verify authenticated content is shown
         // Wait for auth to propagate and UI to update
-        await expect(page.locator("text=Connection Status")).toBeVisible({ timeout: 15000 });
+        await expect(page.locator("h2:has-text('Connection Status')")).toBeVisible({ timeout: 15000 });
 
         // 4. Click Connect Test button if needed
         // The page auto-connects, but clicking button triggers updateConnectionStatus() which calls getDebugInfo()
