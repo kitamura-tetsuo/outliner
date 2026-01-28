@@ -1,5 +1,5 @@
 /**
- * フォーマットトークンを表すインターフェース
+ * Interface representing a format token
  */
 interface FormatToken {
     type: "text" | "bold" | "italic" | "strikethrough" | "underline" | "code" | "link" | "internalLink" | "quote";
@@ -7,12 +7,12 @@ interface FormatToken {
     children?: FormatToken[];
     start: number;
     end: number;
-    url?: string; // リンク用
+    url?: string; // For links
     isProjectLink?: boolean;
 }
 
 /**
- * Scrapbox構文のフォーマットを処理するユーティリティクラス
+ * Utility class for processing Scrapbox syntax formatting
  */
 export class ScrapboxFormatter {
     /**
@@ -38,12 +38,12 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * テキストを太字にフォーマットする
-     * @param text フォーマットするテキスト
-     * @returns 太字にフォーマットされたテキスト
+     * Formats text as bold
+     * @param text Text to format
+     * @returns Formatted bold text
      */
     static bold(text: string): string {
-        // 既に太字の場合は解除
+        // Remove bold if already bold
         if (text.startsWith("[[") && text.endsWith("]]")) {
             return text.substring(2, text.length - 2);
         }
@@ -51,12 +51,12 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * テキストを斜体にフォーマットする
-     * @param text フォーマットするテキスト
-     * @returns 斜体にフォーマットされたテキスト
+     * Formats text as italic
+     * @param text Text to format
+     * @returns Formatted italic text
      */
     static italic(text: string): string {
-        // 既に斜体の場合は解除（スペース必須）
+        // Remove italic if already italic (requires space)
         if (text.startsWith("[/ ") && text.endsWith("]")) {
             return text.substring(3, text.length - 1);
         }
@@ -64,12 +64,12 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * テキストに取り消し線を適用する
-     * @param text フォーマットするテキスト
-     * @returns 取り消し線が適用されたテキスト
+     * Applies strikethrough to text
+     * @param text Text to format
+     * @returns Text with strikethrough applied
      */
     static strikethrough(text: string): string {
-        // 既に取り消し線の場合は解除
+        // Remove strikethrough if already applied
         if (text.startsWith("[-") && text.endsWith("]")) {
             return text.substring(2, text.length - 1);
         }
@@ -77,12 +77,12 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * テキストをコードとしてフォーマットする
-     * @param text フォーマットするテキスト
-     * @returns コードとしてフォーマットされたテキスト
+     * Formats text as code
+     * @param text Text to format
+     * @returns Formatted code text
      */
     static code(text: string): string {
-        // 既にコードの場合は解除
+        // Remove code format if already applied
         if (text.startsWith("`") && text.endsWith("`")) {
             return text.substring(1, text.length - 1);
         }
@@ -90,12 +90,12 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * テキストに下線を適用する
-     * @param text フォーマットするテキスト
-     * @returns 下線が適用されたテキスト
+     * Applies underline to text
+     * @param text Text to format
+     * @returns Text with underline applied
      */
     static underline(text: string): string {
-        // 既に下線の場合は解除
+        // Remove underline if already applied
         if (text.startsWith("<u>") && text.endsWith("</u>")) {
             return text.substring(3, text.length - 4);
         }
@@ -103,9 +103,9 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * テキストが特定のフォーマットを持っているかチェックする
-     * @param text チェックするテキスト
-     * @returns フォーマットの種類（bold, italic, strikethrough, underline, code）または null
+     * Checks if text has a specific format
+     * @param text Text to check
+     * @returns Format type (bold, italic, strikethrough, underline, code) or null
      */
     static getFormatType(text: string): "bold" | "italic" | "strikethrough" | "underline" | "code" | null {
         if (text.startsWith("[[") && text.endsWith("]]")) {
@@ -123,19 +123,19 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * テキストをトークンに分解する
-     * @param text 解析するテキスト
-     * @returns トークンの配列
+     * Tokenizes text
+     * @param text Text to parse
+     * @returns Array of tokens
      */
     static tokenize(text: string): FormatToken[] {
         if (!text) return [];
 
-        // フォーマットパターン
+        // Formatting patterns
         const patterns = [
             { type: "bold", start: "[[", end: "]]", regex: /\[\[(.*?)\]\]/g },
-            // 斜体 - スペース必須: [/ テキスト]
+            // Italic - space required: [/ text]
             { type: "italic", start: "[/ ", end: "]", regex: /\[\/\s+([^\]]*)\]/g },
-            // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
+            // Project internal link - no space: [/project/page] or [/page]
             { type: "internalLink", start: "[/", end: "]", regex: /\[\/([^\s\]]+)\]/g },
             { type: "strikethrough", start: "[-", end: "]", regex: /\[-(.*?)\]/g },
             { type: "underline", start: "<u>", end: "</u>", regex: /<u>(.*?)<\/u>/g },
@@ -144,15 +144,15 @@ export class ScrapboxFormatter {
                 type: "link",
                 start: "[",
                 end: "]",
-                // URL と任意のラベルを解析（ラベルが空白のみの場合も許可）
+                // Parse URL and optional label (allow if label is whitespace only)
                 regex: /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g,
             },
-            // 通常の内部リンク（page-name形式）- ハイフンを含むページ名も許可
+            // Normal internal link (page-name format) - allow page names with hyphens
             { type: "internalLink", start: "[", end: "]", regex: /\[([^[\]]+?)\]/g },
             { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm },
         ];
 
-        // すべてのフォーマットマッチを見つける
+        // Find all formatting matches
         const matches: {
             type: string;
             start: number;
@@ -162,7 +162,7 @@ export class ScrapboxFormatter {
             isProjectLink?: boolean;
         }[] = [];
 
-        // フォーマットのマッチを処理
+        // Process formatting matches
         patterns.forEach(pattern => {
             let match;
             while ((match = pattern.regex.exec(text)) !== null) {
@@ -171,7 +171,7 @@ export class ScrapboxFormatter {
                 const content = match[1];
                 const isProjectLink = pattern.type === "internalLink" && pattern.start === "[/";
 
-                // リンクの場合はURLとラベルを保存
+                // Save URL and label for links
                 if (pattern.type === "link") {
                     const url = match[1];
                     const rawLabel = match[2];
@@ -195,10 +195,10 @@ export class ScrapboxFormatter {
             }
         });
 
-        // マッチを開始位置でソート
+        // Sort matches by start position
         matches.sort((a, b) => a.start - b.start);
 
-        // 重複や入れ子のマッチを処理
+        // Handle overlapping or nested matches
         const validMatches: {
             type: string;
             start: number;
@@ -209,17 +209,17 @@ export class ScrapboxFormatter {
         }[] = [];
 
         for (const match of matches) {
-            // 既存の有効なマッチと重複していないか確認
+            // Check for overlap with existing valid matches
             let isValid = true;
 
             for (const validMatch of validMatches) {
-                // 完全に含まれる場合は無効
+                // Invalid if fully contained
                 if (match.start >= validMatch.start && match.end <= validMatch.end) {
                     isValid = false;
                     break;
                 }
 
-                // 部分的に重複する場合も無効
+                // Invalid if partially overlapping
                 if (match.start < validMatch.end && match.end > validMatch.start) {
                     isValid = false;
                     break;
@@ -231,15 +231,15 @@ export class ScrapboxFormatter {
             }
         }
 
-        // 有効なマッチを再度ソート
+        // Sort valid matches again
         validMatches.sort((a, b) => a.start - b.start);
 
-        // トークンに変換
+        // Convert to tokens
         const tokens: FormatToken[] = [];
         let lastIndex = 0;
 
         for (const match of validMatches) {
-            // マッチの前にテキストがあれば追加
+            // Add text before match if present
             if (match.start > lastIndex) {
                 tokens.push({
                     type: "text",
@@ -249,7 +249,7 @@ export class ScrapboxFormatter {
                 });
             }
 
-            // フォーマットトークンを追加
+            // Add format token
             tokens.push({
                 type: match.type as
                     | "bold"
@@ -270,7 +270,7 @@ export class ScrapboxFormatter {
             lastIndex = match.end;
         }
 
-        // 最後のマッチ以降のテキストがあれば追加
+        // Add remaining text after last match
         if (lastIndex < text.length) {
             tokens.push({
                 type: "text",
@@ -284,9 +284,9 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * トークンをHTMLに変換する
-     * @param tokens 変換するトークン
-     * @returns HTML文字列
+     * Converts tokens to HTML
+     * @param tokens Tokens to convert
+     * @returns HTML string
      */
     static tokensToHtml(tokens: FormatToken[]): string {
         let html = "";
@@ -368,9 +368,9 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * Scrapbox構文のテキストをHTMLに変換する
-     * @param text 変換するテキスト
-     * @returns HTMLに変換されたテキスト
+     * Converts Scrapbox syntax text to HTML
+     * @param text Text to convert
+     * @returns Text converted to HTML
      */
     static formatToHtml(text: string): string {
         if (!text) return "";
@@ -379,7 +379,7 @@ export class ScrapboxFormatter {
             return this.escapeHtml(text);
         }
 
-        // 入れ子のフォーマットに対応した実装を使用
+        // Use implementation supporting nested formatting
         return this.formatToHtmlAdvanced(text);
     }
 
@@ -392,14 +392,14 @@ export class ScrapboxFormatter {
     private static readonly RX_HTML_INT_LINK = /\[([^[\]]+?)\]/g;
 
     /**
-     * 組み合わせフォーマットに対応した高度な変換（再帰的に処理）
-     * @param text 変換するテキスト
-     * @returns HTMLに変換されたテキスト
+     * Advanced conversion supporting combined formatting (recursive processing)
+     * @param text Text to convert
+     * @returns Text converted to HTML
      */
     static formatToHtmlAdvanced(text: string): string {
         if (!text) return "";
 
-        // 下線タグを一時的にプレースホルダーに置換
+        // Temporarily replace underline tags with placeholders
         const underlinePlaceholders: string[] = [];
         const tempText = text.replace(ScrapboxFormatter.RX_HTML_UNDERLINE, (match, content) => {
             const placeholder = `__UNDERLINE_${underlinePlaceholders.length}__`;
@@ -407,28 +407,28 @@ export class ScrapboxFormatter {
             return placeholder;
         });
 
-        // 括弧のバランスを考慮して太字をマッチする関数
+        // Function to match bold considering bracket balance
         const matchBalancedBold = (text: string): Array<{ start: number; end: number; content: string; }> => {
             const matches: Array<{ start: number; end: number; content: string; }> = [];
             let i = 0;
             while (i < text.length - 1) {
                 if (text[i] === "[" && text[i + 1] === "[") {
-                    // 太字の開始を見つけた
-                    let boldDepth = 1; // [[...]] のネストレベル
+                    // Found start of bold
+                    let boldDepth = 1; // Nesting level of [[...]]
                     let j = i + 2;
                     let content = "";
 
                     while (j < text.length && boldDepth > 0) {
                         if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
-                            // 入れ子の太字開始
+                            // Start of nested bold
                             boldDepth++;
                             content += "[[";
                             j += 2;
                         } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
-                            // 太字の終了候補
+                            // Potential end of bold
                             boldDepth--;
                             if (boldDepth === 0) {
-                                // マッチ完了
+                                // Match complete
                                 matches.push({ start: i, end: j + 2, content });
                                 i = j + 2;
                                 break;
@@ -437,19 +437,19 @@ export class ScrapboxFormatter {
                                 j += 2;
                             }
                         } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                            // 単一の [ を見つけた（内部リンクなどの開始）
-                            // 対応する ] を探す
+                            // Found single [ (start of internal link, etc.)
+                            // Look for corresponding ]
                             content += "[";
                             j++;
                             let bracketDepth = 1;
                             while (j < text.length && bracketDepth > 0) {
                                 if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                                    // 単一の [ (ネストされた内部リンクなど)
+                                    // Single [ (nested internal link, etc.)
                                     bracketDepth++;
                                     content += "[";
                                     j++;
                                 } else if (text[j] === "]") {
-                                    // ] を見つけた
+                                    // Found ]
                                     bracketDepth--;
                                     content += "]";
                                     j++;
@@ -468,7 +468,7 @@ export class ScrapboxFormatter {
                     }
 
                     if (boldDepth > 0) {
-                        // マッチしなかった場合は次の文字へ
+                        // Move to next character if no match
                         i++;
                     }
                 } else {
@@ -478,38 +478,38 @@ export class ScrapboxFormatter {
             return matches;
         };
 
-        // グローバルなプレースホルダーマップ（再帰呼び出し間で共有）
+        // Global placeholder map (shared between recursive calls)
         const globalPlaceholders: Map<string, string> = new Map();
         let globalPlaceholderIndex = 0;
 
-        // プレースホルダーを生成する関数（制御文字を使用して内部リンクとして認識されないようにする）
+        // Function to generate placeholders (use control characters to avoid recognition as internal links)
         const createPlaceholder = (html: string): string => {
             const placeholder = `\x00HTML_${globalPlaceholderIndex++}\x00`;
             globalPlaceholders.set(placeholder, html);
             return placeholder;
         };
 
-        // 括弧のバランスを考慮して斜体をマッチする関数
+        // Function to match italics considering bracket balance
         const matchBalancedItalic = (text: string): Array<{ start: number; end: number; content: string; }> => {
             const matches: Array<{ start: number; end: number; content: string; }> = [];
             let i = 0;
             while (i < text.length - 2) {
                 if (text[i] === "[" && text[i + 1] === "/" && text[i + 2] === " ") {
-                    // 斜体の開始を見つけた: [/ (スペース必須)
+                    // Found start of italic: [/ (space required)
                     let j = i + 3;
                     let content = "";
                     let bracketDepth = 1;
 
                     while (j < text.length && bracketDepth > 0) {
                         if (text[j] === "[" && j + 1 < text.length && text[j + 1] !== "[" && text[j + 1] !== "/") {
-                            // 単一の [ (内部リンクなど)
+                            // Single [ (internal link, etc.)
                             bracketDepth++;
                             content += "[";
                             j++;
                         } else if (text[j] === "]") {
                             bracketDepth--;
                             if (bracketDepth === 0) {
-                                // マッチ完了
+                                // Match complete
                                 matches.push({ start: i, end: j + 1, content });
                                 i = j + 1;
                                 break;
@@ -524,7 +524,7 @@ export class ScrapboxFormatter {
                     }
 
                     if (bracketDepth > 0) {
-                        // マッチしなかった場合は次の文字へ
+                        // Move to next character if no match
                         i++;
                     }
                 } else {
@@ -534,43 +534,43 @@ export class ScrapboxFormatter {
             return matches;
         };
 
-        // 再帰的にフォーマットを処理する関数
+        // Function to process formatting recursively
         const processFormat = (input: string): string => {
-            // 太字 - 最初に処理して、中身を再帰的に処理する
-            // これにより、太字の中のネストされたフォーマットが正しく処理される
+            // Bold - process first, then recursively process content
+            // This ensures nested formatting within bold is processed correctly
             const boldMatches = matchBalancedBold(input);
-            // 後ろから置換して、インデックスがずれないようにする
+            // Replace from the end to avoid shifting indices
             for (let i = boldMatches.length - 1; i >= 0; i--) {
                 const match = boldMatches[i];
-                // 内部のコンテンツも再帰的に処理
+                // Recursively process internal content too
                 const html = `<strong>${processFormat(match.content)}</strong>`;
                 const placeholder = createPlaceholder(html);
                 input = input.substring(0, match.start) + placeholder + input.substring(match.end);
             }
 
-            // 斜体 - スペース必須: [/ テキスト]
-            // バランスを考慮してマッチ
+            // Italic - space required: [/ text]
+            // Match considering balance
             const italicMatches = matchBalancedItalic(input);
-            // 後ろから置換して、インデックスがずれないようにする
+            // Replace from the end to avoid shifting indices
             for (let i = italicMatches.length - 1; i >= 0; i--) {
                 const match = italicMatches[i];
-                // 内部のコンテンツも再帰的に処理
+                // Recursively process internal content too
                 const html = `<em>${processFormat(match.content)}</em>`;
                 const placeholder = createPlaceholder(html);
                 input = input.substring(0, match.start) + placeholder + input.substring(match.end);
             }
 
-            // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
-            // スラッシュの後にスペースがない場合のみマッチ
+            // Project internal link - no space: [/project/page] or [/page]
+            // Match only if there is no space after slash
             input = input.replace(ScrapboxFormatter.RX_HTML_PROJECT_LINK, (match, path) => {
-                // パスを分解してプロジェクト名とページ名を取得
+                // Split path to get project name and page name
                 const parts = path.split("/").filter((p: string) => p);
                 let html: string;
                 if (parts.length >= 2) {
                     const projectName = parts[0];
                     const pageName = parts.slice(1).join("/");
 
-                    // ページの存在確認用のクラスを追加
+                    // Add class for page existence check
                     let existsClass = "page-not-exists"; // default for safety
                     try {
                         existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
@@ -579,7 +579,7 @@ export class ScrapboxFormatter {
                         existsClass = "page-not-exists";
                     }
 
-                    // LinkPreviewコンポーネントを使用
+                    // Use LinkPreview component
                     html = `<span class="link-preview-wrapper">
                         <a href="/${
                         this.escapeHtml(path)
@@ -588,7 +588,7 @@ export class ScrapboxFormatter {
                     }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(path)}</a>
                     </span>`;
                 } else {
-                    // 単一のページ名の場合（プロジェクト内部リンク）
+                    // Case of single page name (project internal link)
                     const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
                     html = `<span class="link-preview-wrapper">
                         <a href="/${this.escapeHtml(path)}" class="internal-link ${existsClass}" data-page="${
@@ -599,19 +599,19 @@ export class ScrapboxFormatter {
                 return createPlaceholder(html);
             });
 
-            // 取り消し線
+            // Strikethrough
             input = input.replace(ScrapboxFormatter.RX_HTML_STRIKETHROUGH, (match, content) => {
                 const html = `<s>${processFormat(content)}</s>`;
                 return createPlaceholder(html);
             });
 
-            // コード (コード内部は再帰処理しない)
+            // Code (do not recursively process inside code)
             input = input.replace(ScrapboxFormatter.RX_HTML_CODE, (match, content) => {
                 const html = `<code>${this.escapeHtml(content)}</code>`;
                 return createPlaceholder(html);
             });
 
-            // 外部リンク（ラベルが空白のみの場合も許可）
+            // External link (allow if label is whitespace only)
             input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
                 const trimmedLabel = label?.trim();
                 const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
@@ -619,17 +619,17 @@ export class ScrapboxFormatter {
                 return createPlaceholder(html);
             });
 
-            // プロジェクト内部リンクは上で処理済み
+            // Project internal links processed above
 
-            // 通常の内部リンク - 外部リンクの後に処理する必要がある
-            // [text] 形式で、text が [ または ] を含まないもの
+            // Normal internal links - must be processed after external links
+            // [text] format where text does not contain [ or ]
             input = input.replace(ScrapboxFormatter.RX_HTML_INT_LINK, (match, text) => {
-                // ページの存在確認用のクラスを追加
+                // Add class for page existence check
                 const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
 
                 const projectPrefix = this.getProjectPrefix();
 
-                // LinkPreviewコンポーネントを使用
+                // Use LinkPreview component
                 const html = `<span class="link-preview-wrapper">
                     <a href="${projectPrefix}/${
                     this.escapeHtml(text)
@@ -640,12 +640,12 @@ export class ScrapboxFormatter {
                 return createPlaceholder(html);
             });
 
-            // プレーンテキスト部分をエスケープ
+            // Escape plain text parts
             input = this.escapeHtml(input);
 
-            // プレースホルダーをHTMLタグに復元
+            // Restore placeholders to HTML tags
             globalPlaceholders.forEach((html, placeholder) => {
-                // 制御文字がエスケープされている可能性があるため、両方を試す
+                // Control characters might be escaped, so try both
                 const escapedPlaceholder = this.escapeHtml(placeholder);
                 input = input.replaceAll(escapedPlaceholder, html);
                 input = input.replaceAll(placeholder, html);
@@ -654,24 +654,24 @@ export class ScrapboxFormatter {
             return input;
         };
 
-        // 行ごとに処理するための関数
+        // Function to process line by line
         const processLines = (lines: string[]): string => {
             let result = "";
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
 
-                // 引用
+                // Quote
                 const quoteMatch = line.match(/^>\s(.*?)$/);
                 if (quoteMatch) {
                     result += `<blockquote>${processFormat(quoteMatch[1])}</blockquote>`;
                     continue;
                 }
 
-                // 通常のテキスト - フォーマット構文を処理
+                // Normal text - process formatting syntax
                 result += processFormat(line);
 
-                // 最後の行でなければ改行を追加
+                // Add newline if not the last line
                 if (i < lines.length - 1) {
                     result += "<br>";
                 }
@@ -680,11 +680,11 @@ export class ScrapboxFormatter {
             return result;
         };
 
-        // 行に分割して処理
+        // Split into lines and process
         const lines = tempText.split("\n");
         let result = processLines(lines);
 
-        // プレースホルダーを実際の下線タグに復元
+        // Restore placeholders to actual underline tags
         underlinePlaceholders.forEach((content, index) => {
             const placeholder = `__UNDERLINE_${index}__`;
             result = result.replace(placeholder, `<u>${this.escapeHtml(processFormat(content))}</u>`);
@@ -704,18 +704,18 @@ export class ScrapboxFormatter {
     private static readonly RX_CTRL_QUOTE = /(^>\s)(.*?)$/gm;
 
     /**
-     * 制御文字を表示しながらフォーマットを適用する（フォーカスがある場合用）
-     * @param text 変換するテキスト
-     * @returns HTMLに変換されたテキスト
+     * Apply formatting while displaying control characters (for when focused)
+     * @param text Text to convert
+     * @returns Text converted to HTML
      */
     static formatWithControlChars(text: string): string {
         if (!text) return "";
 
         let html = this.escapeHtml(text);
 
-        // 太字 - バランスを考慮してマッチ
+        // Bold - match considering balance
         const boldMatches = this.matchBalancedBold(html);
-        // 後ろから置換して、インデックスがずれないようにする
+        // Replace from the end to avoid shifting indices
         for (let i = boldMatches.length - 1; i >= 0; i--) {
             const match = boldMatches[i];
             const replacement = '<span class="control-char">[</span><span class="control-char">[</span>'
@@ -724,37 +724,37 @@ export class ScrapboxFormatter {
             html = html.substring(0, match.start) + replacement + html.substring(match.end);
         }
 
-        // コード
+        // Code
         html = html.replace(
             ScrapboxFormatter.RX_CTRL_CODE,
             '<span class="control-char">$1</span><code>$2</code><span class="control-char">$3</span>',
         );
 
-        // 取り消し線
+        // Strikethrough
         html = html.replace(
             ScrapboxFormatter.RX_CTRL_STRIKE,
             '<span class="control-char">$1</span><span class="control-char">$2</span><s>$3</s><span class="control-char">$4</span>',
         );
 
-        // 下線 (HTML escaped version)
+        // Underline (HTML escaped version)
         html = html.replace(
             ScrapboxFormatter.RX_CTRL_UNDERLINE,
             '<span class="control-char">&lt;u&gt;</span><u>$2</u><span class="control-char">&lt;/u&gt;</span>',
         );
 
-        // 斜体 - スペース必須: [/ テキスト]
+        // Italic - space required: [/ text]
         html = html.replace(
             ScrapboxFormatter.RX_CTRL_ITALIC,
             '<span class="control-char">$1</span><span class="control-char">$2</span>$3<em>$4</em><span class="control-char">$5</span>',
         );
 
-        // プロジェクト内部リンク - スペースなし: [/project/page] または [/page]
+        // Project internal link - no space: [/project/page] or [/page]
         html = html.replace(
             ScrapboxFormatter.RX_CTRL_PROJECT_LINK,
             '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 
-        // 外部リンク - カーソルがある時は制御文字のみ表示
+        // External link - display only control characters when cursor is present
         html = html.replace(
             ScrapboxFormatter.RX_CTRL_EXT_LINK,
             (match, open, url, label, close) => {
@@ -763,13 +763,13 @@ export class ScrapboxFormatter {
             },
         );
 
-        // 通常の内部リンク - カーソルがある時は制御文字のみ表示
+        // Normal internal link - display only control characters when cursor is present
         html = html.replace(
             ScrapboxFormatter.RX_CTRL_INT_LINK,
             '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
         );
 
-        // 引用
+        // Quote
         html = html.replace(
             ScrapboxFormatter.RX_CTRL_QUOTE,
             '<span class="control-char">$1</span><blockquote>$2</blockquote>',
@@ -779,29 +779,29 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * 括弧のバランスを考慮して太字をマッチする関数（formatWithControlChars用）
+     * Function to match bold considering bracket balance (for formatWithControlChars)
      */
     private static matchBalancedBold(text: string): Array<{ start: number; end: number; content: string; }> {
         const matches: Array<{ start: number; end: number; content: string; }> = [];
         let i = 0;
         while (i < text.length - 1) {
             if (text[i] === "[" && text[i + 1] === "[") {
-                // 太字の開始を見つけた
+                // Found start of bold
                 let j = i + 2;
                 let content = "";
                 let boldDepth = 1;
 
                 while (j < text.length && boldDepth > 0) {
                     if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
-                        // ネストされた太字の開始
+                        // Start of nested bold
                         boldDepth++;
                         content += "[[";
                         j += 2;
                     } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
-                        // 太字の終了
+                        // End of bold
                         boldDepth--;
                         if (boldDepth === 0) {
-                            // マッチ完了
+                            // Match complete
                             matches.push({ start: i, end: j + 2, content });
                             i = j + 2;
                             break;
@@ -810,7 +810,7 @@ export class ScrapboxFormatter {
                             j += 2;
                         }
                     } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                        // 単一の [ を見つけた（内部リンクなどの開始）
+                        // Found single [ (start of internal link, etc.)
                         content += "[";
                         j++;
                         let bracketDepth = 1;
@@ -838,7 +838,7 @@ export class ScrapboxFormatter {
                 }
 
                 if (boldDepth > 0) {
-                    // マッチしなかった場合は次の文字へ
+                    // Move to next character if no match
                     i++;
                 }
             } else {
@@ -864,9 +864,9 @@ export class ScrapboxFormatter {
     );
 
     /**
-     * テキストにScrapbox構文のフォーマットが含まれているかチェックする
-     * @param text チェックするテキスト
-     * @returns フォーマットが含まれている場合はtrue
+     * Check if text contains Scrapbox syntax formatting
+     * @param text Text to check
+     * @returns Returns true if formatting is present
      */
     static hasFormatting(text: string): boolean {
         if (!text) return false;
@@ -884,8 +884,8 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * 現在のプロジェクトURLプレフィックスを取得する
-     * テスト環境ではデフォルト値 "Untitled Project" を使用
+     * Get current project URL prefix
+     * Use default value "Untitled Project" in test environment
      */
     private static getProjectPrefix(): string {
         if (typeof window !== "undefined") {
@@ -907,27 +907,27 @@ export class ScrapboxFormatter {
     }
 
     /**
-     * ページが存在するかどうかを確認する
-     * @param pageName ページ名
-     * @param projectName プロジェクト名（オプション）
-     * @returns ページが存在する場合はtrue
+     * Check if page exists
+     * @param pageName Page name
+     * @param projectName Project name (optional)
+     * @returns Returns true if page exists
      */
     static checkPageExists(pageName: string, projectName?: string): boolean {
-        // 実装注意: このメソッドはクライアントサイドでのみ動作します
+        // Implementation note: This method only works on the client side
         if (typeof window === "undefined") return true;
 
         try {
-            // グローバルストアからページ情報を取得
+            // Get page info from global store
             const store = (window as any).appStore;
             if (!store || !store.pages) return false;
 
-            // 現在のプロジェクトを取得
+            // Get current project
             const currentProject = store.project;
             if (!currentProject) return false;
 
-            // プロジェクト名が指定されている場合、現在のプロジェクトと一致するか確認
+            // If project name is specified, check if it matches current project
             if (projectName && currentProject.title !== projectName) {
-                // 別プロジェクトのページは確認できないため、存在しないと仮定
+                // Cannot check pages in other projects, so assume they don't exist
                 return false;
             }
 
@@ -936,7 +936,7 @@ export class ScrapboxFormatter {
                 return store.pageExists(pageName);
             }
 
-            // Fallback: ページ名が一致するページを検索 (O(N))
+            // Fallback: Search for page with matching name (O(N))
             if (store.pages?.current) {
                 for (const page of store.pages.current) {
                     // Ensure page.text is a string before calling toLowerCase
@@ -955,7 +955,7 @@ export class ScrapboxFormatter {
     }
 }
 
-// グローバルに参照できるようにする（テスト環境でアクセスするため）
+// Make globally accessible (for access in test environment)
 if (typeof window !== "undefined") {
     (window as any).ScrapboxFormatter = ScrapboxFormatter;
 }
