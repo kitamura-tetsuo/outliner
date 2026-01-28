@@ -1044,7 +1044,9 @@ export class EditorOverlayStore {
                     // Try to find the item by ID in the current page's items
                     // Use iterator to avoid O(N^2) complexity with indexed access on Items
                     if (currentPage.items) {
-                        for (const item of currentPage.items) {
+                        // Use iterateUnordered if available to avoid O(N log N) sorting
+                        const iter = (currentPage.items as any).iterateUnordered ? (currentPage.items as any).iterateUnordered() : currentPage.items;
+                        for (const item of iter) {
                             if (item && item.id === itemId) {
                                 return item.text || "";
                             }

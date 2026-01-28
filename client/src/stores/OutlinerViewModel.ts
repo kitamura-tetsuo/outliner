@@ -121,7 +121,10 @@ export class OutlinerViewModel {
     ): void {
         if (!items) return;
 
-        for (const child of items) {
+        // Use iterateUnordered if available to avoid O(N log N) sorting
+        // Order doesn't matter here as we're just populating the map
+        const iter = (items as any).iterateUnordered ? (items as any).iterateUnordered() : items;
+        for (const child of iter) {
             this.ensureViewModelsItemExist(child, parentId);
         }
     }
