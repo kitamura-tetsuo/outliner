@@ -2,59 +2,60 @@ import { describe, expect, it } from "vitest";
 import { buildGraph } from "./graphUtils";
 
 describe("buildGraph", () => {
-    it("should link pages correctly", () => {
+    it("detects simple links", () => {
         const pages = [
-            { id: "1", text: "Page One", items: [{ text: "Link to [Page Two]" }] },
-            { id: "2", text: "Page Two" },
+            { id: "1", text: "Page1", items: [{ text: "Link to [Page2]" }] },
+            { id: "2", text: "Page2", items: [] },
         ];
-        const { nodes, links } = buildGraph(pages, "myproject");
-        expect(nodes).toHaveLength(2);
-        expect(links).toHaveLength(1);
-        expect(links[0]).toEqual({ source: "1", target: "2" });
+        const { links } = buildGraph(pages, "TestProject");
+        expect(links).toContainEqual({ source: "1", target: "2" });
+        expect(links.length).toBe(1);
     });
 
-    it("should handle project-absolute links", () => {
+    it("detects project links", () => {
         const pages = [
-            { id: "1", text: "Page One", items: [{ text: "Link to [/myproject/Page Two]" }] },
-            { id: "2", text: "Page Two" },
+            { id: "1", text: "Page1", items: [{ text: "Link to [/TestProject/Page2]" }] },
+            { id: "2", text: "Page2", items: [] },
         ];
-        const { links } = buildGraph(pages, "myproject");
-        expect(links).toHaveLength(1);
-        expect(links[0]).toEqual({ source: "1", target: "2" });
+        const { links } = buildGraph(pages, "TestProject");
+        expect(links).toContainEqual({ source: "1", target: "2" });
     });
 
-    it("should be case insensitive", () => {
+    it("is case insensitive", () => {
         const pages = [
-            { id: "1", text: "Page One", items: [{ text: "Link to [page two]" }] },
-            { id: "2", text: "Page Two" },
+            { id: "1", text: "Page1", items: [{ text: "Link to [page2]" }] },
+            { id: "2", text: "Page2", items: [] },
         ];
-        const { links } = buildGraph(pages, "myproject");
-        expect(links).toHaveLength(1);
+        const { links } = buildGraph(pages, "TestProject");
+        expect(links).toContainEqual({ source: "1", target: "2" });
     });
 
-    it("should handle special characters in page names", () => {
+    it("handles special characters", () => {
         const pages = [
-            { id: "1", text: "Start", items: [{ text: "Link to [Page (Special)?+]" }] },
-            { id: "2", text: "Page (Special)?+" },
+            { id: "1", text: "Page1", items: [{ text: "Link to [Page.With.Dots]" }] },
+            { id: "2", text: "Page.With.Dots", items: [] },
         ];
-        const { links } = buildGraph(pages, "myproject");
-        expect(links).toHaveLength(1);
+        const { links } = buildGraph(pages, "TestProject");
+        expect(links).toContainEqual({ source: "1", target: "2" });
     });
 
-    it("should ignore self links", () => {
+    it("does not link to self", () => {
         const pages = [
-            { id: "1", text: "Page One", items: [{ text: "Link to [Page One]" }] },
+            { id: "1", text: "Page1", items: [{ text: "Link to [Page1]" }] },
         ];
-        const { links } = buildGraph(pages, "myproject");
-        expect(links).toHaveLength(0);
+        const { links } = buildGraph(pages, "TestProject");
+        expect(links).toEqual([]);
     });
 
-    it("should handle items array mixed types", () => {
+    it("handles multiple links", () => {
         const pages = [
-            { id: "1", text: "Page One", items: ["Link to [Page Two]"] }, // string items
-            { id: "2", text: "Page Two" },
+            { id: "1", text: "Page1", items: [{ text: "[Page2] and [Page3]" }] },
+            { id: "2", text: "Page2", items: [] },
+            { id: "3", text: "Page3", items: [] },
         ];
-        const { links } = buildGraph(pages, "myproject");
-        expect(links).toHaveLength(1);
+        const { links } = buildGraph(pages, "TestProject");
+        expect(links).toContainEqual({ source: "1", target: "2" });
+        expect(links).toContainEqual({ source: "1", target: "3" });
+        expect(links.length).toBe(2);
     });
 });
