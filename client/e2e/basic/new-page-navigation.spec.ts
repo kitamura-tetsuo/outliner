@@ -21,12 +21,12 @@ test.describe("New Page Navigation", () => {
         const newPageName = `Test Page ${Date.now()}`;
 
         // Find the input field for new page name in PageList
-        const pageNameInput = page.locator('input[placeholder="新しいページ名"]');
+        const pageNameInput = page.locator('input[placeholder="New page name"]');
         await expect(pageNameInput).toBeVisible();
         await pageNameInput.fill(newPageName);
 
         // Click create button
-        const createButton = page.locator("button", { hasText: "作成" });
+        const createButton = page.locator("button", { hasText: "Create" });
         await createButton.click();
 
         // Verify navigation to the new page
