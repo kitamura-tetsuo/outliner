@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Item, Project } from "./app-schema";
 
-// モック: Cursor が依存するストアのうち、今回のテストで使用するのは currentPage のみ
+// Mock: Among the stores Cursor depends on, only currentPage is used in this test
 vi.mock("../stores/store.svelte", () => ({
     store: {
         currentPage: undefined as any,
@@ -11,7 +11,7 @@ vi.mock("../stores/store.svelte", () => ({
     },
 }));
 
-// 遅延import（vi.mockの後で）
+// Lazy import (after vi.mock)
 import { Cursor } from "../lib/Cursor";
 import { store as generalStore } from "../stores/store.svelte";
 
@@ -19,14 +19,14 @@ describe("Items.asArrayLike iterable characteristics", () => {
     it("supports for..of iteration over Project.items and Item.items", () => {
         const project = Project.createInstance("iterable-test");
 
-        // ルート直下に2ページ相当のアイテムを作成
+        // Create items equivalent to 2 pages directly under the root
         const rootItems: any = (project as any).items;
         const a = rootItems.addNode("user");
         a.updateText("A");
         const b = rootItems.addNode("user");
         b.updateText("B");
 
-        // for..of が動作し、Item インスタンスが列挙されること
+        // Ensure for..of works and Item instances are enumerated
         const ids: string[] = [];
         for (const it of rootItems as Iterable<Item>) {
             expect(it).toBeInstanceOf(Item);
@@ -35,7 +35,7 @@ describe("Items.asArrayLike iterable characteristics", () => {
         expect(ids.length).toBe(rootItems.length);
         expect(new Set(ids).size).toBe(ids.length);
 
-        // 子へも for..of できること
+        // Ensure for..of works for children as well
         const child1 = a.items.addNode("user");
         child1.updateText("A-1");
         const child2 = a.items.addNode("user");
@@ -62,7 +62,7 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
         const c2 = page.items.addNode("user");
         c2.updateText("child-2");
 
-        // Cursor が参照する currentPage を設定
+        // Set the currentPage referenced by Cursor
         (generalStore as any).currentPage = page as Item;
 
         const cursor = new Cursor("cur-1", {
@@ -72,7 +72,7 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
             userId: "u1",
         } as any);
 
-        // 例外が出ないこと、および見つかること
+        // Ensure no exception is thrown and the target is found
         let found: any;
         expect(() => {
             found = cursor.findTarget();
