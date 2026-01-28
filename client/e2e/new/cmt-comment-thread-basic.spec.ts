@@ -198,7 +198,7 @@ test.describe("CMT-0001: comment threads", () => {
             if (val === "") break;
 
             // Fallback: forceful clear if keyboard events fail
-            if (Date.now() > clearDeadline - 5000) {
+            if (Date.now() > clearDeadline - 8000) {
                 await editInput.fill("");
             }
             await page.waitForTimeout(200);
