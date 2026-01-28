@@ -44,7 +44,7 @@ export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
 
     // Pre-calculate node names and their lowercase versions to avoid
     // repeated toLowerCase() calls in the nested loop.
-    const pageNodes = pages.map((p: any) => {
+    const pageNodes = pages.map((p: { id: string; }) => {
         const name = getText(p);
         return {
             id: p.id,
