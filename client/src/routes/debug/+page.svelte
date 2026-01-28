@@ -24,7 +24,7 @@ let envConfig = getDebugConfig();
 let isAuthenticated = $state(false);
 let networkError: string | undefined = $state(undefined);
 let isInitializing = $state(false);
-let connectionStatus = $state("未接続");
+let connectionStatus = $state("Disconnected");
 let isConnected = $state(false);
 
 // 認証成功時の処理
@@ -40,7 +40,7 @@ async function handleAuthSuccess(authResult: any) {
 function handleAuthLogout() {
     logger.info("ログアウトしました");
     isAuthenticated = false;
-    connectionStatus = "未接続";
+    connectionStatus = "Disconnected";
     isConnected = false;
 }
 
@@ -123,12 +123,12 @@ async function checkHealth() {
 function updateConnectionStatus() {
     const client = yjsStore.yjsClient as any;
     if (client) {
-        connectionStatus = client.getConnectionStateString() || "未接続";
+        connectionStatus = client.getConnectionStateString() || "Disconnected";
         isConnected = client.isContainerConnected || false;
         debugInfo = client.getDebugInfo();
     }
     else {
-        connectionStatus = "未接続";
+        connectionStatus = "Disconnected";
         isConnected = false;
     }
 }
