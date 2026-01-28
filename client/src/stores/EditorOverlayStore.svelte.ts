@@ -1045,9 +1045,7 @@ export class EditorOverlayStore {
                     // Use iterator to avoid O(N^2) complexity with indexed access on Items
                     if (currentPage.items) {
                         // Use iterateUnordered if available to avoid O(N log N) sorting
-                        const iter = (currentPage.items as any).iterateUnordered
-                            ? (currentPage.items as any).iterateUnordered()
-                            : currentPage.items;
+                        const iter = (currentPage.items as any).iterateUnordered ? (currentPage.items as any).iterateUnordered() : currentPage.items;
                         for (const item of iter) {
                             if (item && item.id === itemId) {
                                 return item.text || "";
