@@ -17,13 +17,13 @@ test.describe("Debug Page Health Check", () => {
         await page.goto("/debug");
 
         // 3. Wait for UI to be ready
-        await expect(page.locator("text=接続ステータス")).toBeVisible({ timeout: 15000 });
+        await expect(page.locator("text=Connection Status")).toBeVisible({ timeout: 15000 });
 
         // 4. Click Health Check button and intercept request
         // We verify that the request goes to localhost/127.0.0.1, not the hardcoded external URL
         const [response] = await Promise.all([
             page.waitForResponse(resp => resp.url().includes("/health")),
-            page.click("text=ヘルスチェック実行 (GET /health)"),
+            page.click("text=Run Health Check (GET /health)"),
         ]);
 
         console.log(`Health check URL: ${response.url()}`);
@@ -38,6 +38,6 @@ test.describe("Debug Page Health Check", () => {
 
         // 5. Verify UI update
         // Check that the result is displayed
-        await expect(page.locator("text=ステータス: ok")).toBeVisible();
+        await expect(page.locator("text=Status: ok")).toBeVisible();
     });
 });
