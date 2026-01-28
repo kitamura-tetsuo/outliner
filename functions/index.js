@@ -70,6 +70,7 @@ if (process.env.SENTRY_DSN) {
 }
 
 const { FieldValue } = require("firebase-admin/firestore");
+const crypto = require("crypto");
 const { generateSchedulesIcs } = require("./ical");
 
 // Sentry wrapper helper
@@ -2326,7 +2327,17 @@ exports.deleteAllProductionData = onRequest(
 
       // Verify admin token
       const adminSecret = process.env.ADMIN_DELETE_TOKEN;
-      if (!adminToken || !adminSecret || adminToken !== adminSecret) {
+
+      // Use constant-time comparison to prevent timing attacks
+      const isValidToken = (() => {
+        if (!adminToken || !adminSecret) { return false; }
+        const a = Buffer.from(adminToken);
+        const b = Buffer.from(adminSecret);
+        if (a.length !== b.length) { return false; }
+        return crypto.timingSafeEqual(a, b);
+      })();
+
+      if (!isValidToken) {
         logger.warn("Unauthorized attempt to delete all production data");
         return res.status(401).json({ error: "Unauthorized" });
       }

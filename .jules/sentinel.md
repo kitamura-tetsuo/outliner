@@ -69,3 +69,9 @@
 **Vulnerability:** The server exposes detailed environment information and headers via the `/health` endpoint and allows bypassing authentication via `ALLOW_TEST_ACCESS` without guarding against production deployment.
 **Learning:** Default "debug" endpoints and test flags are significant risks in production if not explicitly guarded. Testing flags often get carried into production via environment variables or container configurations.
 **Prevention:** Explicitly check `NODE_ENV === 'production'` to guard sensitive endpoints and fail startup if dangerous test flags are detected in production.
+
+## 2026-02-23 - Timing Attack on Admin Authentication
+
+**Vulnerability:** The `deleteAllProductionData` function used `!==` string comparison for verifying the admin token, allowing potential timing attacks to brute-force the secret.
+**Learning:** Standard string comparisons (like `==`, `===`) leak timing information based on the number of matching characters. For sensitive operations like verifying secrets, this can be exploited.
+**Prevention:** Use `crypto.timingSafeEqual` (or similar constant-time comparison functions) for all secret verifications. Ensure buffer lengths are checked first to prevent errors or length leaks.
