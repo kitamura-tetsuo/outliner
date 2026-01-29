@@ -26,6 +26,7 @@ const dispatch = createEventDispatcher();
 // 開発環境ではデフォルトのタイトルを提案
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
 let pageTitle = $state(isDev ? `New Page ${new Date().toLocaleTimeString()}` : "");
+let inputEl: HTMLInputElement | undefined = $state();
 
 function handleCreatePage() {
     if (!pageTitle.trim() && !isDev) {
@@ -80,6 +81,7 @@ onMount(() => {
     <div class="mb-4 flex gap-2">
         <input
             type="text"
+            bind:this={inputEl}
             bind:value={pageTitle}
             placeholder="New page name"
             aria-label="New page name"
@@ -120,7 +122,16 @@ onMount(() => {
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
                 </svg>
-                <p class="m-0 text-sm">No pages found. Create a new page to get started.</p>
+                <div class="text-center">
+                    <p class="m-0 mb-2 text-sm">No pages found.</p>
+                    <button
+                        type="button"
+                        onclick={() => inputEl?.focus()}
+                        class="text-sm font-medium text-blue-600 hover:text-blue-500 hover:underline focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    >
+                        Create a new page to get started
+                    </button>
+                </div>
             </li>
         {/if}
     </ul>

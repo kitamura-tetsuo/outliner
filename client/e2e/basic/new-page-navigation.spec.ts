@@ -26,7 +26,7 @@ test.describe("New Page Navigation", () => {
         await pageNameInput.fill(newPageName);
 
         // Click create button
-        const createButton = page.locator("button", { hasText: "Create" });
+        const createButton = page.locator('button[aria-label="Create new page"]');
         await createButton.click();
 
         // Verify navigation to the new page
