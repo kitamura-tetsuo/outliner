@@ -56,7 +56,7 @@
         "@types/uuid": "^11.0.0",
         "@types/ws": "^8.18.1",
         "@vitest/coverage-v8": "4.0.17",
-        "@vitest/ui": "4.0.17",
+        "@vitest/ui": "4.0.18",
         "chokidar-cli": "^3.0.0",
         "concurrently": "^9.2.0",
         "eslint": "^9.39.1",
