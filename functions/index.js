@@ -378,7 +378,7 @@ exports.saveProject = onRequest(
     }
 
     try {
-      const { idToken, projectId } = req.body;
+      const { idToken, projectId, title } = req.body;
 
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
@@ -411,17 +411,16 @@ exports.saveProject = onRequest(
             }
 
             transaction.update(userDocRef, {
-              defaultProjectId: projectId,
               accessibleProjectIds,
+              [`projectTitles.${projectId}`]: title || projectId, // Save title or ID as fallback
               updatedAt: FieldValue.serverTimestamp(),
             });
           } else {
             transaction.set(userDocRef, {
               userId,
-              defaultProjectId: projectId,
-              accessibleProjectIds: [projectId],
               createdAt: FieldValue.serverTimestamp(),
               updatedAt: FieldValue.serverTimestamp(),
+              projectTitles: { [projectId]: title || projectId },
             });
           }
 
@@ -438,6 +437,7 @@ exports.saveProject = onRequest(
 
             transaction.update(projectDocRef, {
               accessibleUserIds,
+              title: title || projectData.title || projectId,
               updatedAt: FieldValue.serverTimestamp(),
             });
           } else {
@@ -446,6 +446,7 @@ exports.saveProject = onRequest(
               accessibleUserIds: [userId],
               createdAt: FieldValue.serverTimestamp(),
               updatedAt: FieldValue.serverTimestamp(),
+              title: title || projectId,
             });
           }
         });
@@ -508,6 +509,7 @@ exports.getUserProjects = onRequest(
 
       return res.status(200).json({
         projects: userData.accessibleProjectIds || [],
+        projectTitles: userData.projectTitles || {},
         defaultProjectId: userData.defaultProjectId || null,
       });
     } catch (error) {

@@ -52,7 +52,7 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
 }
 
 function isIndexedDBEnabled(): boolean {
-    return false; // Force disable for debugging loop error
+    return true; // Enable IndexedDB for offline support and reload persistence
 }
 
 export type PageConnection = {

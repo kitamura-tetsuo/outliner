@@ -3,7 +3,7 @@ import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
-import { saveProjectIdToServer } from "../stores/firestoreStore.svelte";
+import { firestoreStore, saveProjectIdToServer } from "../stores/firestoreStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
@@ -165,7 +165,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
             );
             try {
                 // Call saveProject API
-                const saved = await saveProjectIdToServer(projectId);
+                const saved = await saveProjectIdToServer(projectId, projectName);
                 if (saved) {
                     console.log(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
                     registrationSuccess = true;
@@ -267,7 +267,31 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
         return client;
     }
 
-    // Check if the projectTitle is actually a UUID (Direct Access)
+    // 4. Check Firestore Store for Name -> ID mapping (robust cross-device resolution)
+    if (firestoreStore.userProject?.projectTitles) {
+        for (const [pid, title] of Object.entries(firestoreStore.userProject.projectTitles)) {
+            if (title === projectTitle) {
+                console.log(`[getClientByProjectTitle] Found ID in firestoreStore: ${pid}`);
+                projectId = pid;
+                break;
+            }
+        }
+    }
+
+    console.log(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
+
+    if (projectId) {
+        const user = userManager.getCurrentUser();
+        const userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
+
+        if (userId) {
+            const project = Project.createInstance(projectTitle);
+            console.log(`[getClientByProjectTitle] Connecting to found Firestore ID: ${projectId}`);
+            const client = await YjsClient.connect(projectId, project);
+            registry.set(keyFor(userId, projectId), [client, project]);
+            return client;
+        }
+    }
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(projectTitle)) {
         console.log(`[getClientByProjectTitle] projectTitle looks like a UUID, using as projectId: ${projectTitle}`);

@@ -20,6 +20,7 @@ export interface UserProject {
     userId: string;
     defaultProjectId: string | null;
     accessibleProjectIds: Array<string>;
+    projectTitles?: Record<string, string>;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -172,6 +173,7 @@ class GeneralStore {
                             userId: data.userId || userId,
                             defaultProjectId: data.defaultProjectId,
                             accessibleProjectIds: data.accessibleProjectIds || [],
+                            projectTitles: data.projectTitles || {},
                             createdAt: data.createdAt?.toDate() || new Date(),
                             updatedAt: data.updatedAt?.toDate() || new Date(),
                         };
@@ -429,9 +431,10 @@ export const saveContainerId = saveProjectId;
 /**
  * Save container ID to server side
  * @param projectId Container ID to save
+ * @param title Optional title to save
  * @returns Whether save was successful
  */
-export async function saveProjectIdToServer(projectId: string): Promise<boolean> {
+export async function saveProjectIdToServer(projectId: string, title?: string): Promise<boolean> {
     try {
         // In test environment, add directly to userProject store
         if (
@@ -453,6 +456,10 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
                         : [projectId],
                     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
                     updatedAt: new Date(),
+                    projectTitles: {
+                        ...(firestoreStore.userProject.projectTitles || {}),
+                        [projectId]: title || projectId,
+                    },
                 }
                 : {
                     userId: "test-user-id",
@@ -462,6 +469,7 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
                     createdAt: new Date(),
                     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
                     updatedAt: new Date(),
+                    projectTitles: { [projectId]: title || projectId },
                 };
 
             // Update store
@@ -502,6 +510,7 @@ export async function saveProjectIdToServer(projectId: string): Promise<boolean>
             body: JSON.stringify({
                 idToken,
                 projectId,
+                title,
             }),
         });
 
