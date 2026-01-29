@@ -922,7 +922,7 @@ exports.deleteProject = onRequest(
             );
 
             // Update default project
-            let defaultProjectId = userData.defaultProjectId;
+            let defaultProjectId = userData.defaultProjectId || null;
             if (defaultProjectId === projectId) {
               defaultProjectId = updatedProjectIds.length > 0 ?
                 updatedProjectIds[0] : null;
