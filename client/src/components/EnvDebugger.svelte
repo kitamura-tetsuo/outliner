@@ -9,12 +9,12 @@ let windowEnv = {};
 let firebaseEmulatorInfo = $state({});
 
 onMount(() => {
-    // import.meta.envから環境変数を取得
+    // Get environment variables from import.meta.env
     if (typeof window !== "undefined" && import.meta?.env) {
-        // 安全に環境変数をコピー（実際の値は表示しない）
+        // Safely copy environment variables (do not display actual values)
         const envVars: Record<string, string> = {};
         Object.keys(import.meta.env).forEach(key => {
-            // APIキーなどの機密情報は表示しない
+            // Do not display sensitive information such as API keys
             if (
                 key.includes("KEY") ||
                 key.includes("SECRET") ||
@@ -29,7 +29,7 @@ onMount(() => {
         importMetaEnv = envVars;
     }
 
-    // Firebase Emulator関連の情報を収集
+    // Collect Firebase Emulator related information
     if (typeof window !== "undefined") {
         firebaseEmulatorInfo = {
             VITE_USE_FIREBASE_EMULATOR: import.meta.env
@@ -40,7 +40,7 @@ onMount(() => {
                 .VITE_FIRESTORE_EMULATOR_PORT,
             VITE_AUTH_EMULATOR_PORT: import.meta.env
                 .VITE_AUTH_EMULATOR_PORT,
-            // LocalStorageからの値も取得
+            // Also get values from LocalStorage
             localStorage_VITE_USE_FIREBASE_EMULATOR: window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR"),
             localStorage_VITE_FIREBASE_EMULATOR_HOST: window.localStorage?.getItem(
                 "VITE_FIREBASE_EMULATOR_HOST",
@@ -48,26 +48,26 @@ onMount(() => {
         };
     }
 
-    // 生の環境変数を設定
+    // Set raw environment variables
     rawEnv = { importMetaEnv, windowEnv, firebaseEmulatorInfo };
 });
 </script>
 
 <div class="env-debugger">
-    <h3>環境変数デバッガー</h3>
+    <h3>Environment Variable Debugger</h3>
 
     <div class="env-section">
-        <h4>環境設定（lib/env.ts から）</h4>
+        <h4>Configuration (from lib/env.ts)</h4>
         <pre>{JSON.stringify(debugConfig, null, 2)}</pre>
     </div>
 
     <div class="env-section">
-        <h4>Firebase Emulator設定</h4>
+        <h4>Firebase Emulator Settings</h4>
         <pre>{JSON.stringify(firebaseEmulatorInfo, null, 2)}</pre>
     </div>
 
     <div class="env-section">
-        <h4>すべての環境変数</h4>
+        <h4>All Environment Variables</h4>
         <pre>{JSON.stringify(rawEnv, null, 2)}</pre>
     </div>
 </div>
