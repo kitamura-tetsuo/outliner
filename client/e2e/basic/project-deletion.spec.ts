@@ -42,10 +42,14 @@ test.describe("Project Deletion", () => {
         await page.goto("/projects/delete");
 
         // Wait for the page to be ready and potentially handle login
+        // Wait for the page to be ready and ensure login
         try {
             await expect(page.locator("h1")).toContainText("Delete Projects", { timeout: 5000 });
+            // The page might show H1 even if not logged in (showing empty list).
+            // Ensure we are logged in to see the projects.
+            await TestHelpers.login(page);
         } catch {
-            // Fallback login if not authenticated automatically
+            // Fallback login if something goes wrong with initial load
             await TestHelpers.login(page);
             await expect(page.locator("h1")).toContainText("Delete Projects");
         }
