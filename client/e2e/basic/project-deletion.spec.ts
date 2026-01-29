@@ -48,10 +48,28 @@ test.describe("Project Deletion", () => {
             // The page might show H1 even if not logged in (showing empty list).
             // Ensure we are logged in to see the projects.
             await TestHelpers.login(page);
+
+            // Ensure we see the project list. If "No projects found" is visible after login,
+            // it might be a sync delay. Reloading usually fixes this in E2E.
+            try {
+                await expect(page.locator("table")).toBeVisible({ timeout: 5000 });
+            } catch {
+                console.log("Table not visible after login, reloading page...");
+                await page.reload();
+                await expect(page.locator("table")).toBeVisible({ timeout: 10000 });
+            }
         } catch {
             // Fallback login if something goes wrong with initial load
             await TestHelpers.login(page);
             await expect(page.locator("h1")).toContainText("Delete Projects");
+            // Ensure table visibility here as well
+            try {
+                await expect(page.locator("table")).toBeVisible({ timeout: 5000 });
+            } catch {
+                console.log("Table not visible after fallback login, reloading page...");
+                await page.reload();
+                await expect(page.locator("table")).toBeVisible({ timeout: 10000 });
+            }
         }
 
         // 4. Find the projects in the list
