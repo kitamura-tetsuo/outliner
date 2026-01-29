@@ -56,7 +56,7 @@
         return () => clearTimeout(handler);
     });
 
-    // リアクティブに結果を計算
+    // Calculate results reactively
     let results = $derived.by(() => {
         // include refreshTick as a reactive dependency to re-evaluate during init
         void refreshTick;
@@ -326,7 +326,7 @@
             };
             const rect = inputEl?.getBoundingClientRect?.();
             const e20 = document.elementFromPoint?.(20, 20) as Element | null;
-            // 可視性の追加チェック（Playwright に近い指標）
+            // Additional visibility check (metric similar to Playwright)
             const clientRectsCount = inputEl?.getClientRects?.().length ?? 0;
             const inDOM = !!(inputEl && document.contains(inputEl));
             const bboxNonZero = !!(rect && rect.width > 0 && rect.height > 0);
@@ -387,7 +387,7 @@
                 viewportIntersect,
                 inputStyles: styles(inputEl as Element),
             });
-            // 親チェーンの computed styles を上位へ辿って計測
+            // Trace computed styles up the parent chain and measure
             type ChainInfo = {
                 tag: string;
                 id: string;
