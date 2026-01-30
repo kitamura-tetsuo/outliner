@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
-import ChartQueryEditor from "./ChartQueryEditor.svelte";
 import type { Item } from "../schema/app-schema";
+import ChartQueryEditor from "./ChartQueryEditor.svelte";
 
 // Mock the sqlService
 vi.mock("../services/sqlService", () => ({
