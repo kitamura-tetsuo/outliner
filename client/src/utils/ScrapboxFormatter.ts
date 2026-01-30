@@ -24,10 +24,11 @@ export class ScrapboxFormatter {
         ">": "&gt;",
         '"': "&quot;",
         "'": "&#039;",
+        "\x00": "", // Strip null bytes for security
     };
 
-    private static readonly RX_ESCAPE = /[&<>"']/g;
-    private static readonly RX_PLACEHOLDER = /\x00HTML_\d+\x00/g;
+    private static readonly RX_ESCAPE = /[&<>"'\x00]/g;
+    private static readonly RX_PLACEHOLDER = /\x01HTML_\d+\x01/g;
 
     public static escapeHtml(str: string): string {
         // Fast path: if no special characters, return original string
@@ -485,7 +486,7 @@ export class ScrapboxFormatter {
 
         // Function to generate placeholders (use control characters to avoid recognition as internal links)
         const createPlaceholder = (html: string): string => {
-            const placeholder = `\x00HTML_${globalPlaceholderIndex++}\x00`;
+            const placeholder = `\x01HTML_${globalPlaceholderIndex++}\x01`;
             globalPlaceholders.set(placeholder, html);
             return placeholder;
         };
