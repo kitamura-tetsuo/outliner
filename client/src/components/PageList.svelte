@@ -9,7 +9,7 @@ import {
 
 interface Props {
     project: Project;
-    rootItems: Items; // 最上位のアイテムリスト（ページリスト）
+    rootItems: Items; // Top-level item list (page list)
     currentUser?: string;
     onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
 }
@@ -23,7 +23,7 @@ let {
 
 const dispatch = createEventDispatcher();
 
-// 開発環境ではデフォルトのタイトルを提案
+// Propose a default title in the development environment
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
 let pageTitle = $state(isDev ? `New Page ${new Date().toLocaleTimeString()}` : "");
 let inputEl: HTMLInputElement | undefined = $state();
@@ -33,7 +33,7 @@ function handleCreatePage() {
         pageTitle = "New Page " + new Date().toLocaleString();
     }
 
-    // プロジェクトに直接ページを追加
+    // Add page directly to the project
     const newPage = project.addPage(pageTitle, currentUser);
     selectPage(newPage);
     pageTitle = isDev ? `New Page ${new Date().toLocaleTimeString()}` : "";
@@ -46,7 +46,7 @@ function handleKeyDown(e: KeyboardEvent) {
 }
 
 function selectPage(page: Item) {
-    // イベントを発火
+    // Fire the event
     if (onPageSelected) {
         const event = new CustomEvent("pageSelected", {
             detail: {
@@ -57,7 +57,7 @@ function selectPage(page: Item) {
         onPageSelected(event);
     }
 
-    // カスタムイベントをディスパッチ
+    // Dispatch custom event
     dispatch("pageSelected", {
         pageId: page.id,
         pageName: page.text,
@@ -65,7 +65,7 @@ function selectPage(page: Item) {
 }
 
 onMount(() => {
-    // rootItemsが存在する場合、変更を監視
+    // If rootItems exists, watch for changes
     if (rootItems) {
         // 	const unsubscribe = Tree.on(rootItems, 'treeChanged', updatePageList);
         // 	return () => {
