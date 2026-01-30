@@ -9,7 +9,7 @@ import {
 
 interface Props {
     project: Project;
-    rootItems: Items; // Top-level item list (Page list)
+    rootItems: Items; // Top-level item list (page list)
     currentUser?: string;
     onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
 }

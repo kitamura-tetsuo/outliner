@@ -384,8 +384,6 @@ export class ScrapboxFormatter {
     }
 
     // Regex patterns for formatToHtmlAdvanced
-    // eslint-disable-next-line no-control-regex
-    private static readonly RX_PLACEHOLDER = /\x00HTML_\d+\x00/g;
     private static readonly RX_HTML_UNDERLINE = /<u>(.*?)<\/u>/g;
     private static readonly RX_HTML_PROJECT_LINK = /\[\/([^\s\]]+)\]/g;
     private static readonly RX_HTML_STRIKETHROUGH = /\[-(.*?)\]/g;
@@ -646,11 +644,12 @@ export class ScrapboxFormatter {
             input = this.escapeHtml(input);
 
             // Restore placeholders to HTML tags
-            if (globalPlaceholders.size > 0) {
-                input = input.replace(ScrapboxFormatter.RX_PLACEHOLDER, (match) => {
-                    return globalPlaceholders.get(match) ?? match;
-                });
-            }
+            globalPlaceholders.forEach((html, placeholder) => {
+                // Control characters might be escaped, so try both
+                const escapedPlaceholder = this.escapeHtml(placeholder);
+                input = input.replaceAll(escapedPlaceholder, html);
+                input = input.replaceAll(placeholder, html);
+            });
 
             return input;
         };
