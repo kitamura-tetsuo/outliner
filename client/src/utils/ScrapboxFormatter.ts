@@ -27,7 +27,9 @@ export class ScrapboxFormatter {
         "\x00": "", // Strip null bytes for security
     };
 
+    // eslint-disable-next-line no-control-regex
     private static readonly RX_ESCAPE = /[&<>"'\x00]/g;
+    // eslint-disable-next-line no-control-regex
     private static readonly RX_PLACEHOLDER = /\x01HTML_\d+\x01/g;
 
     public static escapeHtml(str: string): string {
