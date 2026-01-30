@@ -9,7 +9,7 @@ import {
 
 interface Props {
     project: Project;
-    rootItems: Items; // Top-level item list (page list)
+    rootItems: Items; // Top-level item list (Page list)
     currentUser?: string;
     onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
 }
@@ -23,7 +23,7 @@ let {
 
 const dispatch = createEventDispatcher();
 
-// Propose a default title in the development environment
+// Propose a default title in development environment
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
 let pageTitle = $state(isDev ? `New Page ${new Date().toLocaleTimeString()}` : "");
 let inputEl: HTMLInputElement | undefined = $state();
@@ -46,7 +46,7 @@ function handleKeyDown(e: KeyboardEvent) {
 }
 
 function selectPage(page: Item) {
-    // Fire the event
+    // Fire event
     if (onPageSelected) {
         const event = new CustomEvent("pageSelected", {
             detail: {
