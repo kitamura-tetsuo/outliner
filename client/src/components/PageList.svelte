@@ -9,7 +9,7 @@ import {
 
 interface Props {
     project: Project;
-    rootItems: Items; // Top-level item list (Page list)
+    rootItems: Items; // Top-level item list (page list)
     currentUser?: string;
     onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
 }
@@ -33,7 +33,7 @@ function handleCreatePage() {
         pageTitle = "New Page " + new Date().toLocaleString();
     }
 
-    // Add page directly to the project
+    // Add a page directly to the project
     const newPage = project.addPage(pageTitle, currentUser);
     selectPage(newPage);
     pageTitle = isDev ? `New Page ${new Date().toLocaleTimeString()}` : "";
