@@ -46,7 +46,7 @@ function handleKeyDown(e: KeyboardEvent) {
 }
 
 function selectPage(page: Item) {
-    // Fire the event
+    // Fire event
     if (onPageSelected) {
         const event = new CustomEvent("pageSelected", {
             detail: {
