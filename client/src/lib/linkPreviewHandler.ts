@@ -84,6 +84,7 @@ function findPageByName(name: string): Item | null {
 function createPreviewContent(pageName: string, projectName?: string): HTMLElement {
     const previewElement = document.createElement("div");
     previewElement.className = "link-preview-popup";
+    previewElement.setAttribute("role", "tooltip");
 
     // スタイルを適用
     Object.entries(PREVIEW_STYLES).forEach(([key, value]) => {
@@ -96,7 +97,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
         if (projectName !== store.project?.title) {
             const errorDiv = document.createElement("div");
             errorDiv.style.color = "#d32f2f";
-            errorDiv.textContent = "別プロジェクトのページはプレビューできません";
+            errorDiv.textContent = "Cannot preview pages from other projects";
             previewElement.appendChild(errorDiv);
             return previewElement;
         }
@@ -156,7 +157,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
         } else {
             // アイテムがない場合
             const emptyP = document.createElement("p");
-            emptyP.textContent = "このページには内容がありません";
+            emptyP.textContent = "This page has no content";
             emptyP.style.color = "#888";
             emptyP.style.fontStyle = "italic";
             emptyP.style.margin = "10px 0";
@@ -176,7 +177,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
         notFoundDiv.style.minHeight = "100px";
 
         const notFoundP = document.createElement("p");
-        notFoundP.textContent = "ページが見つかりません";
+        notFoundP.textContent = "Page not found";
         notFoundDiv.appendChild(notFoundP);
 
         previewElement.appendChild(notFoundDiv);
