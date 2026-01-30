@@ -65,7 +65,7 @@ function selectPage(page: Item) {
 }
 
 onMount(() => {
-    // Watch for changes if rootItems exists
+    // Monitor changes if rootItems exists
     if (rootItems) {
         // 	const unsubscribe = Tree.on(rootItems, 'treeChanged', updatePageList);
         // 	return () => {
