@@ -33,7 +33,7 @@ function handleCreatePage() {
         pageTitle = "New Page " + new Date().toLocaleString();
     }
 
-    // Add page directly to the project
+    // Add a page directly to the project
     const newPage = project.addPage(pageTitle, currentUser);
     selectPage(newPage);
     pageTitle = isDev ? `New Page ${new Date().toLocaleTimeString()}` : "";
