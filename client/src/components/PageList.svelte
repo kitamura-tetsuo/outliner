@@ -9,7 +9,7 @@ import {
 
 interface Props {
     project: Project;
-    rootItems: Items; // Top-level item list (Page list)
+    rootItems: Items; // Top-level item list (page list)
     currentUser?: string;
     onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
 }
@@ -23,7 +23,7 @@ let {
 
 const dispatch = createEventDispatcher();
 
-// Propose a default title in development environment
+// Suggest a default title in development environment
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
 let pageTitle = $state(isDev ? `New Page ${new Date().toLocaleTimeString()}` : "");
 let inputEl: HTMLInputElement | undefined = $state();
@@ -65,7 +65,7 @@ function selectPage(page: Item) {
 }
 
 onMount(() => {
-    // If rootItems exists, watch for changes
+    // Watch for changes if rootItems exists
     if (rootItems) {
         // 	const unsubscribe = Tree.on(rootItems, 'treeChanged', updatePageList);
         // 	return () => {
