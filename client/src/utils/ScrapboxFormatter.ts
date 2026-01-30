@@ -27,6 +27,7 @@ export class ScrapboxFormatter {
     };
 
     private static readonly RX_ESCAPE = /[&<>"']/g;
+    private static readonly RX_PLACEHOLDER = /\x00HTML_\d+\x00/g;
 
     public static escapeHtml(str: string): string {
         // Fast path: if no special characters, return original string
@@ -644,11 +645,9 @@ export class ScrapboxFormatter {
             input = this.escapeHtml(input);
 
             // Restore placeholders to HTML tags
-            globalPlaceholders.forEach((html, placeholder) => {
-                // Control characters might be escaped, so try both
-                const escapedPlaceholder = this.escapeHtml(placeholder);
-                input = input.replaceAll(escapedPlaceholder, html);
-                input = input.replaceAll(placeholder, html);
+            // Optimization: Replace all placeholders in a single pass O(N) instead of O(N*M)
+            input = input.replace(ScrapboxFormatter.RX_PLACEHOLDER, (match) => {
+                return globalPlaceholders.get(match) || match;
             });
 
             return input;
