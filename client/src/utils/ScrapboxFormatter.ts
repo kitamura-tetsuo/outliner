@@ -384,6 +384,7 @@ export class ScrapboxFormatter {
     }
 
     // Regex patterns for formatToHtmlAdvanced
+    // eslint-disable-next-line no-control-regex
     private static readonly RX_PLACEHOLDER = /\x00HTML_\d+\x00/g;
     private static readonly RX_HTML_UNDERLINE = /<u>(.*?)<\/u>/g;
     private static readonly RX_HTML_PROJECT_LINK = /\[\/([^\s\]]+)\]/g;
