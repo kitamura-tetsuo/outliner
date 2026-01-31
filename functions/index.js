@@ -2312,7 +2312,30 @@ exports.deleteAllProductionData = onRequest(
     }
 
     try {
-      const { adminToken, confirmationCode } = req.body;
+      const { adminToken, confirmationCode, idToken } = req.body;
+
+      // Authenticate Admin User (Defense in Depth)
+      if (!idToken) {
+        logger.warn("deleteAllProductionData: Missing ID token");
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      let decodedToken;
+      try {
+        decodedToken = await admin.auth().verifyIdToken(idToken);
+      } catch (authError) {
+        logger.warn(
+          `deleteAllProductionData: Invalid ID token: ${authError.message}`,
+        );
+        return res.status(401).json({ error: "Authentication failed" });
+      }
+
+      if (!isAdmin(decodedToken)) {
+        logger.warn(
+          `deleteAllProductionData: User ${decodedToken.uid} is not an admin`,
+        );
+        return res.status(403).json({ error: "Admin privileges required" });
+      }
 
       // Verify admin token
       const adminSecret = process.env.ADMIN_DELETE_TOKEN;
