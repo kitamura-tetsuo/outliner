@@ -75,3 +75,9 @@
 **Vulnerability:** The `deleteAllProductionData` function used `!==` string comparison for verifying the admin token, allowing potential timing attacks to brute-force the secret.
 **Learning:** Standard string comparisons (like `==`, `===`) leak timing information based on the number of matching characters. For sensitive operations like verifying secrets, this can be exploited.
 **Prevention:** Use `crypto.timingSafeEqual` (or similar constant-time comparison functions) for all secret verifications. Ensure buffer lengths are checked first to prevent errors or length leaks.
+
+## 2026-02-24 - Lack of Identity Verification on Critical Endpoint
+
+**Vulnerability:** The `deleteAllProductionData` endpoint relied solely on a shared secret (`adminToken`) for authorization, without verifying the identity of the caller (missing `idToken` check).
+**Learning:** Shared secrets are prone to leakage and do not provide non-repudiation. A leaked secret allows anonymous attackers to perform critical actions.
+**Prevention:** Always layer authentication (checking "who") on top of authorization (checking "what"). For critical administrative actions, require both a strong authenticated session (Admin ID Token) and the specific secret/confirmation code.
