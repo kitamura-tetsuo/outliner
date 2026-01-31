@@ -1,34 +1,34 @@
-// dotenvを直接importしてテスト時に.env.testを読み込めるようにする
-import { log } from "./logger"; // ロガーをインポート
+// Directly import dotenv to load .env.test during testing
+import { log } from "./logger"; // Import logger
 
 /**
- * 環境変数を取得する関数
- * @param key 環境変数のキー
- * @param defaultValue デフォルト値
- * @returns 環境変数の値、または未定義の場合はデフォルト値
+ * Function to retrieve environment variables
+ * @param key The key of the environment variable
+ * @param defaultValue The default value
+ * @returns The value of the environment variable, or the default value if undefined
  */
 export function getEnv(key: string, defaultValue: string = ""): string {
-    // 実行環境の検出 - VITE_IS_TEST is not available in client runtime for security
+    // Detection of execution environment - VITE_IS_TEST is not available in client runtime for security
     const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
         || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
         || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
-    // テスト環境専用の処理
+    // Processing specific to the test environment
     if (isTestEnv) {
-        // テスト関連のログ出力
+        // Log output related to testing
         if (key === "VITE_USE_TINYLICIOUS" || key === "VITE_FORCE_AZURE") {
             log("env", "debug", `Test environment detected, checking value for ${key}`);
         }
 
-        // 環境変数から直接値を取得
+        // Retrieve value directly from environment variables
         const envValue = typeof import.meta !== "undefined" && import.meta.env?.[key];
         if (envValue !== undefined) {
             log("env", "debug", `Using value for ${key}: ${envValue}`);
             return envValue as string;
         }
 
-        // テスト環境のデフォルト値
+        // Default values for the test environment
         if (key === "VITE_USE_TINYLICIOUS") return "true";
         if (key === "VITE_FORCE_AZURE") return "false";
     }
@@ -37,7 +37,7 @@ export function getEnv(key: string, defaultValue: string = ""): string {
 }
 
 /**
- * デバッグ用の環境設定を取得する関数
+ * Function to retrieve environment configuration for debugging
  */
 export function getDebugConfig() {
     return {
