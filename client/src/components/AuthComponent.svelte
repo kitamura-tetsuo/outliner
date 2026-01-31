@@ -31,19 +31,19 @@ let error = $state("");
 let currentUser: IUser | null = $state(null);
 let loginError = $state("");
 
-// 開発環境用のメール/パスワード認証フォーム
+// Email/password login form for development environment
 let showDevLogin = $state(false);
 let email = $state("test@example.com");
 let password = $state("password");
 
-// 環境チェック
+// Environment check
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development";
 
-// リスナー解除用の関数
+// Function to unsubscribe listener
 let unsubscribe: (() => void) | null = null;
 
 onMount(() => {
-    // 認証状態の変更を監視
+    // Monitor authentication state changes
     unsubscribe = userManager.addEventListener(authResult => {
         isLoading = false;
 
@@ -59,18 +59,18 @@ onMount(() => {
         }
     });
 
-    // 初期状態を設定
+    // Set initial state
     currentUser = userManager.getCurrentUser();
     if (currentUser) {
         isLoading = false;
     }
     else {
-        // 短時間後にローディング状態解除（認証状態が不明の場合）
-        // E2Eテスト対応: 2秒後に再度認証状態を確認し、ユーザーがいればコールバックを呼び出す
-        // これはFirebase Authエミュレータへの接続とテストユーザーのログインに時間がかかる場合があるため
+        // Clear loading state after a short delay (if auth state is unknown)
+        // E2E test support: Check auth state again after 2 seconds, call callback if user exists
+        // This is because connecting to Firebase Auth emulator and logging in test user may take time
         setTimeout(() => {
             isLoading = false;
-            // 再度ユーザーを確認（E2Eテストでユーザーがまだ初期化されていない場合があるため）
+            // Check user again (as user might not be initialized yet in E2E tests)
             currentUser = userManager.getCurrentUser();
             if (currentUser && onAuthSuccess) {
                 onAuthSuccess({ user: currentUser });
@@ -78,7 +78,7 @@ onMount(() => {
         }, 2000);
     }
 
-    // テスト用: カスタム認証イベントリスナー
+    // For testing: Custom authentication event listener
     if (typeof document !== "undefined") {
         document.addEventListener("auth-success", (event: AuthSuccessEvent) => {
             if (event.detail && event.detail.user) {
@@ -105,7 +105,7 @@ async function handleLogin() {
     }
     catch (err: unknown) {
         console.error("Login error:", err);
-        loginError = (err as Error).message || "ログイン中にエラーが発生しました";
+        loginError = (err as Error).message || "An error occurred during login";
         isLoading = false;
     }
 }
@@ -120,7 +120,7 @@ async function handleDevLogin() {
     catch (err: unknown) {
         console.error("Development login error:", err);
         loginError = (err as Error).message ||
-            "開発用ログインでエラーが発生しました";
+            "An error occurred during development login";
         isLoading = false;
     }
 }
@@ -133,7 +133,7 @@ async function handleLogout() {
     }
     catch (err) {
         console.error("Logout error:", err);
-        error = (err as Error).message || "ログアウト中にエラーが発生しました";
+        error = (err as Error).message || "An error occurred during logout";
         isLoading = false;
     }
 }
@@ -146,12 +146,12 @@ function toggleDevLogin() {
 <div class="auth-container">
     {#if isLoading}
         <div class="loading">
-            <p>認証情報を確認中...</p>
+            <p>Checking authentication info...</p>
         </div>
     {:else if error}
         <div class="error">
             <p>{error}</p>
-            <button onclick={() => (error = "")} class="try-again">再試行</button>
+            <button onclick={() => (error = "")} class="try-again">Retry</button>
         </div>
     {:else if currentUser}
         <div class="user-info">
@@ -166,10 +166,10 @@ function toggleDevLogin() {
                 <p class="user-name">{currentUser.name}</p>
                 <p class="user-email">{currentUser.email || ""}</p>
             </div>
-            <button onclick={handleLogout} class="logout-btn">ログアウト</button>
+            <button onclick={handleLogout} class="logout-btn">Logout</button>
         </div>
     {:else}
-        <!-- Google認証ボタン -->
+        <!-- Google Auth Button -->
         <button
             onclick={handleLogin}
             class="auth-button google-btn"
@@ -195,20 +195,20 @@ function toggleDevLogin() {
                     />
                 </svg>
             </span>
-            Googleでログイン
+            Login with Google
         </button>
 
         {#if isDevelopment}
-            <!-- 開発環境用ログイントグルボタン -->
+            <!-- Development environment login toggle button -->
             <button onclick={toggleDevLogin} class="dev-toggle">
-                {showDevLogin ? "開発者ログインを隠す" : "開発者ログイン"}
+                {showDevLogin ? "Hide Developer Login" : "Developer Login"}
             </button>
 
             {#if showDevLogin}
                 <div class="dev-login-form">
-                    <h3>開発環境用ログイン</h3>
+                    <h3>Development Login</h3>
                     <div class="form-group">
-                        <label for="email">メールアドレス</label>
+                        <label for="email">Email</label>
                         <input
                             type="email"
                             id="email"
@@ -217,7 +217,7 @@ function toggleDevLogin() {
                         />
                     </div>
                     <div class="form-group">
-                        <label for="password">パスワード</label>
+                        <label for="password">Password</label>
                         <input
                             type="password"
                             id="password"
@@ -225,7 +225,7 @@ function toggleDevLogin() {
                             placeholder="password"
                         />
                     </div>
-                    <button onclick={handleDevLogin} class="dev-login-btn">開発環境でログイン</button>
+                    <button onclick={handleDevLogin} class="dev-login-btn">Login to Dev Environment</button>
                 </div>
             {/if}
         {/if}
@@ -341,7 +341,7 @@ function toggleDevLogin() {
     background-color: #ffebee;
 }
 
-/* 開発環境用ログインスタイル */
+/* Development login styles */
 .dev-toggle {
     background-color: #f0f0f0;
     color: #666;
