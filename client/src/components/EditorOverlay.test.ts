@@ -1,9 +1,9 @@
-import { render, screen, fireEvent } from '@testing-library/svelte';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import EditorOverlay from './EditorOverlay.svelte';
+import { fireEvent, render, screen } from "@testing-library/svelte";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import EditorOverlay from "./EditorOverlay.svelte";
 
 // Mock the stores
-vi.mock('../stores/EditorOverlayStore.svelte', () => ({
+vi.mock("../stores/EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
         selections: {},
         cursors: {},
@@ -22,45 +22,45 @@ vi.mock('../stores/EditorOverlayStore.svelte', () => ({
         getCursorInstances: vi.fn(() => []),
         getTextFromSelection: vi.fn(),
         isComposing: false,
-        getActiveItem: vi.fn()
-    }
+        getActiveItem: vi.fn(),
+    },
 }));
 
-vi.mock('../stores/PresenceStore.svelte', () => ({
+vi.mock("../stores/PresenceStore.svelte", () => ({
     presenceStore: {
-        users: {}
-    }
+        users: {},
+    },
 }));
 
-vi.mock('../stores/AliasPickerStore.svelte', () => ({
+vi.mock("../stores/AliasPickerStore.svelte", () => ({
     aliasPickerStore: {
-        isVisible: false
-    }
+        isVisible: false,
+    },
 }));
 
-describe('EditorOverlay', () => {
+describe("EditorOverlay", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    it('should render the debug button with English title', () => {
+    it("should render the debug button with English title", () => {
         render(EditorOverlay);
-        const debugButton = screen.getByTitle('Toggle debug mode');
+        const debugButton = screen.getByTitle("Toggle debug mode");
         expect(debugButton).toBeInTheDocument();
-        expect(debugButton).toHaveTextContent('D');
+        expect(debugButton).toHaveTextContent("D");
     });
 
-    it('should toggle debug mode when debug button is clicked', async () => {
+    it("should toggle debug mode when debug button is clicked", async () => {
         render(EditorOverlay);
-        const debugButton = screen.getByTitle('Toggle debug mode');
+        const debugButton = screen.getByTitle("Toggle debug mode");
 
         // Initially not active (assuming default is false)
-        expect(debugButton).not.toHaveClass('active');
+        expect(debugButton).not.toHaveClass("active");
 
         // Click to toggle
         await fireEvent.click(debugButton);
 
         // Should be active now
-        expect(debugButton).toHaveClass('active');
+        expect(debugButton).toHaveClass("active");
     });
 });
