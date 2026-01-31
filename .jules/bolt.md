@@ -32,3 +32,8 @@
 
 **Learning:** `buildGraph` in `graphUtils.ts` was performing O(N^2) `RegExp` construction for link detection. This created millions of temporary RegExp objects for large graphs.
 **Action:** Pre-calculate lowercase names for all nodes and use simple string `includes()` checks instead of RegExp. Only use RegExp when complex pattern matching is strictly necessary; for simple substring containment, `includes` is orders of magnitude faster.
+
+## 2026-03-01 - [Recursive Formatter Fast Path]
+
+**Learning:** `ScrapboxFormatter.formatToHtmlAdvanced` creates many temporary strings during recursive processing (`processFormat`). Adding a fast path check (`!hasFormatting`) inside the recursion significantly reduces overhead for plain text segments (like link labels and quote content) which were previously subjected to all regex replacements.
+**Action:** In recursive string processing functions, check if the recursion can be terminated early or skipped using a cheap pre-check (like `includes` or `hasFormatting`) on the substring.
