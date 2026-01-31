@@ -540,6 +540,11 @@ export class ScrapboxFormatter {
 
         // Function to process formatting recursively
         const processFormat = (input: string): string => {
+            // Fast path: if no formatting characters, just escape and return
+            if (!ScrapboxFormatter.hasFormatting(input)) {
+                return this.escapeHtml(input);
+            }
+
             // Bold - process first, then recursively process content
             // This ensures nested formatting within bold is processed correctly
             const boldMatches = matchBalancedBold(input);
