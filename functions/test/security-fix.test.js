@@ -70,7 +70,9 @@ describe("Security Fix: deleteAllProductionData", () => {
     };
 
     // Mock verifyIdToken failure
-    const verifyIdTokenMock = jest.fn().mockRejectedValue(new Error("Invalid token"));
+    const verifyIdTokenMock = jest.fn().mockRejectedValue(
+      new Error("Invalid token"),
+    );
     authSpy.mockReturnValue({
       verifyIdToken: verifyIdTokenMock,
     });
@@ -117,7 +119,9 @@ describe("Security Fix: deleteAllProductionData", () => {
     await myFunctions.deleteAllProductionData(req, res);
 
     expect(statusMock).toHaveBeenCalledWith(403);
-    expect(jsonMock).toHaveBeenCalledWith({ error: "Admin privileges required" });
+    expect(jsonMock).toHaveBeenCalledWith({
+      error: "Admin privileges required",
+    });
   });
 
   it("should reject invalid adminToken (with valid Admin ID token) with 401", async () => {
