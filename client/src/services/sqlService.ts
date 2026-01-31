@@ -3,14 +3,14 @@ import { writable } from "svelte/store";
 import type { EditInfo } from "./editMapper";
 import { type Op, type SqlJsDatabase, SyncWorker } from "./syncWorker";
 
-interface ColumnMeta {
+export interface ColumnMeta {
     name: string;
     table?: string;
     pkAlias?: string;
     column?: string;
 }
 
-interface QueryResult {
+export interface QueryResult {
     rows: Record<string, unknown>[];
     columnsMeta: ColumnMeta[];
 }
