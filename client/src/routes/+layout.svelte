@@ -14,7 +14,7 @@ import "$lib";
 // Defer user/auth-related imports to client to avoid SSR crashes
 import { setupGlobalDebugFunctions } from "../lib/debug";
 import "../utils/ScrapboxFormatter";
-// グローバルに公開するためにインポート
+// Import for global exposure
 import Toolbar from "../components/Toolbar.svelte";
 import AliasPicker from "../components/AliasPicker.svelte";
 import Sidebar from "../components/Sidebar.svelte";
@@ -26,13 +26,13 @@ import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
 let { children } = $props();
 const logger = getLogger("AppLayout");
 
-// 認証関連の状態
+// Authentication state
 let isAuthenticated = $state(false);
 
 // Sidebar state management - starts closed by default
 let isSidebarOpen = $state(false);
 
-// グローバルへのフォールバック公開（早期に window.generalStore を満たす）
+// Fallback exposure to global (satisfy window.generalStore early)
 if (browser) {
     (window as Window & typeof globalThis & { generalStore?: GeneralStore; appStore?: GeneralStore }).generalStore =
         (window as Window & typeof globalThis & { generalStore?: GeneralStore; appStore?: GeneralStore }).generalStore || appStore;
@@ -45,21 +45,21 @@ if (browser) {
 
 let currentTheme = $derived(userPreferencesStore.theme);
 
-// APIサーバーのURLを取得
+// Get API server URL
 const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
 
 /**
- * ログファイルをローテーションする関数
+ * Function to rotate log files
  */
 async function rotateLogFiles() {
     try {
         if (import.meta.env.DEV) {
             logger.info(
-                "アプリケーション終了時のログローテーションを実行します",
+                "Executing log rotation at application termination",
             );
         }
 
-        // 1. まず通常のFetch APIで試す
+        // 1. Try with standard Fetch API first
         try {
             const response = await fetch(`${API_URL}/api/rotate-logs`, {
                 method: "POST",
@@ -72,21 +72,21 @@ async function rotateLogFiles() {
             if (response.ok) {
                 const result = await response.json();
                 if (import.meta.env.DEV) {
-                    logger.info("ログローテーション完了", result);
+                    logger.info("Log rotation completed", result);
                 }
                 return;
             }
         }
         catch {
-            // fetch失敗時はsendBeaconを試す - エラーは記録しない
+            // Try sendBeacon if fetch fails - do not record error
             if (import.meta.env.DEV) {
                 logger.debug(
-                    "通常のfetch呼び出しに失敗、sendBeaconを試行します",
+                    "Standard fetch call failed, attempting sendBeacon",
                 );
             }
         }
 
-        // 2. フォールバックとしてsendBeaconを使用
+        // 2. Use sendBeacon as fallback
         const blob = new Blob([JSON.stringify({})], {
             type: "application/json",
         });
@@ -97,39 +97,39 @@ async function rotateLogFiles() {
 
         if (success) {
             if (import.meta.env.DEV) {
-                logger.info("ログローテーション実行をスケジュールしました");
+                logger.info("Log rotation execution scheduled");
             }
         }
         else {
-            logger.warn("ログローテーション送信失敗");
+            logger.warn("Log rotation transmission failed");
 
-            // 3. さらに再試行としてケーキング用のクロージングリクエストを試す
+            // 3. Try closing request (image beacon) as a further retry
             try {
                 const img = new Image();
                 img.src = `${API_URL}/api/rotate-logs?t=${Date.now()}`;
             }
             catch {
-                // 最後の試行なのでエラーは無視
+                // Ignore error as it is the last attempt
             }
         }
     }
     catch (error) {
-        logger.error("ログローテーション中にエラーが発生しました", {
+        logger.error("An error occurred during log rotation", {
             error,
         });
     }
 }
 
 /**
- * 定期的にログローテーションを実行する関数（予防策）
+ * Function to execute periodic log rotation (preventive measure)
  */
 function schedulePeriodicLogRotation() {
-    // 定期的なログローテーション（12時間ごと）
+    // Periodic log rotation (every 12 hours)
     const ROTATION_INTERVAL = 12 * 60 * 60 * 1000;
 
     return setInterval(() => {
         if (import.meta.env.DEV) {
-            logger.info("定期的なログローテーションを実行します");
+            logger.info("Executing periodic log rotation");
         }
         rotateLogFiles();
     }, ROTATION_INTERVAL);
@@ -137,23 +137,23 @@ function schedulePeriodicLogRotation() {
 
 let rotationInterval: ReturnType<typeof setInterval> | undefined = undefined;
 
-// ブラウザのunloadイベント用リスナー
+// Listener for browser unload event
 function handleBeforeUnload() {
-    // ブラウザ終了時にログローテーションを実行
+    // Execute log rotation when browser closes
     rotateLogFiles();
 }
 
-// 別の呼び出し方法としてvisibilitychangeイベントを使用
+// Use visibilitychange event as another calling method
 function handleVisibilityChange() {
     if (document.visibilityState === "hidden") {
-        // ユーザーがページを離れる際にもログローテーションを試行
+        // Try log rotation also when user leaves the page
         rotateLogFiles();
     }
 }
 
-// アプリケーション初期化時の処理
+// Processing at application initialization
 onMount(async () => {
-    // ブラウザ環境でのみ実行
+    // Execute only in browser environment
     if (browser) {
         // E2E: Hydration detection flag for stable waits
         try {
@@ -172,15 +172,15 @@ onMount(async () => {
         } catch (e) {
             logger.error("Failed to load client-only modules", e);
         }
-        // アプリケーション初期化のログ
+        // Application initialization log
         if (import.meta.env.DEV) {
-            logger.info("アプリケーションがマウントされました");
+            logger.info("Application mounted");
         }
 
 
 
 
-        // Service WorkerはE2Eテストでは無効化して、ナビゲーションやページクローズ干渉を防ぐ
+        // Disable Service Worker in E2E tests to prevent interference with navigation or page closing
         const isE2e = import.meta.env.MODE === "test"
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
             || (typeof window !== "undefined" && (window as any).__E2E__ === true);
@@ -200,15 +200,15 @@ onMount(async () => {
                 .catch(err => { logger.error("Service worker registration failed:", err); });
         }
 
-        // 認証状態を確認
+        // Check authentication status
         isAuthenticated = userManager?.getCurrentUser() !== null;
 
         if (isAuthenticated) {
-            // デバッグ関数を初期化
+            // Initialize debug functions
             setupGlobalDebugFunctions(yjsService?.yjsHighService);
         }
         else {
-            // 認証状態の変更を監視
+            // Monitor authentication state changes
             userManager?.addEventListener((authResult: any) => {
                 isAuthenticated = authResult !== null;
                 if (isAuthenticated && browser) {
@@ -219,16 +219,16 @@ onMount(async () => {
 
         // Yjs: no auth-coupled init hook required
 
-        // E2E ではページ遷移に干渉しないようにクリーンアップ系のリスナーを無効化
+        // Disable cleanup listeners in E2E to avoid interference with page transitions
         const isE2eCleanup = import.meta.env.MODE === "test"
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
             || (typeof window !== "undefined" && (window as any).__E2E__ === true);
         if (!isE2eCleanup) {
-            // ブラウザ終了時のイベントリスナーを登録
+            // Register event listener for browser termination
             window.addEventListener("beforeunload", handleBeforeUnload);
-            // visibilitychangeイベントリスナーを登録（追加の保険）
+            // Register visibilitychange event listener (additional insurance)
             document.addEventListener("visibilitychange", handleVisibilityChange);
-            // 定期的なログローテーションを設定
+            // Set up periodic log rotation
             rotationInterval = schedulePeriodicLogRotation();
         }
         // Test-only: normalize drop events so Playwright's dispatchEvent("drop", {dataTransfer}) becomes a real DragEvent
@@ -289,7 +289,7 @@ onMount(async () => {
                             };
                         }
 
-                        // Getterフック: DataTransfer.prototype.items の getter をラップして add をプロキシ化
+                        // Getter hook: Wrap DataTransfer.prototype.items getter to proxy add
                         try {
                             const desc = Object.getOwnPropertyDescriptor(DataTransfer.prototype as any, 'items');
                             if (desc && typeof desc.get === 'function' && !anyWin.__E2E_DT_ITEMS_GETTER_PATCHED__) {
@@ -382,11 +382,11 @@ onMount(async () => {
     }
 });
 
-// コンポーネント破棄時の処理
+// Processing at component destruction
 onDestroy(async () => {
-    // ブラウザ環境でのみ実行
+    // Execute only in browser environment
     if (browser) {
-        // イベントリスナーを削除
+        // Remove event listeners
         window.removeEventListener("beforeunload", handleBeforeUnload);
         document.removeEventListener(
             "visibilitychange",
@@ -398,7 +398,7 @@ onDestroy(async () => {
             cleanupYjsClient();
         } catch {}
 
-        // 定期的なログローテーションの解除
+        // Cancel periodic log rotation
         if (rotationInterval) {
             clearInterval(rotationInterval);
         }
