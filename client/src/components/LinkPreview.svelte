@@ -13,7 +13,7 @@ interface Props {
 
 let { pageName = "", projectName }: Props = $props();
 
-// プレビュー表示用の状態
+// State for preview display
 let isVisible = $state(false);
 let previewContent = $state<Item | null>(null);
 let isLoading = $state(false);
@@ -21,21 +21,21 @@ let error = $state<string | null>(null);
 let previewPosition = $state({ top: 0, left: 0 });
 let previewElement = $state<HTMLElement | null>(null);
 
-// プレビューを表示する
+// Show preview
 function showPreview(event: MouseEvent) {
     isVisible = true;
     updatePosition(event);
     loadPreviewContent();
 }
 
-// プレビューを非表示にする
+// Hide preview
 function hidePreview() {
     isVisible = false;
     previewContent = null;
     error = null;
 }
 
-// プレビューの位置を更新する
+// Update preview position
 function updatePosition(event: MouseEvent) {
     if (!previewElement) return;
 
@@ -43,20 +43,20 @@ function updatePosition(event: MouseEvent) {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    // プレビューの幅と高さを取得（まだレンダリングされていない場合はデフォルト値を使用）
+    // Get preview width and height (use default values if not yet rendered)
     const previewWidth = previewElement.offsetWidth || 300;
     const previewHeight = previewElement.offsetHeight || 200;
 
-    // 初期位置（リンクの下）
+    // Initial position (below the link)
     let top = rect.bottom + window.scrollY + 10;
     let left = rect.left + window.scrollX;
 
-    // 画面の右端を超える場合は左に調整
+    // Adjust to left if it exceeds the right edge of the screen
     if (left + previewWidth > viewportWidth) {
         left = viewportWidth - previewWidth - 20;
     }
 
-    // 画面の下端を超える場合は上に表示
+    // Show above if it exceeds the bottom edge of the screen
     if (top + previewHeight > viewportHeight + window.scrollY) {
         top = rect.top + window.scrollY - previewHeight - 10;
     }
@@ -64,7 +64,7 @@ function updatePosition(event: MouseEvent) {
     previewPosition = { top, left };
 }
 
-// プレビュー用のページ内容を読み込む
+// Load preview content
 async function loadPreviewContent() {
     if (!store.pages) return;
 
@@ -73,37 +73,37 @@ async function loadPreviewContent() {
     previewContent = null;
 
     try {
-        // プロジェクト内リンクの場合
+        // Handle internal project links
         if (projectName) {
-            // 現在のプロジェクトと異なる場合は、プレビューを表示しない
-            // 注: 将来的には他プロジェクトのデータも取得できるように拡張する
+            // If different from current project, do not show preview
+            // Note: Extend to fetch data from other projects in the future
             if (projectName !== store.project?.title) {
-                error = "別プロジェクトのページはプレビューできません";
+                error = "Cannot preview pages from other projects";
                 isLoading = false;
                 return;
             }
         }
 
-        // ページを検索
+        // Search for page
         const foundPage = findPageByName(pageName);
         if (foundPage) {
             previewContent = foundPage;
         } else {
-            error = "ページが見つかりません";
+            error = "Page not found";
         }
     } catch (err) {
         logger.error("Failed to load preview content:", err);
-        error = "プレビューの読み込みに失敗しました";
+        error = "Failed to load preview";
     } finally {
         isLoading = false;
     }
 }
 
-// ページ名からページを検索する
+// Find page by name
 function findPageByName(name: string): Item | null {
     if (!store.pages) return null;
 
-    // ページ名が一致するページを検索
+    // Search for page with matching name
     for (const page of store.pages.current) {
         if (page.text.toLowerCase() === name.toLowerCase()) {
             return page;
@@ -113,9 +113,9 @@ function findPageByName(name: string): Item | null {
     return null;
 }
 
-// ページが存在するかどうかを確認する
+// Check if page exists
 export function pageExists(name: string, project?: string): boolean {
-    // プロジェクト指定がある場合は、現在のプロジェクトと一致するか確認
+    // If project is specified, check if it matches current project
     if (project && store.project?.title !== project) {
         return false;
     }
@@ -124,11 +124,11 @@ export function pageExists(name: string, project?: string): boolean {
 }
 
 onMount(() => {
-    // マウント時の処理
+    // Handle mount
 });
 
 onDestroy(() => {
-    // クリーンアップ処理
+    // Handle cleanup
 });
 </script>
 
@@ -148,7 +148,7 @@ onDestroy(() => {
             {#if isLoading}
                 <div class="preview-loading">
                     <div class="loader"></div>
-                    <p>読み込み中...</p>
+                    <p>Loading...</p>
                 </div>
             {:else if error}
                 <div class="preview-error">
@@ -169,13 +169,13 @@ onDestroy(() => {
                                 {/if}
                             </ul>
                         {:else}
-                            <p class="empty-page">このページには内容がありません</p>
+                            <p class="empty-page">This page has no content</p>
                         {/if}
                     </div>
                 </div>
             {:else}
                 <div class="preview-not-found">
-                    <p>ページが見つかりません</p>
+                    <p>Page not found</p>
                 </div>
             {/if}
         </div>
