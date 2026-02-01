@@ -162,7 +162,7 @@ async function getFreshIdToken(): Promise<string> {
     }
 
     try {
-        const token = await auth.currentUser.getIdToken(true);
+        const token = await auth.currentUser.getIdToken();
         if (!token) throw new Error("Token is empty");
         return token;
     } catch (e) {

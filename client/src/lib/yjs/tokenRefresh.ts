@@ -17,7 +17,11 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
     return async () => {
         try {
             console.log("[tokenRefresh] refreshAuthAndReconnect triggered");
-            const t = await userManager.auth.currentUser?.getIdToken(true);
+            // IMPORTANT: Do NOT use getIdToken(true) here!
+            // This function is triggered by onIdTokenChanged.
+            // getIdToken(true) forces a refresh, which triggers onIdTokenChanged again, causing an infinite loop.
+            // The token provided here via the SDK's event or cache is already sufficiently fresh.
+            const t = await userManager.auth.currentUser?.getIdToken();
             console.log("[tokenRefresh] Got new token:", !!t);
             // HocuspocusProvider handles token via the token function passed at creation
             // To refresh, we can call sendToken() which will invoke the token function
