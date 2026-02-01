@@ -42,6 +42,20 @@ export class ScrapboxFormatter {
     }
 
     /**
+     * Sanitizes a URL to prevent XSS
+     * @param url URL to sanitize
+     * @returns Sanitized URL (or original if safe)
+     */
+    static sanitizeUrl(url: string): string {
+        if (!url) return "";
+        // Prevent javascript:, vbscript:, data:
+        if (/^\s*(javascript|vbscript|data):/i.test(url)) {
+            return "unsafe:" + url;
+        }
+        return url;
+    }
+
+    /**
      * Formats text as bold
      * @param text Text to format
      * @returns Formatted bold text
@@ -133,6 +147,9 @@ export class ScrapboxFormatter {
      */
     static tokenize(text: string): FormatToken[] {
         if (!text) return [];
+
+        // Strip control characters that are used for internal processing
+        text = text.replace(/\x01/g, "");
 
         // Formatting patterns
         const patterns = [
@@ -317,7 +334,7 @@ export class ScrapboxFormatter {
                     break;
                 case "link":
                     html += `<a href="${
-                        this.escapeHtml(token.url ?? "")
+                        this.escapeHtml(ScrapboxFormatter.sanitizeUrl(token.url ?? ""))
                     }" target="_blank" rel="noopener noreferrer">${content}</a>`;
                     break;
                 case "internalLink": {
@@ -402,6 +419,9 @@ export class ScrapboxFormatter {
      */
     static formatToHtmlAdvanced(text: string): string {
         if (!text) return "";
+
+        // Strip control characters that are used for internal processing
+        text = text.replace(/\x01/g, "");
 
         // Temporarily replace underline tags with placeholders
         const underlinePlaceholders: string[] = [];
@@ -636,7 +656,10 @@ export class ScrapboxFormatter {
             input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
                 const trimmedLabel = label?.trim();
                 const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
-                const html = `<a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
+                const html = `<a href="${
+                    this.escapeHtml(safeUrl)
+                }" target="_blank" rel="noopener noreferrer">${text}</a>`;
                 return createPlaceholder(html);
             });
 
