@@ -740,8 +740,7 @@ export class ScrapboxFormatter {
             let lastIndex = 0;
             for (const match of boldMatches) {
                 result += html.substring(lastIndex, match.start);
-                const replacement =
-                    '<span class="control-char">[</span><span class="control-char">[</span>'
+                const replacement = '<span class="control-char">[</span><span class="control-char">[</span>'
                     + `<strong>${match.content}</strong>`
                     + '<span class="control-char">]</span><span class="control-char">]</span>';
                 result += replacement;
