@@ -657,7 +657,9 @@ export class ScrapboxFormatter {
                 const trimmedLabel = label?.trim();
                 const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
                 const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
-                const html = `<a href="${this.escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                const html = `<a href="${
+                    this.escapeHtml(safeUrl)
+                }" target="_blank" rel="noopener noreferrer">${text}</a>`;
                 return createPlaceholder(html);
             });
 

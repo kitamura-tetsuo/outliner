@@ -22,10 +22,10 @@ describe("ScrapboxFormatter Security", () => {
     it("should not tokenize javascript: URIs as links", () => {
         const input = "[javascript:alert('xss')]";
         const tokens = ScrapboxFormatter.tokenize(input);
-        const linkToken = tokens.find(t => t.type === 'link');
+        const linkToken = tokens.find(t => t.type === "link");
         if (linkToken) {
-             console.log("Token URL: " + linkToken.url);
-             expect(linkToken.url).not.toMatch(/^javascript:/i);
+            console.log("Token URL: " + linkToken.url);
+            expect(linkToken.url).not.toMatch(/^javascript:/i);
         }
     });
 
