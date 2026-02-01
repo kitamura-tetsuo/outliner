@@ -517,7 +517,7 @@
         z-index: 1000;
     }
 
-    /* E2E限定: 常時マウント時に不可視化（サイズは維持しクリック可能） */
+    /* E2E only: Invisible when always mounted (maintains size and clickable) */
     .e2e-hidden {
         opacity: 0;
         pointer-events: none;
