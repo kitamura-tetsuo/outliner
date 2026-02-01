@@ -149,6 +149,7 @@ export class ScrapboxFormatter {
         if (!text) return [];
 
         // Strip control characters that are used for internal processing
+        // eslint-disable-next-line no-control-regex
         text = text.replace(/\x01/g, "");
 
         // Formatting patterns
@@ -421,6 +422,7 @@ export class ScrapboxFormatter {
         if (!text) return "";
 
         // Strip control characters that are used for internal processing
+        // eslint-disable-next-line no-control-regex
         text = text.replace(/\x01/g, "");
 
         // Temporarily replace underline tags with placeholders
