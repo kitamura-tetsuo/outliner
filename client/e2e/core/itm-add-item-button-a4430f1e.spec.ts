@@ -14,7 +14,7 @@ test.describe("ITM-0002: Add item via button", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // アイテム追加ボタンが表示されるまで待機
-        await page.waitForSelector('button:has-text("アイテム追加")', { timeout: 10000 });
+        await page.waitForSelector('button:has-text("Add Item")', { timeout: 10000 });
     });
 
     test("clicking add item button appends new item", async ({ page }) => {
@@ -22,7 +22,7 @@ test.describe("ITM-0002: Add item via button", () => {
         const itemCountBefore = await page.locator(".outliner-item").count();
 
         // アイテム追加ボタンをクリック
-        await page.click('button:has-text("アイテム追加")');
+        await page.click('button:has-text("Add Item")');
 
         // 新しいアイテムが追加されるまで待機
         await page.waitForTimeout(300);

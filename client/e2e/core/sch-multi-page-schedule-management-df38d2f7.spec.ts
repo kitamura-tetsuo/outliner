@@ -202,7 +202,7 @@ test.describe("Multi-Page Schedule Management", () => {
         console.log("First page ID:", firstPageId);
 
         // Navigate to schedule management for the first page
-        await page.locator("text=予約管理").click();
+        await page.locator("text=Schedule").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
 
         // Add a new schedule
@@ -242,7 +242,7 @@ test.describe("Multi-Page Schedule Management", () => {
         console.log("Current page ID for other-page:", currentPageId);
 
         // Navigate to schedule management for the other page
-        await page.locator("text=予約管理").click();
+        await page.locator("text=Schedule").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
 
         // Verify that the schedule from the first page is NOT present in the other page
@@ -258,7 +258,7 @@ test.describe("Multi-Page Schedule Management", () => {
         await ensureConnectedPage();
 
         // Navigate to schedule management again
-        await page.locator("text=予約管理").click();
+        await page.locator("text=Schedule").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
 
         // Wait for schedules to load and verify the schedule is still present
