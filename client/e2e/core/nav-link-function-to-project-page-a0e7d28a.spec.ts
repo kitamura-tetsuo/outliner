@@ -27,7 +27,7 @@ test.describe("NAV-0002: プロジェクトページへのリンク機能", () =
 
     test("パンくずナビゲーションにホームへのリンクが表示される", async ({ page }) => {
         // ホームへのリンクが表示されることを確認
-        const homeLink = page.locator('nav button:has-text("ホーム")');
+        const homeLink = page.locator('nav button:has-text("Home")');
         await expect(homeLink).toBeVisible();
         await expect(homeLink).toHaveClass(/text-blue-600/);
     });
@@ -65,7 +65,7 @@ test.describe("NAV-0002: プロジェクトページへのリンク機能", () =
 
     test("ホームへのリンクをクリックするとホームページに遷移する", async ({ page }) => {
         // ホームへのリンクをクリック
-        const homeLink = page.locator('nav button:has-text("ホーム")');
+        const homeLink = page.locator('nav button:has-text("Home")');
         await homeLink.click();
 
         // ホームページに遷移したことを確認

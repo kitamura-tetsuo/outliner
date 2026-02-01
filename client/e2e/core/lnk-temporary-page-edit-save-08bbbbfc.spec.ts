@@ -20,7 +20,7 @@ test.describe("LNK-0004: 仮ページ編集保存", () => {
         await page.goto(`${sourceUrl}${nonExistentPage}?isTest=true`);
         await page.waitForSelector("body", { timeout: 10000 });
 
-        const loginButton = page.locator("button:has-text('開発者ログイン')");
+        const loginButton = page.locator("button:has-text('Developer Login')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(300);
@@ -30,7 +30,7 @@ test.describe("LNK-0004: 仮ページ編集保存", () => {
         await expect(outlinerBase).toBeVisible();
 
         // Auto-creation is disabled, so we must click 'Add Item' to create the temp page
-        const addItemBtn = page.getByRole("button", { name: "アイテム追加" });
+        const addItemBtn = page.getByRole("button", { name: "Add Item" });
         if (await addItemBtn.isVisible()) {
             await addItemBtn.click();
         }
