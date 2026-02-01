@@ -153,7 +153,7 @@ export const yjsService = {
                 const user = s?.user;
                 if (!user) return;
                 const color = resolveUserColor(user.userId, user.color);
-                // テストが即時反映を期待しているため同期更新する
+                // Update synchronously because tests expect immediate reflection.
                 target.setUser({ userId: user.userId, userName: user.name, color });
 
                 if (overlay && id !== clientId) {
