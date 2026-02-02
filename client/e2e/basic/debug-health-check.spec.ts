@@ -23,7 +23,7 @@ test.describe("Debug Page Health Check", () => {
         // We verify that the request goes to localhost/127.0.0.1, not the hardcoded external URL
         const [response] = await Promise.all([
             page.waitForResponse(resp => resp.url().includes("/health")),
-            page.click("text=ヘルスチェック実行 (GET /health)"),
+            page.click("text=Run health check (GET /health)"),
         ]);
 
         console.log(`Health check URL: ${response.url()}`);
@@ -38,6 +38,6 @@ test.describe("Debug Page Health Check", () => {
 
         // 5. Verify UI update
         // Check that the result is displayed
-        await expect(page.locator("text=ステータス: ok")).toBeVisible();
+        await expect(page.locator("text=Status: ok")).toBeVisible();
     });
 });
