@@ -48,8 +48,14 @@ export class ScrapboxFormatter {
      */
     static sanitizeUrl(url: string): string {
         if (!url) return "";
+        // Strip null bytes (and other invisible control chars) before checking regex
+        // This is crucial because escapeHtml() strips \x00, which can allow bypass
+        // e.g. "javas\x00cript:" -> regex fails -> escapeHtml -> "javascript:" -> XSS
+        // eslint-disable-next-line no-control-regex
+        const checkUrl = url.replace(/\x00/g, "");
+
         // Prevent javascript:, vbscript:, data:
-        if (/^\s*(javascript|vbscript|data):/i.test(url)) {
+        if (/^\s*(javascript|vbscript|data):/i.test(checkUrl)) {
             return "unsafe:" + url;
         }
         return url;
