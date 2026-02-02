@@ -6,10 +6,14 @@
     import { stableIdFromTitle } from "$lib/yjsService.svelte";
 
     let projectId = $derived($page.params.project);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let generatedLink = $state<string | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let error = $state<string | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let isLoading = $state(false);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async function generateLink() {
         if (!authStore.user) {
             error = "You must be logged in.";
@@ -52,7 +56,7 @@
     <div class="card">
         <h2>Share Project</h2>
         <p>Generate a unique link to share this project with others.</p>
-        
+
         {#if generatedLink}
             <div class="link-display">
                 <input type="text" readonly value={generatedLink} aria-label="Generated Link" />

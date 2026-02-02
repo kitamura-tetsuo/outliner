@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 function stableIdFromTitle(title: string): string {
     let h = 2166136261 >>> 0; // FNV-1a basis
@@ -20,7 +23,9 @@ test.describe("Project Sharing E2E", () => {
         const baseProjectName = `Test Share Project ${timestamp}`;
 
         // Prepare environment with the base name
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, test.info(), [], undefined, { projectName: baseProjectName });
+        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, test.info(), [], undefined, {
+            projectName: baseProjectName,
+        });
 
         // Wait for app to be ready
         await TestHelpers.waitForAppReady(page);
@@ -48,8 +53,8 @@ test.describe("Project Sharing E2E", () => {
                 body: JSON.stringify({
                     idToken: token,
                     projectId: projectId,
-                    title: projectName
-                })
+                    title: projectName,
+                }),
             });
 
             if (!res.ok) {
@@ -70,12 +75,12 @@ test.describe("Project Sharing E2E", () => {
 
         // Wait for link to be generated
         const linkInput = page.locator('input[aria-label="Generated Link"]');
-        const errorMsg = page.locator('.error');
+        const errorMsg = page.locator(".error");
 
         try {
             await Promise.race([
                 linkInput.waitFor({ state: "visible", timeout: 10000 }),
-                errorMsg.waitFor({ state: "visible", timeout: 10000 })
+                errorMsg.waitFor({ state: "visible", timeout: 10000 }),
             ]);
         } catch (e) {
             // timeout
@@ -137,7 +142,10 @@ test.describe("Project Sharing E2E", () => {
 
         // --- Verification ---
         // Should redirect to project page (checking partial URL because of encoding)
-        await expect(pageB).toHaveURL(new RegExp(`/${encodeURIComponent(projectId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), { timeout: 15000 });
+        await expect(pageB).toHaveURL(
+            new RegExp(`/${encodeURIComponent(projectId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+            { timeout: 15000 },
+        );
 
         console.log(`[User B] Redirected to project page. Waiting for content...`);
 
@@ -146,7 +154,9 @@ test.describe("Project Sharing E2E", () => {
         console.log(`[User B] Waiting for project page...`);
 
         // Wait for URL to stabilize (redirect completion)
-        await pageB.waitForURL(new RegExp(`/${encodeURIComponent(projectId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), { timeout: 30000 });
+        await pageB.waitForURL(new RegExp(`/${encodeURIComponent(projectId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), {
+            timeout: 30000,
+        });
 
         // Check if authentication state was preserved after redirect
         console.log("[User B] Waiting for authentication state to stabilize...");
