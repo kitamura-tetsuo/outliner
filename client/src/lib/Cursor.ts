@@ -714,425 +714,19 @@ export class Cursor implements CursorEditingContext {
         return true;
     }
 
-    // 選択範囲を左に拡張
-    extendSelectionLeft() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        // 現在の選択範囲を取得
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
-
-        if (existingSelection) {
-            // 既存の選択範囲がある場合は拡張
-            if (existingSelection.isReversed) {
-                // 逆方向の選択範囲の場合、開始位置を移動
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // カーソルを左に移動
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveLeft();
-
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = true;
-
-                // 選択範囲が消滅した場合は方向を反転
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveLeft();
-
-                    startItemId = oldItemId;
-                    startOffset = oldOffset;
-                    endItemId = this.itemId;
-                    endOffset = this.offset;
-                    isReversed = true;
-                }
-            } else {
-                // 正方向の選択範囲の場合、終了位置を移動
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // カーソルを左に移動
-                this.moveLeft();
-
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = false;
-
-                // 選択範囲が消滅した場合は方向を反転
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    isReversed = true;
-                    const temp = startItemId;
-                    startItemId = endItemId;
-                    endItemId = temp;
-
-                    const tempOffset = startOffset;
-                    startOffset = endOffset;
-                    endOffset = tempOffset;
-                }
-            }
-        } else {
-            // 新規選択範囲の作成
-            startItemId = this.itemId;
-            startOffset = this.offset;
-
-            // カーソルを左に移動
-            this.moveLeft();
-
-            endItemId = this.itemId;
-            endOffset = this.offset;
-            isReversed = true;
-        }
-
-        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
-        store.clearSelectionForUser(this.userId);
-        store.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: this.userId,
-            isReversed,
-        });
-
-        // グローバルテキストエリアの選択範囲を設定
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
-    }
-
-    // 選択範囲を右に拡張
-    extendSelectionRight() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        // 現在の選択範囲を取得
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
-
-        if (existingSelection) {
-            // 既存の選択範囲がある場合は拡張
-            if (!existingSelection.isReversed) {
-                // 正方向の選択範囲の場合、終了位置を移動
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // カーソルを右に移動
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveRight();
-
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = false;
-
-                // 選択範囲が消滅した場合は方向を反転
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveRight();
-
-                    startItemId = oldItemId;
-                    startOffset = oldOffset;
-                    endItemId = this.itemId;
-                    endOffset = this.offset;
-                    isReversed = false;
-                }
-            } else {
-                // 逆方向の選択範囲の場合、開始位置を移動
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
-
-                // カーソルを右に移動
-                this.moveRight();
-
-                startItemId = this.itemId;
-                startOffset = this.offset;
-                isReversed = true;
-
-                // 選択範囲が消滅した場合は方向を反転
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    isReversed = false;
-                    const temp = startItemId;
-                    startItemId = endItemId;
-                    endItemId = temp;
-
-                    const tempOffset = startOffset;
-                    startOffset = endOffset;
-                    endOffset = tempOffset;
-                }
-            }
-        } else {
-            // 新規選択範囲の作成
-            startItemId = this.itemId;
-            startOffset = this.offset;
-
-            // カーソルを右に移動
-            this.moveRight();
-
-            endItemId = this.itemId;
-            endOffset = this.offset;
-            isReversed = false;
-        }
-
-        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
-        store.clearSelectionForUser(this.userId);
-        // 選択範囲を設定
-        store.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: this.userId,
-            isReversed,
-        });
-
-        // グローバルテキストエリアの選択範囲を設定
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
-    }
-
-    // 選択範囲を上に拡張
-    extendSelectionUp(): void {
-        const target = this.findTarget();
-        if (!target) return;
-
-        // 現在の選択範囲を取得
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
-
-        if (existingSelection) {
-            // 既存の選択範囲がある場合は拡張
-            if (existingSelection.isReversed) {
-                // 逆方向の選択範囲の場合、開始位置を移動
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // カーソルを上に移動
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveUp();
-
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = true;
-
-                // 選択範囲が消滅した場合は方向を反転
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveUp();
-
-                    startItemId = this.itemId;
-                    startOffset = this.offset;
-                    endItemId = oldItemId;
-                    endOffset = oldOffset;
-                    isReversed = false;
-                }
-            } else {
-                // 正方向の選択範囲の場合、終了位置を移動
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
-
-                // カーソルを上に移動
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveUp();
-
-                startItemId = this.itemId;
-                startOffset = this.offset;
-                isReversed = false;
-
-                // 選択範囲が消滅した場合は方向を反転
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveUp();
-
-                    endItemId = oldItemId;
-                    endOffset = oldOffset;
-                    startItemId = this.itemId;
-                    startOffset = this.offset;
-                    isReversed = true;
-                }
-            }
-        } else {
-            // 新規選択範囲の作成
-            startItemId = this.itemId;
-            startOffset = this.offset;
-
-            // カーソルを上に移動
-            this.moveUp();
-
-            endItemId = this.itemId;
-            endOffset = this.offset;
-            isReversed = true;
-        }
-
-        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
-        store.clearSelectionForUser(this.userId);
-        // 選択範囲を設定
-        store.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: this.userId,
-            isReversed,
-        });
-
-        // グローバルテキストエリアの選択範囲を設定
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
-    }
-
-    // 選択範囲を下に拡張
-    extendSelectionDown() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`extendSelectionDown called for itemId=${this.itemId}, offset=${this.offset}`);
-        }
-
-        // 現在の選択範囲を取得
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
-
-        if (existingSelection) {
-            // 既存の選択範囲がある場合は拡張
-            if (!existingSelection.isReversed) {
-                // 正方向の選択範囲の場合、終了位置を移動
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // カーソルを下に移動
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveDown();
-
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = false;
-
-                // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(
-                        `Extending forward selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
-
-                // 選択範囲が消滅した場合は方向を反転
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveDown();
-
-                    startItemId = oldItemId;
-                    startOffset = oldOffset;
-                    endItemId = this.itemId;
-                    endOffset = this.offset;
-                    isReversed = false;
-
-                    // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                        console.log(
-                            `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                        );
-                    }
-                }
-            } else {
-                // 逆方向の選択範囲の場合、開始位置を移動
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
-
-                // カーソルを下に移動
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveDown();
-
-                startItemId = this.itemId;
-                startOffset = this.offset;
-                isReversed = true;
-
-                // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(
-                        `Extending reversed selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
-
-                // 選択範囲が消滅した場合は方向を反転
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveDown();
-
-                    endItemId = oldItemId;
-                    endOffset = oldOffset;
-                    startItemId = this.itemId;
-                    startOffset = this.offset;
-                    isReversed = false;
-
-                    // デバッグ情報
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                        console.log(
-                            `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                        );
-                    }
-                }
-            }
-        } else {
-            // 新規選択範囲の作成
-            startItemId = this.itemId;
-            startOffset = this.offset;
-
-            // 現在位置を保存
-            const oldItemId = this.itemId;
-            // const oldOffset = this.offset; // Not used
-
-            // カーソルを下に移動
-            this.moveDown();
-
-            // 移動先が同じアイテム内の場合は、全テキストを選択
-            if (this.itemId === oldItemId) {
-                // const text = this.getTargetText(target); // Not used
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = false;
-
-                // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(
-                        `New selection within same item: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
-            } else {
-                // 別のアイテムに移動した場合
-                endItemId = this.itemId;
-                endOffset = this.offset; // 次のアイテムの現在位置まで選択（以前は0固定だった）
-                isReversed = false;
-
-                // デバッグ情報
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(
-                        `New selection across items: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
-            }
-        }
-
-        // 選択範囲の方向を適切に設定（テスト用の強制設定を削除）
+    private calculateIsReversed(
+        startItemId: string,
+        startOffset: number,
+        endItemId: string,
+        endOffset: number,
+    ): boolean {
         // 開始と終了が同じアイテムの場合、オフセットで方向を決定
         if (startItemId === endItemId) {
-            isReversed = startOffset > endOffset;
-        } // 異なるアイテムの場合、DOM上の順序で方向を決定
-        else {
+            return startOffset > endOffset;
+        }
+
+        // 異なるアイテムの場合、DOM上の順序で方向を決定
+        if (typeof document !== "undefined") {
             const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
             const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
             const startIdx = allItemIds.indexOf(startItemId);
@@ -1140,15 +734,24 @@ export class Cursor implements CursorEditingContext {
 
             // インデックスが見つからない場合はデフォルトで正方向
             if (startIdx === -1 || endIdx === -1) {
-                isReversed = false;
-            } else {
-                isReversed = startIdx > endIdx;
+                return false;
             }
+            return startIdx > endIdx;
         }
+
+        return false;
+    }
+
+    private updateSelectionAfterMove(startItemId: string, startOffset: number) {
+        const endItemId = this.itemId;
+        const endOffset = this.offset;
+        const isReversed = this.calculateIsReversed(startItemId, startOffset, endItemId, endOffset);
 
         // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
         store.clearSelectionForUser(this.userId);
-        const selectionId = store.setSelection({
+
+        // 選択範囲を設定
+        store.setSelection({
             startItemId,
             startOffset,
             endItemId,
@@ -1157,22 +760,14 @@ export class Cursor implements CursorEditingContext {
             isReversed,
         });
 
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`Selection created with ID: ${selectionId}, isReversed=${isReversed}`);
-            console.log(`Current selections:`, store.selections);
-        }
-
         // グローバルテキストエリアの選択範囲を設定
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
         // 選択範囲が正しく作成されたことを確認するために、DOMに反映されるまで少し待つ
         if (typeof window !== "undefined") {
             setTimeout(() => {
+                if (typeof document === "undefined") return;
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Selection elements in DOM: ${selectionElements.length}`);
-                }
 
                 // 選択範囲が表示されていない場合は、再度選択範囲を設定
                 if (selectionElements.length === 0) {
@@ -1190,6 +785,110 @@ export class Cursor implements CursorEditingContext {
                 }
             }, 150); // タイムアウトを150msに増やして、DOMの更新を待つ時間を長くする
         }
+    }
+
+    // 選択範囲を左に拡張
+    extendSelectionLeft() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // 現在の選択範囲を取得
+        const existingSelection = this.getSelectionForCurrentItem();
+
+        let startItemId, startOffset;
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は開始位置（Anchor）を保持
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
+        } else {
+            // 新規選択範囲の場合は現在位置を開始位置とする
+            startItemId = this.itemId;
+            startOffset = this.offset;
+        }
+
+        // カーソルを左に移動（Focusの更新）
+        this.moveLeft();
+
+        this.updateSelectionAfterMove(startItemId, startOffset);
+    }
+
+    // 選択範囲を右に拡張
+    extendSelectionRight() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // 現在の選択範囲を取得
+        const existingSelection = this.getSelectionForCurrentItem();
+
+        let startItemId, startOffset;
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は開始位置（Anchor）を保持
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
+        } else {
+            // 新規選択範囲の場合は現在位置を開始位置とする
+            startItemId = this.itemId;
+            startOffset = this.offset;
+        }
+
+        // カーソルを右に移動（Focusの更新）
+        this.moveRight();
+
+        this.updateSelectionAfterMove(startItemId, startOffset);
+    }
+
+    // 選択範囲を上に拡張
+    extendSelectionUp(): void {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // 現在の選択範囲を取得
+        const existingSelection = this.getSelectionForCurrentItem();
+
+        let startItemId, startOffset;
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は開始位置（Anchor）を保持
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
+        } else {
+            // 新規選択範囲の場合は現在位置を開始位置とする
+            startItemId = this.itemId;
+            startOffset = this.offset;
+        }
+
+        // カーソルを上に移動（Focusの更新）
+        this.moveUp();
+
+        this.updateSelectionAfterMove(startItemId, startOffset);
+    }
+
+    // 選択範囲を下に拡張
+    extendSelectionDown() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // 現在の選択範囲を取得
+        const existingSelection = this.getSelectionForCurrentItem();
+
+        let startItemId, startOffset;
+
+        if (existingSelection) {
+            // 既存の選択範囲がある場合は開始位置（Anchor）を保持
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
+        } else {
+            // 新規選択範囲の場合は現在位置を開始位置とする
+            startItemId = this.itemId;
+            startOffset = this.offset;
+        }
+
+        // カーソルを下に移動（Focusの更新）
+        this.moveDown();
+
+        this.updateSelectionAfterMove(startItemId, startOffset);
     }
 
     // カーソルを行の先頭に移動
@@ -1229,100 +928,33 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`extendSelectionToLineStart called for itemId=${this.itemId}, offset=${this.offset}`);
-        }
-
-        // 現在の選択範囲を取得
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineStartOffset = getLineStartOffset(text, currentLineIndex);
 
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(
-                `Current line index: ${currentLineIndex}, lineStartOffset: ${lineStartOffset}, text: "${text}"`,
-            );
-        }
+        // 現在の選択範囲を取得
+        const existingSelection = this.getSelectionForCurrentItem();
 
-        // 現在のカーソル位置が既に行頭にある場合は何もしない
+        // 現在のカーソル位置が既に行頭にある場合は何もしない（選択範囲がない場合のみ）
         if (this.offset === lineStartOffset && !existingSelection) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`Already at line start, no selection created`);
-            }
             return;
         }
 
+        let startItemId, startOffset;
+
         if (existingSelection) {
-            // 既存の選択範囲がある場合は拡張
-            if (existingSelection.isReversed) {
-                // 逆方向の選択範囲の場合、開始位置を移動
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // カーソルを行頭に移動
-                endItemId = this.itemId;
-                endOffset = lineStartOffset;
-                isReversed = true;
-            } else {
-                // 正方向の選択範囲の場合、終了位置を移動
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
-
-                // カーソルを行頭に移動
-                startItemId = this.itemId;
-                startOffset = lineStartOffset;
-                isReversed = false;
-            }
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
         } else {
-            // 新規選択範囲の作成
-            // 現在位置から行頭までを選択
             startItemId = this.itemId;
-            endItemId = this.itemId;
-
-            // 現在位置と行頭の位置関係に基づいて方向を決定
-            if (this.offset > lineStartOffset) {
-                // 通常の場合（カーソルが行の途中にある）
-                startOffset = this.offset;
-                endOffset = lineStartOffset;
-                isReversed = true; // 行頭に向かって選択するので逆方向
-            } else {
-                // カーソルが行頭にある場合（通常はここに入らない）
-                startOffset = lineStartOffset;
-                endOffset = this.offset;
-                isReversed = false;
-            }
+            startOffset = this.offset;
         }
-
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(
-                `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
-            );
-        }
-
-        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
-        store.clearSelectionForUser(this.userId);
-        // 選択範囲を設定
-        store.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: this.userId,
-            isReversed,
-        });
 
         // カーソル位置を行頭に移動
         this.offset = lineStartOffset;
         this.applyToStore();
 
-        // グローバルテキストエリアの選択範囲を設定
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+        this.updateSelectionAfterMove(startItemId, startOffset);
     }
 
     // 選択範囲を行末まで拡張
@@ -1330,143 +962,33 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`extendSelectionToLineEnd called for itemId=${this.itemId}, offset=${this.offset}`);
-        }
-
-        // 現在の選択範囲を取得
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineEndOffset = getLineEndOffset(text, currentLineIndex);
 
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`Current line index: ${currentLineIndex}, lineEndOffset: ${lineEndOffset}, text: "${text}"`);
-        }
+        // 現在の選択範囲を取得
+        const existingSelection = this.getSelectionForCurrentItem();
 
-        // 現在のカーソル位置が既に行末にある場合は何もしない
+        // 現在のカーソル位置が既に行末にある場合は何もしない（選択範囲がない場合のみ）
         if (this.offset === lineEndOffset && !existingSelection) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`Already at line end, no selection created`);
-            }
             return;
         }
 
+        let startItemId, startOffset;
+
         if (existingSelection) {
-            // 既存の選択範囲がある場合は拡張
-            if (!existingSelection.isReversed) {
-                // 正方向の選択範囲の場合、終了位置を移動
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // カーソルを行末に移動
-                endItemId = this.itemId;
-                endOffset = lineEndOffset;
-                isReversed = false;
-            } else {
-                // 逆方向の選択範囲の場合、開始位置を移動
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
-
-                // カーソルを行末に移動
-                startItemId = this.itemId;
-                startOffset = lineEndOffset;
-                isReversed = true;
-            }
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
         } else {
-            // 新規選択範囲の作成
             startItemId = this.itemId;
             startOffset = this.offset;
-
-            // 行末までを選択
-            endItemId = this.itemId;
-            endOffset = lineEndOffset;
-            isReversed = this.offset > lineEndOffset;
-        }
-
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(
-                `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
-            );
-        }
-
-        // 既存の同ユーザーの選択範囲をクリアしてから新しい範囲を設定
-        store.clearSelectionForUser(this.userId);
-        // 選択範囲を設定
-        const selectionId = store.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: this.userId,
-            isReversed,
-        });
-
-        // デバッグ情報
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`Selection created with ID: ${selectionId}`);
-            console.log(`Current selections:`, store.selections);
         }
 
         // カーソル位置を行末に移動
         this.offset = lineEndOffset;
         this.applyToStore();
 
-        // グローバルテキストエリアの選択範囲を設定
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
-
-        // 選択範囲が正しく作成されたことを確認するために、DOMに反映されるまで少し待つ
-        if (typeof window !== "undefined") {
-            setTimeout(() => {
-                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Selection elements in DOM: ${selectionElements.length}`);
-                }
-
-                // 選択範囲が表示されていない場合は、再度選択範囲を設定
-                if (selectionElements.length === 0) {
-                    store.setSelection({
-                        startItemId,
-                        startOffset,
-                        endItemId,
-                        endOffset,
-                        userId: this.userId,
-                        isReversed,
-                    });
-
-                    // 選択範囲の表示を強制的に更新
-                    store.forceUpdate();
-                }
-            }, 100); // タイムアウトを100msに増やして、DOMの更新を待つ時間を長くする
-
-            // 追加の確認と更新
-            setTimeout(() => {
-                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (selectionElements.length === 0) {
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                        console.log(`Selection still not visible after 100ms, forcing update again`);
-                    }
-
-                    // 選択範囲を再設定
-                    store.setSelection({
-                        startItemId,
-                        startOffset,
-                        endItemId,
-                        endOffset,
-                        userId: this.userId,
-                        isReversed,
-                    });
-
-                    // 強制的に更新
-                    store.forceUpdate();
-                }
-            }, 200);
-        }
+        this.updateSelectionAfterMove(startItemId, startOffset);
     }
 
     /**
@@ -2398,27 +1920,6 @@ export class Cursor implements CursorEditingContext {
     formatCode() {
         this.editor.formatCode();
     }
-
-    /**
-     * 選択範囲にフォーマットを適用する共通メソッド
-     * @param markdownPrefix Markdown形式のプレフィックス
-     * @param markdownSuffix Markdown形式のサフィックス
-     * @param scrapboxPrefix Scrapbox形式のプレフィックス
-     * @param scrapboxSuffix Scrapbox形式のサフィックス
-     */
-
-    /**
-     * 選択範囲にScrapbox構文のフォーマットを適用する
-     * @param formatType フォーマットの種類（'bold', 'italic', 'strikethrough', 'underline', 'code'）
-     */
-
-    /**
-     * 複数アイテムにまたがる選択範囲にフォーマットを適用する
-     */
-
-    /**
-     * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
-     */
 
     /**
      * Find the next item using DOM traversal as a fallback mechanism
