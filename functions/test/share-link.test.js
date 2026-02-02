@@ -19,7 +19,7 @@ describe("acceptProjectShareLink Logic Tests", () => {
     // Reset Mock Data
     mockUserProjects = {};
     mockProjectUsers = {
-      "projectP": {
+      projectP: {
         title: "Test Project",
         accessibleUserIds: ["owner"],
       },
@@ -157,7 +157,9 @@ describe("acceptProjectShareLink Logic Tests", () => {
     expect(transactionUpdateSpy).toHaveBeenCalledWith(
       expect.objectContaining({ path: "projectUsers/projectP" }),
       expect.objectContaining({
-        accessibleUserIds: expect.objectContaining({ elements: expect.arrayContaining(["user1"]) }),
+        accessibleUserIds: expect.objectContaining({
+          elements: expect.arrayContaining(["user1"]),
+        }),
       }),
     );
 
