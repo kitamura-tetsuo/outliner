@@ -5,15 +5,15 @@ import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte
 import { presenceStore } from '../stores/PresenceStore.svelte';
 import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
 
-// store API (関数のみ)
+// store API (functions only)
 const { stopCursorBlink } = store;
 
-// デバッグモード
+// Debug mode
 let DEBUG_MODE = $state(false);
-// 上位へイベント dispatch
+// Dispatch event to parent
 const dispatch = createEventDispatcher();
 
-// カーソルの位置とアイテムの位置情報をマッピングするオブジェクト
+// Object mapping cursor position and item position information
 interface CursorPositionMap {
     [itemId: string]: {
         elementRect: DOMRect;
@@ -28,9 +28,9 @@ interface CursorPositionMap {
     };
 }
 
-// カーソル位置・選択範囲などの状態をリアクティブに管理
+// Reactively manage state such as cursor position and selection range
 let positionMap = $state<CursorPositionMap>({});
-// store の内容に追従する導出値
+// Derived values tracking store content
 let cursorList = $state<CursorPosition[]>([]);
 let selectionList = $state<SelectionRange[]>([]);
 let allSelections = $derived.by(() => Object.values(store.selections));
@@ -44,29 +44,29 @@ let overlayCursorVisible = $derived.by(() => {
     return (store.cursorVisible || isTestEnvironment) && !aliasPickerStore.isVisible;
 });
 
-// DOM要素への参照
+// References to DOM elements
 let overlayRef: HTMLDivElement;
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureCtx: CanvasRenderingContext2D | null = null;
 
-// テスト環境（jsdom）用の代替テキスト測定方法
+// Alternative text measurement method for test environment (jsdom)
 function measureTextWidthFallback(itemId: string, text: string): number {
     const itemInfo = positionMap[itemId];
     if (!itemInfo) return 0;
 
     const { fontProperties } = itemInfo;
-    // フォントの特性に基づいてテキストの推定幅を計算
-    // 標準的な文字幅（スペース、英数字、日本語など）を使用
+    // Calculate estimated text width based on font properties
+    // Use standard character widths (space, alphanumeric, Japanese, etc.)
     let width = 0;
     for (const char of text) {
         if (char.match(/[a-zA-Z0-9.,;:[\](){}]/)) {
-            // 半角文字はフォントサイズの半分程度
+            // Half-width characters are about half the font size
             width += parseFloat(fontProperties.fontSize) * 0.5;
         } else if (char.match(/[一-龯]/)) {
-            // 漢字はフォントサイズに近い
+            // Kanji is close to the font size
             width += parseFloat(fontProperties.fontSize) * 0.9;
         } else {
-            // その他の文字も半角扱い
+            // Other characters are also treated as half-width
             width += parseFloat(fontProperties.fontSize) * 0.5;
         }
     }
@@ -177,14 +177,14 @@ function updateTextareaPosition() {
     }
 }
 
-// 変更通知に応じて位置更新（ポーリング排除）
+// Update position in response to change notification (eliminate polling)
 onMount(() => {
     // setup text measurement without DOM mutations
-    // jsdom環境ではCanvas APIがサポートされていないため、
-    // ブラウザ環境かつCanvasが実装されている場合にのみ初期化する
+    // Since Canvas API is not supported in jsdom environment,
+    // Initialize only in browser environment where Canvas is implemented
     if (typeof document !== 'undefined' && typeof HTMLCanvasElement !== 'undefined') {
-        // jsdom特有のチェック: jsdomではnavigatorのプロパティがブラウザと異なる
-        // また、process が定義されている場合もNode.js環境
+        // jsdom-specific check: navigator properties in jsdom differ from browsers
+        // Also Node.js environment if process is defined
         const isJsdom = (typeof navigator !== 'undefined' &&
                         navigator.userAgent.includes('jsdom')) ||
                         (typeof process !== 'undefined' && process.versions && process.versions.node);
@@ -194,13 +194,13 @@ onMount(() => {
         if (!isJsdom) {
             try {
                 measureCanvas = document.createElement('canvas');
-                // テスト環境ではgetContextが実装されていない場合があるため、try-catchで対応
+                // Use fallback if Canvas context is not available
                 measureCtx = measureCanvas.getContext('2d');
                 if (!measureCtx) {
                     console.warn('Canvas 2D context not available, using fallback text measurement');
                 }
             } catch (error) {
-                // テスト環境や特定のブラウザではCanvas APIが利用できない場合がある
+                // Canvas API might not be available in test environments or specific browsers
                 console.warn('Canvas API not available, using fallback text measurement:', error);
                 measureCtx = null;
             }
@@ -213,7 +213,7 @@ onMount(() => {
         measureCtx = null;
     }
 
-    // デバウンス付きでストアの変更を購読して無限ループを回避
+    // Subscribe to store changes with debounce to avoid infinite loops
 
     let updateTimeout: number | null = null;
     let unsubscribe = () => {};
@@ -246,13 +246,13 @@ onMount(() => {
                 } else {
                     localCursorVisible = store.cursorVisible;
                 }
-            }, 16) as unknown as number; // ~60fpsの間隔で更新
+            }, 16) as unknown as number; // Update at ~60fps interval
         });
     } catch (error) {
         console.warn('Failed to subscribe to store changes:', error);
     }
 
-    // 初期化
+    // Initialization
     try {
         syncCursors();
         if (typeof window !== 'undefined') {
@@ -292,13 +292,13 @@ onMount(() => {
     };
 });
 
-// より正確なテキスト測定を行うヘルパー関数
+// Helper function to perform more accurate text measurement
 
 function measureTextWidthCanvas(itemId: string, text: string): number {
     const itemInfo = positionMap[itemId];
     if (!itemInfo) return 0;
 
-    // Canvas contextが利用できない場合はフォールバックを使用
+    // Use fallback if Canvas context is not available
     if (!measureCtx) {
         return measureTextWidthFallback(itemId, text);
     }
@@ -314,18 +314,18 @@ function measureTextWidthCanvas(itemId: string, text: string): number {
     return m.width || 0;
 }
 
-// カーソル位置をピクセル値に変換する関数
+// Function to calculate pixel position of selection range
 function calculateCursorPixelPosition(itemId: string, offset: number): { left: number; top: number } | null {
     const itemInfo = positionMap[itemId];
     if (!itemInfo) {
         if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
             console.log(`calculateCursorPixelPosition: no itemInfo for ${itemId}`, Object.keys(positionMap));
         }
-        // アイテム情報がない場合は描画をスキップ
+        // Skip rendering if item info is missing
         return null;
     }
     const { textElement } = itemInfo;
-    // ツリーコンテナを取得
+    // Get tree container
     const treeContainer = resolveTreeContainer();
     if (!treeContainer) {
         if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
@@ -334,15 +334,15 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         return null;
     }
     try {
-        // 最新の位置情報を取得するため、常に新たに計測
-        // ツリーコンテナの絶対位置 (reference point)
+        // Always measure anew to get the latest position information
+        // Absolute position of tree container (reference point)
         const treeContainerRect = treeContainer.getBoundingClientRect();
-        // テキスト要素の絶対位置
+        // Absolute position of text element
         const textRect = textElement.getBoundingClientRect();
 
-        // テキストの内容を取得
+        // Get text content
         const text = textElement.textContent || '';
-        // 空テキストの場合は必ず左端
+        // Always left edge if empty text
         if (!text || text.length === 0) {
             const contentContainer = textElement.closest('.item-content-container');
             const contentRect = contentContainer?.getBoundingClientRect() || textRect;
@@ -384,7 +384,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
             return null;
         };
 
-        // 折り返し対応: Range API を優先
+        // Word wrap support: Prioritize Range API
         const textPosition = findTextPosition(textElement, offset);
         if (textPosition) {
             const range = document.createRange();
@@ -401,7 +401,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
             return { left: relativeLeft, top: relativeTop };
         }
 
-        // フォールバック: Canvas で幅を測定（DOMを変更しない）
+        // Fallback: Measure width with Canvas (do not modify DOM)
         const textBeforeCursor = text.substring(0, offset);
         const cursorWidth = measureTextWidthCanvas(itemId, textBeforeCursor);
         const contentContainer = textElement.closest('.item-content-container');
@@ -420,14 +420,14 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
     }
 }
 
-// 選択範囲のピクセル位置を計算する関数
+// Function to calculate pixel position of selection range
 function calculateSelectionPixelRange(
     itemId: string,
     startOffset: number,
     endOffset: number,
     isReversed?: boolean
 ): { left: number; top: number; width: number; height: number } | null {
-    // 開始位置と終了位置が同じ場合は表示しない
+    // Do not display if start and end positions are the same
     if (startOffset === endOffset) {
         if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
             console.log(`calculateSelectionPixelRange: zero-width selection for ${itemId}`);
@@ -445,7 +445,7 @@ function calculateSelectionPixelRange(
 
     const { textElement, lineHeight } = itemInfo;
 
-    // ツリーコンテナを取得
+    // Get tree container
     const treeContainer = resolveTreeContainer();
     if (!treeContainer) {
         if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
@@ -455,42 +455,42 @@ function calculateSelectionPixelRange(
     }
 
     try {
-        // 最新の位置情報を取得するため、常に新たに計測
-        // テキスト要素の絶対位置
+        // Always measure anew to get the latest position information
+        // Absolute position of text element
         const textRect = textElement.getBoundingClientRect();
 
-        // ツリーコンテナの絶対位置
+        // Absolute position of tree container
         const treeContainerRect = treeContainer.getBoundingClientRect();
 
-        // テキストコンテンツを取得
+        // Get text content
         const text = textElement.textContent || '';
 
-        // 開始と終了が逆転している場合は入れ替え
+        // Swap if start and end are reversed
         const actualStart = Math.min(startOffset, endOffset);
         const actualEnd = Math.max(startOffset, endOffset);
 
         const textBeforeStart = text.substring(0, actualStart);
         const selectedText = text.substring(actualStart, actualEnd);
 
-        // 開始位置の計算
+        // Calculate start position
         const startX = measureTextWidthCanvas(itemId, textBeforeStart);
 
-        // 選択範囲の幅を計算
-        const width = measureTextWidthCanvas(itemId, selectedText) || 5; // 最小幅
+        // Calculate selection width
+        const width = measureTextWidthCanvas(itemId, selectedText) || 5; // Minimum width
 
-        // テキスト要素の左端からの距離
+        // Distance from the left edge of the text element
         const contentContainer = textElement.closest('.item-content-container');
         const contentRect = contentContainer?.getBoundingClientRect() || textRect;
 
-        // ツリーコンテナを基準にした位置
+        // Position relative to tree container
         const contentLeft = contentRect.left - treeContainerRect.left;
 
-        // 最終位置計算
+        // Final position calculation
         const relativeLeft = contentLeft + startX;
         // Subtract 4px to compensate for the .outliner-item's padding-top
         const relativeTop = textRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
 
-        // 高さは行の高さを使用
+        // Use line height for height
         const height = lineHeight || textRect.height || 20;
 
         if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
@@ -516,11 +516,11 @@ function calculateSelectionPixelRange(
     }
 }
 
-// DOMが変更された時に位置マッピングを更新する関数
+// Function to update position mapping when DOM changes
 function updatePositionMap() {
     const newMap: CursorPositionMap = {};
 
-    // すべてのアイテムとそのテキスト要素を取得
+    // Get all items and their text elements
     const itemElements = document.querySelectorAll('[data-item-id]');
 
     itemElements.forEach(itemElement => {
@@ -530,18 +530,18 @@ function updatePositionMap() {
         const textElement = itemElement.querySelector('.item-text');
         if (!textElement || !(textElement instanceof HTMLElement)) return;
 
-        // 要素の位置情報を取得
+        // Get element position information
         const elementRect = itemElement.getBoundingClientRect();
 
-        // コンテンツコンテナの位置情報
+        // Content container position information
         const contentContainer = textElement.closest('.item-content-container');
         if (!contentContainer) return;
 
-        // コンピュートされたスタイルを取得
+        // Get computed style
         const styles = window.getComputedStyle(textElement);
         const lineHeight = parseFloat(styles.lineHeight) || textElement.getBoundingClientRect().height;
 
-        // フォント関連のプロパティを保存
+        // Save font-related properties
         const fontProperties = {
             fontFamily: styles.fontFamily,
             fontSize: styles.fontSize,
@@ -564,13 +564,13 @@ function updatePositionMap() {
     }
 }
 
-// MutationObserver を使用してDOMの変更を監視
+// MutationObserver to monitor DOM changes
 let mutationObserver: MutationObserver;
 
-// 位置マップの更新をdebounce（頻度制限）するための変数
+// Variable to debounce (rate limit) position map updates
 let updatePositionMapTimer: number;
 
-// 位置マップをdebounce付きで更新
+// Update position map with debounce
 function debouncedUpdatePositionMap() {
     clearTimeout(updatePositionMapTimer);
     updatePositionMapTimer = setTimeout(() => {
@@ -578,20 +578,20 @@ function debouncedUpdatePositionMap() {
     }, 100) as unknown as number;
 }
 
-// store からのデータ反映は MutationObserver と onMount 初期化で担保
+// Data reflection from store is guaranteed by MutationObserver and onMount initialization
 
-// MutationObserver を設定して DOM の変更を監視
+// Set up MutationObserver to monitor DOM changes
 onMount(() => {
-    // 初期位置マップの作成
+    // Create initial position map
     updatePositionMap();
 
-    // copyイベントを監視（キャプチャ段階でフックして確実に捕捉）
+    // Monitor copy event (hook at capture stage to ensure capture)
     document.addEventListener('copy', handleCopy as EventListener, true);
-    // cutイベントを監視
+    // Monitor cut event
     document.addEventListener('cut', handleCut as EventListener);
-    // pasteイベントを監視 (マルチラインペースト)
+    // Monitor paste event (multi-line paste)
     document.addEventListener('paste', handlePaste as EventListener);
-    // Ctrl+C キー押下時のフォールバック（E2E環境向け）
+    // Fallback when Ctrl+C is pressed (for E2E environment)
     const keydownHandler = (e: KeyboardEvent) => {
         if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
             try {
@@ -621,8 +621,8 @@ onMount(() => {
     document.addEventListener('keydown', keydownHandler as EventListener);
 
 
-    // MutationObserverを単純化 - 変更検出後すぐに再計算するのではなく、
-    // debounceを使用して頻度を制限
+    // Simplify MutationObserver - instead of recalculating immediately after change detection,
+    // Limit frequency using debounce
     mutationObserver = new MutationObserver(() => {
         if (!aliasPickerStore.isVisible) debouncedUpdatePositionMap();
     });
@@ -637,7 +637,7 @@ onMount(() => {
         attributes: false
     });
 
-    // リサイズやスクロール時に位置マップを更新
+    // Update position map on resize or scroll
     window.addEventListener('resize', debouncedUpdatePositionMap);
     const treeContainer = resolveTreeContainer();
     if (treeContainer) {
@@ -645,7 +645,7 @@ onMount(() => {
     }
 
 
-    // 初期状態でアクティブカーソルがある場合は、少し遅延してから点滅を開始
+    // If there is an active cursor in the initial state, start blinking after a short delay
     setTimeout(() => {
         if (cursorList.some(cursor => cursor.isActive)) {
             store.startCursorBlink();
@@ -692,39 +692,39 @@ onMount(() => {
 });
 
 onDestroy(() => {
-    // MutationObserver の切断
+    // Disconnect MutationObserver
     if (mutationObserver) {
         mutationObserver.disconnect();
     }
 
-    // copyイベントリスナー解除
+    // Remove copy event listener
     document.removeEventListener('copy', handleCopy as EventListener, true);
-    // cutイベントリスナー解除
+    // Remove cut event listener
     document.removeEventListener('cut', handleCut as EventListener);
-    // pasteイベントリスナー解除
+    // Remove paste event listener
     document.removeEventListener('paste', handlePaste as EventListener);
 
-    // イベントリスナーの削除
+    // Remove event listeners
     window.removeEventListener('resize', debouncedUpdatePositionMap);
     const treeContainer = resolveTreeContainer();
     if (treeContainer) {
         treeContainer.removeEventListener('scroll', debouncedUpdatePositionMap);
     }
 
-    // タイマーのクリア
+    // Clear timer
     clearTimeout(updatePositionMapTimer);
 
-    // カーソル点滅タイマーの停止
+    // Stop cursor blink timer
     stopCursorBlink();
 });
 
-// アイテムIDから現在のテキストを安全に取得（DOM→アクティブtextarea→Yjs順）
+// Safely get current text from item ID (DOM -> active textarea -> Yjs order)
 function getTextByItemId(itemId: string): string {
-  // 1) DOM の .item-text
+  // 1) .item-text in DOM
   const el = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement | null;
   if (el && el.textContent) return el.textContent;
 
-  // 2) アクティブ textarea
+  // 2) Active textarea
   try {
     const ta = store.getTextareaRef?.();
     const activeId = store.getActiveItem?.();
@@ -735,7 +735,7 @@ function getTextByItemId(itemId: string): string {
     // Intentionally empty - catch potential errors without further handling
   }
 
-  // 3) generalStore から探索
+  // 3) Search from generalStore
   try {
     const W = (typeof window !== 'undefined') ? window : null;
     const gs = W?.generalStore;
@@ -754,29 +754,29 @@ function getTextByItemId(itemId: string): string {
   return "";
 }
 
-// 複数アイテム選択をクリップボードにコピー
+// Copy multiple item selection to clipboard
 function handleCopy(event: ClipboardEvent) {
-  // デバッグ情報
+  // Debug info
   if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
     console.log(`handleCopy called`);
   }
 
-  // 選択範囲がない場合は何もしない（ストアを直接参照してリアクティブなラグを回避）
+  // Do nothing if no selection (reference store directly to avoid reactive lag)
   const selections = Object.values(store.selections).filter(sel =>
     sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
   );
 
   if (selections.length === 0) return;
 
-  // 選択範囲のテキストを取得
+  // Get text of selection range
   const selectedText = store.getSelectedText('local');
 
-  // デバッグ情報
+  // Debug info
   if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
     console.log(`Selected text from store: "${selectedText}"`);
   }
 
-  // まず矩形選択（ボックス選択）が存在するかを優先的に処理
+  // Process rectangular selection (box selection) existence first
   const boxSel = selections.find((s) => s.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length > 0);
   if (!selectedText && boxSel) {
     const lines: string[] = [];
@@ -806,38 +806,38 @@ function handleCopy(event: ClipboardEvent) {
     }
   }
 
-  // 選択範囲のテキストが取得できた場合
+  // If selection text is obtained
   if (selectedText) {
-    // クリップボードに書き込み
+    // Write to clipboard
     if (event.clipboardData) {
-      // ブラウザのデフォルトコピー動作を防止（自前で設定する場合のみ）
+      // Prevent browser default copy behavior (only when setting manually)
       event.preventDefault();
-      // プレーンテキスト形式
+      // Plain text format
       event.clipboardData.setData('text/plain', selectedText);
 
-      // グローバル変数に保存（E2E テスト環境専用）
-      // 本番環境では使用されないが、E2E テストでコピー内容を検証するために必要
+      // Save to global variable (for E2E test environment only)
+      // Not used in production, but needed to verify copy content in E2E tests
       if (typeof window !== 'undefined') {
         (window as typeof window & { lastCopiedText?: string }).lastCopiedText = selectedText;
       }
 
-      // マルチカーソル選択の場合、VS Code固有のメタデータを追加
+      // Add VS Code specific metadata for multi-cursor selection
       const cursorInstances = store.getCursorInstances();
       if (cursorInstances.length > 1) {
-        // 各カーソルの選択テキストを取得
+        // Get selected text for each cursor
         const multicursorText: string[] = [];
 
-        // 各カーソルの選択テキストを収集
+        // Collect selected text for each cursor
         cursorInstances.forEach((cursor: CursorPosition) => {
           const itemId = cursor.itemId;
 
-          // 該当するアイテムの選択範囲を探す
+          // Find selection range for the corresponding item
           const selection = Object.values(store.selections).find((sel: SelectionRange) =>
             sel.startItemId === itemId || sel.endItemId === itemId
           );
 
           if (selection) {
-            // 選択範囲のテキストを取得
+            // Get text of selection range
             const selText = store.getTextFromSelection(selection);
             if (selText) {
               multicursorText.push(selText);
@@ -845,44 +845,44 @@ function handleCopy(event: ClipboardEvent) {
           }
         });
 
-        // マルチカーソルテキストが取得できた場合
+        // If multi-cursor text is obtained
         if (multicursorText.length > 0) {
-          // VS Code固有のメタデータを設定
+          // Set VS Code specific metadata
           const vscodeMetadata = {
             version: 1,
             isFromEmptySelection: false,
             multicursorText: multicursorText,
             mode: 'plaintext',
-            pasteMode: 'spread' // デフォルトはspread
+            pasteMode: 'spread' // Default is spread
           };
 
-          // メタデータをJSON文字列に変換
+          // Convert metadata to JSON string
           const vscodeMetadataStr = JSON.stringify(vscodeMetadata);
 
-          // VS Code固有のメタデータを設定
+          // Set VS Code specific metadata
           event.clipboardData.setData('application/vscode-editor', vscodeMetadataStr);
 
-          // デバッグ情報
+          // Debug info
           if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
             console.log(`VS Code metadata added:`, vscodeMetadata);
           }
         }
       }
 
-    // グローバル変数に保存（E2E テスト環境専用）
-    // 本番環境では使用されないが、E2E テストでコピー内容を検証するために必要
+    // Save to global variable (for E2E test environment only)
+    // Not used in production, but needed to verify copy content in E2E tests
     if (typeof window !== 'undefined' && selectedText) {
       (window as typeof window & { lastCopiedText?: string }).lastCopiedText = selectedText;
     }
 
-      // 矩形選択（ボックス選択）の場合
-      // 現在は実装されていないが、将来的に実装する可能性がある
-      // ここでは単純に複数行テキストとして処理
+      // In case of rectangular selection (box selection)
+      // Currently not implemented, but may be implemented in the future
+      // Here, simply treat as multi-line text
       if (selectedText.includes('\n')) {
-        // 複数行テキストを検出
+        // Detect multi-line text
         const lineCount = selectedText.split(/\r?\n/).length;
 
-        // VS Code固有のメタデータを設定
+        // Set VS Code specific metadata
         const vscodeMetadata = {
           version: 1,
           isFromEmptySelection: false,
@@ -890,25 +890,25 @@ function handleCopy(event: ClipboardEvent) {
           lineCount: lineCount
         };
 
-        // メタデータをJSON文字列に変換
+        // Convert metadata to JSON string
         const vscodeMetadataStr = JSON.stringify(vscodeMetadata);
 
-        // VS Code固有のメタデータを設定
+        // Set VS Code specific metadata
         event.clipboardData.setData('application/vscode-editor', vscodeMetadataStr);
 
-        // デバッグ情報
+        // Debug info
         if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
           console.log(`VS Code metadata added for multi-line text:`, vscodeMetadata);
         }
       }
     }
 
-    // テスト・フォーカス保持のため、常に隠しtextareaを更新
+    // Always update hidden textarea to maintain test focus
     if (clipboardRef) {
       clipboardRef.value = selectedText;
     }
 
-    // navigator.clipboard API にも書き込む（テスト環境での互換性のため）
+    // Also write to navigator.clipboard API (for compatibility in test environment)
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(selectedText).catch((err) => {
         if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
@@ -917,16 +917,16 @@ function handleCopy(event: ClipboardEvent) {
       });
     }
 
-    // デバッグ情報
+    // Debug info
     if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
       console.log(`Clipboard updated with: "${selectedText}"`);
     }
     return;
   }
 
-  // 選択範囲のテキストが取得できなかった場合のフォールバック処理
+  // Fallback processing when selection text cannot be obtained
 
-  // 単一アイテム内の選択範囲の場合
+  // Case of selection within a single item
   if (selections.length === 1 && selections[0].startItemId === selections[0].endItemId) {
     const sel = selections[0];
     const textEl = document.querySelector(`[data-item-id="${sel.startItemId}"] .item-text`) as HTMLElement;
@@ -937,39 +937,39 @@ function handleCopy(event: ClipboardEvent) {
     const endOffset = Math.max(sel.startOffset, sel.endOffset);
     const selectedText = text.substring(startOffset, endOffset);
 
-    // デバッグ情報
+    // Debug info
     if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
       console.log(`Single item selection: "${selectedText}"`);
     }
 
-    // クリップボードに書き込み
+    // Write to clipboard
     if (event.clipboardData) {
-      // ブラウザのデフォルトコピー動作を防止
+      // Prevent browser default copy behavior
       event.preventDefault();
       event.clipboardData.setData('text/plain', selectedText);
     }
-    // navigator.clipboard にも書き込み（Playwright 互換のため）
+    // Write to navigator.clipboard as well (for Playwright compatibility)
     if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
       (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch(() => {});
     }
 
-    // テスト・フォーカス保持のため、常に隠しtextareaを更新
+    // Always update hidden textarea to maintain test focus
     if (clipboardRef) {
       clipboardRef.value = selectedText;
     }
     return;
   }
 
-  // 複数アイテムにまたがる選択範囲の場合
-  // DOM上の順序でアイテムを取得
+  // Case of selection spanning multiple items
+  // Get items in DOM order
   const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
   const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
 
   let combinedText = '';
 
-  // 各選択範囲を処理
+  // Process each selection range
   for (const sel of selections) {
-    // 単一アイテム内の選択範囲
+    // Selection within a single item
     if (sel.startItemId === sel.endItemId) {
       const textEl = document.querySelector(`[data-item-id="${sel.startItemId}"] .item-text`) as HTMLElement;
       if (!textEl) continue;
@@ -985,7 +985,7 @@ function handleCopy(event: ClipboardEvent) {
       continue;
     }
 
-    // 複数アイテムにまたがる選択範囲
+    // Selection spanning multiple items
     const startIdx = allItemIds.indexOf(sel.startItemId);
     const endIdx = allItemIds.indexOf(sel.endItemId);
 
@@ -996,19 +996,19 @@ function handleCopy(event: ClipboardEvent) {
       continue;
     }
 
-    // 選択範囲の方向を考慮
+    // Consider selection direction
     const isReversed = sel.isReversed || false;
 
-    // 開始と終了のインデックスを決定
+    // Determine start and end indices
     const firstIdx = Math.min(startIdx, endIdx);
     const lastIdx = Math.max(startIdx, endIdx);
 
-    // デバッグ情報
+    // Debug info
     if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
       console.log(`Multi-item selection: firstIdx=${firstIdx}, lastIdx=${lastIdx}, isReversed=${isReversed}`);
     }
 
-    // 選択範囲内の各アイテムを処理
+    // Process each item within the selection range
     for (let i = firstIdx; i <= lastIdx; i++) {
       const item = allItems[i];
       const itemId = item.getAttribute('data-item-id')!;
@@ -1019,116 +1019,116 @@ function handleCopy(event: ClipboardEvent) {
       const text = textEl.textContent || '';
       const len = text.length;
 
-      // オフセット計算
+      // Offset calculation
       let startOff = 0;
       let endOff = len;
 
-      // 開始アイテム
+      // Start item
       if (itemId === sel.startItemId) {
         startOff = sel.startOffset;
       }
 
-      // 終了アイテム
+      // End item
       if (itemId === sel.endItemId) {
         endOff = sel.endOffset;
       }
 
-      // デバッグ情報
+      // Debug info
       if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
         console.log(`Item ${i} (${itemId}) offsets: start=${startOff}, end=${endOff}, text="${text.substring(startOff, endOff)}"`);
       }
 
-      // テキストを追加
+      // Append text
       combinedText += text.substring(startOff, endOff);
 
-      // 最後のアイテム以外は改行を追加
+      // Add newline except for the last item
       if (i < lastIdx) {
         combinedText += '\n';
       }
     }
   }
 
-  // 最後の改行を削除（必要な場合）
+  // Remove trailing newline (if necessary)
   if (combinedText.endsWith('\n')) {
     combinedText = combinedText.slice(0, -1);
   }
 
-  // デバッグ情報
+  // Debug info
   if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
     console.log(`Final combined text: "${combinedText}"`);
   }
 
-  // クリップボードに書き込み
+  // Write to clipboard
   if (combinedText) {
     if (event.clipboardData) {
-      // ブラウザのデフォルトコピー動作を防止
+      // Prevent browser default copy behavior
       event.preventDefault();
       event.clipboardData.setData('text/plain', combinedText);
     }
-    // navigator.clipboard にも書き込み（Playwright 互換のため）
+    // Write to navigator.clipboard as well (for Playwright compatibility)
     if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
       (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch(() => {});
     }
-    // グローバル変数に保存（E2E テスト環境専用）
-    // 本番環境では使用されないが、E2E テストでコピー内容を検証するために必要
+    // Save to global variable (for E2E test environment only)
+    // Not used in production, but needed to verify copy content in E2E tests
     if (typeof window !== 'undefined') {
       (window as typeof window & { lastCopiedText?: string }).lastCopiedText = combinedText;
     }
   }
 
-  // テスト・フォーカス保持のため、常に隠しtextareaを更新
+  // Always update hidden textarea to maintain test focus
   if (clipboardRef && combinedText) {
     clipboardRef.value = combinedText;
   }
 }
 
-// 複数アイテム選択をクリップボードにカットする
+// Cut multiple item selection to clipboard
 function handleCut(event: ClipboardEvent) {
-  // デバッグ情報
+  // Debug info
   if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
     console.log(`handleCut called`);
   }
 
-  // 選択範囲がない場合は何もしない
+  // Do nothing if no selection
   const selections = allSelections.filter(sel =>
     sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
   );
 
   if (selections.length === 0) return;
 
-  // ブラウザのデフォルトカット動作を防止
+  // Prevent browser default cut behavior
   event.preventDefault();
 
-  // 選択されたテキストを取得
+  // Get selected text
   const selectedText = store.getSelectedText('local');
 
-  // グローバル変数にテキストを保存（E2E テスト環境専用）
-  // 本番環境では使用されないが、E2E テストでカット内容を検証するために必要
+  // Save text to global variable (for E2E test environment only)
+  // Not used in production, but needed to verify cut content in E2E tests
   if (typeof window !== 'undefined' && selectedText) {
     (window as typeof window & { lastCopiedText?: string }).lastCopiedText = selectedText;
     console.log(`Cut: Saved text to global variable: "${selectedText}"`);
   }
 
-  // まずコピー処理を実行
+  // Execute copy process first
   handleCopy(event);
 
-  // 選択範囲を削除
+  // Delete selection range
   const cursors = store.getCursorInstances();
   if (cursors.length > 0) {
-    // 最初のカーソルを使用して選択範囲を削除
+    // Delete selection using the first cursor
     cursors[0].deleteSelection();
   }
 
-  // デバッグ情報
+  // Debug info
   if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
     console.log(`Cut operation completed`);
   }
 }
 
-// マルチラインペーストを上位に通知
+// Notify parent of multi-line paste
 function handlePaste(event: ClipboardEvent) {
-  // E2Eテスト用の一時テキストエリア(#clipboard-test)へのペーストはフォールバックを提供
-  // このパスは E2E テスト環境専用で、本番環境では実行されない
+  // Provide fallback for paste to temporary textarea (#clipboard-test) for E2E tests
+  // This path is for E2E test environment only and is not executed in production
   const target = event.target as HTMLTextAreaElement | null;
   if (target && (target.id === 'clipboard-test' || target.closest?.('#clipboard-test'))) {
     const dataText = event.clipboardData?.getData('text/plain') || '';
@@ -1136,7 +1136,7 @@ function handlePaste(event: ClipboardEvent) {
     const textToPaste = dataText || fallbackText;
     if (textToPaste) {
       event.preventDefault();
-      // 既存の値に貼り付け
+      // Paste into existing value
       const start = (target.selectionStart ?? target.value.length);
       const end = (target.selectionEnd ?? target.value.length);
       target.value = target.value.slice(0, start) + textToPaste + target.value.slice(end);
@@ -1147,30 +1147,30 @@ function handlePaste(event: ClipboardEvent) {
   const text = event.clipboardData?.getData('text/plain') || '';
   if (!text) return;
 
-  // 選択範囲がある場合は、選択範囲を削除してからペースト
+  // If there is a selection, delete selection before pasting
   const selections = allSelections.filter(sel =>
     sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
   );
 
-  // デバッグ情報
+  // Debug info
   if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
     console.log(`handlePaste called with text: "${text}"`);
     console.log(`Current selections:`, selections);
   }
 
-  // 複数行テキストの場合はマルチアイテムペーストとみなす
+  // Consider as multi-item paste if it is multi-line text
   if (text.includes('\n')) {
     event.preventDefault();
     const lines = text.split(/\r?\n/);
 
-    // デバッグ情報
+    // Debug info
     if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
       console.log(`Multi-line paste detected, lines:`, lines);
       console.log(`Lines count: ${lines.length}`);
       lines.forEach((line, i) => console.log(`Line ${i}: "${line}"`));
     }
 
-    // 選択中の範囲を通知
+    // Notify selected range
     dispatch('paste-multi-item', {
       lines,
       selections,
@@ -1179,19 +1179,19 @@ function handlePaste(event: ClipboardEvent) {
     return;
   }
 
-  // 複数アイテムにまたがる選択範囲がある場合は、選択範囲を削除してからペースト
+  // If selection spans multiple items, delete selection before pasting
   if (selections.some(sel => sel.startItemId !== sel.endItemId)) {
     event.preventDefault();
 
-    // 単一行テキストを単一行配列として扱う
+    // Treat single-line text as single-line array
     const lines = [text];
 
-    // デバッグ情報
+    // Debug info
     if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
       console.log(`Multi-item selection paste detected, text: "${text}"`);
     }
 
-    // 選択中の範囲を通知
+    // Notify selected range
     dispatch('paste-multi-item', {
       lines,
       selections,
@@ -1200,24 +1200,24 @@ function handlePaste(event: ClipboardEvent) {
     return;
   }
 
-  // 単一アイテム内の選択範囲がある場合も、選択範囲を削除してからペースト
+  // Delete selection before pasting even if selection is within a single item
   if (selections.length > 0) {
-    // 選択範囲がある場合は、ブラウザのデフォルト動作に任せる
-    // Cursor.insertText()メソッドが選択範囲を削除してからテキストを挿入する
+    // Leave to browser default behavior if there is a selection
+    // Cursor.insertText() method deletes selection before inserting text
     if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
       console.log(`Single item selection paste, using default browser behavior`);
     }
     return;
   }
 
-  // 選択範囲がない場合は、ブラウザのデフォルト動作に任せる
+  // Leave to browser default behavior if there is no selection
   if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
     console.log(`No selection paste, using default browser behavior`);
   }
 }
-    // 選択ボックスごとの一時フラグ（300msでfalseにしてクラスを外す）
+    // Temporary flag per selection box (remove class by setting to false in 300ms)
     let updatingFlags: Record<string, boolean> = $state({});
-    // 少なくとも1つの選択が更新中であれば true
+    // True if at least one selection is updating
     const anySelectionUpdating = $derived.by(() => {
         try {
             return Object.values(store.selections).some((s: SelectionRange & { isUpdating?: boolean }) => !!s?.isUpdating);
@@ -1227,7 +1227,7 @@ function handlePaste(event: ClipboardEvent) {
     });
 
     function setupUpdatingFlag(node: HTMLElement, key: string) {
-        // 初回は microtask 後に付与する（Svelte の初期 class 設定より後に実行するため）
+        // Apply after microtask initially (to execute after Svelte's initial class setting)
         let mo: MutationObserver | undefined;
         queueMicrotask(() => {
             node.classList.add('selection-box-updating');
@@ -1245,7 +1245,7 @@ function handlePaste(event: ClipboardEvent) {
                 // Intentionally empty - catch potential errors without further handling
             }
         });
-        updatingFlags[key] = true; // デバッグ用の副作用（UIはこれに依存しない）
+        updatingFlags[key] = true; // Side effect for debugging (UI does not depend on this)
         const timer = setTimeout(() => {
             mo?.disconnect();
             node.classList.remove('selection-box-updating');
@@ -1272,21 +1272,21 @@ function handlePaste(event: ClipboardEvent) {
 </script>
 
 <div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={overlayCursorVisible || localCursorVisible || (typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver)} data-test-env={(typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver) ? 'true' : 'false'}>
-    <!-- デバッグボタン -->
+    <!-- Debug button -->
     <button
         class="debug-button"
         class:active={DEBUG_MODE}
         onclick={() => DEBUG_MODE = !DEBUG_MODE}
-        title="デバッグモードの切り替え"
+        title="Toggle debug mode"
     >
         D
     </button>
 
-    <!-- 隠しクリップボード用textarea -->
+    <!-- Hidden textarea for clipboard -->
     <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
-    <!-- 選択範囲とカーソルは AliasPicker 表示中は抑制してループを避ける -->
+    <!-- Suppress selection and cursor while AliasPicker is displayed to avoid loops -->
     {#if !aliasPickerStore.isVisible || typeof window === 'undefined' || (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver}
-    <!-- 選択範囲のレンダリング -->
+    <!-- Rendering selection range -->
         {#if anySelectionUpdating}
             <div class="selection-box-updating" data-test-helper="updating-marker-global" style="display:none"></div>
         {/if}
@@ -1296,7 +1296,7 @@ function handlePaste(event: ClipboardEvent) {
         {@const selectionStyle = getSelectionStyle(sel)}
         {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
             {#if sel.isBoxSelection && sel.boxSelectionRanges}
-                <!-- 矩形選択（ボックス選択）の場合 -->
+                <!-- In case of rectangular selection (box selection) -->
                 {#each sel.boxSelectionRanges as range, index (`${selKey}-${range.itemId}-${index}`)}
 
                     {@const rect = calculateSelectionPixelRange(range.itemId, range.startOffset, range.endOffset, sel.isReversed)}
@@ -1311,12 +1311,12 @@ function handlePaste(event: ClipboardEvent) {
                         {@const boxKey = `${selKey}:${index}`}
 
 
-                        <!-- 一時的なマーカー（テスト検出用）。isUpdating=trueの間だけ存在 -->
+                        <!-- Temporary marker (for test detection). Exists only while isUpdating=true -->
                         {#if sel.isUpdating}
                             <div class="selection-box-updating" data-test-helper="updating-marker" style="display:none"></div>
                         {/if}
 
-                        <!-- 矩形選択範囲の背景 -->
+                        <!-- Background of rectangular selection range -->
                         <div
                             use:setupUpdatingFlag={boxKey}
                             class="selection selection-box"
@@ -1328,12 +1328,12 @@ function handlePaste(event: ClipboardEvent) {
                             style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
                         ></div>
 
-                        <!-- 開始位置と終了位置のマーカー -->
+                        <!-- Markers for start and end positions -->
                         {#if isStartItem}
                             <div
                                 class="selection-box-marker selection-box-start-marker"
                                 style="position:absolute; left:{rect.left - 2}px; top:{rect.top - 2}px; pointer-events:none; background-color:{selectionStyle.markerStart};"
-                                title="選択開始位置"
+                                title="Selection start position"
                             ></div>
                         {/if}
 
@@ -1341,13 +1341,13 @@ function handlePaste(event: ClipboardEvent) {
                             <div
                                 class="selection-box-marker selection-box-end-marker"
                                 style="position:absolute; left:{rect.left + rect.width - 4}px; top:{rect.top + rect.height - 4}px; pointer-events:none; background-color:{selectionStyle.markerEnd};"
-                                title="選択終了位置"
+                                title="Selection end position"
                             ></div>
                         {/if}
                     {/if}
                 {/each}
             {:else if sel.startItemId === sel.endItemId}
-                <!-- 単一アイテム選択 -->
+                <!-- Single item selection -->
                 {@const rect = calculateSelectionPixelRange(sel.startItemId, sel.startOffset, sel.endOffset, sel.isReversed)}
                 {#if rect}
                     {@const isPageTitle = sel.startItemId === "page-title"}
@@ -1360,24 +1360,24 @@ function handlePaste(event: ClipboardEvent) {
                         ></div>
                 {/if}
             {:else}
-                <!-- マルチアイテム選択 -->
+                <!-- Multi-item selection -->
                 {@const allEls = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[]}
                 {@const ids = allEls.map(el => el.getAttribute('data-item-id')!)}
                 {@const sIdx = ids.indexOf(sel.startItemId)}
                 {@const eIdx = ids.indexOf(sel.endItemId)}
 
-                <!-- インデックスが見つからない場合はスキップ -->
+                <!-- Skip if index is not found -->
                 {#if sIdx >= 0 && eIdx >= 0}
                     {@const forward = !sel.isReversed}
                     {@const startIdx = forward ? sIdx : eIdx}
                     {@const endIdx   = forward ? eIdx : sIdx}
 
-                    <!-- 範囲内の各アイテムに選択範囲を描画 -->
+                    <!-- Draw selection range for each item within range -->
                     {#each ids.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1) as itemId (itemId)}
                         {@const textEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement}
                         {@const len = textEl?.textContent?.length || 0}
 
-                        <!-- offset 計算: 開始アイテム, 終了アイテム, その他 -->
+                        <!-- offset calculation: start item, end item, others -->
                         {@const startOff = itemId === sel.startItemId
                             ? (forward ? sel.startOffset : 0)
                             : itemId === sel.endItemId
@@ -1389,7 +1389,7 @@ function handlePaste(event: ClipboardEvent) {
                             ? (forward ? sel.endOffset : len)
                             : len}
 
-                        <!-- 選択範囲が実際に存在する場合のみ描画 -->
+                        <!-- Draw only if selection range actually exists -->
                         {#if startOff !== endOff}
                             {@const rect = calculateSelectionPixelRange(itemId, startOff, endOff, sel.isReversed)}
                             {#if rect}
@@ -1410,7 +1410,7 @@ function handlePaste(event: ClipboardEvent) {
     {/each}
     {/if}
 
-    <!-- カーソルのレンダリング (always render in all environments including test) -->
+    <!-- Rendering cursor (always render in all environments including test) -->
     {#each cursorList as cursor (cursor.cursorId)}
         {@const isTestEnvironment = typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator.webdriver}
         {@const cursorPos = (function() {
@@ -1428,7 +1428,7 @@ function handlePaste(event: ClipboardEvent) {
         })()}
         {@const isPageTitle = cursor.itemId === "page-title"}
         {@const isActive = cursor.isActive}
-        <!-- カーソル位置のみスタイルで指定し、点滅はCSSクラスに任せる -->
+        <!-- Specify only cursor position with style, leave blinking to CSS class -->
         <div
             class="cursor"
             class:active={isActive}
@@ -1471,9 +1471,9 @@ function handlePaste(event: ClipboardEvent) {
 
     {#if DEBUG_MODE && localActiveItemId}
         <div class="debug-info">
-            カーソル位置: アイテム {localActiveItemId}
+            Cursor Position: Item {localActiveItemId}
             {#if cursorList.length > 0}
-                <br>オフセット: {cursorList[0].offset}
+                <br>Offset: {cursorList[0].offset}
             {/if}
         </div>
     {/if}
@@ -1481,7 +1481,7 @@ function handlePaste(event: ClipboardEvent) {
 
 <style>
 .editor-overlay {
-    /* outline: 2px dashed red;  デバッグ用なので削除 */
+    /* outline: 2px dashed red;  Delete as it is for debugging */
     position: absolute;
     top: 0;
     left: 0;
@@ -1489,7 +1489,7 @@ function handlePaste(event: ClipboardEvent) {
     bottom: 0;
     pointer-events: none !important;
     z-index: 100;
-    /* background-color: rgba(255, 0, 0, 0.1) !important; デバッグ用なので削除 */
+    /* background-color: rgba(255, 0, 0, 0.1) !important; Delete as it is for debugging */
     will-change: transform;
     /* In test environments, ensure the overlay is always visible */
     opacity: 1 !important;
@@ -1529,8 +1529,8 @@ function handlePaste(event: ClipboardEvent) {
     pointer-events: none !important;
     will-change: transform;
     z-index: 200;
-    box-shadow: 0 0 3px rgba(0, 0, 0, 0.3); /* カーソルの視認性向上 */
-    border-radius: 1px; /* 微妙に角を丸くする */
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.3); /* Improve cursor visibility */
+    border-radius: 1px; /* Slightly round corners */
 }
 
 .page-title-cursor {
@@ -1538,7 +1538,7 @@ function handlePaste(event: ClipboardEvent) {
 }
 
 .cursor.active {
-    /* アニメーションはJS制御のvisibilityで同期 */
+    /* Animation synchronized with JS-controlled visibility */
     pointer-events: none !important;
 }
 

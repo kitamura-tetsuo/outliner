@@ -120,10 +120,10 @@ onMount(async () => {
         console.log("Schedule page: Using saved pageId, no navigation needed");
     }
 
-    // E2E安定化: 親ページのloadProjectAndPageが完了するのを待つ
-    // 親ページが完全にロードされるまで待機
+    // E2E stabilization: Wait for parent page's loadProjectAndPage to complete
+    // Wait until the parent page is completely loaded
     let parentLoadWaitAttempts = 0;
-    const maxParentLoadWaitAttempts = 200; // 20秒
+    const maxParentLoadWaitAttempts = 200; // 20 seconds
     while (parentLoadWaitAttempts < maxParentLoadWaitAttempts) {
         // Check if yjsStore.yjsClient is set (indicates main page loadProjectAndPage has completed)
         // We check both the global window reference and the imported yjsStore
@@ -177,7 +177,7 @@ onMount(async () => {
     });
 
     let sessionPinnedPageId: string | undefined;
-    // 0) セッションに固定されたpageIdを候補として読み出す（ただし即returnせず、現在ページと一致するかを確認する）
+    // 0) Read the pageId pinned in the session as a candidate (but do not return immediately, check if it matches the current page)
     try {
         if (typeof window !== "undefined") {
             const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
@@ -188,8 +188,8 @@ onMount(async () => {
             }
         }
     } catch {}
-    // セッションに保存されている pageId がある場合は最優先で採用する。
-    // ただし、pageIdが現在のpageTitleに対応するページのものであるかを検証する
+    // If there is a pageId saved in the session, adopt it with highest priority.
+    // However, verify whether the pageId belongs to the page corresponding to the current pageTitle
     if (sessionPinnedPageId) {
         // Validate that sessionPinnedPageId actually belongs to current pageTitle
         // Also check store.project.items as store.pages?.current might not be populated yet
@@ -273,10 +273,10 @@ onMount(async () => {
         }
     }
 
-    // store.currentPage が設定され、正しいページを指すまで最大20秒待機
-    // E2E安定化: 親ページのloadProjectAndPageが完了するのを待つ
+    // Wait up to 20 seconds until store.currentPage is set and points to the correct page
+    // E2E stabilization: Wait for parent page's loadProjectAndPage to complete
     let waitAttempts = 0;
-    const maxWaitAttempts = 200; // 20秒
+    const maxWaitAttempts = 200; // 20 seconds
     let foundPageRef: Item | undefined;
 
     while (waitAttempts < maxWaitAttempts) {
@@ -357,7 +357,7 @@ onMount(async () => {
         console.log("Schedule page: Found page during wait", { pageId, title: foundPageRef.text?.toString?.() });
     }
 
-    // 1) 最優先: currentPage が現在のページを指している場合に使用（別ページの値が残っているケースを除外）
+    // 1) Top priority: Use when currentPage points to the current page (exclude cases where values from other pages remain)
     try {
         const current = store.currentPage;
         const currentTitle = current?.text?.toString?.() ?? "";
@@ -370,7 +370,7 @@ onMount(async () => {
         }
     } catch {}
 
-    // 2) currentPage が未確定の場合は URL の pageTitle から該当ページを特定
+    // 2) If currentPage is undetermined, identify the corresponding page from the URL's pageTitle
     if (!pageId) {
         try {
             const items = store.pages?.current;
@@ -391,7 +391,7 @@ onMount(async () => {
         } catch {}
     }
 
-    // 3) 最後の手段としてセッションの候補を使用（E2E安定化）
+    // 3) Use the session candidate as a last resort (E2E stabilization)
     if (!pageId && sessionPinnedPageId) {
         pageId = sessionPinnedPageId;
         console.log("Schedule page: Using session fallback pageId=", sessionPinnedPageId);

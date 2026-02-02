@@ -6,20 +6,20 @@ import { getYjsClientByProjectTitle } from "../../services";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import { store } from "../../stores/store.svelte";
 
-// プロジェクトレベルのレイアウト
-// このレイアウトは /[project] と /[project]/[page] の両方に適用されます
+// Project-level layout
+// This layout applies to both /[project] and /[project]/[page]
 let { data, children } = $props();
 
 let project: any = $state(null);
 
-// ストアからプロジェクトを取得
+// Retrieve project from the store
 $effect(() => {
     if (yjsStore.yjsClient) {
         project = yjsStore.yjsClient.getProject();
     }
 });
 
-// URLパラメータからプロジェクト名を取得
+// Retrieve project name from URL parameters
 $effect(() => {
     // Prefer explicit param over optional data prop
     const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
@@ -34,7 +34,7 @@ async function loadProject(projectNameFromParam?: string) {
     try {
         const projectName = projectNameFromParam ?? (data as any).project;
 
-        // プロジェクト名からYjsクライアントを取得
+        // Retrieve Yjs client from project name
         let client = await getYjsClientByProjectTitle(projectName);
 
         if (client) {
@@ -68,6 +68,6 @@ onMount(() => {
 
 <style>
 .main-content {
-    padding-top: 5rem; /* ツールバーの高さ分のパディング（余裕を持って5rem） */
+    padding-top: 5rem; /* Padding for toolbar height (allowing 5rem) */
 }
 </style>

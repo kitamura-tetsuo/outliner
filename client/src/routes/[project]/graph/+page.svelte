@@ -13,23 +13,23 @@ async function goBack() {
 
 <main class="container mx-auto px-4 py-8">
     <div class="mb-4">
-        <!-- パンくずナビゲーション -->
+        <!-- Breadcrumb navigation -->
         <nav class="mb-2 flex items-center text-sm text-gray-600">
             <button
                 onclick={goBack}
                 class="text-blue-600 hover:text-blue-800 hover:underline"
             >
-                ← {projectName}に戻る
+                ← Return to {projectName}
             </button>
         </nav>
 
-        <!-- ページタイトル -->
+        <!-- Page title -->
         <h1 class="text-2xl font-bold">
-            <span class="text-gray-600">{projectName} /</span> グラフビュー
+            <span class="text-gray-600">{projectName} /</span> Graph View
         </h1>
     </div>
 
-    <!-- グラフビューコンポーネント -->
+    <!-- Graph View Component -->
     <div class="graph-container">
         <GraphView />
     </div>

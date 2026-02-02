@@ -24,9 +24,13 @@ export class ScrapboxFormatter {
         ">": "&gt;",
         '"': "&quot;",
         "'": "&#039;",
+        "\x00": "", // Strip null bytes for security
     };
 
-    private static readonly RX_ESCAPE = /[&<>"']/g;
+    // eslint-disable-next-line no-control-regex
+    private static readonly RX_ESCAPE = /[&<>"'\x00]/g;
+    // eslint-disable-next-line no-control-regex
+    private static readonly RX_PLACEHOLDER = /\x01HTML_\d+\x01/g;
 
     public static escapeHtml(str: string): string {
         // Fast path: if no special characters, return original string
@@ -35,6 +39,20 @@ export class ScrapboxFormatter {
             return str;
         }
         return str.replace(ScrapboxFormatter.RX_ESCAPE, (match) => ScrapboxFormatter.ESCAPE_MAP[match]);
+    }
+
+    /**
+     * Sanitizes a URL to prevent XSS
+     * @param url URL to sanitize
+     * @returns Sanitized URL (or original if safe)
+     */
+    static sanitizeUrl(url: string): string {
+        if (!url) return "";
+        // Prevent javascript:, vbscript:, data:
+        if (/^\s*(javascript|vbscript|data):/i.test(url)) {
+            return "unsafe:" + url;
+        }
+        return url;
     }
 
     /**
@@ -129,6 +147,10 @@ export class ScrapboxFormatter {
      */
     static tokenize(text: string): FormatToken[] {
         if (!text) return [];
+
+        // Strip control characters that are used for internal processing
+        // eslint-disable-next-line no-control-regex
+        text = text.replace(/\x01/g, "");
 
         // Formatting patterns
         const patterns = [
@@ -313,7 +335,7 @@ export class ScrapboxFormatter {
                     break;
                 case "link":
                     html += `<a href="${
-                        this.escapeHtml(token.url ?? "")
+                        this.escapeHtml(ScrapboxFormatter.sanitizeUrl(token.url ?? ""))
                     }" target="_blank" rel="noopener noreferrer">${content}</a>`;
                     break;
                 case "internalLink": {
@@ -384,8 +406,6 @@ export class ScrapboxFormatter {
     }
 
     // Regex patterns for formatToHtmlAdvanced
-    // eslint-disable-next-line no-control-regex
-    private static readonly RX_PLACEHOLDER = /\x00HTML_\d+\x00/g;
     private static readonly RX_HTML_UNDERLINE = /<u>(.*?)<\/u>/g;
     private static readonly RX_HTML_PROJECT_LINK = /\[\/([^\s\]]+)\]/g;
     private static readonly RX_HTML_STRIKETHROUGH = /\[-(.*?)\]/g;
@@ -400,6 +420,10 @@ export class ScrapboxFormatter {
      */
     static formatToHtmlAdvanced(text: string): string {
         if (!text) return "";
+
+        // Strip control characters that are used for internal processing
+        // eslint-disable-next-line no-control-regex
+        text = text.replace(/\x01/g, "");
 
         // Temporarily replace underline tags with placeholders
         const underlinePlaceholders: string[] = [];
@@ -417,54 +441,51 @@ export class ScrapboxFormatter {
                 if (text[i] === "[" && text[i + 1] === "[") {
                     // Found start of bold
                     let boldDepth = 1; // Nesting level of [[...]]
+                    const startContent = i + 2;
                     let j = i + 2;
-                    let content = "";
 
                     while (j < text.length && boldDepth > 0) {
                         if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
                             // Start of nested bold
                             boldDepth++;
-                            content += "[[";
                             j += 2;
                         } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
                             // Potential end of bold
                             boldDepth--;
                             if (boldDepth === 0) {
                                 // Match complete
-                                matches.push({ start: i, end: j + 2, content });
+                                matches.push({
+                                    start: i,
+                                    end: j + 2,
+                                    content: text.substring(startContent, j),
+                                });
                                 i = j + 2;
                                 break;
                             } else {
-                                content += "]]";
                                 j += 2;
                             }
                         } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
                             // Found single [ (start of internal link, etc.)
                             // Look for corresponding ]
-                            content += "[";
                             j++;
                             let bracketDepth = 1;
                             while (j < text.length && bracketDepth > 0) {
                                 if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
                                     // Single [ (nested internal link, etc.)
                                     bracketDepth++;
-                                    content += "[";
                                     j++;
                                 } else if (text[j] === "]") {
                                     // Found ]
                                     bracketDepth--;
-                                    content += "]";
                                     j++;
                                     if (bracketDepth === 0) {
                                         break;
                                     }
                                 } else {
-                                    content += text[j];
                                     j++;
                                 }
                             }
                         } else {
-                            content += text[j];
                             j++;
                         }
                     }
@@ -486,7 +507,7 @@ export class ScrapboxFormatter {
 
         // Function to generate placeholders (use control characters to avoid recognition as internal links)
         const createPlaceholder = (html: string): string => {
-            const placeholder = `\x00HTML_${globalPlaceholderIndex++}\x00`;
+            const placeholder = `\x01HTML_${globalPlaceholderIndex++}\x01`;
             globalPlaceholders.set(placeholder, html);
             return placeholder;
         };
@@ -498,29 +519,30 @@ export class ScrapboxFormatter {
             while (i < text.length - 2) {
                 if (text[i] === "[" && text[i + 1] === "/" && text[i + 2] === " ") {
                     // Found start of italic: [/ (space required)
+                    const startContent = i + 3;
                     let j = i + 3;
-                    let content = "";
                     let bracketDepth = 1;
 
                     while (j < text.length && bracketDepth > 0) {
                         if (text[j] === "[" && j + 1 < text.length && text[j + 1] !== "[" && text[j + 1] !== "/") {
                             // Single [ (internal link, etc.)
                             bracketDepth++;
-                            content += "[";
                             j++;
                         } else if (text[j] === "]") {
                             bracketDepth--;
                             if (bracketDepth === 0) {
                                 // Match complete
-                                matches.push({ start: i, end: j + 1, content });
+                                matches.push({
+                                    start: i,
+                                    end: j + 1,
+                                    content: text.substring(startContent, j),
+                                });
                                 i = j + 1;
                                 break;
                             } else {
-                                content += "]";
                                 j++;
                             }
                         } else {
-                            content += text[j];
                             j++;
                         }
                     }
@@ -538,28 +560,47 @@ export class ScrapboxFormatter {
 
         // Function to process formatting recursively
         const processFormat = (input: string): string => {
+            // Fast path: if no formatting characters, just escape and return
+            if (!ScrapboxFormatter.hasFormatting(input)) {
+                return this.escapeHtml(input);
+            }
+
             // Bold - process first, then recursively process content
             // This ensures nested formatting within bold is processed correctly
             const boldMatches = matchBalancedBold(input);
-            // Replace from the end to avoid shifting indices
-            for (let i = boldMatches.length - 1; i >= 0; i--) {
-                const match = boldMatches[i];
-                // Recursively process internal content too
-                const html = `<strong>${processFormat(match.content)}</strong>`;
-                const placeholder = createPlaceholder(html);
-                input = input.substring(0, match.start) + placeholder + input.substring(match.end);
+            // Optimization: Use a single pass string builder instead of repeated substring/concatenation O(N^2)
+            if (boldMatches.length > 0) {
+                let result = "";
+                let lastIndex = 0;
+                for (const match of boldMatches) {
+                    result += input.substring(lastIndex, match.start);
+                    // Recursively process internal content too
+                    const html = `<strong>${processFormat(match.content)}</strong>`;
+                    const placeholder = createPlaceholder(html);
+                    result += placeholder;
+                    lastIndex = match.end;
+                }
+                result += input.substring(lastIndex);
+                input = result;
             }
 
             // Italic - space required: [/ text]
             // Match considering balance
             const italicMatches = matchBalancedItalic(input);
-            // Replace from the end to avoid shifting indices
-            for (let i = italicMatches.length - 1; i >= 0; i--) {
-                const match = italicMatches[i];
-                // Recursively process internal content too
-                const html = `<em>${processFormat(match.content)}</em>`;
-                const placeholder = createPlaceholder(html);
-                input = input.substring(0, match.start) + placeholder + input.substring(match.end);
+            // Optimization: Use a single pass string builder
+            if (italicMatches.length > 0) {
+                let result = "";
+                let lastIndex = 0;
+                for (const match of italicMatches) {
+                    result += input.substring(lastIndex, match.start);
+                    // Recursively process internal content too
+                    const html = `<em>${processFormat(match.content)}</em>`;
+                    const placeholder = createPlaceholder(html);
+                    result += placeholder;
+                    lastIndex = match.end;
+                }
+                result += input.substring(lastIndex);
+                input = result;
             }
 
             // Project internal link - no space: [/project/page] or [/page]
@@ -617,7 +658,10 @@ export class ScrapboxFormatter {
             input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
                 const trimmedLabel = label?.trim();
                 const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
-                const html = `<a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
+                const html = `<a href="${
+                    this.escapeHtml(safeUrl)
+                }" target="_blank" rel="noopener noreferrer">${text}</a>`;
                 return createPlaceholder(html);
             });
 
@@ -646,11 +690,10 @@ export class ScrapboxFormatter {
             input = this.escapeHtml(input);
 
             // Restore placeholders to HTML tags
-            if (globalPlaceholders.size > 0) {
-                input = input.replace(ScrapboxFormatter.RX_PLACEHOLDER, (match) => {
-                    return globalPlaceholders.get(match) ?? match;
-                });
-            }
+            // Optimization: Replace all placeholders in a single pass O(N) instead of O(N*M)
+            input = input.replace(ScrapboxFormatter.RX_PLACEHOLDER, (match) => {
+                return globalPlaceholders.get(match) || match;
+            });
 
             return input;
         };
@@ -716,13 +759,20 @@ export class ScrapboxFormatter {
 
         // Bold - match considering balance
         const boldMatches = this.matchBalancedBold(html);
-        // Replace from the end to avoid shifting indices
-        for (let i = boldMatches.length - 1; i >= 0; i--) {
-            const match = boldMatches[i];
-            const replacement = '<span class="control-char">[</span><span class="control-char">[</span>'
-                + `<strong>${match.content}</strong>`
-                + '<span class="control-char">]</span><span class="control-char">]</span>';
-            html = html.substring(0, match.start) + replacement + html.substring(match.end);
+        // Optimization: Use a single pass string builder
+        if (boldMatches.length > 0) {
+            let result = "";
+            let lastIndex = 0;
+            for (const match of boldMatches) {
+                result += html.substring(lastIndex, match.start);
+                const replacement = '<span class="control-char">[</span><span class="control-char">[</span>'
+                    + `<strong>${match.content}</strong>`
+                    + '<span class="control-char">]</span><span class="control-char">]</span>';
+                result += replacement;
+                lastIndex = match.end;
+            }
+            result += html.substring(lastIndex);
+            html = result;
         }
 
         // Code
@@ -788,52 +838,52 @@ export class ScrapboxFormatter {
         while (i < text.length - 1) {
             if (text[i] === "[" && text[i + 1] === "[") {
                 // Found start of bold
+                let boldDepth = 1; // Nesting level of [[...]]
+                const startContent = i + 2;
                 let j = i + 2;
-                let content = "";
-                let boldDepth = 1;
 
                 while (j < text.length && boldDepth > 0) {
                     if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
                         // Start of nested bold
                         boldDepth++;
-                        content += "[[";
                         j += 2;
                     } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
-                        // End of bold
+                        // Potential end of bold
                         boldDepth--;
                         if (boldDepth === 0) {
                             // Match complete
-                            matches.push({ start: i, end: j + 2, content });
+                            matches.push({
+                                start: i,
+                                end: j + 2,
+                                content: text.substring(startContent, j),
+                            });
                             i = j + 2;
                             break;
                         } else {
-                            content += "]]";
                             j += 2;
                         }
                     } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
                         // Found single [ (start of internal link, etc.)
-                        content += "[";
+                        // Look for corresponding ]
                         j++;
                         let bracketDepth = 1;
                         while (j < text.length && bracketDepth > 0) {
                             if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
+                                // Single [ (nested internal link, etc.)
                                 bracketDepth++;
-                                content += "[";
                                 j++;
                             } else if (text[j] === "]") {
+                                // Found ]
                                 bracketDepth--;
-                                content += "]";
                                 j++;
                                 if (bracketDepth === 0) {
                                     break;
                                 }
                             } else {
-                                content += text[j];
                                 j++;
                             }
                         }
                     } else {
-                        content += text[j];
                         j++;
                     }
                 }

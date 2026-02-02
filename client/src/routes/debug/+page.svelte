@@ -27,24 +27,24 @@ let isInitializing = $state(false);
 let connectionStatus = $state("Disconnected");
 let isConnected = $state(false);
 
-// 認証成功時の処理
+// Handle authentication success
 async function handleAuthSuccess(authResult: any) {
-    logger.info("認証成功:", authResult);
+    logger.info("Authentication success:", authResult);
     isAuthenticated = true;
 
-    // 認証成功後に自動的にFluidクライアントを初期化
+    // Automatically initialize Fluid client after authentication success
     await initializeFluidClient();
 }
 
-// 認証ログアウト時の処理
+// Handle authentication logout
 function handleAuthLogout() {
-    logger.info("ログアウトしました");
+    logger.info("Logged out");
     isAuthenticated = false;
     connectionStatus = "Disconnected";
     isConnected = false;
 }
 
-// Yjsクライアントの初期化
+// Initialize Yjs client
 async function initializeFluidClient() {
     isInitializing = true;
 
@@ -55,7 +55,7 @@ async function initializeFluidClient() {
         const saved = await saveFirestoreContainerIdToServer(projectId);
         if (!saved) {
             console.error("[debug] Failed to register debug project");
-            networkError = "デバッグ用プロジェクトの登録に失敗しました。";
+            networkError = "Failed to register debug project.";
             return;
         }
 
@@ -64,15 +64,15 @@ async function initializeFluidClient() {
         updateConnectionStatus();
     }
     catch (err) {
-        console.error("Fluidクライアント初期化エラー:", err);
-        networkError = "Fluidクライアントの初期化に失敗しました。";
+        console.error("Fluid client initialization error:", err);
+        networkError = "Failed to initialize Fluid client.";
     }
     finally {
         isInitializing = false;
     }
 }
 
-// ネットワークエラー発生時の再試行
+// Retry connection on network error
 async function retryConnection() {
     networkError = undefined;
     await initializeFluidClient();
@@ -119,7 +119,7 @@ async function checkHealth() {
     }
 }
 
-// 接続状態の更新
+// Update connection status
 function updateConnectionStatus() {
     const client = yjsStore.yjsClient as any;
     if (client) {
@@ -133,30 +133,30 @@ function updateConnectionStatus() {
     }
 }
 
-// 定期的に接続状態を更新
+// Periodically update connection status
 let statusInterval: any;
 
 onMount(() => {
     console.debug("[debug/+page] Component mounted");
 
     try {
-        // ホスト情報を取得 - ブラウザ環境でのみ実行
+        // Get host info - execute only in browser environment
         if (browser) {
             hostInfo = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
             portInfo = window.location.port || "7070/default";
             console.info("Running on host:", hostInfo);
         }
 
-        // UserManagerの認証状態を確認
+        // Check UserManager authentication status
 
         isAuthenticated = userManager.getCurrentUser() !== null;
 
-        // 認証済みの場合は自動的にFluidクライアントを初期化
+        // Automatically initialize Fluid client if authenticated
         if (isAuthenticated) {
             initializeFluidClient();
         }
 
-        // 接続状態を定期的に更新（5秒ごと）
+        // Update connection status periodically (every 5 seconds)
         statusInterval = setInterval(() => {
             updateConnectionStatus();
         }, 5000);
@@ -165,13 +165,13 @@ onMount(() => {
         console.error("Error initializing debug page:", err);
         error = err instanceof Error
             ? err.message
-            : "初期化中にエラーが発生しました。";
+            : "An error occurred during initialization.";
     }
 });
 
 onDestroy(() => {
     console.debug("[debug/+page] Component destroying");
-    // 定期更新をクリア
+    // Clear periodic update
     if (statusInterval) {
         clearInterval(statusInterval);
     }
@@ -184,9 +184,9 @@ onDestroy(() => {
 
 <main>
     <h1>Outliner Debug</h1>
-    <p class="subtitle">接続テストとデバッグ情報</p>
+    <p class="subtitle">Connection test and debug information</p>
 
-    <!-- 認証コンポーネント -->
+    <!-- Auth Component -->
     <div class="auth-section">
         <AuthComponent
             onAuthSuccess={handleAuthSuccess}
@@ -195,14 +195,14 @@ onDestroy(() => {
     </div>
 
     {#if isInitializing}
-        <div class="loading">読み込み中...</div>
+        <div class="loading">Loading...</div>
     {:else if error}
         <div class="error">
-            <p>エラー: {error}</p>
-            <button onclick={() => location.reload()}>再読み込み</button>
+            <p>Error: {error}</p>
+            <button onclick={() => location.reload()}>Reload</button>
         </div>
     {:else if isAuthenticated}
-        <!-- 認証済みユーザー向けコンテンツ -->
+        <!-- Content for authenticated users -->
         <div class="authenticated-content">
             <div class="debug-card">
                 <h2>Connection Status</h2>
@@ -219,29 +219,29 @@ onDestroy(() => {
                 </div>
 
                 <button onclick={initializeFluidClient} class="action-button">
-                    接続テスト実行
+                    Run connection test
                 </button>
 
                 <div class="status-details">
-                    <p>接続URL: {hostInfo}</p>
-                    <p>ポート: {portInfo}</p>
+                    <p>Connection URL: {hostInfo}</p>
+                    <p>Port: {portInfo}</p>
                 </div>
             </div>
 
             <div class="debug-card">
-                <h2>サーバーヘルスチェック</h2>
+                <h2>Server Health Check</h2>
                 <button onclick={checkHealth} class="action-button">
-                    ヘルスチェック実行 (GET /health)
+                    Run health check (GET /health)
                 </button>
                 {#if healthError}
                     <div class="error" style="margin-top: 1rem;">
-                        <p>エラー: {healthError}</p>
+                        <p>Error: {healthError}</p>
                     </div>
                 {:else if healthStatus}
                     <div class="result" style="margin-top: 1rem;">
-                        <p>ステータス: {healthStatus.status}</p>
+                        <p>Status: {healthStatus.status}</p>
                         <details open>
-                            <summary>詳細 (ヘッダー含む)</summary>
+                            <summary>Details (including headers)</summary>
                             <pre>{JSON.stringify(healthStatus, null, 2)}</pre>
                         </details>
                     </div>
@@ -249,38 +249,38 @@ onDestroy(() => {
             </div>
 
             <div class="debug-card">
-                <h2>デバッグ情報</h2>
+                <h2>Debug Information</h2>
                 <details open>
-                    <summary>環境設定</summary>
+                    <summary>Environment Config</summary>
                     <pre>{JSON.stringify(envConfig, null, 2)}</pre>
                 </details>
 
                 <details open>
-                    <summary>Fluidクライアント</summary>
+                    <summary>Fluid Client</summary>
                     <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
                 </details>
             </div>
         </div>
     {:else}
-        <!-- 未認証ユーザー向けメッセージ -->
+        <!-- Message for unauthenticated users -->
         <div class="unauthenticated-message">
             <p>
-                デバッグ機能を使用するには、上部のGoogleログインボタンからログインしてください。
+                Please log in using the Google login button above to use debug features.
             </p>
         </div>
     {/if}
 
-    <!-- ネットワークエラー表示 -->
+    <!-- Network error display -->
     <NetworkErrorAlert error={networkError} retryCallback={retryConnection} />
 
-    <!-- 環境変数デバッガー -->
+    <!-- Environment variable debugger -->
     <div class="debug-card">
-        <h2>環境変数</h2>
+        <h2>Environment Variables</h2>
         <EnvDebugger />
     </div>
 
     <div class="back-link">
-        <a href="/">メインページに戻る</a>
+        <a href="/">Return to Main Page</a>
     </div>
 </main>
 

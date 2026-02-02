@@ -326,7 +326,7 @@
             };
             const rect = inputEl?.getBoundingClientRect?.();
             const e20 = document.elementFromPoint?.(20, 20) as Element | null;
-            // Additional visibility check (metric similar to Playwright)
+            // Additional visibility check (metrics similar to Playwright)
             const clientRectsCount = inputEl?.getClientRects?.().length ?? 0;
             const inDOM = !!(inputEl && document.contains(inputEl));
             const bboxNonZero = !!(rect && rect.width > 0 && rect.height > 0);
@@ -387,7 +387,7 @@
                 viewportIntersect,
                 inputStyles: styles(inputEl as Element),
             });
-            // Trace computed styles up the parent chain and measure
+            // Trace and measure computed styles up the parent chain
             type ChainInfo = {
                 tag: string;
                 id: string;

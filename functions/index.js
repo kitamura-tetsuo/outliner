@@ -254,18 +254,9 @@ async function checkContainerAccess(userId, containerId) {
       }
     }
 
-    // 2. Check userProjects collection (New Architecture)
-    const userProjectDoc = await userProjectsCollection.doc(userId).get();
-    if (userProjectDoc.exists) {
-      const data = userProjectDoc.data();
-      if (
-        data.accessibleProjectIds &&
-        data.accessibleProjectIds.includes(containerId)
-      ) {
-        logger.info(`Access granted via userProjects collection`);
-        return true;
-      }
-    }
+    // 2. Check userProjects collection (New Architecture) - REMOVED for Security
+    // We strictly trust projectUsers (resource ACL) only.
+    // userProjects is writable by users and cannot be trusted for authorization.
 
     // 3. Check containerUsers collection (Legacy)
     const containerUserDoc = await db.collection("containerUsers").doc(
@@ -283,22 +274,8 @@ async function checkContainerAccess(userId, containerId) {
       }
     }
 
-    // 4. Check userContainers collection (Legacy)
-    const userContainerDoc = await userContainersCollection.doc(userId).get();
-
-    if (userContainerDoc.exists) {
-      const userData = userContainerDoc.data();
-
-      if (
-        userData.accessibleContainerIds &&
-        Array.isArray(userData.accessibleContainerIds)
-      ) {
-        if (userData.accessibleContainerIds.includes(containerId)) {
-          logger.info(`Access granted via userContainers collection`);
-          return true;
-        }
-      }
-    }
+    // 4. Check userContainers collection (Legacy) - REMOVED for Security
+    // Same reason as userProjects.
 
     logger.warn(`Access denied for user ${userId} to container ${containerId}`);
     return false;
@@ -2335,7 +2312,30 @@ exports.deleteAllProductionData = onRequest(
     }
 
     try {
-      const { adminToken, confirmationCode } = req.body;
+      const { adminToken, confirmationCode, idToken } = req.body;
+
+      // Authenticate Admin User (Defense in Depth)
+      if (!idToken) {
+        logger.warn("deleteAllProductionData: Missing ID token");
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      let decodedToken;
+      try {
+        decodedToken = await admin.auth().verifyIdToken(idToken);
+      } catch (authError) {
+        logger.warn(
+          `deleteAllProductionData: Invalid ID token: ${authError.message}`,
+        );
+        return res.status(401).json({ error: "Authentication failed" });
+      }
+
+      if (!isAdmin(decodedToken)) {
+        logger.warn(
+          `deleteAllProductionData: User ${decodedToken.uid} is not an admin`,
+        );
+        return res.status(403).json({ error: "Admin privileges required" });
+      }
 
       // Verify admin token
       const adminSecret = process.env.ADMIN_DELETE_TOKEN;

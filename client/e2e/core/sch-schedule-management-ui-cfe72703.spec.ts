@@ -14,7 +14,7 @@ test.describe("Schedule Management UI", () => {
     });
 
     test("open schedule screen", async ({ page }) => {
-        await page.locator("text=予約管理").click();
+        await page.locator("text=Schedule").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
     });
 
@@ -26,7 +26,7 @@ test.describe("Schedule Management UI", () => {
             }
         });
 
-        await page.locator("text=予約管理").click();
+        await page.locator("text=Schedule").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
 
         // ページが完全に読み込まれるまで少し待つ

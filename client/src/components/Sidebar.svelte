@@ -44,6 +44,7 @@
                 class="section-header"
                 onclick={() => (isProjectsCollapsed = !isProjectsCollapsed)}
                 aria-expanded={!isProjectsCollapsed}
+                aria-controls="sidebar-projects-list"
                 aria-label="Toggle projects section"
             >
                 <h3 class="sidebar-section-title">Projects</h3>
@@ -68,7 +69,7 @@
             </button>
 
             {#if !isProjectsCollapsed}
-                <ul class="project-list">
+                <ul id="sidebar-projects-list" class="project-list">
                     {#if projectStore.projects.length === 0}
                         <li class="sidebar-placeholder">No projects available</li>
                     {:else}
@@ -103,6 +104,7 @@
                 class="section-header"
                 onclick={() => (isPagesCollapsed = !isPagesCollapsed)}
                 aria-expanded={!isPagesCollapsed}
+                aria-controls="sidebar-pages-list"
                 aria-label="Toggle pages section"
             >
                 <h3 class="sidebar-section-title">Pages</h3>
@@ -127,7 +129,7 @@
             </button>
 
             {#if !isPagesCollapsed}
-                <ul class="page-list">
+                <ul id="sidebar-pages-list" class="page-list">
                     {#if !pages || pages.length === 0}
                         <li class="sidebar-placeholder">No pages available</li>
                     {:else}

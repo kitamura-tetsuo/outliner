@@ -17,11 +17,15 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
     return async () => {
         try {
             console.log("[tokenRefresh] refreshAuthAndReconnect triggered");
-            const t = await userManager.auth.currentUser?.getIdToken(true);
+            // IMPORTANT: Do NOT use getIdToken(true) here!
+            // This function is triggered by onIdTokenChanged.
+            // getIdToken(true) forces a refresh, which triggers onIdTokenChanged again, causing an infinite loop.
+            // The token provided here via the SDK's event or cache is already sufficiently fresh.
+            const t = await userManager.auth.currentUser?.getIdToken();
             console.log("[tokenRefresh] Got new token:", !!t);
             // HocuspocusProvider handles token via the token function passed at creation
             // To refresh, we can call sendToken() which will invoke the token function
-            // WS が無効化されている場合は再接続を行わない（テスト環境抑止）
+            // Do not reconnect if WS is disabled (suppressed in test environment)
             if (provider?.__wsDisabled === true) {
                 console.log("[tokenRefresh] WS disabled, skipping");
                 return;
@@ -102,7 +106,7 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
 
 export function attachTokenRefresh(provider: TokenRefreshableProvider): () => void {
     const handler = refreshAuthAndReconnect(provider);
-    // auth 状態通知にフックして再認証・再接続を行う（引数は未使用）
+    // Hook into auth state notification to perform re-authentication and reconnection (argument is unused)
     return userManager.addEventListener(() => {
         void handler();
     });

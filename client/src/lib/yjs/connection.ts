@@ -91,18 +91,18 @@ function getWsBase(): string {
 }
 
 /**
- * WS 有効/無効の決定優先順位（本番/開発/テスト共通）
- * 1) 強制有効: localStorage.VITE_YJS_FORCE_WS === "true" → 常に true（テスト/E2E 用の例外。無効化より強い）
- * 2) 無効化: VITE_YJS_DISABLE_WS → false（env または localStorage のどちらか一方でも "true" なら無効）
- * 3) 明示有効: localStorage.VITE_YJS_ENABLE_WS === "true" → true（2) で無効化されていない場合のみ有効）
- * 4) テスト既定: MODE===\"test\" または VITE_IS_TEST===\"true\"（env/localStorage いずれか）→ true（2) があればそちらを優先）
- * 5) 既定: 上記に当てはまらない場合は true
+ * WebSocket Enable/Disable Priority (Common for Production/Dev/Test)
+ * 1) Force Enable: localStorage.VITE_YJS_FORCE_WS === "true" → Always true (Exception for Test/E2E. Overrides disablement)
+ * 2) Disable: VITE_YJS_DISABLE_WS → false (Disabled if "true" in either env or localStorage)
+ * 3) Explicit Enable: localStorage.VITE_YJS_ENABLE_WS === "true" → true (Valid only if not disabled by 2))
+ * 4) Test Default: MODE==="test" or VITE_IS_TEST==="true" (env or localStorage) → true (Subject to disablement by 2))
+ * 5) Default: true if none of the above apply
  *
- * 運用指針:
- * - 本番/開発のロジックは同一。プロダクションでの localStorage オーバーライド使用は原則避ける。
- * - .env.test では既定で VITE_YJS_DISABLE_WS=true とし、WS ハンドシェイクのノイズを抑止。
- *   WS が必要な E2E は addInitScript 等で localStorage に VITE_YJS_FORCE_WS=true を付与して接続を強制。
- * - 本関数は判定の単一点（single source of truth）。呼び出し側はこの戻り値のみを信頼する。
+ * Operational Guidelines:
+ * - Logic is identical for Production/Development. Avoid using localStorage overrides in production.
+ * - .env.test sets VITE_YJS_DISABLE_WS=true by default to suppress WS handshake noise.
+ *   E2E tests requiring WS should force connection by setting VITE_YJS_FORCE_WS=true in localStorage (e.g., via addInitScript).
+ * - This function is the single source of truth. Callers should rely solely on this return value.
  */
 
 function isAuthRequired(): boolean {
@@ -162,7 +162,7 @@ async function getFreshIdToken(): Promise<string> {
     }
 
     try {
-        const token = await auth.currentUser.getIdToken(true);
+        const token = await auth.currentUser.getIdToken();
         if (!token) throw new Error("Token is empty");
         return token;
     } catch (e) {

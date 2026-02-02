@@ -35,7 +35,7 @@ test.describe("テキスト追加機能テスト", () => {
         const initialCount = await initialItems.count();
 
         // アイテム追加ボタンをクリック（page-toolbar内のボタンを使用）
-        const addButton = page.getByTestId("page-toolbar").getByRole("button", { name: "アイテム追加" });
+        const addButton = page.getByTestId("page-toolbar").getByRole("button", { name: "Add Item" });
         await addButton.click();
         await page.waitForTimeout(500);
 

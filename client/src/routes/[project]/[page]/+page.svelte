@@ -22,36 +22,36 @@
     import { store } from "../../../stores/store.svelte";
     import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 
-    // URLパラメータを取得（SvelteKit page store に追従）
-    // NOTE: `$page` の値を参照する必要がある（store オブジェクトではなく値）。
-    // 以前は `page.params.page` としていたため、`page` が未解決のまま property 参照して TypeError になっていた。
+    // Get URL parameters (follow SvelteKit page store)
+    // NOTE: Must reference the value of $page (not the store object).
+    // Previously used page.params.page, which caused TypeError by referencing property while page was unresolved.
     let projectName: string = $derived.by(() => $page.params.project ?? "");
     let pageName: string = $derived.by(() => $page.params.page ?? "");
 
-    // デバッグ用ログ
+    // Debug log
     // logger at init; avoid referencing derived vars outside reactive contexts to silence warnings
 
-    // ページの状態
+    // Page state
     let error: string | undefined = $state(undefined);
     let isLoading = $state(true);
     let isAuthenticated = $state(false);
     let pageNotFound = $state(false);
 
-    let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
+    let isSearchPanelVisible = $state(false); // Search panel visibility state
 
     // Optional variable for pending imports - defined to avoid ESLint no-undef errors
     // This is used in conditional checks and may be set by external code
     let pendingImport: any[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
     let project: any; // eslint-disable-line @typescript-eslint/no-unused-vars
 
-    // URLパラメータと認証状態を監視して更新
-    // 同一条件での多重実行を避け、Svelte の update depth exceeded を回避するためのキー
-    // 注意: $state を使うと $effect が自分で読んで書く依存を持ちループになるため、通常変数で保持する
+    // Monitor and update URL parameters and auth state
+    // Key to avoid multiple executions under the same conditions and prevent Svelte update depth exceeded
+    // Note: Using $state causes a loop where $effect reads/writes its own dependency, so use a normal variable
     let lastLoadKey: string | null = null;
-    let __loadingInProgress = false; // 再入防止
+    let __loadingInProgress = false; // Re-entry prevention
 
     /**
-     * ロード条件を評価し、必要であればロードを開始する
+     * Evaluate load conditions and start loading if necessary
      */
     function scheduleLoadIfNeeded(opts?: {
         project?: string;
@@ -62,7 +62,7 @@
         const pg = (opts?.page ?? pageName) || "";
         const auth = opts?.authenticated ?? isAuthenticated;
 
-        // 条件未成立
+        // Conditions not met
         if (!pj || !pg || !auth) {
             logger.info(
                 `scheduleLoadIfNeeded: skip (project="${pj}", page="${pg}", auth=${auth})`,
@@ -76,26 +76,26 @@
         }
         lastLoadKey = key;
 
-        // 反応深度の問題を避けるため、イベントループに委ねる
+        // Defer to event loop to avoid reactivity depth issues
         setTimeout(() => {
             if (!__loadingInProgress) loadProjectAndPage();
         }, 0);
     }
 
-    // 認証成功時の処理
+    // Handle auth success
     function handleAuthSuccess() {
-        logger.info("handleAuthSuccess: 認証成功");
+        logger.info("handleAuthSuccess: Auth success");
         isAuthenticated = true;
         scheduleLoadIfNeeded({ authenticated: true });
     }
 
-    // 認証ログアウト時の処理
+    // Handle auth logout
     function handleAuthLogout() {
-        logger.info("ログアウトしました");
+        logger.info("Logged out");
         isAuthenticated = false;
     }
 
-    // プロジェクトとページを読み込む
+    // Load project and page
     async function loadProjectAndPage() {
         logger.info(
             `loadProjectAndPage: Starting for project="${projectName}", page="${pageName}"`,
@@ -106,7 +106,7 @@
         pageNotFound = false;
 
         try {
-            // 1. クライアントの取得
+            // 1. Get client
             logger.info(
                 `loadProjectAndPage: Getting Yjs client for "${projectName}"`,
             );
@@ -126,7 +126,7 @@
                 throw new Error("Failed to load or create project client");
             }
 
-            // 2. ストアの更新
+            // 2. Update store
             yjsStore.yjsClient = client as any;
             const project = client.getProject?.();
 
@@ -138,7 +138,7 @@
                 `loadProjectAndPage: Project loaded: "${project.title}"`,
             );
 
-            // 3. ページの検索・特定
+            // 3. Search and identify page
             // const items = project.items as any; // Moved inside findPage for freshness
             let targetPage: any = null;
 
@@ -194,7 +194,7 @@
                 }
             }
 
-            // 4. ページが存在しない場合: 自動作成
+            // 4. If page does not exist: Auto-create
             // REMOVED: Legacy auto-creation logic.
             // If the page doesn't exist, we should not automatically create it on navigation.
             // This ensures tests fail if seeding was missed, and avoids accidental creation in production.
@@ -204,11 +204,11 @@
                 );
             }
 
-            // 5. カレントページの設定とハイドレーション
+            // 5. Set current page and hydration
             if (targetPage) {
                 store.currentPage = targetPage as any;
 
-                // アイテムの読み込み (Hydration)
+                // Load items (Hydration)
                 if (
                     targetPage.id &&
                     typeof project.hydratePageItems === "function"
@@ -219,13 +219,13 @@
                     await project.hydratePageItems(targetPage.id);
                 }
 
-                // ページ一覧のストア更新待機 (オプション)
+                // Wait for page list store update (optional)
                 if (!store.pages) {
-                    // 初回ロード時はページ一覧を取得するまで少し待つことがあるかもしれません
-                    // しかし基本的な表示は currentPage があれば十分
+                    // Might need to wait a bit to get page list on initial load
+                    // But basic display is sufficient with currentPage
                 }
             } else {
-                // 作成に失敗した場合など
+                // If creation failed, etc.
                 pageNotFound = true;
                 logger.error(
                     `loadProjectAndPage: Failed to find or create page "${pageName}"`,
@@ -236,7 +236,7 @@
             error =
                 err instanceof Error
                     ? err.message
-                    : "プロジェクトとページの読み込み中にエラーが発生しました。";
+                    : "An error occurred while loading the project and page.";
         } finally {
             isLoading = false;
             __loadingInProgress = false;
@@ -263,13 +263,13 @@
             if (typeof console !== "undefined") {
                 console.log("[DEBUG] onMount called");
             }
-            // 初期ロードを試行
+            // Attempt initial load
             scheduleLoadIfNeeded();
         } catch (e) {
             console.error("[DEBUG] onMount error:", e);
         }
 
-        // E2E安定化: currentPage.items の初期生成を追跡して pageId を随時キャプチャ
+        // E2E Stabilization: Track initial generation of currentPage.items and capture pageId as needed
         try {
             let tries = 0;
             const iv = setInterval(() => {
@@ -291,7 +291,7 @@
             });
         } catch {}
 
-        // ルートパラメータの変化を監視
+        // Monitor route parameter changes
         const unsub = page.subscribe(($p) => {
             const pj = $p.params?.project ?? projectName;
             const pg = $p.params?.page ?? pageName;
@@ -299,7 +299,7 @@
         });
         onDestroy(unsub);
     });
-    // スケジュール連携用: 現在のページから pageId 候補をセッションに保存
+    // For schedule integration: Save pageId candidate from current page to session
     function capturePageIdForSchedule() {
         try {
             if (typeof window === "undefined") return;
@@ -322,12 +322,12 @@
         } catch {}
     }
 
-    // ホームに戻る
+    // Return to Home
     function goHome() {
         goto("/");
     }
 
-    // プロジェクトページに戻る
+    // Return to Project Page
     function goToProject() {
         goto(`/${projectName}`);
     }
@@ -340,11 +340,11 @@
         goto(`/${projectName}/graph`);
     }
 
-    // 画面上部からもアイテムを追加できる補助ボタン（E2E安定化用）
+    // Auxiliary button to add items from top of screen (for E2E stabilization)
     function addItemFromTopToolbar() {
         try {
             let pageItem: any = store.currentPage as any;
-            // currentPage が未用意なら、URL の pageName で暫定ページを作成
+            // If currentPage is not ready, create provisional page with pageName from URL
             if (!pageItem) {
                 const proj: any = store.project as any;
                 if (proj?.addPage && pageName) {
@@ -360,7 +360,7 @@
             if (!pageItem || !pageItem.items) return;
             const user = userManager.getCurrentUser()?.id ?? "tester";
             const node = pageItem.items.addNode(user);
-            // 追加直後にアクティブ化してテストの後工程を安定
+            // Activate immediately after addition to stabilize subsequent test steps
             if (node && node.id) {
                 editorOverlayStore.setCursor({
                     itemId: node.id,
@@ -375,7 +375,7 @@
         }
     }
 
-    // 検索パネルの表示を切り替える
+    // Toggle search panel display
     function toggleSearchPanel() {
         const before = isSearchPanelVisible;
         isSearchPanelVisible = !isSearchPanelVisible;
@@ -391,7 +391,7 @@
     }
 
     onMount(async () => {
-        // UserManagerの認証状態を確認（非同期対応）
+        // Check UserManager auth state (async support)
         logger.info(
             `onMount: Starting for project="${projectName}", page="${pageName}"`,
         );
@@ -399,7 +399,7 @@
             `onMount: URL params - projectName: "${projectName}", pageName: "${pageName}"`,
         );
 
-        // 初期認証状態を確認
+        // Check initial auth state
         let currentUser = userManager.getCurrentUser();
         logger.info(
             `onMount: Initial auth check - currentUser exists: ${!!currentUser}`,
@@ -412,12 +412,12 @@
                 "onMount: User already authenticated, setting isAuthenticated=true",
             );
         } else {
-            // 認証状態が変更されるまで待機（テスト環境対応）
+            // Wait for auth state change (test environment support)
             logger.info(
                 "onMount: No current user, waiting for authentication...",
             );
             let retryCount = 0;
-            const maxRetries = 50; // 5秒間待機
+            const maxRetries = 50; // Wait for 5 seconds
 
             while (!currentUser && retryCount < maxRetries) {
                 await new Promise((resolve) => setTimeout(resolve, 100));
@@ -450,10 +450,10 @@
             `onMount: About to complete, $effect should trigger with isAuthenticated=${isAuthenticated}`,
         );
 
-        // E2E デバッグ用: 検索パネルを強制的に開く関数を公開
+        // For E2E Debug: Expose function to forcibly open search panel
         if (typeof window !== "undefined") {
             (window as any).__OPEN_SEARCH__ = async () => {
-                // 現在非表示のときだけトグルボタンをクリックして開く（二重トグル防止）
+                // Click toggle button to open only when currently hidden (prevent double toggle)
                 if (!isSearchPanelVisible) {
                     const btn =
                         document.querySelector<HTMLButtonElement>(
@@ -461,7 +461,7 @@
                         );
                     btn?.click();
                 }
-                // search-panel の DOM 出現を待機
+                // Wait for search-panel DOM appearance
                 let tries = 0;
                 while (
                     !document.querySelector('[data-testid="search-panel"]') &&
@@ -484,8 +484,8 @@
             };
         }
 
-        // ページ読み込み後にリンクプレビューハンドラーを設定
-        // DOMが完全に読み込まれるのを待つ
+        // Setup link preview handlers after page load
+        // Wait for DOM to be fully loaded
         setTimeout(() => {
             setupLinkPreviewHandlers();
         }, 500);
@@ -496,28 +496,28 @@
     });
 
     onDestroy(() => {
-        // リンクプレビューのクリーンアップ
+        // Cleanup link previews
         cleanupLinkPreviews();
     });
 </script>
 
 <svelte:head>
     <title>
-        {pageName ? pageName : "ページ"} - {projectName
+        {pageName ? pageName : "Page"} - {projectName
             ? projectName
-            : "プロジェクト"} | Outliner
+            : "Project"} | Outliner
     </title>
 </svelte:head>
 
 <main class="container mx-auto px-4 py-4">
     <div class="mb-4">
-        <!-- パンくずナビゲーション -->
+        <!-- Breadcrumb Navigation -->
         <nav class="mb-2 flex items-center text-sm text-gray-600">
             <button
                 onclick={goHome}
                 class="text-blue-600 hover:text-blue-800 hover:underline"
             >
-                ホーム
+                Home
             </button>
             {#if projectName}
                 <span class="mx-2">/</span>
@@ -534,14 +534,14 @@
             {/if}
         </nav>
 
-        <!-- ページタイトルと検索ボタン -->
+        <!-- Page Title and Search Button -->
         <div class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">
                 {#if projectName && pageName}
                     <span class="text-gray-600">{projectName} /</span>
                     {pageName}
                 {:else}
-                    ページ
+                    Page
                 {/if}
             </h1>
             <div class="flex items-center space-x-2" data-testid="page-toolbar">
@@ -550,32 +550,32 @@
                     class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     data-testid="search-toggle-button"
                 >
-                    検索
+                    Search
                 </button>
                 <button
                     onclick={addItemFromTopToolbar}
                     class="px-4 py-2 bg-slate-200 text-slate-800 rounded hover:bg-slate-300"
                 >
-                    アイテム追加
+                    Add Item
                 </button>
                 <button
                     onclick={goToSchedule}
                     class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                 >
-                    予約管理
+                    Schedule
                 </button>
                 <button
                     onclick={goToGraphView}
                     data-testid="graph-view-button"
                     class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
                 >
-                    グラフビュー
+                    Graph View
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- 認証コンポーネント -->
+    <!-- Auth Component -->
     <div class="auth-section mb-6">
         <AuthComponent
             onAuthSuccess={handleAuthSuccess}
@@ -583,7 +583,7 @@
         />
     </div>
 
-    <!-- OutlinerBase は常にマウントし、内部で pageItem の有無に応じて表示を切り替える -->
+    <!-- Always mount OutlinerBase, switch display internally based on pageItem presence -->
     <OutlinerBase
         pageItem={store.currentPage}
         projectName={projectName || ""}
@@ -595,12 +595,12 @@
         onEdit={undefined}
     />
 
-    <!-- バックリンクパネル（仮ページのときは非表示） -->
+    <!-- Backlink Panel (Hidden when temporary page) -->
     {#if store.currentPage && !store.currentPage.id.startsWith("temp-")}
         <BacklinkPanel {pageName} {projectName} />
     {/if}
 
-    <!-- 検索パネル -->
+    <!-- Search Panel -->
     <SearchPanel
         isVisible={isSearchPanelVisible}
         pageItem={store.currentPage}
@@ -608,7 +608,7 @@
     />
     {#if isLoading}
         <div class="flex justify-center py-8">
-            <div class="loader">読み込み中...</div>
+            <div class="loader">Loading...</div>
         </div>
     {:else if error}
         <div class="rounded-md bg-red-50 p-4">
@@ -618,7 +618,7 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-red-800">
-                        エラーが発生しました
+                        An error occurred
                     </h3>
                     <div class="mt-2 text-sm text-red-700">
                         <p>{error}</p>
@@ -628,7 +628,7 @@
                             onclick={loadProjectAndPage}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >
-                            再試行
+                            Retry
                         </button>
                     </div>
                 </div>
@@ -642,11 +642,11 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-yellow-800">
-                        ページが見つかりません
+                        Page not found
                     </h3>
                     <div class="mt-2 text-sm text-yellow-700">
                         <p>
-                            指定されたページ「{pageName}」はプロジェクト「{projectName}」内に存在しません。
+                            The specified page "{pageName}" does not exist in project "{projectName}".
                         </p>
                     </div>
                 </div>
@@ -660,10 +660,10 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-blue-800">
-                        ログインが必要です
+                        Login required
                     </h3>
                     <div class="mt-2 text-sm text-blue-700">
-                        <p>このページを表示するには、ログインしてください。</p>
+                        <p>Please login to view this page.</p>
                     </div>
                 </div>
             </div>

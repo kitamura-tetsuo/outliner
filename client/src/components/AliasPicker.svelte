@@ -15,7 +15,7 @@ let pickerElement = $state<HTMLDivElement>();
 let inputElement = $state<HTMLInputElement>();
 // Avoid two-way binding to store to prevent effect cycles
 let query = $state(aliasPickerStore.query || "");
-// options は常に aliasPickerStore.options を参照（{#each} で宣言的レンダリング ）
+// options always references aliasPickerStore.options (declarative rendering with {#each})
 
 let visible = $derived(!!aliasPickerStore.isVisible);
 
@@ -35,7 +35,7 @@ function getFilteredOptions(): Option[] {
     return opts.filter((o: Option) => o.id !== selfId && o.path.toLowerCase().includes(q));
 }
 
-// 入力値が変わった時のみ選択インデックスをリセット（DOMイベントで副作用を限定）
+// Reset selected index only when input value changes (limit side effects with DOM events)
 function handleInput() {
     selectedIndex = 0;
     try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
@@ -89,17 +89,17 @@ function handleKeydown(event: KeyboardEvent) {
 // Initialize localOptions from store via event to avoid tight coupling
 
 
-// 可視化されたら直ちにフォーカスを与える（初回/再表示どちらも）
+// Focus immediately when visible (both initial and re-display)
 $effect(() => {
     if (aliasPickerStore.isVisible) {
         try {
-            // まずピッカー本体
+            // First, the picker body
             pickerElement?.focus();
-            // 次に検索入力へ（存在すれば）
+            // Next, the search input (if it exists)
             setTimeout(() => {
                 inputElement?.focus();
             }, 0);
-            // 外部ストアへ選択インデックスを同期
+            // Sync selected index to external store
             try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
         } catch {}
     }

@@ -135,7 +135,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
 
     if (!userId && isTest) userId = "test-user-id";
     if (!userId) {
-        throw new Error("ユーザーがログインしていないため、新規プロジェクトを作成できません");
+        throw new Error("Cannot create a new project because the user is not logged in");
     }
 
     // Use provided ID or generate new ones (stable for test, random for prod)
@@ -190,7 +190,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
                 `[yjsService] Failed to register project after ${maxRetries} attempts. WebSocket connection may fail.`,
             );
             // Throw error to notify user instead of silently failing
-            throw new Error("プロジェクトの登録に失敗しました。ネットワーク接続を確認してください。");
+            throw new Error("Failed to register project. Please check your network connection.");
         }
     }
 
