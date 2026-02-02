@@ -6,6 +6,10 @@ Outliner is a real-time collaborative application built on Yjs.
 
 See [docs/fluid_to_yjs.md](docs/fluid_to_yjs.md) for the mapping between legacy data structures and Yjs and current migration status.
 
+## Project Sharing
+
+For information on how to share projects with other users, please refer to [docs/project-sharing.md](docs/project-sharing.md).
+
 ## AI Integration Features
 
 ### Automatic PR-Issue Linking Feature
