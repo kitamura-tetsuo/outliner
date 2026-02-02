@@ -6,7 +6,7 @@
         "@sinclair/typebox": "^0.34.48",
         "diff-match-patch": "^1.0.5",
         "echarts": "^5.6.0",
-        "firebase": "^12.6.0",
+        "firebase": "^12.8.0",
         "jsonwebtoken": "^9.0.2",
         "lib0": "^0.2.117",
         "pino": "^10.3.0",
