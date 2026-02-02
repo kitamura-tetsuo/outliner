@@ -714,7 +714,12 @@ export class Cursor implements CursorEditingContext {
         return true;
     }
 
-    private calculateIsReversed(startItemId: string, startOffset: number, endItemId: string, endOffset: number): boolean {
+    private calculateIsReversed(
+        startItemId: string,
+        startOffset: number,
+        endItemId: string,
+        endOffset: number,
+    ): boolean {
         // 開始と終了が同じアイテムの場合、オフセットで方向を決定
         if (startItemId === endItemId) {
             return startOffset > endOffset;
