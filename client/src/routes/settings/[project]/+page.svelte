@@ -2,6 +2,8 @@
     import { page } from "$app/stores";
     import { getFirebaseFunctionUrl } from "$lib/firebaseFunctionsUrl";
     import { authStore } from "$stores/authStore.svelte";
+    import { userManager } from "../../../auth/UserManager";
+    import { stableIdFromTitle } from "$lib/yjsService.svelte";
 
     let projectId = $derived($page.params.project);
     let generatedLink = $state<string | null>(null);
@@ -16,11 +18,18 @@
         isLoading = true;
         error = null;
         try {
-            const token = await authStore.user.getIdToken();
+            // Determine effective ID (Hash in test mode, UUID/Title in prod)
+            let effectiveId = projectId;
+            if (typeof window !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true") {
+                effectiveId = stableIdFromTitle(projectId);
+                console.log(`[Settings] Test mode: resolved "${projectId}" to "${effectiveId}"`);
+            }
+
+            const token = await userManager.auth.currentUser?.getIdToken();
             const res = await fetch(getFirebaseFunctionUrl("generateProjectShareLink"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ idToken: token, projectId }),
+                body: JSON.stringify({ idToken: token, projectId: effectiveId }),
             });
             if (!res.ok) {
                 const data = await res.json();

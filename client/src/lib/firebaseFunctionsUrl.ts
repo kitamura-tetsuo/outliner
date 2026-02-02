@@ -16,7 +16,9 @@ export function getFirebaseFunctionUrl(functionName: string): string {
 
     // テスト環境ではFirebase Hostingエミュレーター経由でアクセス
     if (isTest) {
-        return `http://localhost:57000/api/${functionName}`;
+        // Direct access to functions emulator to avoid hosting rewrite configuration issues in tests
+        // Port 57070 is the default for functions emulator
+        return `http://127.0.0.1:57070/outliner-d57b0/us-central1/${functionName}`;
     }
 
     // Firebase Hostingエミュレーター（localhost:57000）の場合
