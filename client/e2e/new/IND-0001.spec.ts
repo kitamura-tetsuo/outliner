@@ -58,7 +58,6 @@ test.describe("IND-0001: Advanced indentation and selection", () => {
 
     test("copy and paste nested selection", async ({ page }) => {
         const items = page.locator(".outliner-item");
-        const item2 = items.nth(1);
         // We do not indent item2 because it's the first item.
 
         const item3 = items.nth(2);

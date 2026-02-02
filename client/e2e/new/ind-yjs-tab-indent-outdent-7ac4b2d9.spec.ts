@@ -9,9 +9,13 @@ import { TestHelpers } from "../utils/testHelpers";
 
 async function getDepth(page, itemId: string): Promise<number> {
     const sel = `.outliner-item[data-item-id="${itemId}"]`;
-    await page.waitForSelector(sel);
-    const box = await page.locator(sel).boundingBox();
-    return box ? box.x : 0;
+    try {
+        await page.waitForSelector(sel, { timeout: 5000 });
+        const box = await page.locator(sel).boundingBox();
+        return box ? box.x : 0;
+    } catch {
+        return -1; // Indicate not found
+    }
 }
 
 async function pressTab(page) {

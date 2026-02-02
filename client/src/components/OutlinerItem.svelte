@@ -238,6 +238,7 @@ interface Props {
 
 let {
     model,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     depth = 0,
     currentUser = "anonymous",
     isReadOnly = false,
