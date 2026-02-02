@@ -55,7 +55,7 @@
         "@types/node": "^25.0.10",
         "@types/uuid": "^11.0.0",
         "@types/ws": "^8.18.1",
-        "@vitest/coverage-v8": "4.0.17",
+        "@vitest/coverage-v8": "4.0.18",
         "@vitest/ui": "4.0.17",
         "chokidar-cli": "^3.0.0",
         "concurrently": "^9.2.0",
