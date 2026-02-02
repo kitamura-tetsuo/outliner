@@ -973,6 +973,128 @@ exports.deleteProject = onRequest(
   }),
 );
 
+// Endpoint to generate a share link for a project
+exports.generateProjectShareLink = onRequest(
+  { cors: true },
+  wrapWithSentry(async (req, res) => {
+    setCorsHeaders(req, res);
+    if (req.method === "OPTIONS") { return res.status(204).end(); }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
+    try {
+      const { idToken, projectId } = req.body;
+      if (!idToken || !projectId) {
+        return res.status(400).json({ error: "Invalid request" });
+      }
+
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const userId = decodedToken.uid;
+
+      const projectDoc = await projectUsersCollection.doc(projectId).get();
+      if (!projectDoc.exists) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const projectData = projectDoc.data();
+      if (!projectData.accessibleUserIds?.includes(userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const token = crypto.randomUUID();
+      await db.collection("shareLinks").doc(token).set({
+        projectId,
+        token,
+        createdBy: userId,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      return res.status(200).json({ token });
+    } catch (error) {
+      Sentry.captureException(error);
+      logger.error(`generateProjectShareLink error: ${error.message}`, {
+        error,
+      });
+      return res.status(500).json({ error: "Failed to generate link" });
+    }
+  }),
+);
+
+// Endpoint to accept a share link
+exports.acceptProjectShareLink = onRequest(
+  { cors: true },
+  wrapWithSentry(async (req, res) => {
+    setCorsHeaders(req, res);
+    if (req.method === "OPTIONS") { return res.status(204).end(); }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
+    try {
+      const { idToken, token } = req.body;
+      if (!idToken || !token) {
+        return res.status(400).json({ error: "Invalid request" });
+      }
+
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const userId = decodedToken.uid;
+
+      const linkDoc = await db.collection("shareLinks").doc(token).get();
+      if (!linkDoc.exists) {
+        return res.status(404).json({ error: "Invalid link" });
+      }
+
+      const { projectId } = linkDoc.data();
+
+      await db.runTransaction(async transaction => {
+        const projectRef = projectUsersCollection.doc(projectId);
+        const userRef = userProjectsCollection.doc(userId);
+
+        const projectSnap = await transaction.get(projectRef);
+        const userSnap = await transaction.get(userRef);
+
+        if (!projectSnap.exists) { throw new Error("Project not found"); }
+
+        const projectData = projectSnap.data();
+        const accessibleUserIds = projectData.accessibleUserIds || [];
+
+        if (!accessibleUserIds.includes(userId)) {
+          transaction.update(projectRef, {
+            accessibleUserIds: FieldValue.arrayUnion(userId),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+
+        if (userSnap.exists) {
+          const userData = userSnap.data();
+          if (!userData.accessibleProjectIds?.includes(projectId)) {
+            transaction.update(userRef, {
+              accessibleProjectIds: FieldValue.arrayUnion(projectId),
+              [`projectTitles.${projectId}`]: projectData.title || projectId,
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          }
+        } else {
+          transaction.set(userRef, {
+            userId,
+            accessibleProjectIds: [projectId],
+            projectTitles: { [projectId]: projectData.title || projectId },
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+      });
+
+      return res.status(200).json({ projectId });
+    } catch (error) {
+      Sentry.captureException(error);
+      logger.error(`acceptProjectShareLink error: ${error.message}`, { error });
+      return res.status(500).json({ error: "Failed to accept link" });
+    }
+  }),
+);
+
 // Legacy Fluid token endpoint (removed) — return 404
 exports.fluidToken404 = onRequest(
   { cors: true },
