@@ -414,6 +414,54 @@ export class ScrapboxFormatter {
     private static readonly RX_HTML_INT_LINK = /\[([^[\]]+?)\]/g;
 
     /**
+     * Function to match italics considering bracket balance
+     */
+    private static matchBalancedItalic(text: string): Array<{ start: number; end: number; content: string; }> {
+        const matches: Array<{ start: number; end: number; content: string; }> = [];
+        let i = 0;
+        while (i < text.length - 2) {
+            if (text[i] === "[" && text[i + 1] === "/" && text[i + 2] === " ") {
+                // Found start of italic: [/ (space required)
+                const startContent = i + 3;
+                let j = i + 3;
+                let bracketDepth = 1;
+
+                while (j < text.length && bracketDepth > 0) {
+                    if (text[j] === "[" && j + 1 < text.length && text[j + 1] !== "[" && text[j + 1] !== "/") {
+                        // Single [ (internal link, etc.)
+                        bracketDepth++;
+                        j++;
+                    } else if (text[j] === "]") {
+                        bracketDepth--;
+                        if (bracketDepth === 0) {
+                            // Match complete
+                            matches.push({
+                                start: i,
+                                end: j + 1,
+                                content: text.substring(startContent, j),
+                            });
+                            i = j + 1;
+                            break;
+                        } else {
+                            j += 2;
+                        }
+                    } else {
+                        j++;
+                    }
+                }
+
+                if (bracketDepth > 0) {
+                    // Move to next character if no match
+                    i++;
+                }
+            } else {
+                i++;
+            }
+        }
+        return matches;
+    }
+
+    /**
      * Advanced conversion supporting combined formatting (recursive processing)
      * @param text Text to convert
      * @returns Text converted to HTML
@@ -433,74 +481,6 @@ export class ScrapboxFormatter {
             return placeholder;
         });
 
-        // Function to match bold considering bracket balance
-        const matchBalancedBold = (text: string): Array<{ start: number; end: number; content: string; }> => {
-            const matches: Array<{ start: number; end: number; content: string; }> = [];
-            let i = 0;
-            while (i < text.length - 1) {
-                if (text[i] === "[" && text[i + 1] === "[") {
-                    // Found start of bold
-                    let boldDepth = 1; // Nesting level of [[...]]
-                    const startContent = i + 2;
-                    let j = i + 2;
-
-                    while (j < text.length && boldDepth > 0) {
-                        if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
-                            // Start of nested bold
-                            boldDepth++;
-                            j += 2;
-                        } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
-                            // Potential end of bold
-                            boldDepth--;
-                            if (boldDepth === 0) {
-                                // Match complete
-                                matches.push({
-                                    start: i,
-                                    end: j + 2,
-                                    content: text.substring(startContent, j),
-                                });
-                                i = j + 2;
-                                break;
-                            } else {
-                                j += 2;
-                            }
-                        } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                            // Found single [ (start of internal link, etc.)
-                            // Look for corresponding ]
-                            j++;
-                            let bracketDepth = 1;
-                            while (j < text.length && bracketDepth > 0) {
-                                if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                                    // Single [ (nested internal link, etc.)
-                                    bracketDepth++;
-                                    j++;
-                                } else if (text[j] === "]") {
-                                    // Found ]
-                                    bracketDepth--;
-                                    j++;
-                                    if (bracketDepth === 0) {
-                                        break;
-                                    }
-                                } else {
-                                    j++;
-                                }
-                            }
-                        } else {
-                            j++;
-                        }
-                    }
-
-                    if (boldDepth > 0) {
-                        // Move to next character if no match
-                        i++;
-                    }
-                } else {
-                    i++;
-                }
-            }
-            return matches;
-        };
-
         // Global placeholder map (shared between recursive calls)
         const globalPlaceholders: Map<string, string> = new Map();
         let globalPlaceholderIndex = 0;
@@ -512,52 +492,6 @@ export class ScrapboxFormatter {
             return placeholder;
         };
 
-        // Function to match italics considering bracket balance
-        const matchBalancedItalic = (text: string): Array<{ start: number; end: number; content: string; }> => {
-            const matches: Array<{ start: number; end: number; content: string; }> = [];
-            let i = 0;
-            while (i < text.length - 2) {
-                if (text[i] === "[" && text[i + 1] === "/" && text[i + 2] === " ") {
-                    // Found start of italic: [/ (space required)
-                    const startContent = i + 3;
-                    let j = i + 3;
-                    let bracketDepth = 1;
-
-                    while (j < text.length && bracketDepth > 0) {
-                        if (text[j] === "[" && j + 1 < text.length && text[j + 1] !== "[" && text[j + 1] !== "/") {
-                            // Single [ (internal link, etc.)
-                            bracketDepth++;
-                            j++;
-                        } else if (text[j] === "]") {
-                            bracketDepth--;
-                            if (bracketDepth === 0) {
-                                // Match complete
-                                matches.push({
-                                    start: i,
-                                    end: j + 1,
-                                    content: text.substring(startContent, j),
-                                });
-                                i = j + 1;
-                                break;
-                            } else {
-                                j++;
-                            }
-                        } else {
-                            j++;
-                        }
-                    }
-
-                    if (bracketDepth > 0) {
-                        // Move to next character if no match
-                        i++;
-                    }
-                } else {
-                    i++;
-                }
-            }
-            return matches;
-        };
-
         // Function to process formatting recursively
         const processFormat = (input: string): string => {
             // Fast path: if no formatting characters, just escape and return
@@ -567,7 +501,7 @@ export class ScrapboxFormatter {
 
             // Bold - process first, then recursively process content
             // This ensures nested formatting within bold is processed correctly
-            const boldMatches = matchBalancedBold(input);
+            const boldMatches = ScrapboxFormatter.matchBalancedBold(input);
             // Optimization: Use a single pass string builder instead of repeated substring/concatenation O(N^2)
             if (boldMatches.length > 0) {
                 let result = "";
@@ -586,7 +520,7 @@ export class ScrapboxFormatter {
 
             // Italic - space required: [/ text]
             // Match considering balance
-            const italicMatches = matchBalancedItalic(input);
+            const italicMatches = ScrapboxFormatter.matchBalancedItalic(input);
             // Optimization: Use a single pass string builder
             if (italicMatches.length > 0) {
                 let result = "";
@@ -989,10 +923,11 @@ export class ScrapboxFormatter {
 
             // Fallback: Search for page with matching name (O(N))
             if (store.pages?.current) {
+                const targetName = pageName.toLowerCase();
                 for (const page of store.pages.current) {
                     // Ensure page.text is a string before calling toLowerCase
                     const pageText = String(page?.text ?? "");
-                    if (pageText.toLowerCase() === pageName.toLowerCase()) {
+                    if (pageText.toLowerCase() === targetName) {
                         return true;
                     }
                 }
