@@ -2,19 +2,19 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature ITM-00cbb408
- *  Title   : ドラッグでアイテムを移動
+ *  Title   : Move items by dragging
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("ITM-00cbb408: ドラッグでアイテムを移動", () => {
+test.describe("ITM-00cbb408: Move items by dragging", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2", "Item 3"]);
         await TestHelpers.waitForOutlinerItems(page, 4, 10000); // Title + 3 seeded items
     });
 
-    test("ドラッグでアイテムを移動できる", async ({ page }) => {
+    test("Can move items by dragging", async ({ page }) => {
         // Items are already seeded:
         // Index 0: Title
         // Index 1: "Item 1"
@@ -28,14 +28,14 @@ test.describe("ITM-00cbb408: ドラッグでアイテムを移動", () => {
         const thirdItem = page.locator(`.outliner-item[data-item-id="${thirdId}"]`);
         await thirdItem.waitFor({ state: "visible" });
 
-        // テキストが正しく設定されているか確認
+        // Verify that text is set correctly
         await expect(page.locator(`.outliner-item[data-item-id="${firstId}"] .item-text`)).toHaveText("Item 1");
         await expect(page.locator(`.outliner-item[data-item-id="${secondId}"] .item-text`)).toHaveText("Item 2");
         await expect(page.locator(`.outliner-item[data-item-id="${thirdId}"] .item-text`)).toHaveText("Item 3");
 
         const secondText = await page.locator(`.outliner-item[data-item-id="${secondId}"] .item-text`).textContent();
 
-        // 実際のDragEvent/DataTransferフローを使用してドラッグ操作を実行
+        // Execute drag operation using actual DragEvent/DataTransfer flow
         await page.evaluate(({ secondId, thirdId }) => {
             const sourceContent = document.querySelector<HTMLElement>(`[data-item-id="${secondId}"] .item-content`)
                 ?? document.querySelector<HTMLElement>(`[data-item-id="${secondId}"]`);
@@ -95,7 +95,7 @@ test.describe("ITM-00cbb408: ドラッグでアイテムを移動", () => {
             sourceContent.dispatchEvent(dragEndEvent);
         }, { secondId, thirdId });
 
-        // ドラッグによる再配置が完了するのを待つ（状態ベースの待機）
+        // Wait for reordering by drag to complete (state-based wait)
         await page.waitForFunction(
             ({ secondId, thirdId }) => {
                 const items = Array.from(document.querySelectorAll(".outliner-item[data-item-id]"));
@@ -110,14 +110,14 @@ test.describe("ITM-00cbb408: ドラッグでアイテムを移動", () => {
             console.log("Drag reorder did not complete as expected, continuing anyway");
         });
 
-        // 移動後の順序を確認 - Item 2がItem 3の後ろ（index 2）に移動しているはず
+        // Verify order after move - Item 2 should be after Item 3 (index 2)
         await expect(page.locator(`.outliner-item[data-item-id="${secondId}"]`)).toBeVisible();
 
-        // Item 2のテキストが正しいことを確認
+        // Verify that Item 2's text is correct
         const movedText = await page.locator(`.outliner-item[data-item-id="${secondId}"] .item-text`).textContent();
         expect(movedText).toBe(secondText);
 
-        // 順序を確認: Item 1, Item 3, Item 2 の順になっているはず
+        // Verify order: should be Item 1, Item 3, Item 2
         const items = await page.locator(".outliner-item .item-text").allTextContents();
         expect(items[1]).toBe("Item 1");
         expect(items[2]).toBe("Item 3");
