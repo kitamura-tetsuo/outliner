@@ -18,18 +18,18 @@ interface Cursor {
 }
 
 export class CursorTextOperations {
-    private cursor: Cursor; // Cursorクラスのインスタンスを保持
+    private cursor: Cursor; // Holds the Cursor class instance
 
     constructor(cursor: Cursor) {
         this.cursor = cursor;
     }
 
     /**
-     * テキストを挿入する
-     * @param ch 挿入するテキスト
+     * Inserts text.
+     * @param ch The text to insert
      */
     insertText(ch: string) {
-        // 上下キー以外の操作なので初期列位置をリセット
+        // Reset initial column position since this is not a vertical navigation operation
         this.cursor.resetInitialColumn();
 
         const node = this.cursor.findTarget();
@@ -42,7 +42,7 @@ export class CursorTextOperations {
         console.log(`insertText: Inserting "${ch}" at offset ${this.cursor.offset} in item ${this.cursor.itemId}`);
         console.log(`insertText: Current text: "${currentText}"`);
 
-        // 選択範囲がある場合は、選択範囲を削除してからテキストを挿入
+        // If there is a selection, delete it before inserting text
         const selection = Object.values(store.selections).find(s =>
             s.userId === this.cursor.userId
             && s.startItemId === this.cursor.itemId
@@ -50,21 +50,21 @@ export class CursorTextOperations {
         );
 
         if (selection && selection.startOffset !== selection.endOffset) {
-            // 選択範囲のテキストを削除
+            // Delete the selected text
             const startOffset = Math.min(selection.startOffset, selection.endOffset);
             const endOffset = Math.max(selection.startOffset, selection.endOffset);
             const txt = currentText.slice(0, startOffset) + ch + currentText.slice(endOffset);
             node.updateText(txt);
 
-            // カーソル位置を更新
+            // Update cursor position
             this.cursor.offset = startOffset + ch.length;
 
-            // 選択範囲をクリア
+            // Clear the selection
             this.cursor.clearSelection();
 
             console.log(`insertText: Updated text with selection: "${node.text?.toString?.() ?? ""}"`);
         } else {
-            // 通常の挿入
+            // Normal insertion
             const txt = currentText.slice(0, this.cursor.offset) + ch + currentText.slice(this.cursor.offset);
             node.updateText(txt);
             this.cursor.offset += ch.length;
@@ -74,51 +74,51 @@ export class CursorTextOperations {
 
         this.cursor.applyToStore();
 
-        // onEdit コールバックを呼び出す
+        // Trigger the onEdit callback
         store.triggerOnEdit();
 
-        // 注意: グローバルテキストエリアの値を同期してはいけない
-        // マルチカーソル環境では、複数のアイテムが同時に編集される可能性があり、
-        // 単一のテキストエリアに特定のアイテムの値を設定することは適切ではない
+        // Note: Do not sync the global textarea value.
+        // In a multi-cursor environment, multiple items may be edited simultaneously,
+        // so setting a specific item's value to a single textarea is not appropriate.
     }
 
     /**
-     * カーソル位置の前の文字を削除する
+     * Deletes the character before the cursor position.
      */
     deleteBackward() {
-        // 上下キー以外の操作なので初期列位置をリセット
+        // Reset initial column position since this is not a vertical navigation operation
         this.cursor.resetInitialColumn();
 
         const node = this.cursor.findTarget();
         if (!node) return;
 
-        // 選択範囲がある場合は、選択範囲を削除
+        // If there is a selection, delete it
         const selection = Object.values(store.selections).find(s => s.userId === this.cursor.userId);
 
         if (selection && selection.startOffset !== selection.endOffset) {
-            // 複数アイテムにまたがる選択範囲の場合
+            // If the selection spans multiple items
             if (selection.startItemId !== selection.endItemId) {
                 this.cursor.deleteMultiItemSelection(selection);
                 return;
             }
 
-            // 単一アイテム内の選択範囲の場合
+            // If the selection is within a single item
             if (selection.startItemId === this.cursor.itemId && selection.endItemId === this.cursor.itemId) {
-                // 選択範囲のテキストを削除
+                // Delete the selected text
                 const startOffset = Math.min(selection.startOffset, selection.endOffset);
                 const endOffset = Math.max(selection.startOffset, selection.endOffset);
                 const txt = node.text?.toString?.() ?? "";
                 const newTxt = txt.slice(0, startOffset) + txt.slice(endOffset);
                 node.updateText(newTxt);
 
-                // カーソル位置を更新
+                // Update cursor position
                 this.cursor.offset = startOffset;
 
-                // 選択範囲をクリア
+                // Clear the selection
                 this.cursor.clearSelection();
             }
         } else {
-            // 通常の削除
+            // Normal deletion
             if (this.cursor.offset > 0) {
                 const txt = node.text?.toString?.() ?? "";
                 const pos = this.cursor.offset - 1;
@@ -126,80 +126,80 @@ export class CursorTextOperations {
                 node.updateText(newTxt);
                 this.cursor.offset = Math.max(0, this.cursor.offset - 1);
             } else {
-                // 行頭で前アイテムとの結合
+                // Merge with the previous item if at the beginning of the line
                 this.mergeWithPreviousItem();
             }
         }
 
         this.cursor.applyToStore();
 
-        // onEdit コールバックを呼び出す
+        // Trigger the onEdit callback
         store.triggerOnEdit();
 
-        // 注意: グローバルテキストエリアの値を同期してはいけない
-        // マルチカーソル環境では、複数のアイテムが同時に編集される可能性があり、
-        // 単一のテキストエリアに特定のアイテムの値を設定することは適切ではない
+        // Note: Do not sync the global textarea value.
+        // In a multi-cursor environment, multiple items may be edited simultaneously,
+        // so setting a specific item's value to a single textarea is not appropriate.
     }
 
     /**
-     * カーソル位置の後の文字を削除する
+     * Deletes the character after the cursor position.
      */
     deleteForward() {
-        // 上下キー以外の操作なので初期列位置をリセット
+        // Reset initial column position since this is not a vertical navigation operation
         this.cursor.resetInitialColumn();
 
         const node = this.cursor.findTarget();
         if (!node) return;
 
-        // 選択範囲がある場合は、選択範囲を削除
+        // If there is a selection, delete it
         const selection = Object.values(store.selections).find(s => s.userId === this.cursor.userId);
 
         if (selection && selection.startOffset !== selection.endOffset) {
-            // 複数アイテムにまたがる選択範囲の場合
+            // If the selection spans multiple items
             if (selection.startItemId !== selection.endItemId) {
                 this.cursor.deleteMultiItemSelection(selection);
                 return;
             }
 
-            // 単一アイテム内の選択範囲の場合
+            // If the selection is within a single item
             if (selection.startItemId === this.cursor.itemId && selection.endItemId === this.cursor.itemId) {
-                // 選択範囲のテキストを削除
+                // Delete the selected text
                 const startOffset = Math.min(selection.startOffset, selection.endOffset);
                 const endOffset = Math.max(selection.startOffset, selection.endOffset);
                 const txtSel = node.text?.toString?.() ?? "";
                 const newTxtSel = txtSel.slice(0, startOffset) + txtSel.slice(endOffset);
                 node.updateText(newTxtSel);
 
-                // カーソル位置を更新
+                // Update cursor position
                 this.cursor.offset = startOffset;
 
-                // 選択範囲をクリア
+                // Clear the selection
                 this.cursor.clearSelection();
             }
         } else {
-            // 通常の削除
+            // Normal deletion
             const txt = node.text?.toString?.() ?? "";
             if (this.cursor.offset < txt.length) {
                 const newTxt = txt.slice(0, this.cursor.offset) + txt.slice(this.cursor.offset + 1);
                 node.updateText(newTxt);
             } else {
-                // 行末の場合
-                // アイテムが空の場合はアイテム自体を削除
+                // If at the end of the line
+                // If the item is empty, delete the item itself
                 if (txt.length === 0) {
                     this.deleteEmptyItem();
                     return;
                 }
-                // 空でない場合は次アイテムとの結合
+                // If not empty, merge with the next item
                 this.mergeWithNextItem();
             }
         }
 
         this.cursor.applyToStore();
 
-        // onEdit コールバックを呼び出す
+        // Trigger the onEdit callback
         store.triggerOnEdit();
 
-        // グローバルテキストエリアの値も同期
+        // Sync the global textarea value as well
         const textarea = store.getTextareaRef();
         if (textarea) {
             textarea.value = node.text?.toString?.() ?? "";
@@ -209,7 +209,7 @@ export class CursorTextOperations {
     }
 
     /**
-     * 前のアイテムと結合する
+     * Merges with the previous item.
      */
     mergeWithPreviousItem() {
         const currentItem = this.cursor.findTarget();
@@ -218,33 +218,33 @@ export class CursorTextOperations {
         const prevItem = this.cursor.findPreviousItem();
         if (!prevItem) return;
 
-        // 前のアイテムのテキストを取得
+        // Get the text of the previous item
         const prevText = prevItem.text?.toString?.() ?? "";
         const currentText = currentItem.text?.toString?.() ?? "";
 
-        // 前のアイテムのテキストを更新
+        // Update the text of the previous item
         prevItem.updateText(prevText + currentText);
 
-        // 現在のアイテムを削除
+        // Delete the current item
         (currentItem as any).delete();
 
-        // カーソル位置を更新
+        // Update cursor position
         const oldItemId = this.cursor.itemId;
         this.cursor.itemId = prevItem.id;
         this.cursor.offset = prevText.length;
 
-        // 古いアイテムのカーソルをクリア（アイテム削除後）
+        // Clear the cursor of the old item (after item deletion)
         store.clearCursorForItem(oldItemId);
 
-        // アクティブアイテムを設定
+        // Set the active item
         store.setActiveItem(this.cursor.itemId);
 
-        // カーソルの点滅を開始
+        // Start cursor blinking
         store.startCursorBlink();
     }
 
     /**
-     * 次のアイテムと結合する
+     * Merges with the next item.
      */
     mergeWithNextItem() {
         const currentItem = this.cursor.findTarget();
@@ -253,65 +253,65 @@ export class CursorTextOperations {
         const nextItem = this.cursor.findNextItem();
         if (!nextItem) return;
 
-        // 現在のアイテムと次のアイテムのテキストを取得
+        // Get the text of the current and next items
         const currentText = currentItem.text?.toString?.() ?? "";
         const nextText = nextItem.text?.toString?.() ?? "";
 
-        // 現在のアイテムのテキストを更新
+        // Update the text of the current item
         currentItem.updateText(currentText + nextText);
 
-        // 次のアイテムを削除
+        // Delete the next item
         (nextItem as any).delete();
 
-        // カーソル位置はそのまま（現在のアイテムの末尾）
+        // Cursor position remains unchanged (at the end of the current item)
     }
 
     /**
-     * 空のアイテムを削除する
+     * Deletes an empty item.
      */
     deleteEmptyItem() {
         const currentItem = this.cursor.findTarget();
         if (!currentItem) return;
 
-        // アイテムが空でない場合は何もしない
+        // Do nothing if the item is not empty
         const currentText = currentItem.text?.toString?.() ?? "";
         if (currentText.length > 0) return;
 
-        // 次のアイテムを探す
+        // Find the next item
         const nextItem = this.cursor.findNextItem();
 
-        // カーソルを移動する先を決定
+        // Determine where to move the cursor
         let targetItemId: string;
         let targetOffset: number;
 
         if (nextItem) {
-            // 次のアイテムがある場合は次のアイテムの先頭に移動
+            // If there is a next item, move to the beginning of it
             targetItemId = nextItem.id;
             targetOffset = 0;
         } else {
-            // 次のアイテムがない場合は前のアイテムの末尾に移動
+            // If there is no next item, move to the end of the previous item
             const prevItem = this.cursor.findPreviousItem();
             if (prevItem) {
                 targetItemId = prevItem.id;
                 const prevText = prevItem.text?.toString?.() ?? "";
                 targetOffset = prevText.length;
             } else {
-                // 前のアイテムもない場合（最後の1つのアイテム）は削除しない
+                // If there is no previous item either (the last single item), do not delete
                 return;
             }
         }
 
-        // 現在のアイテムのカーソルをクリア
+        // Clear the cursor for the current item
         store.clearCursorForItem(this.cursor.itemId);
 
-        // アイテムを削除
+        // Delete the item
         (currentItem as any).delete();
 
-        // 新しい位置にカーソルを設定
+        // Set the cursor to the new position
         this.cursor.itemId = targetItemId;
         this.cursor.offset = targetOffset;
 
-        // ストアを更新
+        // Update the store
         store.setActiveItem(this.cursor.itemId);
         store.setCursor({
             itemId: this.cursor.itemId,
@@ -320,7 +320,7 @@ export class CursorTextOperations {
             userId: this.cursor.userId,
         });
 
-        // カーソル点滅を開始
+        // Start cursor blinking
         store.startCursorBlink();
     }
 }
