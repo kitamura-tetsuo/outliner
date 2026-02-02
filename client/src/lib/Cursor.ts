@@ -732,11 +732,22 @@ export class Cursor implements CursorEditingContext {
             const startIdx = allItemIds.indexOf(startItemId);
             const endIdx = allItemIds.indexOf(endItemId);
 
-            // インデックスが見つからない場合はデフォルトで正方向
-            if (startIdx === -1 || endIdx === -1) {
-                return false;
+            // インデックスが見つかる場合はそれを使用
+            if (startIdx !== -1 && endIdx !== -1) {
+                return startIdx > endIdx;
             }
-            return startIdx > endIdx;
+        }
+
+        // DOMで見つからない場合、Tree構造を使用して順序を決定（フォールバック）
+        const root = generalStore.currentPage as any;
+        if (root) {
+            const allItemIds = this.collectAllItemIds(root, []);
+            const startIdx = allItemIds.indexOf(startItemId);
+            const endIdx = allItemIds.indexOf(endItemId);
+
+            if (startIdx !== -1 && endIdx !== -1) {
+                return startIdx > endIdx;
+            }
         }
 
         return false;

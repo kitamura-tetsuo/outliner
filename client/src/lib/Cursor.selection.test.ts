@@ -370,4 +370,36 @@ describe("Cursor Selection Reproduction", () => {
             }));
         });
     });
+
+    describe("Cross-Item Reversal with DOM fallback failure", () => {
+        it("should calculate isReversed correctly using tree fallback when DOM is missing", async () => {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
+            // Clear DOM to force fallback
+            document.body.innerHTML = "";
+
+            // Setup scenario: Selection from item2 -> item1 (Reversed)
+            // Cursor at item2 (Anchor) initially? No, start new selection.
+
+            // Or extend selection:
+            // Cursor at Item 2 (Start).
+            cursor.itemId = "item2";
+            cursor.offset = 0;
+
+            // Move Left to Item 1 (End).
+            cursor.extendSelectionLeft();
+
+            // Should be Reversed (Anchor=item2, Focus=item1)
+            // item1 comes BEFORE item2 in tree.
+            // Anchor > Focus (visually in document order? No, if item1 < item2)
+            // isReversed means Anchor is AFTER Focus?
+            // Yes. Anchor (item2) is after Focus (item1). So isReversed = true.
+
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
+                startItemId: "item2",
+                endItemId: "item1",
+                isReversed: true, // This should be true!
+            }));
+        });
+    });
 });
