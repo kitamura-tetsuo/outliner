@@ -5,10 +5,14 @@
     import { userManager } from "../../../auth/UserManager";
 
     let projectId = $derived($page.params.project);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let generatedLink = $state<string | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let error = $state<string | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let isLoading = $state(false);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async function generateLink() {
         if (!authStore.user) {
             error = "You must be logged in.";
@@ -42,8 +46,23 @@
     <h1>Project Settings: {projectId}</h1>
 
     <div class="card">
-        <!-- Settings placeholder -->
-        <p>Settings will appear here.</p>
+        <h2>Share Project</h2>
+        <p>Generate a unique link to share this project with others.</p>
+
+        {#if generatedLink}
+            <div class="link-display">
+                <input type="text" readonly value={generatedLink} aria-label="Generated Link" />
+                <button onclick={() => navigator.clipboard.writeText(generatedLink!)} class="copy-btn">Copy</button>
+            </div>
+        {/if}
+
+        {#if error}
+            <div class="error">{error}</div>
+        {/if}
+
+        <button onclick={generateLink} disabled={isLoading} class="generate-btn">
+            {isLoading ? "Generating..." : "Generate Invitation Link"}
+        </button>
     </div>
 
     <div class="actions">
@@ -64,8 +83,47 @@
         margin-bottom: 2rem;
         border: 1px solid #eee;
     }
+    .link-display {
+        display: flex;
+        gap: 0.5rem;
+        margin: 1rem 0;
+    }
+    .link-display input {
+        flex: 1;
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    .error {
+        color: #d32f2f;
+        margin: 1rem 0;
+        padding: 0.5rem;
+        background: #ffebee;
+        border-radius: 4px;
+    }
     .actions {
         margin-top: 2rem;
+    }
+    .generate-btn {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+    .generate-btn:disabled {
+        background-color: #a5d6a7;
+        cursor: not-allowed;
+    }
+    .copy-btn {
+        background-color: #2196f3;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
     }
     .back-link {
         text-decoration: none;
