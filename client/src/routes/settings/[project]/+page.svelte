@@ -1,7 +1,8 @@
 <script lang="ts">
     import { page } from "$app/stores";
     import { getFirebaseFunctionUrl } from "$lib/firebaseFunctionsUrl";
-    import { authStore } from "$stores/authStore.svelte";
+    import { authStore } from "../../../stores/authStore.svelte";
+    import { userManager } from "../../../auth/UserManager";
 
     let projectId = $derived($page.params.project);
     let generatedLink = $state<string | null>(null);
@@ -16,7 +17,7 @@
         isLoading = true;
         error = null;
         try {
-            const token = await authStore.user.getIdToken();
+            const token = await userManager.getIdToken();
             const res = await fetch(getFirebaseFunctionUrl("generateProjectShareLink"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
