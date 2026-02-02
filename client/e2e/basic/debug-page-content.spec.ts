@@ -22,10 +22,10 @@ test.describe("Debug Page", () => {
 
         // 4. Click Connect Test button if needed
         // The page auto-connects, but clicking button triggers updateConnectionStatus() which calls getDebugInfo()
-        await page.click("text=接続テスト実行");
+        await page.click("text=Run connection test");
 
         // 5. Check Debug Info
-        const details = page.locator("details:has-text('Fluidクライアント')");
+        const details = page.locator("details:has-text('Fluid Client')");
         await expect(details).toBeVisible();
 
         // Force open if closed (though it has 'open' attribute in code)
