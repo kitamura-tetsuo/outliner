@@ -1002,7 +1002,7 @@ exports.generateProjectShareLink = onRequest(
         return res.status(403).json({ error: "Access denied" });
       }
 
-      const token = crypto.randomUUID();
+      const token = crypto.randomBytes(16).toString("hex");
       await db.collection("shareLinks").doc(token).set({
         projectId,
         token,

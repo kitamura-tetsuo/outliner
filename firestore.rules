@@ -13,7 +13,11 @@ service cloud.firestore {
 
     // Allow users to read shareLinks if they are members of the project
     match /shareLinks/{linkId} {
-      allow read: if request.auth != null &&
+      // Allow any authenticated user to get (preview) the link if they know the ID
+      allow get: if request.auth != null;
+
+      // Allow list only if they are members of the project
+      allow list: if request.auth != null &&
         resource.data.projectId != null &&
         exists(/databases/$(database)/documents/projectUsers/$(resource.data.projectId)) &&
         request.auth.uid in get(/databases/$(database)/documents/projectUsers/$(resource.data.projectId)).data.accessibleUserIds;
