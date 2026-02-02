@@ -63,6 +63,17 @@ export class KeyEventHandler {
             }
         });
 
+        // Tab indent
+        add("Tab", false, false, false, (event, cursors) => {
+            event.preventDefault();
+            cursors.forEach(c => c.indent());
+        });
+        // Shift+Tab unindent
+        add("Tab", false, false, true, (event, cursors) => {
+            event.preventDefault();
+            cursors.forEach(c => c.unindent());
+        });
+
         // Alt+Shift+Arrow for box selection
         ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].forEach(k => {
             add(k, false, true, true, event => {

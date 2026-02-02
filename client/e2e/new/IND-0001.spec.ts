@@ -27,51 +27,40 @@ test.describe("IND-0001: Advanced indentation and selection", () => {
     test("indent and unindent items", async ({ page }) => {
         const items = page.locator(".outliner-item");
 
-        const item2 = items.nth(1);
-        await item2.locator(".item-content").click({ force: true });
-        const depth2Before = await item2.evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
-        await page.keyboard.press("Tab");
-        const depth2 = await item2.evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
-        expect(depth2).toBeGreaterThanOrEqual(depth2Before);
+        // Note: The first list item (items.nth(1)) cannot be indented as it has no sibling above it.
+        // We start verification from the second list item (items.nth(2)).
 
         const item3 = items.nth(2);
         await item3.locator(".item-content").click({ force: true });
-        const depth3Before = await item3.evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
+        const box3Before = await item3.boundingBox();
+        expect(box3Before).not.toBeNull();
+
         await page.keyboard.press("Tab");
-        const depth3 = await item3.evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
-        expect(depth3).toBeGreaterThanOrEqual(depth3Before);
+        const box3 = await item3.boundingBox();
+        expect(box3).not.toBeNull();
+        expect(box3!.x).toBeGreaterThan(box3Before!.x);
 
         const item4 = items.nth(3);
         await item4.locator(".item-content").click({ force: true });
-        const depth4Before = await item4.evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
+        const box4Before = await item4.boundingBox();
+        expect(box4Before).not.toBeNull();
+
         await page.keyboard.press("Tab");
-        const depth4 = await item4.evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
-        expect(depth4).toBeGreaterThanOrEqual(depth4Before);
+        const box4 = await item4.boundingBox();
+        expect(box4).not.toBeNull();
+        expect(box4!.x).toBeGreaterThan(box4Before!.x);
 
         await page.keyboard.press("Shift+Tab");
-        const depth4After = await item4.evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
-        expect(depth4After).toBeLessThanOrEqual(depth4);
+        const box4After = await item4.boundingBox();
+        expect(box4After).not.toBeNull();
+        expect(box4After!.x).toBeLessThan(box4!.x);
     });
 
     test("copy and paste nested selection", async ({ page }) => {
         const items = page.locator(".outliner-item");
         const item2 = items.nth(1);
-        await item2.locator(".item-content").click({ force: true });
-        await page.keyboard.press("Tab");
+        // We do not indent item2 because it's the first item.
+
         const item3 = items.nth(2);
         await item3.locator(".item-content").click({ force: true });
         await page.keyboard.press("Tab");

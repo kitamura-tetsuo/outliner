@@ -1929,7 +1929,6 @@ export function setSelectionPosition(start: number, end: number = start) {
 <div
     class="outliner-item"
     class:page-title={isPageTitle}
-    style={"margin-left: " + (depth <= 1 ? 0 : (depth - 1) * 20) + "px"}
     onclick={handleClick}
     onmousedown={handleMouseDown}
     onmousemove={handleMouseMove}

@@ -85,6 +85,26 @@ export class Cursor implements CursorEditingContext {
         return undefined;
     }
 
+    indent() {
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(
+                new CustomEvent("outliner-indent", {
+                    detail: { itemId: this.itemId },
+                }),
+            );
+        }
+    }
+
+    unindent() {
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(
+                new CustomEvent("outliner-unindent", {
+                    detail: { itemId: this.itemId },
+                }),
+            );
+        }
+    }
+
     // Recursive search for Item on SharedTree (CursorEditingContext interface implementation)
     findTarget(): any {
         return this._findTarget();
