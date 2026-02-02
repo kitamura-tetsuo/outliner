@@ -5,6 +5,16 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Project Sharing", () => {
     test("Full flow: Generate link, copy, and join", async ({ page, browser }) => {
+        // 0. Ensure environment flags are set for User A
+        await page.addInitScript(() => {
+            localStorage.setItem("VITE_IS_TEST", "true");
+            localStorage.setItem("VITE_E2E_TEST", "true");
+            localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+            localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
+            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+            (window as any).__E2E__ = true;
+        });
+
         // 1. Setup User A (owner)
         // We use createAndSeedProject which uses SeedClient (admin token) to create project.
         // Then we navigate to it.
@@ -31,13 +41,27 @@ test.describe("Project Sharing", () => {
 
         // Get Project ID
         const projectId = await page.evaluate(() => {
-            return (window as any).generalStore?.project?.ydoc?.guid;
+            const store = (window as any).generalStore;
+            // project object in store.svelte.ts has ydoc property, which has guid
+            return store?.project?.ydoc?.guid;
         });
         expect(projectId).toBeTruthy();
         console.log("Project ID:", projectId);
 
         // 2. Go to Settings
         await page.goto(`/settings/${projectId}`);
+
+        // Wait for auth state to settle and error message to clear if any
+        await page.waitForTimeout(1000);
+
+        // If we see "You must be logged in", something is wrong with auth state persistence across navigation
+        const loginError = page.locator("text=You must be logged in.");
+        if (await loginError.isVisible()) {
+            console.log("Found login error, re-logging in...");
+            await TestHelpers.login(page, "owner@example.com", "password");
+            await page.reload();
+        }
+
         await expect(page.locator("h1")).toContainText(`Project Settings: ${projectId}`);
 
         // 3. Generate Link

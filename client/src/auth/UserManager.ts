@@ -297,6 +297,16 @@ export class UserManager {
 
     private isMockMode = false;
 
+    // Get current user ID token
+    public async getIdToken(forceRefresh: boolean = false): Promise<string | null> {
+        if (this.isMockMode) {
+            return "mock-token";
+        }
+        const user = this.auth.currentUser;
+        if (!user) return null;
+        return user.getIdToken(forceRefresh);
+    }
+
     // Update getCurrentUser
     public getCurrentUser(): IUser | null {
         if (this.isMockMode) {
