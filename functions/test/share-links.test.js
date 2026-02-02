@@ -25,7 +25,10 @@ describe("Share Links Tests", () => {
     };
     mockShareLinks = {};
     mockUserProjects = {
-      user1: { accessibleProjectIds: ["projectA"], projectTitles: { "projectA": "Project A" } },
+      user1: {
+        accessibleProjectIds: ["projectA"],
+        projectTitles: { projectA: "Project A" },
+      },
       user2: { accessibleProjectIds: [], projectTitles: {} },
     };
 
@@ -70,14 +73,16 @@ describe("Share Links Tests", () => {
               let data;
               if (name === "projectUsers") { data = mockProjectUsers[docId]; }
               else if (name === "shareLinks") { data = mockShareLinks[docId]; }
-              else if (name === "userProjects") { data = mockUserProjects[docId]; }
+              else if (name === "userProjects") {
+                data = mockUserProjects[docId];
+              }
 
               if (data) {
                 return { exists: true, data: () => data };
               }
               return { exists: false };
             }),
-            set: mockSetSpy.mockImplementation(async (data) => {
+            set: mockSetSpy.mockImplementation(async data => {
               if (name === "shareLinks") {
                 mockShareLinks[docId] = data;
               }
@@ -191,25 +196,25 @@ describe("Share Links Tests", () => {
     // Verify transaction updates
     // 1. User2 added to ProjectA
     expect(mockTransactionUpdateSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ path: "projectUsers/projectA" }),
-        expect.objectContaining({
-            accessibleUserIds: expect.objectContaining({
-                // arrayUnion is tricky to mock exactly without implementing it,
-                // but we can check if it was called.
-                // The implementation uses FieldValue.arrayUnion(userId).
-                // We'll trust the spy called with correct args roughly.
-            })
-        })
+      expect.objectContaining({ path: "projectUsers/projectA" }),
+      expect.objectContaining({
+        accessibleUserIds: expect.objectContaining({
+          // arrayUnion is tricky to mock exactly without implementing it,
+          // but we can check if it was called.
+          // The implementation uses FieldValue.arrayUnion(userId).
+          // We'll trust the spy called with correct args roughly.
+        }),
+      }),
     );
 
     // 2. ProjectA added to User2
     // User2 document exists (mocked), so it should be update
     expect(mockTransactionUpdateSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ path: "userProjects/user2" }),
-        expect.objectContaining({
-             // Check for projectTitles update
-             "projectTitles.projectA": "Project A"
-        })
+      expect.objectContaining({ path: "userProjects/user2" }),
+      expect.objectContaining({
+        // Check for projectTitles update
+        "projectTitles.projectA": "Project A",
+      }),
     );
   });
 });
