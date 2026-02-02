@@ -33,7 +33,7 @@ test.describe("Project Sharing", () => {
         // App checks userManager.
         // If we are not logged in, we might be in trouble.
         // TestHelpers.login usually helps.
-        await TestHelpers.login(page, "owner@example.com", "password");
+        await TestHelpers.login(page, "test@example.com", "password");
 
         // Reload to ensure state
         await page.reload();
@@ -58,7 +58,7 @@ test.describe("Project Sharing", () => {
         const loginError = page.locator("text=You must be logged in.");
         if (await loginError.isVisible()) {
             console.log("Found login error, re-logging in...");
-            await TestHelpers.login(page, "owner@example.com", "password");
+            await TestHelpers.login(page, "test@example.com", "password");
             await page.reload();
         }
 
