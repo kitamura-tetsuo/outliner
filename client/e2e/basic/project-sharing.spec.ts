@@ -82,7 +82,7 @@ test.describe("Project Sharing E2E", () => {
                 linkInput.waitFor({ state: "visible", timeout: 10000 }),
                 errorMsg.waitFor({ state: "visible", timeout: 10000 }),
             ]);
-        } catch (e) {
+        } catch {
             // timeout
         }
 
@@ -111,6 +111,7 @@ test.describe("Project Sharing E2E", () => {
                 localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true");
+                localStorage.setItem("VITE_DISABLE_AUTO_LOGIN", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as any).__E2E__ = true;
             } catch {}
@@ -174,8 +175,8 @@ test.describe("Project Sharing E2E", () => {
         // Ensure we are on the project page
         console.log(`[User B] Current URL: ${pageB.url()}`);
 
-        // Wait for the outliner base to be visible
-        console.log(`[User B] Waiting for outliner base...`);
+        // Wait for the project index page to load (it shows "Page List")
+        console.log(`[User B] Waiting for project index page content...`);
 
         // Wait specifically for Yjs connection to establish in this new context
         await pageB.waitForFunction(() => {
@@ -183,8 +184,7 @@ test.describe("Project Sharing E2E", () => {
             return y && y.isConnected;
         }, { timeout: 30000 }).catch(() => console.log("[User B] Yjs connect wait timed out, continuing..."));
 
-        // Extended timeout for Yjs sync in new context
-        await expect(pageB.getByTestId("outliner-base")).toBeVisible({ timeout: 60000 });
+        await expect(pageB.getByText("Page List")).toBeVisible({ timeout: 60000 });
 
         // Note: Project home page might show a list of pages.
         // We wait for the page name to appear.

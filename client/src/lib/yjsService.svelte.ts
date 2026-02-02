@@ -313,8 +313,10 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
 
     if (isTest) {
         const userId = userManager.getCurrentUser()?.id || "test-user-id";
-        const projectId = stableIdFromTitle(projectTitle);
-        console.log(`[getClientByProjectTitle] Using stableIdFromTitle, projectId=${projectId}`);
+        // Check if projectTitle already looks like a stable ID (starts with 'p' followed by hex)
+        const isStableId = /^p[0-9a-f]+$/.test(projectTitle);
+        const projectId = isStableId ? projectTitle : stableIdFromTitle(projectTitle);
+        console.log(`[getClientByProjectTitle] Using projectId=${projectId} (isStableId=${isStableId})`);
 
         // Check if already connected by ID (but title mismatch? unlikely for stable ID)
         if (registry.has(keyFor(userId, projectId))) {

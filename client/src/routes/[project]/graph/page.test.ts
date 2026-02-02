@@ -25,7 +25,18 @@ vi.mock("$app/paths", () => ({
 
 // Mock stores if necessary. GraphView uses some stores.
 vi.mock("../../../services", () => ({
-    getYjsClientByProjectTitle: vi.fn().mockResolvedValue({}),
+    getYjsClientByProjectTitle: vi.fn().mockResolvedValue({
+        getProject: () => ({
+            on: vi.fn(),
+            off: vi.fn(),
+            name: "test",
+        }),
+        isContainerConnected: true,
+        wsProvider: {
+            on: vi.fn(),
+            off: vi.fn(),
+        },
+    }),
 }));
 
 vi.mock("$app/stores", () => ({

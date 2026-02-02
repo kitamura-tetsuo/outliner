@@ -977,12 +977,6 @@ exports.deleteProject = onRequest(
 exports.generateProjectShareLink = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    setCorsHeaders(req, res);
-    if (req.method === "OPTIONS") { return res.status(204).end(); }
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method Not Allowed" });
-    }
-
     try {
       const { idToken, projectId } = req.body;
       if (!idToken || !projectId) {
@@ -1025,12 +1019,6 @@ exports.generateProjectShareLink = onRequest(
 exports.acceptProjectShareLink = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    setCorsHeaders(req, res);
-    if (req.method === "OPTIONS") { return res.status(204).end(); }
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method Not Allowed" });
-    }
-
     try {
       const { idToken, token } = req.body;
       if (!idToken || !token) {

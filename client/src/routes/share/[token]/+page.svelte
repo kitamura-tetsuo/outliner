@@ -41,12 +41,11 @@
                 body: JSON.stringify({ idToken, token }),
             });
 
+            const data = await res.json();
             if (!res.ok) {
-                const data = await res.json();
                 throw new Error(data.error || "Failed to join project");
             }
 
-            const data = await res.json();
             status = "success";
             message = "Successfully joined! Redirecting to project...";
             setTimeout(() => {

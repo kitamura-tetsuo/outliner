@@ -35,11 +35,10 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ idToken: token, projectId: effectiveId }),
             });
+            const data = await res.json();
             if (!res.ok) {
-                const data = await res.json();
                 throw new Error(data.error || "Failed to generate link");
             }
-            const data = await res.json();
             const origin = window.location.origin;
             generatedLink = `${origin}/share/${data.token}`;
         } catch (e: any) {

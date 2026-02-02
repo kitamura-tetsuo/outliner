@@ -225,7 +225,15 @@ export class UserManager {
             && (typeof import.meta !== "undefined" && import.meta.env?.MODE) === "production";
 
         // Use Firebase email/password auth for E2E tests
-        if (isTestEnv && !isProduction && useEmulator) {
+        // Skip if already logged in or if auto-login is disabled
+        const disableAutoLogin = typeof window !== "undefined"
+            && window.localStorage?.getItem?.("VITE_DISABLE_AUTO_LOGIN") === "true";
+        if (this.auth.currentUser) {
+            logger.info("[UserManager] User already logged in, skipping mock user setup");
+            return;
+        }
+
+        if (isTestEnv && !isProduction && useEmulator && !disableAutoLogin) {
             logger.info("[UserManager] E2E test environment detected, using Firebase auth emulator with test account");
             logger.info("[UserManager] Attempting E2E test login with test@example.com");
 

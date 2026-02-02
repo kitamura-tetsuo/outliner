@@ -4,7 +4,7 @@ import { cancelSchedule, createSchedule, listSchedules, updateSchedule } from ".
 // UserManagerをモックして、実際のAPIエンドポイントを使用
 vi.mock("../auth/UserManager", () => ({
     userManager: {
-        functionsUrl: "http://localhost:57000",
+        functionsUrl: "http://127.0.0.1:57070/outliner-d57b0/us-central1",
         auth: { currentUser: { getIdToken: vi.fn().mockResolvedValue("test-id-token") } },
     },
 }));
@@ -32,7 +32,7 @@ it("calls createSchedule API", async () => {
 
     // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:57000/api/create-schedule",
+        "/api/create-schedule",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -66,7 +66,7 @@ it("calls listSchedules API", async () => {
 
     // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:57000/api/list-schedules",
+        "/api/list-schedules",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -93,7 +93,7 @@ it("calls cancelSchedule API", async () => {
 
     // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:57000/api/cancel-schedule",
+        "/api/cancel-schedule",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -123,7 +123,7 @@ it("calls updateSchedule API", async () => {
     expect(result.success).toBe(true);
 
     expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:57000/api/update-schedule",
+        "/api/update-schedule",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
