@@ -1090,6 +1090,19 @@ exports.acceptProjectShareLink = onRequest(
     } catch (error) {
       Sentry.captureException(error);
       logger.error(`acceptProjectShareLink error: ${error.message}`, { error });
+
+      if (error.message === "Project not found") {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      if (
+        error.code === "auth/id-token-expired" ||
+        error.code === "auth/invalid-id-token" ||
+        error.code === "auth/argument-error"
+      ) {
+        return res.status(401).json({ error: "Authentication failed" });
+      }
+
       return res.status(500).json({ error: "Failed to accept link" });
     }
   }),
