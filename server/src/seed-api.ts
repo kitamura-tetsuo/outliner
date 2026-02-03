@@ -1,4 +1,6 @@
 import express from "express";
+import admin from "firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import * as Y from "yjs";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
@@ -72,6 +74,81 @@ export function createSeedRouter(
             }
 
             const projectId = stableIdFromTitle(projectName);
+
+            // Sync with Firestore (ACL)
+            try {
+                if (admin.apps.length > 0) {
+                    const db = admin.firestore();
+                    const token = authHeader.split(" ")[1];
+                    const decoded = await verifyIdTokenCached(token);
+                    const userId = decoded.uid;
+
+                    const syncTask = db.runTransaction(async (transaction) => {
+                        const userProjectRef = db.collection("userProjects").doc(userId);
+                        const projectUserRef = db.collection("projectUsers").doc(projectId);
+
+                        const userDoc = await transaction.get(userProjectRef);
+                        const projectDoc = await transaction.get(projectUserRef);
+
+                        // Update User Projects
+                        if (userDoc.exists) {
+                            const data = userDoc.data();
+                            const accessibleProjectIds = data?.accessibleProjectIds || [];
+                            if (!accessibleProjectIds.includes(projectId)) {
+                                transaction.update(userProjectRef, {
+                                    accessibleProjectIds: FieldValue.arrayUnion(projectId),
+                                    [`projectTitles.${projectId}`]: projectName,
+                                    updatedAt: FieldValue.serverTimestamp(),
+                                });
+                            }
+                        } else {
+                            transaction.set(userProjectRef, {
+                                userId,
+                                accessibleProjectIds: [projectId],
+                                projectTitles: { [projectId]: projectName },
+                                createdAt: FieldValue.serverTimestamp(),
+                                updatedAt: FieldValue.serverTimestamp(),
+                            });
+                        }
+
+                        // Update Project Users
+                        if (projectDoc.exists) {
+                            const data = projectDoc.data();
+                            const accessibleUserIds = data?.accessibleUserIds || [];
+                            if (!accessibleUserIds.includes(userId)) {
+                                transaction.update(projectUserRef, {
+                                    accessibleUserIds: FieldValue.arrayUnion(userId),
+                                    title: projectName,
+                                    updatedAt: FieldValue.serverTimestamp(),
+                                });
+                            }
+                        } else {
+                            transaction.set(projectUserRef, {
+                                projectId,
+                                accessibleUserIds: [userId],
+                                title: projectName,
+                                createdAt: FieldValue.serverTimestamp(),
+                                updatedAt: FieldValue.serverTimestamp(),
+                            });
+                        }
+                    });
+
+                    // Wrap in timeout to avoid hanging if Firestore emulator is unresponsive
+                    const timeoutTask = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error("Firestore sync timed out")), 5000)
+                    );
+
+                    await Promise.race([syncTask, timeoutTask]);
+                    logger.info({ event: "seed_firestore_synced", projectId, userId });
+                }
+            } catch (err) {
+                logger.warn({
+                    event: "seed_firestore_sync_failed",
+                    error: err instanceof Error ? err.message : String(err),
+                });
+                // Continue execution as Yjs seeding is the primary goal
+            }
+
             const projectRoom = `projects/${projectId}`;
 
             // Use Hocuspocus's official openDirectConnection API

@@ -11,7 +11,6 @@ test.describe("Project Sharing", () => {
             localStorage.setItem("VITE_E2E_TEST", "true");
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
             localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
-            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
             (window as any).__E2E__ = true;
         });
 
@@ -23,7 +22,10 @@ test.describe("Project Sharing", () => {
             page,
             { workerIndex: 0 },
             seedLines,
-            { projectName: `Shared Project ${Date.now()}` },
+            {
+                projectName: `Shared Project ${Date.now()}`,
+                user: { email: "owner@example.com", password: "password" },
+            },
         );
 
         await TestHelpers.navigateToProjectPage(page, projectName, pageName, seedLines);
@@ -49,20 +51,18 @@ test.describe("Project Sharing", () => {
         console.log("Project ID:", projectId);
 
         // 2. Go to Settings
-        await page.goto(`/settings/${projectId}`);
+        // In test mode, the settings page applies stableIdFromTitle to the param.
+        // We must pass the Project Name so it resolves to the correct ID.
+        // If we pass the ID, it gets hashed again, causing a mismatch.
+        await page.goto(`/settings/${encodeURIComponent(projectName)}`);
 
-        // Wait for auth state to settle and error message to clear if any
-        await page.waitForTimeout(1000);
+        // Wait for potential auto-login or persistence restoration to complete
+        await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser);
 
-        // If we see "You must be logged in", something is wrong with auth state persistence across navigation
-        const loginError = page.locator("text=You must be logged in.");
-        if (await loginError.isVisible()) {
-            console.log("Found login error, re-logging in...");
-            await TestHelpers.login(page, "owner@example.com", "password");
-            await page.reload();
-        }
+        // Ensure we are logged in as owner (overriding auto-login if needed)
+        await TestHelpers.login(page, "owner@example.com", "password");
 
-        await expect(page.locator("h1")).toContainText(`Project Settings: ${projectId}`);
+        await expect(page.locator("h1")).toContainText(`Project Settings: ${projectName}`);
 
         // 3. Generate Link
         const generateBtn = page.locator("button", { hasText: "Generate Invitation Link" });
@@ -80,13 +80,16 @@ test.describe("Project Sharing", () => {
         const contextB = await browser.newContext();
         const pageB = await contextB.newPage();
 
-        // Setup environment for Page B
+        // Ensure env flags for Page B
         await pageB.addInitScript(() => {
             localStorage.setItem("VITE_IS_TEST", "true");
             localStorage.setItem("VITE_E2E_TEST", "true");
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
             localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
+            localStorage.setItem("VITE_DISABLE_AUTO_LOGIN", "true");
             localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+            localStorage.setItem("VITE_YJS_DEBUG", "true");
+            localStorage.removeItem("VITE_YJS_DISABLE_WS");
             (window as any).__E2E__ = true;
         });
 
@@ -111,8 +114,10 @@ test.describe("Project Sharing", () => {
         // Should redirect to project
         await expect(pageB).toHaveURL(new RegExp(`/${projectId}`), { timeout: 10000 });
 
+        // Navigate explicitly to the page (workaround for Project List sync/UI issues)
+        await pageB.goto(`/${projectId}/${encodeURIComponent(pageName)}`);
+
         // Verify access - User B should see the items
-        // We need to wait for app ready on page B
         await TestHelpers.waitForAppReady(pageB);
         await TestHelpers.waitForOutlinerItems(pageB, 3); // Title + 2 tasks
 

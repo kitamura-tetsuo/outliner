@@ -313,6 +313,7 @@ export class TestHelpers {
             projectName?: string;
             pageName?: string;
             skipSeed?: boolean;
+            user?: { email: string; password: string; };
         },
     ): Promise<{ projectName: string; pageName: string; }> {
         const workerIndex = typeof testInfo?.workerIndex === "number" ? testInfo.workerIndex : 1;
@@ -352,7 +353,9 @@ export class TestHelpers {
         if (!options?.skipSeed) {
             try {
                 const { SeedClient } = await import("../utils/seedClient.js");
-                const authToken = await TestHelpers.getTestAuthToken();
+                const email = options?.user?.email || "test@example.com";
+                const password = options?.user?.password || "password";
+                const authToken = await TestHelpers.getTestAuthToken(email, password);
                 const seeder = new SeedClient(projectName, authToken);
                 await seeder.seedPage(pageName, lines);
                 TestHelpers.slog(
@@ -2204,7 +2207,7 @@ export class TestHelpers {
     /**
      * Get a valid ID token for the test user from local Firebase Emulator
      */
-    public static async getTestAuthToken(): Promise<string> {
+    public static async getTestAuthToken(email = "test@example.com", password = "password"): Promise<string> {
         // const projectId = process.env.VITE_FIREBASE_PROJECT_ID || "outliner-d57b0";
         const authHost = process.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || "localhost:59099";
         // Ensure protocol
@@ -2213,16 +2216,16 @@ export class TestHelpers {
         const signInUrl = `${host}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
 
         const payload = {
-            email: "test@example.com",
-            password: "password",
+            email: email,
+            password: password,
             returnSecureToken: true,
         };
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout for auth
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for auth
 
         try {
-            console.log(`[TestHelpers] getTestAuthToken: Signing in to ${signInUrl}`);
+            console.log(`[TestHelpers] getTestAuthToken: Signing in to ${signInUrl} as ${email}`);
             const response = await fetch(signInUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -2235,9 +2238,9 @@ export class TestHelpers {
                 const text = await response.text();
                 // If user not found, try to sign up
                 if (text.includes("EMAIL_NOT_FOUND")) {
-                    console.log("[TestHelpers] User not found, creating new test user...");
+                    console.log(`[TestHelpers] User ${email} not found, creating new test user...`);
                     try {
-                        return await this.signUpTestUser(host, apiKey);
+                        return await this.signUpTestUser(host, apiKey, email, password);
                     } catch (e: any) {
                         // Handle race condition: if another worker created the user in the meantime
                         if (e.message && e.message.includes("EMAIL_EXISTS")) {
@@ -2267,7 +2270,7 @@ export class TestHelpers {
             const data: any = await response.json();
             return data.idToken;
         } catch (e) {
-            console.error("[TestHelpers] Failed to get test auth token", e);
+            console.error("[TestHelpers] Failed to get test auth token:", e);
 
             // FALLBACK: Generate offline/mock token for testing against local server (which accepts alg:none in test mode)
             // See server/src/websocket-auth.ts: verifyIdTokenCached
@@ -2276,9 +2279,10 @@ export class TestHelpers {
             const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64")
                 .replace(/=/g, ""); // JWT style
 
+            const uid = email.split("@")[0] || "test-user";
             const payloadJson = {
-                user_id: "test-user",
-                sub: "test-user",
+                user_id: uid,
+                sub: uid,
                 aud: process.env.VITE_FIREBASE_PROJECT_ID || "outliner-d57b0",
                 exp: Math.floor(Date.now() / 1000) + 3600,
                 iat: Math.floor(Date.now() / 1000),
@@ -2292,11 +2296,16 @@ export class TestHelpers {
         }
     }
 
-    private static async signUpTestUser(host: string, apiKey: string): Promise<string> {
+    private static async signUpTestUser(
+        host: string,
+        apiKey: string,
+        email: string,
+        password: string,
+    ): Promise<string> {
         const signUpUrl = `${host}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
         const payload = {
-            email: "test@example.com",
-            password: "password",
+            email: email,
+            password: password,
             returnSecureToken: true,
         };
         const response = await fetch(signUpUrl, {

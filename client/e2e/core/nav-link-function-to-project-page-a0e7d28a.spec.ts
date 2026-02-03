@@ -58,9 +58,8 @@ test.describe("NAV-0002: プロジェクトページへのリンク機能", () =
         // await page.waitForLoadState("networkidle"); // Removed flaky wait
 
         // プロジェクトページのタイトルが表示されることを確認
-        // プロジェクト名がページのどこかに表示されていることを確認（h1要素以外の可能性も考慮）
-        const projectElement = page.locator(`text="${projectName}"`);
-        await expect(projectElement).toBeVisible({ timeout: 15000 });
+        const projectTitle = page.locator(`h1:has-text("${projectName}")`);
+        await expect(projectTitle).toBeVisible({ timeout: 15000 });
     });
 
     test("ホームへのリンクをクリックするとホームページに遷移する", async ({ page }) => {

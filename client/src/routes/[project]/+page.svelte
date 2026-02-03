@@ -94,7 +94,7 @@
         />
     </div>
 
-    {#if store.pages}
+    {#if pages}
         <div class="mt-6">
             <h2 class="mb-4 text-xl font-semibold">Page List</h2>
             <div class="rounded-lg bg-white p-4 shadow-md">
