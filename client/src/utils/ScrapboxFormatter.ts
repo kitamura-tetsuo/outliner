@@ -423,6 +423,9 @@ export class ScrapboxFormatter {
      * Function to match italics considering bracket balance
      */
     private static matchBalancedItalic(text: string): Array<{ start: number; end: number; content: string; }> {
+        // Fast path
+        if (!text.includes("[/ ")) return [];
+
         const matches: Array<{ start: number; end: number; content: string; }> = [];
         let i = 0;
         while (i < text.length - 2) {
@@ -545,86 +548,98 @@ export class ScrapboxFormatter {
 
             // Project internal link - no space: [/project/page] or [/page]
             // Match only if there is no space after slash
-            input = input.replace(ScrapboxFormatter.RX_HTML_PROJECT_LINK, (match, path) => {
-                // Split path to get project name and page name
-                const parts = path.split("/").filter((p: string) => p);
-                let html: string;
-                if (parts.length >= 2) {
-                    const projectName = parts[0];
-                    const pageName = parts.slice(1).join("/");
+            if (input.includes("[/")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_PROJECT_LINK, (match, path) => {
+                    // Split path to get project name and page name
+                    const parts = path.split("/").filter((p: string) => p);
+                    let html: string;
+                    if (parts.length >= 2) {
+                        const projectName = parts[0];
+                        const pageName = parts.slice(1).join("/");
 
-                    // Add class for page existence check
-                    let existsClass = "page-not-exists"; // default for safety
-                    try {
-                        existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
-                    } catch {
-                        // In case of any error in checkPageExists, default to page-not-exists
-                        existsClass = "page-not-exists";
-                    }
+                        // Add class for page existence check
+                        let existsClass = "page-not-exists"; // default for safety
+                        try {
+                            existsClass = this.checkPageExists(pageName, projectName)
+                                ? "page-exists"
+                                : "page-not-exists";
+                        } catch {
+                            // In case of any error in checkPageExists, default to page-not-exists
+                            existsClass = "page-not-exists";
+                        }
 
-                    // Use LinkPreview component
-                    html = `<span class="link-preview-wrapper">
+                        // Use LinkPreview component
+                        html = `<span class="link-preview-wrapper">
                         <a href="/${
-                        this.escapeHtml(path)
-                    }" class="internal-link project-link ${existsClass}" data-project="${
-                        this.escapeHtml(projectName)
-                    }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(path)}</a>
+                            this.escapeHtml(path)
+                        }" class="internal-link project-link ${existsClass}" data-project="${
+                            this.escapeHtml(projectName)
+                        }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(path)}</a>
                     </span>`;
-                } else {
-                    // Case of single page name (project internal link)
-                    const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
-                    html = `<span class="link-preview-wrapper">
+                    } else {
+                        // Case of single page name (project internal link)
+                        const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
+                        html = `<span class="link-preview-wrapper">
                         <a href="/${this.escapeHtml(path)}" class="internal-link ${existsClass}" data-page="${
-                        this.escapeHtml(path)
-                    }">${this.escapeHtml(path)}</a>
+                            this.escapeHtml(path)
+                        }">${this.escapeHtml(path)}</a>
                     </span>`;
-                }
-                return createPlaceholder(html);
-            });
+                    }
+                    return createPlaceholder(html);
+                });
+            }
 
             // Strikethrough
-            input = input.replace(ScrapboxFormatter.RX_HTML_STRIKETHROUGH, (match, content) => {
-                const html = `<s>${processFormat(content)}</s>`;
-                return createPlaceholder(html);
-            });
+            if (input.includes("[-")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_STRIKETHROUGH, (match, content) => {
+                    const html = `<s>${processFormat(content)}</s>`;
+                    return createPlaceholder(html);
+                });
+            }
 
             // Code (do not recursively process inside code)
-            input = input.replace(ScrapboxFormatter.RX_HTML_CODE, (match, content) => {
-                const html = `<code>${this.escapeHtml(content)}</code>`;
-                return createPlaceholder(html);
-            });
+            if (input.includes("`")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_CODE, (match, content) => {
+                    const html = `<code>${this.escapeHtml(content)}</code>`;
+                    return createPlaceholder(html);
+                });
+            }
 
             // External link (allow if label is whitespace only)
-            input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
-                const trimmedLabel = label?.trim();
-                const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
-                const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
-                const html = `<a href="${
-                    this.escapeHtml(safeUrl)
-                }" target="_blank" rel="noopener noreferrer">${text}</a>`;
-                return createPlaceholder(html);
-            });
+            if (input.includes("[http")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
+                    const trimmedLabel = label?.trim();
+                    const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
+                    const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
+                    const html = `<a href="${
+                        this.escapeHtml(safeUrl)
+                    }" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                    return createPlaceholder(html);
+                });
+            }
 
             // Project internal links processed above
 
             // Normal internal links - must be processed after external links
             // [text] format where text does not contain [ or ]
-            input = input.replace(ScrapboxFormatter.RX_HTML_INT_LINK, (match, text) => {
-                // Add class for page existence check
-                const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
+            if (input.includes("[")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_INT_LINK, (match, text) => {
+                    // Add class for page existence check
+                    const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
 
-                const projectPrefix = this.getProjectPrefix();
+                    const projectPrefix = this.getProjectPrefix();
 
-                // Use LinkPreview component
-                const html = `<span class="link-preview-wrapper">
+                    // Use LinkPreview component
+                    const html = `<span class="link-preview-wrapper">
                     <a href="${projectPrefix}/${
-                    this.escapeHtml(text)
-                }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(text)}">${
-                    this.escapeHtml(text)
-                }</a>
+                        this.escapeHtml(text)
+                    }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(text)}">${
+                        this.escapeHtml(text)
+                    }</a>
                 </span>`;
-                return createPlaceholder(html);
-            });
+                    return createPlaceholder(html);
+                });
+            }
 
             // Escape plain text parts
             input = this.escapeHtml(input);
@@ -773,6 +788,9 @@ export class ScrapboxFormatter {
      * Function to match bold considering bracket balance (for formatWithControlChars)
      */
     private static matchBalancedBold(text: string): Array<{ start: number; end: number; content: string; }> {
+        // Fast path
+        if (!text.includes("[[")) return [];
+
         const matches: Array<{ start: number; end: number; content: string; }> = [];
         let i = 0;
         while (i < text.length - 1) {
