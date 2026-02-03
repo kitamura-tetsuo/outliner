@@ -1,17 +1,17 @@
 /** @feature USR-0002
- *  Title   : コンテナ削除機能 - Unit Test
+ *  Title   : Container Deletion - Unit Test
  *  Source  : docs/client-features.yaml
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * コンテナ削除機能のUnit Test
+ * Unit Test for Container Deletion Feature
  *
- * Firebase Functionsのビジネスロジックを単体でテストします。
- * 外部依存関係（Firebase Auth、Firestore）はモックを使用します。
+ * Tests the business logic of Firebase Functions in isolation.
+ * Uses mocks for external dependencies (Firebase Auth, Firestore).
  */
 
-// モック用の型定義
+// Mock type definitions
 interface MockUser {
     uid: string;
     email: string;
@@ -29,7 +29,7 @@ interface MockUserData {
     updatedAt: Date;
 }
 
-// Firebase Admin SDK のモック
+// Firebase Admin SDK Mock
 const mockAuth = {
     verifyIdToken: vi.fn(),
 };
@@ -55,7 +55,7 @@ const mockCollection = {
     doc: vi.fn(() => mockDocRef),
 };
 
-// テスト対象の関数をモック化
+// Service class under test
 class ContainerDeletionService {
     constructor(private auth: typeof mockAuth) {}
 
@@ -102,10 +102,10 @@ class ContainerDeletionService {
     ): MockUserData {
         const accessibleContainerIds = userData.accessibleContainerIds || [];
 
-        // コンテナIDを削除
+        // Remove container ID
         const updatedContainerIds = accessibleContainerIds.filter(id => id !== containerId);
 
-        // デフォルトコンテナの更新
+        // Update default container
         let defaultContainerId = userData.defaultContainerId;
         if (defaultContainerId === containerId) {
             defaultContainerId = updatedContainerIds.length > 0 ? updatedContainerIds[0] : null;
@@ -125,7 +125,7 @@ describe("Container Deletion Service - Unit Tests", () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
-        // デフォルトのモック設定
+        // Default mock setup
         mockAuth.verifyIdToken.mockResolvedValue({
             uid: "test-user-id",
             email: "test@example.com",
@@ -137,7 +137,7 @@ describe("Container Deletion Service - Unit Tests", () => {
     });
 
     describe("validateToken", () => {
-        it("有効なトークンの場合、ユーザー情報を返すこと", async () => {
+        it("should return user info when the token is valid", async () => {
             const result = await service.validateToken("valid_token");
 
             expect(result).toEqual({
@@ -147,31 +147,31 @@ describe("Container Deletion Service - Unit Tests", () => {
             expect(mockAuth.verifyIdToken).toHaveBeenCalledWith("valid_token");
         });
 
-        it("トークンが空の場合、エラーを投げること", async () => {
+        it("should throw an error when the token is empty", async () => {
             await expect(service.validateToken("")).rejects.toThrow("ID token is required");
         });
 
-        it("無効なトークンの場合、エラーを投げること", async () => {
+        it("should throw an error when the token is invalid", async () => {
             await expect(service.validateToken("invalid_token")).rejects.toThrow("Authentication failed");
         });
     });
 
     describe("validateContainerId", () => {
-        it("有効なコンテナIDの場合、エラーを投げないこと", () => {
+        it("should not throw an error when the container ID is valid", () => {
             expect(() => service.validateContainerId("valid-container-id")).not.toThrow();
         });
 
-        it("コンテナIDが空の場合、エラーを投げること", () => {
+        it("should throw an error when the container ID is empty", () => {
             expect(() => service.validateContainerId("")).toThrow("Container ID is required");
         });
 
-        it("コンテナIDがundefinedの場合、エラーを投げること", () => {
+        it("should throw an error when the container ID is undefined", () => {
             expect(() => service.validateContainerId(undefined)).toThrow("Container ID is required");
         });
     });
 
     describe("checkContainerExists", () => {
-        it("コンテナが存在する場合、コンテナデータを返すこと", async () => {
+        it("should return container data when the container exists", async () => {
             const mockContainerData = {
                 accessibleUserIds: ["user1", "user2"],
                 createdAt: new Date(),
@@ -186,7 +186,7 @@ describe("Container Deletion Service - Unit Tests", () => {
             expect(result).toEqual(mockContainerData);
         });
 
-        it("コンテナが存在しない場合、エラーを投げること", async () => {
+        it("should throw an error when the container does not exist", async () => {
             mockDoc.exists = false;
 
             await expect(service.checkContainerExists())
@@ -195,7 +195,7 @@ describe("Container Deletion Service - Unit Tests", () => {
     });
 
     describe("checkUserAccess", () => {
-        it("ユーザーがアクセス権を持つ場合、エラーを投げないこと", () => {
+        it("should not throw an error when the user has access rights", () => {
             const containerData = {
                 accessibleUserIds: ["user1", "user2", "test-user-id"],
                 createdAt: new Date(),
@@ -205,7 +205,7 @@ describe("Container Deletion Service - Unit Tests", () => {
             expect(() => service.checkUserAccess("test-user-id", containerData)).not.toThrow();
         });
 
-        it("ユーザーがアクセス権を持たない場合、エラーを投げること", () => {
+        it("should throw an error when the user does not have access rights", () => {
             const containerData = {
                 accessibleUserIds: ["user1", "user2"],
                 createdAt: new Date(),
@@ -216,7 +216,7 @@ describe("Container Deletion Service - Unit Tests", () => {
                 .toThrow("Access to the container is denied");
         });
 
-        it("accessibleUserIdsが空の場合、エラーを投げること", () => {
+        it("should throw an error when accessibleUserIds is empty", () => {
             const containerData = {
                 accessibleUserIds: [],
                 createdAt: new Date(),
@@ -229,7 +229,7 @@ describe("Container Deletion Service - Unit Tests", () => {
     });
 
     describe("updateUserContainers", () => {
-        it("コンテナIDを削除し、デフォルトコンテナを更新すること", () => {
+        it("should remove the container ID and update the default container", () => {
             const userData = {
                 accessibleContainerIds: ["container1", "container2", "container3"],
                 defaultContainerId: "container2",
@@ -239,10 +239,10 @@ describe("Container Deletion Service - Unit Tests", () => {
             const result = service.updateUserContainers("user1", "container2", userData);
 
             expect(result.accessibleContainerIds).toEqual(["container1", "container3"]);
-            expect(result.defaultContainerId).toBe("container1"); // 最初の残りコンテナ
+            expect(result.defaultContainerId).toBe("container1"); // First remaining container
         });
 
-        it("削除するコンテナがデフォルトでない場合、デフォルトコンテナを変更しないこと", () => {
+        it("should not change the default container if the deleted container is not the default", () => {
             const userData = {
                 accessibleContainerIds: ["container1", "container2", "container3"],
                 defaultContainerId: "container1",
@@ -252,10 +252,10 @@ describe("Container Deletion Service - Unit Tests", () => {
             const result = service.updateUserContainers("user1", "container2", userData);
 
             expect(result.accessibleContainerIds).toEqual(["container1", "container3"]);
-            expect(result.defaultContainerId).toBe("container1"); // 変更されない
+            expect(result.defaultContainerId).toBe("container1"); // Not changed
         });
 
-        it("最後のコンテナを削除する場合、デフォルトコンテナをnullにすること", () => {
+        it("should set the default container to null when deleting the last container", () => {
             const userData = {
                 accessibleContainerIds: ["container1"],
                 defaultContainerId: "container1",
@@ -268,7 +268,7 @@ describe("Container Deletion Service - Unit Tests", () => {
             expect(result.defaultContainerId).toBeNull();
         });
 
-        it("存在しないコンテナIDを削除しようとした場合、配列を変更しないこと", () => {
+        it("should not change the array when attempting to delete a non-existent container ID", () => {
             const userData = {
                 accessibleContainerIds: ["container1", "container2"],
                 defaultContainerId: "container1",
