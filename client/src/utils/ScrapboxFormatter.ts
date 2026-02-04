@@ -31,6 +31,7 @@ export class ScrapboxFormatter {
     private static readonly RX_ESCAPE = /[&<>"'\x00]/g;
     // eslint-disable-next-line no-control-regex
     private static readonly RX_PLACEHOLDER = /\x01HTML_\d+\x01/g;
+    private static readonly RX_SANITIZED_URL = /^\s*(javascript|vbscript|data):/i;
 
     public static escapeHtml(str: string): string {
         // Fast path: if no special characters, return original string
@@ -51,11 +52,15 @@ export class ScrapboxFormatter {
         // Strip null bytes (and other invisible control chars) before checking regex
         // This is crucial because escapeHtml() strips \x00, which can allow bypass
         // e.g. "javas\x00cript:" -> regex fails -> escapeHtml -> "javascript:" -> XSS
-        // eslint-disable-next-line no-control-regex
-        const checkUrl = url.replace(/\x00/g, "");
+        let checkUrl = url;
+        // Optimization: Fast path to avoid replace() allocation if no null bytes are present
+        if (checkUrl.includes("\x00")) {
+            // eslint-disable-next-line no-control-regex
+            checkUrl = checkUrl.replace(/\x00/g, "");
+        }
 
         // Prevent javascript:, vbscript:, data:
-        if (/^\s*(javascript|vbscript|data):/i.test(checkUrl)) {
+        if (ScrapboxFormatter.RX_SANITIZED_URL.test(checkUrl)) {
             return "unsafe:" + url;
         }
         return url;
@@ -484,11 +489,16 @@ export class ScrapboxFormatter {
 
         // Temporarily replace underline tags with placeholders
         const underlinePlaceholders: string[] = [];
-        const tempText = text.replace(ScrapboxFormatter.RX_HTML_UNDERLINE, (match, content) => {
-            const placeholder = `__UNDERLINE_${underlinePlaceholders.length}__`;
-            underlinePlaceholders.push(content);
-            return placeholder;
-        });
+        let tempText = text;
+        // Optimization: Skip expensive regex replacement if <u> tag is absent
+        // RX_HTML_UNDERLINE is case-sensitive (/<u>...<\/u>/g), so checking for "<u>" is safe
+        if (text.includes("<u>")) {
+            tempText = text.replace(ScrapboxFormatter.RX_HTML_UNDERLINE, (match, content) => {
+                const placeholder = `__UNDERLINE_${underlinePlaceholders.length}__`;
+                underlinePlaceholders.push(content);
+                return placeholder;
+            });
+        }
 
         // Global placeholder map (shared between recursive calls)
         const globalPlaceholders: Map<string, string> = new Map();
