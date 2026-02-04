@@ -81,3 +81,9 @@
 **Vulnerability:** The `deleteAllProductionData` endpoint relied solely on a shared secret (`adminToken`) for authorization, without verifying the identity of the caller (missing `idToken` check).
 **Learning:** Shared secrets are prone to leakage and do not provide non-repudiation. A leaked secret allows anonymous attackers to perform critical actions.
 **Prevention:** Always layer authentication (checking "who") on top of authorization (checking "what"). For critical administrative actions, require both a strong authenticated session (Admin ID Token) and the specific secret/confirmation code.
+
+## 2026-02-25 - Authorization Bypass via User-Writable Collections
+
+**Vulnerability:** The WebSocket server authorized project access by checking the `userProjects` collection, which was writable by any authenticated user. An attacker could add any project ID to their own `userProjects` document to bypass authorization checks.
+**Learning:** Authorization checks must effectively consult a "Source of Truth" that is immutable by regular users (e.g., `projectUsers` or ACL lists). Relying on user-profile data that the user can edit effectively delegates authorization decisions to the user.
+**Prevention:** Only trust server-side resource permission lists (like `projectUsers`) for authorization. Remove or ignore legacy user-centric collections (like `userProjects`) if they are writable by users.

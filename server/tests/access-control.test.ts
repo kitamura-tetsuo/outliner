@@ -70,7 +70,7 @@ describe("access-control", () => {
         expect(result).to.be.true;
     });
 
-    it("allows access via userProjects", async () => {
+    it("denies access via userProjects (SECURITY)", async () => {
         const userGetStub = sinon.stub().resolves({
             exists: true,
             data: () => ({ accessibleProjectIds: ["c1"] }),
@@ -86,7 +86,28 @@ describe("access-control", () => {
         });
 
         const result = await checkContainerAccess("u1", "c1", mockFirestore);
-        expect(result).to.be.true;
+        // Changed to false because we no longer trust userProjects (user-writable)
+        expect(result).to.be.false;
+    });
+
+    it("denies access via userContainers (SECURITY)", async () => {
+        const userGetStub = sinon.stub().resolves({
+            exists: true,
+            data: () => ({ accessibleContainerIds: ["c1"] }),
+        });
+
+        collectionStub.callsFake((name: string) => {
+            if (name === "userContainers") {
+                return {
+                    doc: sinon.stub().withArgs("u1").returns({ get: userGetStub }),
+                };
+            }
+            return { doc: docStub };
+        });
+
+        const result = await checkContainerAccess("u1", "c1", mockFirestore);
+        // Changed to false because we no longer trust userContainers (user-writable)
+        expect(result).to.be.false;
     });
 
     it("denies access if neither has permission", async () => {
@@ -174,7 +195,7 @@ describe("access-control", () => {
 
         collectionStub.callsFake((name: string) => {
             if (name === "projectUsers") return { doc: sinon.stub().returns({ get: containerGetStub }) };
-            if (name === "userProjects") return { doc: sinon.stub().returns({ get: userGetStub }) };
+            // Note: userProjects check is removed now, but we check projectUsers returns denied
             return { doc: docStub };
         });
 
