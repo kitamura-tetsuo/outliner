@@ -1,5 +1,7 @@
 import express from "express";
+import admin from "firebase-admin";
 import * as Y from "yjs";
+import { checkContainerAccess } from "./access-control.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 import { verifyIdTokenCached } from "./websocket-auth.js";
@@ -37,9 +39,11 @@ export function createSeedRouter(
             return;
         }
 
+        let uid: string;
         try {
             const token = authHeader.split(" ")[1];
-            await verifyIdTokenCached(token);
+            const decoded = await verifyIdTokenCached(token);
+            uid = decoded.uid;
         } catch (e) {
             logger.warn({
                 event: "seed_unauthorized",
@@ -72,6 +76,37 @@ export function createSeedRouter(
             }
 
             const projectId = stableIdFromTitle(projectName);
+
+            // SECURITY: Check if project exists and if user has access
+            // If project exists in Firestore, user MUST be a member to seed (overwrite) it.
+            // If project does not exist, we allow seeding (creation).
+            try {
+                const db = admin.firestore();
+                const projectRef = db.collection("projectUsers").doc(projectId);
+                const projectDoc = await projectRef.get();
+
+                if (projectDoc.exists) {
+                    const hasAccess = await checkContainerAccess(uid, projectId);
+                    if (!hasAccess) {
+                        logger.warn({
+                            event: "seed_forbidden",
+                            reason: "access_denied",
+                            projectId,
+                            uid,
+                        });
+                        res.status(403).json({ error: "Forbidden: You do not have access to this project" });
+                        return;
+                    }
+                }
+            } catch (authError) {
+                logger.error({
+                    event: "seed_auth_check_error",
+                    error: authError instanceof Error ? authError.message : String(authError),
+                });
+                res.status(500).json({ error: "Internal Server Error during authorization check" });
+                return;
+            }
+
             const projectRoom = `projects/${projectId}`;
 
             // Use Hocuspocus's official openDirectConnection API
