@@ -27,23 +27,23 @@ test.describe("DEL-0001: Project Deletion Page", () => {
                 await checkbox.check();
                 await page.getByRole("button", { name: "Delete" }).click();
 
-                // エラーメッセージまたは成功メッセージのいずれかが表示されるまで待機
+                // Wait for either error or success message to be displayed
                 await page.waitForFunction(() => {
                     const errorElement = document.querySelector(".text-red-600");
                     const successElement = document.querySelector(".text-green-600");
                     return errorElement?.textContent || successElement?.textContent;
                 }, { timeout: 15000 });
 
-                // エラーメッセージまたは成功メッセージが表示されているかチェック
+                // Check if error or success message is displayed
                 const errorElement = page.locator(".text-red-600");
                 const successElement = page.locator(".text-green-600");
 
                 if (await errorElement.count() > 0) {
-                    // テスト環境では削除が失敗することが予想されるため、エラーメッセージが表示されることを確認
+                    // Expect error message to be displayed as deletion might fail in test environment
                     await expect(errorElement).toBeVisible();
                 } else if (await successElement.count() > 0) {
                     await expect(
-                        page.getByText("選択したプロジェクトを削除しました"),
+                        page.getByText("Selected projects have been deleted"),
                     ).toBeVisible();
                 } else {
                     throw new Error("Neither error nor success message was displayed");
