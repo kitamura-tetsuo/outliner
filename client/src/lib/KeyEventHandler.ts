@@ -4,10 +4,10 @@ import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte
 import { CustomKeyMap } from "./CustomKeyMap";
 
 /**
- * キーおよび入力イベントを各カーソルインスタンスに振り分けるハンドラ
+ * Handler that distributes key and input events to each cursor instance
  */
 export class KeyEventHandler {
-    // 矩形選択の状態を保持
+    // Maintains the state of box selection
     private static boxSelectionState: {
         active: boolean;
         startItemId: string | null;
@@ -50,7 +50,7 @@ export class KeyEventHandler {
 
         // Esc cancels box selection or closes alias picker
         add("Escape", false, false, false, () => {
-            // エイリアスピッカーが表示されている場合は、エイリアスピッカーを閉じる
+            // If the alias picker is visible, close it
             if (aliasPickerStore.isVisible) {
                 aliasPickerStore.hide();
                 return;
@@ -114,14 +114,14 @@ export class KeyEventHandler {
 
         // Ctrl+X cut
         add("x", true, false, false, () => {
-            // カットイベントを手動で発生させる
+            // Manually trigger the cut event
             const clipboardEvent = new ClipboardEvent("cut", {
                 clipboardData: new DataTransfer(),
                 bubbles: true,
                 cancelable: true,
             });
 
-            // カットイベントをディスパッチ
+            // Dispatch the cut event
             document.dispatchEvent(clipboardEvent);
         });
     }
