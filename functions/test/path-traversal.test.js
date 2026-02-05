@@ -58,7 +58,8 @@ describe("Path Traversal Vulnerability", () => {
         containerId: "c1",
         itemId: "../other-container",
         fileName: "malicious.png",
-        fileData: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        fileData:
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
       },
     };
 
@@ -91,7 +92,9 @@ describe("Path Traversal Vulnerability", () => {
       const savePath = mockBucket.file.mock.calls[0][0];
       // Depending on implementation, it might normalize or not.
       // But we expect it to contain the traversal string.
-      expect(savePath).toContain("attachments/c1/../other-container/malicious.png");
+      expect(savePath).toContain(
+        "attachments/c1/../other-container/malicious.png",
+      );
 
       // We manually fail the test to indicate vulnerability needs fixing
       // But for the purpose of "reproduction", we want to confirm it fails to REJECT.
@@ -99,7 +102,9 @@ describe("Path Traversal Vulnerability", () => {
     }
 
     expect(statusCode).toBe(400);
-    expect(responseData.error).toMatch(/Invalid ID|Invalid request|contains invalid characters/);
+    expect(responseData.error).toMatch(
+      /Invalid ID|Invalid request|contains invalid characters/,
+    );
   });
 
   it("should REJECT deleteAttachment with traversal in containerId", async () => {
@@ -136,7 +141,9 @@ describe("Path Traversal Vulnerability", () => {
     await myFunctions.deleteAttachment(req, res);
 
     expect(statusCode).toBe(400);
-    expect(responseData.error).toMatch(/Invalid ID|Invalid request|contains invalid characters/);
+    expect(responseData.error).toMatch(
+      /Invalid ID|Invalid request|contains invalid characters/,
+    );
   });
 
   it("should REJECT listAttachments with traversal in itemId", async () => {
@@ -172,6 +179,8 @@ describe("Path Traversal Vulnerability", () => {
     await myFunctions.listAttachments(req, res);
 
     expect(statusCode).toBe(400);
-    expect(responseData.error).toMatch(/Invalid ID|Invalid request|contains invalid characters/);
+    expect(responseData.error).toMatch(
+      /Invalid ID|Invalid request|contains invalid characters/,
+    );
   });
 });
