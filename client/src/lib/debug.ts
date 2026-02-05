@@ -31,7 +31,7 @@ export function setupGlobalDebugFunctions() {
                 delete win.__SVELTE_GOTO__;
             } catch {}
         }
-        // サービス / ストア / ユーザーマネージャ
+        // Service / Store / User Manager
         win.__FLUID_SERVICE__ = yjsHighService;
         win.__FLUID_STORE__ = yjsStore; // keep legacy name for helpers
         win.__USER_MANAGER__ = userManager;
@@ -65,7 +65,7 @@ if (process.env.NODE_ENV === "test") {
         testWin.__USER_MANAGER__ = userManager;
         testWin.__SNAPSHOT_SERVICE__ = snapshotService;
 
-        // SharedTreeのデータ構造を取得するデバッグ関数
+        // Debug function to get SharedTree data structure
         window.getFluidTreeDebugData = function(): Record<string, unknown> {
             if (!yjsStore.yjsClient) {
                 return { error: "YjsClient not initialized", items: [] };
@@ -73,7 +73,7 @@ if (process.env.NODE_ENV === "test") {
             return (yjsStore.yjsClient as { getAllData: () => Record<string, unknown>; }).getAllData();
         };
 
-        // 特定のパスのデータを取得するデバッグ関数
+        // Debug function to get data at a specific path
         window.getFluidTreePathData = function(path?: string): Record<string, unknown> {
             if (!yjsStore.yjsClient) {
                 return { error: "YjsClient not initialized", items: [] };
