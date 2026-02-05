@@ -415,6 +415,7 @@ function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-esl
 <textarea
     bind:this={textareaRef}
     class="global-textarea"
+    aria-label="Text Editor"
     onkeydown={handleKeyDown}
     oninput={handleInput}
     oncompositionstart={handleCompositionStart}
