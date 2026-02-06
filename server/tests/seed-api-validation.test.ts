@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import express from "express";
-import request from "supertest";
+import admin from "firebase-admin";
 import sinon from "sinon";
+import request from "supertest";
 import { createSeedRouter } from "../src/seed-api.js";
 import { clearTokenCache } from "../src/websocket-auth.js";
-import admin from "firebase-admin";
 
 describe("Seed API Validation", () => {
     let app: express.Express;
@@ -31,7 +31,7 @@ describe("Seed API Validation", () => {
         // In metrics-endpoint.test.ts: sinon.stub(admin.auth(), "verifyIdToken")
         // So we do the same.
         if ((admin.auth() as any).verifyIdToken.restore) {
-             (admin.auth() as any).verifyIdToken.restore();
+            (admin.auth() as any).verifyIdToken.restore();
         }
         verifyIdTokenStub = sinon.stub(admin.auth(), "verifyIdToken").resolves({ uid: "test-user" } as any);
 
@@ -55,7 +55,7 @@ describe("Seed API Validation", () => {
                 document: {},
                 transact: sinon.stub().callsFake(async (callback) => {
                     const mockDoc = {
-                         getMap: () => ({ get: () => null, set: () => {} }),
+                        getMap: () => ({ get: () => null, set: () => {} }),
                     };
                     await callback(mockDoc);
                 }),
