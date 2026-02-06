@@ -75,8 +75,8 @@ export class GeneralStore {
                         const isPlaceholderChild = (node: ItemLike | PlainItemData | null | undefined) => {
                             const text = node?.text?.toString?.() ?? String(node?.text ?? "");
                             if (!text) return true;
-                            return text === "一行目: テスト" || text === "二行目: Yjs 反映"
-                                || text === "三行目: 並び順チェック";
+                            return text === "First line: Test" || text === "Second line: Yjs reflection"
+                                || text === "Third line: Order check";
                         };
                         const shouldReplaceChildren = nextLen === 0
                             || (nextLen <= 3 && (() => {
