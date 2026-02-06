@@ -1,6 +1,7 @@
 import express from "express";
 import admin from "firebase-admin";
 import * as Y from "yjs";
+import { z } from "zod";
 import { checkContainerAccess } from "./access-control.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
@@ -19,6 +20,16 @@ export interface SeedRequest {
     projectName: string;
     pages: PageSeedData[];
 }
+
+const PageSeedSchema = z.object({
+    name: z.string().min(1),
+    lines: z.array(z.string()).optional(),
+});
+
+const SeedRequestSchema = z.object({
+    projectName: z.string().min(1),
+    pages: z.array(PageSeedSchema),
+});
 
 /**
  * Server-side seeding endpoint that directly manipulates Yjs documents
@@ -55,12 +66,21 @@ export function createSeedRouter(
         }
 
         try {
-            const { projectName, pages }: SeedRequest = req.body;
+            const validationResult = SeedRequestSchema.safeParse(req.body);
 
-            if (!projectName || !pages || !Array.isArray(pages)) {
-                res.status(400).json({ error: "Invalid request body" });
+            if (!validationResult.success) {
+                logger.warn({
+                    event: "seed_invalid_request",
+                    errors: validationResult.error.format(),
+                });
+                res.status(400).json({
+                    error: "Invalid request body",
+                    details: validationResult.error.format(),
+                });
                 return;
             }
+
+            const { projectName, pages } = validationResult.data;
 
             logger.info({ event: "seed_request", projectName, pageCount: pages.length });
 
