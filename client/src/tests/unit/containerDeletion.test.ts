@@ -1,5 +1,5 @@
 /** @feature USR-0002
- *  Title   : Container Deletion - Unit Test
+ *  Title   : Container Deletion Feature - Unit Test
  *  Source  : docs/client-features.yaml
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,11 +7,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * Unit Test for Container Deletion Feature
  *
- * Tests the business logic of Firebase Functions in isolation.
+ * Tests the business logic for Firebase Functions in isolation.
  * Uses mocks for external dependencies (Firebase Auth, Firestore).
  */
 
-// Mock type definitions
+// Type definitions for mocks
 interface MockUser {
     uid: string;
     email: string;
@@ -29,7 +29,7 @@ interface MockUserData {
     updatedAt: Date;
 }
 
-// Firebase Admin SDK Mock
+// Mock for Firebase Admin SDK
 const mockAuth = {
     verifyIdToken: vi.fn(),
 };
@@ -55,7 +55,7 @@ const mockCollection = {
     doc: vi.fn(() => mockDocRef),
 };
 
-// Service class under test
+// Mocking the function under test
 class ContainerDeletionService {
     constructor(private auth: typeof mockAuth) {}
 
@@ -242,7 +242,7 @@ describe("Container Deletion Service - Unit Tests", () => {
             expect(result.defaultContainerId).toBe("container1"); // First remaining container
         });
 
-        it("should not change the default container if the deleted container is not the default", () => {
+        it("should not change the default container if the deleted container is not the default one", () => {
             const userData = {
                 accessibleContainerIds: ["container1", "container2", "container3"],
                 defaultContainerId: "container1",
@@ -252,7 +252,7 @@ describe("Container Deletion Service - Unit Tests", () => {
             const result = service.updateUserContainers("user1", "container2", userData);
 
             expect(result.accessibleContainerIds).toEqual(["container1", "container3"]);
-            expect(result.defaultContainerId).toBe("container1"); // Not changed
+            expect(result.defaultContainerId).toBe("container1"); // Unchanged
         });
 
         it("should set the default container to null when deleting the last container", () => {
@@ -268,7 +268,7 @@ describe("Container Deletion Service - Unit Tests", () => {
             expect(result.defaultContainerId).toBeNull();
         });
 
-        it("should not change the array when attempting to delete a non-existent container ID", () => {
+        it("should not change the array when trying to delete a non-existent container ID", () => {
             const userData = {
                 accessibleContainerIds: ["container1", "container2"],
                 defaultContainerId: "container1",
