@@ -85,6 +85,70 @@ export class Cursor implements CursorEditingContext {
         return undefined;
     }
 
+    indent() {
+        if (typeof window !== "undefined") {
+            const selection = this.getSelection();
+            if (selection && selection.startItemId !== selection.endItemId) {
+                const allItems = Array.from(document.querySelectorAll("[data-item-id]"));
+                const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
+                const startIdx = allItemIds.indexOf(selection.startItemId);
+                const endIdx = allItemIds.indexOf(selection.endItemId);
+
+                if (startIdx !== -1 && endIdx !== -1) {
+                    const firstIdx = Math.min(startIdx, endIdx);
+                    const lastIdx = Math.max(startIdx, endIdx);
+
+                    for (let i = firstIdx; i <= lastIdx; i++) {
+                        window.dispatchEvent(
+                            new CustomEvent("outliner-indent", {
+                                detail: { itemId: allItemIds[i] },
+                            }),
+                        );
+                    }
+                    return;
+                }
+            }
+
+            window.dispatchEvent(
+                new CustomEvent("outliner-indent", {
+                    detail: { itemId: this.itemId },
+                }),
+            );
+        }
+    }
+
+    unindent() {
+        if (typeof window !== "undefined") {
+            const selection = this.getSelection();
+            if (selection && selection.startItemId !== selection.endItemId) {
+                const allItems = Array.from(document.querySelectorAll("[data-item-id]"));
+                const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
+                const startIdx = allItemIds.indexOf(selection.startItemId);
+                const endIdx = allItemIds.indexOf(selection.endItemId);
+
+                if (startIdx !== -1 && endIdx !== -1) {
+                    const firstIdx = Math.min(startIdx, endIdx);
+                    const lastIdx = Math.max(startIdx, endIdx);
+
+                    for (let i = firstIdx; i <= lastIdx; i++) {
+                        window.dispatchEvent(
+                            new CustomEvent("outliner-unindent", {
+                                detail: { itemId: allItemIds[i] },
+                            }),
+                        );
+                    }
+                    return;
+                }
+            }
+
+            window.dispatchEvent(
+                new CustomEvent("outliner-unindent", {
+                    detail: { itemId: this.itemId },
+                }),
+            );
+        }
+    }
+
     // Recursive search for Item on SharedTree (CursorEditingContext interface implementation)
     findTarget(): any {
         return this._findTarget();

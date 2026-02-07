@@ -151,6 +151,21 @@
             currentUser = result?.user.id ?? "anonymous";
         });
         editorOverlayStore.setOnEditCallback(handleEdit);
+
+        // Listen for global indent/unindent events from Cursor
+        const handleWindowIndent = (event: Event) => {
+            handleIndent(event as CustomEvent);
+        };
+        const handleWindowUnindent = (event: Event) => {
+            handleUnindent(event as CustomEvent);
+        };
+        window.addEventListener("outliner-indent", handleWindowIndent);
+        window.addEventListener("outliner-unindent", handleWindowUnindent);
+
+        return () => {
+            window.removeEventListener("outliner-indent", handleWindowIndent);
+            window.removeEventListener("outliner-unindent", handleWindowUnindent);
+        };
     });
 
     // Remeasure height in response to changes in visible item count ($effect is unused)
@@ -1817,7 +1832,7 @@
             {#each displayItems as display, index (display.model.id)}
                 <div
                     class="item-container"
-                    style="--item-depth: {display.depth}"
+                    style="margin-left: {Math.max(0, display.depth - 1) * 24}px"
                 >
                     <OutlinerItem
                         model={display.model}
@@ -2069,7 +2084,6 @@
 
     .item-container {
         position: relative;
-        margin-left: calc(max(0, var(--item-depth) - 1) * 24px);
         width: auto;
         min-height: 36px; /* Set minimum height */
     }
