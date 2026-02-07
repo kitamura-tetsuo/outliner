@@ -3,7 +3,7 @@ import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async () => {
     try {
-        // Proxy log rotation request to the server
+        // ログローテーション要求をサーバーにプロキシ
         const apiBaseUrl = process.env.VITE_API_SERVER_URL || "http://localhost:7091";
         const response = await fetch(`${apiBaseUrl}/api/rotate-logs`, {
             method: "POST",
@@ -28,7 +28,7 @@ export const POST: RequestHandler = async () => {
 
 export const GET: RequestHandler = async () => {
     try {
-        // In case of GET request (Fallback for Image src)
+        // GETリクエストの場合（Image src用のフォールバック）
         const apiBaseUrl = process.env.VITE_API_SERVER_URL || "http://localhost:7091";
         const response = await fetch(`${apiBaseUrl}/api/rotate-logs`, {
             method: "POST",

@@ -1,7 +1,7 @@
 <script lang="ts">
 import { mapEdit } from "../services/editMapper";
 import { applyEdit, queryStore } from "../services/sqlService";
-import { onDestroy, onMount, tick } from "svelte";
+import { onDestroy, onMount } from "svelte";
 import type { QueryResult } from "../services/sqlService";
 
 let data = $state<QueryResult>({ rows: [], columnsMeta: [] });
@@ -18,7 +18,7 @@ onMount(() => {
 });
 onDestroy(() => { try { __unsubscribe?.(); } catch {} });
 
-async function handleCellEdit(rowIndex: number, columnKey: string, newValue: unknown) {
+function handleCellEdit(rowIndex: number, columnKey: string, newValue: unknown) {
     const row = data.rows[rowIndex];
     const info = mapEdit(data.columnsMeta, row, columnKey);
     if (info) {
@@ -30,9 +30,6 @@ async function handleCellEdit(rowIndex: number, columnKey: string, newValue: unk
         applyEdit(info, newValue);
     }
     editingCell = null;
-    await tick();
-    const cell = document.querySelector(`td[data-row="${rowIndex}"][data-col="${columnKey.replace(/"/g, '\\"')}"]`) as HTMLElement;
-    cell?.focus();
 }
 
 function startEdit(rowIndex: number, columnKey: string) {
@@ -125,20 +122,7 @@ function handleRowDragOver(e: DragEvent) {
                         ondrop={e => handleRowDrop(e, rowIndex)}
                     >
                         {#each data.columnsMeta as column (column.name)}
-                            <td
-                                data-row={rowIndex}
-                                data-col={column.name}
-                                ondblclick={() => startEdit(rowIndex, column.name)}
-                                tabindex="0"
-                                role="gridcell"
-                                title="Double click or Enter to edit"
-                                onkeydown={(e) => {
-                                    if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        startEdit(rowIndex, column.name);
-                                    }
-                                }}
-                            >
+                            <td ondblclick={() => startEdit(rowIndex, column.name)}>
                                 {#if isEditing(rowIndex, column.name)}
                                     <input
                                         type="text"
@@ -159,7 +143,6 @@ function handleRowDragOver(e: DragEvent) {
                                             }
                                         }}
                                         class="cell-input"
-                                        autofocus
                                     />
                                 {:else}
                                     <span class="cell-value">{row[column.name] || ""}</span>
@@ -198,11 +181,6 @@ function handleRowDragOver(e: DragEvent) {
     background-color: #f5f5f5;
     font-weight: bold;
     cursor: move;
-}
-
-.table td:focus {
-    outline: 2px solid #007bff;
-    outline-offset: -2px;
 }
 
 .cell-input {

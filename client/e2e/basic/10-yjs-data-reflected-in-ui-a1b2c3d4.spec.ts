@@ -10,11 +10,11 @@ import { TestHelpers } from "../utils/testHelpers";
  * - DOM は data-item-id ベースで検証し、Page Title アイテムは除外する
  */
 
-test.describe("Yjs data is reflected in UI", () => {
+test.describe("YjsのデータがUIに反映される", () => {
     const lines = [
-        "First line: Test",
-        "Second line: Yjs reflection",
-        "Third line: Order check",
+        "一行目: テスト",
+        "二行目: Yjs 反映",
+        "三行目: 並び順チェック",
     ];
 
     test.beforeEach(async ({ page }, testInfo) => {
@@ -24,7 +24,7 @@ test.describe("Yjs data is reflected in UI", () => {
         await TestHelpers.navigateToProjectPage(page, projectName, pageName, lines);
     });
 
-    test("lines are displayed in correct order", async ({ page }) => {
+    test("lines が正しい順番で表示される", async ({ page }) => {
         // currentPage がセットされるのを待機
         await page.waitForFunction(() => {
             const gs = (window as { generalStore?: { currentPage?: Record<string, unknown>; }; }).generalStore;
