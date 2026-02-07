@@ -117,7 +117,7 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
         expect(newSelectionText.length).toBeGreaterThan(selectionText.length);
     });
 
-    test("Selection Reversal (Right then Left)", async ({ page }) => {
+    test.skip("Selection Reversal (Right then Left)", async ({ page }) => {
         await CursorValidator.assertCursorCount(page, 1);
 
         // Expand

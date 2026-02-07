@@ -805,7 +805,7 @@ export class Cursor implements CursorEditingContext {
         if (!target) return;
 
         // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
+        const existingSelection = this.getSelection();
 
         let startItemId, startOffset;
 
@@ -831,7 +831,7 @@ export class Cursor implements CursorEditingContext {
         if (!target) return;
 
         // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
+        const existingSelection = this.getSelection();
 
         let startItemId, startOffset;
 
@@ -857,7 +857,7 @@ export class Cursor implements CursorEditingContext {
         if (!target) return;
 
         // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
+        const existingSelection = this.getSelection();
 
         let startItemId, startOffset;
 
@@ -883,7 +883,7 @@ export class Cursor implements CursorEditingContext {
         if (!target) return;
 
         // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
+        const existingSelection = this.getSelection();
 
         let startItemId, startOffset;
 
