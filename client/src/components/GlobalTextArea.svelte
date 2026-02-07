@@ -156,8 +156,6 @@ onMount(() => {
                 try { console.log("typingFallback chars:", k, "cursors=", cursors.length); } catch {}
                 if (cursors.length > 0 && ta) {
                     ev.preventDefault();
-                    // Update the model directly first (prioritizing reliability)
-                    try { cursors.forEach(c => c.insertText(k)); } catch {}
 
                     // Also reflect as actual input in the textarea and fire InputEvent (maintaining normal flow)
                     const prev = ta.value ?? "";
@@ -168,8 +166,6 @@ onMount(() => {
                     try { ta.selectionStart = ta.selectionEnd = selStart + 1; } catch {}
                     const ie = new InputEvent("input", { data: k, inputType: "insertText", bubbles: true, cancelable: true, composed: true });
                     ta.dispatchEvent(ie);
-                    // Ensure model update even when out of focus
-                    try { KeyEventHandler.handleInput(ie as unknown as Event); } catch {}
                     store.startCursorBlink();
                 }
                 return;
@@ -327,7 +323,7 @@ function handleKeyDown(event: KeyboardEvent) {
         const isModifier = event.ctrlKey || event.metaKey || event.altKey || event.isComposing;
         const isTest = typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true";
         const isTextareaFocused = document.activeElement === textareaRef;
-        if (isTest && isPrintable && !isModifier && !aliasPickerStore.isVisible && !isTextareaFocused) {
+        if (isTest && isPrintable && !isModifier && !aliasPickerStore.isVisible && !isTextareaFocused && !event.defaultPrevented) {
             const cursors = store.getCursorInstances();
             if (cursors.length > 0) {
                 console.log("GlobalTextArea.handleKeyDown fallback insert:", event.key, "cursors=", cursors.length);
