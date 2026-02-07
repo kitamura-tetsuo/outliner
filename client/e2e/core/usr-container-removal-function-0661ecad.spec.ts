@@ -8,7 +8,8 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 
 test("delete-container returns 401 with invalid token", async ({ request }) => {
-    const res = await request.post("http://localhost:7090/api/delete-container", {
+    // The endpoint is deleteProject, but the test name refers to container removal concept
+    const res = await request.post("http://localhost:7090/api/deleteProject", {
         data: { idToken: "invalid", projectId: "dummy" },
     });
     expect(res.status()).toBe(401);
