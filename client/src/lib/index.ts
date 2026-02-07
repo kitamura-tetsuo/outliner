@@ -2,9 +2,9 @@
 
 // (removed Fluid telemetry init)
 
-// 開発モードのみ適用する場合
+// Apply only in development mode
 if (import.meta.env.MODE === "development") {
-    // 開発モードのときだけ、fetch のエラーハンドリングを追加
+    // Add fetch error handling only in development mode
     if (typeof window !== "undefined") {
         const originalFetch = window.fetch;
         window.fetch = async function(input, init) {
@@ -19,7 +19,7 @@ if (import.meta.env.MODE === "development") {
                 } else {
                     url = "Unknown URL";
                 }
-                // オリジナルのエラーメッセージに URL を追加
+                // Add URL to the original error message
                 if (error instanceof Error) {
                     const enhancedError = new Error(`Failed to fetch from ${url}: ${error.message}`);
                     enhancedError.stack = error.stack;

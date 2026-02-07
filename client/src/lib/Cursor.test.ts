@@ -4,8 +4,8 @@ import type { Item } from "../schema/app-schema";
 import { Cursor } from "./Cursor";
 import { countLines, getCurrentColumn, getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "./cursor";
 
-// Svelteストアのモック
-// AGENTS.mdの指示に基づき、ストアの挙動を制御するためにvi.mockを使用します。
+// Mock Svelte store
+// Based on AGENTS.md instructions, use vi.mock to control store behavior.
 const mockTextareaElement = {
     focus: vi.fn(),
     value: "",
@@ -28,23 +28,23 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => ({
         clearCursorAndSelection: vi.fn(),
         clearSelectionForUser: vi.fn(),
         setSelection: vi.fn(),
-        selections: {}, // store.selections は Object.values で使われているのでオブジェクトのまま
-        cursorInstances: new Map(), // store.cursorInstances.get のため Map インスタンスを設定
-        cursors: {}, // store.cursors は Object.values で使われているのでオブジェクトのまま
+        selections: {}, // store.selections is used with Object.values so keep it as an object
+        cursorInstances: new Map(), // Set Map instance for store.cursorInstances.get
+        cursors: {}, // store.cursors is used with Object.values so keep it as an object
         forceUpdate: vi.fn(),
     },
 }));
 vi.mock("../stores/store.svelte", () => ({
     store: {
-        currentPage: undefined, // テストケース内で設定可能にする
+        currentPage: undefined, // Make it configurable within test cases
         subscribe: vi.fn(),
         update: vi.fn(),
         set: vi.fn(),
     },
 }));
 
-// Itemのテストダブル
-// AGENTS.mdの指示に基づき、Itemのインターフェースを満たす単純なテストダブルを使用します。
+// Item test double
+// Based on AGENTS.md instructions, use a simple test double that satisfies the Item interface.
 const createMockItem = (id: string, text: string, children: Item[] = []): Item => {
     const mockYDoc = {} as Y.Doc;
     const mockTree = {} as import("yjs-orderedtree").YTree;
@@ -71,15 +71,15 @@ describe("Cursor", () => {
     let mockCurrentPage: Item | undefined;
 
     beforeEach(async () => {
-        // モックをリセット
+        // Reset mocks
         vi.clearAllMocks();
         mockTextareaElement.value = "";
         mockTextareaElement.selectionStart = 0;
         mockTextareaElement.selectionEnd = 0;
 
-        // generalStore.currentPageのモックを設定
+        // Set mock for generalStore.currentPage
         const { store: generalStore } = await import("../stores/store.svelte");
-        generalStore.currentPage = mockCurrentPage; // テストケース側で設定できるようにする
+        generalStore.currentPage = mockCurrentPage; // Allow setting from test case side
 
         cursor = new Cursor("test-cursor-id", {
             itemId: "item1",
@@ -88,13 +88,13 @@ describe("Cursor", () => {
             userId: "test-user",
         });
 
-        // findTargetがモックアイテムを返すように設定
+        // Set findTarget to return mock item
         vi.spyOn(cursor as unknown as { findTarget: () => Item | undefined; }, "findTarget").mockImplementation(() => {
             if (generalStore.currentPage && cursor.itemId === (generalStore.currentPage as Item).id) {
                 return generalStore.currentPage as Item;
             }
-            // 簡単な実装：ここでは深くネストしたアイテムの検索はモックしない
-            // 必要に応じてテストケースごとに個別のモックアイテムを返すようにする
+            // Simple implementation: do not mock deep nested item search here
+            // Return individual mock items per test case as needed
             const item = createMockItem(cursor.itemId, "Default text for " + cursor.itemId);
             if (generalStore.currentPage) {
                 const items = (generalStore.currentPage as Item).items as unknown as Item[];
@@ -126,7 +126,7 @@ describe("Cursor", () => {
                 expect(countLines("")).toBe(1);
                 expect(countLines("hello")).toBe(1);
                 expect(countLines("hello\nworld")).toBe(2);
-                expect(countLines("hello\nworld\n")).toBe(3); // 末尾の改行も1行としてカウント
+                expect(countLines("hello\nworld\n")).toBe(3); // Count trailing newline as one line
                 expect(countLines("\nhello\nworld\n")).toBe(4);
             });
         });
@@ -135,11 +135,11 @@ describe("Cursor", () => {
             const text = "line1\nline2\nline3";
             it("should return correct start offset for each line", () => {
                 expect(getLineStartOffset(text, 0)).toBe(0); // line1
-                expect(getLineStartOffset(text, 1)).toBe(6); // line2 (line1の長さ5 + \nの1)
-                expect(getLineStartOffset(text, 2)).toBe(12); // line3 (line1の長さ5 + \nの1 + line2の長さ5 + \nの1)
+                expect(getLineStartOffset(text, 1)).toBe(6); // line2 (length of line1 (5) + \n (1))
+                expect(getLineStartOffset(text, 2)).toBe(12); // line3 (length of line1 (5) + \n (1) + length of line2 (5) + \n (1))
             });
             it("should handle out of bounds line index", () => {
-                expect(getLineStartOffset(text, 3)).toBe(18); // text.length (改行含む) + 1 (based on current impl)
+                expect(getLineStartOffset(text, 3)).toBe(18); // text.length (including newline) + 1 (based on current impl)
                 expect(getLineStartOffset(text, -1)).toBe(0);
             });
             it("should handle text with trailing newline", () => {
@@ -179,7 +179,7 @@ describe("Cursor", () => {
                 expect(getCurrentLineIndex(text, 17)).toBe(2); // line3|
             });
             it("should handle offset exceeding text length", () => {
-                expect(getCurrentLineIndex(text, 20)).toBe(2); // 最後の行を指す
+                expect(getCurrentLineIndex(text, 20)).toBe(2); // Points to the last line
             });
             it("should handle empty text", () => {
                 expect(getCurrentLineIndex("", 0)).toBe(0);
@@ -210,7 +210,7 @@ describe("Cursor", () => {
             generalStore.currentPage = mockCurrentPage;
             cursor.itemId = "item1"; // Ensure cursor is on a valid item
             cursor.offset = 5; // Initial offset
-            // findTargetがmockCurrentPage.items[0]を返すように
+            // Make findTarget return mockCurrentPage.items[0]
             vi.spyOn(cursor as unknown as { findTarget: () => Item | undefined; }, "findTarget").mockImplementation(
                 () => {
                     const items = mockCurrentPage!.items as unknown as Item[];
@@ -257,7 +257,7 @@ describe("Cursor", () => {
             mockCurrentPage = createMockItem("page1", "Page Title", [mockItem]);
             generalStore.currentPage = mockCurrentPage;
             cursor.itemId = "item1";
-            // findTargetがmockItemを返すように設定
+            // Set findTarget to return mockItem
             vi.spyOn(cursor as any, "findTarget").mockReturnValue(mockItem);
             // Prevent actual navigation/merge for these simple tests
             vi.spyOn((cursor as any).editor, "mergeWithPreviousItem").mockImplementation(() => {});
@@ -332,7 +332,7 @@ describe("Cursor", () => {
         });
 
         it("deleteForward on empty item triggers deleteEmptyItem", () => {
-            // 空のアイテムを設定
+            // Set empty item
             mockItem.text = "";
             cursor.offset = 0;
             const spy = vi.spyOn((cursor as any).editor, "deleteEmptyItem").mockImplementation(() => {});
@@ -341,9 +341,9 @@ describe("Cursor", () => {
         });
 
         it("deleteForward on non-empty item at end triggers mergeWithNextItem", () => {
-            // 空でないアイテムの末尾に設定
+            // Set to end of non-empty item
             mockItem.text = "Hello";
-            cursor.offset = 5; // 末尾
+            cursor.offset = 5; // End
             const spy = vi.spyOn((cursor as any).editor, "mergeWithNextItem").mockImplementation(
                 () => {},
             );
