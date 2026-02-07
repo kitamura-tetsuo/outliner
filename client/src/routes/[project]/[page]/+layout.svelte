@@ -2,10 +2,10 @@
 import { onMount } from "svelte";
 import { store } from "../../../stores/store.svelte";
 
-// The `currentPage` setting has been consolidated into `+page.svelte`.
+// currentPage configuration has been consolidated into +page.svelte.
 // This layout does not have that responsibility and only renders child content.
 // However, it includes initialization logic to ensure project data is loaded
-// even when accessed directly from child routes like `schedule`.
+// even when accessed directly from child routes such as 'schedule'.
 let { children } = $props();
 
 onMount(async () => {
