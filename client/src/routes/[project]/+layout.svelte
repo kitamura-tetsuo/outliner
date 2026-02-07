@@ -22,7 +22,7 @@ $effect(() => {
 // Retrieve project name from URL parameters
 $effect(() => {
     // Prefer explicit param over optional data prop
-    const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
+    const projectParam = ($pageStore?.params?.project as string) || (data as any)?.project;
     if (!projectParam) return;
 
     if (!yjsStore.yjsClient) {
@@ -53,7 +53,7 @@ onMount(() => {
     try {
         userManager.addEventListener(() => {
             // If project not yet loaded but param exists, try again when auth flips
-            const projectParam = (pageStore?.params?.project as string) || (data as any)?.project;
+            const projectParam = ($pageStore?.params?.project as string) || (data as any)?.project;
             if (projectParam && !yjsStore.yjsClient) {
                 loadProject(projectParam);
             }

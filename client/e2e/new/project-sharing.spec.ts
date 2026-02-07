@@ -1,6 +1,7 @@
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 import { expect, test } from "@playwright/test";
+import { SeedClient } from "../utils/seedClient";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Project Sharing", () => {
@@ -14,16 +15,45 @@ test.describe("Project Sharing", () => {
             (window as any).__E2E__ = true;
         });
 
+        // Initialize app to ensure UserManager is available
+        await page.goto("/");
+        await page.waitForFunction(() => !!(window as any).__USER_MANAGER__);
+
         // 1. Setup User A (owner)
-        // We use createAndSeedProject which uses SeedClient (admin token) to create project.
-        // Then we navigate to it.
+        // Login first to register project
+        await TestHelpers.login(page, "owner@example.com", "password");
+
+        const projectName = `Shared Project ${Date.now()}`;
+        const projectId = SeedClient.stableIdFromTitle(projectName);
+
+        // Explicitly register project in Firestore so share link generation works
+        // We do this BEFORE seeding to ensure the current user is the owner
+        await page.evaluate(async ({ pid, title }) => {
+            const userManager = (window as any).__USER_MANAGER__;
+            if (!userManager || !userManager.auth.currentUser) throw new Error("User not logged in");
+
+            const token = await userManager.auth.currentUser.getIdToken();
+            const res = await fetch("/api/saveProject", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ idToken: token, projectId: pid, title: title }),
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`Failed to save project: ${res.status} ${text}`);
+            }
+            console.log("Project registered in Firestore:", pid);
+        }, { pid: projectId, title: projectName });
+
+        // Seed the project (this will populate Yjs data)
         const seedLines = ["Task 1", "Task 2"];
-        const { projectName, pageName } = await TestHelpers.createAndSeedProject(
+        const { pageName } = await TestHelpers.createAndSeedProject(
             page,
             { workerIndex: 0 },
             seedLines,
             {
-                projectName: `Shared Project ${Date.now()}`,
+                projectName: projectName,
                 user: { email: "owner@example.com", password: "password" },
             },
         );
@@ -31,24 +61,22 @@ test.describe("Project Sharing", () => {
         await TestHelpers.navigateToProjectPage(page, projectName, pageName, seedLines);
 
         // Ensure User A is logged in (navigateToProjectPage might not ensure UI login if seeded via HTTP)
-        // But TestHelpers.navigateToProjectPage uses page.goto which triggers app load.
-        // App checks userManager.
-        // If we are not logged in, we might be in trouble.
-        // TestHelpers.login usually helps.
+        // We already logged in, but reload might have cleared state if not persisted?
+        // TestHelpers.login ensures we are logged in.
         await TestHelpers.login(page, "owner@example.com", "password");
 
         // Reload to ensure state
         await page.reload();
         await TestHelpers.waitForAppReady(page);
 
-        // Get Project ID
-        const projectId = await page.evaluate(() => {
+        // Get Project ID (verification)
+        const retrievedProjectId = await page.evaluate(() => {
             const store = (window as any).generalStore;
             // project object in store.svelte.ts has ydoc property, which has guid
             return store?.project?.ydoc?.guid;
         });
-        expect(projectId).toBeTruthy();
-        console.log("Project ID:", projectId);
+        expect(retrievedProjectId).toBe(projectId);
+        console.log("Project ID:", retrievedProjectId);
 
         // 2. Go to Settings
         // In test mode, the settings page applies stableIdFromTitle to the param.

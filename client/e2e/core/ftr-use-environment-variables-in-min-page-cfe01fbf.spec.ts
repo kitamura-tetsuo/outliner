@@ -10,7 +10,11 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-0013: Use environment variables in min page", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, {
+            skipSeed: true,
+            doNotNavigate: true,
+            skipAppReady: true,
+        });
     });
 
     test("Firebase config values come from environment variables", async ({ page }) => {
