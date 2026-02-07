@@ -184,7 +184,6 @@ test.describe("CMT-0001: comment threads", () => {
         // 編集入力フィールドをクリアしてから新しいテキストを入力
         // Simply filling might be flaky if there are event handlers resetting it or if focus is lost
         // Use keyboard selection to clear the field completely
-        // Use keyboard selection to clear the field completely
         await editInput.click(); // Ensure focus
 
         // Robust clearing loop: Select All + Backspace until empty or timeout
@@ -192,15 +191,23 @@ test.describe("CMT-0001: comment threads", () => {
         const clearDeadline = Date.now() + 10000;
         await editInput.focus();
         while (Date.now() < clearDeadline) {
+            // Strategy 1: Standard fill
+            await editInput.fill("");
+            if ((await editInput.inputValue()) === "") break;
+
+            // Strategy 2: Keyboard
             await editInput.press("Control+A");
             await editInput.press("Backspace");
-            const val = await editInput.inputValue();
-            if (val === "") break;
+            if ((await editInput.inputValue()) === "") break;
 
-            // Fallback: forceful clear if keyboard events fail
-            if (Date.now() > clearDeadline - 5000) {
-                await editInput.fill("");
-            }
+            // Strategy 3: Direct DOM manipulation (Nuclear option)
+            await editInput.evaluate((el: HTMLInputElement) => {
+                el.value = "";
+                el.dispatchEvent(new Event("input", { bubbles: true }));
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+            if ((await editInput.inputValue()) === "") break;
+
             await page.waitForTimeout(200);
         }
         // Verify it is empty and allow for potential framework reactivity to settle

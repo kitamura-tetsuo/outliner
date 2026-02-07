@@ -404,6 +404,7 @@ onDestroy(async () => {
         }
     }
 });
+// HMR Trigger
 </script>
 
 <div data-testid="app-layout">
