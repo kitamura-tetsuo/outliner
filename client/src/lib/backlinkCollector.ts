@@ -63,7 +63,14 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
         if (!pages) {
             return backlinks;
         }
-        for (const page of pages) {
+
+        // Optimization: Iterate directly to avoid O(N log N) sorting caused by [Symbol.iterator]
+        // (which calls childrenKeys() and sorts them in app-schema.ts)
+        const pageIterator = (typeof (pages as any).iterateUnordered === "function")
+            ? (pages as any).iterateUnordered()
+            : pages;
+
+        for (const page of pageIterator) {
             const pageItem = page as any as Item;
 
             const pText = pageItem.text;
