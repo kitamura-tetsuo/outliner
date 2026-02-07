@@ -20,9 +20,7 @@ test.describe("Project Sharing E2E", () => {
         const baseProjectName = `Test Share Project ${timestamp}`;
 
         // Prepare environment with the base name
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, test.info(), [], undefined, {
-            projectName: baseProjectName,
-        });
+        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, test.info(), [], undefined, { projectName: baseProjectName });
 
         // Wait for app to be ready
         await TestHelpers.waitForAppReady(page);
@@ -50,8 +48,8 @@ test.describe("Project Sharing E2E", () => {
                 body: JSON.stringify({
                     idToken: token,
                     projectId: projectId,
-                    title: projectName,
-                }),
+                    title: projectName
+                })
             });
 
             if (!res.ok) {
@@ -72,12 +70,12 @@ test.describe("Project Sharing E2E", () => {
 
         // Wait for link to be generated
         const linkInput = page.locator('input[aria-label="Generated Link"]');
-        const errorMsg = page.locator(".error");
+        const errorMsg = page.locator('.error');
 
         try {
             await Promise.race([
                 linkInput.waitFor({ state: "visible", timeout: 10000 }),
-                errorMsg.waitFor({ state: "visible", timeout: 10000 }),
+                errorMsg.waitFor({ state: "visible", timeout: 10000 })
             ]);
         } catch {
             // timeout
@@ -139,10 +137,7 @@ test.describe("Project Sharing E2E", () => {
 
         // --- Verification ---
         // Should redirect to project page (checking partial URL because of encoding)
-        await expect(pageB).toHaveURL(
-            new RegExp(`/${encodeURIComponent(projectId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
-            { timeout: 15000 },
-        );
+        await expect(pageB).toHaveURL(new RegExp(`/${encodeURIComponent(projectId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), { timeout: 15000 });
 
         console.log(`[User B] Redirected to project page. Waiting for content...`);
 
