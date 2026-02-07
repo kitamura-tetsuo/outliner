@@ -67,9 +67,9 @@ function isPlaceholder(snapshot: ProjectSnapshot): boolean {
 }
 
 const DEFAULT_CHILD_TEXTS = new Set([
-    "一行目: テスト",
-    "二行目: Yjs 反映",
-    "三行目: 並び順チェック",
+    "First line: Test",
+    "Second line: Yjs reflection",
+    "Third line: Order check",
 ]);
 
 function hasMeaningfulContent(snapshot: ProjectSnapshot): boolean {
