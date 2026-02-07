@@ -719,7 +719,7 @@ export class CursorEditor {
                 const newText = text.substring(0, start) + formattedText + text.substring(end);
                 (item as any).updateText(newText);
             } else {
-                // 複数アイテムにまたがる選択範囲の詳細なフォーマットは未対応
+                // Detailed formatting for selection ranges spanning multiple items is not supported
             }
         }
 
