@@ -178,7 +178,7 @@ test.describe("Project Sharing E2E", () => {
                 const y = (window as any).__YJS_STORE__;
                 return y && y.isConnected;
             }, { timeout: 30000 });
-        } catch (e) {
+        } catch {
             console.log("[User B] Yjs connect wait timed out. Reloading page...");
             await pageB.reload();
             await TestHelpers.waitForAppReady(pageB);
