@@ -1,11 +1,12 @@
 // import type { Item } from "../../schema/yjs-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
+import type { Cursor } from "../Cursor";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
 
 export class CursorSelection {
-    private cursor: any; // Holds the instance of the Cursor class
+    private cursor: Cursor; // Holds the instance of the Cursor class
 
-    constructor(cursor: any) {
+    constructor(cursor: Cursor) {
         this.cursor = cursor;
     }
 
