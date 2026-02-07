@@ -12,9 +12,9 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Yjs client attach and DOM reflect", () => {
     const lines = [
-        "First line: Test",
-        "Second line: Yjs reflection",
-        "Third line: Order check",
+        "一行目: テスト",
+        "二行目: Yjs 反映",
+        "三行目: 並び順チェック",
     ];
 
     test.beforeEach(async ({ page }, testInfo) => {
@@ -84,9 +84,9 @@ test.describe("Yjs client attach and DOM reflect", () => {
 
         expect(texts.length).toBeGreaterThanOrEqual(3);
         expect(texts.slice(0, 3)).toEqual([
-            "First line: Test",
-            "Second line: Yjs reflection",
-            "Third line: Order check",
+            "一行目: テスト",
+            "二行目: Yjs 反映",
+            "三行目: 並び順チェック",
         ]);
     });
 });

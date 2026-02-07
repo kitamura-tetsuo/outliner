@@ -43,7 +43,7 @@ test.describe("DEL-0001: Project Deletion Page", () => {
                     await expect(errorElement).toBeVisible();
                 } else if (await successElement.count() > 0) {
                     await expect(
-                        page.getByText("Deleted selected projects"),
+                        page.getByText("選択したプロジェクトを削除しました"),
                     ).toBeVisible();
                 } else {
                     throw new Error("Neither error nor success message was displayed");

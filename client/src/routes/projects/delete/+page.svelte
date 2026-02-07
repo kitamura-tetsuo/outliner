@@ -61,18 +61,18 @@
                     selectedProjects.delete(p.id);
                     deletedCount++;
                 } else {
-                    error = `Failed to delete: ${p.name}`;
+                    error = `削除に失敗しました: ${p.name}`;
                     break;
                 }
             } catch (err) {
-                error = `Deletion error: ${p.name} - ${err instanceof Error ? err.message : String(err)}`;
+                error = `削除エラー: ${p.name} - ${err instanceof Error ? err.message : String(err)}`;
                 break;
             }
         }
 
         if (!error && deletedCount > 0) {
-            success = "Deleted selected projects";
-            // Wait a bit before reloading the page to update the project list after deletion
+            success = "選択したプロジェクトを削除しました";
+            // 削除後にプロジェクトリストを更新するため、少し待ってからページをリロード
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
@@ -123,7 +123,7 @@
                                     } else {
                                         selectedProjects.delete(project.id);
                                     }
-                                    // Reassign to trigger Svelte reactivity
+                                    // Svelteのリアクティビティのために再代入
                                     selectedProjects = new Set(
                                         selectedProjects,
                                     );

@@ -24,9 +24,9 @@ test.describe("Cursor sync between tabs", () => {
             page1,
             testInfo,
             [
-                "First line: Test",
-                "Second line: Yjs reflection",
-                "Third line: Order check",
+                "一行目: テスト",
+                "二行目: Yjs 反映",
+                "三行目: 並び順チェック",
             ],
             undefined,
             { projectName, pageName, ws: "force" },
@@ -153,8 +153,8 @@ test.describe("Cursor sync between tabs", () => {
         console.log("Page1 content:", page1InitialContent.substring(0, 100));
         console.log("Page2 content:", page2InitialContent.substring(0, 100));
 
-        expect(page1InitialContent).toContain("Test");
-        expect(page2InitialContent).toContain("Test");
+        expect(page1InitialContent).toContain("テスト");
+        expect(page2InitialContent).toContain("テスト");
 
         // Get the second item to modify (to avoid page title) using the same approach as the working test
         // Wait for items to be present - we expect at least 4 items (page title + 3 from initial content)

@@ -3,11 +3,11 @@ import pino from "pino";
 // Type definition for Console to avoid no-undef errors
 type Console = typeof console;
 
-// Get API server URL from environment variables (default is localhost auth server)
+// 環境変数からAPIサーバーURLを取得（デフォルトはlocalhostの認証サーバー）
 // const API_URL = import.meta.env.VITE_API_SERVER_URL || "http://localhost:7071"; // Not used
 
-// Whether to use the browser console API
-// Always return true in test environments
+// ブラウザのコンソールAPIを使用するかどうか
+// テスト環境では常にtrueを返すようにする
 const isTestEnvironment = (typeof import.meta !== "undefined" && import.meta.env?.NODE_ENV === "test")
     || (typeof import.meta !== "undefined" && import.meta.env?.VITEST === "true")
     || (typeof process !== "undefined" && process.env?.NODE_ENV === "test");
@@ -15,13 +15,13 @@ const isTestEnvironment = (typeof import.meta !== "undefined" && import.meta.env
 const useConsoleAPI = isTestEnvironment
     || (typeof window !== "undefined" && typeof window.console !== "undefined");
 
-// pino instance (browser configuration)
+// pino のインスタンス（ブラウザ用の設定）
 const baseLogger = pino({
-    level: (typeof import.meta !== "undefined" && import.meta.env?.DEV) ? "debug" : "info", // Output detailed logs in development environment
+    level: (typeof import.meta !== "undefined" && import.meta.env?.DEV) ? "debug" : "info", // 開発環境では詳細なログを出力
     browser: {
-        asObject: true, // Treat logs as objects
+        asObject: true, // ログをオブジェクトとして扱う
         write: {
-            // Disable Pino's default console output (use custom output only)
+            // Pino のデフォルトコンソール出力を無効化（カスタム出力のみを使用）
             info: () => {},
             debug: () => {},
             error: () => {},
@@ -32,14 +32,14 @@ const baseLogger = pino({
             silent: () => {},
         },
         // transmit: {
-        //     level: "info", // Send logs of this level or higher to the server
+        //     level: "info", // このレベル以上のログをサーバーに送信
         //     send: (level: string, logEvent: any) => {
-        //         // Debug: Check the log data being sent
+        //         // デバッグ用: 送信されるログデータを確認
         //         if (import.meta.env.DEV) {
-        //             // console.debug('Log send:', { level, logEvent });
+        //             // console.debug('ログ送信:', { level, logEvent });
         //         }
 
-        //         // Process to send logs to the server
+        //         // ログをサーバーに送信する処理
         //         fetch(`${API_URL}/api/log`, {
         //             method: "POST",
         //             headers: { "Content-Type": "application/json" },
@@ -49,19 +49,19 @@ const baseLogger = pino({
         //                 timestamp: new Date().toISOString(),
         //                 userAgent: navigator.userAgent,
         //             }),
-        //             // Do not interrupt request even if error occurs
+        //             // エラー発生時でもリクエストを中断しない
         //             credentials: "omit",
         //             mode: "cors",
         //         }).catch(err => {
-        //             // Handling transmission errors
-        //             console.error("Log send error:", err);
+        //             // 送信エラー時の処理
+        //             console.error("ログ送信エラー:", err);
         //         });
         //     },
         // },
     },
 });
 
-// Extended CallSite interface
+// 拡張された CallSite インターフェース
 interface CallSite {
     getFileName(): string | null;
     getLineNumber(): number | null;
@@ -78,21 +78,21 @@ interface CallSite {
 }
 
 /**
- * Simple function to get caller information (file name only)
+ * 呼び出し元の情報（ファイル名のみ）を取得するシンプル関数
  */
 function getCallerFile(): string {
     const originalPrepareStackTrace = Error.prepareStackTrace;
     try {
         const err = new Error();
-        // Override prepareStackTrace to get stack as an array of CallSite
+        // prepareStackTrace を上書きして、stack を CallSite の配列として取得
         Error.prepareStackTrace = (error: Error, stack: CallSite[]): CallSite[] => stack;
         const stack = err.stack as unknown as CallSite[];
 
-        // File paths and method names related to the logger
+        // ロガーに関連するファイルパスとメソッド名
         const loggerPaths = ["logger.ts", "/lib/logger"];
         const loggerMethods = ["getLogger", "log", "trace", "debug", "info", "warn", "error", "fatal"];
 
-        // Find the first caller other than the logger
+        // ロガー以外の最初の呼び出し元を探す
         for (let i = 0; i < stack.length; i++) {
             const fileName = stack[i].getFileName() || "";
             const functionName = stack[i].getFunctionName() || "";
@@ -101,11 +101,11 @@ function getCallerFile(): string {
             const isLoggerMethod = loggerMethods.some(method => functionName.includes(method));
 
             if (!isLoggerFile && !isLoggerMethod) {
-                // Extract only the file name from the file path
+                // ファイルパスからファイル名だけを抽出
                 const parts = fileName.split("/");
                 let file = parts[parts.length - 1] || "unknown";
 
-                // Remove query parameters (e.g. ?t=...)
+                // クエリパラメータ（?t=...など）を削除
                 if (file.includes("?")) {
                     file = file.split("?")[0];
                 }
@@ -118,65 +118,65 @@ function getCallerFile(): string {
     } catch {
         return "unknown";
     } finally {
-        // Restore original prepareStackTrace
+        // 元の prepareStackTrace を復元
         Error.prepareStackTrace = originalPrepareStackTrace;
     }
 }
 
 /**
- * Wrap methods for each log level to add line number information
+ * 各ログレベルのメソッドをラップして行番号情報を追加する
  */
 function createEnhancedLogger(logger: pino.Logger): pino.Logger {
-    // Log levels to extend
+    // 拡張するログレベル
     const levels = ["trace", "debug", "info", "warn", "error", "fatal"] as const;
-    // Create a logger with basic functions
+    // 基本的な機能を持つロガーを作成
     const enhancedLogger = Object.create(logger);
 
-    // Wrap each log level method
+    // 各ログレベルメソッドをラップ
     levels.forEach(level => {
         const originalMethod = logger[level].bind(logger);
         // Type assertion to match pino's LogFn signature
         (enhancedLogger as any)[level] = (...args: unknown[]) => {
-            // Get location information when log is called
+            // ログ呼び出し時に位置情報を取得
             const file = getCallerFile();
 
-            // Argument processing: Add location information if the first argument is an object
+            // 引数の処理: 最初の引数がオブジェクトなら位置情報を追加
             if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
                 args[0] = { file, ...(args[0] as Record<string, unknown>) };
             } else {
-                // Add location information to the beginning if it is not an object
+                // オブジェクトでない場合は先頭に位置情報を追加
                 args.unshift({ file });
             }
 
-            // Call original log method
+            // 元のログメソッドを呼び出し
             return (originalMethod as any)(...args);
         };
     });
 
-    // Specially override child method
+    // child メソッドを特別に上書き
     const originalChild = logger.child.bind(logger);
     enhancedLogger.child = function(bindings: pino.Bindings): pino.Logger {
-        // Call original child method
+        // 元の child メソッドを呼び出し
         const childLogger = originalChild(bindings);
-        // Enhance child logger as well
+        // 子ロガーも強化
         return createEnhancedLogger(childLogger);
     };
 
     return enhancedLogger;
 }
 
-// Create extended logger
+// 拡張ロガーの作成
 const logger = createEnhancedLogger(baseLogger);
 
 /**
- * Define styles for console output
+ * コンソール出力時のスタイルを定義
  */
 const consoleStyles = {
-    // Styles for file name and line number
+    // ファイル名と行番号用のスタイル
     fileInfo: "color: #6699cc; font-weight: bold",
-    // Styles for module name
+    // モジュール名用のスタイル
     moduleName: "color: #5cb85c; font-weight: bold",
-    // Styles by log level
+    // ログレベル別のスタイル
     levels: {
         trace: "color: #aaaaaa",
         debug: "color: #6c757d",
@@ -188,27 +188,27 @@ const consoleStyles = {
 };
 
 /**
- * Returns the child logger with caller filename and line number added to context
- * Set enableConsole to true if you want to output to console at the same time
+ * 呼び出し元のファイル名と行番号を child logger のコンテキストに付加して返す
+ * コンソールにも同時に出力したい場合は enableConsole を true に設定
  */
 export function getLogger(componentName?: string, enableConsole: boolean = true): pino.Logger {
     const file = getCallerFile();
     const module = componentName || file;
     const isCustomModule = componentName !== undefined && componentName !== file;
 
-    // Basic logger
+    // 基本のロガー
     const childLogger = logger.child({ module });
 
-    // Create an extended logger that also outputs to the console if console output is enabled (suppressed in test environment)
+    // コンソール出力が有効な場合、コンソールにも出力する拡張ロガーを作成（テスト環境では抑止）
     if (enableConsole && useConsoleAPI && !isTestEnvironment) {
         return new Proxy(childLogger, {
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
                     return function(...args: unknown[]) {
-                        // Call original logger method
+                        // オリジナルのロガーメソードを呼び出し
                         ((target as any)[prop as string] as (...args: unknown[]) => void)(...args);
 
-                        // Output to console as well (at the same level)
+                        // コンソールにも出力（同じレベルで）
                         const consoleMethod = prop === "trace" || prop === "debug"
                             ? "log"
                             : prop === "fatal"
@@ -216,21 +216,21 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                             : prop;
 
                         try {
-                            // Format file information and module name
+                            // ファイル情報とモジュール名を整形
                             const sourceInfo = `${file}`;
                             const levelUpperCase = prop.toUpperCase();
 
-                            // Separate processing depending on whether the first argument is an object or not
+                            // 最初の引数がオブジェクトの場合とそうでない場合で処理を分ける
                             if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
-                                // Object data
+                                // オブジェクトデータ
                                 const objData = { ...(args[0] as Record<string, unknown>) };
-                                delete objData.file; // Delete as it is displayed separately
-                                delete objData.module; // Delete as it is displayed separately
+                                delete objData.file; // すでに別途表示するので削除
+                                delete objData.module; // すでに別途表示するので削除
 
-                                // Message part
+                                // メッセージ部分
                                 const messages = args.slice(1);
 
-                                // Output styled logs - Display only if there is a custom module name
+                                // スタイル付きのログを出力 - カスタムモジュール名がある場合のみそれを表示
                                 if (isCustomModule) {
                                     (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                         `%c[${sourceInfo}]%c [${module}]%c [${levelUpperCase}]:`,
@@ -241,7 +241,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                         objData,
                                     );
                                 } else {
-                                    // Display only one if module name is same as file name
+                                    // モジュール名がファイル名と同じ場合は一つだけ表示
                                     (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                         `%c[${sourceInfo}]%c [${levelUpperCase}]:`,
                                         consoleStyles.fileInfo,
@@ -251,7 +251,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                     );
                                 }
                             } else {
-                                // Normal message (no object)
+                                // 通常のメッセージ（オブジェクトなし）
                                 if (isCustomModule) {
                                     (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                         `%c[${sourceInfo}]%c [${module}]%c [${levelUpperCase}]:`,
@@ -261,7 +261,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                         ...args,
                                     );
                                 } else {
-                                    // Display only one if module name is same as file name
+                                    // モジュール名がファイル名と同じ場合は一つだけ表示
                                     (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                         `%c[${sourceInfo}]%c [${levelUpperCase}]:`,
                                         consoleStyles.fileInfo,
@@ -271,7 +271,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                 }
                             }
                         } catch {
-                            // Display in normal format if style application fails
+                            // スタイル適用に失敗した場合は通常のフォーマットで表示
                             (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                 `[${file}] [${prop.toUpperCase()}]:`,
                                 ...args,
@@ -288,22 +288,22 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
 }
 
 /**
- * Convenient wrapper function that outputs to console and sends to server
- * Perform output to module name and log/console in one call
+ * コンソールにも出力し、サーバーにも送信する便利なラッパー関数
+ * module名とlog/consoleへの出力を一回の呼び出しで行う
  */
 export function log(
     componentName: string,
     level: "trace" | "debug" | "info" | "warn" | "error" | "fatal",
     ...args: unknown[]
 ): void {
-    // 1. Normal console output (source map information is attached, but direct and simple)
+    // 1. 通常のコンソール出力（ソースマップ情報が付加されるが、直接的でシンプル）
     const consoleMethod = level === "trace" || level === "debug"
         ? "log"
         : level === "fatal"
         ? "error"
         : level;
 
-    // Color coding by level
+    // レベルごとに色分け
     const levelColors = {
         trace: "#aaaaaa",
         debug: "#6c757d",
@@ -313,11 +313,11 @@ export function log(
         fatal: "#d9534f",
     };
 
-    // Get caller information (for debugging)
+    // 呼び出し元情報を取得（デバッグ用）
     const file = getCallerFile();
 
-    // Output directly to console
-    // If componentName is the same as the file name and duplicated, do not include file name information
+    // コンソールへ直接出力
+    // componentName がファイル名と同じで重複している場合は、ファイル名の情報は含めない
     if (componentName === file.replace(/\.[jt]s$/, "")) {
         (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
             `%c[${componentName}]%c [${level.toUpperCase()}]:`,
@@ -334,13 +334,13 @@ export function log(
         );
     }
 
-    // 2. Send to server using Pino logger (record in log file)
-    const theLogger = getLogger(componentName, false); // Send to server without console output
+    // 2. Pinoロガーを使ってサーバーに送信（ログファイルに記録）
+    const theLogger = getLogger(componentName, false); // コンソール出力せずサーバーに送信
     (theLogger[level] as (...args: unknown[]) => void)(...args);
 }
 
 /**
- * Extract detailed error information
+ * エラーの詳細な情報を抽出する
  */
 function extractErrorDetails(
     error: Error | unknown,
@@ -351,13 +351,13 @@ function extractErrorDetails(
             message,
             name,
             stack,
-            ...rest, // Include other custom properties
+            ...rest, // その他のカスタムプロパティも含める
         };
     } else if (typeof error === "string") {
         return { message: error };
     } else if (error && typeof error === "object") {
-        // Spreading arbitrary objects may cause frequent [unserializable] in Playwright console forwarding,
-        // so return only the minimum necessary
+        // 任意のオブジェクトをスプレッドすると Playwright のコンソール転送で
+        // [unserializable] が多発することがあるため、必要最小限のみ返す
         const errorObj = error as Record<string, unknown>;
         const name = typeof errorObj.name === "string" ? errorObj.name : undefined;
         const message = typeof errorObj.message === "string" ? errorObj.message : String(error);
@@ -370,15 +370,15 @@ function extractErrorDetails(
 }
 
 /**
- * Initialize global error handlers
- * Log uncaught exceptions
+ * グローバルなエラーハンドラーを初期化する
+ * 未捕捉の例外をログに記録する
  */
 function setupGlobalErrorHandlers(): void {
-    if (typeof window === "undefined") return; // Do not execute on server side
+    if (typeof window === "undefined") return; // サーバーサイドでは実行しない
 
     const uncaughtLogger = getLogger("UncaughtError", false);
 
-    // Log uncaught exceptions
+    // 未捕捉の例外をログに記録
     window.onerror = (message, source, lineno, colno, error) => {
         const errorInfo = {
             type: "uncaught_exception",
@@ -388,7 +388,7 @@ function setupGlobalErrorHandlers(): void {
             ...extractErrorDetails(error || message),
         };
 
-        // Output to both logger and console (output only string to console to avoid unserializable targets like Playwright fVite fHMR fErrorEvent fDOMException)
+        // ロガーとコンソールの両方に出力（PlaywrightfVitefHMRfErrorEventfDOMException    などの非直列化 対象            を避けるため、コンソールへは文字列のみ出力）
         uncaughtLogger.error(errorInfo);
         const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
         const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
@@ -397,11 +397,11 @@ function setupGlobalErrorHandlers(): void {
         console.error("[EFFECT-MARKER]", marker);
         console.error("[STACK]", stackTop);
 
-        // Continue default error handling (do not return false)
+        // デフォルトのエラーハンドリングは継続する（falseを返さない）
         return false;
     };
 
-    // Log unhandled Promise rejections
+    // 未処理のPromise拒否をログに記録
     window.onunhandledrejection = (event: PromiseRejectionEvent) => {
         const reason = event.reason;
         const errorInfo = {
@@ -409,7 +409,7 @@ function setupGlobalErrorHandlers(): void {
             ...extractErrorDetails(reason),
         };
 
-        // Output to both logger and console (output only string to console)
+        // ロガーとコンソールの両方に出力（コンソールへは文字列のみ出力）
         uncaughtLogger.error(errorInfo);
         const errMsg = `[UncaughtError] ${errorInfo.type}: ${errorInfo.name || ""} ${errorInfo.message || ""}`;
         const stackTop = (errorInfo.stack || "").split("\n").slice(0, 2).join("\n");
@@ -420,7 +420,7 @@ function setupGlobalErrorHandlers(): void {
     };
 }
 
-// Safely stringify console.error/warn arguments to suppress [unserializable] spam in Playwright
+// Playwright での [unserializable] スパム抑制のため、console.error/warn の引数を安全に文字列化
 function setupConsoleSanitizer(): void {
     if (typeof window === "undefined") return;
     const safe = (arg: unknown): string => {
@@ -438,7 +438,7 @@ function setupConsoleSanitizer(): void {
                     ? (arg as Record<string, unknown>).message as string
                     : undefined;
                 if (name || msg) return `${name || "Object"}: ${msg || ""}`;
-                // Minimal JSON stringification (avoid circular references)
+                // 最低限の JSON 文字列化（循環参照は避ける）
                 return JSON.stringify(arg, (_k, v) => (typeof v === "object" ? undefined : v)) || "[object]";
             }
             return String(arg);
@@ -452,7 +452,7 @@ function setupConsoleSanitizer(): void {
     console.warn = (...args: unknown[]) => origWarn(...args.map(safe));
 }
 
-// Initialize global error handlers if in browser environment
+// ブラウザ環境ならグローバルエラーハンドラーを初期化
 if (typeof window !== "undefined") {
     setupConsoleSanitizer();
     setupGlobalErrorHandlers();

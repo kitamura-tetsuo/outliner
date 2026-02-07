@@ -2,7 +2,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature FMT-0004
- *  Title   : Input and display of formatted strings
+ *  Title   : フォーマット文字列の入力と表示
  *  Source  : docs/client-features.yaml
  */
 
@@ -10,55 +10,55 @@ import { expect, test } from "@playwright/test";
 
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("Input and display of formatted strings", () => {
+test.describe("フォーマット文字列の入力と表示", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("Plain text input works correctly", async ({ page }) => {
-        // Select the first item
+    test("プレーンテキストの入力が正しく機能する", async ({ page }) => {
+        // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click();
 
-        // Enter text directly
-        const textToInput = "This is text input";
+        // テキストを直接入力
+        const textToInput = "これはテキスト入力です";
         await page.keyboard.type(textToInput);
 
-        // Verify input text is displayed
+        // 入力されたテキストが表示されていることを確認
         const itemText = await item.locator(".item-text").textContent();
         expect(itemText).toContain(textToInput);
     });
 
-    test("Input of text containing format syntax works correctly", async ({ page }) => {
-        // Create data with lines parameter of prepareTestEnvironment
-        const formattedText = "[[Bold]]and[/ Italic]and[-Strikethrough]and`Code`and[https://example.com]";
+    test("フォーマット構文を含むテキストの入力が正しく機能する", async ({ page }) => {
+        // prepareTestEnvironment の lines パラメータでデータを作成
+        const formattedText = "[[太字]]と[/ 斜体]と[-取り消し線]と`コード`と[https://example.com]";
         await TestHelpers.prepareTestEnvironment(page, test.info(), [
             formattedText,
         ]);
 
-        // Wait a bit for formatting to be applied
+        // 少し待機してフォーマットが適用されるのを待つ
         await TestHelpers.waitForOutlinerItems(page);
 
-        // Get the first item (not page title)
+        // 最初のアイテム（ページタイトルではない）を取得
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(firstItemId).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
 
-        // Verify input text is displayed
+        // 入力されたテキストが表示されていることを確認
         const itemText = await item.locator(".item-text").textContent();
 
-        // Check that text contains control characters (check inclusion, not exact match)
-        expect(itemText).toContain("Bold");
-        expect(itemText).toContain("Italic");
-        expect(itemText).toContain("Strikethrough");
-        expect(itemText).toContain("Code");
+        // テキストに制御文字が含まれていることを確認（完全一致ではなく、含まれているかを確認）
+        expect(itemText).toContain("太字");
+        expect(itemText).toContain("斜体");
+        expect(itemText).toContain("取り消し線");
+        expect(itemText).toContain("コード");
         expect(itemText).toContain("https://example.com");
 
-        // Check HTML of the first item (check formatting is applied)
+        // 最初のアイテムのHTMLを確認（フォーマットが適用されていることを確認）
         const firstItemHtml = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
             .innerHTML();
 
-        // Verify formatting is correctly applied
+        // フォーマットが正しく適用されていることを確認
         expect(firstItemHtml).toContain("<strong>");
         expect(firstItemHtml).toContain("<em>");
         expect(firstItemHtml).toContain("<s>");
@@ -66,272 +66,272 @@ test.describe("Input and display of formatted strings", () => {
         expect(firstItemHtml).toContain('<a href="https://example.com"');
     });
 
-    test("Multi-line text input works correctly", async ({ page }) => {
-        // Select the first item
+    test("複数行テキストの入力が正しく機能する", async ({ page }) => {
+        // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
         const content = item.locator(".item-content");
         await content.waitFor({ state: "visible" });
         await content.click();
 
-        // Enter multi-line text directly
-        // Enter first line
-        await page.keyboard.type("Line 1");
+        // 複数行テキストを直接入力
+        // 1行目を入力
+        await page.keyboard.type("1行目");
 
-        // Press Enter to start new line and enter second line
+        // Enterキーで改行して2行目を入力
         await page.keyboard.press("Enter");
-        await page.keyboard.type("Line 2");
+        await page.keyboard.type("2行目");
 
-        // Press Enter to start new line and enter third line
+        // Enterキーで改行して3行目を入力
         await page.keyboard.press("Enter");
-        await page.keyboard.type("Line 3");
+        await page.keyboard.type("3行目");
 
-        // Verify input text is displayed
+        // 入力されたテキストが表示されていることを確認
         const itemText = await item.locator(".item-text").textContent();
-        expect(itemText).toContain("Line 1");
+        expect(itemText).toContain("1行目");
 
-        // Verify multi-line text is handled correctly
-        // Note: Multi-line text handling may differ depending on implementation
-        // In current implementation, line breaks should be preserved or new items created
+        // 複数行テキストが正しく処理されていることを確認
+        // 注: 実装によっては複数行テキストの扱いが異なる場合があります
+        // 現在の実装では、改行は保持されるか、新しいアイテムが作成されるはずです
 
-        // Wait a bit for new item to be created
+        // 少し待機して新しいアイテムが作成されるのを待つ
         await page.waitForTimeout(500);
 
-        // Verify first line is pasted
-        expect(itemText).toContain("Line 1");
+        // 1行目がペーストされていることを確認
+        expect(itemText).toContain("1行目");
 
-        // Second and third lines are either preserved as line breaks in the same item
-        // or created as new items
+        // 2行目と3行目は、同じアイテム内に改行として保持されているか、
+        // 新しいアイテムとして作成されているかのどちらか
         const itemCount = await page.locator(".outliner-item").count();
         const secondItemExists = itemCount > 1;
 
         if (secondItemExists) {
-            // If new item was created
+            // 新しいアイテムが作成された場合
             const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
-            expect(secondItemText).toContain("Line 2");
+            expect(secondItemText).toContain("2行目");
         } else {
-            // If preserved as line break in the same item
-            expect(itemText).toContain("Line 2");
+            // 同じアイテム内に改行として保持された場合
+            expect(itemText).toContain("2行目");
         }
     });
 
-    test("Text is input at cursor position", async ({ page, context }) => {
-        // Grant clipboard access permissions
+    test("カーソル位置にテキストが入力される", async ({ page, context }) => {
+        // クリップボードへのアクセス権限を付与
         await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
-        // Select first item and enter existing text
+        // 最初のアイテムを選択して既存のテキストを入力
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
-        console.log("Clicked item");
+        console.log("アイテムをクリックしました");
 
-        await page.keyboard.type("Part1|Part2");
-        console.log("Entered text: Part1|Part2");
+        await page.keyboard.type("前半部分|後半部分");
+        console.log("テキストを入力しました: 前半部分|後半部分");
 
-        // Move cursor to | position (move with left arrow key)
-        for (let i = 0; i < "Part2".length; i++) {
+        // カーソルを | の位置に移動（左矢印キーで移動）
+        for (let i = 0; i < "後半部分".length; i++) {
             await page.keyboard.press("ArrowLeft");
         }
-        console.log("Moved cursor to | position");
+        console.log("カーソルを | の位置に移動しました");
 
-        // First set text to clipboard on clipboard test page
-        const textToPaste = "Pasted text";
+        // まずクリップボードテストページでクリップボードにテキストをセット
+        const textToPaste = "ペーストされたテキスト";
 
-        // Access clipboard test page in new tab
+        // 新しいタブでクリップボードテストページにアクセス
         const clipboardPage = await context.newPage();
         await clipboardPage.goto("/clipboard-test");
         await clipboardPage.waitForSelector("#clipboard-text", { timeout: 10000 });
-        console.log("Clipboard test page loaded");
+        console.log("クリップボードテストページが読み込まれました");
 
-        // Enter text and copy
+        // テキストを入力してコピー
         await clipboardPage.locator('textarea[id="clipboard-text"]').fill(textToPaste);
-        console.log("Entered text in textarea");
+        console.log("テキストエリアにテキストを入力しました");
 
-        // Click copy button
-        await clipboardPage.locator('button:has-text("Copy")').first().click();
-        console.log("Clicked copy button");
+        // コピーボタンをクリック
+        await clipboardPage.locator('button:has-text("コピー")').first().click();
+        console.log("コピーボタンをクリックしました");
 
-        // Wait a bit for copy operation to complete
+        // 少し待機してコピー操作が完了するのを待つ
         await page.waitForTimeout(500);
-        console.log("Set text to clipboard:", textToPaste);
+        console.log("クリップボードにテキストをセットしました:", textToPaste);
 
-        // Close clipboard page
+        // クリップボードページを閉じる
         await clipboardPage.close();
-        console.log("Closed clipboard page");
+        console.log("クリップボードページを閉じました");
 
-        // Execute paste operation (try multiple methods)
-        console.log("Executing paste operation...");
+        // ペースト操作を実行（複数の方法を試す）
+        console.log("ペースト操作を実行します...");
 
         try {
-            // Method 1: Use global variable
+            // 方法1: グローバル変数を使用
             await page.evaluate(text => {
-                // Save to global variable
+                // グローバル変数に保存
                 (window as any).lastCopiedText = text;
 
-                // Create ClipboardEvent
+                // ClipboardEventを作成
                 const clipboardEvent = new ClipboardEvent("paste", {
                     clipboardData: new DataTransfer(),
                     bubbles: true,
                     cancelable: true,
                 });
 
-                // Set data
+                // データを設定
                 clipboardEvent.clipboardData?.setData("text/plain", text);
 
-                // Dispatch event to active element
+                // アクティブな要素にイベントをディスパッチ
                 document.activeElement?.dispatchEvent(clipboardEvent);
 
-                console.log(`Paste from global variable: ${text}`);
+                console.log(`グローバル変数からペースト: ${text}`);
                 return true;
             }, textToPaste);
 
-            // Wait a bit
+            // 少し待機
             await page.waitForTimeout(500);
 
-            // Method 2: Keyboard shortcut
+            // 方法2: キーボードショートカット
             await page.keyboard.press("Control+v");
-            console.log("Pressed Control+v");
+            console.log("Control+v キーを押しました");
         } catch (err) {
-            console.log(`Error occurred during paste operation: ${err instanceof Error ? err.message : String(err)}`);
+            console.log(`ペースト操作中にエラーが発生しました: ${err instanceof Error ? err.message : String(err)}`);
 
-            // Method 3: Direct text input (fallback)
+            // 方法3: 直接テキスト入力（フォールバック）
             await page.keyboard.type(textToPaste);
-            console.log(`Fallback: Entered text directly: ${textToPaste}`);
+            console.log(`フォールバック: テキストを直接入力しました: ${textToPaste}`);
         }
 
-        // Wait a bit for paste to complete
+        // 少し待機してペーストが完了するのを待つ
         await page.waitForTimeout(500);
 
-        // Get text
+        // テキストを取得
         const actualText = await item.locator(".item-text").textContent() || "";
 
-        // Log test result
-        console.log(`Actual value: "${actualText}"`);
+        // テスト結果をログに出力
+        console.log(`実際値: "${actualText}"`);
 
-        // Take screenshot (for debug)
+        // スクリーンショットを撮影（デバッグ用）
         await page.screenshot({ path: "test-results/clipboard-paste-test.png" });
-        console.log("Took screenshot");
+        console.log("スクリーンショットを撮影しました");
 
-        console.log("Paste successful!");
-        expect(actualText).toContain("Pasted text");
+        console.log("ペーストが成功しました！");
+        expect(actualText).toContain("ペーストされたテキスト");
     });
 
     /**
-     * @testcase Clipboard API basic functionality test
-     * @description Test to ensure Clipboard API basic functionality works correctly
-     * @check Verify text can be written to and read from clipboard via Playwright
+     * @testcase クリップボードAPIの基本機能テスト
+     * @description クリップボードAPIの基本機能が正しく動作することを確認するテスト
+     * @check Playwrightからクリップボードにテキストを書き込み、読み込みができることを確認
      */
-    test("Clipboard API basic functionality works", async ({ page, context }) => {
-        // Grant clipboard access permissions
+    test("クリップボードAPIの基本機能が動作する", async ({ page, context }) => {
+        // クリップボードへのアクセス権限を付与
         await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
-        // Select the first item
+        // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
         const content = item.locator(".item-content");
         await content.waitFor({ state: "visible" });
         await content.click();
         await TestHelpers.waitForCursorVisible(page);
-        console.log("Clicked item");
+        console.log("アイテムをクリックしました");
 
-        // Text for testing
-        const testText = "Clipboard test " + Date.now();
-        console.log(`Test text: ${testText}`);
+        // テスト用のテキスト
+        const testText = "クリップボードテスト" + Date.now();
+        console.log(`テスト用テキスト: ${testText}`);
 
-        // Access clipboard test page in new tab
+        // 新しいタブでクリップボードテストページにアクセス
         const clipboardPage = await context.newPage();
         await clipboardPage.goto("/clipboard-test");
         await clipboardPage.waitForSelector("#clipboard-text", { timeout: 10000 });
-        console.log("Clipboard test page loaded");
+        console.log("クリップボードテストページが読み込まれました");
 
-        // Check clipboard permissions
-        await clipboardPage.locator(".test-section").nth(2).locator('button:has-text("Check Clipboard Permissions")')
+        // クリップボード権限を確認
+        await clipboardPage.locator(".test-section").nth(2).locator('button:has-text("クリップボード権限を確認")')
             .click();
         await clipboardPage.waitForTimeout(1000);
         const permissionResult = await clipboardPage.locator(".test-section").nth(2).locator(".result").textContent();
-        console.log(`Clipboard permissions: ${permissionResult}`);
+        console.log(`クリップボード権限: ${permissionResult}`);
 
-        // Enter text in Playwright test section
+        // Playwrightテスト用セクションにテキストを入力
         await clipboardPage.locator('textarea[id="playwright-text"]').fill(testText);
-        console.log("Entered text in textarea");
+        console.log("テキストエリアにテキストを入力しました");
 
-        // Click copy button
-        await clipboardPage.locator(".test-section").nth(3).locator('button:has-text("Copy")').click();
-        console.log("Clicked copy button");
+        // コピーボタンをクリック
+        await clipboardPage.locator(".test-section").nth(3).locator('button:has-text("コピー")').click();
+        console.log("コピーボタンをクリックしました");
 
-        // Wait a bit for copy operation to complete
+        // 少し待機してコピー操作が完了するのを待つ
         await clipboardPage.waitForTimeout(2000);
 
-        // Check result
+        // 結果を確認
         const resultText = await clipboardPage.locator(".test-section").nth(3).locator(".result").textContent();
-        console.log(`Copy result: ${resultText}`);
+        console.log(`コピー結果: ${resultText}`);
 
-        // Directly check clipboard content
+        // クリップボードの内容を直接確認
         const clipboardContent = await clipboardPage.evaluate(async () => {
             try {
                 const text = await navigator.clipboard.readText();
-                return `Clipboard content: ${text}`;
+                return `クリップボードの内容: ${text}`;
             } catch (err) {
-                return `Failed to read clipboard: ${err.message}`;
+                return `クリップボードの読み取りに失敗: ${err.message}`;
             }
         });
         console.log(clipboardContent);
 
-        // Close clipboard page
+        // クリップボードページを閉じる
         await clipboardPage.close();
-        console.log("Closed clipboard page");
+        console.log("クリップボードページを閉じました");
 
-        // Execute paste operation (try multiple methods)
-        console.log("Executing paste operation...");
+        // ペースト操作を実行（複数の方法を試す）
+        console.log("ペースト操作を実行します...");
 
         try {
-            // Method 1: Use global variable
+            // 方法1: グローバル変数を使用
             await page.evaluate(text => {
-                // Save to global variable
+                // グローバル変数に保存
                 (window as any).lastCopiedText = text;
 
-                // Create ClipboardEvent
+                // ClipboardEventを作成
                 const clipboardEvent = new ClipboardEvent("paste", {
                     clipboardData: new DataTransfer(),
                     bubbles: true,
                     cancelable: true,
                 });
 
-                // Set data
+                // データを設定
                 clipboardEvent.clipboardData?.setData("text/plain", text);
 
-                // Dispatch event to active element
+                // アクティブな要素にイベントをディスパッチ
                 document.activeElement?.dispatchEvent(clipboardEvent);
 
-                console.log(`Paste from global variable: ${text}`);
+                console.log(`グローバル変数からペースト: ${text}`);
                 return true;
             }, testText);
 
-            // Wait a bit
+            // 少し待機
             await page.waitForTimeout(500);
 
-            // Method 2: Keyboard shortcut
+            // 方法2: キーボードショートカット
             await page.keyboard.press("Control+v");
-            console.log("Pressed Control+v");
+            console.log("Control+v キーを押しました");
         } catch (err) {
-            console.log(`Error occurred during paste operation: ${err instanceof Error ? err.message : String(err)}`);
+            console.log(`ペースト操作中にエラーが発生しました: ${err instanceof Error ? err.message : String(err)}`);
 
-            // Method 3: Direct text input (fallback)
+            // 方法3: 直接テキスト入力（フォールバック）
             await page.keyboard.type(testText);
-            console.log(`Fallback: Entered text directly: ${testText}`);
+            console.log(`フォールバック: テキストを直接入力しました: ${testText}`);
         }
 
-        // Wait a bit for paste to complete
+        // 少し待機してペーストが完了するのを待つ
         await page.waitForTimeout(500);
 
-        // Check pasted text
+        // ペーストされたテキストを確認
         const itemText = await item.locator(".item-text").textContent() || "";
-        console.log(`Item text: ${itemText}`);
+        console.log(`アイテムのテキスト: ${itemText}`);
 
-        // Take screenshot (for debug)
+        // スクリーンショットを撮影（デバッグ用）
         await page.screenshot({ path: "test-results/clipboard-api-test.png" });
-        console.log("Took screenshot");
+        console.log("スクリーンショットを撮影しました");
 
-        // Check if pasted text is contained
-        console.log("Paste successful!");
+        // ペーストされたテキストが含まれているか確認
+        console.log("ペーストが成功しました！");
         expect(itemText).toContain(testText);
     });
 });

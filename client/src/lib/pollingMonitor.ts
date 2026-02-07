@@ -1,9 +1,10 @@
 /**
- * Polling Monitor
+ * ポーリングモニター
  *
- * Intercepts setInterval/setTimeout in the browser and tracks the execution status of each polling.
+ * ブラウザ内でsetInterval/setTimeoutをインターセプトし、
+ * 各ポーリングの実行状況を追跡します。
  *
- * Can be used in test environments to identify unnecessary polling.
+ * テスト環境で使用して、不要なポーリングを特定できます。
  */
 
 // Type definition for FrameRequestCallback to avoid no-undef errors
@@ -34,7 +35,7 @@ class PollingMonitor {
     private nextId = 1;
     private enabled = false;
 
-    // Save original functions
+    // オリジナルの関数を保存
     private originalSetInterval: typeof setInterval;
     private originalSetTimeout: typeof setTimeout;
     private originalClearInterval: typeof clearInterval;
@@ -42,7 +43,7 @@ class PollingMonitor {
     private originalRequestAnimationFrame: typeof requestAnimationFrame;
     private originalCancelAnimationFrame: typeof cancelAnimationFrame;
 
-    // Patterns for polling to be disabled
+    // 無効化するポーリングのパターン
     private disablePatterns: RegExp[] = [];
 
     constructor() {
@@ -55,13 +56,13 @@ class PollingMonitor {
     }
 
     /**
-     * Start monitoring
+     * モニタリングを開始
      */
     start() {
         if (this.enabled) return;
         this.enabled = true;
 
-        // Intercept setInterval
+        // setIntervalをインターセプト
         window.setInterval =
             ((callback: ((...args: unknown[]) => void) | string, delay?: number, ...args: unknown[]): number => {
                 const stack = new Error().stack || "";
@@ -81,7 +82,7 @@ class PollingMonitor {
 
                 if (call.disabled) {
                     console.log(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);
-                    // Return a dummy ID
+                    // ダミーのIDを返す
                     return id;
                 }
 
@@ -89,7 +90,7 @@ class PollingMonitor {
                     ? (...cbArgs: unknown[]) => (callback as (...args: unknown[]) => unknown)(...cbArgs)
                     : () => {};
 
-                // Wrapped callback
+                // ラップされたコールバック
                 const wrappedCallback = (...callbackArgs: unknown[]) => {
                     call.executionCount++;
                     call.lastExecutedAt = Date.now();
@@ -98,13 +99,13 @@ class PollingMonitor {
 
                 const timerId = this.originalSetInterval(wrappedCallback, delay, ...args);
 
-                // Map timer ID
+                // タイマーIDをマッピング
                 call.timerId = timerId;
 
                 return timerId;
             }) as typeof window.setInterval;
 
-        // Intercept setTimeout
+        // setTimeoutをインターセプト
         const wrappedSetTimeout =
             ((callback: ((...args: unknown[]) => void) | string, delay?: number, ...args: unknown[]) => {
                 const stack = new Error().stack || "";
@@ -133,7 +134,7 @@ class PollingMonitor {
                 const wrappedCallback = (...callbackArgs: unknown[]) => {
                     call.executionCount++;
                     call.lastExecutedAt = Date.now();
-                    this.calls.delete(id); // setTimeout is executed only once
+                    this.calls.delete(id); // setTimeoutは一度だけ実行
                     return callbackFn(...callbackArgs);
                 };
 
@@ -149,7 +150,7 @@ class PollingMonitor {
 
         window.setTimeout = wrappedSetTimeout;
 
-        // Intercept requestAnimationFrame
+        // requestAnimationFrameをインターセプト
         window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
             const stack = new Error().stack || "";
             const id = this.nextId++;
@@ -187,7 +188,7 @@ class PollingMonitor {
     }
 
     /**
-     * Stop monitoring
+     * モニタリングを停止
      */
     stop() {
         if (!this.enabled) return;
@@ -204,28 +205,28 @@ class PollingMonitor {
     }
 
     /**
-     * Determine if it should be disabled based on the stack trace
+     * スタックトレースから無効化すべきかを判定
      */
     private shouldDisable(stack: string): boolean {
         return this.disablePatterns.some(pattern => pattern.test(stack));
     }
 
     /**
-     * Add disable pattern
+     * 無効化パターンを追加
      */
     addDisablePattern(pattern: RegExp) {
         this.disablePatterns.push(pattern);
     }
 
     /**
-     * Clear disable patterns
+     * 無効化パターンをクリア
      */
     clearDisablePatterns() {
         this.disablePatterns = [];
     }
 
     /**
-     * Get statistics
+     * 統計情報を取得
      */
     getStats(): PollingStats {
         return {
@@ -237,7 +238,7 @@ class PollingMonitor {
     }
 
     /**
-     * Generate report
+     * レポートを生成
      */
     generateReport(): string {
         const stats = this.getStats();
@@ -248,7 +249,7 @@ class PollingMonitor {
         report += `Active calls: ${stats.activeCalls}\n`;
         report += `Disabled calls: ${stats.disabledCalls}\n\n`;
 
-        // Sort by execution count
+        // 実行回数でソート
         calls.sort((a, b) => b.executionCount - a.executionCount);
 
         report += "=== Top Polling Calls (by execution count) ===\n\n";
@@ -267,15 +268,15 @@ class PollingMonitor {
     }
 
     /**
-     * Format stack trace
+     * スタックトレースをフォーマット
      */
     private formatStack(stack: string): string {
-        const lines = stack.split("\n").slice(1, 6); // Only the first 5 lines
+        const lines = stack.split("\n").slice(1, 6); // 最初の5行のみ
         return lines.map(line => `  ${line.trim()}`).join("\n");
     }
 
     /**
-     * Reset statistics
+     * 統計をリセット
      */
     reset() {
         this.calls.clear();
@@ -283,10 +284,10 @@ class PollingMonitor {
     }
 }
 
-// Singleton instance
+// シングルトンインスタンス
 export const pollingMonitor = new PollingMonitor();
 
-// Expose globally (for debugging)
+// グローバルに公開（デバッグ用）
 if (typeof window !== "undefined") {
     (window as unknown as { __pollingMonitor: PollingMonitor; }).__pollingMonitor = pollingMonitor;
 }

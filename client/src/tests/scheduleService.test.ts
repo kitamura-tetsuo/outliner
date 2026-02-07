@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { cancelSchedule, createSchedule, listSchedules, updateSchedule } from "../services/scheduleService";
 
-// Mock UserManager to use the configured API endpoint
+// UserManagerをモックして、実際のAPIエンドポイントを使用
 vi.mock("../auth/UserManager", () => ({
     userManager: {
         functionsUrl: "http://localhost:57000",
@@ -9,7 +9,7 @@ vi.mock("../auth/UserManager", () => ({
     },
 }));
 
-// Mock fetch to simulate API responses
+// fetchをモックして、実際のAPIレスポンスをシミュレート
 global.fetch = vi.fn();
 
 beforeEach(() => {
@@ -17,7 +17,7 @@ beforeEach(() => {
 });
 
 it("calls createSchedule API", async () => {
-    // Set up mock response for fetch
+    // fetchのモックレスポンスを設定
     const mockResponse = { scheduleId: "test-schedule-id" };
     (global.fetch as any).mockResolvedValueOnce({
         ok: true,
@@ -30,7 +30,7 @@ it("calls createSchedule API", async () => {
     expect(result).toBeDefined();
     expect(result.scheduleId).toBe("test-schedule-id");
 
-    // Verify fetch was called with correct parameters
+    // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
         "http://localhost:57000/api/create-schedule",
         {
@@ -46,7 +46,7 @@ it("calls createSchedule API", async () => {
 });
 
 it("calls listSchedules API", async () => {
-    // Set up mock response for fetch
+    // fetchのモックレスポンスを設定
     const mockSchedules = [
         { id: "schedule1", strategy: "one_shot", params: {}, nextRunAt: Date.now() + 60000 },
         { id: "schedule2", strategy: "recurring", params: {}, nextRunAt: Date.now() + 120000 },
@@ -64,7 +64,7 @@ it("calls listSchedules API", async () => {
     expect(result[0].id).toBe("schedule1");
     expect(result[1].id).toBe("schedule2");
 
-    // Verify fetch was called with correct parameters
+    // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
         "http://localhost:57000/api/list-schedules",
         {
@@ -79,7 +79,7 @@ it("calls listSchedules API", async () => {
 });
 
 it("calls cancelSchedule API", async () => {
-    // Set up mock response for fetch
+    // fetchのモックレスポンスを設定
     const mockResponse = { success: true };
     (global.fetch as any).mockResolvedValueOnce({
         ok: true,
@@ -91,7 +91,7 @@ it("calls cancelSchedule API", async () => {
     expect(result).toBeDefined();
     expect(result.success).toBe(true);
 
-    // Verify fetch was called with correct parameters
+    // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
         "http://localhost:57000/api/cancel-schedule",
         {
