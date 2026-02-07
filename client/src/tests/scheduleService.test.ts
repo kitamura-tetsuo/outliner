@@ -32,7 +32,7 @@ it("calls createSchedule API", async () => {
 
     // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:57000/api/create-schedule",
+        "http://127.0.0.1:57070/outliner-d57b0/us-central1/createSchedule",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -66,7 +66,7 @@ it("calls listSchedules API", async () => {
 
     // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:57000/api/list-schedules",
+        "http://127.0.0.1:57070/outliner-d57b0/us-central1/listSchedules",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -93,7 +93,7 @@ it("calls cancelSchedule API", async () => {
 
     // fetchが正しいパラメータで呼ばれたことを確認
     expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:57000/api/cancel-schedule",
+        "http://127.0.0.1:57070/outliner-d57b0/us-central1/cancelSchedule",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -123,7 +123,7 @@ it("calls updateSchedule API", async () => {
     expect(result.success).toBe(true);
 
     expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:57000/api/update-schedule",
+        "http://127.0.0.1:57070/outliner-d57b0/us-central1/updateSchedule",
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
