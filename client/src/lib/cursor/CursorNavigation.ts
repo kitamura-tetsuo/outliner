@@ -28,17 +28,17 @@ interface Cursor {
 }
 
 export class CursorNavigation {
-    private cursor: Cursor; // Cursorクラスのインスタンスを保持
+    private cursor: Cursor; // Holds the instance of the Cursor class
 
     constructor(cursor: Cursor) {
         this.cursor = cursor;
     }
 
     /**
-     * カーソルを左に移動する
+     * Move the cursor to the left
      */
     moveLeft() {
-        // 上下キー以外の操作なので初期列位置をリセット
+        // Reset the initial column position as this is not an up/down key operation
         this.cursor.resetInitialColumn();
 
         const target = this.cursor.findTarget();
@@ -48,59 +48,59 @@ export class CursorNavigation {
             this.cursor.offset = Math.max(0, this.cursor.offset - 1);
             this.cursor.applyToStore();
 
-            // カーソルが正しく更新されたことを確認
+            // Ensure the cursor has been updated correctly
             store.startCursorBlink();
         } else {
-            // 行頭で前アイテムへ移動
+            // Move to the previous item at the beginning of the line
             this.navigateToItem("left");
         }
     }
 
     /**
-     * カーソルを右に移動する
+     * Move the cursor to the right
      */
     moveRight() {
-        // 上下キー以外の操作なので初期列位置をリセット
+        // Reset the initial column position as this is not an up/down key operation
         this.cursor.resetInitialColumn();
 
         const target = this.cursor.findTarget();
         const text = target?.text ?? "";
 
-        // テキストが空でない場合のみオフセットを増加
+        // Increase offset only if text is not empty
         if (text.length > 0 && this.cursor.offset < text.length) {
             this.cursor.offset = this.cursor.offset + 1;
             this.cursor.applyToStore();
 
-            // カーソルが正しく更新されたことを確認
+            // Ensure the cursor has been updated correctly
             store.startCursorBlink();
         } else {
-            // 行末または空のテキストの場合は次アイテムへ移動
+            // Move to the next item if at the end of the line or if text is empty
             this.navigateToItem("right");
         }
     }
 
     /**
-     * カーソルを上に移動する
+     * Move the cursor up
      */
     moveUp() {
         const target = this.cursor.findTarget();
         if (!target) return;
 
-        // デバッグ情報
+        // Debug info
         if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`moveUp called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
         }
 
-        // 視覚的な行の情報を取得
+        // Get visual line information
         const visualLineInfo = this.cursor.getVisualLineInfo(this.cursor.itemId, this.cursor.offset);
 
-        // デバッグ情報
+        // Debug info
         if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
 
         if (!visualLineInfo) {
-            // フォールバック: 論理的な行での処理（改行文字ベース）
+            // Fallback: Logical line processing (based on newline characters)
             const text = (target.text && typeof target.text.toString === "function") ? target.text.toString() : "";
             const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
             if (currentLineIndex > 0) {
@@ -116,18 +116,18 @@ export class CursorNavigation {
 
         const { lineIndex, lineStartOffset, totalLines } = visualLineInfo;
 
-        // 現在の列位置を計算（視覚的な行内での位置）
+        // Calculate current column position (position within the visual line)
         const currentColumn = this.cursor.offset - lineStartOffset;
 
-        // 初期列位置を設定または更新
+        // Set or update initial column position
         if (this.cursor.initialColumn === null) {
             this.cursor.initialColumn = currentColumn;
         }
 
-        // 使用する列位置（初期列位置）
+        // Use the initial column position
         const targetColumn = this.cursor.initialColumn;
 
-        // デバッグ情報
+        // Debug info
         if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
@@ -135,45 +135,45 @@ export class CursorNavigation {
         }
 
         if (lineIndex > 0) {
-            // 同じアイテム内の上の視覚的な行に移動
+            // Move to the upper visual line within the same item
             const prevLineRange = this.cursor.getVisualLineOffsetRange(this.cursor.itemId, lineIndex - 1);
             if (prevLineRange) {
                 const prevLineLength = prevLineRange.endOffset - prevLineRange.startOffset;
-                // 初期列位置か行の長さの短い方に移動
+                // Move to the initial column position or the end of the line, whichever is shorter
                 this.cursor.offset = prevLineRange.startOffset + Math.min(targetColumn, prevLineLength);
                 this.cursor.applyToStore();
 
-                // デバッグ情報
+                // Debug info
                 if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `Moved to previous visual line in same item: offset=${this.cursor.offset}, targetColumn=${targetColumn}`,
                     );
                 }
 
-                // カーソル点滅を開始
+                // Start cursor blink
                 store.startCursorBlink();
             }
         } else {
-            // 前のアイテムを探す
+            // Find the previous item
             const prevItem = this.cursor.findPreviousItem();
             if (prevItem) {
-                // 前のアイテムの最後の視覚的な行に移動
+                // Move to the last visual line of the previous item
                 this.navigateToItem("up");
 
-                // デバッグ情報
+                // Debug info
                 if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Moved to previous item: itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
                 }
             } else {
-                // 前のアイテムがない場合は、同じアイテムの先頭に移動
+                // If there is no previous item, move to the beginning of the same item
                 if (this.cursor.offset > 0) {
                     this.cursor.offset = 0;
                     this.cursor.applyToStore();
 
-                    // カーソルが正しく更新されたことを確認
+                    // Ensure the cursor has been updated correctly
                     store.startCursorBlink();
 
-                    // デバッグ情報
+                    // Debug info
                     if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`Moved to start of current item: offset=${this.cursor.offset}`);
                     }
@@ -183,27 +183,27 @@ export class CursorNavigation {
     }
 
     /**
-     * カーソルを下に移動する
+     * Move the cursor down
      */
     moveDown() {
         const target = this.cursor.findTarget();
         if (!target) return;
 
-        // デバッグ情報
+        // Debug info
         if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`moveDown called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
         }
 
-        // 視覚的な行の情報を取得
+        // Get visual line information
         const visualLineInfo = this.cursor.getVisualLineInfo(this.cursor.itemId, this.cursor.offset);
 
-        // デバッグ情報
+        // Debug info
         if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
 
         if (!visualLineInfo) {
-            // フォールバック: 論理的な行での処理（改行文字ベース）
+            // Fallback: Logical line processing (based on newline characters)
             const text = (target.text && typeof target.text.toString === "function") ? target.text.toString() : "";
             const lines = text.split("\n");
             const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
@@ -220,18 +220,18 @@ export class CursorNavigation {
 
         const { lineIndex, lineStartOffset, totalLines } = visualLineInfo;
 
-        // 現在の列位置を計算（視覚的な行内での位置）
+        // Calculate current column position (position within the visual line)
         const currentColumn = this.cursor.offset - lineStartOffset;
 
-        // 初期列位置を設定または更新
+        // Set or update initial column position
         if (this.cursor.initialColumn === null) {
             this.cursor.initialColumn = currentColumn;
         }
 
-        // 使用する列位置（初期列位置）
+        // Use the initial column position
         const targetColumn = this.cursor.initialColumn;
 
-        // デバッグ情報
+        // Debug info
         if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
@@ -239,46 +239,46 @@ export class CursorNavigation {
         }
 
         if (lineIndex < totalLines - 1) {
-            // 同じアイテム内の下の視覚的な行に移動
+            // Move to the lower visual line within the same item
             const nextLineRange = this.cursor.getVisualLineOffsetRange(this.cursor.itemId, lineIndex + 1);
             if (nextLineRange) {
                 const nextLineLength = nextLineRange.endOffset - nextLineRange.startOffset;
-                // 初期列位置か行の長さの短い方に移動
+                // Move to the initial column position or the end of the line, whichever is shorter
                 this.cursor.offset = nextLineRange.startOffset + Math.min(targetColumn, nextLineLength);
                 this.cursor.applyToStore();
 
-                // デバッグ情報
+                // Debug info
                 if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(
                         `Moved to next visual line in same item: offset=${this.cursor.offset}, targetColumn=${targetColumn}`,
                     );
                 }
 
-                // カーソル点滅を開始
+                // Start cursor blink
                 store.startCursorBlink();
             }
         } else {
-            // 次のアイテムを探す
+            // Find the next item
             const nextItem = this.cursor.findNextItem();
             if (nextItem) {
-                // 次のアイテムの最初の視覚的な行に移動
+                // Move to the first visual line of the next item
                 this.navigateToItem("down");
 
-                // デバッグ情報
+                // Debug info
                 if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Moved to next item: itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
                 }
             } else {
-                // 次のアイテムがない場合は、同じアイテムの末尾に移動
+                // If there is no next item, move to the end of the same item
                 const text = (target.text && typeof target.text.toString === "function") ? target.text.toString() : "";
                 if (this.cursor.offset < text.length) {
                     this.cursor.offset = text.length;
                     this.cursor.applyToStore();
 
-                    // カーソルが正しく更新されたことを確認
+                    // Ensure the cursor has been updated correctly
                     store.startCursorBlink();
 
-                    // デバッグ情報
+                    // Debug info
                     if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`Moved to end of current item: offset=${this.cursor.offset}`);
                     }
@@ -288,36 +288,36 @@ export class CursorNavigation {
     }
 
     /**
-     * アイテム間を移動する
-     * @param direction 移動方向
+     * Move between items
+     * @param direction Direction of movement
      */
     navigateToItem(direction: "left" | "right" | "up" | "down") {
-        // デバッグ情報
+        // Debug info
         if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(
                 `navigateToItem called with direction=${direction}, itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`,
             );
         }
 
-        // 前後アイテムへの移動はストア更新のみ行い、イベント発行はコンポーネントで処理
+        // Only update the store for item movement, let the component handle the event
         const oldItemId = this.cursor.itemId;
-        let newItemId = this.cursor.itemId; // デフォルトは現在のアイテム
-        let newOffset = this.cursor.offset; // デフォルトは現在のオフセット
+        let newItemId = this.cursor.itemId; // Default is current item
+        let newOffset = this.cursor.offset; // Default is current offset
         let itemChanged = false;
 
-        // 現在のアイテムのテキストを取得
+        // Get the text of the current item
         const currentTarget = this.cursor.findTarget();
         const currentText = (currentTarget?.text && typeof currentTarget.text.toString === "function")
             ? currentTarget.text.toString()
             : "";
         const currentColumn = this.cursor.getCurrentColumn(currentText, this.cursor.offset);
 
-        // デバッグ情報
+        // Debug info
         if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
             console.log(`Current column: ${currentColumn}, current text: "${currentText}"`);
         }
 
-        // アイテム間移動の処理
+        // Process item movement
         if (direction === "left") {
             const prevItem = this.cursor.findPreviousItem();
             if (prevItem) {
@@ -325,17 +325,17 @@ export class CursorNavigation {
                 newOffset = prevItem.text?.length || 0;
                 itemChanged = true;
 
-                // デバッグ情報
+                // Debug info
                 if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
                 }
             } else {
-                // 前のアイテムがない場合は、同じアイテムの先頭に移動
+                // If there is no previous item, move to the beginning of the same item
                 const target = this.cursor.findTarget();
                 if (target) {
                     newOffset = 0;
 
-                    // デバッグ情報
+                    // Debug info
                     if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                     }
@@ -348,17 +348,17 @@ export class CursorNavigation {
                 newOffset = 0;
                 itemChanged = true;
 
-                // デバッグ情報
+                // Debug info
                 if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
                 }
             } else {
-                // 次のアイテムがない場合は、同じアイテムの末尾に移動
+                // If there is no next item, move to the end of the same item
                 const target = this.cursor.findTarget();
                 if (target) {
                     newOffset = target.text?.length || 0;
 
-                    // デバッグ情報
+                    // Debug info
                     if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
@@ -377,24 +377,24 @@ export class CursorNavigation {
                 const lastLineEnd = this.cursor.getLineEndOffset(prevText, lastLineIndex);
                 const lastLineLength = lastLineEnd - lastLineStart;
 
-                // x座標の変化が最も小さい位置を計算
-                // 初期列位置または現在の列位置に最も近い位置を選択
-                // 前のアイテムの最後の行の長さを超えないようにする
+                // Calculate the position with the smallest change in x-coordinate
+                // Select the position closest to the initial column position or the current column position
+                // Do not exceed the length of the last line of the previous item
                 const targetColumn = Math.min(
                     this.cursor.initialColumn !== null ? this.cursor.initialColumn : currentColumn,
                     lastLineLength,
                 );
                 newOffset = lastLineStart + targetColumn;
 
-                // 特殊ケース: 現在のカーソルが行の先頭（オフセット0）にある場合は、
-                // 前のアイテムの最後の行の先頭に移動
+                // Special case: If the current cursor is at the beginning of the line (offset 0),
+                // move to the beginning of the last line of the previous item
                 if (this.cursor.offset === 0) {
                     newOffset = lastLineStart;
                 }
 
                 itemChanged = true;
 
-                // デバッグ情報
+                // Debug info
                 console.log(
                     `navigateToItem up - Moving to previous item's last line: itemId=${prevItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}`,
                 );
@@ -404,10 +404,10 @@ export class CursorNavigation {
                     );
                 }
             } else {
-                // 前のアイテムがない場合は、同じアイテムの先頭に移動
+                // If there is no previous item, move to the beginning of the same item
                 newOffset = 0;
 
-                // デバッグ情報
+                // Debug info
                 if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                     console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                 }
@@ -425,17 +425,17 @@ export class CursorNavigation {
                 const firstLineEnd = this.cursor.getLineEndOffset(nextText, firstLineIndex);
                 const firstLineLength = firstLineEnd - firstLineStart;
 
-                // x座標の変化が最も小さい位置を計算
-                // 初期列位置または現在の列位置に最も近い位置を選択
-                // 次のアイテムの最初の行の長さを超えないようにする
+                // Calculate the position with the smallest change in x-coordinate
+                // Select the position closest to the initial column position or the current column position
+                // Do not exceed the length of the first line of the next item
                 const targetColumn = Math.min(
                     this.cursor.initialColumn !== null ? this.cursor.initialColumn : currentColumn,
                     firstLineLength,
                 );
                 newOffset = firstLineStart + targetColumn;
 
-                // 特殊ケース: 現在のカーソルが行の末尾（オフセットがテキスト長）にある場合は、
-                // 次のアイテムの最初の行の末尾に移動
+                // Special case: If the current cursor is at the end of the line (offset is text length),
+                // move to the end of the first line of the next item
                 const currentTargetDown = this.cursor.findTarget();
                 const currentTextDown =
                     (currentTargetDown?.text && typeof currentTargetDown.text.toString === "function")
@@ -447,7 +447,7 @@ export class CursorNavigation {
 
                 itemChanged = true;
 
-                // デバッグ情報
+                // Debug info
                 console.log(
                     `navigateToItem down - Moving to next item's first line: itemId=${nextItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}`,
                 );
@@ -457,12 +457,12 @@ export class CursorNavigation {
                     );
                 }
             } else {
-                // 次のアイテムがない場合は、同じアイテムの末尾に移動
+                // If there is no next item, move to the end of the same item
                 const target = this.cursor.findTarget();
                 if (target) {
                     newOffset = target.text?.length || 0;
 
-                    // デバッグ情報
+                    // Debug info
                     if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
@@ -470,49 +470,49 @@ export class CursorNavigation {
             }
         }
 
-        // アイテムが変更された場合のみ処理を実行
+        // Execute only if the item has changed
         if (itemChanged) {
-            // デバッグ情報
+            // Debug info
             if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
             }
 
-            // 移動前に古いアイテムのカーソルを確実に削除
+            // Ensure the cursor on the old item is removed before moving
             store.clearCursorForItem(oldItemId);
 
-            // 同じユーザーの他のカーソルも削除（単一カーソルモードを維持）
-            // 注意: 全てのカーソルをクリアするのではなく、同じユーザーのカーソルのみをクリア
+            // Remove other cursors of the same user (maintain single cursor mode)
+            // Note: Clear only the cursors of the same user, not all cursors
             const cursorsToRemove = Object.values(store.cursors)
                 .filter(c => c.userId === this.cursor.userId && c.cursorId !== this.cursor.cursorId)
                 .map(c => c.cursorId);
 
-            // デバッグ情報
+            // Debug info
             if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Removing cursors: ${cursorsToRemove.join(", ")}`);
             }
 
-            // 選択範囲をクリア
+            // Clear the selection
             this.cursor.clearSelection();
 
-            // 移動先アイテムの既存のカーソルも削除（重複防止）
-            // 注意: 同じユーザーのカーソルのみを削除
+            // Remove existing cursors on the target item as well (prevent duplication)
+            // Note: Remove only the cursors of the same user
             const cursorsInTargetItem = Object.values(store.cursors)
                 .filter(c => c.itemId === newItemId && c.userId === this.cursor.userId)
                 .map(c => c.cursorId);
 
-            // デバッグ情報
+            // Debug info
             if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
             }
 
-            // 新しいアイテムとオフセットを設定
+            // Set the new item and offset
             this.cursor.itemId = newItemId;
             this.cursor.offset = newOffset;
 
-            // アクティブアイテムを更新
+            // Update the active item
             store.setActiveItem(this.cursor.itemId);
 
-            // 新しいカーソルを作成
+            // Create a new cursor
             const cursorId = store.setCursor({
                 itemId: this.cursor.itemId,
                 offset: this.cursor.offset,
@@ -520,13 +520,13 @@ export class CursorNavigation {
                 userId: this.cursor.userId,
             });
 
-            // cursorIdを更新
+            // Update cursorId
             this.cursor.cursorId = cursorId;
 
-            // カーソル点滅を開始
+            // Start cursor blink
             store.startCursorBlink();
 
-            // カスタムイベントを発行
+            // Dispatch a custom event
             if (typeof document !== "undefined") {
                 const event = new CustomEvent("navigate-to-item", {
                     bubbles: true,
@@ -534,18 +534,18 @@ export class CursorNavigation {
                         direction,
                         fromItemId: oldItemId,
                         toItemId: this.cursor.itemId,
-                        cursorScreenX: 0, // カーソルのX座標（アイテム間移動時は0を指定）
+                        cursorScreenX: 0, // X-coordinate of the cursor (0 for item movement)
                     },
                 });
                 document.dispatchEvent(event);
             }
         } else {
-            // アイテムが変更されなかった場合でも、カーソルの状態を更新
+            // Update the cursor state even if the item has not changed
             this.cursor.offset = newOffset;
             this.cursor.applyToStore();
             store.startCursorBlink();
 
-            // デバッグ情報
+            // Debug info
             if (typeof window !== "undefined" && (window as Window & { DEBUG_MODE?: boolean; }).DEBUG_MODE) {
                 console.log(`Item not changed, updated offset: ${newOffset}`);
             }
