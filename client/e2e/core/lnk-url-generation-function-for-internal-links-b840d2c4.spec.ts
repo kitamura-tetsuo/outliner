@@ -112,12 +112,12 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         // プロジェクト内部リンクを含むテストデータをAPI経由で作成
         // ページ名は自動生成されるので、後で取得する
         const { pageName: currentPageName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "一行目: テスト",
+            "First line: Test",
             `[PLACEHOLDER_PAGE_NAME]`, // 後で置換する
             "[/project-name/page-name]", // This will be formatted as a project internal link
             "3つ目のアイテム",
-            "二行目: Yjs 反映",
-            "三行目: 並び順チェック",
+            "Second line: Yjs reflection",
+            "Third line: Order check",
         ]);
 
         // アイテムが表示されていることを確認

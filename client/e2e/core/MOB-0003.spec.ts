@@ -104,7 +104,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         console.log("MOB-0003: after indent tree", JSON.stringify(afterIndentData));
         const pageItem = afterIndentData.items[0];
         const pageChildren = Object.values(pageItem.items);
-        // Get the second child of the page (一行目: テスト), which now has a child
+        // Get the second child of the page (First line: Test), which now has a child
         const secondChild = pageChildren[1] as { items?: Record<string, { id: string; }>; };
         const indentedItemId = secondChild.items ? Object.values(secondChild.items)[0]?.id : null;
         console.log("MOB-0003: indented item ID:", indentedItemId);
