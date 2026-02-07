@@ -157,7 +157,7 @@
                         }
                     }
                     if (len > 0) {
-                        logger.info(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: [${titles.map(t => `"${t}"`).join(", ")}]`);
+                        console.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
                     }
                 }
                 return null;
