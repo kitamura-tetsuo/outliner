@@ -977,6 +977,12 @@ exports.deleteProject = onRequest(
 exports.generateProjectShareLink = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
+    setCorsHeaders(req, res);
+    if (req.method === "OPTIONS") { return res.status(204).end(); }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
     try {
       const { idToken, projectId } = req.body;
       if (!idToken || !projectId) {
@@ -1019,6 +1025,12 @@ exports.generateProjectShareLink = onRequest(
 exports.acceptProjectShareLink = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
+    setCorsHeaders(req, res);
+    if (req.method === "OPTIONS") { return res.status(204).end(); }
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method Not Allowed" });
+    }
+
     try {
       const { idToken, token } = req.body;
       if (!idToken || !token) {
@@ -1078,19 +1090,6 @@ exports.acceptProjectShareLink = onRequest(
     } catch (error) {
       Sentry.captureException(error);
       logger.error(`acceptProjectShareLink error: ${error.message}`, { error });
-
-      if (error.message === "Project not found") {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
-      if (
-        error.code === "auth/id-token-expired" ||
-        error.code === "auth/invalid-id-token" ||
-        error.code === "auth/argument-error"
-      ) {
-        return res.status(401).json({ error: "Authentication failed" });
-      }
-
       return res.status(500).json({ error: "Failed to accept link" });
     }
   }),

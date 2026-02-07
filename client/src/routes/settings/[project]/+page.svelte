@@ -6,14 +6,10 @@
     import { stableIdFromTitle } from "$lib/yjsService.svelte";
 
     let projectId = $derived($page.params.project);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let generatedLink = $state<string | null>(null);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let error = $state<string | null>(null);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let isLoading = $state(false);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async function generateLink() {
         if (!authStore.user) {
             error = "You must be logged in.";
@@ -35,10 +31,11 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ idToken: token, projectId: effectiveId }),
             });
-            const data = await res.json();
             if (!res.ok) {
+                const data = await res.json();
                 throw new Error(data.error || "Failed to generate link");
             }
+            const data = await res.json();
             const origin = window.location.origin;
             generatedLink = `${origin}/share/${data.token}`;
         } catch (e: any) {

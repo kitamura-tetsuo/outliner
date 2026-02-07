@@ -85,14 +85,6 @@
                 "function": "deleteProject"
             },
             {
-                "source": "/api/generateProjectShareLink",
-                "function": "generateProjectShareLink"
-            },
-            {
-                "source": "/api/acceptProjectShareLink",
-                "function": "acceptProjectShareLink"
-            },
-            {
                 "source": "/api/update-schedule",
                 "function": "updateSchedule"
             },

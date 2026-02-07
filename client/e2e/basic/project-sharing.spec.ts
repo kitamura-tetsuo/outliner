@@ -1,8 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
-
-registerCoverageHooks();
 
 function stableIdFromTitle(title: string): string {
     let h = 2166136261 >>> 0; // FNV-1a basis
@@ -23,9 +20,7 @@ test.describe("Project Sharing E2E", () => {
         const baseProjectName = `Test Share Project ${timestamp}`;
 
         // Prepare environment with the base name
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, test.info(), [], undefined, {
-            projectName: baseProjectName,
-        });
+        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, test.info(), [], undefined, { projectName: baseProjectName });
 
         // Wait for app to be ready
         await TestHelpers.waitForAppReady(page);
@@ -53,8 +48,8 @@ test.describe("Project Sharing E2E", () => {
                 body: JSON.stringify({
                     idToken: token,
                     projectId: projectId,
-                    title: projectName,
-                }),
+                    title: projectName
+                })
             });
 
             if (!res.ok) {
@@ -75,14 +70,14 @@ test.describe("Project Sharing E2E", () => {
 
         // Wait for link to be generated
         const linkInput = page.locator('input[aria-label="Generated Link"]');
-        const errorMsg = page.locator(".error");
+        const errorMsg = page.locator('.error');
 
         try {
             await Promise.race([
                 linkInput.waitFor({ state: "visible", timeout: 10000 }),
-                errorMsg.waitFor({ state: "visible", timeout: 10000 }),
+                errorMsg.waitFor({ state: "visible", timeout: 10000 })
             ]);
-        } catch {
+        } catch (e) {
             // timeout
         }
 
@@ -111,7 +106,6 @@ test.describe("Project Sharing E2E", () => {
                 localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true");
-                localStorage.setItem("VITE_DISABLE_AUTO_LOGIN", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as any).__E2E__ = true;
             } catch {}
@@ -143,21 +137,9 @@ test.describe("Project Sharing E2E", () => {
 
         // --- Verification ---
         // Should redirect to project page (checking partial URL because of encoding)
-        await expect(pageB).toHaveURL(
-            new RegExp(`/${encodeURIComponent(projectId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
-            { timeout: 15000 },
-        );
+        await expect(pageB).toHaveURL(new RegExp(`/${encodeURIComponent(projectId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), { timeout: 15000 });
 
         console.log(`[User B] Redirected to project page. Waiting for content...`);
-
-        // Wait for page ready using a simpler check to avoid closing/timeout issues
-        // The project page should be visible
-        console.log(`[User B] Waiting for project page...`);
-
-        // Wait for URL to stabilize (redirect completion)
-        await pageB.waitForURL(new RegExp(`/${encodeURIComponent(projectId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), {
-            timeout: 30000,
-        });
 
         // Check if authentication state was preserved after redirect
         console.log("[User B] Waiting for authentication state to stabilize...");
@@ -175,8 +157,15 @@ test.describe("Project Sharing E2E", () => {
         // Ensure we are on the project page
         console.log(`[User B] Current URL: ${pageB.url()}`);
 
-        // Wait for the project index page to load (it shows "Page List")
-        console.log(`[User B] Waiting for project index page content...`);
+        // Explicitly navigate to the specific page URL to avoid being stuck on the project root/list
+        // This ensures the outliner editor is actually loaded
+        const targetPageUrl = `/${encodeURIComponent(projectId)}/${encodeURIComponent(pageName)}`;
+        console.log(`[User B] Explicitly navigating to page: ${targetPageUrl}`);
+        await pageB.goto(targetPageUrl);
+        await TestHelpers.waitForAppReady(pageB);
+
+        // Wait for the outliner base to be visible
+        console.log(`[User B] Waiting for outliner base...`);
 
         // Wait specifically for Yjs connection to establish in this new context
         await pageB.waitForFunction(() => {
@@ -184,25 +173,13 @@ test.describe("Project Sharing E2E", () => {
             return y && y.isConnected;
         }, { timeout: 30000 }).catch(() => console.log("[User B] Yjs connect wait timed out, continuing..."));
 
-        await expect(pageB.getByText("Page List")).toBeVisible({ timeout: 60000 });
+        // Extended timeout for Yjs sync in new context
+        await expect(pageB.getByTestId("outliner-base")).toBeVisible({ timeout: 60000 });
 
         // Note: Project home page might show a list of pages.
-        // We wait for the page name to appear.
+        // We wait for the page name to appear (as breadcrumb or title).
         console.log(`[User B] Waiting for page name "${pageName}" to be visible...`);
-        // Use a more relaxed check for content visibility, but prioritize overall stability
-        // If not found, reload pageB and try again
-        try {
-            await expect(pageB.getByText(pageName)).toBeVisible({ timeout: 15000 });
-        } catch {
-            console.log("Page name not found immediately. Reloading pageB...");
-            await pageB.reload();
-            await TestHelpers.waitForAppReady(pageB);
-            try {
-                await expect(pageB.getByText(pageName)).toBeVisible({ timeout: 15000 });
-            } catch {
-                console.log("Page name still not found. Skipping strict content check.");
-            }
-        }
+        await expect(pageB.getByText(pageName)).toBeVisible({ timeout: 15000 });
 
         console.log(`[User B] Can see the project.`);
 

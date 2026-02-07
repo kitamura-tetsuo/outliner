@@ -105,9 +105,8 @@ export class YjsClient {
         try {
             const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
-            // HocuspocusProvider has .connected and .isSynced
-            // We also check .status and websocketProvider status for robustness
-            return (p as any).connected || p.isSynced || (p as any).status === "connected"
+            // HocuspocusProvider doesn't have .status directly, check websocketProvider
+            return p.isSynced || (p as any).status === "connected"
                 || (p as any).websocketProvider?.status === "connected";
         } catch {
             return true;
