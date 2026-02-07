@@ -38,16 +38,16 @@ export async function createSchedule(
     pageId: string,
     schedule: { strategy: string; nextRunAt: number; params?: Record<string, unknown>; },
 ) {
-    return fetchApi("create-schedule", { pageId, schedule });
+    return fetchApi("createSchedule", { pageId, schedule });
 }
 
 export async function listSchedules(pageId: string): Promise<Schedule[]> {
-    const data = await fetchApi("list-schedules", { pageId });
+    const data = await fetchApi("listSchedules", { pageId });
     return data.schedules as Schedule[];
 }
 
 export async function cancelSchedule(pageId: string, scheduleId: string) {
-    return fetchApi("cancel-schedule", { pageId, scheduleId });
+    return fetchApi("cancelSchedule", { pageId, scheduleId });
 }
 
 export async function updateSchedule(
@@ -55,7 +55,7 @@ export async function updateSchedule(
     scheduleId: string,
     schedule: { strategy: string; nextRunAt: number; params?: Record<string, unknown>; },
 ) {
-    return fetchApi("update-schedule", { pageId, scheduleId, schedule });
+    return fetchApi("updateSchedule", { pageId, scheduleId, schedule });
 }
 
 export async function exportSchedulesIcal(
@@ -64,7 +64,7 @@ export async function exportSchedulesIcal(
     const idToken = await userManager.auth.currentUser?.getIdToken();
     if (!idToken) throw new Error("No auth token");
 
-    const url = getFirebaseFunctionUrl("export-schedules-ical");
+    const url = getFirebaseFunctionUrl("exportSchedulesIcal");
     const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

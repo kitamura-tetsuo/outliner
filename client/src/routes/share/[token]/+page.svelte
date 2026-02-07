@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from "$app/stores";
     import { getFirebaseFunctionUrl } from "$lib/firebaseFunctionsUrl";
-    import { authStore } from "../../../stores/authStore.svelte";
+    import { authStore } from "$stores/authStore.svelte";
     import { userManager } from "../../../auth/UserManager";
     import { goto } from "$app/navigation";
 
@@ -28,7 +28,7 @@
         try {
             status = "loading";
             message = "Joining project...";
-            const idToken = await userManager.getIdToken();
+            const idToken = await userManager.auth.currentUser?.getIdToken();
             if (!idToken) {
                  status = "unauthenticated";
                  message = "Please log in to join the project.";
