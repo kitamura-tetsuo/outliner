@@ -40,7 +40,6 @@ $effect(() => {
 >
     <ul role="listbox" aria-label="Command suggestions">
         {#each currentVisible as cmd, i (cmd.type)}
-            <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
             <li
                 role="option"
                 aria-selected={i === commandPaletteStore.selectedIndex}
