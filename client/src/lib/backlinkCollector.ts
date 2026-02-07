@@ -73,7 +73,7 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             : pages;
 
         for (const page of pagesIterator) {
-            const pageItem = page as any as Item;
+            const pageItem = page as Item;
 
             const pText = pageItem.text;
             const pageHasText = pText && pText.length > 0;
