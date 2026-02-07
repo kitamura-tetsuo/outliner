@@ -65,14 +65,14 @@
                     break;
                 }
             } catch (err) {
-                error = `Deletion error: ${p.name} - ${err instanceof Error ? err.message : String(err)}`;
+                error = `Delete error: ${p.name} - ${err instanceof Error ? err.message : String(err)}`;
                 break;
             }
         }
 
         if (!error && deletedCount > 0) {
-            success = "Deleted selected projects";
-            // Wait a bit before reloading the page to update the project list after deletion
+            success = "Selected projects have been deleted";
+            // Reload the page after a short delay to update the project list after deletion
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
