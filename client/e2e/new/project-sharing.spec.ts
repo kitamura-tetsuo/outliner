@@ -61,9 +61,11 @@ test.describe("Project Sharing", () => {
         await TestHelpers.navigateToProjectPage(page, projectName, pageName, seedLines);
 
         // Ensure User A is logged in (navigateToProjectPage might not ensure UI login if seeded via HTTP)
-        // We already logged in, but reload might have cleared state if not persisted?
-        // TestHelpers.login ensures we are logged in.
-        await TestHelpers.login(page, "owner@example.com", "password");
+        // But TestHelpers.navigateToProjectPage uses page.goto which triggers app load.
+        // App checks userManager.
+        // If we are not logged in, we might be in trouble.
+        // TestHelpers.login usually helps.
+        await TestHelpers.login(page, "test@example.com", "password");
 
         // Reload to ensure state
         await page.reload();
@@ -87,8 +89,13 @@ test.describe("Project Sharing", () => {
         // Wait for potential auto-login or persistence restoration to complete
         await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser);
 
-        // Ensure we are logged in as owner (overriding auto-login if needed)
-        await TestHelpers.login(page, "owner@example.com", "password");
+        // If we see "You must be logged in", something is wrong with auth state persistence across navigation
+        const loginError = page.locator("text=You must be logged in.");
+        if (await loginError.isVisible()) {
+            console.log("Found login error, re-logging in...");
+            await TestHelpers.login(page, "test@example.com", "password");
+            await page.reload();
+        }
 
         await expect(page.locator("h1")).toContainText(`Project Settings: ${projectName}`);
 
