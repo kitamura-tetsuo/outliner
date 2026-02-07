@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import * as Y from "yjs";
 import { Project } from "../schema/app-schema";
 import { GeneralStore } from "./store.svelte";
 
