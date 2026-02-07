@@ -173,16 +173,17 @@ test.describe("Project Sharing E2E", () => {
         console.log(`[User B] Waiting for outliner base...`);
 
         // Wait specifically for Yjs connection to establish in this new context
+        // We use a shorter timeout for the first attempt to fail fast and retry
         try {
             await pageB.waitForFunction(() => {
                 const y = (window as any).__YJS_STORE__;
                 return y && y.isConnected;
-            }, { timeout: 30000 });
+            }, { timeout: 15000 });
         } catch {
             console.log("[User B] Yjs connect wait timed out. Reloading page...");
             await pageB.reload();
             await TestHelpers.waitForAppReady(pageB);
-            // Try waiting again
+            // Try waiting again with a standard timeout
             await pageB.waitForFunction(() => {
                 const y = (window as any).__YJS_STORE__;
                 return y && y.isConnected;
@@ -194,8 +195,12 @@ test.describe("Project Sharing E2E", () => {
             await expect(pageB.getByTestId("outliner-base")).toBeVisible({ timeout: 60000 });
         } catch (e) {
             console.log("[User B] Outliner base not visible. Dumping page content:");
-            const content = await pageB.content();
-            console.log(content.substring(0, 2000)); // Log first 2000 chars
+            if (!pageB.isClosed()) {
+                const content = await pageB.content();
+                console.log(content.substring(0, 2000)); // Log first 2000 chars
+            } else {
+                console.log("[User B] Page is closed, cannot dump content.");
+            }
             throw e;
         }
 

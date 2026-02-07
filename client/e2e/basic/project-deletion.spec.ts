@@ -81,7 +81,7 @@ test.describe("Project Deletion", () => {
             // Wait longer for the rows to appear, as Firestore sync might be slow
             await expect(keeperRow).toBeVisible({ timeout: 20000 });
             await expect(targetRow).toBeVisible({ timeout: 20000 });
-        } catch (e) {
+        } catch {
             console.log("Project rows not found. Current table content:");
             const rows = await page.locator("tr").allInnerTexts();
             console.log(rows);
