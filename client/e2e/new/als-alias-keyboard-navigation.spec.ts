@@ -14,9 +14,9 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         test.setTimeout(120000);
 
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "一行目: テスト",
-            "二行目: Yjs 反応",
-            "三行目: 並び順チェック",
+            "First line: Test",
+            "Second line: Yjs reflection",
+            "Third line: Order check",
         ]);
         // Wait for outliner items to be visible with increased timeout
         // Wait for 4 items (page header + 3 seeded lines)

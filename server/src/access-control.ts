@@ -34,6 +34,7 @@ export async function checkContainerAccess(
         const db = firestoreInstance || admin.firestore();
 
         // 1. Check projectUsers collection (project -> users)
+        // This is the primary secure method (Source of Truth)
         const projectUserDoc = await db.collection("projectUsers").doc(containerId).get();
         if (projectUserDoc.exists) {
             const data = projectUserDoc.data();
@@ -52,26 +53,11 @@ export async function checkContainerAccess(
             logger.info(`[AccessControl] projectUsers check: docExists=false for container ${containerId}`);
         }
 
-        // 2. Check userProjects collection (user -> projects)
-        const userProjectDoc = await db.collection("userProjects").doc(userId).get();
-        if (userProjectDoc.exists) {
-            const data = userProjectDoc.data();
-            const accessibleProjectIds = data?.accessibleProjectIds || [];
-            const hasAccess = Array.isArray(accessibleProjectIds) && accessibleProjectIds.includes(containerId);
+        // REMOVED: Check userProjects collection (user -> projects)
+        // SECURITY: userProjects is writable by users in Firestore rules, so it cannot be trusted for authorization.
+        // We must only rely on resource-side permission lists (projectUsers).
 
-            logger.info(
-                `[AccessControl] userProjects check: docExists=true, hasAccess=${hasAccess}, projectIdsCount=${accessibleProjectIds.length}`,
-            );
-
-            if (hasAccess) {
-                logger.info(`[AccessControl] Access granted via userProjects collection`);
-                return true;
-            }
-        } else {
-            logger.info(`[AccessControl] userProjects check: docExists=false for user ${userId}`);
-        }
-
-        // 3. Check containerUsers collection (Legacy)
+        // 2. Check containerUsers collection (Legacy secure)
         const containerUserDoc = await db.collection("containerUsers").doc(containerId).get();
         if (containerUserDoc.exists) {
             const data = containerUserDoc.data();
@@ -82,16 +68,8 @@ export async function checkContainerAccess(
             }
         }
 
-        // 4. Check userContainers collection (Legacy)
-        const userContainerDoc = await db.collection("userContainers").doc(userId).get();
-        if (userContainerDoc.exists) {
-            const data = userContainerDoc.data();
-            if (data?.accessibleContainerIds && Array.isArray(data.accessibleContainerIds)) {
-                if (data.accessibleContainerIds.includes(containerId)) {
-                    return true;
-                }
-            }
-        }
+        // REMOVED: Check userContainers collection (Legacy insecure)
+        // SECURITY: Same reason as userProjects.
 
         logger.warn({ event: "access_denied", userId, containerId });
         return false;

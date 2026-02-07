@@ -1,25 +1,25 @@
 import { SvelteMap } from "svelte/reactivity";
 
 export class CustomKeySvelteMap<T, V> {
-    // 内部では文字列をキーとする Map を保持
+    // Internally holds a Map with string keys
     private map = new SvelteMap<string, V>();
-    // オリジナルのキーを保持する配列
+    // Array to hold original keys
     private keys: T[] = [];
-    // シリアライズされたキーとオリジナルキーのマッピング
+    // Mapping between serialized keys and original keys
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal bookkeeping map, not reactive state
     private keyMap = new Map<string, T>();
 
-    // キーを JSON.stringify して文字列に変換するヘルパー関数
+    // Helper function to convert key to string using JSON.stringify
     private serialize(key: T): string {
         return JSON.stringify(key);
     }
 
-    // 値を設定するメソッド
+    // Method to set a value
     set(key: T, value: V): this {
         const serializedKey = this.serialize(key);
         this.map.set(serializedKey, value);
 
-        // オリジナルのキーを保存
+        // Save original key
         if (!this.keyMap.has(serializedKey)) {
             this.keys.push(key);
             this.keyMap.set(serializedKey, key);
@@ -28,22 +28,22 @@ export class CustomKeySvelteMap<T, V> {
         return this;
     }
 
-    // キーに対応する値を取得するメソッド
+    // Method to get a value by key
     get(key: T): V | undefined {
         return this.map.get(this.serialize(key));
     }
 
-    // 指定したキーが存在するかチェックするメソッド
+    // Method to check if a specified key exists
     has(key: T): boolean {
         return this.map.has(this.serialize(key));
     }
 
-    // 指定したキーを削除するメソッド
+    // Method to delete a specified key
     delete(key: T): boolean {
         const serializedKey = this.serialize(key);
         const result = this.map.delete(serializedKey);
 
-        // オリジナルのキーも削除
+        // Delete original key as well
         if (result) {
             const index = this.keys.findIndex(k => this.serialize(k) === serializedKey);
             if (index !== -1) {
@@ -55,34 +55,34 @@ export class CustomKeySvelteMap<T, V> {
         return result;
     }
 
-    // 全ての要素をクリアするメソッド
+    // Method to clear all elements
     clear(): void {
         this.map.clear();
         this.keys = [];
         this.keyMap.clear();
     }
 
-    // 内部の Map のサイズを返すゲッター
+    // Getter to return the size of the internal Map
     get size(): number {
         return this.map.size;
     }
 
-    // インデックスでキーを取得するメソッド
+    // Method to get a key by index
     getKeyAtIndex(index: number): T | undefined {
         return this.keys[index];
     }
 
-    // 全てのキーを配列として取得するメソッド
+    // Method to get all keys as an array
     getAllKeys(): T[] {
         return [...this.keys];
     }
 
-    // 全ての値を配列として取得するメソッド
+    // Method to get all values as an array
     getAllValues(): V[] {
         return Array.from(this.map.values());
     }
 
-    // キーと値のペアを配列として取得するメソッド
+    // Method to get key-value pairs as an array
     getEntries(): [T, V][] {
         return this.keys.map(key => [key, this.get(key)!] as [T, V]);
     }

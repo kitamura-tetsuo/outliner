@@ -3,7 +3,7 @@ import { getLogger } from "./logger";
 
 const logger = getLogger();
 
-// Firebase設定の検証
+// Validate Firebase configuration
 function validateFirebaseConfig() {
     const requiredEnvVars = [
         "VITE_FIREBASE_API_KEY",
@@ -24,7 +24,7 @@ function validateFirebaseConfig() {
     }
 }
 
-// Firebase設定
+// Firebase configuration
 function getFirebaseConfig() {
     validateFirebaseConfig();
 
@@ -49,29 +49,29 @@ function getFirebaseConfig() {
     };
 }
 
-// グローバルキャッシュ（HMR・SSR対応）
+// Global cache (HMR & SSR support)
 const globalKey = "__firebase_client_app__";
 const globalRef = globalThis as typeof globalThis & {
     [globalKey]?: FirebaseApp;
 };
 
 /**
- * グローバルなFirebaseアプリインスタンスを取得または初期化する
- * SSR環境での重複初期化を防ぐための中央管理機能
+ * Retrieves or initializes the global Firebase app instance.
+ * Centralized management function to prevent duplicate initialization in SSR environments.
  *
- * 実装指針：
- * 1. globalThis キャッシュでHMR・SSR対応
- * 2. getApps() で既存インスタンス確認
- * 3. 重複エラー時の安全なフォールバック
+ * Implementation Guidelines:
+ * 1. HMR & SSR support via globalThis cache
+ * 2. Check for existing instances using getApps()
+ * 3. Safe fallback in case of duplicate errors
  */
 export function getFirebaseApp(): FirebaseApp {
-    // 1段目: globalThis キャッシュ（HMR・SSR対策）
+    // Level 1: globalThis cache (HMR & SSR strategy)
     if (globalRef[globalKey]) {
         logger.debug("Firebase app: Using globalThis cached instance");
         return globalRef[globalKey]!;
     }
 
-    // 2段目: Firebase SDK内部キャッシュ
+    // Level 2: Firebase SDK internal cache
     const existingApps = getApps();
     if (existingApps.length > 0) {
         const app = getApp();
@@ -81,7 +81,7 @@ export function getFirebaseApp(): FirebaseApp {
     }
 
     try {
-        // 新しいアプリを初期化
+        // Initialize new app
         const firebaseConfig = getFirebaseConfig();
         const app = initializeApp(firebaseConfig);
         globalRef[globalKey] = app;
@@ -91,7 +91,7 @@ export function getFirebaseApp(): FirebaseApp {
         const err = error instanceof Error ? error : new Error(String(error));
         logger.error({ err }, "Firebase app initialization error");
 
-        // 重複アプリエラーの場合は既存のアプリを使用
+        // Use existing app in case of duplicate app error
         if (
             error && typeof error === "object" && "code" in error
                 && (error as { code?: string; }).code === "app/duplicate-app"
@@ -113,7 +113,7 @@ export function getFirebaseApp(): FirebaseApp {
 }
 
 /**
- * Firebaseアプリインスタンスをリセットする（テスト用）
+ * Resets the Firebase app instance (for testing).
  */
 export function resetFirebaseApp(): void {
     globalRef[globalKey] = undefined;
