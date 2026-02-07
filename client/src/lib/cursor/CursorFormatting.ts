@@ -4,8 +4,10 @@ import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
 export class CursorFormatting {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private cursor: any; // Holds an instance of the Cursor class
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(cursor: any) {
         this.cursor = cursor;
     }
@@ -112,6 +114,7 @@ export class CursorFormatting {
      * Apply Scrapbox syntax formatting to selection spanning multiple items
      */
     private applyScrapboxFormattingToMultipleItems(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         selection: any,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
