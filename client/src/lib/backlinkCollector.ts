@@ -66,8 +66,10 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
 
         // Optimization: Iterate directly to avoid O(N log N) sorting caused by items.length check or default iterator
         // (Items iterator triggers a full sort of children keys in app-schema.ts)
-        const pagesIterator = (typeof (pages as any).iterateUnordered === "function")
-            ? { [Symbol.iterator]: () => (pages as any).iterateUnordered() }
+        // Use type assertion to access iterateUnordered if available
+        const pagesAny = pages as Iterable<Item> & { iterateUnordered?: () => Iterator<Item>; };
+        const pagesIterator = (typeof pagesAny.iterateUnordered === "function")
+            ? { [Symbol.iterator]: () => pagesAny.iterateUnordered!() }
             : pages;
 
         for (const page of pagesIterator) {
