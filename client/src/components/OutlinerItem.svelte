@@ -227,7 +227,7 @@ function findBestOffsetBinary(content: string, relX: number, span: HTMLElement):
 
 interface Props {
     model: OutlinerItemViewModel;
-    depth?: number;
+    // depth?: number; // Unused but passed by parent
     currentUser?: string;
     isReadOnly?: boolean;
     isCollapsed?: boolean;
@@ -238,8 +238,7 @@ interface Props {
 
 let {
     model,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    depth = 0,
+    // depth = 0, // Unused
     currentUser = "anonymous",
     isReadOnly = false,
     isCollapsed = false,
