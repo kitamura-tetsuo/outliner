@@ -1,8 +1,8 @@
 import { afterAll, beforeAll } from "vitest";
 
-// Production環境用テストセットアップ
+// Production environment test setup
 beforeAll(async () => {
-    // Production Cloud Backend Serversが起動していることを確認
+    // Verify that Production Cloud Backend Servers are running
     try {
         const response = await fetch("http://localhost:57000/api/health");
         if (!response.ok) {
@@ -15,7 +15,7 @@ beforeAll(async () => {
         throw error;
     }
 
-    // SvelteKit server確認（一時的に無効化）
+    // Check SvelteKit server (temporarily disabled)
     try {
         const response = await fetch("http://localhost:7073/");
         if (!response.ok) {
@@ -29,7 +29,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-    // Production環境のクリーンアップは不要
-    // 本番Firebase Authを使用するため、テストユーザーの削除は手動で行う
+    // Cleanup for production environment is not required
+    // Since production Firebase Auth is used, test users must be deleted manually
     console.log("Production tests completed");
 });
