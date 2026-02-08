@@ -714,441 +714,56 @@ export class Cursor implements CursorEditingContext {
         return true;
     }
 
-    // Extend selection to the left
-    extendSelectionLeft() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
-
-        if (existingSelection) {
-            // Extend if there is an existing selection
-            if (existingSelection.isReversed) {
-                // If reversed selection, move the start position
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // Move cursor left
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveLeft();
-
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = true;
-
-                // Reverse direction if selection disappears
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveLeft();
-
-                    startItemId = oldItemId;
-                    startOffset = oldOffset;
-                    endItemId = this.itemId;
-                    endOffset = this.offset;
-                    isReversed = true;
-                }
-            } else {
-                // If forward selection, move the end position
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // Move cursor left
-                this.moveLeft();
-
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = false;
-
-                // Reverse direction if selection disappears
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    isReversed = true;
-                    const temp = startItemId;
-                    startItemId = endItemId;
-                    endItemId = temp;
-
-                    const tempOffset = startOffset;
-                    startOffset = endOffset;
-                    endOffset = tempOffset;
-                }
-            }
-        } else {
-            // Create new selection
-            startItemId = this.itemId;
-            startOffset = this.offset;
-
-            // Move cursor left
-            this.moveLeft();
-
-            endItemId = this.itemId;
-            endOffset = this.offset;
-            isReversed = true;
-        }
-
-        // Clear existing selection for the same user before setting new range
-        store.clearSelectionForUser(this.userId);
-        store.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: this.userId,
-            isReversed,
-        });
-
-        // Set selection range for global textarea
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
-    }
-
-    // Extend selection to the right
-    extendSelectionRight() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
-
-        if (existingSelection) {
-            // Extend if there is an existing selection
-            if (!existingSelection.isReversed) {
-                // If forward selection, move the end position
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // Move cursor right
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveRight();
-
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = false;
-
-                // Reverse direction if selection disappears
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveRight();
-
-                    startItemId = oldItemId;
-                    startOffset = oldOffset;
-                    endItemId = this.itemId;
-                    endOffset = this.offset;
-                    isReversed = false;
-                }
-            } else {
-                // If reversed selection, move the start position
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
-
-                // Move cursor right
-                this.moveRight();
-
-                startItemId = this.itemId;
-                startOffset = this.offset;
-                isReversed = true;
-
-                // Reverse direction if selection disappears
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    isReversed = false;
-                    const temp = startItemId;
-                    startItemId = endItemId;
-                    endItemId = temp;
-
-                    const tempOffset = startOffset;
-                    startOffset = endOffset;
-                    endOffset = tempOffset;
-                }
-            }
-        } else {
-            // Create new selection
-            startItemId = this.itemId;
-            startOffset = this.offset;
-
-            // Move cursor right
-            this.moveRight();
-
-            endItemId = this.itemId;
-            endOffset = this.offset;
-            isReversed = false;
-        }
-
-        // Clear existing selection for the same user before setting new range
-        store.clearSelectionForUser(this.userId);
-        // Set selection
-        store.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: this.userId,
-            isReversed,
-        });
-
-        // Set selection range for global textarea
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
-    }
-
-    // Extend selection up
-    extendSelectionUp(): void {
-        const target = this.findTarget();
-        if (!target) return;
-
-        // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
-
-        if (existingSelection) {
-            // Extend if there is an existing selection
-            if (existingSelection.isReversed) {
-                // If reversed selection, move the start position
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // Move cursor up
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveUp();
-
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = true;
-
-                // Reverse direction if selection disappears
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveUp();
-
-                    startItemId = this.itemId;
-                    startOffset = this.offset;
-                    endItemId = oldItemId;
-                    endOffset = oldOffset;
-                    isReversed = false;
-                }
-            } else {
-                // If forward selection, move the end position
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
-
-                // Move cursor up
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveUp();
-
-                startItemId = this.itemId;
-                startOffset = this.offset;
-                isReversed = false;
-
-                // Reverse direction if selection disappears
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveUp();
-
-                    endItemId = oldItemId;
-                    endOffset = oldOffset;
-                    startItemId = this.itemId;
-                    startOffset = this.offset;
-                    isReversed = true;
-                }
-            }
-        } else {
-            // Create new selection
-            startItemId = this.itemId;
-            startOffset = this.offset;
-
-            // Move cursor up
-            this.moveUp();
-
-            endItemId = this.itemId;
-            endOffset = this.offset;
-            isReversed = true;
-        }
-
-        // Clear existing selection for the same user before setting new range
-        store.clearSelectionForUser(this.userId);
-        // Set selection
-        store.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: this.userId,
-            isReversed,
-        });
-
-        // Set selection range for global textarea
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
-    }
-
-    // Extend selection down
-    extendSelectionDown() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        // Debug information
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`extendSelectionDown called for itemId=${this.itemId}, offset=${this.offset}`);
-        }
-
-        // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
-
-        if (existingSelection) {
-            // Extend if there is an existing selection
-            if (!existingSelection.isReversed) {
-                // If forward selection, move the end position
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // Move cursor down
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveDown();
-
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = false;
-
-                // Debug information
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(
-                        `Extending forward selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
-
-                // Reverse direction if selection disappears
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveDown();
-
-                    startItemId = oldItemId;
-                    startOffset = oldOffset;
-                    endItemId = this.itemId;
-                    endOffset = this.offset;
-                    isReversed = false;
-
-                    // Debug information
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                        console.log(
-                            `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                        );
-                    }
-                }
-            } else {
-                // If reversed selection, move the start position
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
-
-                // Move cursor down
-                const oldItemId = this.itemId;
-                const oldOffset = this.offset;
-                this.moveDown();
-
-                startItemId = this.itemId;
-                startOffset = this.offset;
-                isReversed = true;
-
-                // Debug information
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(
-                        `Extending reversed selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
-
-                // Reverse direction if selection disappears
-                if (startItemId === endItemId && startOffset === endOffset) {
-                    this.itemId = oldItemId;
-                    this.offset = oldOffset;
-                    this.moveDown();
-
-                    endItemId = oldItemId;
-                    endOffset = oldOffset;
-                    startItemId = this.itemId;
-                    startOffset = this.offset;
-                    isReversed = false;
-
-                    // Debug information
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                        console.log(
-                            `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                        );
-                    }
-                }
-            }
-        } else {
-            // Create new selection
-            startItemId = this.itemId;
-            startOffset = this.offset;
-
-            // Save current position
-            const oldItemId = this.itemId;
-            // const oldOffset = this.offset; // Not used
-
-            // Move cursor down
-            this.moveDown();
-
-            // If moving within the same item, select all text
-            if (this.itemId === oldItemId) {
-                // const text = this.getTargetText(target); // Not used
-                endItemId = this.itemId;
-                endOffset = this.offset;
-                isReversed = false;
-
-                // Debug information
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(
-                        `New selection within same item: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
-            } else {
-                // If moved to another item
-                endItemId = this.itemId;
-                endOffset = this.offset; // Select up to the current position of the next item (was previously fixed to 0)
-                isReversed = false;
-
-                // Debug information
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(
-                        `New selection across items: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
-            }
-        }
-
-        // Properly set selection direction (removed forced setting for tests)
-        // Determine direction by offset if start and end are in the same item
+    private calculateIsReversed(
+        startItemId: string,
+        startOffset: number,
+        endItemId: string,
+        endOffset: number,
+    ): boolean {
+        // If start and end are in the same item, determine direction by offset
         if (startItemId === endItemId) {
-            isReversed = startOffset > endOffset;
-        } // Determine direction by DOM order if items are different
-        else {
+            return startOffset > endOffset;
+        }
+
+        // If in different items, determine direction by DOM order
+        if (typeof document !== "undefined") {
             const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
             const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
             const startIdx = allItemIds.indexOf(startItemId);
             const endIdx = allItemIds.indexOf(endItemId);
 
-            // Default to forward direction if index is not found
-            if (startIdx === -1 || endIdx === -1) {
-                isReversed = false;
-            } else {
-                isReversed = startIdx > endIdx;
+            // Use index if found
+            if (startIdx !== -1 && endIdx !== -1) {
+                return startIdx > endIdx;
             }
         }
 
+        // If not found in DOM, use Tree structure to determine order (fallback)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const root = generalStore.currentPage as any;
+        if (root) {
+            const allItemIds = this.collectAllItemIds(root, []);
+            const startIdx = allItemIds.indexOf(startItemId);
+            const endIdx = allItemIds.indexOf(endItemId);
+
+            if (startIdx !== -1 && endIdx !== -1) {
+                return startIdx > endIdx;
+            }
+        }
+
+        return false;
+    }
+
+    private updateSelectionAfterMove(startItemId: string, startOffset: number) {
+        const endItemId = this.itemId;
+        const endOffset = this.offset;
+        const isReversed = this.calculateIsReversed(startItemId, startOffset, endItemId, endOffset);
+
         // Clear existing selection for the same user before setting new range
         store.clearSelectionForUser(this.userId);
-        const selectionId = store.setSelection({
+
+        // Set selection
+        store.setSelection({
             startItemId,
             startOffset,
             endItemId,
@@ -1156,12 +771,6 @@ export class Cursor implements CursorEditingContext {
             userId: this.userId,
             isReversed,
         });
-
-        // Debug information
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`Selection created with ID: ${selectionId}, isReversed=${isReversed}`);
-            console.log(`Current selections:`, store.selections);
-        }
 
         // Set selection range for global textarea
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -1169,10 +778,8 @@ export class Cursor implements CursorEditingContext {
         // Wait a bit for DOM reflection to ensure selection is correctly created
         if (typeof window !== "undefined") {
             setTimeout(() => {
+                if (typeof document === "undefined") return;
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Selection elements in DOM: ${selectionElements.length}`);
-                }
 
                 // Reset selection if not displayed
                 if (selectionElements.length === 0) {
@@ -1190,6 +797,110 @@ export class Cursor implements CursorEditingContext {
                 }
             }, 150); // Increase timeout to 150ms to allow more time for DOM updates
         }
+    }
+
+    // Extend selection to the left
+    extendSelectionLeft() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // Get current selection
+        const existingSelection = this.getSelection();
+
+        let startItemId, startOffset;
+
+        if (existingSelection) {
+            // Keep start position (Anchor) if existing selection
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
+        } else {
+            // If new selection, use current position as start
+            startItemId = this.itemId;
+            startOffset = this.offset;
+        }
+
+        // Move cursor left (Update Focus)
+        this.moveLeft();
+
+        this.updateSelectionAfterMove(startItemId, startOffset);
+    }
+
+    // Extend selection to the right
+    extendSelectionRight() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // Get current selection
+        const existingSelection = this.getSelection();
+
+        let startItemId, startOffset;
+
+        if (existingSelection) {
+            // Keep start position (Anchor) if existing selection
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
+        } else {
+            // If new selection, use current position as start
+            startItemId = this.itemId;
+            startOffset = this.offset;
+        }
+
+        // Move cursor right (Update Focus)
+        this.moveRight();
+
+        this.updateSelectionAfterMove(startItemId, startOffset);
+    }
+
+    // Extend selection up
+    extendSelectionUp(): void {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // Get current selection
+        const existingSelection = this.getSelection();
+
+        let startItemId, startOffset;
+
+        if (existingSelection) {
+            // Keep start position (Anchor) if existing selection
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
+        } else {
+            // If new selection, use current position as start
+            startItemId = this.itemId;
+            startOffset = this.offset;
+        }
+
+        // Move cursor up (Update Focus)
+        this.moveUp();
+
+        this.updateSelectionAfterMove(startItemId, startOffset);
+    }
+
+    // Extend selection down
+    extendSelectionDown() {
+        const target = this.findTarget();
+        if (!target) return;
+
+        // Get current selection
+        const existingSelection = this.getSelection();
+
+        let startItemId, startOffset;
+
+        if (existingSelection) {
+            // Keep start position (Anchor) if existing selection
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
+        } else {
+            // If new selection, use current position as start
+            startItemId = this.itemId;
+            startOffset = this.offset;
+        }
+
+        // Move cursor down (Update Focus)
+        this.moveDown();
+
+        this.updateSelectionAfterMove(startItemId, startOffset);
     }
 
     // Move cursor to the start of the line
@@ -1229,100 +940,33 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        // Debug information
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`extendSelectionToLineStart called for itemId=${this.itemId}, offset=${this.offset}`);
-        }
-
-        // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineStartOffset = getLineStartOffset(text, currentLineIndex);
 
-        // Debug information
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(
-                `Current line index: ${currentLineIndex}, lineStartOffset: ${lineStartOffset}, text: "${text}"`,
-            );
-        }
+        // Get current selection
+        const existingSelection = this.getSelectionForCurrentItem();
 
-        // Do nothing if current cursor position is already at line start
+        // If current cursor position is already at line start, do nothing (only if no selection)
         if (this.offset === lineStartOffset && !existingSelection) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`Already at line start, no selection created`);
-            }
             return;
         }
 
+        let startItemId, startOffset;
+
         if (existingSelection) {
-            // Extend if there is an existing selection
-            if (existingSelection.isReversed) {
-                // If reversed selection, move the start position
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // Move cursor to line start
-                endItemId = this.itemId;
-                endOffset = lineStartOffset;
-                isReversed = true;
-            } else {
-                // If forward selection, move the end position
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
-
-                // Move cursor to line start
-                startItemId = this.itemId;
-                startOffset = lineStartOffset;
-                isReversed = false;
-            }
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
         } else {
-            // Create new selection
-            // Select from current position to line start
             startItemId = this.itemId;
-            endItemId = this.itemId;
-
-            // Determine direction based on relationship between current position and line start
-            if (this.offset > lineStartOffset) {
-                // Normal case (cursor is in the middle of the line)
-                startOffset = this.offset;
-                endOffset = lineStartOffset;
-                isReversed = true; // Reverse direction as we are selecting towards line start
-            } else {
-                // If cursor is at line start (usually doesn't reach here)
-                startOffset = lineStartOffset;
-                endOffset = this.offset;
-                isReversed = false;
-            }
+            startOffset = this.offset;
         }
 
-        // Debug information
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(
-                `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
-            );
-        }
-
-        // Clear existing selection for the same user before setting new range
-        store.clearSelectionForUser(this.userId);
-        // Set selection
-        store.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: this.userId,
-            isReversed,
-        });
-
-        // Move cursor position to line start
+        // Move cursor to line start
         this.offset = lineStartOffset;
         this.applyToStore();
 
-        // Set selection range for global textarea
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+        this.updateSelectionAfterMove(startItemId, startOffset);
     }
 
     // Extend selection to the end of the line
@@ -1330,143 +974,33 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        // Debug information
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`extendSelectionToLineEnd called for itemId=${this.itemId}, offset=${this.offset}`);
-        }
-
-        // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineEndOffset = getLineEndOffset(text, currentLineIndex);
 
-        // Debug information
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`Current line index: ${currentLineIndex}, lineEndOffset: ${lineEndOffset}, text: "${text}"`);
-        }
+        // Get current selection
+        const existingSelection = this.getSelectionForCurrentItem();
 
-        // Do nothing if current cursor position is already at line end
+        // If current cursor position is already at line end, do nothing (only if no selection)
         if (this.offset === lineEndOffset && !existingSelection) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`Already at line end, no selection created`);
-            }
             return;
         }
 
+        let startItemId, startOffset;
+
         if (existingSelection) {
-            // Extend if there is an existing selection
-            if (!existingSelection.isReversed) {
-                // If forward selection, move the end position
-                startItemId = existingSelection.startItemId;
-                startOffset = existingSelection.startOffset;
-
-                // Move cursor to line end
-                endItemId = this.itemId;
-                endOffset = lineEndOffset;
-                isReversed = false;
-            } else {
-                // If reversed selection, move the start position
-                endItemId = existingSelection.endItemId;
-                endOffset = existingSelection.endOffset;
-
-                // Move cursor to line end
-                startItemId = this.itemId;
-                startOffset = lineEndOffset;
-                isReversed = true;
-            }
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
         } else {
-            // Create new selection
             startItemId = this.itemId;
             startOffset = this.offset;
-
-            // Select up to line end
-            endItemId = this.itemId;
-            endOffset = lineEndOffset;
-            isReversed = this.offset > lineEndOffset;
         }
 
-        // Debug information
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(
-                `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
-            );
-        }
-
-        // Clear existing selection for the same user before setting new range
-        store.clearSelectionForUser(this.userId);
-        // Set selection
-        const selectionId = store.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: this.userId,
-            isReversed,
-        });
-
-        // Debug information
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-            console.log(`Selection created with ID: ${selectionId}`);
-            console.log(`Current selections:`, store.selections);
-        }
-
-        // Move cursor position to line end
+        // Move cursor to line end
         this.offset = lineEndOffset;
         this.applyToStore();
 
-        // Set selection range for global textarea
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
-
-        // Wait a bit for DOM reflection to ensure selection is correctly created
-        if (typeof window !== "undefined") {
-            setTimeout(() => {
-                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Selection elements in DOM: ${selectionElements.length}`);
-                }
-
-                // Reset selection if not displayed
-                if (selectionElements.length === 0) {
-                    store.setSelection({
-                        startItemId,
-                        startOffset,
-                        endItemId,
-                        endOffset,
-                        userId: this.userId,
-                        isReversed,
-                    });
-
-                    // Force update selection display
-                    store.forceUpdate();
-                }
-            }, 100); // Increase timeout to 100ms to allow more time for DOM updates
-
-            // Additional check and update
-            setTimeout(() => {
-                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (selectionElements.length === 0) {
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                        console.log(`Selection still not visible after 100ms, forcing update again`);
-                    }
-
-                    // Reset selection
-                    store.setSelection({
-                        startItemId,
-                        startOffset,
-                        endItemId,
-                        endOffset,
-                        userId: this.userId,
-                        isReversed,
-                    });
-
-                    // Force update
-                    store.forceUpdate();
-                }
-            }, 200);
-        }
+        this.updateSelectionAfterMove(startItemId, startOffset);
     }
 
     /**
@@ -2400,27 +1934,7 @@ export class Cursor implements CursorEditingContext {
     }
 
     /**
-     * Common method to apply format to selection
-     * @param markdownPrefix Markdown format prefix
-     * @param markdownSuffix Markdown format suffix
-     * @param scrapboxPrefix Scrapbox format prefix
-     * @param scrapboxSuffix Scrapbox format suffix
-     */
 
-    /**
-     * Apply Scrapbox syntax format to selection
-     * @param formatType Type of format('bold', 'italic', 'strikethrough', 'underline', 'code')
-     */
-
-    /**
-     * Apply format to selection spanning multiple items
-     */
-
-    /**
-     * Apply Scrapbox syntax format to selection spanning multiple items
-     */
-
-    /**
      * Find the next item using DOM traversal as a fallback mechanism
      * @param currentItemId The ID of the current item
      * @returns The next item if found, otherwise undefined

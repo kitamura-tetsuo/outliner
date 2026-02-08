@@ -22,13 +22,13 @@ export interface SeedRequest {
 }
 
 const PageSeedSchema = z.object({
-    name: z.string().min(1),
-    lines: z.array(z.string()).optional(),
+    name: z.string().min(1).max(100),
+    lines: z.array(z.string().max(10000)).max(1000).optional(),
 });
 
 const SeedRequestSchema = z.object({
-    projectName: z.string().min(1),
-    pages: z.array(PageSeedSchema),
+    projectName: z.string().min(1).max(255),
+    pages: z.array(PageSeedSchema).max(50),
 });
 
 /**

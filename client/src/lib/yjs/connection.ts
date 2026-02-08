@@ -682,13 +682,15 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     const tokenFn = async () => {
         try {
             const t = await getFreshIdToken();
-            if (provider && provider.configuration?.url && typeof provider.configuration.url === "string" && t) {
-                const urlObj = new URL(provider.configuration.url);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const config = provider.configuration as any;
+            if (provider && config?.url && typeof config.url === "string" && t) {
+                const urlObj = new URL(config.url);
                 urlObj.searchParams.set("token", t);
-                provider.configuration.url = urlObj.toString();
+                config.url = urlObj.toString();
                 // Also update the provider.url property if it exists
                 if ((provider as TokenRefreshableProvider).url) {
-                    (provider as TokenRefreshableProvider).url = provider.configuration.url;
+                    (provider as TokenRefreshableProvider).url = config.url;
                 }
                 console.log("[connectProjectDoc] Updated provider URL with fresh token");
             }
@@ -752,12 +754,14 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     const tokenFn = async () => {
         try {
             const t = await getFreshIdToken();
-            if (provider && provider.configuration?.url && typeof provider.configuration.url === "string" && t) {
-                const urlObj = new URL(provider.configuration.url);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const config = provider.configuration as any;
+            if (provider && config?.url && typeof config.url === "string" && t) {
+                const urlObj = new URL(config.url);
                 urlObj.searchParams.set("token", t);
-                provider.configuration.url = urlObj.toString();
+                config.url = urlObj.toString();
                 if ((provider as TokenRefreshableProvider).url) {
-                    (provider as TokenRefreshableProvider).url = provider.configuration.url;
+                    (provider as TokenRefreshableProvider).url = config.url;
                 }
             }
             return t;
