@@ -60,4 +60,36 @@ describe("ScrapboxFormatter Security", () => {
         // We expect only 1 occurrence (the real one)
         expect(matches?.length).toBe(1);
     });
+
+    it("should prevent javascript: protocol bypass via null bytes", () => {
+        // Construct a malicious URL with a null byte in the protocol
+        const maliciousUrl = "javas\x00cript:alert(1)";
+
+        // 1. Sanitize the URL directly
+        const sanitized = ScrapboxFormatter.sanitizeUrl(maliciousUrl);
+
+        // If vulnerable, it returns the URL as-is because "javas\0cript:" doesn't match /^javascript:/
+        // If secure, it should detect it (after normalizing) and return "unsafe:..."
+
+        // 2. Simulate what happens in formatToHtml/tokensToHtml
+        // escapeHtml strips null bytes
+        const finalUrl = ScrapboxFormatter.escapeHtml(sanitized);
+
+        console.log(`Malicious: ${JSON.stringify(maliciousUrl)}`);
+        console.log(`Sanitized: ${JSON.stringify(sanitized)}`);
+        console.log(`Final:     ${JSON.stringify(finalUrl)}`);
+
+        // The final result MUST NOT start with javascript:
+        expect(finalUrl).not.toMatch(/^javascript:/i);
+
+        // It should either be prefixed with unsafe: OR remain broken (javas\0cript) if escapeHtml didn't strip it.
+        // But since escapeHtml DOES strip it, sanitizeUrl MUST catch it.
+        if (finalUrl.startsWith("unsafe:")) {
+            // Good result
+            expect(finalUrl).toContain("unsafe:");
+        } else {
+            // If not marked unsafe, it better not be a working javascript link
+            expect(finalUrl).not.toBe("javascript:alert(1)");
+        }
+    });
 });

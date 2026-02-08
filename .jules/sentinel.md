@@ -81,3 +81,21 @@
 **Vulnerability:** The `deleteAllProductionData` endpoint relied solely on a shared secret (`adminToken`) for authorization, without verifying the identity of the caller (missing `idToken` check).
 **Learning:** Shared secrets are prone to leakage and do not provide non-repudiation. A leaked secret allows anonymous attackers to perform critical actions.
 **Prevention:** Always layer authentication (checking "who") on top of authorization (checking "what"). For critical administrative actions, require both a strong authenticated session (Admin ID Token) and the specific secret/confirmation code.
+
+## 2026-02-25 - Authorization Bypass via User-Writable Collections
+
+**Vulnerability:** The WebSocket server authorized project access by checking the `userProjects` collection, which was writable by any authenticated user. An attacker could add any project ID to their own `userProjects` document to bypass authorization checks.
+**Learning:** Authorization checks must effectively consult a "Source of Truth" that is immutable by regular users (e.g., `projectUsers` or ACL lists). Relying on user-profile data that the user can edit effectively delegates authorization decisions to the user.
+**Prevention:** Only trust server-side resource permission lists (like `projectUsers`) for authorization. Remove or ignore legacy user-centric collections (like `userProjects`) if they are writable by users.
+
+## 2026-02-04 - Authorization Bypass in Seed API
+
+**Vulnerability:** The `/api/seed` endpoint allowed any authenticated user to overwrite data of existing projects because it lacked an authorization check against the `projectUsers` collection.
+**Learning:** Utility/Setup endpoints often lack the rigorous checks of main endpoints. Even if an endpoint is intended for "initialization", it must check if the resource already exists and enforce permissions if it does.
+**Prevention:** Enforce ACL checks on all state-modifying endpoints. Distinguish clearly between "create" (allow if not exists) and "update" (require permission) operations.
+
+## 2026-02-07 - DoS via Unbounded Input in Seed API
+
+**Vulnerability:** The `/api/seed` endpoint accepted arbitrary-length strings for `projectName` and arrays for `pages`/`lines` without validation limits. This exposed the server to Denial of Service (DoS) attacks via memory exhaustion or CPU consumption in hashing loops.
+**Learning:** Validation libraries like Zod make it easy to define types (e.g., `z.string()`), but developers often forget to add operational limits (e.g., `.max(255)`). Default web server limits (like 100kb body size) are a safety net but insufficient defense-in-depth for complex structured data.
+**Prevention:** Always add explicit length and count limits to all variable-size inputs (strings, arrays) in API schemas. Assume inputs can be malicious or accidentally huge.

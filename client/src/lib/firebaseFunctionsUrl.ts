@@ -1,59 +1,59 @@
 /**
- * Firebase Functions URLヘルパー
- * 環境に応じて適切なFirebase Functions URLを生成する
+ * Firebase Functions URL Helper
+ * Generates appropriate Firebase Functions URLs based on the environment.
  */
 
 import { getEnv } from "./env";
 
 /**
- * 環境に応じてFirebase Functions URLを変換する
- * @param functionName - 呼び出すFunction名
- * @returns 適切なURL
+ * Converts Firebase Functions URL based on the environment.
+ * @param functionName - The name of the function to call
+ * @returns The appropriate URL
  */
 export function getFirebaseFunctionUrl(functionName: string): string {
     const apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");
     const isTest = getEnv("VITE_IS_TEST", "false") === "true";
 
-    // テスト環境ではFirebase Hostingエミュレーター経由でアクセス
+    // Access via Firebase Hosting Emulator in test environment
     if (isTest) {
         return `http://localhost:57000/api/${functionName}`;
     }
 
-    // Firebase Hostingエミュレーター（localhost:57000）の場合
+    // When using Firebase Hosting Emulator (localhost:57000)
     if (apiBaseUrl === "http://localhost:57000") {
-        // Firebase Hostingエミュレーターのrewritesルール経由でアクセス
+        // Access via Firebase Hosting Emulator rewrite rules
         return `${apiBaseUrl}/api/${functionName}`;
     }
 
-    // ローカル開発環境（Firebase Functionsエミュレーター直接）の場合
+    // When using local development environment (Direct Firebase Functions Emulator)
     if (apiBaseUrl.includes("localhost") || apiBaseUrl.includes("127.0.0.1")) {
-        // エミュレーターでは /outliner-d57b0/us-central1/ プレフィックスが必要
+        // Emulator requires /outliner-d57b0/us-central1/ prefix
         return `${apiBaseUrl}/outliner-d57b0/us-central1/${functionName}`;
     }
 
-    // プロダクション環境の場合
-    // Firebase Hostingのrewritesルールにより、/api/function名 でアクセス可能
+    // For production environment
+    // Accessible via /api/function-name using Firebase Hosting rewrite rules
     return `${apiBaseUrl}/api/${functionName}`;
 }
 
 /**
- * SvelteKit APIプロキシ経由でアクセスする場合のURL
- * @param apiPath - APIパス（例: 'azure-health-check'）
- * @returns SvelteKit APIプロキシのURL
+ * URL when accessing via SvelteKit API proxy
+ * @param apiPath - API path (e.g., 'azure-health-check')
+ * @returns SvelteKit API proxy URL
  */
 export function getSvelteKitApiUrl(apiPath: string): string {
-    // SvelteKit APIプロキシは常に /api/ プレフィックスを使用
+    // SvelteKit API proxy always uses /api/ prefix
     return `/api/${apiPath}`;
 }
 
 /**
- * 環境判定ヘルパー
+ * Environment check helper
  */
 export function isLocalDevelopment(): boolean {
     const apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");
     const isTest = getEnv("VITE_IS_TEST", "false") === "true";
 
-    // テスト環境では常にfalseを返す（プロダクション環境として扱う）
+    // Always return false in test environment (treat as production)
     if (isTest) {
         return false;
     }
@@ -62,7 +62,7 @@ export function isLocalDevelopment(): boolean {
 }
 
 /**
- * デバッグ用：現在の設定を表示
+ * For debugging: Display current configuration
  */
 export function debugFirebaseFunctionsConfig(): void {
     const apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");

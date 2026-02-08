@@ -1,5 +1,8 @@
 import express from "express";
+import admin from "firebase-admin";
 import * as Y from "yjs";
+import { z } from "zod";
+import { checkContainerAccess } from "./access-control.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 import { verifyIdTokenCached } from "./websocket-auth.js";
@@ -17,6 +20,16 @@ export interface SeedRequest {
     projectName: string;
     pages: PageSeedData[];
 }
+
+const PageSeedSchema = z.object({
+    name: z.string().min(1).max(100),
+    lines: z.array(z.string().max(10000)).max(1000).optional(),
+});
+
+const SeedRequestSchema = z.object({
+    projectName: z.string().min(1).max(255),
+    pages: z.array(PageSeedSchema).max(50),
+});
 
 /**
  * Server-side seeding endpoint that directly manipulates Yjs documents
@@ -37,9 +50,11 @@ export function createSeedRouter(
             return;
         }
 
+        let uid: string;
         try {
             const token = authHeader.split(" ")[1];
-            await verifyIdTokenCached(token);
+            const decoded = await verifyIdTokenCached(token);
+            uid = decoded.uid;
         } catch (e) {
             logger.warn({
                 event: "seed_unauthorized",
@@ -51,12 +66,21 @@ export function createSeedRouter(
         }
 
         try {
-            const { projectName, pages }: SeedRequest = req.body;
+            const validationResult = SeedRequestSchema.safeParse(req.body);
 
-            if (!projectName || !pages || !Array.isArray(pages)) {
-                res.status(400).json({ error: "Invalid request body" });
+            if (!validationResult.success) {
+                logger.warn({
+                    event: "seed_invalid_request",
+                    errors: validationResult.error.format(),
+                });
+                res.status(400).json({
+                    error: "Invalid request body",
+                    details: validationResult.error.format(),
+                });
                 return;
             }
+
+            const { projectName, pages } = validationResult.data;
 
             logger.info({ event: "seed_request", projectName, pageCount: pages.length });
 
@@ -72,6 +96,37 @@ export function createSeedRouter(
             }
 
             const projectId = stableIdFromTitle(projectName);
+
+            // SECURITY: Check if project exists and if user has access
+            // If project exists in Firestore, user MUST be a member to seed (overwrite) it.
+            // If project does not exist, we allow seeding (creation).
+            try {
+                const db = admin.firestore();
+                const projectRef = db.collection("projectUsers").doc(projectId);
+                const projectDoc = await projectRef.get();
+
+                if (projectDoc.exists) {
+                    const hasAccess = await checkContainerAccess(uid, projectId);
+                    if (!hasAccess) {
+                        logger.warn({
+                            event: "seed_forbidden",
+                            reason: "access_denied",
+                            projectId,
+                            uid,
+                        });
+                        res.status(403).json({ error: "Forbidden: You do not have access to this project" });
+                        return;
+                    }
+                }
+            } catch (authError) {
+                logger.error({
+                    event: "seed_auth_check_error",
+                    error: authError instanceof Error ? authError.message : String(authError),
+                });
+                res.status(500).json({ error: "Internal Server Error during authorization check" });
+                return;
+            }
+
             const projectRoom = `projects/${projectId}`;
 
             // Use Hocuspocus's official openDirectConnection API

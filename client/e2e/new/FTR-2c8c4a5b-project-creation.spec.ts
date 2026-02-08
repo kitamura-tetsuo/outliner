@@ -34,7 +34,7 @@ test.describe("FTR-2c8c4a5b: Project Creation", () => {
         await page.fill("#containerName", projectName);
 
         // 4. Click create button
-        await page.click("button:has-text('作成する')");
+        await page.click("button:has-text('Create')");
 
         // 5. Verify redirect to the new project
         // It shoud redirect to root (/) then to the project page potentially?

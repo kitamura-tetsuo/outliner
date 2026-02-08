@@ -36,7 +36,7 @@ const provider = new GoogleAuthProvider();
 let idToken = $state("");
 let verificationResult = $state("");
 
-// テスト用に環境変数をwindowオブジェクトに公開
+// Expose environment variables to window object for testing
 onMount(() => {
     if (typeof window !== "undefined") {
         (window as any).testEnvVars = {
@@ -47,12 +47,12 @@ onMount(() => {
     }
 });
 
-// Google ログインして ID トークンを取得し、バックエンドで検証する
+// Sign in with Google, get ID token, and verify with backend
 async function signIn() {
     try {
         const result = await signInWithPopup(auth, provider);
         idToken = await result.user.getIdToken(true);
-        console.log("取得した ID Token:", idToken);
+        console.log("Retrieved ID Token:", idToken);
 
         const verifyUrl = import.meta.env.VITE_TOKEN_VERIFY_URL;
         const response = await fetch(verifyUrl, {
@@ -64,7 +64,7 @@ async function signIn() {
         verificationResult = JSON.stringify(data, null, 2);
     }
     catch (error) {
-        console.error("ログインまたは検証処理でエラーが発生しました:", error);
+        console.error("Error occurred during login or verification:", error);
     }
 }
 </script>
