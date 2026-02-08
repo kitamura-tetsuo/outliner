@@ -311,6 +311,29 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     const isTest = isTestEnvironment();
     console.log(`[getClientByProjectTitle] projectId not found, isTest=${isTest}`);
 
+    // Check if the title is actually a test ID format (e.g. "pa4cc30c")
+    // This handles the case where we navigate to /projectId directly in tests
+    if (isTest && /^p[0-9a-f]+$/i.test(projectTitle)) {
+        console.log(`[getClientByProjectTitle] projectTitle looks like a test ID, using as projectId: ${projectTitle}`);
+        const projectId = projectTitle;
+        const userId = userManager.getCurrentUser()?.id || "test-user-id";
+
+        // Try to resolve the real title from Firestore if available
+        let realTitle = projectId;
+        if (firestoreStore.userProject?.projectTitles && firestoreStore.userProject.projectTitles[projectId]) {
+            realTitle = firestoreStore.userProject.projectTitles[projectId];
+            console.log(`[getClientByProjectTitle] Resolved real title from Firestore: "${realTitle}"`);
+        }
+
+        const project = Project.createInstance(realTitle);
+        console.log(`[getClientByProjectTitle] Calling YjsClient.connect for test projectId=${projectId}`);
+        const client = await YjsClient.connect(projectId, project);
+        console.log(`[getClientByProjectTitle] YjsClient.connect completed`);
+
+        registry.set(keyFor(userId, projectId), [client, project]);
+        return client;
+    }
+
     if (isTest) {
         const userId = userManager.getCurrentUser()?.id || "test-user-id";
         const projectId = stableIdFromTitle(projectTitle);

@@ -141,6 +141,14 @@
                 "function": "adminUserList"
             },
             {
+                "source": "/api/generateProjectShareLink",
+                "function": "generateProjectShareLink"
+            },
+            {
+                "source": "/api/acceptProjectShareLink",
+                "function": "acceptProjectShareLink"
+            },
+            {
                 "source": "/health",
                 "function": "health"
             },
