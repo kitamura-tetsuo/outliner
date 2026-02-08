@@ -227,7 +227,6 @@ function findBestOffsetBinary(content: string, relX: number, span: HTMLElement):
 
 interface Props {
     model: OutlinerItemViewModel;
-    depth?: number;
     currentUser?: string;
     isReadOnly?: boolean;
     isCollapsed?: boolean;
@@ -238,7 +237,6 @@ interface Props {
 
 let {
     model,
-    depth = 0,
     currentUser = "anonymous",
     isReadOnly = false,
     isCollapsed = false,

@@ -224,85 +224,62 @@
     }
 
     function handleIndent(event: CustomEvent) {
-        const itemId: string | undefined = event?.detail?.itemId;
-        if (!itemId || itemId === "page-title") return;
+        const detail = event?.detail || {};
+        const itemIds: string[] = detail.itemIds || (detail.itemId ? [detail.itemId] : []);
+        
+        if (itemIds.length === 0) return;
 
-        const itemViewModel = viewModel.getViewModel(itemId);
-        if (!itemViewModel) return;
+        // Process first item to get context (assuming all items belong to same doc/tree context)
+        // Filter out page-title if present
+        const validIds = itemIds.filter(id => id && id !== "page-title");
+        if (validIds.length === 0) return;
 
-        const item = itemViewModel.original as any;
-        const tree = item?.tree as any;
-        const doc = item?.ydoc as any;
-        const key = item?.key as string | undefined;
+        const firstViewModel = viewModel.getViewModel(validIds[0]);
+        if (!firstViewModel) return;
 
-        try {
-            console.log("handleIndent debug", {
-                itemId,
-                hasTree: Boolean(tree),
-                hasDoc: Boolean(doc),
-                key,
-                treeType: tree?.constructor?.name,
-            });
-        } catch {}
+        const firstItem = firstViewModel.original as any;
+        const tree = firstItem?.tree as any;
+        const doc = firstItem?.ydoc as any;
 
-        if (
-            !tree ||
-            !doc ||
-            !key ||
-            typeof tree.getNodeParentFromKey !== "function"
-        ) {
-            if (typeof logger.warn === "function") {
-                logger.warn({ itemId }, "Indent skipped: missing tree context");
-            }
+        if (!tree || !doc) {
+            logger.warn({ ids: validIds }, "Indent skipped: missing tree/doc context");
             return;
         }
 
-        const parentKey = tree.getNodeParentFromKey(key);
-        if (!parentKey) return;
-
-        const siblingKeys: string[] = tree.sortChildrenByOrder(
-            tree.getNodeChildrenFromKey(parentKey),
-            parentKey,
-        );
-
-        const siblingOrder = [...siblingKeys];
-        const currentIndex = siblingOrder.indexOf(key);
-        try {
-            console.log(
-                "handleIndent parent info",
-                JSON.stringify({
-                    itemId,
-                    parentKey,
-                    siblingOrder,
-                    currentIndex,
-                }),
-            );
-        } catch {}
-
-        if (currentIndex <= 0) return; // Cannot indent first item
-
-        const targetParentKey = siblingOrder[currentIndex - 1];
-        try {
-            console.log(
-                "handleIndent moving",
-                JSON.stringify({ itemId, targetParentKey, currentIndex }),
-            );
-        } catch {}
-        if (!targetParentKey) return;
-
         const run = () => {
-            try {
-                tree.moveChildToParent(key, targetParentKey);
-                tree.setNodeOrderToEnd(key);
-            } catch (error) {
-                // The Y.Tree implementation throws when reordering with a stale parent reference.
-                // Swallow the error so mobile indent tests do not fail and log for follow-up.
-                logger.error(
-                    { itemId, targetParentKey, error },
-                    "Indent failed; skipping reparent",
+            validIds.forEach(itemId => {
+                const itemViewModel = viewModel.getViewModel(itemId);
+                if (!itemViewModel) return;
+                const item = itemViewModel.original as any;
+                const key = item?.key as string | undefined;
+                if (!key) return;
+
+                const parentKey = tree.getNodeParentFromKey(key);
+                if (!parentKey) return;
+
+                const siblingKeys: string[] = tree.sortChildrenByOrder(
+                    tree.getNodeChildrenFromKey(parentKey),
+                    parentKey,
                 );
-                return;
-            }
+
+                const siblingOrder = [...siblingKeys];
+                const currentIndex = siblingOrder.indexOf(key);
+                
+                if (currentIndex <= 0) return; // Cannot indent first item
+
+                const targetParentKey = siblingOrder[currentIndex - 1];
+                if (!targetParentKey) return;
+
+                try {
+                    tree.moveChildToParent(key, targetParentKey);
+                    tree.setNodeOrderToEnd(key);
+                } catch (error) {
+                    logger.error(
+                        { itemId, targetParentKey, error },
+                        "Indent failed; skipping reparent",
+                    );
+                }
+            });
         };
 
         if (typeof doc.transact === "function") {
@@ -311,62 +288,61 @@
             run();
         }
 
-        try {
-            console.log(
-                "handleIndent new parent",
-                JSON.stringify({
-                    itemId,
-                    newParent: tree.getNodeParentFromKey(key),
-                }),
-            );
-        } catch {}
-
         logger.info(
-            { itemId, targetParentKey },
-            "Indented item under previous sibling",
+            { count: validIds.length },
+            "Indented items",
         );
-        editorOverlayStore.setActiveItem(itemId);
+        // Set active item to the last one (following cursor behavior)
+        if (validIds.length > 0) {
+            editorOverlayStore.setActiveItem(validIds[validIds.length - 1]);
+        }
     }
 
     function handleUnindent(event: CustomEvent) {
-        const itemId: string | undefined = event?.detail?.itemId;
-        if (!itemId || itemId === "page-title") return;
+        const detail = event?.detail || {};
+        const itemIds: string[] = detail.itemIds || (detail.itemId ? [detail.itemId] : []);
+        
+        if (itemIds.length === 0) return;
 
-        const itemViewModel = viewModel.getViewModel(itemId);
-        if (!itemViewModel) return;
+        const validIds = itemIds.filter(id => id && id !== "page-title");
+        if (validIds.length === 0) return;
 
-        const item = itemViewModel.original as any;
-        const tree = item?.tree as any;
-        const doc = item?.ydoc as any;
-        const key = item?.key as string | undefined;
+        const firstViewModel = viewModel.getViewModel(validIds[0]);
+        if (!firstViewModel) return;
 
-        if (
-            !tree ||
-            !doc ||
-            !key ||
-            typeof tree.getNodeParentFromKey !== "function"
-        ) {
-            if (typeof logger.warn === "function") {
-                logger.warn(
-                    { itemId },
-                    "Unindent skipped: missing tree context",
-                );
-            }
+        const firstItem = firstViewModel.original as any;
+        const tree = firstItem?.tree as any;
+        const doc = firstItem?.ydoc as any;
+
+        if (!tree || !doc) {
+            logger.warn({ ids: validIds }, "Unindent skipped: missing tree/doc context");
             return;
         }
 
-        const parentKey = tree.getNodeParentFromKey(key);
-        if (!parentKey || parentKey === "root") return;
-
-        const grandParentKey = tree.getNodeParentFromKey(parentKey);
-        if (!grandParentKey) return;
-
         const run = () => {
-            tree.moveChildToParent(key, grandParentKey);
-            if (typeof tree.recomputeParentsAndChildren === "function") {
-                tree.recomputeParentsAndChildren();
-            }
-            tree.setNodeAfter(key, parentKey);
+            validIds.forEach(itemId => {
+                const itemViewModel = viewModel.getViewModel(itemId);
+                if (!itemViewModel) return;
+                const item = itemViewModel.original as any;
+                const key = item?.key as string | undefined;
+                if (!key) return;
+
+                const parentKey = tree.getNodeParentFromKey(key);
+                if (!parentKey || parentKey === "root") return;
+
+                const grandParentKey = tree.getNodeParentFromKey(parentKey);
+                if (!grandParentKey) return;
+
+                try {
+                    tree.moveChildToParent(key, grandParentKey);
+                    if (typeof tree.recomputeParentsAndChildren === "function") {
+                        tree.recomputeParentsAndChildren();
+                    }
+                    tree.setNodeAfter(key, parentKey);
+                } catch (error) {
+                    logger.error({ itemId, error }, "Unindent failed");
+                }
+            });
         };
 
         if (typeof doc.transact === "function") {
@@ -376,10 +352,12 @@
         }
 
         logger.info(
-            { itemId, parentKey, grandParentKey },
-            "Unindented item to parent level",
+            { count: validIds.length },
+            "Unindented items",
         );
-        editorOverlayStore.setActiveItem(itemId);
+        if (validIds.length > 0) {
+            editorOverlayStore.setActiveItem(validIds[validIds.length - 1]);
+        }
     }
 
     let lastToolbarItemId: string | null = null;

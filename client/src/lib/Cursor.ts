@@ -97,21 +97,24 @@ export class Cursor implements CursorEditingContext {
                 if (startIdx !== -1 && endIdx !== -1) {
                     const firstIdx = Math.min(startIdx, endIdx);
                     const lastIdx = Math.max(startIdx, endIdx);
+                    const itemIds: string[] = [];
 
                     for (let i = firstIdx; i <= lastIdx; i++) {
-                        window.dispatchEvent(
-                            new CustomEvent("outliner-indent", {
-                                detail: { itemId: allItemIds[i] },
-                            }),
-                        );
+                        itemIds.push(allItemIds[i]);
                     }
+
+                    window.dispatchEvent(
+                        new CustomEvent("outliner-indent", {
+                            detail: { itemIds },
+                        }),
+                    );
                     return;
                 }
             }
 
             window.dispatchEvent(
                 new CustomEvent("outliner-indent", {
-                    detail: { itemId: this.itemId },
+                    detail: { itemIds: [this.itemId] },
                 }),
             );
         }
@@ -129,21 +132,24 @@ export class Cursor implements CursorEditingContext {
                 if (startIdx !== -1 && endIdx !== -1) {
                     const firstIdx = Math.min(startIdx, endIdx);
                     const lastIdx = Math.max(startIdx, endIdx);
+                    const itemIds: string[] = [];
 
                     for (let i = firstIdx; i <= lastIdx; i++) {
-                        window.dispatchEvent(
-                            new CustomEvent("outliner-unindent", {
-                                detail: { itemId: allItemIds[i] },
-                            }),
-                        );
+                        itemIds.push(allItemIds[i]);
                     }
+
+                    window.dispatchEvent(
+                        new CustomEvent("outliner-unindent", {
+                            detail: { itemIds },
+                        }),
+                    );
                     return;
                 }
             }
 
             window.dispatchEvent(
                 new CustomEvent("outliner-unindent", {
-                    detail: { itemId: this.itemId },
+                    detail: { itemIds: [this.itemId] },
                 }),
             );
         }
