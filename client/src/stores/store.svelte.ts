@@ -1,4 +1,3 @@
-import { untrack } from "svelte";
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
@@ -141,13 +140,12 @@ export class GeneralStore {
     pagesVersion = $state(0);
 
     // Cache of page names (normalized to lowercase) for O(1) lookup
-    private _pageNamesCache = new SvelteSet<string>();
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
+    private _pageNamesCache = new Set<string>();
 
     private _rebuildPageNamesCache() {
         try {
-            // Collect new names first
-            // eslint-disable-next-line svelte/prefer-svelte-reactivity
-            const newNames = new Set<string>();
+            this._pageNamesCache.clear();
             const items = this._project?.items;
             if (items) {
                 // Items is iterable
@@ -156,31 +154,13 @@ export class GeneralStore {
                     try {
                         const text = page.text;
                         if (text) {
-                            newNames.add(text.toLowerCase());
+                            this._pageNamesCache.add(text.toLowerCase());
                         }
                     } catch {
                         // Ignore individual item errors during cache rebuild
                     }
                 }
             }
-
-            // Sync _pageNamesCache (SvelteSet) with newNames
-
-            untrack(() => {
-                // 1. Remove names not in newNames
-                for (const name of this._pageNamesCache) {
-                    if (!newNames.has(name)) {
-                        this._pageNamesCache.delete(name);
-                    }
-                }
-
-                // 2. Add names from newNames that are not in cache
-                for (const name of newNames) {
-                    if (!this._pageNamesCache.has(name)) {
-                        this._pageNamesCache.add(name);
-                    }
-                }
-            });
         } catch {
             // Fallback: clear cache to avoid stale state if rebuild fails totally
             this._pageNamesCache.clear();
@@ -193,7 +173,8 @@ export class GeneralStore {
      */
     public pageExists(name: string): boolean {
         try {
-            // Rely on SvelteSet fine-grained reactivity instead of global pagesVersion
+            // Access pagesVersion to ensure reactivity
+            void this.pagesVersion;
             if (!name) return false;
             return this._pageNamesCache.has(name.toLowerCase());
         } catch {

@@ -31,16 +31,19 @@ test.describe("SLR-3724726f: 選択範囲の方向切り替え", () => {
         await page.keyboard.press("ArrowDown");
         await page.keyboard.up("Shift");
 
-        // 選択範囲が作成されるまで待機（Storeの状態を確認）
+        // 少し待機して選択が反映されるのを待つ
+        await page.waitForTimeout(300);
+
+        // 選択範囲が作成されたことを確認
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
+
+        // 選択範囲の方向を確認
+        // 選択範囲が作成されるまで待機
         await page.waitForFunction(() => {
             const store = (window as any).editorOverlayStore;
             return store && Object.keys(store.selections).length > 0;
         });
 
-        // 少し待機してDOMの反映を待つ
-        await page.waitForTimeout(300);
-
-        // Storeの状態を確認（DOMの可視性は環境依存の可能性があるためスキップし、Storeの整合性を確認）
         const forwardSelectionDirection = await page.evaluate<boolean | null>(() => {
             const store = (window as any).editorOverlayStore;
             const selection = Object.values<any>(store.selections)[0];
@@ -67,16 +70,18 @@ test.describe("SLR-3724726f: 選択範囲の方向切り替え", () => {
         await page.keyboard.press("ArrowUp");
         await page.keyboard.up("Shift");
 
-        // 選択範囲が作成されるまで待機（Storeの状態を確認）
+        // 少し待機して選択が反映されるのを待つ
+        await page.waitForTimeout(300);
+
+        // 選択範囲が作成されたことを確認
+        await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
+
+        // 選択範囲の方向を確認
         await page.waitForFunction(() => {
             const store = (window as any).editorOverlayStore;
             return store && Object.keys(store.selections).length > 0;
         });
 
-        // 少し待機してDOMの反映を待つ
-        await page.waitForTimeout(300);
-
-        // Storeの状態を確認（DOMの可視性は環境依存の可能性があるためスキップし、Storeの整合性を確認）
         const reverseSelectionDirection = await page.evaluate<boolean | null>(() => {
             const store = (window as any).editorOverlayStore;
             const selection = Object.values<any>(store.selections)[0];

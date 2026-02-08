@@ -38,8 +38,7 @@ describe("YjsClient", () => {
 
         // Dynamically import HocuspocusProvider to use the mocked version
         const { HocuspocusProvider } = await import("@hocuspocus/provider");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        provider = new HocuspocusProvider({} as any);
+        provider = new HocuspocusProvider();
 
         // Create a simple mock for Project since we don't need its full logic for this test
         project = {
@@ -77,8 +76,8 @@ describe("YjsClient", () => {
 
         // Verify provider info
         expect(info.provider).toBeDefined();
-        expect(info.provider!.url).toBe("ws://mock-url");
-        expect(info.provider!.name).toBe("mock-provider");
-        expect(info.provider!.connected).toBe(true);
+        expect(info.provider.url).toBe("ws://mock-url");
+        expect(info.provider.name).toBe("mock-provider");
+        expect(info.provider.connected).toBe(true);
     });
 });

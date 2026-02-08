@@ -4,69 +4,67 @@ import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
 export class CursorFormatting {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private cursor: any; // Holds an instance of the Cursor class
+    private cursor: any; // Cursorクラスのインスタンスを保持
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(cursor: any) {
         this.cursor = cursor;
     }
 
     /**
-     * Change the selected text to bold (Scrapbox syntax: [[text]])
+     * 選択範囲のテキストを太字に変更する（Scrapbox構文: [[text]]）
      */
     formatBold() {
         this.applyScrapboxFormatting("bold");
     }
 
     /**
-     * Change the selected text to italic (Scrapbox syntax: [/ text])
+     * 選択範囲のテキストを斜体に変更する（Scrapbox構文: [/ text]）
      */
     formatItalic() {
         this.applyScrapboxFormatting("italic");
     }
 
     /**
-     * Add underline to the selected text (Uses HTML tags)
+     * 選択範囲のテキストに下線を追加する（HTML タグを使用）
      */
     formatUnderline() {
         this.applyScrapboxFormatting("underline");
     }
 
     /**
-     * Add strikethrough to the selected text (Scrapbox syntax: [- text])
+     * 選択範囲のテキストに取り消し線を追加する（Scrapbox構文: [- text]）
      */
     formatStrikethrough() {
         this.applyScrapboxFormatting("strikethrough");
     }
 
     /**
-     * Change the selected text to code (Scrapbox syntax: `text`)
+     * 選択範囲のテキストをコードに変更する（Scrapbox構文: `text`）
      */
     formatCode() {
         this.applyScrapboxFormatting("code");
     }
 
     /**
-     * Apply Scrapbox syntax formatting to the selected range
-     * @param formatType Format type ('bold', 'italic', 'strikethrough', 'underline', 'code')
+     * 選択範囲にScrapbox構文のフォーマットを適用する
+     * @param formatType フォーマットの種類（'bold', 'italic', 'strikethrough', 'underline', 'code'）
      */
     private applyScrapboxFormatting(formatType: "bold" | "italic" | "strikethrough" | "underline" | "code") {
-        // Get selection range
+        // 選択範囲を取得
         const selection = Object.values(store.selections).find(s => s.userId === this.cursor.userId);
 
         if (!selection || selection.startOffset === selection.endOffset) {
-            // Do nothing if there is no selection
+            // 選択範囲がない場合は何もしない
             return;
         }
 
-        // If selection spans multiple items
+        // 複数アイテムにまたがる選択範囲の場合
         if (selection.startItemId !== selection.endItemId) {
             this.applyScrapboxFormattingToMultipleItems(selection, formatType);
             return;
         }
 
-        // If selection is within a single item
+        // 単一アイテム内の選択範囲の場合
         const target = this.cursor.findTarget();
         if (!target) return;
 
@@ -75,7 +73,7 @@ export class CursorFormatting {
         const endOffset = Math.max(selection.startOffset, selection.endOffset);
         const selectedText = text.substring(startOffset, endOffset);
 
-        // Create formatted text
+        // フォーマット済みのテキストを作成
         let formattedText = "";
         switch (formatType) {
             case "bold":
@@ -95,51 +93,50 @@ export class CursorFormatting {
                 break;
         }
 
-        // Update text
+        // テキストを更新
         const newText = text.substring(0, startOffset) + formattedText + text.substring(endOffset);
         target.updateText(newText);
 
-        // Update cursor position (set to end of selection)
+        // カーソル位置を更新（選択範囲の終了位置に設定）
         this.cursor.offset = startOffset + formattedText.length;
         this.cursor.applyToStore();
 
-        // Clear selection
+        // 選択範囲をクリア
         this.cursor.clearSelection();
 
-        // Start cursor blinking
+        // カーソル点滅を開始
         store.startCursorBlink();
     }
 
     /**
-     * Apply Scrapbox syntax formatting to selection spanning multiple items
+     * 複数アイテムにまたがる選択範囲にScrapbox構文のフォーマットを適用する
      */
     private applyScrapboxFormattingToMultipleItems(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         selection: any,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
-        // Get start and end item IDs
+        // 開始アイテムと終了アイテムのIDを取得
         const startItemId = selection.startItemId;
         const endItemId = selection.endItemId;
         const startOffset = selection.startOffset;
         const endOffset = selection.endOffset;
         const isReversed = selection.isReversed;
 
-        // Get all item IDs
+        // 全アイテムのIDを取得
         const allItemElements = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
         const allItemIds = allItemElements.map(el => el.getAttribute("data-item-id")!);
 
-        // Get start and end item indices
+        // 開始アイテムと終了アイテムのインデックスを取得
         const startIdx = allItemIds.indexOf(startItemId);
         const endIdx = allItemIds.indexOf(endItemId);
 
         if (startIdx === -1 || endIdx === -1) return;
 
-        // Normalize start and end indices
+        // 開始インデックスと終了インデックスを正規化
         const firstIdx = Math.min(startIdx, endIdx);
         const lastIdx = Math.max(startIdx, endIdx);
 
-        // Apply format to each item in the selection
+        // 選択範囲内の各アイテムにフォーマットを適用
         for (let i = firstIdx; i <= lastIdx; i++) {
             const itemId = allItemIds[i];
             const item = this.cursor.searchItem(generalStore.currentPage!, itemId);
@@ -148,14 +145,14 @@ export class CursorFormatting {
 
             const text = item.text || "";
 
-            // Apply format according to item position
+            // アイテムの位置に応じてフォーマットを適用
             if (i === firstIdx && i === lastIdx) {
-                // Selection within a single item
+                // 単一アイテム内の選択範囲
                 const start = isReversed ? endOffset : startOffset;
                 const end = isReversed ? startOffset : endOffset;
                 const selectedText = text.substring(start, end);
 
-                // Create formatted text
+                // フォーマット済みのテキストを作成
                 let formattedText = "";
                 switch (formatType) {
                     case "bold":
@@ -178,21 +175,22 @@ export class CursorFormatting {
                 const newText = text.substring(0, start) + formattedText + text.substring(end);
                 item.updateText(newText);
             } else {
-                // If selection spans multiple items, process each item individually.
-                // Currently only single item selection is supported.
-                // Add implementation here for multi-item selection support.
+                // 複数アイテムにまたがる選択範囲の場合は、各アイテムを個別に処理
+                // 現在は単一アイテム内の選択範囲のみサポート
+                // 将来的に複数アイテムにまたがる選択範囲のフォーマットをサポートする場合は、
+                // ここに実装を追加する
             }
         }
 
-        // Update cursor position (set to end of selection)
+        // カーソル位置を更新（選択範囲の終了位置に設定）
         this.cursor.itemId = isReversed ? startItemId : endItemId;
         this.cursor.offset = isReversed ? startOffset : endOffset;
         this.cursor.applyToStore();
 
-        // Clear selection
+        // 選択範囲をクリア
         this.cursor.clearSelection();
 
-        // Start cursor blinking
+        // カーソル点滅を開始
         store.startCursorBlink();
     }
 }

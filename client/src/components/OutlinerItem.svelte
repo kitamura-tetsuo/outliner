@@ -152,7 +152,6 @@ import { calculateGlobalOffset } from "../utils/domCursorUtils";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
-import { presenceStore } from "../stores/PresenceStore.svelte";
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import ChartPanel from "./ChartPanel.svelte";
 import ChartQueryEditor from "./ChartQueryEditor.svelte";
@@ -408,18 +407,6 @@ onMount(() => {
 
 // Unified display count to single source derived from Yjs
 const commentCountVisual = $derived.by(() => Number(commentCountLocal ?? 0));
-
-// Computed voter names for tooltip
-const voterNames = $derived.by(() => {
-    if (!model.votes || model.votes.length === 0) return "";
-    return model.votes.map(uid => {
-        if (uid === currentUser) return "You";
-        const u = presenceStore.users[uid];
-        // If user is online, show name. If offline but ID matches a known pattern, maybe abbreviated ID?
-        // Fallback to "User <ID>"
-        return u ? u.userName : `User ${uid.slice(0, 4)}`;
-    }).join(", ");
-});
 
 
 
@@ -2030,13 +2017,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                     {@html formattedHtml}
                 </span>
                 {#if !isPageTitle && model.votes.length > 0}
-                    <span
-                        class="vote-count"
-                        title={voterNames}
-                        aria-label={`${model.votes.length} vote${model.votes.length === 1 ? '' : 's'}`}
-                    >
-                        {model.votes.length}
-                    </span>
+                    <span class="vote-count">{model.votes.length}</span>
                 {/if}
                 {#if !isPageTitle}
                     <span class="comment-count-visual" aria-hidden="true">{commentCountVisual}</span>
@@ -2108,8 +2089,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                     onclick={toggleVote}
                     class="vote-btn"
                     class:voted={model.votes.includes(currentUser)}
-                    title={model.votes.includes(currentUser) ? "Remove vote" : "Vote"}
-                    aria-label={model.votes.includes(currentUser) ? "Remove vote" : "Vote for this item"}
+                    title="Vote"
+                    aria-label="Vote for this item"
                     aria-pressed={model.votes.includes(currentUser)}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill={model.votes.includes(currentUser) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

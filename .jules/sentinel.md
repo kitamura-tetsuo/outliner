@@ -93,9 +93,3 @@
 **Vulnerability:** The `/api/seed` endpoint allowed any authenticated user to overwrite data of existing projects because it lacked an authorization check against the `projectUsers` collection.
 **Learning:** Utility/Setup endpoints often lack the rigorous checks of main endpoints. Even if an endpoint is intended for "initialization", it must check if the resource already exists and enforce permissions if it does.
 **Prevention:** Enforce ACL checks on all state-modifying endpoints. Distinguish clearly between "create" (allow if not exists) and "update" (require permission) operations.
-
-## 2026-02-07 - DoS via Unbounded Input in Seed API
-
-**Vulnerability:** The `/api/seed` endpoint accepted arbitrary-length strings for `projectName` and arrays for `pages`/`lines` without validation limits. This exposed the server to Denial of Service (DoS) attacks via memory exhaustion or CPU consumption in hashing loops.
-**Learning:** Validation libraries like Zod make it easy to define types (e.g., `z.string()`), but developers often forget to add operational limits (e.g., `.max(255)`). Default web server limits (like 100kb body size) are a safety net but insufficient defense-in-depth for complex structured data.
-**Prevention:** Always add explicit length and count limits to all variable-size inputs (strings, arrays) in API schemas. Assume inputs can be malicious or accidentally huge.

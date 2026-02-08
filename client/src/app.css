@@ -10,7 +10,7 @@ html.dark {
     @apply bg-gray-900 text-gray-100;
 }
 
-/* Internal link styles */
+/* 内部リンクのスタイル */
 .internal-link {
     color: #1a73e8;
     text-decoration: none;
@@ -23,7 +23,7 @@ html.dark {
     text-decoration: underline;
 }
 
-/* Styles for links to non-existent pages */
+/* 存在しないページへのリンクスタイル */
 .internal-link.page-not-exists {
     color: #d32f2f;
     border-bottom: 1px dashed #d32f2f;
@@ -34,7 +34,7 @@ html.dark {
     border-bottom: 1px solid #b71c1c;
 }
 
-/* Project internal link styles */
+/* プロジェクト内部リンクのスタイル */
 .internal-link.project-link {
     color: #0288d1;
 }
@@ -43,7 +43,7 @@ html.dark {
     color: #01579b;
 }
 
-/* Styles for project internal links to non-existent pages */
+/* プロジェクト内部リンクで存在しないページへのリンクスタイル */
 .internal-link.project-link.page-not-exists {
     color: #d32f2f;
     border-bottom: 1px dashed #d32f2f;
@@ -54,7 +54,7 @@ html.dark {
     border-bottom: 1px solid #b71c1c;
 }
 
-/* Link preview wrapper */
+/* リンクプレビューラッパー */
 .link-preview-wrapper {
     display: inline-block;
     position: relative;

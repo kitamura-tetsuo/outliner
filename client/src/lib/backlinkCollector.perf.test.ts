@@ -35,7 +35,10 @@ describe("backlinkCollector performance", () => {
     it("should use iterateUnordered if available for pages", () => {
         collectBacklinks("TargetPage");
 
-        const pages = store.pages.current as any;
+        const pages = store.pages.current as unknown as {
+            iterateUnordered: () => void;
+            [Symbol.iterator]: () => void;
+        };
         expect(pages.iterateUnordered).toHaveBeenCalled();
         expect(pages[Symbol.iterator]).not.toHaveBeenCalled();
     });

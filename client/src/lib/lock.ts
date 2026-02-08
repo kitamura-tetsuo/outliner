@@ -56,7 +56,7 @@ export class AsyncLockManager {
     }
 }
 
-// // Example usage
+// // 使い方の例
 // class MyService {
 //     lockManager: AsyncLockManager;
 //     constructor() {
@@ -79,24 +79,24 @@ export class AsyncLockManager {
 //         });
 //     }
 
-//     // Can also lock with arbitrary keys
+//     // 任意キーでもロック可能
 //     async runWithCustomLock(key: string, fn: { (): Promise<void>; (): Promise<void>; }) {
 //         return this.lockManager.runExclusive(key, fn);
 //     }
 // }
 
-// // Test execution
+// // 動作テスト
 // (async () => {
 //     const service = new MyService();
 
-//     // methodA is exclusively controlled
+//     // methodA は排他制御される
 //     service.methodA();
 //     service.methodA();
 
-//     // methodB uses a different lock so it can run concurrently
+//     // methodB は別ロックなので同時実行可能
 //     service.methodB();
 
-//     // Locking with an arbitrary key
+//     // 任意のキーでのロック
 //     service.runWithCustomLock('custom', async () => {
 //         console.log('custom lock start');
 //         await new Promise(r => setTimeout(r, 700));

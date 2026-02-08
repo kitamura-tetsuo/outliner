@@ -42,8 +42,3 @@
 
 **Learning:** `ScrapboxFormatter.processFormat` was executing multiple regex `replace` calls sequentially for every formatted segment, even if the triggering characters (like `[/`, `[-`, `` ` ``) were absent. Adding `includes()` checks before each specific `replace` call reduced the overhead by ~26% in benchmarks.
 **Action:** When applying a series of regex replacements, use `String.prototype.includes()` to verify the presence of triggering substrings before invoking the regex engine.
-
-## 2026-03-03 - [Backlink Collection Iteration Optimization]
-
-**Learning:** `collectBacklinks` was iterating `store.pages.current` using the default iterator, which triggered O(N log N) sorting of page keys. Using `iterateUnordered` avoids this sort, reducing complexity to O(N).
-**Action:** When iterating over `Items` or similar Yjs-backed collections where order is not strictly required, always prefer `iterateUnordered` to avoid implicit sorting overhead.

@@ -116,4 +116,30 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
         });
         expect(newSelectionText.length).toBeGreaterThan(selectionText.length);
     });
+
+    test("Selection Reversal (Right then Left)", async ({ page }) => {
+        await CursorValidator.assertCursorCount(page, 1);
+
+        // Expand
+        for (let i = 0; i < 5; i++) {
+            await page.keyboard.press("Shift+ArrowRight");
+        }
+        await page.waitForTimeout(100);
+
+        // Contract
+        for (let i = 0; i < 5; i++) {
+            await page.keyboard.press("Shift+ArrowLeft");
+        }
+        await page.waitForTimeout(100);
+
+        await CursorValidator.assertCursorCount(page, 1);
+
+        const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const store = (window as any).editorOverlayStore;
+            return store ? store.getSelectedText() : "";
+        });
+        // Should be empty or length 0
+        expect(selectionText.length).toBe(0);
+    });
 });
