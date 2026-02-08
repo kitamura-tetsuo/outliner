@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { YjsClient } from "./YjsClient";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
-import { Project } from "../schema/yjs-schema";
 import { createProjectConnection } from "../lib/yjs/connection";
+import { Project } from "../schema/yjs-schema";
+import { YjsClient } from "./YjsClient";
 
 // Mock connection module
 vi.mock("../lib/yjs/connection", () => ({
