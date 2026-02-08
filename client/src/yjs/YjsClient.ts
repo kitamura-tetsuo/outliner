@@ -27,6 +27,8 @@ export class YjsClient {
     private _awareness?: Awareness | null;
     private _getPageConnection?: (pageId: string) => PageConnection | undefined;
 
+    public onAccessDenied?: () => void;
+
     constructor(params: YjsClientParams) {
         this.clientId = params.clientId;
         this.containerId = params.projectId; // mapped name
@@ -42,6 +44,14 @@ export class YjsClient {
                 yjsService.bindProjectPresence(this._awareness);
             }
         } catch {}
+
+        if (this._provider) {
+            this._provider.on("close", (event: { code: number; reason: string; }) => {
+                if (event.code === 4003) {
+                    this.onAccessDenied?.();
+                }
+            });
+        }
     }
 
     // Build a client with active provider/awareness
