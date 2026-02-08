@@ -16,7 +16,9 @@ export function getFirebaseFunctionUrl(functionName: string): string {
 
     // Access via Firebase Hosting Emulator in test environment
     if (isTest) {
-        return `http://localhost:57000/api/${functionName}`;
+        // Direct access to functions emulator to avoid hosting rewrite configuration issues in tests
+        // Port 57070 is the default for functions emulator
+        return `http://127.0.0.1:57070/outliner-d57b0/us-central1/${functionName}`;
     }
 
     // When using Firebase Hosting Emulator (localhost:57000)
@@ -42,7 +44,9 @@ export function getFirebaseFunctionUrl(functionName: string): string {
  * @returns SvelteKit API proxy URL
  */
 export function getSvelteKitApiUrl(apiPath: string): string {
-    // SvelteKit API proxy always uses /api/ prefix
+    // SvelteKit APIプロキシは常に /api/ プレフィックスを使用
+    // Note: If running in test mode and the API is handled by SvelteKit (Vite),
+    // we should ensure we are targeting the SvelteKit server, not Firebase Functions.
     return `/api/${apiPath}`;
 }
 

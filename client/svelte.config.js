@@ -29,6 +29,9 @@ const config = {
             precompress: false,
             strict: true,
         }),
+        alias: {
+            $stores: "src/stores",
+        },
         serviceWorker: {
             register: false, // Disabled to register Service Worker manually
         },

@@ -31,6 +31,7 @@ export function getEnv(key: string, defaultValue: string = ""): string {
         // Default values for the test environment
         if (key === "VITE_USE_TINYLICIOUS") return "true";
         if (key === "VITE_FORCE_AZURE") return "false";
+        if (key === "VITE_IS_TEST") return "true";
     }
 
     return (typeof import.meta !== "undefined" && import.meta.env?.[key]) || defaultValue;
