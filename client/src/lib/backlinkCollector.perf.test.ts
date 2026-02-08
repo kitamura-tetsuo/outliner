@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { collectBacklinks } from "./backlinkCollector";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "../stores/store.svelte";
+import { collectBacklinks } from "./backlinkCollector";
 
 // Mock implementation
 vi.mock("../stores/store.svelte", () => {
