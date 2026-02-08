@@ -22,7 +22,7 @@ const config = {
 
     kit: {
         adapter: adapter({
-            // Firebase Hostingのpublicディレクトリに出力
+            // Output to Firebase Hosting public directory
             pages: "../build",
             assets: "../build",
             fallback: "index.html",
@@ -33,14 +33,14 @@ const config = {
             $stores: "src/stores",
         },
         serviceWorker: {
-            register: false, // 手動でService Workerを登録するため無効化
+            register: false, // Disabled to register Service Worker manually
         },
     },
 
     extensions: [".svelte", ".svx"],
 };
 
-// SSRを無効化するにはroutes/+layout.jsで設定する
+// Configure in routes/+layout.js to disable SSR
 // export const ssr = false;
 
 export default config;

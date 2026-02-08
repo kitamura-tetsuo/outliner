@@ -437,20 +437,20 @@ onMount(() => {
     {#each renderCommentsState as c (c.id)}
         <div class="comment" data-testid="comment-{c.id}">
             {#if editingId === c.id}
-                <input bind:value={editText} data-testid="edit-input-{c.id}" />
-                <button onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}">Save</button>
-                <button onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}">Cancel</button>
+                <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" />
+                <button onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}" aria-label="Save edit" title="Save">Save</button>
+                <button onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}" aria-label="Cancel edit" title="Cancel">Cancel</button>
             {:else}
                 <span class="author">{c.author}:</span>
                 <span class="text">{c.text}</span>
-                <button onclick={() => startEdit(c)} class="edit">✎</button>
-                <button onclick={() => remove(c.id)} class="delete">×</button>
+                <button onclick={() => startEdit(c)} class="edit" aria-label="Edit comment" title="Edit">✎</button>
+                <button onclick={() => remove(c.id)} class="delete" aria-label="Delete comment" title="Delete">×</button>
             {/if}
         </div>
     {/each}
     <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error('[CommentThread] submit add error', err); } }} data-testid="comment-form">
-        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" oninput={(e) => { try { e2eLog({ tag: 'input', value: (e.target as HTMLInputElement).value }); } catch {} }} />
-        <button type="submit" data-testid="add-comment-btn">Add</button>
+        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" oninput={(e) => { try { e2eLog({ tag: 'input', value: (e.target as HTMLInputElement).value }); } catch {} }} />
+        <button type="submit" data-testid="add-comment-btn" aria-label="Add comment">Add</button>
     </form>
 </div>
 

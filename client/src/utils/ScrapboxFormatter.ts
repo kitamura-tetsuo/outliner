@@ -31,6 +31,7 @@ export class ScrapboxFormatter {
     private static readonly RX_ESCAPE = /[&<>"'\x00]/g;
     // eslint-disable-next-line no-control-regex
     private static readonly RX_PLACEHOLDER = /\x01HTML_\d+\x01/g;
+    private static readonly RX_SANITIZED_URL = /^\s*(javascript|vbscript|data):/i;
 
     public static escapeHtml(str: string): string {
         // Fast path: if no special characters, return original string
@@ -48,8 +49,18 @@ export class ScrapboxFormatter {
      */
     static sanitizeUrl(url: string): string {
         if (!url) return "";
+        // Strip null bytes (and other invisible control chars) before checking regex
+        // This is crucial because escapeHtml() strips \x00, which can allow bypass
+        // e.g. "javas\x00cript:" -> regex fails -> escapeHtml -> "javascript:" -> XSS
+        let checkUrl = url;
+        // Optimization: Fast path to avoid replace() allocation if no null bytes are present
+        if (checkUrl.includes("\x00")) {
+            // eslint-disable-next-line no-control-regex
+            checkUrl = checkUrl.replace(/\x00/g, "");
+        }
+
         // Prevent javascript:, vbscript:, data:
-        if (/^\s*(javascript|vbscript|data):/i.test(url)) {
+        if (ScrapboxFormatter.RX_SANITIZED_URL.test(checkUrl)) {
             return "unsafe:" + url;
         }
         return url;
@@ -414,6 +425,57 @@ export class ScrapboxFormatter {
     private static readonly RX_HTML_INT_LINK = /\[([^[\]]+?)\]/g;
 
     /**
+     * Function to match italics considering bracket balance
+     */
+    private static matchBalancedItalic(text: string): Array<{ start: number; end: number; content: string; }> {
+        // Fast path
+        if (!text.includes("[/ ")) return [];
+
+        const matches: Array<{ start: number; end: number; content: string; }> = [];
+        let i = 0;
+        while (i < text.length - 2) {
+            if (text[i] === "[" && text[i + 1] === "/" && text[i + 2] === " ") {
+                // Found start of italic: [/ (space required)
+                const startContent = i + 3;
+                let j = i + 3;
+                let bracketDepth = 1;
+
+                while (j < text.length && bracketDepth > 0) {
+                    if (text[j] === "[" && j + 1 < text.length && text[j + 1] !== "[" && text[j + 1] !== "/") {
+                        // Single [ (internal link, etc.)
+                        bracketDepth++;
+                        j++;
+                    } else if (text[j] === "]") {
+                        bracketDepth--;
+                        if (bracketDepth === 0) {
+                            // Match complete
+                            matches.push({
+                                start: i,
+                                end: j + 1,
+                                content: text.substring(startContent, j),
+                            });
+                            i = j + 1;
+                            break;
+                        } else {
+                            j += 2;
+                        }
+                    } else {
+                        j++;
+                    }
+                }
+
+                if (bracketDepth > 0) {
+                    // Move to next character if no match
+                    i++;
+                }
+            } else {
+                i++;
+            }
+        }
+        return matches;
+    }
+
+    /**
      * Advanced conversion supporting combined formatting (recursive processing)
      * @param text Text to convert
      * @returns Text converted to HTML
@@ -427,79 +489,16 @@ export class ScrapboxFormatter {
 
         // Temporarily replace underline tags with placeholders
         const underlinePlaceholders: string[] = [];
-        const tempText = text.replace(ScrapboxFormatter.RX_HTML_UNDERLINE, (match, content) => {
-            const placeholder = `__UNDERLINE_${underlinePlaceholders.length}__`;
-            underlinePlaceholders.push(content);
-            return placeholder;
-        });
-
-        // Function to match bold considering bracket balance
-        const matchBalancedBold = (text: string): Array<{ start: number; end: number; content: string; }> => {
-            const matches: Array<{ start: number; end: number; content: string; }> = [];
-            let i = 0;
-            while (i < text.length - 1) {
-                if (text[i] === "[" && text[i + 1] === "[") {
-                    // Found start of bold
-                    let boldDepth = 1; // Nesting level of [[...]]
-                    const startContent = i + 2;
-                    let j = i + 2;
-
-                    while (j < text.length && boldDepth > 0) {
-                        if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
-                            // Start of nested bold
-                            boldDepth++;
-                            j += 2;
-                        } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
-                            // Potential end of bold
-                            boldDepth--;
-                            if (boldDepth === 0) {
-                                // Match complete
-                                matches.push({
-                                    start: i,
-                                    end: j + 2,
-                                    content: text.substring(startContent, j),
-                                });
-                                i = j + 2;
-                                break;
-                            } else {
-                                j += 2;
-                            }
-                        } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                            // Found single [ (start of internal link, etc.)
-                            // Look for corresponding ]
-                            j++;
-                            let bracketDepth = 1;
-                            while (j < text.length && bracketDepth > 0) {
-                                if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
-                                    // Single [ (nested internal link, etc.)
-                                    bracketDepth++;
-                                    j++;
-                                } else if (text[j] === "]") {
-                                    // Found ]
-                                    bracketDepth--;
-                                    j++;
-                                    if (bracketDepth === 0) {
-                                        break;
-                                    }
-                                } else {
-                                    j++;
-                                }
-                            }
-                        } else {
-                            j++;
-                        }
-                    }
-
-                    if (boldDepth > 0) {
-                        // Move to next character if no match
-                        i++;
-                    }
-                } else {
-                    i++;
-                }
-            }
-            return matches;
-        };
+        let tempText = text;
+        // Optimization: Skip expensive regex replacement if <u> tag is absent
+        // RX_HTML_UNDERLINE is case-sensitive (/<u>...<\/u>/g), so checking for "<u>" is safe
+        if (text.includes("<u>")) {
+            tempText = text.replace(ScrapboxFormatter.RX_HTML_UNDERLINE, (match, content) => {
+                const placeholder = `__UNDERLINE_${underlinePlaceholders.length}__`;
+                underlinePlaceholders.push(content);
+                return placeholder;
+            });
+        }
 
         // Global placeholder map (shared between recursive calls)
         const globalPlaceholders: Map<string, string> = new Map();
@@ -512,52 +511,6 @@ export class ScrapboxFormatter {
             return placeholder;
         };
 
-        // Function to match italics considering bracket balance
-        const matchBalancedItalic = (text: string): Array<{ start: number; end: number; content: string; }> => {
-            const matches: Array<{ start: number; end: number; content: string; }> = [];
-            let i = 0;
-            while (i < text.length - 2) {
-                if (text[i] === "[" && text[i + 1] === "/" && text[i + 2] === " ") {
-                    // Found start of italic: [/ (space required)
-                    const startContent = i + 3;
-                    let j = i + 3;
-                    let bracketDepth = 1;
-
-                    while (j < text.length && bracketDepth > 0) {
-                        if (text[j] === "[" && j + 1 < text.length && text[j + 1] !== "[" && text[j + 1] !== "/") {
-                            // Single [ (internal link, etc.)
-                            bracketDepth++;
-                            j++;
-                        } else if (text[j] === "]") {
-                            bracketDepth--;
-                            if (bracketDepth === 0) {
-                                // Match complete
-                                matches.push({
-                                    start: i,
-                                    end: j + 1,
-                                    content: text.substring(startContent, j),
-                                });
-                                i = j + 1;
-                                break;
-                            } else {
-                                j++;
-                            }
-                        } else {
-                            j++;
-                        }
-                    }
-
-                    if (bracketDepth > 0) {
-                        // Move to next character if no match
-                        i++;
-                    }
-                } else {
-                    i++;
-                }
-            }
-            return matches;
-        };
-
         // Function to process formatting recursively
         const processFormat = (input: string): string => {
             // Fast path: if no formatting characters, just escape and return
@@ -567,7 +520,7 @@ export class ScrapboxFormatter {
 
             // Bold - process first, then recursively process content
             // This ensures nested formatting within bold is processed correctly
-            const boldMatches = matchBalancedBold(input);
+            const boldMatches = ScrapboxFormatter.matchBalancedBold(input);
             // Optimization: Use a single pass string builder instead of repeated substring/concatenation O(N^2)
             if (boldMatches.length > 0) {
                 let result = "";
@@ -586,7 +539,7 @@ export class ScrapboxFormatter {
 
             // Italic - space required: [/ text]
             // Match considering balance
-            const italicMatches = matchBalancedItalic(input);
+            const italicMatches = ScrapboxFormatter.matchBalancedItalic(input);
             // Optimization: Use a single pass string builder
             if (italicMatches.length > 0) {
                 let result = "";
@@ -605,86 +558,98 @@ export class ScrapboxFormatter {
 
             // Project internal link - no space: [/project/page] or [/page]
             // Match only if there is no space after slash
-            input = input.replace(ScrapboxFormatter.RX_HTML_PROJECT_LINK, (match, path) => {
-                // Split path to get project name and page name
-                const parts = path.split("/").filter((p: string) => p);
-                let html: string;
-                if (parts.length >= 2) {
-                    const projectName = parts[0];
-                    const pageName = parts.slice(1).join("/");
+            if (input.includes("[/")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_PROJECT_LINK, (match, path) => {
+                    // Split path to get project name and page name
+                    const parts = path.split("/").filter((p: string) => p);
+                    let html: string;
+                    if (parts.length >= 2) {
+                        const projectName = parts[0];
+                        const pageName = parts.slice(1).join("/");
 
-                    // Add class for page existence check
-                    let existsClass = "page-not-exists"; // default for safety
-                    try {
-                        existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
-                    } catch {
-                        // In case of any error in checkPageExists, default to page-not-exists
-                        existsClass = "page-not-exists";
-                    }
+                        // Add class for page existence check
+                        let existsClass = "page-not-exists"; // default for safety
+                        try {
+                            existsClass = this.checkPageExists(pageName, projectName)
+                                ? "page-exists"
+                                : "page-not-exists";
+                        } catch {
+                            // In case of any error in checkPageExists, default to page-not-exists
+                            existsClass = "page-not-exists";
+                        }
 
-                    // Use LinkPreview component
-                    html = `<span class="link-preview-wrapper">
+                        // Use LinkPreview component
+                        html = `<span class="link-preview-wrapper">
                         <a href="/${
-                        this.escapeHtml(path)
-                    }" class="internal-link project-link ${existsClass}" data-project="${
-                        this.escapeHtml(projectName)
-                    }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(path)}</a>
+                            this.escapeHtml(path)
+                        }" class="internal-link project-link ${existsClass}" data-project="${
+                            this.escapeHtml(projectName)
+                        }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(path)}</a>
                     </span>`;
-                } else {
-                    // Case of single page name (project internal link)
-                    const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
-                    html = `<span class="link-preview-wrapper">
+                    } else {
+                        // Case of single page name (project internal link)
+                        const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
+                        html = `<span class="link-preview-wrapper">
                         <a href="/${this.escapeHtml(path)}" class="internal-link ${existsClass}" data-page="${
-                        this.escapeHtml(path)
-                    }">${this.escapeHtml(path)}</a>
+                            this.escapeHtml(path)
+                        }">${this.escapeHtml(path)}</a>
                     </span>`;
-                }
-                return createPlaceholder(html);
-            });
+                    }
+                    return createPlaceholder(html);
+                });
+            }
 
             // Strikethrough
-            input = input.replace(ScrapboxFormatter.RX_HTML_STRIKETHROUGH, (match, content) => {
-                const html = `<s>${processFormat(content)}</s>`;
-                return createPlaceholder(html);
-            });
+            if (input.includes("[-")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_STRIKETHROUGH, (match, content) => {
+                    const html = `<s>${processFormat(content)}</s>`;
+                    return createPlaceholder(html);
+                });
+            }
 
             // Code (do not recursively process inside code)
-            input = input.replace(ScrapboxFormatter.RX_HTML_CODE, (match, content) => {
-                const html = `<code>${this.escapeHtml(content)}</code>`;
-                return createPlaceholder(html);
-            });
+            if (input.includes("`")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_CODE, (match, content) => {
+                    const html = `<code>${this.escapeHtml(content)}</code>`;
+                    return createPlaceholder(html);
+                });
+            }
 
             // External link (allow if label is whitespace only)
-            input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
-                const trimmedLabel = label?.trim();
-                const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
-                const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
-                const html = `<a href="${
-                    this.escapeHtml(safeUrl)
-                }" target="_blank" rel="noopener noreferrer">${text}</a>`;
-                return createPlaceholder(html);
-            });
+            if (input.includes("[http")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
+                    const trimmedLabel = label?.trim();
+                    const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
+                    const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
+                    const html = `<a href="${
+                        this.escapeHtml(safeUrl)
+                    }" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                    return createPlaceholder(html);
+                });
+            }
 
             // Project internal links processed above
 
             // Normal internal links - must be processed after external links
             // [text] format where text does not contain [ or ]
-            input = input.replace(ScrapboxFormatter.RX_HTML_INT_LINK, (match, text) => {
-                // Add class for page existence check
-                const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
+            if (input.includes("[")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_INT_LINK, (match, text) => {
+                    // Add class for page existence check
+                    const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
 
-                const projectPrefix = this.getProjectPrefix();
+                    const projectPrefix = this.getProjectPrefix();
 
-                // Use LinkPreview component
-                const html = `<span class="link-preview-wrapper">
+                    // Use LinkPreview component
+                    const html = `<span class="link-preview-wrapper">
                     <a href="${projectPrefix}/${
-                    this.escapeHtml(text)
-                }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(text)}">${
-                    this.escapeHtml(text)
-                }</a>
+                        this.escapeHtml(text)
+                    }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(text)}">${
+                        this.escapeHtml(text)
+                    }</a>
                 </span>`;
-                return createPlaceholder(html);
-            });
+                    return createPlaceholder(html);
+                });
+            }
 
             // Escape plain text parts
             input = this.escapeHtml(input);
@@ -833,6 +798,9 @@ export class ScrapboxFormatter {
      * Function to match bold considering bracket balance (for formatWithControlChars)
      */
     private static matchBalancedBold(text: string): Array<{ start: number; end: number; content: string; }> {
+        // Fast path
+        if (!text.includes("[[")) return [];
+
         const matches: Array<{ start: number; end: number; content: string; }> = [];
         let i = 0;
         while (i < text.length - 1) {
@@ -989,10 +957,11 @@ export class ScrapboxFormatter {
 
             // Fallback: Search for page with matching name (O(N))
             if (store.pages?.current) {
+                const targetName = pageName.toLowerCase();
                 for (const page of store.pages.current) {
                     // Ensure page.text is a string before calling toLowerCase
                     const pageText = String(page?.text ?? "");
-                    if (pageText.toLowerCase() === pageName.toLowerCase()) {
+                    if (pageText.toLowerCase() === targetName) {
                         return true;
                     }
                 }

@@ -6,7 +6,9 @@
     import AuthComponent from "../../components/AuthComponent.svelte";
     import PageList from "../../components/PageList.svelte";
     import { getLogger } from "../../lib/logger";
+    import { getYjsClientByProjectTitle } from "../../services";
     import { store } from "../../stores/store.svelte";
+    import { yjsStore } from "../../stores/yjsStore.svelte";
 
     const logger = getLogger("ProjectIndex");
 
@@ -23,11 +25,12 @@
     let error: string | undefined = $state(undefined);
     let isAuthenticated = $state(false);
     let projectNotFound = $state(false);
+    let isLoading = $state(true);
 
     // Process on authentication success
-    async function handleAuthSuccess(authResult: any) {
+    async function handleAuthSuccess() {
         if (import.meta.env.DEV) {
-            logger.info("Authentication success:", authResult);
+            logger.info("Authentication success");
         }
         isAuthenticated = true;
     }
@@ -38,6 +41,38 @@
             logger.info("Logged out");
         }
         isAuthenticated = false;
+    }
+
+    // Load project
+    async function loadProject() {
+        if (!projectName || !isAuthenticated) return;
+
+        logger.info(`loadProject: Starting for project="${projectName}"`);
+        isLoading = true;
+        error = undefined;
+        projectNotFound = false;
+
+        try {
+            let client = await getYjsClientByProjectTitle(projectName);
+            if (!client) {
+                logger.warn(`loadProject: Project client not found for "${projectName}"`);
+                projectNotFound = true;
+                return;
+            }
+
+            // Update store
+            yjsStore.yjsClient = client as any;
+            const project = client.getProject?.();
+            if (project) {
+                store.project = project as any;
+                logger.info(`loadProject: Project loaded: "${project.title}", GUID: ${(project as any).ydoc?.guid}`);
+            }
+        } catch (err) {
+            console.error("Failed to load project:", err);
+            error = err instanceof Error ? err.message : "An error occurred while loading the project.";
+        } finally {
+            isLoading = false;
+        }
     }
 
     // Process when a page is selected
@@ -54,9 +89,14 @@
         goto("/");
     }
 
+    $effect(() => {
+        if (isAuthenticated && projectName) {
+            loadProject();
+        }
+    });
+
     onMount(() => {
         // Check UserManager authentication state
-
         isAuthenticated = userManager.getCurrentUser() !== null;
     });
 
@@ -94,7 +134,11 @@
         />
     </div>
 
-    {#if store.pages}
+    {#if isLoading}
+        <div class="flex justify-center py-8">
+            <div class="loader">Loading...</div>
+        </div>
+    {:else if store.pages}
         <div class="mt-6">
             <h2 class="mb-4 text-xl font-semibold">Page List</h2>
             <div class="rounded-lg bg-white p-4 shadow-md">

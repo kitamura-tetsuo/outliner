@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 function stableIdFromTitle(title: string): string {
     let h = 2166136261 >>> 0; // FNV-1a basis

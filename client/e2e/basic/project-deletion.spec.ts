@@ -100,7 +100,7 @@ test.describe("Project Deletion", () => {
         await page.click("button:has-text('Delete')");
 
         // 7. Verify success message
-        await expect(page.locator("text=選択したプロジェクトを削除しました")).toBeVisible();
+        await expect(page.locator("text=Selected projects have been deleted")).toBeVisible();
 
         // 8. Verify target is removed and keeper remains (after reload)
         // The page reloads automatically after 1 second

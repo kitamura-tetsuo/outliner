@@ -419,26 +419,45 @@ onDestroy(async () => {
         class="sidebar-toggle"
         onclick={() => (isSidebarOpen = !isSidebarOpen)}
         aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+        title={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
     >
-        <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-        >
-            <path
-                d="M3 5C3 4.44772 3.44772 4 4 4H16C16.5523 4 17 4.44772 17 5V15C17 15.5523 16.5523 16 16 16H4C3.44772 16 3 15.5523 3 15V5Z"
-                fill="currentColor"
-            />
-            <path
-                d="M7 10L12 15L17 10"
-                stroke="white"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            />
-        </svg>
+        {#if isSidebarOpen}
+            <!-- Close Icon (X) -->
+            <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+            >
+                <path
+                    d="M18 6L6 18M6 6l12 12"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                />
+            </svg>
+        {:else}
+            <!-- Hamburger Menu Icon -->
+            <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+            >
+                <path
+                    d="M3 12h18M3 6h18M3 18h18"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                />
+            </svg>
+        {/if}
     </button>
 
     <!-- Global AliasPicker component -->

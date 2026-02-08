@@ -1,17 +1,17 @@
 /** @feature USR-0001
- *  Title   : ユーザー削除機能 - Unit Test
+ *  Title   : User Deletion Functionality - Unit Test
  *  Source  : docs/client-features.yaml
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * ユーザー削除機能のUnit Test
+ * Unit Test for User Deletion Functionality
  *
- * Firebase Functionsのビジネスロジックを単体でテストします。
- * 外部依存関係（Firebase Auth、Firestore）はモックを使用します。
+ * Tests the business logic of Firebase Functions in isolation.
+ * Uses mocks for external dependencies (Firebase Auth, Firestore).
  */
 
-// モック用の型定義
+// Type definitions for mocks
 interface MockUser {
     uid: string;
     email: string;
@@ -29,7 +29,7 @@ interface MockContainerData {
     updatedAt: Date;
 }
 
-// Firebase Admin SDK のモック
+// Mocks for Firebase Admin SDK
 const mockAuth = {
     verifyIdToken: vi.fn(),
     deleteUser: vi.fn(),
@@ -56,7 +56,7 @@ const mockCollection = {
     doc: vi.fn(() => mockDocRef),
 };
 
-// テスト対象の関数をモック化
+// Mocking the function under test
 class UserDeletionService {
     constructor(private auth: typeof mockAuth) {}
 
@@ -93,10 +93,10 @@ class UserDeletionService {
                 const containerData = containerDoc.data() as MockContainerData;
                 const accessibleUserIds = containerData.accessibleUserIds || [];
 
-                // ユーザーIDを削除
+                // Remove user ID
                 const updatedUserIds = accessibleUserIds.filter(id => id !== userId);
 
-                // コンテナにアクセスできるユーザーがいなくなった場合、コンテナを削除
+                // If no users can access the container, delete the container
                 if (updatedUserIds.length === 0) {
                     await mockDocRef.delete();
                 } else {
@@ -124,7 +124,7 @@ class UserDeletionService {
     }
 
     shouldDeleteContainer(accessibleUserIds: string[], userId: string): boolean {
-        // ユーザーがアクセス者リストに含まれていない場合はfalseを返す
+        // Return false if the user is not in the access list
         if (!accessibleUserIds.includes(userId)) {
             return false;
         }
@@ -143,7 +143,7 @@ describe("User Deletion Service - Unit Tests", () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
-        // デフォルトのモック設定
+        // Default mock setup
         mockAuth.verifyIdToken.mockResolvedValue({
             uid: "test-user-id",
             email: "test@example.com",
@@ -156,7 +156,7 @@ describe("User Deletion Service - Unit Tests", () => {
     });
 
     describe("validateToken", () => {
-        it("有効なトークンの場合、ユーザー情報を返すこと", async () => {
+        it("should return user information when the token is valid", async () => {
             const result = await service.validateToken("valid_token");
 
             expect(result).toEqual({
@@ -166,31 +166,31 @@ describe("User Deletion Service - Unit Tests", () => {
             expect(mockAuth.verifyIdToken).toHaveBeenCalledWith("valid_token");
         });
 
-        it("トークンが空の場合、エラーを投げること", async () => {
+        it("should throw an error when the token is empty", async () => {
             await expect(service.validateToken("")).rejects.toThrow("ID token is required");
         });
 
-        it("無効なトークンの場合、エラーを投げること", async () => {
+        it("should throw an error when the token is invalid", async () => {
             await expect(service.validateToken("invalid_token")).rejects.toThrow("Authentication failed");
         });
     });
 
     describe("validateUserDeletion", () => {
-        it("有効なユーザーIDの場合、エラーを投げないこと", () => {
+        it("should not throw an error when the user ID is valid", () => {
             expect(() => service.validateUserDeletion("valid-user-id")).not.toThrow();
         });
 
-        it("ユーザーIDが空の場合、エラーを投げること", () => {
+        it("should throw an error when the user ID is empty", () => {
             expect(() => service.validateUserDeletion("")).toThrow("User ID is required");
         });
 
-        it("ユーザーIDがundefinedの場合、エラーを投げること", () => {
+        it("should throw an error when the user ID is undefined", () => {
             expect(() => service.validateUserDeletion(undefined)).toThrow("User ID is required");
         });
     });
 
     describe("getUserContainers", () => {
-        it("ユーザーが存在する場合、コンテナIDリストを返すこと", async () => {
+        it("should return a list of container IDs when the user exists", async () => {
             const mockUserData = {
                 accessibleContainerIds: ["container1", "container2", "container3"],
                 defaultContainerId: "container1",
@@ -205,7 +205,7 @@ describe("User Deletion Service - Unit Tests", () => {
             expect(result).toEqual(["container1", "container2", "container3"]);
         });
 
-        it("ユーザーが存在しない場合、空配列を返すこと", async () => {
+        it("should return an empty array when the user does not exist", async () => {
             mockDoc.exists = false;
 
             const result = await service.getUserContainers();
@@ -213,7 +213,7 @@ describe("User Deletion Service - Unit Tests", () => {
             expect(result).toEqual([]);
         });
 
-        it("accessibleContainerIdsが未定義の場合、空配列を返すこと", async () => {
+        it("should return an empty array when accessibleContainerIds is undefined", async () => {
             const mockUserData = {
                 defaultContainerId: "container1",
                 updatedAt: new Date(),
@@ -229,7 +229,7 @@ describe("User Deletion Service - Unit Tests", () => {
     });
 
     describe("shouldDeleteContainer", () => {
-        it("ユーザーが最後のアクセス者の場合、trueを返すこと", () => {
+        it("should return true when the user is the last accessor", () => {
             const accessibleUserIds = ["test-user-id"];
 
             const result = service.shouldDeleteContainer(accessibleUserIds, "test-user-id");
@@ -237,7 +237,7 @@ describe("User Deletion Service - Unit Tests", () => {
             expect(result).toBe(true);
         });
 
-        it("他にもアクセス者がいる場合、falseを返すこと", () => {
+        it("should return false when there are other accessors", () => {
             const accessibleUserIds = ["test-user-id", "other-user-id"];
 
             const result = service.shouldDeleteContainer(accessibleUserIds, "test-user-id");
@@ -245,7 +245,7 @@ describe("User Deletion Service - Unit Tests", () => {
             expect(result).toBe(false);
         });
 
-        it("ユーザーがアクセス者リストにいない場合、falseを返すこと", () => {
+        it("should return false when the user is not in the access list", () => {
             const accessibleUserIds = ["other-user-id"];
 
             const result = service.shouldDeleteContainer(accessibleUserIds, "test-user-id");
@@ -253,7 +253,7 @@ describe("User Deletion Service - Unit Tests", () => {
             expect(result).toBe(false);
         });
 
-        it("アクセス者リストが空の場合、falseを返すこと", () => {
+        it("should return false when the access list is empty", () => {
             const accessibleUserIds: string[] = [];
 
             const result = service.shouldDeleteContainer(accessibleUserIds, "test-user-id");
@@ -263,7 +263,7 @@ describe("User Deletion Service - Unit Tests", () => {
     });
 
     describe("removeUserFromAccessList", () => {
-        it("ユーザーIDを正しく削除すること", () => {
+        it("should correctly remove the user ID", () => {
             const accessibleUserIds = ["user1", "test-user-id", "user2"];
 
             const result = service.removeUserFromAccessList(accessibleUserIds, "test-user-id");
@@ -271,7 +271,7 @@ describe("User Deletion Service - Unit Tests", () => {
             expect(result).toEqual(["user1", "user2"]);
         });
 
-        it("ユーザーIDが存在しない場合、元の配列を返すこと", () => {
+        it("should return the original array when the user ID does not exist", () => {
             const accessibleUserIds = ["user1", "user2"];
 
             const result = service.removeUserFromAccessList(accessibleUserIds, "non-existing-user");
@@ -279,7 +279,7 @@ describe("User Deletion Service - Unit Tests", () => {
             expect(result).toEqual(["user1", "user2"]);
         });
 
-        it("空の配列の場合、空の配列を返すこと", () => {
+        it("should return an empty array when the array is empty", () => {
             const accessibleUserIds: string[] = [];
 
             const result = service.removeUserFromAccessList(accessibleUserIds, "test-user-id");
@@ -287,7 +287,7 @@ describe("User Deletion Service - Unit Tests", () => {
             expect(result).toEqual([]);
         });
 
-        it("同じユーザーIDが複数ある場合、すべて削除すること", () => {
+        it("should remove all instances when there are multiple same user IDs", () => {
             const accessibleUserIds = ["user1", "test-user-id", "user2", "test-user-id"];
 
             const result = service.removeUserFromAccessList(accessibleUserIds, "test-user-id");
@@ -297,13 +297,13 @@ describe("User Deletion Service - Unit Tests", () => {
     });
 
     describe("deleteUserAuth", () => {
-        it("Firebase Authからユーザーを削除すること", async () => {
+        it("should delete the user from Firebase Auth", async () => {
             await service.deleteUserAuth("test-user-id");
 
             expect(mockAuth.deleteUser).toHaveBeenCalledWith("test-user-id");
         });
 
-        it("削除に失敗した場合、エラーを投げること", async () => {
+        it("should throw an error when deletion fails", async () => {
             mockAuth.deleteUser.mockRejectedValue(new Error("Delete failed"));
 
             await expect(service.deleteUserAuth("test-user-id")).rejects.toThrow("Delete failed");

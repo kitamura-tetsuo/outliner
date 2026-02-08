@@ -1898,6 +1898,17 @@ exports.cancelSchedule = onRequest(
   }),
 );
 
+// Helper to validate IDs (prevent path traversal)
+function validateId(id, name) {
+  if (!id || typeof id !== "string") {
+    return `${name} must be a string`;
+  }
+  if (id.includes("..") || id.includes("/") || id.includes("\\")) {
+    return `${name} contains invalid characters`;
+  }
+  return null;
+}
+
 // Helper to determine file metadata for security
 function getUploadOptions(fileName) {
   const lowerName = fileName.toLowerCase();
@@ -1954,6 +1965,19 @@ exports.uploadAttachment = onRequest(
         `uploadAttachment invalid request: idToken=${!!idToken}, containerId=${!!containerId}, itemId=${!!itemId}, fileName=${!!fileName}, fileData=${!!fileData}`,
       );
       return res.status(400).json({ error: "Invalid request" });
+    }
+
+    // Validate IDs to prevent path traversal
+    const containerIdError = validateId(containerId, "Container ID");
+    if (containerIdError) {
+      logger.warn(`uploadAttachment invalid containerId: ${containerId}`);
+      return res.status(400).json({ error: containerIdError });
+    }
+
+    const itemIdError = validateId(itemId, "Item ID");
+    if (itemIdError) {
+      logger.warn(`uploadAttachment invalid itemId: ${itemId}`);
+      return res.status(400).json({ error: itemIdError });
     }
 
     // Sanitize fileName to prevent path traversal and ensure flat structure within the item folder
@@ -2100,6 +2124,17 @@ exports.listAttachments = onRequest(
     if (!idToken || !containerId || !itemId) {
       return res.status(400).json({ error: "Invalid request" });
     }
+
+    // Validate IDs
+    const containerIdError = validateId(containerId, "Container ID");
+    if (containerIdError) {
+      return res.status(400).json({ error: containerIdError });
+    }
+    const itemIdError = validateId(itemId, "Item ID");
+    if (itemIdError) {
+      return res.status(400).json({ error: itemIdError });
+    }
+
     try {
       const decoded = await admin.auth().verifyIdToken(idToken);
       const uid = decoded.uid;
@@ -2175,6 +2210,17 @@ exports.deleteAttachment = onRequest(
     if (!idToken || !containerId || !itemId || !fileName) {
       return res.status(400).json({ error: "Invalid request" });
     }
+
+    // Validate IDs
+    const containerIdError = validateId(containerId, "Container ID");
+    if (containerIdError) {
+      return res.status(400).json({ error: containerIdError });
+    }
+    const itemIdError = validateId(itemId, "Item ID");
+    if (itemIdError) {
+      return res.status(400).json({ error: itemIdError });
+    }
+
     try {
       const decoded = await admin.auth().verifyIdToken(idToken);
       const uid = decoded.uid;

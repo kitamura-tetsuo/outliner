@@ -50,6 +50,7 @@ function handleSqlChange(event: Event) {
         class="border p-2 w-full"
         placeholder="Please enter SQL query"
         oninput={handleSqlChange}
+        aria-label="SQL Query"
     ></textarea>
     <button 
         onclick={run} 
