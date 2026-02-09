@@ -65,7 +65,7 @@
         "fake-indexeddb": "^6.2.5",
         "find-process": "^2.0.0",
         "fs-extra": "^11.3.2",
-        "globals": "^17.1.0",
+        "globals": "^17.3.0",
         "jsdom": "^27.2.0",
         "knip": "^5.82.1",
         "mcp-playwright": "^0.0.1",
