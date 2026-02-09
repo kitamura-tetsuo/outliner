@@ -5,12 +5,12 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * 確認事項
- * - TestHelpers.createAndSeedProject() + navigateToProjectPage() 実行後にアウトラインページが表示される
- * - OutlinerBase のアンカー要素と「アイテム追加」ボタンが表示される
+ * Verification items
+ * - Verify that the outliner page is displayed after executing TestHelpers.createAndSeedProject() + navigateToProjectPage()
+ * - Verify that the anchor element of OutlinerBase and the "Add Item" button are displayed
  */
 
-test.describe("環境準備後にアウトラインページが表示される", () => {
+test.describe("Outliner page is displayed after environment preparation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Use HTTP-based seeding via SeedClient instead of legacy browser-based seeding
         const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, []);
@@ -23,20 +23,20 @@ test.describe("環境準備後にアウトラインページが表示される",
         await TestHelpers.cleanup(page);
     });
 
-    test("PrepareTestEnvironment 後に Outliner UI が見える", async ({ page }) => {
+    test("Outliner UI is visible after PrepareTestEnvironment", async ({ page }) => {
         test.setTimeout(120000);
-        // デバッグ: 現在のURL
+        // Debug: Current URL
         console.log("E2E: current URL after prepare:", page.url());
 
-        // 增加タイムアウトで待機
+        // Wait with increased timeout
         await page.waitForLoadState("domcontentloaded", { timeout: 30000 });
 
-        // レイアウトおよびツールバー存在をDOM直読みで確認（ロケータ不安定対策）
+        // Verify layout and toolbar existence by reading DOM directly (countermeasure for unstable locators)
         const toolbarExists = await page.evaluate(() => !!document.querySelector('[data-testid="main-toolbar"]'));
         console.log("E2E: toolbarExists=", toolbarExists);
         expect(toolbarExists).toBe(true);
 
-        // 検索テキストボックスの存在も簡易確認（アクセシブル名は環境依存のためDOMベース）
+        // Simply verify the existence of the search textbox (DOM-based because accessible name is environment-dependent)
         const textboxExists = await page.evaluate(() => {
             const boxes = Array.from(document.querySelectorAll('input, [role="textbox"]')) as HTMLElement[];
             return boxes.some(el =>
