@@ -343,8 +343,8 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
     provider.on("close", (event: { code: number; reason: string; }) => {
         console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
 
-        // Handle Auth errors (4001: Unauthorized, 4003: Forbidden)
-        if ([4001, 4003].includes(event.code)) {
+        // Handle Auth errors (4001: Unauthorized)
+        if (event.code === 4001) {
             console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
             // Force token refresh
             void userManager.refreshToken().then(() => {
@@ -353,9 +353,9 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
             return;
         }
 
-        // Fatal errors: 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
-        // REMOVED 4001/4003/4004 to allow retry with fresh token
-        if ([4006, 4008].includes(event.code)) {
+        // Fatal errors: 4003 (Forbidden), 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
+        // 4003 is treated as fatal access denied (user not in project list)
+        if ([4003, 4006, 4008].includes(event.code)) {
             console.error(`[yjs-conn] FATAL ERROR: ${event.code} ${event.reason}. Stopping reconnection for ${room}`);
             provider.destroy();
         }
@@ -421,8 +421,8 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     provider.on("close", (event: { code: number; reason: string; }) => {
         console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
 
-        // Handle Auth errors (4001: Unauthorized, 4003: Forbidden)
-        if ([4001, 4003].includes(event.code)) {
+        // Handle Auth errors (4001: Unauthorized)
+        if (event.code === 4001) {
             console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
             // Force token refresh
             void userManager.refreshToken().then(() => {
@@ -431,9 +431,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
             return;
         }
 
-        // Fatal errors: 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
-        // REMOVED 4001/4003/4004 to allow retry with fresh token
-        if ([4006, 4008].includes(event.code)) {
+        // Fatal errors: 4003 (Forbidden), 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
+        // 4003 is treated as fatal access denied (user not in project list)
+        if ([4003, 4006, 4008].includes(event.code)) {
             console.error(`[yjs-conn] FATAL ERROR: ${event.code} ${event.reason}. Stopping reconnection for ${room}`);
             provider.configuration.token = async () => Promise.resolve(""); // Prevent further auth attempts
             provider.disconnect(); // Ensure completely stopped
