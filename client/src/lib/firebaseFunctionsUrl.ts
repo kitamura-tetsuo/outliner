@@ -44,7 +44,7 @@ export function getFirebaseFunctionUrl(functionName: string): string {
  * @returns SvelteKit API proxy URL
  */
 export function getSvelteKitApiUrl(apiPath: string): string {
-    // SvelteKit APIプロキシは常に /api/ プレフィックスを使用
+    // SvelteKit API proxy always uses /api/ prefix
     // Note: If running in test mode and the API is handled by SvelteKit (Vite),
     // we should ensure we are targeting the SvelteKit server, not Firebase Functions.
     return `/api/${apiPath}`;
