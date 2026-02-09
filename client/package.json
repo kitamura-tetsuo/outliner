@@ -67,7 +67,7 @@
         "fs-extra": "^11.3.2",
         "globals": "^17.3.0",
         "jsdom": "^27.2.0",
-        "knip": "^5.82.1",
+        "knip": "^5.83.1",
         "mcp-playwright": "^0.0.1",
         "mdsvex": "^0.12.3",
         "monocart-coverage-reports": "^2.12.9",
