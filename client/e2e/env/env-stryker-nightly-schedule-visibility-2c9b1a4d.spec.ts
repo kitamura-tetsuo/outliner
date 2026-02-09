@@ -1,8 +1,8 @@
 /**
  * ENV-2c9b1a4d: Stryker nightly schedule visibility
  *
- * 環境スケジュールページにStrykerのナイトリースイートが
- * 正しく表示されることを検証します。
+ * Verifies that the Stryker nightly suite is correctly displayed
+ * on the environment schedule page.
  */
 
 import { expect, test } from "@playwright/test";
@@ -17,7 +17,7 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
         });
     });
 
-    test("APIレスポンスにStrykerジョブが含まれる場合は行が表示される", async ({ page }) => {
+    test("Row is displayed when API response contains Stryker job", async ({ page }) => {
         await page.route("**/api/list-schedules**", async (route) => {
             const url = new URL(route.request().url());
             expect(url.searchParams.get("pageId")).toBe("mutation-jobs");
@@ -50,7 +50,7 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
         await expect(cells.nth(2)).toHaveText("2024-01-01 00:00:00Z");
     });
 
-    test("空のレスポンスでは行が描画されない", async ({ page }) => {
+    test("Row is not rendered for empty response", async ({ page }) => {
         await page.route("**/api/list-schedules**", async (route) => {
             await route.fulfill({
                 status: 200,
@@ -64,7 +64,7 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
         await expect(page.locator("tbody tr")).toHaveCount(0);
     });
 
-    test("lastRunAt が存在しない場合はダッシュを表示する", async ({ page }) => {
+    test("Displays a dash if lastRunAt does not exist", async ({ page }) => {
         await page.route("**/api/list-schedules**", async (route) => {
             await route.fulfill({
                 status: 200,
