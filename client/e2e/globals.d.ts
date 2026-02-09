@@ -37,7 +37,7 @@ declare namespace jest {
     function fn(): () => void;
 }
 
-// テスト環境のグローバル定義
+// Global definitions for the test environment
 declare namespace NodeJS {
     interface Global {
         isTestEnvironment: boolean;
@@ -47,24 +47,24 @@ declare namespace NodeJS {
 import { test as base } from "@playwright/test";
 import { setupEnv } from "./setup-env";
 
-// テスト用の環境変数を設定
+// Set environment variables for testing
 setupEnv();
 
 /**
- * E2Eテスト用の拡張テストフィクスチャを定義
- * Firebase Emulatorへの接続設定を含む
+ * Define extended test fixtures for E2E tests
+ * Includes connection settings for Firebase Emulator
  */
 export const test = base.extend({
     page: async ({ page }, use) => {
-        // Firebase エミュレーターの接続情報を設定
+        // Set connection information for Firebase Emulator
         await page.addInitScript(() => {
-            // テスト環境フラグをセット
+            // Set test environment flag
             window.localStorage.setItem("VITE_IS_TEST", "true");
 
-            // Firebase エミュレーターを有効化
+            // Enable Firebase Emulator
             window.localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
 
-            // エミュレーター接続情報（環境変数から取得、デフォルトはlocalhost）
+            // Emulator connection info (from env vars, default is localhost)
             window.localStorage.setItem(
                 "VITE_FIREBASE_EMULATOR_HOST",
                 process.env.VITE_FIREBASE_EMULATOR_HOST || "localhost",
@@ -78,8 +78,8 @@ export const test = base.extend({
                 process.env.VITE_AUTH_EMULATOR_PORT || "59099",
             );
 
-            // 認証済み状態をシミュレート
-            // テスト用のユーザーデータ
+            // Simulate authenticated state
+            // User data for testing
             window.mockUser = {
                 id: "test-user-id",
                 name: "Test User",
