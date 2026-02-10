@@ -3,7 +3,7 @@ import { startCoverage, stopCoverage } from "../helpers/coverage.js";
 import { CursorValidator } from "./cursorValidation.js";
 
 /**
- * テスト用のヘルパー関数群
+ * Helper functions for tests
  */
 export class TestHelpers {
     // Structured logger: timestamp and delta from previous log (disabled by default; enable with E2E_VERBOSE_SLOG=1)
@@ -23,32 +23,32 @@ export class TestHelpers {
     }
 
     /**
-     * カバレッジ収集を開始する
-     * @param page Playwrightのページオブジェクト
+     * Start coverage collection
+     * @param page Playwright page object
      */
     public static async startCoverage(page: Page): Promise<void> {
         await startCoverage(page);
     }
 
     /**
-     * カバレッジ収集を停止し、結果を保存する
-     * @param page Playwrightのページオブジェクト
-     * @param testName テスト名
+     * Stop coverage collection and save results
+     * @param page Playwright page object
+     * @param testName Test name
      */
     public static async stopCoverage(page: Page, testName: string): Promise<void> {
         await stopCoverage(page, testName);
     }
 
     /**
-     * テスト環境を準備する
-     * 各テストの前に呼び出すことで、テスト環境を一貫した状態にする
-     * @param page Playwrightのページオブジェクト
-     * @param testInfo テスト情報
-     * @param lines 初期データ行（オプション - HTTP経由でシードする場合は指定）
-     * @param browser ブラウザインスタンス
-     * @param options オプション設定
-     * @param options.ws WebSocket設定 ("force" | "disable" | "default")
-     * @returns 作成したプロジェクト名とページ名
+     * Prepare test environment
+     * Call before each test to ensure a consistent test environment
+     * @param page Playwright page object
+     * @param testInfo Test info
+     * @param lines Initial data lines (optional - specified if seeding via HTTP)
+     * @param browser Browser instance
+     * @param options Option settings
+     * @param options.ws WebSocket settings ("force" | "disable" | "default")
+     * @returns Created project name and page name
      */
     public static async prepareTestEnvironment(
         page: Page,
@@ -183,8 +183,8 @@ export class TestHelpers {
     }
 
     /**
-     * 手動でテストユーザーとしてログインする
-     * UserManagerの自動ログインが失敗または遅延する場合に有用
+     * Manually log in as a test user
+     * Useful when UserManager auto-login fails or is delayed
      */
     public static async login(
         page: Page,
@@ -202,7 +202,7 @@ export class TestHelpers {
             }
         }, { e: email, p: password });
 
-        // 認証状態が伝播されるのを待機
+        // Wait for authentication state propagation
         await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 15 * 1000 });
         TestHelpers.slog("Manual login successful");
     }
@@ -496,15 +496,15 @@ export class TestHelpers {
     }
 
     /**
-     * プロジェクト用 E2E: テスト環境を初期化し、指定されたプロジェクトページに移動して
-     * データが同期されるのを待つ
-     * - ページ作成とデータ投入はHTTP経由でシーディング
-     * @param page Playwrightページオブジェクト
-     * @param testInfo テスト情報
-     * @param lines 初期データ行（オプション - HTTP経由でシードする場合に指定）
-     * @param browser ブラウザインスタンス（オプション）
-     * @param options オプション設定（projectName, pageName, skipSync, skipAppReady）
-     * @returns プロジェクト名とページ名
+     * Project E2E: Initialize test environment, navigate to the specified project page,
+     * and wait for data synchronization.
+     * - Page creation and data seeding via HTTP
+     * @param page Playwright page object
+     * @param testInfo Test info
+     * @param lines Initial data lines (optional - specified if seeding via HTTP)
+     * @param browser Browser instance (optional)
+     * @param options Option settings (projectName, pageName, skipSync, skipAppReady)
+     * @returns Project name and page name
      */
     public static async prepareTestEnvironmentForProject(
         page: Page,
@@ -513,7 +513,7 @@ export class TestHelpers {
         _browser?: Browser,
         options?: { projectName?: string; pageName?: string; skipSync?: boolean; skipAppReady?: boolean; },
     ): Promise<{ projectName: string; pageName: string; }> {
-        // デバッガーをセットアップ
+        // Setup debugger
         await TestHelpers.setupTreeDebugger(page);
         await TestHelpers.setupCursorDebugger(page);
 
@@ -590,8 +590,8 @@ export class TestHelpers {
     }
 
     /**
-     * 現在の generalStore.pages.current からページのテキストを安定的に取得する
-     * Y.Text の場合は toString() を呼び出し、プレーン文字列に正規化する
+     * Stable retrieval of page text from current generalStore.pages.current.
+     * Call toString() for Y.Text and normalize to plain string.
      */
     public static async getPageTexts(page: Page): Promise<Array<{ id: string; text: string; }>> {
         return await page.evaluate(() => {
@@ -633,15 +633,15 @@ export class TestHelpers {
     }
 
     /**
-     * カーソル情報取得用のデバッグ関数をセットアップする
-     * @param page Playwrightのページオブジェクト
+     * Setup debug function for cursor information retrieval
+     * @param page Playwright page object
      */
     private static async setupCursorDebugger(page: Page): Promise<void> {
         try {
             await page.evaluate(() => {
-                // グローバルオブジェクトにデバッグ関数を追加
+                // Add debug function to global object
                 window.getCursorDebugData = function() {
-                    // EditorOverlayStoreインスタンスを取得
+                    // Get EditorOverlayStore instance
                     const editorOverlayStore = window.editorOverlayStore;
                     if (!editorOverlayStore) {
                         console.error("EditorOverlayStore instance not found");
@@ -649,13 +649,13 @@ export class TestHelpers {
                     }
 
                     try {
-                        // カーソル情報を取得
+                        // Get cursor information
                         const cursors = Object.values(editorOverlayStore.cursors);
                         const selections = Object.values(editorOverlayStore.selections);
                         const activeItemId = editorOverlayStore.activeItemId;
                         const cursorVisible = editorOverlayStore.cursorVisible;
 
-                        // カーソルインスタンスの情報を取得
+                        // Get cursor instance information
                         const cursorInstances: Array<{
                             cursorId: string;
                             itemId: string;
@@ -689,21 +689,21 @@ export class TestHelpers {
                     }
                 };
 
-                // 拡張版のデバッグ関数 - 特定のパスのデータのみを取得
+                // Extended debug function - Get data only for a specific path
                 window.getCursorPathData = function(path) {
-                    // EditorOverlayStoreインスタンスを取得
+                    // Get EditorOverlayStore instance
                     const editorOverlayStore = window.editorOverlayStore;
                     if (!editorOverlayStore) {
                         return { error: "EditorOverlayStore instance not found" };
                     }
 
                     try {
-                        // 自分自身の関数を使用してカーソルデータを取得
+                        // Get cursor data using own function
                         const cursorData = window.getCursorDebugData ? window.getCursorDebugData() : null;
                         if (!cursorData) return null;
                         if (!path) return cursorData;
 
-                        // パスに基づいてデータを取得
+                        // Get data based on path
                         const parts = path.split(".");
                         let result = cursorData;
                         for (const part of parts) {
@@ -720,18 +720,18 @@ export class TestHelpers {
             console.log("TestHelper: setupCursorDebugger injection skipped:", (e as any)?.message ?? e);
         }
 
-        // EditorOverlayStoreがグローバルに公開されていることを確認
+        // Verify EditorOverlayStore is globally exposed
         // await page.waitForFunction(() => window.editorOverlayStore, { timeout: 5000 });
     }
 
     /**
-     * SharedTreeデータ取得用のデバッグ関数をセットアップする
-     * @param page Playwrightのページオブジェクト
+     * Setup debug function for SharedTree data retrieval
+     * @param page Playwright page object
      */
     public static async setupTreeDebugger(page: Page): Promise<void> {
         try {
             await page.evaluate(() => {
-                // Yjs / app-store ベースのデバッグ関数を追加
+                // Add Yjs / app-store based debug function
                 const buildYjsSnapshot = () => {
                     try {
                         const gs = (window as any).generalStore || (window as any).appStore;
@@ -787,7 +787,7 @@ export class TestHelpers {
                     return res;
                 };
 
-                // （Yjs ベース）
+                // (Yjs based)
             });
         } catch (e) {
             console.log("TestHelper: setupTreeDebugger injection skipped:", (e as any)?.message ?? e);
@@ -795,18 +795,18 @@ export class TestHelpers {
     }
 
     /**
-     * カーソルが表示されるまで待機する
-     * @param page Playwrightのページオブジェクト
-     * @param timeout タイムアウト時間（ミリ秒）
+     * Wait until cursor is visible
+     * @param page Playwright page object
+     * @param timeout Timeout in milliseconds
      */
     public static async waitForCursorVisible(page: Page, timeout = 15000): Promise<boolean> {
-        // ページが閉じている場合は早期リターン
+        // Early return if page is closed
         if (page.isClosed()) {
             TestHelpers.slog("waitForCursorVisible: page is closed, returning false");
             return false;
         }
         try {
-            // CursorValidatorを使用してカーソルの存在を確認
+            // Verify cursor existence using CursorValidator
             await page.waitForFunction(
                 () => {
                     if (typeof window === "undefined") return false;
@@ -822,14 +822,14 @@ export class TestHelpers {
             );
             return true;
         } catch (_error) {
-            // ページが閉じられた場合はエラーではなく終了
+            // Exit instead of error if page is closed
             if (page.isClosed()) {
                 TestHelpers.slog("waitForCursorVisible: page closed during wait, returning false");
                 return false;
             }
             console.log("Timeout waiting for cursor to be visible, continuing anyway");
             void _error;
-            // ページが閉じられていないかチェックしてからスクリーンショットを撮影
+            // Check if page is not closed before taking screenshot
             try {
                 if (!page.isClosed()) {
                     await page.screenshot({ path: "client/test-results/cursor-visible-timeout.png" });
@@ -842,10 +842,10 @@ export class TestHelpers {
     }
 
     /**
-     * アイテム数が期待値に達するまで待機する（UI操作後の安定化に使用）
-     * @param page Playwrightのページオブジェクト
-     * @param expectedCount 期待するアイテム数
-     * @param timeout タイムアウト時間（ミリ秒）
+     * Wait until item count reaches expected value (used for stabilization after UI operations)
+     * @param page Playwright page object
+     * @param expectedCount Expected item count
+     * @param timeout Timeout in milliseconds
      */
     public static async waitForItemCount(page: Page, expectedCount: number, timeout = 10000): Promise<boolean> {
         try {
@@ -869,66 +869,66 @@ export class TestHelpers {
     }
 
     /**
-     * カーソルが完全に操作可能な状態になるまで待機する（クリック後の安定化に使用）
-     * waitForCursorVisibleより厳格で、グローバルテキストエリアのフォーカスも確認
-     * @param page Playwrightのページオブジェクト
-     * @param timeout タイムアウト時間（ミリ秒）
+     * Wait until cursor is fully operational (used for stabilization after click)
+     * More strict than waitForCursorVisible, also checks global textarea focus
+     * @param page Playwright page object
+     * @param timeout Timeout in milliseconds
      */
     public static async ensureCursorReady(page: Page, timeout = 10000): Promise<void> {
-        // ページが閉じている場合は何もしない
+        // Do nothing if page is closed
         if (page.isClosed()) {
             TestHelpers.slog("ensureCursorReady: page is closed, skipping");
             return;
         }
-        // 1. カーソルが可視になるまで待機
+        // 1. Wait until cursor is visible
         await this.waitForCursorVisible(page, timeout);
 
-        // ページが閉じている場合は終了
+        // Exit if page is closed
         if (page.isClosed()) {
             return;
         }
 
-        // 2. グローバルテキストエリアにフォーカスがあることを確認
+        // 2. Confirm global textarea has focus
         await page.waitForFunction(() => {
             const textarea = document.querySelector<HTMLTextAreaElement>(".global-textarea");
             return textarea && document.activeElement === textarea;
         }, { timeout: 5000 }).catch(async () => {
-            // フォーカスがない場合は手動でフォーカス
+            // Manually focus if no focus
             if (!page.isClosed()) {
                 await this.focusGlobalTextarea(page);
             }
         });
 
-        // 3. 短い安定化待機
+        // 3. Short stabilization wait
         if (!page.isClosed()) {
             await page.waitForTimeout(50);
         }
     }
 
     /**
-     * キーボード操作後にUIが安定するまで待機する（Enter, Backspace等の操作後に使用）
-     * @param page Playwrightのページオブジェクト
+     * Wait until UI stabilizes after keyboard operation (used after Enter, Backspace, etc.)
+     * @param page Playwright page object
      */
     public static async waitForUIStable(page: Page): Promise<void> {
-        // ページが閉じている場合は何もしない
+        // Do nothing if page is closed
         if (page.isClosed()) {
             TestHelpers.slog("waitForUIStable: page is closed, skipping");
             return;
         }
-        // カーソルが可視であることを確認
+        // Confirm cursor is visible
         await this.waitForCursorVisible(page, 5000);
-        // 最小限のUI更新待機
+        // Minimal UI update wait
         if (!page.isClosed()) {
             await page.waitForTimeout(100);
         }
     }
 
     /**
-     * エディターストアを使用してカーソルを設定する
-     * @param page Playwrightのページオブジェクト
-     * @param itemId アイテムID
-     * @param offset カーソル位置
-     * @param userId ユーザーID
+     * Set cursor using editor store
+     * @param page Playwright page object
+     * @param itemId Item ID
+     * @param offset Cursor offset
+     * @param userId User ID
      */
     public static async setCursor(
         page: Page,
@@ -977,11 +977,11 @@ export class TestHelpers {
     }
 
     /**
-     * カーソルを使用してテキストを入力する
-     * @param page Playwrightのページオブジェクト
-     * @param itemId アイテムID
-     * @param text 入力するテキスト
-     * @param userId ユーザーID
+     * Insert text using cursor
+     * @param page Playwright page object
+     * @param itemId Item ID
+     * @param text Text to insert
+     * @param userId User ID
      */
     public static async insertText(
         page: Page,
@@ -1216,20 +1216,20 @@ export class TestHelpers {
     }
 
     /**
-     * アウトライナーアイテムが表示されるのを待つ
-     * @param page Playwrightのページオブジェクト
-     * @param timeout タイムアウト時間（ミリ秒）
-     * @param minCount 最小アイテム数（デフォルト 1）
+     * Wait for outliner items to appear
+     * @param page Playwright page object
+     * @param timeout Timeout in milliseconds
+     * @param minCount Minimum item count (default 1)
      */
     public static async waitForOutlinerItems(page: Page, count = 1, timeout = 30000): Promise<void> {
         TestHelpers.slog("waitForOutlinerItems: start");
         console.log(`Waiting for ${count} outliner items (with data-item-id) to be visible...`);
 
-        // 現在のURLを確認
+        // Check current URL
         const currentUrl = page.url();
         console.log("Current URL:", currentUrl);
 
-        // プロジェクトページに移動していることを確認
+        // Confirm navigation to project page
         const url = new URL(currentUrl);
         const pathParts = url.pathname.split("/").filter(part => part);
         const isOnProjectPage = pathParts.length >= 2;
@@ -1241,7 +1241,7 @@ export class TestHelpers {
             }
         }
 
-        // データ属性付きの実アイテムが出現するまで待つ（プレースホルダー .outliner-item は除外）
+        // Wait for actual items with data attributes (excluding placeholder .outliner-item)
         try {
             const deadline = Date.now() + timeout;
             const minRequiredItems = count;
@@ -1261,7 +1261,7 @@ export class TestHelpers {
                 TestHelpers.slog("waitForOutlinerItems: Warning - Yjs not connected yet");
             }
 
-            // まずは最小UIの可視性を軽く待機（非致命的）
+            // First, lightly wait for minimal UI visibility (non-fatal)
             try {
                 TestHelpers.slog("waitForOutlinerItems: wait outliner-base visible");
                 await expect(page.getByTestId("outliner-base")).toBeVisible({ timeout: Math.min(15000, timeout) });
@@ -1290,7 +1290,7 @@ export class TestHelpers {
                         msg.includes("Target page, context or browser has been closed")
                         || msg.includes("Execution context was destroyed")
                     ) {
-                        // 短い待機の上で再試行（タイムアウト総量は deadline で管理）
+                        // Retry after short wait (total timeout managed by deadline)
                     }
                 }
 
@@ -1353,7 +1353,7 @@ export class TestHelpers {
             throw e;
         }
 
-        // 少し待機して安定させる (ページが閉じている場合はスキップ)
+        // Wait a bit to stabilize (skip if page is closed)
         if (!page.isClosed()) {
             await page.waitForTimeout(300);
         }
@@ -1361,9 +1361,9 @@ export class TestHelpers {
     }
 
     /**
-     * ページリストが読み込まれるまで待機する（サイドバーナビゲーションテスト用）
-     * @param page Playwrightのページオブジェクト
-     * @param timeout タイムアウト時間（ミリ秒）
+     * Wait until page list is loaded (for sidebar navigation test)
+     * @param page Playwright page object
+     * @param timeout Timeout in milliseconds
      */
     public static async waitForPagesList(page: Page, timeout = 15000): Promise<void> {
         TestHelpers.slog("waitForPagesList: start");
@@ -1388,9 +1388,9 @@ export class TestHelpers {
     }
 
     /**
-     * アクティブなアイテムIDを取得する
-     * @param page Playwrightのページオブジェクト
-     * @returns アクティブなアイテムID
+     * Get active item ID
+     * @param page Playwright page object
+     * @returns Active item ID
      */
     public static async getActiveItemId(page: Page): Promise<string | null> {
         const cursorData = await CursorValidator.getCursorData(page);
@@ -1398,9 +1398,9 @@ export class TestHelpers {
     }
 
     /**
-     * アクティブなアイテム要素を取得する
-     * @param page Playwrightのページオブジェクト
-     * @returns アクティブなアイテム要素のロケーター
+     * Get active item element
+     * @param page Playwright page object
+     * @returns Locator for active item element
      */
     public static async getActiveItemLocator(page: Page): Promise<any> {
         const activeItemId = await this.getActiveItemId(page);
@@ -1410,7 +1410,7 @@ export class TestHelpers {
     }
 
     /**
-     * 指定インデックスのアイテムIDを取得する
+     * Get item ID at specified index
      */
     public static async getItemIdByIndex(page: Page, index: number): Promise<string | null> {
         let attempts = 0;
@@ -1468,25 +1468,25 @@ export class TestHelpers {
     }
 
     /**
-     * アイテムをクリックして編集モードに入る
-     * @param page Playwrightのページオブジェクト
-     * @param itemSelector アイテムを特定するセレクタ
+     * Click item to enter edit mode
+     * @param page Playwright page object
+     * @param itemSelector Selector to identify item
      */
     public static async clickItemToEdit(page: Page, itemSelector: string): Promise<void> {
         await page.click(itemSelector);
         await this.waitForCursorVisible(page);
 
-        // カーソルが表示されていることを確認
+        // Confirm cursor is visible
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBeGreaterThan(0);
         expect(cursorData.activeItemId).not.toBeNull();
     }
 
     /**
-     * マウスオーバーイベントを強制的にシミュレートする
-     * Playwrightのhover()メソッドがテスト環境で動作しない場合に使用
-     * @param page Playwrightのページオブジェクト
-     * @param selector 対象要素のセレクタ
+     * Forcefully simulate mouseover event
+     * Used when Playwright's hover() method does not work in test environment
+     * @param page Playwright page object
+     * @param selector Selector for target element
      */
     public static async forceHoverEvent(page: Page, selector: string): Promise<void> {
         await page.evaluate(sel => {
@@ -1496,7 +1496,7 @@ export class TestHelpers {
                 return;
             }
 
-            // mouseenterイベントを強制的に発火
+            // forcefully fire mouseenter event
             const mouseEnterEvent = new MouseEvent("mouseenter", {
                 bubbles: true,
                 cancelable: true,
@@ -1504,7 +1504,7 @@ export class TestHelpers {
             });
             element.dispatchEvent(mouseEnterEvent);
 
-            // mousemoveイベントも発火
+            // also fire mousemove event
             const mouseMoveEvent = new MouseEvent("mousemove", {
                 bubbles: true,
                 cancelable: true,
@@ -1515,20 +1515,20 @@ export class TestHelpers {
             console.log(`Forced hover events on: ${sel}`);
         }, selector);
 
-        // イベント処理のための短い待機
+        // short wait for event processing
         await page.waitForTimeout(300);
     }
 
     /**
-     * マウスアウトイベントを強制的にシミュレートする
-     * @param page Playwrightのページオブジェクト
-     * @param selector 対象要素のセレクタ
+     * Forcefully simulate mouseout event
+     * @param page Playwright page object
+     * @param selector Selector for target element
      */
     public static async forceMouseOutEvent(page: Page, selector: string): Promise<void> {
         await page.evaluate(sel => {
             let element: Element | null = null;
 
-            // :has-text()セレクタの場合は特別な処理
+            // special handling for :has-text() selector
             if (sel.includes(":has-text(")) {
                 const match = sel.match(/^(.+):has-text\("([^"]+)"\)$/);
                 if (match) {
@@ -1552,7 +1552,7 @@ export class TestHelpers {
                 return;
             }
 
-            // mouseleaveイベントを強制的に発火
+            // forcefully fire mouseleave event
             const mouseLeaveEvent = new MouseEvent("mouseleave", {
                 bubbles: true,
                 cancelable: true,
@@ -1563,40 +1563,40 @@ export class TestHelpers {
             console.log(`Forced mouseleave event on: ${sel}`);
         }, selector);
 
-        // イベント処理のための短い待機
+        // short wait for event processing
         await page.waitForTimeout(300);
     }
 
     /**
-     * バックリンクパネルを開く
-     * @param page Playwrightのページオブジェクト
+     * Open backlink panel
+     * @param page Playwright page object
      */
     public static async openBacklinkPanel(page: Page): Promise<void> {
-        // バックリンクパネルのトグルボタンを探す
+        // Find backlink panel toggle button
         const toggleButton = page.locator(".backlink-toggle-button");
 
-        // ボタンが存在するか確認
+        // Check if button exists
         const buttonExists = await toggleButton.count() > 0;
         if (!buttonExists) {
             console.error("Backlink toggle button not found");
             return;
         }
 
-        // パネルが既に開いているか確認
+        // Check if panel is already open
         const isOpen = await toggleButton.evaluate(el => el.classList.contains("active"));
         if (!isOpen) {
-            // ボタンをクリックしてパネルを開く
+            // Click button to open panel
             await toggleButton.click();
 
-            // パネルが開くのを待機
+            // Wait for panel to open
             await page.waitForTimeout(500);
         }
     }
 
     /**
-     * AliasPicker から指定されたパスのオプションを選択する
-     * @param page Playwrightのページオブジェクト
-     * @param path エイリアス先のパス
+     * Select option with specified path from AliasPicker
+     * @param page Playwright page object
+     * @param path Alias target path
      */
     public static async confirmAliasOption(page: Page, itemId: string): Promise<void> {
         await page.evaluate(id => {
@@ -1641,7 +1641,7 @@ export class TestHelpers {
     }
 
     public static async setAliasTarget(page: Page, itemId: string, targetId: string): Promise<void> {
-        // 既存のエイリアスアイテムのターゲットを変更する（直接AliasPickerStoreを呼び出し）
+        // Change target of existing alias item (call AliasPickerStore directly)
         await page.evaluate(id => {
             const store = (window as any).aliasPickerStore;
             if (store && typeof store.show === "function") {
@@ -1649,39 +1649,39 @@ export class TestHelpers {
             }
         }, itemId);
 
-        // エイリアスピッカーが表示されるまで待機
+        // Wait for alias picker to appear
         await page.locator(".alias-picker").first().waitFor({ state: "visible", timeout: 5000 });
 
-        // ターゲットアイテムのボタンをクリック
+        // Click target item button
         await page.locator(".alias-picker").first().locator(`button[data-id="${targetId}"]`).waitFor({
             state: "visible",
             timeout: 5000,
         });
         await page.locator(".alias-picker").first().locator(`button[data-id="${targetId}"]`).click();
 
-        // エイリアスピッカーが非表示になるまで待機
+        // Wait for alias picker to hide
         await page.locator(".alias-picker").first().waitFor({ state: "hidden", timeout: 5000 });
 
-        // 少し待機してからエイリアスパスが表示されることを確認
+        // Wait a bit and confirm alias path is displayed
         await page.waitForTimeout(500);
     }
 
     public static async hideAliasPicker(page: Page): Promise<void> {
-        // エイリアスピッカーが表示されている場合のみ非表示にする
+        // Hide only if alias picker is displayed
         const isVisible = await page.locator(".alias-picker").first().isVisible();
         if (isVisible) {
             try {
-                // エイリアスピッカーにフォーカスを設定
+                // Set focus to alias picker
                 await page.locator(".alias-picker").first().focus();
-                // Escapeキーを押してエイリアスピッカーを閉じる
+                // Press Escape key to close alias picker
                 await page.keyboard.press("Escape");
                 await page.locator(".alias-picker").first().waitFor({ state: "hidden", timeout: 3000 });
             } catch {
                 console.log("Failed to hide alias picker with Escape, trying alternative method");
-                // 代替手法：ページの他の場所をクリックしてピッカーを閉じる
+                // Alternative method: Click elsewhere on page to close picker
                 await page.click("body");
                 await page.waitForTimeout(500);
-                // それでも閉じない場合は、強制的に非表示にする
+                // If still not closed, force hide
                 const stillVisible = await page.locator(".alias-picker").first().isVisible();
                 if (stillVisible) {
                     console.log("Alias picker still visible, forcing hide via store");
@@ -1710,7 +1710,7 @@ export class TestHelpers {
     }
 
     /**
-     * DOM属性からaliasTargetIdを取得する（page.evaluate不要）
+     * Get aliasTargetId from DOM attribute (page.evaluate not needed)
      */
     public static async getAliasTargetId(page: Page, itemId: string): Promise<string | null> {
         // Robust: read from model state directly to avoid DOM/virtualization flakiness
@@ -1777,7 +1777,7 @@ export class TestHelpers {
     }
 
     /**
-     * エイリアスパスが表示されているかを確認する（より堅牢なDOM可視性チェック）
+     * Check if alias path is displayed (more robust DOM visibility check)
      */
     public static async isAliasPathVisible(page: Page, itemId: string): Promise<boolean> {
         // Fast-path: if model has no aliasTargetId, path should not be visible
@@ -1813,7 +1813,7 @@ export class TestHelpers {
             await page.waitForTimeout(100);
         }
 
-        // 最終フォールバック：DOM要素が見つからない場合でも、data-alias-target-id が設定されていれば可視とみなす
+        // Final fallback: Even if DOM element not found, consider visible if data-alias-target-id is set
         try {
             const attr = await page.locator(itemSel).getAttribute("data-alias-target-id");
             if (attr && attr.trim() !== "") return true;
@@ -1824,7 +1824,7 @@ export class TestHelpers {
     }
 
     /**
-     * エイリアスサブツリーが表示されているかを確認する（DOM操作ベース）
+     * Check if alias subtree is displayed (DOM operation based)
      */
     public static async isAliasSubtreeVisible(page: Page, itemId: string): Promise<boolean> {
         const itemSel = `.outliner-item[data-item-id="${itemId}"]`;
@@ -1865,7 +1865,7 @@ export class TestHelpers {
     }
 
     /**
-     * エイリアスパス内のボタンをクリックしてナビゲーションをテストする（DOM操作ベース）
+     * Click button in alias path to test navigation (DOM operation based)
      */
     public static async clickAliasPathButton(page: Page, itemId: string, buttonIndex: number): Promise<void> {
         const aliasPath = page.locator(`.outliner-item[data-item-id="${itemId}"] .alias-path`);
@@ -1874,7 +1874,7 @@ export class TestHelpers {
     }
 
     /**
-     * エイリアスパス内のボタンの数を取得する（DOM操作ベース）
+     * Get number of buttons in alias path (DOM operation based)
      */
     public static async getAliasPathButtonCount(page: Page, itemId: string): Promise<number> {
         const aliasPath = page.locator(`.outliner-item[data-item-id="${itemId}"] .alias-path`);
@@ -1883,31 +1883,31 @@ export class TestHelpers {
     }
 
     /**
-     * 指定したアイテムの aliasTargetId を取得する
-     * @param page Playwright のページオブジェクト
-     * @param itemId 取得対象アイテムの ID
+     * Get aliasTargetId of specified item
+     * @param page Playwright page object
+     * @param itemId ID of item to retrieve
      */
     public static async getAliasTarget(page: Page, itemId: string): Promise<string | null> {
-        // DOM属性から直接aliasTargetIdを取得（page.evaluateを使わない代替手法）
+        // Get aliasTargetId directly from DOM attribute (alternative method without page.evaluate)
         const element = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
         const aliasTargetId = await element.getAttribute("data-alias-target-id");
         return aliasTargetId && aliasTargetId.trim() !== "" ? aliasTargetId : null;
     }
 
     /**
-     * アイテムIDから現在のテキストを安全に取得する
-     * EditorOverlay.svelte の getTextByItemId と同じロジックを使用
-     * @param page Playwright のページオブジェクト
-     * @param itemId 取得対象アイテムの ID
-     * @returns アイテムのテキスト
+     * Safely retrieve current text from item ID
+     * Uses the same logic as EditorOverlay.svelte getTextByItemId
+     * @param page Playwright page object
+     * @param itemId ID of item to retrieve
+     * @returns Item text
      */
     public static async getTextByItemId(page: Page, itemId: string): Promise<string> {
         return await page.evaluate((id) => {
-            // 1) DOM の .item-text
+            // 1) .item-text in DOM
             const el = document.querySelector(`[data-item-id="${id}"] .item-text`) as HTMLElement | null;
             if (el && el.textContent) return el.textContent;
 
-            // 2) アクティブ textarea
+            // 2) Active textarea
             try {
                 const store = (window as any).editorOverlayStore;
                 const ta = store?.getTextareaRef?.();
@@ -1917,7 +1917,7 @@ export class TestHelpers {
                 }
             } catch {}
 
-            // 3) generalStore から探索
+            // 3) Explore generalStore
             try {
                 const gs = (window as any).generalStore;
                 const page = gs?.currentPage;
@@ -1935,10 +1935,10 @@ export class TestHelpers {
     }
 
     /**
-     * ボックス選択範囲のテキストを取得する
-     * @param page Playwright のページオブジェクト
-     * @param boxSelectionRanges ボックス選択範囲の配列
-     * @returns 各行のテキストを改行で結合した文字列
+     * Get text of box selection range
+     * @param page Playwright page object
+     * @param boxSelectionRanges Array of box selection ranges
+     * @returns String with text of each line joined by newlines
      */
     public static async getBoxSelectionText(
         page: Page,
@@ -1955,12 +1955,12 @@ export class TestHelpers {
     }
 
     /**
-     * テスト環境でのDOM要素の可視性を強制的に確認する
-     * @param selector 対象要素のセレクタ
-     * @param page Playwrightのページオブジェクト
-     * @param waitTime 要素が表示されるまで待機する時間（ミリ秒）
-     * @param retryCount 再試行回数
-     * @returns 要素が存在し表示されている場合はtrue
+     * Forcefully check visibility of DOM element in test environment
+     * @param selector Selector for target element
+     * @param page Playwright page object
+     * @param waitTime Time to wait for element to appear (ms)
+     * @param retryCount Retry count
+     * @returns True if element exists and is visible
      */
     public static async forceCheckVisibility(
         selector: string,
@@ -1968,33 +1968,33 @@ export class TestHelpers {
         waitTime: number = 500,
         retryCount: number = 3,
     ): Promise<boolean> {
-        // 要素が表示されるまで待機
+        // Wait for element to appear
         if (waitTime > 0) {
             await page.waitForTimeout(waitTime);
         }
 
-        // 複数回試行する
+        // Retry multiple times
         for (let i = 0; i < retryCount; i++) {
             try {
-                // 要素が存在するか確認
+                // Check if element exists
                 const elementExists = await page.locator(selector).count() > 0;
                 if (!elementExists) {
                     console.log(`Element not found: ${selector} (attempt ${i + 1}/${retryCount})`);
 
-                    // 内部リンクの場合は、強制的にレンダリングを試みる
+                    // For internal links, try to force rendering
                     if (selector.includes(".internal-link") || selector.includes(".link-preview")) {
                         console.log("Trying to force render internal links...");
                         await page.evaluate(() => {
-                            // 内部リンクを含む可能性のあるテキスト要素を検索
+                            // Search for text elements that may contain internal links
                             const textElements = document.querySelectorAll(".item-text");
                             console.log(`Found ${textElements.length} text elements to check for links`);
 
                             textElements.forEach(el => {
                                 const text = el.textContent || "";
-                                // 内部リンクのパターンを検出
+                                // Detect internal link pattern
                                 if (text.includes("[") && text.includes("]")) {
                                     console.log("Found potential link in:", text);
-                                    // フォーマット済みクラスを追加して強制的にレンダリング
+                                    // Add formatted class to force rendering
                                     el.classList.add("formatted");
                                 }
                             });
@@ -2008,15 +2008,15 @@ export class TestHelpers {
                     return false;
                 }
 
-                // 要素の可視性を確認
+                // Check element visibility
                 const isVisible = await page.evaluate(sel => {
                     const element = document.querySelector(sel);
                     if (!element) return false;
 
-                    // 要素が画面内に表示されているか確認
+                    // Check if element is displayed within screen
                     const rect = element.getBoundingClientRect();
 
-                    // スタイルを確認
+                    // Check style
                     const style = window.getComputedStyle(element);
                     const isVisibleStyle = style.display !== "none"
                         && style.visibility !== "hidden"
@@ -2024,7 +2024,7 @@ export class TestHelpers {
                         && rect.height > 0
                         && rect.width > 0;
 
-                    // 親要素が非表示になっていないか確認
+                    // Check if parent element is not hidden
                     let parent = element.parentElement;
                     let isParentVisible = true;
 
@@ -2050,13 +2050,13 @@ export class TestHelpers {
 
                 console.log(`Element found but not visible: ${selector} (attempt ${i + 1}/${retryCount})`);
 
-                // 内部リンクの場合は、強制的に表示を試みる
+                // For internal links, try to force display
                 if (selector.includes(".link-preview-popup")) {
                     console.log("Trying to force show link preview...");
                     await page.evaluate(sel => {
                         const element = document.querySelector(sel);
                         if (element) {
-                            // 強制的に表示
+                            // Force display
                             (element as HTMLElement).style.display = "block";
                             (element as HTMLElement).style.visibility = "visible";
                             (element as HTMLElement).style.opacity = "1";
@@ -2079,11 +2079,11 @@ export class TestHelpers {
     }
 
     /**
-     * 要素が表示されるまで待機する
-     * @param page Playwrightのページオブジェクト
-     * @param selector 対象要素のセレクタ
-     * @param timeout タイムアウト時間（ミリ秒）
-     * @returns 要素が表示された場合はtrue
+     * Wait for element to be visible
+     * @param page Playwright page object
+     * @param selector Selector for target element
+     * @param timeout Timeout in milliseconds
+     * @returns True if element is displayed
      */
     public static async waitForElementVisible(
         page: Page,
@@ -2098,7 +2098,7 @@ export class TestHelpers {
                 return true;
             }
 
-            // 短い間隔で再試行
+            // Retry at short intervals
             await page.waitForTimeout(200);
         }
 
@@ -2106,33 +2106,33 @@ export class TestHelpers {
         return false;
     }
 
-    // 注: 422行目に同名のメソッドが既に定義されているため、このメソッドは削除します
+    // Note: This method is deleted because a method with the same name is already defined on line 422
 
     public static async cleanup(page: Page): Promise<void> {
         try {
-            // ページがまだ利用可能か確認
+            // Check if page is still available
             if (page.isClosed()) {
                 console.log("TestHelper cleanup: page already closed, skipping");
                 return;
             }
 
-            // グローバルなストアをリセット
+            // Reset global stores
             await page.evaluate(() => {
-                // generalStoreのプロジェクトとページ情報をリセット
+                // Reset project and page info in generalStore
                 if ((window as any).generalStore) {
                     (window as any).generalStore.project = null;
                     (window as any).generalStore.pages = null;
                     (window as any).generalStore.currentPage = null;
                 }
 
-                // appStoreのプロジェクトとページ情報をリセット
+                // Reset project and page info in appStore
                 if ((window as any).appStore) {
                     (window as any).appStore.project = null;
                     (window as any).appStore.pages = null;
                     (window as any).appStore.currentPage = null;
                 }
 
-                // editorOverlayStoreのカーソル情報をリセット
+                // Reset cursor info in editorOverlayStore
                 if ((window as any).editorOverlayStore) {
                     (window as any).editorOverlayStore.cursors = {};
                     (window as any).editorOverlayStore.cursorInstances = new Map();
@@ -2141,12 +2141,12 @@ export class TestHelpers {
                 }
             });
 
-            // 一時的な待機でDOMの安定を待つ
+            // Wait temporarily for DOM stabilization
             await page.waitForTimeout(100);
         } catch (error) {
             const errorMsg = String(error?.message ?? error);
 
-            // 特定のエラーは警告として記録するだけで処理を継続
+            // Log specific errors as warnings and continue processing
             if (
                 errorMsg.includes("Target page, context or browser has been closed")
                 || errorMsg.includes("Execution context was destroyed")
@@ -2157,7 +2157,7 @@ export class TestHelpers {
                 console.warn("TestHelper cleanup warning:", error);
             }
 
-            // クリーンアップはオプショナルな操作なのでエラーはスローしない
+            // Cleanup is an optional operation, so do not throw error
         }
     }
 
@@ -2314,11 +2314,11 @@ export class TestHelpers {
 }
 
 /**
- * テスト用ユーティリティ（Yjs ベース）
- * 旧実装依存のヘルパーは削除済み
+ * Test utilities (Yjs based)
+ * Helpers dependent on old implementation have been removed
  */
 
-// グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
+// Extend global type definition (add functionality to window object for testing)
 declare global {
     interface Window {
         getCursorDebugData?: () => any;
