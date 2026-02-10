@@ -1,8 +1,8 @@
 /**
- * CursorValidator の使用例
+ * CursorValidator usage examples
  *
- * このファイルには、CursorValidator クラスの使用例が含まれています。
- * テストでのカーソル情報の検証方法を示しています。
+ * This file contains usage examples for the CursorValidator class.
+ * It demonstrates how to verify cursor information in tests.
  */
 
 import { expect, Page } from "@playwright/test";
@@ -10,35 +10,35 @@ import { setupCursorDebugger, waitForCursorVisible } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
 
 /**
- * 基本的な使用例
- * @param page Playwrightのページオブジェクト
+ * Basic usage example
+ * @param page Playwright page object
  */
 export async function basicUsageExample(page: Page): Promise<void> {
-    // カーソル情報取得用のデバッグ関数をセットアップ
+    // Setup debug function for cursor information retrieval
     await setupCursorDebugger(page);
 
-    // 最初のアイテムをクリックしてカーソルを表示
+    // Click the first item to show the cursor
     await page.locator(".outliner-item").first().click();
     await waitForCursorVisible(page);
 
-    // カーソル情報を取得
+    // Get cursor information
     const cursorData = await CursorValidator.getCursorData(page);
     console.log("Cursor data:", JSON.stringify(cursorData, null, 2));
 }
 
 /**
- * 部分比較モードでの検証例
- * @param page Playwrightのページオブジェクト
+ * Example of verification in partial comparison mode
+ * @param page Playwright page object
  */
 export async function partialComparisonExample(page: Page): Promise<void> {
-    // カーソル情報取得用のデバッグ関数をセットアップ
+    // Setup debug function for cursor information retrieval
     await setupCursorDebugger(page);
 
-    // 最初のアイテムをクリックしてカーソルを表示
+    // Click the first item to show the cursor
     await page.locator(".outliner-item").first().click();
     await waitForCursorVisible(page);
 
-    // 実際のデータ構造に合わせた期待値を定義
+    // Define expected values matching the actual data structure
     const expectedData = {
         cursorCount: 1,
         cursors: [
@@ -48,103 +48,103 @@ export async function partialComparisonExample(page: Page): Promise<void> {
         ],
     };
 
-    // 部分比較モードで検証
+    // Verify in partial comparison mode
     await CursorValidator.assertCursorData(page, expectedData);
 }
 
 /**
- * 厳密比較モードでの検証例
- * @param page Playwrightのページオブジェクト
+ * Example of verification in strict comparison mode
+ * @param page Playwright page object
  */
 export async function strictComparisonExample(page: Page): Promise<void> {
-    // カーソル情報取得用のデバッグ関数をセットアップ
+    // Setup debug function for cursor information retrieval
     await setupCursorDebugger(page);
 
-    // 最初のアイテムをクリックしてカーソルを表示
+    // Click the first item to show the cursor
     await page.locator(".outliner-item").first().click();
     await waitForCursorVisible(page);
 
-    // 現在のデータを取得
+    // Get current data
     const currentData = await CursorValidator.getCursorData(page);
 
-    // 同じデータで厳密比較
+    // Verify strictly with the same data
     await CursorValidator.assertCursorData(page, currentData, true);
 }
 
 /**
- * 特定のパスのデータを検証する例
- * @param page Playwrightのページオブジェクト
+ * Example of verifying data at a specific path
+ * @param page Playwright page object
  */
 export async function pathValidationExample(page: Page): Promise<void> {
-    // カーソル情報取得用のデバッグ関数をセットアップ
+    // Setup debug function for cursor information retrieval
     await setupCursorDebugger(page);
 
-    // 最初のアイテムをクリックしてカーソルを表示
+    // Click the first item to show the cursor
     await page.locator(".outliner-item").first().click();
     await waitForCursorVisible(page);
 
-    // カーソルの数を検証
+    // Verify the number of cursors
     await CursorValidator.assertCursorPath(page, "cursorCount", 1);
 
-    // 最初のカーソルがアクティブであることを検証
+    // Verify that the first cursor is active
     await CursorValidator.assertCursorPath(page, "cursors.0.isActive", true);
 }
 
 /**
- * スナップショットを取得して比較する例
- * @param page Playwrightのページオブジェクト
+ * Example of taking a snapshot and comparing it
+ * @param page Playwright page object
  */
 export async function snapshotComparisonExample(page: Page): Promise<void> {
-    // カーソル情報取得用のデバッグ関数をセットアップ
+    // Setup debug function for cursor information retrieval
     await setupCursorDebugger(page);
 
-    // 最初のアイテムをクリックしてカーソルを表示
+    // Click the first item to show the cursor
     await page.locator(".outliner-item").first().click();
     await waitForCursorVisible(page);
 
-    // スナップショットを取得
+    // Take a snapshot
     const snapshot = await CursorValidator.takeCursorSnapshot(page);
 
-    // 何も変更せずに比較（一致するはず）
+    // Compare without changes (should match)
     await CursorValidator.compareWithSnapshot(page, snapshot);
 
-    // カーソルを移動
+    // Move the cursor
     await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(100);
 
-    // 変更後は一致しないはず
+    // Should not match after change
     try {
         await CursorValidator.compareWithSnapshot(page, snapshot);
-        throw new Error("スナップショットが一致してしまいました");
+        throw new Error("Snapshot unexpectedly matched");
     } catch (_error /* eslint-disable-line @typescript-eslint/no-unused-vars */) {
-        console.log("スナップショットが一致しないことを確認しました");
+        console.log("Confirmed that snapshot does not match");
     }
 }
 
 /**
- * カーソル移動のテスト例
- * @param page Playwrightのページオブジェクト
+ * Example of cursor movement test
+ * @param page Playwright page object
  */
 export async function cursorMovementExample(page: Page): Promise<void> {
-    // カーソル情報取得用のデバッグ関数をセットアップ
+    // Setup debug function for cursor information retrieval
     await setupCursorDebugger(page);
 
-    // 最初のアイテムをクリックしてカーソルを表示
+    // Click the first item to show the cursor
     await page.locator(".outliner-item").first().click();
     await waitForCursorVisible(page);
 
-    // 初期状態のスナップショットを取得
+    // Take initial snapshot
     const initialSnapshot = await CursorValidator.takeCursorSnapshot(page);
     console.log("Initial cursor position:", initialSnapshot.cursors[0].offset);
 
-    // カーソルを右に移動
+    // Move cursor to the right
     await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(100);
 
-    // 移動後のカーソル情報を取得
+    // Get cursor information after move
     const afterMoveSnapshot = await CursorValidator.takeCursorSnapshot(page);
     console.log("Cursor position after move:", afterMoveSnapshot.cursors[0].offset);
 
-    // カーソルが移動したことを確認
+    // Verify that the cursor has moved
     expect(afterMoveSnapshot.cursors[0].offset).toBeGreaterThan(initialSnapshot.cursors[0].offset);
 }
