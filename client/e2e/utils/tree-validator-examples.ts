@@ -1,29 +1,29 @@
 /**
- * TreeValidator の使用例
+ * TreeValidator Usage Examples
  *
- * このファイルには、TreeValidator クラスの使用例が含まれています。
- * テストでの SharedTree データの検証方法を示しています。
+ * This file contains examples of how to use the TreeValidator class.
+ * It demonstrates how to verify SharedTree data in tests.
  */
 
 import { Page } from "@playwright/test";
 import { TreeValidator } from "./treeValidation";
 
 /**
- * 基本的な使用例
- * @param page Playwrightのページオブジェクト
+ * Basic usage example
+ * @param page Playwright page object
  */
 export async function basicUsageExample(page: Page): Promise<void> {
-    // SharedTreeのデータ構造を取得
+    // Get SharedTree data structure
     const treeData = await TreeValidator.getTreeData(page);
     console.log("Tree data:", JSON.stringify(treeData, null, 2));
 }
 
 /**
- * 部分比較モードでの検証例
- * @param page Playwrightのページオブジェクト
+ * Verification example in partial comparison mode
+ * @param page Playwright page object
  */
 export async function partialComparisonExample(page: Page): Promise<void> {
-    // 実際のデータ構造に合わせた期待値を定義
+    // Define expected values matching the actual data structure
     const expectedData = {
         itemCount: 1,
         items: [
@@ -37,34 +37,34 @@ export async function partialComparisonExample(page: Page): Promise<void> {
         ],
     };
 
-    // 部分比較モードで検証
+    // Verify in partial comparison mode
     await TreeValidator.assertTreeData(page, expectedData);
 }
 
 /**
- * 厳密比較モードでの検証例
- * @param page Playwrightのページオブジェクト
+ * Verification example in strict comparison mode
+ * @param page Playwright page object
  */
 export async function strictComparisonExample(page: Page): Promise<void> {
-    // 現在のデータを取得
+    // Get current data
     const currentData = await TreeValidator.getTreeData(page);
 
-    // 同じデータで厳密比較
+    // Strict comparison with the same data
     await TreeValidator.assertTreeData(page, currentData, true);
 }
 
 /**
- * 特定のパスのデータを検証する例
- * @param page Playwrightのページオブジェクト
+ * Example of verifying data at a specific path
+ * @param page Playwright page object
  */
 export async function pathValidationExample(page: Page): Promise<void> {
-    // 特定のパスのデータを検証
+    // Verify data at specific paths
     await TreeValidator.assertTreePath(page, "itemCount", 1);
     await TreeValidator.assertTreePath(page, "items.0.text", "First item");
     await TreeValidator.assertTreePath(page, "items.0.items.0.text", "Second item");
     await TreeValidator.assertTreePath(page, "items.0.items.1.text", "Third item");
 
-    // 存在しないパスの検証（Yjs デバッグ関数）
+    // Verify non-existent path (Yjs debug function)
     const nonExistentPath = await page.evaluate(() => {
         if (typeof window.getYjsTreePathData === "function") {
             return window.getYjsTreePathData("items.0.nonexistent");
@@ -72,75 +72,75 @@ export async function pathValidationExample(page: Page): Promise<void> {
         return undefined;
     });
 
-    // undefinedが返されることを確認
+    // Confirm that undefined is returned
     if (nonExistentPath !== undefined) {
-        throw new Error("存在しないパスがundefinedを返しませんでした");
+        throw new Error("Non-existent path did not return undefined");
     }
 }
 
 /**
- * スナップショットを取得して比較する例
- * @param page Playwrightのページオブジェクト
+ * Example of taking a snapshot and comparing it
+ * @param page Playwright page object
  */
 export async function snapshotComparisonExample(page: Page): Promise<void> {
-    // スナップショットを取得
+    // Take a snapshot
     const snapshot = await TreeValidator.takeTreeSnapshot(page);
 
-    // 何も変更せずに比較（一致するはず）
+    // Compare without changes (should match)
     await TreeValidator.compareWithSnapshot(page, snapshot);
 
-    // 新しいアイテムを追加
+    // Add a new item
     await page.locator(".outliner-item").first().click();
     await page.keyboard.press("End");
     await page.keyboard.press("Enter");
     await page.keyboard.type("New item");
     await page.waitForTimeout(500);
 
-    // 変更後は一致しないはず
+    // Should not match after changes
     try {
         await TreeValidator.compareWithSnapshot(page, snapshot);
-        throw new Error("スナップショットが一致してしまいました");
+        throw new Error("Snapshot unexpectedly matched");
     } catch (_error) {
-        console.log("スナップショットが一致しないことを確認しました");
+        console.log("Confirmed that snapshot does not match");
         void _error;
     }
 }
 
 /**
- * 特定のパスを無視して比較する例
- * @param page Playwrightのページオブジェクト
+ * Example of comparing while ignoring specific paths
+ * @param page Playwright page object
  */
 export async function ignorePathsExample(page: Page): Promise<void> {
-    // スナップショットを取得
+    // Take a snapshot
     const snapshot = await TreeValidator.takeTreeSnapshot(page);
 
-    // 新しいアイテムを追加
+    // Add a new item
     await page.locator(".outliner-item").first().click();
     await page.keyboard.press("End");
     await page.keyboard.press("Enter");
     await page.keyboard.type("New item");
     await page.waitForTimeout(500);
 
-    // 特定のパスを無視して比較
+    // Compare while ignoring specific paths
     try {
-        // 新しく追加されたアイテムのパスを無視
+        // Ignore the path of the newly added item
         await TreeValidator.compareWithSnapshot(page, snapshot, ["items.0.items.2"]);
-        console.log("無視したパス以外は一致しました");
+        console.log("Matched except for ignored paths");
     } catch (_error) {
-        console.error("無視したパス以外も変更されています");
+        console.error("Changed even outside of ignored paths");
         void _error;
     }
 }
 
 /**
- * 複数のテストを組み合わせた総合例
- * @param page Playwrightのページオブジェクト
+ * Comprehensive example combining multiple tests
+ * @param page Playwright page object
  */
 export async function comprehensiveExample(page: Page): Promise<void> {
-    // 1. データ構造を取得
+    // 1. Get data structure
     await TreeValidator.getTreeData(page);
 
-    // 2. 部分比較で基本構造を検証
+    // 2. Verify basic structure with partial comparison
     const expectedStructure = {
         itemCount: 1,
         items: [
@@ -155,30 +155,30 @@ export async function comprehensiveExample(page: Page): Promise<void> {
     };
     await TreeValidator.assertTreeData(page, expectedStructure);
 
-    // 3. 特定のパスを検証
+    // 3. Verify specific path
     await TreeValidator.assertTreePath(page, "items.0.text", "First item");
 
-    // 4. スナップショットを取得
+    // 4. Take snapshot
     await TreeValidator.takeTreeSnapshot(page);
 
-    // 5. 変更を加える
+    // 5. Make changes
     await page.locator(".outliner-item").first().click();
     await page.keyboard.press("End");
     await page.keyboard.press("Enter");
     await page.keyboard.type("New item");
     await page.waitForTimeout(500);
 
-    // 6. 変更後のデータを取得
+    // 6. Get updated data
     const updatedData = await TreeValidator.getTreeData(page);
 
-    // 7. 変更を検証
+    // 7. Verify changes
     const hasNewItem = updatedData.items[0].items.some(
         (item: any) => item.text === "New item",
     );
 
     if (!hasNewItem) {
-        throw new Error("新しいアイテムが追加されていません");
+        throw new Error("New item was not added");
     }
 
-    console.log("総合テスト完了: すべての検証が成功しました");
+    console.log("Comprehensive test complete: All verifications successful");
 }
