@@ -3,16 +3,16 @@ import fs from "fs";
 import path from "path";
 
 /**
- * E2Eテストのカバレッジ収集フックを、呼び出し元（各specファイル）のスコープに登録する。
+ * Registers E2E test coverage collection hooks into the caller's scope (each spec file).
  *
- * 注意:
- * - Node.js のモジュールキャッシュにより、単なる副作用インポートでは最初のファイルでしか
- *   フックが登録されないことがあるため、本関数を各specから明示的に呼び出す。
- * - これにより、複数のテストファイルを同一ワーカーで一括実行しても、各ファイルに afterEach が登録される。
+ * Note:
+ * - Due to Node.js module caching, simply importing as a side effect might only register the hook in the first file.
+ *   Therefore, this function must be explicitly called from each spec.
+ * - This ensures `afterEach` is registered for each file even when running multiple test files in the same worker.
  *
- * 環境変数:
- * - PRECISE_COVERAGE=true を設定すると、Precise Coverage モードで実行されます
- * - デフォルトは Best-effort Coverage モードです
+ * Environment Variables:
+ * - Set `PRECISE_COVERAGE=true` to run in Precise Coverage mode.
+ * - Default is Best-effort Coverage mode.
  */
 export function registerCoverageHooks(): void {
     if (process.env.E2E_DISABLE_COVERAGE === "1") {
@@ -31,12 +31,12 @@ export function registerCoverageHooks(): void {
 }
 
 /**
- * Best-effort Coverage モード (デフォルト)
- * - パフォーマンスへの影響が少ない
- * - イベントハンドラやコールバックの実行回数が正しく記録されない場合がある
+ * Best-effort Coverage mode (default)
+ * - Low performance impact.
+ * - Execution counts of event handlers and callbacks may not be recorded correctly.
  */
 function registerBestEffortCoverageHooks(): void {
-    // 各テストの開始前にカバレッジ収集を開始
+    // Start coverage collection before each test
     test.beforeEach(async ({ page }, testInfo) => {
         try {
             console.log(`[Coverage] beforeEach start for: ${testInfo.title}`);
@@ -46,14 +46,14 @@ function registerBestEffortCoverageHooks(): void {
             });
         } catch (error: any) {
             if (!error?.message || !String(error.message).includes("Coverage is already started")) {
-                console.warn("[Coverage] カバレッジ収集の開始に失敗しました:", error);
+                console.warn("[Coverage] Failed to start coverage collection:", error);
             } else {
                 console.log("[Coverage] already started");
             }
         }
     });
 
-    // 各テストの終了後にカバレッジを保存
+    // Save coverage after each test
     test.afterEach(async ({ page }, testInfo) => {
         try {
             console.log(`[Coverage] afterEach for: ${testInfo.title}, closed=${page.isClosed()}`);
@@ -62,11 +62,11 @@ function registerBestEffortCoverageHooks(): void {
             const coverage = await page.coverage.stopJSCoverage();
             console.log(`[Coverage] collected entries: ${Array.isArray(coverage) ? coverage.length : "n/a"}`);
 
-            // カバレッジデータを保存
+            // Save coverage data
             const coverageDir = path.join(process.cwd(), "..", "coverage", "e2e", "raw");
             fs.mkdirSync(coverageDir, { recursive: true });
 
-            // テスト名からファイル名を生成（特殊文字を除去）
+            // Generate filename from test name (remove special characters)
             const testFile = path.basename(testInfo.file, ".spec.ts");
             const testTitle = testInfo.title.replace(/[^a-zA-Z0-9-_]/g, "_");
             const timestamp = Date.now();
@@ -78,37 +78,37 @@ function registerBestEffortCoverageHooks(): void {
             fs.writeFileSync(coverageFile, JSON.stringify(coverage, null, 2));
             console.log(`[Coverage] wrote: ${coverageFile}`);
         } catch (error) {
-            console.error(`[Coverage] カバレッジ収集の停止に失敗しました (${testInfo.title}):`, error);
+            console.error(`[Coverage] Failed to stop coverage collection (${testInfo.title}):`, error);
         }
     });
 }
 
 /**
- * Precise Coverage モード
- * - イベントハンドラやコールバックの実行回数を正確に取得
- * - パフォーマンスへの影響が大きい
- * - 最適化が無効化されるため、実行速度が遅くなる
+ * Precise Coverage mode
+ * - Accurately captures execution counts of event handlers and callbacks.
+ * - High performance impact.
+ * - Execution speed is slower because optimizations are disabled.
  *
- * 使用方法:
+ * Usage:
  * PRECISE_COVERAGE=true npm run test:e2e
  */
 function registerPreciseCoverageHooks(): void {
     let cdpSession: any = null;
 
-    // 各テストの開始前にPrecise Coverageを開始
+    // Start Precise Coverage before each test
     test.beforeEach(async ({ page }, testInfo) => {
         try {
             console.log(`[PreciseCoverage] beforeEach start for: ${testInfo.title}`);
 
-            // CDPセッションを作成
+            // Create CDP session
             cdpSession = await page.context().newCDPSession(page);
 
-            // Profilerを有効化
+            // Enable Profiler
             await cdpSession.send("Profiler.enable");
 
-            // Precise Coverageを開始
-            // callCount: true - 実行回数を取得
-            // detailed: true - ブロックレベルのカバレッジを取得
+            // Start Precise Coverage
+            // callCount: true - Capture execution counts
+            // detailed: true - Capture block-level coverage
             await cdpSession.send("Profiler.startPreciseCoverage", {
                 callCount: true,
                 detailed: true,
@@ -116,33 +116,33 @@ function registerPreciseCoverageHooks(): void {
 
             console.log(`[PreciseCoverage] Started with callCount and detailed mode`);
         } catch (error: any) {
-            console.error("[PreciseCoverage] カバレッジ収集の開始に失敗しました:", error);
+            console.error("[PreciseCoverage] Failed to start coverage collection:", error);
         }
     });
 
-    // 各テストの終了後にカバレッジを保存
+    // Save coverage after each test
     test.afterEach(async ({ page }, testInfo) => {
         try {
             console.log(`[PreciseCoverage] afterEach for: ${testInfo.title}, closed=${page.isClosed()}`);
             if (page.isClosed() || !cdpSession) return;
 
-            // Precise Coverageを取得
+            // Retrieve Precise Coverage
             const { result } = await cdpSession.send("Profiler.takePreciseCoverage");
             console.log(`[PreciseCoverage] collected entries: ${Array.isArray(result) ? result.length : "n/a"}`);
 
-            // Precise Coverageを停止
+            // Stop Precise Coverage
             await cdpSession.send("Profiler.stopPreciseCoverage");
             await cdpSession.send("Profiler.disable");
 
-            // CDPセッションをデタッチ
+            // Detach CDP session
             await cdpSession.detach();
             cdpSession = null;
 
-            // カバレッジデータを保存
+            // Save coverage data
             const coverageDir = path.join(process.cwd(), "..", "coverage", "e2e", "raw-precise");
             fs.mkdirSync(coverageDir, { recursive: true });
 
-            // テスト名からファイル名を生成（特殊文字を除去）
+            // Generate filename from test name (remove special characters)
             const testFile = path.basename(testInfo.file, ".spec.ts");
             const testTitle = testInfo.title.replace(/[^a-zA-Z0-9-_]/g, "_");
             const timestamp = Date.now();
@@ -154,7 +154,7 @@ function registerPreciseCoverageHooks(): void {
             fs.writeFileSync(coverageFile, JSON.stringify(result, null, 2));
             console.log(`[PreciseCoverage] wrote: ${coverageFile}`);
         } catch (error) {
-            console.error(`[PreciseCoverage] カバレッジ収集の停止に失敗しました (${testInfo.title}):`, error);
+            console.error(`[PreciseCoverage] Failed to stop coverage collection (${testInfo.title}):`, error);
         }
     });
 }
