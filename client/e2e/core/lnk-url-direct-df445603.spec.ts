@@ -2,47 +2,47 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature LNK-0003
- *  Title   : 内部リンクのナビゲーション機能
+ *  Title   : Internal Link Navigation
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
+test.describe("LNK-0003: Internal Link Navigation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("URLを直接入力して内部リンク先のページにアクセスする", async ({ page }) => {
-        // 認証状態を設定
+    test("Access an internal link page by entering the URL directly", async ({ page }) => {
+        // Set authentication state
         await page.addInitScript(() => {
         });
 
-        // まずホームページにアクセス
+        // First access the home page
         await page.goto("http://localhost:7090/");
 
-        // ページが読み込まれるのを待つ
+        // Wait for the page to load
         await page.waitForSelector("body", { timeout: 10000 });
 
-        // 現在のURLを確認
+        // Check the current URL
         const homeUrl = page.url();
         console.log("Home URL:", homeUrl);
 
-        // 存在しないページに直接アクセス（新しいページが作成される）
+        // Directly access a non-existent page (a new page will be created)
         const randomPage = "page-" + Date.now().toString().slice(-6);
 
-        // ページに移動
+        // Navigate to the page
         await page.goto(`http://localhost:7090/${randomPage}`);
 
-        // 新しいURLに遷移するのを待つ
+        // Wait for transition to the new URL
         await page.waitForURL(`**/${randomPage}`, { timeout: 10000 });
 
-        // 現在のURLを確認
+        // Check the current URL
         const pageUrl = page.url();
         console.log("Page URL:", pageUrl);
         expect(pageUrl).toContain(`/${randomPage}`);
 
-        // 基本的なページ遷移が機能していることを確認
+        // Verify that basic page transition is working
         expect(pageUrl).not.toBe(homeUrl);
     });
 });
