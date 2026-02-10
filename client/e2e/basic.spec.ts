@@ -2,58 +2,58 @@ import "./utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "./utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature TST-0005
- *  Title   : テスト環境の初期化と準備
+ *  Title   : Test Environment Initialization and Preparation
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 
 /**
  * @file basic.spec.ts
- * @description アウトラインアプリの基本機能テスト
- * ホームページの表示や認証UIの確認など、アプリの基本的な機能をテストします。
+ * @description Basic functionality tests for the Outliner app
+ * Tests basic app functions such as homepage display and authentication UI verification.
  * @playwright
- * @title 基本テスト
+ * @title Basic Tests
  */
 
 /**
- * @testcase ホームページが正常に表示される
- * @description アプリのホームページが正しく表示されることを確認するテスト
- * @check ホームページにアクセスするとタイトル「Outliner」が表示される
- * @check 認証コンポーネントが画面に表示される
+ * @testcase Homepage is displayed correctly
+ * @description Verify that the app homepage is displayed correctly
+ * @check Title "Outliner" is displayed when accessing the homepage
+ * @check Authentication component is displayed on the screen
  */
-test("ホームページが正常に表示される", async ({ page }) => {
+test("Homepage is displayed correctly", async ({ page }) => {
     await page.goto("/");
 
-    // タイトルが表示されることを確認
+    // Verify title is displayed
     await expect(page.locator("h1")).toContainText("Outliner");
 
-    // 認証コンポーネントが表示されることを確認
+    // Verify authentication component is displayed
     await expect(page.locator(".auth-section")).toBeVisible();
 });
 
 /**
- * @testcase 認証UIが正しく表示される
- * @description 認証用のUIコンポーネントが正しく表示されることを確認するテスト
- * @check Googleログインボタンが画面に表示される
- * @check 複数のセレクタ方法でボタンの存在を確認する
+ * @testcase Authentication UI is displayed correctly
+ * @description Verify that the authentication UI component is displayed correctly
+ * @check Google login button is displayed on the screen
+ * @check Verify button existence using multiple selector methods
  */
-test("認証UIが正しく表示される", async ({ page }) => {
+test("Authentication UI is displayed correctly", async ({ page }) => {
     await page.goto("/");
 
-    // ボタン要素を異なる方法で検索（より正確なセレクタを使用）
+    // Find button element using different methods (using more precise selectors)
     await expect(page.locator(".google-btn")).toBeVisible();
 
-    // または、CSSセレクタを使って特定
+    // Or identify using CSS selector
     const loginButton = page.locator('button:has-text("Google")');
     await expect(loginButton).toBeVisible();
 });
 
 /**
- * @testcase ログアウト後にGoogleログインボタンが表示される
- * @description ログイン状態からログアウトするとGoogleログインボタンが再表示されることを確認
- * @check ログアウトボタンをクリックするとGoogleログインボタンが表示される
+ * @testcase Google login button is displayed after logout
+ * @description Verify that Google login button reappears after logging out from a logged-in state
+ * @check Google login button is displayed after clicking the logout button
  */
-test("ログアウト後にGoogleログインボタンが表示される", async ({ page }) => {
+test("Google login button is displayed after logout", async ({ page }) => {
     await page.goto("/");
     const logoutButton = page.locator("button.logout-btn");
     if (await logoutButton.isVisible()) {
