@@ -4,15 +4,15 @@ import { expect } from "@playwright/test";
 import { TestHelpers } from "./testHelpers";
 
 /**
- * 内部リンクのテスト用のヘルパー関数群（Yjs ベース）
+ * Helper functions for internal link testing (Yjs based)
  */
 export class LinkTestHelpers {
     /**
-     * テスト用のプロジェクトとページを作成する
-     * @param page Playwrightのページオブジェクト
-     * @param projectName プロジェクト名
-     * @param pageName ページ名
-     * @param content ページの内容（オプション）
+     * Create a test project and page
+     * @param page Playwright page object
+     * @param projectName Project name
+     * @param pageName Page name
+     * @param content Page content (optional)
      */
     static async createTestProjectAndPage(
         page: Page,
@@ -20,16 +20,16 @@ export class LinkTestHelpers {
         pageName: string,
         content: string[] = ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"],
     ): Promise<void> {
-        // 状態デバッガをセットアップ
+        // Setup tree debugger
         await TestHelpers.setupTreeDebugger(page);
 
-        // Yjs backing store の初期化待ち
+        // Wait for Yjs backing store initialization
         await page.waitForFunction(() => {
             const gs: any = (window as any).generalStore || (window as any).appStore;
             return !!(gs && gs.project);
         }, { timeout: 30000 });
 
-        // Yjs API 経由で作成
+        // Create via Yjs API
         await page.evaluate(({ projectName, pageName, content }) => {
             const gs: any = (window as any).generalStore || (window as any).appStore;
             if (!gs?.project) throw new Error("generalStore.project not ready");
@@ -69,9 +69,9 @@ export class LinkTestHelpers {
     }
 
     /**
-     * 複数のプロジェクトとページを作成する
-     * @param page Playwrightのページオブジェクト
-     * @param projects プロジェクトとページの情報
+     * Create multiple projects and pages
+     * @param page Playwright page object
+     * @param projects Projects and pages information
      */
     static async createMultipleProjectsAndPages(
         page: Page,
@@ -83,16 +83,16 @@ export class LinkTestHelpers {
             }>;
         }>,
     ): Promise<void> {
-        // 状態デバッガをセットアップ
+        // Setup tree debugger
         await TestHelpers.setupTreeDebugger(page);
 
-        // Yjs 初期化待ち
+        // Wait for Yjs initialization
         await page.waitForFunction(() => {
             const gs: any = (window as any).generalStore || (window as any).appStore;
             return !!(gs && gs.project);
         }, { timeout: 30000 });
 
-        // 単一プロジェクト内にページを複数用意
+        // Prepare multiple pages in a single project
         await page.evaluate((projects) => {
             const gs: any = (window as any).generalStore || (window as any).appStore;
             if (!gs?.project) throw new Error("generalStore.project not ready");
@@ -131,42 +131,42 @@ export class LinkTestHelpers {
     }
 
     /**
-     * 内部リンクのナビゲーション機能をテストする
-     * @param page Playwrightのページオブジェクト
-     * @param linkSelector 内部リンクのセレクタ
-     * @param expectedUrl 期待されるURL
+     * Test internal link navigation functionality
+     * @param page Playwright page object
+     * @param linkSelector Internal link selector
+     * @param expectedUrl Expected URL
      */
     static async testInternalLinkNavigation(
         page: Page,
         linkSelector: string,
         expectedUrl: string,
     ): Promise<void> {
-        // 現在のURLを保存
+        // Save current URL
         const currentUrl = page.url();
 
-        // リンクをクリック
+        // Click the link
         await page.click(linkSelector);
 
-        // ページが読み込まれるのを待つ
+        // Wait for page to load
         await page.waitForSelector("body", { timeout: 10000 });
 
-        // 新しいURLを取得
+        // Get new URL
         const newUrl = page.url();
 
-        // URLが期待通りであることを確認
+        // Verify URL is as expected
         expect(newUrl).toContain(expectedUrl);
 
-        // URLが変更されていることを確認
+        // Verify URL has changed
         expect(newUrl).not.toBe(currentUrl);
     }
 
     /**
-     * テスト用のページを直接作成する（UI操作ではなく Yjs API を使用）
-     * @param page Playwrightのページオブジェクト
-     * @param projectName プロジェクト名
-     * @param pageName ページ名
-     * @param content ページの内容（配列で複数行指定可能）
-     * @param navigateToPage 作成後にページに移動するかどうか
+     * Create test page directly (using Yjs API instead of UI operation)
+     * @param page Playwright page object
+     * @param projectName Project name
+     * @param pageName Page name
+     * @param content Page content (multiple lines array)
+     * @param navigateToPage Whether to navigate to page after creation
      */
     static async createTestPageDirect(
         page: Page,
@@ -175,10 +175,10 @@ export class LinkTestHelpers {
         content: string[] = ["テストページの内容です"],
         navigateToPage: boolean = false,
     ): Promise<void> {
-        // TreeDebuggerをセットアップ
+        // Setup tree debugger
         await TestHelpers.setupTreeDebugger(page);
 
-        // Yjs 初期化待ち
+        // Wait for Yjs initialization
         await page.waitForFunction(() => {
             const gs: any = (window as any).generalStore || (window as any).appStore;
             return !!(gs && gs.project);
@@ -221,23 +221,23 @@ export class LinkTestHelpers {
     }
 
     /**
-     * 既存のページを開く
-     * @param page Playwrightのページオブジェクト
-     * @param projectName プロジェクト名
-     * @param pageName ページ名
+     * Open an existing page
+     * @param page Playwright page object
+     * @param projectName Project name
+     * @param pageName Page name
      */
     static async openPage(
         page: Page,
         projectName: string,
         pageName: string,
     ): Promise<void> {
-        // ページに移動
+        // Navigate to page
         await page.goto(`/${projectName}/${pageName}`);
 
-        // ページが読み込まれるのを待つ
+        // Wait for page to load
         await page.waitForSelector(".outliner-item", { timeout: 10000 });
 
-        // 開発者ログインボタンをクリック（表示されている場合）
+        // Click developer login button (if visible)
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
@@ -246,10 +246,10 @@ export class LinkTestHelpers {
     }
 
     /**
-     * 内部リンクを強制的に作成する
-     * @param page Playwrightのページオブジェクト
-     * @param itemId アイテムのID
-     * @param linkText リンクのテキスト
+     * Force create an internal link
+     * @param page Playwright page object
+     * @param itemId Item ID
+     * @param linkText Link text
      */
     static async forceCreateInternalLink(page: Page, itemId: string, linkText: string): Promise<void> {
         await page.evaluate(({ itemId, linkText }) => {
@@ -270,7 +270,7 @@ export class LinkTestHelpers {
                     return null;
                 };
 
-                // ルート（ページ一覧）から検索
+                // Search from root (page list)
                 const pages: any = gs.project.items;
                 const plen = pages?.length ?? 0;
                 let target: any = null;
@@ -302,13 +302,13 @@ export class LinkTestHelpers {
     }
 
     /**
-     * 内部リンクを検出する
-     * @param page Playwrightのページオブジェクト
-     * @param linkText リンクのテキスト
-     * @returns リンク要素が存在する場合はtrue
+     * Detect internal link
+     * @param page Playwright page object
+     * @param linkText Link text
+     * @returns True if link element exists
      */
     static async detectInternalLink(page: Page, linkText: string): Promise<boolean> {
-        // リンク要素を検出
+        // Detect link element
         const linkCount = await page.evaluate(text => {
             const links = Array.from(document.querySelectorAll("a.internal-link")).filter(
                 el => el.textContent === text,
@@ -320,11 +320,11 @@ export class LinkTestHelpers {
     }
 
     /**
-     * 内部リンクのプレビューを強制的に表示する
-     * @param page Playwrightのページオブジェクト
-     * @param pageName プレビューを表示するページ名
-     * @param projectName プロジェクト名（省略可）
-     * @param pageExists ページが存在するかどうか（デフォルトはtrue）
+     * Force show internal link preview
+     * @param page Playwright page object
+     * @param pageName Page name to show preview for
+     * @param projectName Project name (optional)
+     * @param pageExists Whether page exists (default true)
      */
     static async forceLinkPreview(
         page: Page,
@@ -333,12 +333,12 @@ export class LinkTestHelpers {
         pageExists: boolean = true,
     ): Promise<void> {
         await page.evaluate(({ pageName, projectName, pageExists }) => {
-            // グローバル関数が存在しない場合は作成
+            // Create global function if not exists
             if (!window.__testShowLinkPreview) {
                 window.__testShowLinkPreview = (pageName, projectName, pageExists) => {
                     console.log(`Forcing link preview for page: ${pageName} (exists: ${pageExists})`);
 
-                    // プレビューポップアップを作成
+                    // Create preview popup
                     let popup = document.querySelector(".link-preview-popup");
                     if (!popup) {
                         popup = document.createElement("div");
@@ -346,9 +346,9 @@ export class LinkTestHelpers {
                         document.body.appendChild(popup);
                     }
 
-                    // プレビューの内容を設定
+                    // Set preview content
                     if (pageExists) {
-                        // 存在するページの場合
+                        // If page exists
                         popup.innerHTML = `
                             <h3>${pageName}</h3>
                             <div class="preview-items">
@@ -356,7 +356,7 @@ export class LinkTestHelpers {
                             </div>
                         `;
                     } else {
-                        // 存在しないページの場合
+                        // If page does not exist
                         popup.innerHTML = `
                             <h3>${pageName}</h3>
                             <div class="preview-not-found">
@@ -365,7 +365,7 @@ export class LinkTestHelpers {
                         `;
                     }
 
-                    // スタイルを設定して表示
+                    // Set styles and show
                     (popup as HTMLElement).style.display = "block";
                     (popup as HTMLElement).style.position = "fixed";
                     (popup as HTMLElement).style.top = "100px";
@@ -380,54 +380,54 @@ export class LinkTestHelpers {
                 };
             }
 
-            // プレビューを表示
+            // Show preview
             return window.__testShowLinkPreview(pageName, projectName, pageExists);
         }, { pageName, projectName, pageExists });
 
-        // プレビューが表示されるのを待つ
+        // Wait for preview to appear
         await page.waitForTimeout(500);
     }
 
     /**
-     * 内部リンクを強制的に表示する
-     * @param page Playwrightのページオブジェクト
+     * Force render internal links
+     * @param page Playwright page object
      */
     static async forceRenderInternalLinks(page: Page): Promise<void> {
         const result = await page.evaluate(() => {
-            // 全てのアウトライナーアイテムを取得
+            // Get all outliner items
             const items = document.querySelectorAll(".outliner-item");
             console.log(`Found ${items.length} outliner items`);
 
             let linksFound = 0;
             let linksProcessed = 0;
 
-            // 各アイテムのテキストを再レンダリング
+            // Re-render text of each item
             items.forEach(item => {
                 const textElement = item.querySelector(".item-text");
                 if (textElement) {
-                    // テキスト内容を取得
+                    // Get text content
                     const text = textElement.textContent || "";
 
-                    // 内部リンクのパターンを検出（通常の内部リンク）
+                    // Detect internal link pattern (normal internal link)
                     const linkPattern = /\[([^[\]/-][^[\]]*?)\]/g;
-                    // プロジェクト内部リンクのパターン
+                    // Detect project internal link pattern
                     const projectLinkPattern = /\[\/([\w\-/]+)\]/g;
 
                     const hasNormalLinks = linkPattern.test(text);
-                    // テストを実行した後にテキストを元に戻す
+                    // Reset lastIndex after testing
                     linkPattern.lastIndex = 0;
 
                     const hasProjectLinks = projectLinkPattern.test(text);
-                    // テストを実行した後にテキストを元に戻す
+                    // Reset lastIndex after testing
                     projectLinkPattern.lastIndex = 0;
 
                     if (hasNormalLinks || hasProjectLinks) {
                         linksFound++;
 
-                        // リンクを含む場合、HTMLを直接設定
+                        // Set HTML directly if link exists
                         let html = text;
 
-                        // 通常の内部リンクを処理
+                        // Process normal internal link
                         if (hasNormalLinks) {
                             html = html.replace(linkPattern, (match, linkText) => {
                                 linksProcessed++;
@@ -437,11 +437,11 @@ export class LinkTestHelpers {
                             });
                         }
 
-                        // プロジェクト内部リンクを処理
+                        // Process project internal link
                         if (hasProjectLinks) {
                             html = html.replace(projectLinkPattern, (match, path) => {
                                 linksProcessed++;
-                                // パスを分解してプロジェクト名とページ名を取得
+                                // Split path to get project name and page name
                                 const parts = path.split("/").filter(p => p);
                                 if (parts.length >= 2) {
                                     const projectName = parts[0];
@@ -456,34 +456,34 @@ export class LinkTestHelpers {
                             });
                         }
 
-                        // HTMLを設定
+                        // Set HTML
                         textElement.innerHTML = html;
 
-                        // フォーマット済みクラスを追加
+                        // Add formatted class
                         textElement.classList.add("formatted");
                     }
                 }
             });
 
-            // リンクにイベントリスナーを設定
+            // Set event listeners on links
             const setupLinkEventListeners = () => {
                 const links = document.querySelectorAll("a.internal-link");
                 console.log(`Found ${links.length} internal links to setup event listeners`);
 
                 links.forEach(link => {
-                    // 既に設定済みかどうかを確認するためのフラグ
+                    // Flag to check if already set
                     const hasListeners = link.getAttribute("data-link-listeners") === "true";
 
                     if (!hasListeners) {
-                        // マウスオーバーイベントリスナーを追加
+                        // Add mouseenter event listener
                         link.addEventListener("mouseenter", () => {
                             console.log("Link mouseenter event triggered");
-                            // データ属性からページ名を取得
+                            // Get page name from data attribute
                             const pageName = link.getAttribute("data-page");
                             const projectName = link.getAttribute("data-project");
 
                             if (pageName) {
-                                // リンクプレビュー表示のカスタムイベントを発火
+                                // Dispatch custom event for link preview show
                                 const customEvent = new CustomEvent("linkPreviewShow", {
                                     detail: { pageName, projectName, element: link },
                                 });
@@ -491,15 +491,15 @@ export class LinkTestHelpers {
                             }
                         });
 
-                        // マウスアウトイベントリスナーを追加
+                        // Add mouseleave event listener
                         link.addEventListener("mouseleave", () => {
                             console.log("Link mouseleave event triggered");
-                            // リンクプレビュー非表示のカスタムイベントを発火
+                            // Dispatch custom event for link preview hide
                             const customEvent = new CustomEvent("linkPreviewHide");
                             document.dispatchEvent(customEvent);
                         });
 
-                        // リスナーが設定されたことを示すフラグを設定
+                        // Set flag indicating listeners are set
                         link.setAttribute("data-link-listeners", "true");
                     }
                 });
@@ -507,15 +507,15 @@ export class LinkTestHelpers {
                 return links.length;
             };
 
-            // リンクにイベントリスナーを設定
+            // Set event listeners on links
             const linksWithListeners = setupLinkEventListeners();
 
-            // MutationObserverが存在するか確認
+            // Check if MutationObserver exists
             const hasMutationObserver = !!window.__linkPreviewMutationObserver;
 
-            // MutationObserverがない場合は作成
+            // Create MutationObserver if not exists
             if (!hasMutationObserver) {
-                // MutationObserverを作成
+                // Create MutationObserver
                 const observer = new MutationObserver(mutations => {
                     let newLinksFound = false;
 
@@ -525,12 +525,12 @@ export class LinkTestHelpers {
                                 if (node.nodeType === Node.ELEMENT_NODE) {
                                     const element = node as Element;
 
-                                    // 追加された要素自体が内部リンクかどうかを確認
+                                    // Check if added element itself is internal link
                                     if (element.classList && element.classList.contains("internal-link")) {
                                         newLinksFound = true;
                                     }
 
-                                    // 追加された要素内の内部リンクを検索
+                                    // Search for internal links within added element
                                     const links = element.querySelectorAll(".internal-link");
                                     if (links.length > 0) {
                                         newLinksFound = true;
@@ -546,7 +546,7 @@ export class LinkTestHelpers {
                     }
                 });
 
-                // 監視を開始
+                // Start observation
                 observer.observe(document.body, {
                     childList: true,
                     subtree: true,
@@ -554,7 +554,7 @@ export class LinkTestHelpers {
                     attributeFilter: ["class"],
                 });
 
-                // グローバル変数に保存
+                // Save to global variable
                 window.__linkPreviewMutationObserver = observer;
             }
 
@@ -569,12 +569,12 @@ export class LinkTestHelpers {
 
         console.log(`Force render internal links result:`, result);
 
-        // リンクが処理されるのを待つ
+        // Wait for links to be processed
         await page.waitForTimeout(1000);
     }
 }
 
-// グローバル型定義を拡張
+// Extend global type definition
 declare global {
     interface Window {
         __linkPreviewMutationObserver?: MutationObserver;
