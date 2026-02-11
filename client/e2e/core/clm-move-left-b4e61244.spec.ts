@@ -2,95 +2,95 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature CLM-0002
- *  Title   : 左へ移動
+ *  Title   : Move Left
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("CLM-0002: 左へ移動", () => {
+test.describe("CLM-0002: Move Left", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // ページタイトルを優先的に使用
+        // Use page title preferentially
         const item = page.locator(".outliner-item.page-title[data-item-id]");
 
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
+        // If page title is not found, use the first visible item
         if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
+            // Search for items that can be identified by text content
             const visibleItems = page.locator(".outliner-item[data-item-id]").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
         } else {
             await item.locator(".item-content").click({ force: true });
         }
 
-        // カーソルが表示されるまで待機
+        // Wait until the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // 隠し textarea にフォーカスが当たるまで待機
+        // Wait for the hidden textarea to be focused
         await page.waitForSelector("textarea.global-textarea:focus");
-        // 文字入力が可能
+        // Input text
         await page.keyboard.type("Test data update");
     });
 
-    test("ArrowLeftキーでカーソルが1文字左に移動する", async ({ page }) => {
-        // カーソルが表示されるまで待機
+    test("Cursor moves one character left with ArrowLeft key", async ({ page }) => {
+        // Wait until the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // カーソル情報を取得して検証
+        // Get and verify cursor info
         const initialCursorData = await CursorValidator.getCursorData(page);
         expect(initialCursorData.cursorCount).toBe(1);
         expect(initialCursorData.activeItemId).not.toBeNull();
         const initialOffset = initialCursorData.cursorInstances[0].offset;
 
-        // 左矢印キーを押下
+        // Press ArrowLeft key
         await page.keyboard.press("ArrowLeft");
-        // 更新を待機
+        // Wait for update
         await page.waitForTimeout(100);
 
-        // カーソル情報を再度取得して検証
+        // Get and verify cursor info again
         const updatedCursorData = await CursorValidator.getCursorData(page);
         expect(updatedCursorData.cursorCount).toBe(1);
         expect(updatedCursorData.activeItemId).not.toBeNull();
         const updatedOffset = updatedCursorData.cursorInstances[0].offset;
 
-        // 左に移動していることを確認 - オフセットが1文字分小さくなっているはず
+        // Verify it moved left - offset should be decreased by 1
         expect(updatedOffset).toBe(initialOffset - 1);
     });
 
-    test("一番最初の文字にある時は、一つ前のアイテムの最後の文字へ移動する", async ({ page }) => {
+    test("When at the first character, moves to the last character of the previous item", async ({ page }) => {
         // This test is skipped temporarily until the cross-item cursor movement logic is fixed
-        // カーソルが表示されるまで待機
+        // Wait until the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // 最初のアイテムのIDを取得
+        // Get the ID of the first item
         const itemId1 = await TestHelpers.getActiveItemId(page);
         expect(itemId1).not.toBeNull();
 
-        // 2番目のアイテムの作成 (Enterで新しいアイテムを作成)
+        // Create second item (Create new item with Enter)
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second item");
 
-        // 新しいアイテムに移動したことを確認
+        // Verify it moved to the new item
         await TestHelpers.waitForCursorVisible(page);
         const itemId2 = await TestHelpers.getActiveItemId(page);
         expect(itemId2).not.toBeNull();
         expect(itemId2).not.toBe(itemId1);
 
-        // カーソルを行の先頭に移動
+        // Move cursor to the beginning of the line
         await page.keyboard.press("Home");
         await page.waitForTimeout(100);
 
-        // 左矢印キーを押下して前のアイテムに移動
+        // Press ArrowLeft key to move to the previous item
         await page.keyboard.press("ArrowLeft");
-        await page.waitForTimeout(200); // 少し長めに待機
+        await page.waitForTimeout(200); // Wait a bit longer
 
-        // カーソル情報を取得して検証
+        // Get and verify cursor info
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBe(1);
 
-        // カーソルが最初のアイテムに移動したことを確認
+        // Verify cursor moved to the first item
         const newActiveItemId = await TestHelpers.getActiveItemId(page);
         expect(newActiveItemId).not.toBeNull();
         expect(newActiveItemId).toBe(itemId1);
