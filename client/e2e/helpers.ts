@@ -7,7 +7,7 @@ import { TestHelpers } from "./utils/testHelpers";
  */
 
 /**
- * 指定数のアウトライナーアイテムが表示されるまで待機
+ * Wait until the specified number of outliner items are displayed
  */
 export async function waitForOutlinerItems(page: Page, count: number, timeout = 10000): Promise<void> {
     await page.waitForFunction(
@@ -18,7 +18,7 @@ export async function waitForOutlinerItems(page: Page, count: number, timeout = 
 }
 
 /**
- * アウトライナーアイテム数が不足していれば追加描画を待機
+ * Wait for additional rendering if the number of outliner items is insufficient
  */
 export async function ensureOutlinerItemCount(page: Page, count: number, timeout = 10000): Promise<void> {
     const current = await page.locator(".outliner-item[data-item-id]").count();
@@ -28,7 +28,7 @@ export async function ensureOutlinerItemCount(page: Page, count: number, timeout
 }
 
 /**
- * カーソルが表示されるのを待つ
+ * Wait for the cursor to be visible
  * @param page Playwright page object
  * @param timeout Timeout in milliseconds
  */
@@ -36,14 +36,14 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
     try {
         console.log("waitForCursorVisible: Starting to wait for cursor...");
 
-        // グローバルテキストエリアがフォーカスされるまで待機
+        // Wait for global textarea to be focused
         await page.waitForSelector("textarea.global-textarea:focus", { timeout: timeout });
         console.log("waitForCursorVisible: Global textarea is focused");
 
-        // カーソル要素が存在し、表示されているかチェック
-        // CursorValidatorを使用してカーソル情報を取得
+        // Check if cursor element exists and is visible
+        // Get cursor information using CursorValidator
         const cursorData = await page.evaluate(() => {
-            // EditorOverlayStoreインスタンスを取得
+            // Get EditorOverlayStore instance
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (!editorOverlayStore) {
                 return { cursorCount: 0, activeCursors: 0 };
@@ -74,7 +74,7 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
 }
 
 /**
- * カーソルデバッグ関数をブラウザコンテキストに注入する
+ * Inject cursor debug function into browser context
  * Reuse TestHelpers implementation, safe skip if missing
  */
 export async function setupCursorDebugger(page: Page): Promise<void> {
