@@ -2,16 +2,16 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature CLM-0103
- *  Title   : フォーマット文字列でのカーソル操作
+ *  Title   : Cursor manipulation within format strings
  *  Source  : docs/client-features.yaml
  */
 
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-// テストのタイムアウトを設定
+// Set test timeout
 
-test.describe("フォーマット文字列でのカーソル操作", () => {
+test.describe("Cursor manipulation within format strings", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2"]);
         // Wait for outliner items to be rendered after seeding (wait for specific content)
@@ -19,55 +19,59 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         await page.locator(".outliner-item[data-item-id]").first().waitFor({ timeout: 60000 });
     });
 
-    test("太字文字列内でのカーソル移動が正しく機能する", async ({ page }) => {
-        // ページタイトル以外のアイテムを選択（2番目のアイテム）
+    test("Cursor movement functions correctly within bold text", async ({ page }) => {
+        // Select an item other than the page title (2nd item)
         const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"] .item-content`);
         await item.click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
-        // 太字を含むテキストを入力
-        await page.keyboard.type("これは[[太字テキスト]]です");
+        // Clear existing text
+        await page.keyboard.press("Control+A");
+        await page.keyboard.press("Backspace");
 
-        // カーソルを文頭に移動
+        // Type text containing bold formatting
+        await page.keyboard.type("This is [[bold text]] here");
+
+        // Move cursor to the beginning of the line
         await page.keyboard.press("Home");
 
-        // 右矢印キーで太字部分まで移動
-        for (let i = 0; i < "これは".length; i++) {
+        // Move to the bold part using the right arrow key
+        for (let i = 0; i < "This is ".length; i++) {
             await page.keyboard.press("ArrowRight");
         }
 
-        // さらに太字の開始タグを通過
+        // Move past the bold start tag
         for (let i = 0; i < "[[".length; i++) {
             await page.keyboard.press("ArrowRight");
         }
 
-        // カーソル位置を確認（太字テキストの先頭にあるはず）
-        // カーソル位置の確認は難しいので、ここで文字を挿入して位置を確認
-        await page.keyboard.type("挿入");
+        // Verify cursor position (should be at the start of the bold text)
+        // Verifying cursor position is difficult, so insert text to check location
+        await page.keyboard.type("INSERT");
 
         const textContent = await item.locator(".item-text").textContent();
-        // フォーマット文字列の表示形式に合わせて期待値を修正
-        expect(textContent).toContain("これは");
-        expect(textContent).toContain("太字テキスト");
-        expect(textContent).toContain("です");
-        // 挿入されたテキストが含まれていることを確認
-        expect(textContent).toContain("挿入");
+        // Adjust expectations to match the format string display
+        expect(textContent).toContain("This is ");
+        expect(textContent).toContain("bold text");
+        expect(textContent).toContain(" here");
+        // Verify that inserted text is included
+        expect(textContent).toContain("INSERT");
 
-        // カーソルが表示されていることを確認
+        // Verify that the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
     });
 
-    test("複数のフォーマットが混在する文字列でのカーソル移動", async ({ page }) => {
-        // ページタイトル以外のアイテムを選択（2番目のアイテム）
+    test("Cursor movement in strings with mixed formatting", async ({ page }) => {
+        // Select an item other than the page title (2nd item)
         const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await item.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // カーソルの状態を確認し、必要に応じて作成
+        // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
             const editorStore =
                 (window as { editorOverlayStore?: { getActiveItem: () => any; getCursorInstances: () => any[]; }; })
@@ -83,7 +87,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
             };
         });
 
-        // カーソルインスタンスが存在しない場合、作成する
+        // Create cursor instance if it doesn't exist
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
                 const editorStore = (window as {
@@ -108,7 +112,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
             });
         }
 
-        // cursor.insertText()を使用してテキストを挿入
+        // Insert text using cursor.insertText()
         await page.evaluate(() => {
             const editorStore = (window as {
                 editorOverlayStore?: {
@@ -123,75 +127,79 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    // 既存のテキストをクリア
+                    // Clear existing text
                     const target = cursor.findTarget();
                     if (target) {
                         target.updateText("");
                         cursor.offset = 0;
                     }
-                    // 複数のフォーマットを含むテキストを挿入
-                    cursor.insertText("通常[[太字]][/斜体][-取り消し線]`コード`");
+                    // Insert text containing multiple formats
+                    cursor.insertText("Normal[[Bold]][/Italic][-Strike]`Code`");
                 }
             }
         });
 
-        // 少し待機してからテキストを確認
+        // Wait a bit and check the text
         await page.waitForTimeout(300);
 
         const textContent = await item.locator(".item-text").textContent();
         console.log("Text content after format insertion:", textContent);
 
-        // フォーマット文字列の表示形式に合わせて期待値を修正
-        expect(textContent).toContain("通常");
-        expect(textContent).toContain("太字");
-        expect(textContent).toContain("斜体");
-        expect(textContent).toContain("取り消し線");
-        expect(textContent).toContain("コード");
+        // Adjust expectations to match format string display
+        expect(textContent).toContain("Normal");
+        expect(textContent).toContain("Bold");
+        expect(textContent).toContain("Italic");
+        expect(textContent).toContain("Strike");
+        expect(textContent).toContain("Code");
 
-        // カーソルが表示されていることを確認
+        // Verify that the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
     });
 
-    test("Home/Endキーがフォーマット文字列で正しく機能する", async ({ page }) => {
-        // ページタイトル以外のアイテムを選択（2番目のアイテム）
+    test("Home/End keys function correctly with format strings", async ({ page }) => {
+        // Select an item other than the page title (2nd item)
         const secondItemId2 = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId2).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId2}"]`);
         await item.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
-        // フォーマットを含むテキストを入力
-        await page.keyboard.type("これは[[太字テキスト]]です");
+        // Clear existing text
+        await page.keyboard.press("Control+A");
+        await page.keyboard.press("Backspace");
 
-        // Homeキーでカーソルを行頭に移動
+        // Type text containing formatting
+        await page.keyboard.type("This is [[bold text]] here");
+
+        // Move cursor to start of line with Home key
         await page.keyboard.press("Home");
-        await page.keyboard.type("行頭");
+        await page.keyboard.type("Start");
 
-        // Endキーでカーソルを行末に移動
+        // Move cursor to end of line with End key
         await page.keyboard.press("End");
-        await page.keyboard.type("行末");
+        await page.keyboard.type("End");
 
         const textContent = await item.locator(".item-text").textContent();
-        // フォーマット文字列の表示形式に合わせて期待値を修正
-        expect(textContent).toContain("行頭");
-        expect(textContent).toContain("これは");
-        expect(textContent).toContain("太字テキスト");
-        expect(textContent).toContain("です");
-        expect(textContent).toContain("行末");
+        // Adjust expectations to match format string display
+        expect(textContent).toContain("Start");
+        expect(textContent).toContain("This is ");
+        expect(textContent).toContain("bold text");
+        expect(textContent).toContain(" here");
+        expect(textContent).toContain("End");
 
-        // カーソルが表示されていることを確認
+        // Verify that the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
     });
 
-    test("Shift+矢印キーによる選択がフォーマット文字列で正しく機能する", async ({ page }) => {
-        // 既存のアイテム（2番目のアイテム）を使用
+    test("Selection with Shift+Arrow keys functions correctly with format strings", async ({ page }) => {
+        // Use existing item (2nd item)
         const secondItemId3 = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId3).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId3}"]`);
         await item.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
-        // カーソルの状態を確認し、必要に応じて作成
+        // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
@@ -205,7 +213,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
             };
         });
 
-        // カーソルインスタンスが存在しない場合、作成する
+        // Create cursor instance if it doesn't exist
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
                 const editorStore = (window as {
@@ -230,7 +238,7 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
             });
         }
 
-        // cursor.insertText()を使用してテキストを挿入
+        // Insert text using cursor.insertText()
         await page.evaluate(() => {
             const editorStore = (window as {
                 editorOverlayStore?: {
@@ -245,35 +253,35 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    // 既存のテキストをクリア
+                    // Clear existing text
                     const target = cursor.findTarget();
                     if (target) {
                         target.updateText("");
                         cursor.offset = 0;
                     }
-                    // フォーマットを含むテキストを挿入
-                    cursor.insertText("これは[[太字テキスト]]です");
+                    // Insert text containing formatting
+                    cursor.insertText("This is [[bold text]] here");
                 }
             }
         });
 
-        // 少し待機してからテキストを確認
+        // Wait a bit and check the text
         await page.waitForTimeout(300);
 
         const textContent = await item.locator(".item-text").textContent();
         console.log("Text content after insertion:", textContent);
 
-        // フォーマット文字列が正しく表示されていることを確認
-        expect(textContent).toContain("これは");
-        expect(textContent).toContain("太字テキスト");
-        expect(textContent).toContain("です");
+        // Verify that format string is displayed correctly
+        expect(textContent).toContain("This is ");
+        expect(textContent).toContain("bold text");
+        expect(textContent).toContain(" here");
 
-        // カーソルが表示されていることを確認
+        // Verify that the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
     });
 
-    test("フォーマット文字列内での単語単位の移動（Ctrl+矢印）", async ({ page }) => {
-        // ページタイトル以外のアイテムを選択（2番目のアイテム）
+    test("Word-by-word movement within format strings (Ctrl+Arrow)", async ({ page }) => {
+        // Select an item other than the page title (2nd item)
         const secondItemId4 = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId4).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId4}"]`);
@@ -284,39 +292,39 @@ test.describe("フォーマット文字列でのカーソル操作", () => {
         await page.keyboard.press("Control+A");
         await page.keyboard.press("Backspace");
 
-        // 複数の単語を含むフォーマットテキストを入力
-        await page.keyboard.type("これは [[太字 テキスト 単語]] と [/斜体 単語] です");
+        // Type format text containing multiple words
+        await page.keyboard.type("Start [[bold text words]] and [/italic words] end");
 
-        // カーソルを文頭に移動
+        // Move cursor to the beginning of the line
         await page.keyboard.press("Home");
 
-        // Ctrl+右矢印で単語単位で移動
-        await page.keyboard.press("Control+ArrowRight"); // 「これは」の後
-        await page.keyboard.press("Control+ArrowRight"); // 「[[太字」の後
+        // Move word by word with Ctrl+RightArrow
+        await page.keyboard.press("Control+ArrowRight"); // After "Start"
+        await page.keyboard.press("Control+ArrowRight"); // After "[[bold"
 
-        // 現在位置に文字を挿入
-        await page.keyboard.type("_挿入_");
+        // Insert text at current position
+        await page.keyboard.type("_INSERT_");
 
         const textContent = await item.locator(".item-text").textContent();
 
         // The key behavior we're testing is that Ctrl+ArrowRight enables navigation through formatted text
-        // If the insertion worked properly, we should see "_挿入_" in the textContent
+        // If the insertion worked properly, we should see "_INSERT_" in the textContent
         // However, if it truncated like in the log, then the insertion might not have occurred as expected
         // In either case, the important aspect is that the editor is functioning without crashing
         // and that some content is present
 
         // Check that we have reasonable content after the operation
         expect(textContent).not.toBe(""); // Content should not be empty
-        expect(textContent).toContain("これは"); // Should still contain the beginning of our text
+        expect(textContent).toContain("Start"); // Should still contain the beginning of our text
 
-        // In the original failing case, the text was "これは [[太字 テキスト 単語]] と ["
+        // In the original failing case, the text was "Start [[bold text words]] and [/italic words] end"
         // which terminates unexpectedly with an opening bracket, suggesting possible formatting issue
         // In a successful case, we might see the inserted text somewhere in the content
 
         // The test should pass as long as the editor is working without crashes
         // and the basic functionality was attempted
 
-        // カーソルが表示されていることを確認
+        // Verify that the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
     });
 });
