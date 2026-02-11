@@ -46,10 +46,10 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
     test("layout persists after page reload", async ({ page }) => {
         test.setTimeout(120000); // Increase timeout for this test to accommodate long retry loops under load
 
-        // グラフビューボタンをクリックしてグラフページに移動
+        // Click the graph view button to navigate to the graph page
         await page.click('[data-testid="graph-view-button"]');
 
-        // ページ遷移を待機（タイムアウトを短くしてデバッグ）
+        // Wait for page transition (shorten timeout for debugging)
         try {
             await page.waitForURL(/\/.*\/graph$/, { timeout: 5000 });
         } catch (error) {
@@ -57,22 +57,22 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
             throw error;
         }
 
-        // ページの内容を確認
+        // Check page content
         console.log("Current URL after navigation:", page.url());
         const pageContent = await page.content();
         console.log("Page content includes GraphView:", pageContent.includes("graph-view"));
         console.log("Page content includes echarts:", pageContent.includes("echarts"));
         console.log("Page title:", await page.title());
 
-        // グラフビューページが表示されることを確認
+        // Verify graph view page is displayed
         await expect(page.locator(".graph-view")).toBeVisible();
 
-        // まずチャートが初期化されるまで待機
+        // Wait until the chart is initialized first
         await page.waitForFunction(() => {
             return typeof (window as any).__GRAPH_CHART__ !== "undefined";
         }, { timeout: 30000 });
 
-        // チャートが利用可能になったら、データの初期化を待機
+        // Wait for data initialization once the chart is available
         const chartInitResult = await page.evaluate(() => {
             const chart = (window as any).__GRAPH_CHART__;
             const store = (window as any).appStore || (window as any).generalStore;
@@ -86,11 +86,11 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         console.log("Chart initialization result:", chartInitResult);
 
-        // ストアにページデータがある場合でも、グラフが更新されない場合があるので、強制的にモックデータを設定
+        // Force mock data setting because the graph might not update even if store has page data
         const mockDataResult = await page.evaluate(() => {
             const chart = (window as any).__GRAPH_CHART__;
             if (chart) {
-                // モックデータでグラフを初期化
+                // Initialize graph with mock data
                 const mockNodes = [
                     { id: "page1", name: "Root node with [child] link" },
                     { id: "page2", name: "child" },
@@ -116,7 +116,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         console.log("Mock data result:", mockDataResult);
 
-        // グラフにデータが設定されるまで待機
+        // Wait until data is set in the graph
         await page.waitForFunction(() => {
             const chart = (window as any).__GRAPH_CHART__;
             if (!chart) return false;
@@ -129,21 +129,21 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
             }
         }, { timeout: 30000 });
 
-        // グラフのノード位置を手動で設定（レイアウト永続化のテスト）
+        // Manually set graph node positions (test layout persistence)
         const layoutSetResult = await page.evaluate(() => {
             try {
                 const chart = (window as any).__GRAPH_CHART__;
                 if (!chart) return { success: false, error: "Chart not found" };
 
-                // 現在のオプションを取得
+                // Get current options
                 const currentOption = chart.getOption();
-                const nodes = [...currentOption.series[0].data]; // 配列をコピー
+                const nodes = [...currentOption.series[0].data]; // Copy array
 
-                // page1ノードの位置を固定値に設定
+                // Set page1 node position to fixed value
                 if (nodes && nodes.length > 0) {
                     const targetNodeIndex = nodes.findIndex((n: any) => n.id === "page1");
                     if (targetNodeIndex >= 0) {
-                        // 新しいノードオブジェクトを作成
+                        // Create new node object
                         nodes[targetNodeIndex] = {
                             ...nodes[targetNodeIndex],
                             x: 200,
@@ -154,25 +154,25 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                         console.log("Updated target node:", nodes[targetNodeIndex]);
                     }
 
-                    // グラフを更新（位置設定を反映）
+                    // Update graph (reflect position settings)
                     chart.setOption({
                         series: [{
                             ...currentOption.series[0],
                             data: nodes,
                             force: {
-                                initLayout: "none", // 手動レイアウトを使用
+                                initLayout: "none", // Use manual layout
                                 repulsion: 100,
                                 gravity: 0.1,
                                 edgeLength: 200,
-                                layoutAnimation: false, // アニメーションを無効化
+                                layoutAnimation: false, // Disable animation
                             },
                         }],
                     }, { notMerge: false });
 
-                    // 位置設定後に少し待機
+                    // Wait briefly after setting position
                     return new Promise(resolve => {
                         setTimeout(() => {
-                            // レイアウト情報をローカルストレージに保存
+                            // Save layout information to local storage
                             const layoutData = {
                                 nodes: nodes.map((n: any) => ({
                                     id: n.id,
@@ -204,7 +204,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         expect((layoutSetResult as any).success).toBe(true);
         expect((layoutSetResult as any).firstNodePosition).toEqual({ x: 200, y: 200 });
 
-        // ページをリロード（グラフページのまま）
+        // Reload page (stay on graph page)
         await page.reload();
 
         // Wait for Yjs connection after reload to ensure stores are hydrated
@@ -213,15 +213,15 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
             return y && y.isConnected && y.yjsClient;
         }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait after reload failed"));
 
-        // グラフページが再度表示されることを確認
+        // Verify graph page is displayed again
         await expect(page.locator(".graph-view")).toBeVisible();
 
-        // チャートが再初期化されるまで待機
+        // Wait until chart is re-initialized
         await page.waitForFunction(() => {
             return typeof (window as any).__GRAPH_CHART__ !== "undefined";
         }, { timeout: 30000 });
 
-        // リロード後もモックデータを設定し、保存されたレイアウトを適用
+        // Set mock data and apply saved layout even after reload
         await page.evaluate(() => {
             const chart = (window as any).__GRAPH_CHART__;
             if (chart) {
@@ -231,13 +231,13 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                 ];
                 const mockLinks = [{ source: "page1", target: "page2" }];
 
-                // 保存されたレイアウトを取得
+                // Get saved layout
                 const savedLayout = localStorage.getItem("graph-layout");
                 if (savedLayout) {
                     const layoutData = JSON.parse(savedLayout);
                     console.log("Applying saved layout:", layoutData);
 
-                    // 保存された位置情報をノードに適用
+                    // Apply saved position information to nodes
                     if (layoutData.nodes) {
                         for (const savedNode of layoutData.nodes) {
                             const node = mockNodes.find((n: any) => n.id === savedNode.id);
@@ -263,7 +263,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                         links: mockLinks,
                         label: { position: "right" },
                         force: {
-                            initLayout: "none", // 手動レイアウトを使用
+                            initLayout: "none", // Use manual layout
                             repulsion: 100,
                             gravity: 0.1,
                             edgeLength: 200,
@@ -274,7 +274,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
             }
         });
 
-        // グラフにデータが設定されるまで待機
+        // Wait until data is set in the graph
         await page.waitForFunction(() => {
             const chart = (window as any).__GRAPH_CHART__;
             if (!chart) return false;
@@ -287,15 +287,15 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
             }
         }, { timeout: 30000 });
 
-        // レイアウトが復元されることを確認
-        // リロード直後はレイアウト計算が完了していない可能性があるため、リトライを行う
+        // Verify layout is restored
+        // Retry because layout calculation might not be complete immediately after reload
         const layoutRestoreResult = await page.evaluate(async () => {
             const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-            const maxRetries = 120; // 120回試行 (約60秒)
+            const maxRetries = 120; // 120 attempts (approx. 60 seconds)
 
             for (let i = 0; i < maxRetries; i++) {
                 try {
-                    // ローカルストレージからレイアウト情報を取得
+                    // Get layout information from local storage
                     const savedLayout = localStorage.getItem("graph-layout");
                     if (!savedLayout) {
                         console.log(`Retry ${i}: No saved layout found`);
@@ -314,17 +314,17 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                     const currentOption = chart.getOption();
                     const nodes = currentOption.series[0].data;
 
-                    // 最初のノード（page1）の位置を確認
+                    // Check position of first node (page1)
                     const currentFirstNode = nodes.find((n: any) => n.id === "page1");
                     const savedFirstNode = layoutData.nodes.find((n: any) => n.id === "page1");
 
                     if (savedFirstNode && currentFirstNode) {
-                        // 座標が有効な数値であることを確認
+                        // Verify coordinates are valid numbers
                         const isValid = (n: any) =>
                             typeof n.x === "number" && typeof n.y === "number" && !isNaN(n.x) && !isNaN(n.y);
 
                         if (isValid(currentFirstNode) && isValid(savedFirstNode)) {
-                            // 座標が一致するか確認 (許容誤差を含める)
+                            // Verify coordinates match (include tolerance)
                             const isClose = (a: number, b: number) => Math.abs(a - b) < 1;
                             if (
                                 isClose(currentFirstNode.x, savedFirstNode.x)
