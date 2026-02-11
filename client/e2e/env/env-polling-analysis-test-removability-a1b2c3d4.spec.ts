@@ -104,7 +104,7 @@ test.describe("ENV-POLL-0001: Polling Removability Test", () => {
                 await commentInput.fill("Test comment");
 
                 // Click add button
-                const addButton = page.locator('button:has-text("追加")');
+                const addButton = page.locator('[data-testid="add-comment-btn"]');
                 await addButton.click();
 
                 // Verify comment is added
