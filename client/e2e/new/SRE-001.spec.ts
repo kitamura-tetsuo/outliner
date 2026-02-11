@@ -11,9 +11,9 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SRE-001: Advanced Search & Replace", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "これはテスト用のページです。1",
-            "これはテスト用のページです。2",
-            "その他の行",
+            "This is a test page. 1",
+            "This is a test page. 2",
+            "Other lines",
         ]);
     });
 
@@ -21,7 +21,7 @@ test.describe("SRE-001: Advanced Search & Replace", () => {
         await page.getByTestId("search-toggle-button").click();
         await expect(page.getByTestId("search-panel")).toBeVisible();
 
-        await page.getByTestId("search-input").fill("ページです");
+        await page.getByTestId("search-input").fill("test page");
         await page.getByTestId("search-button").click();
         await page.waitForSelector('[data-testid="search-results-hits"]', { timeout: 10000 });
         const hitsText = await page.getByTestId("search-results-hits").textContent();
