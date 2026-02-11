@@ -467,9 +467,9 @@ export class TestHelpers {
         // This part only makes sense if seeding happened. We need effective seedLines here.
         TestHelpers.slog("Waiting for tree data to sync...");
         const defaultLines = [
-            "これはテスト用のページです。1",
-            "これはテスト用のページです。2",
-            "これはテスト用のページです。3",
+            "This is a test page. 1",
+            "This is a test page. 2",
+            "This is a test page. 3",
         ];
         // If seedLines is null/undefined, use default. If it is an array (even empty), use it.
         const effectiveSeedLines = seedLines !== null ? seedLines : defaultLines;
