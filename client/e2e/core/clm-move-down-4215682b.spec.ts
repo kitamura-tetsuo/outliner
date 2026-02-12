@@ -2,19 +2,19 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature CLM-0005
- *  Title   : 下へ移動
+ *  Title   : Move Down
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-// テストのタイムアウトを設定（長めに設定）
+// Set test timeout (set longer)
 
-test.describe("CLM-0005: 下へ移動", () => {
+test.describe("CLM-0005: Move Down", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line"]);
 
-        // カーソルを1行目(First line)に移動
+        // Move cursor to the first line ("First line")
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(firstItemId).not.toBeNull();
 
@@ -32,114 +32,113 @@ test.describe("CLM-0005: 下へ移動", () => {
         }
     });
 
-    test("カーソルを1行下に移動する", async ({ page }) => {
-        // カーソルが表示されるまで待機
+    test("Move cursor down one line", async ({ page }) => {
+        // Wait until cursor is visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // アクティブなアイテムIDを取得
+        // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
         expect(activeItemId).not.toBeNull();
 
-        // アクティブなアイテム取得
+        // Get active item
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
 
-        // 複数のカーソルがある場合は最初のものを使用
+        // Use the first cursor if there are multiple
         const cursor = page.locator(".editor-overlay .cursor").first();
         await expect(cursor).toBeVisible({ timeout: 15000 });
 
-        // 初期カーソル位置を取得
+        // Get initial cursor position
         const initialY = await cursor.evaluate(el => el.getBoundingClientRect().top);
 
-        // 下矢印キーを押下
+        // Press arrow down key
         await page.keyboard.press("ArrowDown");
 
-        // 更新を待機
+        // Wait for update
         await page.waitForTimeout(300);
 
-        // 更新後のカーソルが再表示されるのを待機
+        // Wait for updated cursor to reappear
         await expect(cursor).toBeVisible({ timeout: 10000 });
 
-        // 新しいカーソル位置を取得
+        // Get new cursor position
         const newY = await cursor.evaluate(el => el.getBoundingClientRect().top);
 
-        // Y座標が増加していることを確認 (下に移動)
+        // Verify Y coordinate has increased (moved down)
         expect(newY).toBeGreaterThan(initialY);
     });
 
-    test("一番下の行にある時は、一つ次のアイテムの最初の行へ移動する", async ({ page }) => {
-        // カーソルが表示されるまで待機
+    test("When on the last line, move to the first line of the next item", async ({ page }) => {
+        // Wait until cursor is visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // 現在は1行目("First line")にいるはず
+        // Should be on the first line ("First line")
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(firstItemId).not.toBeNull();
 
-        // 1行目のテキストを確認
+        // Verify text of the first line
         const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await expect(firstItem).toBeVisible();
         expect(await firstItem.locator(".item-text").textContent()).toContain("First line");
 
-        // 下矢印キーを押下（2行目へ移動）
+        // Press arrow down key (move to the second line)
         await page.keyboard.press("ArrowDown");
 
         // Wait for UI update
         await page.waitForTimeout(300);
 
-        // 2つ目のアイテムを特定
+        // Identify the second item
         const secondItemId = await TestHelpers.getItemIdByIndex(page, 2);
         expect(secondItemId).not.toBeNull();
         const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
 
-        // 2つ目のアイテムのテキストを確認
+        // Verify text of the second item
         expect(await secondItem.locator(".item-text").textContent()).toContain("Second line");
 
-        // カーソルが2行目に移動したことを確認するために、アクティブアイテムIDをチェック
-        // (注: 元のテストは split の挙動もチェックしていたが、ここでは移動の挙動に焦点を当てる)
-        // もし split の挙動テストが必要なら、それは別のテストケースとして追加すべきですが、
-        // このテストの主題は "move down" なので移動確認で十分です。
+        // Check active item ID to verify cursor moved to the second line
+        // (Note: The original test also checked split behavior, but here we focus on move behavior)
+        // If split behavior test is needed, it should be added as a separate test case,
+        // but since the subject of this test is "move down", move verification is sufficient.
 
-        // カーソル位置の検証 (簡易的)
-        // 少なくともカーソルが存在すること
+        // Verify cursor position (simple check)
+        // At least ensure cursor exists
         const cursorCount = await page.evaluate(() => {
             return document.querySelectorAll(".editor-overlay .cursor").length;
         });
         expect(cursorCount).toBeGreaterThanOrEqual(1);
 
-        // アクティブアイテムが2つ目のアイテムになっていることを確認
-        // (非同期更新を待つ可能性があるため、ポーリングチェックなどが必要かもしれないが、
-        //  カーソルロジックが正しければ activeItemId は更新されているはず)
+        // Verify active item is the second item
+        // (Might need polling check due to async update, but if cursor logic is correct, activeItemId should be updated)
         // Note: Sometimes activeItemId might lag slightly, checking seeded structure implies success if no error thrown
         // But ideally:
         // expect(activeItemId).toBe(secondItemId);
     });
 
-    test("一番下の行にある時で、一つ次のアイテムがない時は、同じアイテムの末尾へ移動する", async ({ page }) => {
-        // カーソルが表示されるまで待機
+    test("When on the last line and no next item exists, move to the end of the same item", async ({ page }) => {
+        // Wait until cursor is visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // 最後のアイテム("Second line")に移動
+        // Move to the last item ("Second line")
         const lastItemId = await TestHelpers.getItemIdByIndex(page, 2);
         expect(lastItemId).not.toBeNull();
 
         await TestHelpers.setCursor(page, lastItemId!, 0);
         await TestHelpers.ensureCursorReady(page);
 
-        // カーソルを行の最初に移動
+        // Move cursor to the beginning of the line
         await page.keyboard.press("Home");
         await TestHelpers.waitForCursorVisible(page);
 
-        // 初期テキスト取得
+        // Get initial text
         const lastItemTextLocator = page.locator(`.outliner-item[data-item-id="${lastItemId}"]`).locator(".item-text");
         await expect(lastItemTextLocator).toContainText("Second line", { timeout: 10000 });
         const initialItemText = await lastItemTextLocator.textContent();
         expect(initialItemText).toContain("Second line");
 
-        // 下矢印キーを押下（次のアイテムがないので同じアイテムの末尾に移動するはず）
+        // Press arrow down key (should move to the end of the same item since there is no next item)
         await page.keyboard.press("ArrowDown");
         await page.waitForTimeout(300);
 
-        // カーソルが同じアイテム内にあることを確認（テキスト内容が変わっていないことなどで確認）
+        // Verify cursor is in the same item (verify by checking text content hasn't changed etc.)
         const currentItemText = await page.locator(`.outliner-item[data-item-id="${lastItemId}"]`).locator(".item-text")
             .textContent();
         expect(currentItemText).toEqual(initialItemText);
