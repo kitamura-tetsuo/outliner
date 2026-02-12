@@ -1,13 +1,13 @@
 import { expect, type Page } from "@playwright/test";
 
 /**
- * 認証なしのテスト用ヘルパー関数群
+ * Helper functions for testing without authentication
  */
 export class TestHelpersNoAuth {
     /**
-     * 認証をスキップしてテスト環境を準備する
-     * @param page Playwrightのページオブジェクト
-     * @returns 基本的な環境情報
+     * Prepare test environment skipping authentication
+     * @param page Playwright page object
+     * @returns Basic environment information
      */
     public static async prepareTestEnvironmentNoAuth(
         page: Page,
@@ -19,7 +19,7 @@ export class TestHelpersNoAuth {
         console.log("TestHelper: Page URL before navigation:", page.url());
 
         try {
-            // ホームページに移動
+            // Navigate to home page
             console.log("TestHelper: Attempting to navigate to /");
             await page.goto("/", {
                 timeout: 60000,
@@ -28,10 +28,10 @@ export class TestHelpersNoAuth {
             console.log("TestHelper: Successfully navigated to home page");
             console.log("TestHelper: Page URL after navigation:", page.url());
 
-            // ページが読み込まれるまで待機
+            // Wait for page to load
             await page.waitForTimeout(3000);
 
-            // UserManagerが初期化されるまで待機（オプション）
+            // Wait for UserManager initialization (optional)
             try {
                 await page.waitForFunction(
                     () => (window as any).__USER_MANAGER__ !== undefined,
@@ -57,15 +57,15 @@ export class TestHelpersNoAuth {
     }
 
     /**
-     * 基本的なページ要素が存在することを確認
+     * Verify existence of basic page elements
      */
     public static async verifyBasicElements(page: Page): Promise<boolean> {
         try {
-            // ページの基本要素を確認
+            // Verify basic page elements
             const body = page.locator("body");
             await expect(body).toBeVisible();
 
-            // ページタイトルを確認
+            // Verify page title
             const title = await page.title();
             console.log("TestHelper: Page title:", title);
 
@@ -77,7 +77,7 @@ export class TestHelpersNoAuth {
     }
 
     /**
-     * アウトライナー要素を探す
+     * Find outliner elements
      */
     public static async findOutlinerElements(page: Page): Promise<{
         found: boolean;
@@ -86,7 +86,7 @@ export class TestHelpersNoAuth {
         try {
             const elements: string[] = [];
 
-            // 一般的なアウトライナー要素を探す
+            // Find common outliner elements
             const selectors = [
                 ".outliner-item",
                 ".item-content",
@@ -121,7 +121,7 @@ export class TestHelpersNoAuth {
     }
 
     /**
-     * JavaScript エラーを監視
+     * Monitor JavaScript errors
      */
     public static setupErrorMonitoring(page: Page): string[] {
         const errors: string[] = [];
@@ -142,7 +142,7 @@ export class TestHelpersNoAuth {
     }
 
     /**
-     * ネットワークリクエストを監視
+     * Monitor network requests
      */
     public static setupNetworkMonitoring(page: Page): {
         requests: any[];
