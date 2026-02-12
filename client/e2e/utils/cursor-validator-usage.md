@@ -1,49 +1,49 @@
-# CursorValidator 使用ガイド
+# CursorValidator Usage Guide
 
-このドキュメントでは、`CursorValidator` クラスの使用方法と、カーソル情報の検証方法について説明します。
+This document explains how to use the `CursorValidator` class and how to verify cursor information.
 
-## 目次
+## Table of Contents
 
-1. [基本的な使い方](#基本的な使い方)
-2. [データの比較](#データの比較)
-   - [部分比較モード](#部分比較モード)
-   - [厳密比較モード](#厳密比較モード)
-3. [パスによる検証](#パスによる検証)
-4. [スナップショットの比較](#スナップショットの比較)
-5. [カーソル数の検証](#カーソル数の検証)
-6. [アクティブアイテムの検証](#アクティブアイテムの検証)
-7. [cursorsとcursorInstancesの使い分け](#cursorsとcursorinstancesの使い分け)
-8. [実際のデータ構造](#実際のデータ構造)
-9. [ブラウザでのデバッグ](#ブラウザでのデバッグ)
+1. [Basic Usage](#basic-usage)
+2. [Data Comparison](#data-comparison)
+   - [Partial Comparison Mode](#partial-comparison-mode)
+   - [Strict Comparison Mode](#strict-comparison-mode)
+3. [Verification by Path](#verification-by-path)
+4. [Snapshot Comparison](#snapshot-comparison)
+5. [Cursor Count Verification](#cursor-count-verification)
+6. [Active Item Verification](#active-item-verification)
+7. [Distinction between cursors and cursorInstances](#distinction-between-cursors-and-cursorinstances)
+8. [Actual Data Structure](#actual-data-structure)
+9. [Debugging in Browser](#debugging-in-browser)
 
-## 基本的な使い方
+## Basic Usage
 
-`CursorValidator` クラスを使用して、カーソル情報を取得し、検証することができます。
+You can use the `CursorValidator` class to retrieve and verify cursor information.
 
 ```typescript
 import { setupCursorDebugger, waitForCursorVisible } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
 
-// カーソル情報取得用のデバッグ関数をセットアップ
+// Setup debug function for retrieving cursor information
 await setupCursorDebugger(page);
 
-// 最初のアイテムをクリックしてカーソルを表示
+// Click the first item to show the cursor
 await page.locator(".outliner-item").first().click();
 await waitForCursorVisible(page);
 
-// カーソル情報を取得
+// Retrieve cursor information
 const cursorData = await CursorValidator.getCursorData(page);
 console.log("Cursor data:", JSON.stringify(cursorData, null, 2));
 ```
 
-## データの比較
+## Data Comparison
 
-### 部分比較モード
+### Partial Comparison Mode
 
-部分比較モードでは、期待値に含まれるプロパティのみを比較します。実際のデータには、期待値に含まれていない追加のプロパティが存在しても問題ありません。
+In partial comparison mode, only the properties included in the expected value are compared. It is acceptable for the actual data to contain additional properties not present in the expected value.
 
 ```typescript
-// 実際のデータ構造に合わせた期待値を定義
+// Define expected value matching the actual data structure
 const expectedData = {
     cursorCount: 1,
     cursors: [
@@ -53,130 +53,130 @@ const expectedData = {
     ],
 };
 
-// 部分比較モードで検証
+// Verify in partial comparison mode
 await CursorValidator.assertCursorData(page, expectedData);
 ```
 
-### 厳密比較モード
+### Strict Comparison Mode
 
-厳密比較モードでは、期待値と実際の値が完全に一致する必要があります。
+In strict comparison mode, the expected value and the actual value must match exactly.
 
 ```typescript
-// 現在のデータを取得
+// Retrieve current data
 const currentData = await CursorValidator.getCursorData(page);
 
-// 同じデータで厳密比較
+// Strict comparison with the same data
 await CursorValidator.assertCursorData(page, currentData, true);
 ```
 
-## パスによる検証
+## Verification by Path
 
-特定のパスのデータを検証することができます。パスはドット区切りで指定します。
+You can verify data at a specific path. The path is specified using dot notation.
 
 ```typescript
-// カーソルの数を検証
+// Verify the number of cursors
 await CursorValidator.assertCursorPath(page, "cursorCount", 1);
 
-// 最初のカーソルがアクティブであることを検証
+// Verify that the first cursor is active
 await CursorValidator.assertCursorPath(page, "cursors.0.isActive", true);
 
-// 最初のカーソルのオフセットを検証
+// Verify the offset of the first cursor
 await CursorValidator.assertCursorPath(page, "cursors.0.offset", 0);
 ```
 
-## スナップショットの比較
+## Snapshot Comparison
 
-現在の状態をスナップショットとして保存し、後で比較することができます。
+You can save the current state as a snapshot and compare it later.
 
 ```typescript
-// スナップショットを取得
+// Take a snapshot
 const snapshot = await CursorValidator.takeCursorSnapshot(page);
 
-// 何も変更せずに比較（一致するはず）
+// Compare without any changes (should match)
 await CursorValidator.compareWithSnapshot(page, snapshot);
 
-// カーソルを移動
+// Move the cursor
 await page.keyboard.press("ArrowRight");
 await page.waitForTimeout(100);
 
-// 変更後は一致しないはず
+// Should not match after change
 try {
     await CursorValidator.compareWithSnapshot(page, snapshot);
-    throw new Error("スナップショットが一致してしまいました");
+    throw new Error("Snapshot matched unexpectedly");
 } catch (error) {
-    console.log("スナップショットが一致しないことを確認しました");
+    console.log("Confirmed snapshot does not match");
 }
 ```
 
-## カーソル数の検証
+## Cursor Count Verification
 
-カーソルの数を検証することができます。
+You can verify the number of cursors.
 
 ```typescript
-// カーソルの数を検証
+// Verify the number of cursors
 await CursorValidator.assertCursorCount(page, 1);
 ```
 
-## アクティブアイテムの検証
+## Active Item Verification
 
-アクティブなアイテムIDを検証することができます。
+You can verify the active item ID.
 
 ```typescript
-// アイテムIDを取得
+// Retrieve item ID
 const itemId = await page.locator(".outliner-item").first().getAttribute("data-item-id");
 
-// アクティブなアイテムIDを検証
+// Verify active item ID
 await CursorValidator.assertActiveItemId(page, itemId);
 ```
 
-## cursorsとcursorInstancesの使い分け
+## Distinction between cursors and cursorInstances
 
-カーソル情報の検証では、`cursors`と`cursorInstances`という2つのデータ構造が利用可能です。これらの違いと使い分けについて説明します。
+Two data structures, `cursors` and `cursorInstances`, are available for cursor information verification. This section explains their differences and usage.
 
-### 違い
+### Differences
 
-- **`cursors`**: UIの更新に使用されるリアクティブなデータ構造
-  - Svelteの`$state`として定義されたプレーンなオブジェクト
-  - カーソルの位置や状態などの基本情報を含む
+- **`cursors`**: Reactive data structure used for UI updates
+  - Plain object defined as Svelte `$state`
+  - Contains basic information such as cursor position and state
 
-- **`cursorInstances`**: カーソルの実際の振る舞いを実装するクラスインスタンスのコレクション
-  - JavaScriptの`Map`オブジェクトとして定義
-  - `Cursor`クラスのインスタンスを含み、メソッドなどの機能を持つ
+- **`cursorInstances`**: Collection of class instances implementing actual cursor behavior
+  - Defined as a JavaScript `Map` object
+  - Contains instances of the `Cursor` class and has methods and other functionalities
 
-### 使い分け
+### Usage Guidelines
 
-テストでは、検証の目的に応じて以下のように使い分けることを推奨します：
+In tests, it is recommended to use them according to the verification purpose as follows:
 
-1. **基本的には`cursors`を使用する**
+1. **Basically use `cursors`**
    ```typescript
-   // カーソルの位置を検証
+   // Verify cursor position
    await CursorValidator.assertCursorPath(page, "cursors.0.offset", 5);
    ```
-   - UIに表示される内容と直接関連するため、ユーザー体験の検証に適しています
-   - リアクティブな更新が正しく行われているかの検証に適しています
+   - Suitable for verifying user experience as it directly relates to what is displayed on the UI
+   - Suitable for verifying that reactive updates are performed correctly
 
-2. **特定の実装詳細を検証する場合は`cursorInstances`を使用する**
+2. **Use `cursorInstances` when verifying specific implementation details**
    ```typescript
-   // カーソルインスタンスの状態を検証
+   // Verify cursor instance state
    await CursorValidator.assertCursorPath(page, "cursorInstances.0.itemId", expectedItemId);
    ```
-   - 実装の詳細に依存するテストは壊れやすいため、必要な場合のみ使用します
+   - Use only when necessary, as tests depending on implementation details are fragile
 
-3. **両方を組み合わせた検証**
+3. **Verification combining both**
    ```typescript
-   // 両方の情報が一致していることを確認
+   // Confirm both information match
    const data = await CursorValidator.getCursorData(page);
    expect(data.cursors[0].itemId).toBe(data.cursorInstances[0].itemId);
    ```
-   - 重要なテストケースでは、両方の情報を検証することで、データと振る舞いの両面から確認できます
+   - In critical test cases, verifying both information allows checking from both data and behavior perspectives
 
-### 推奨事項
+### Recommendations
 
-E2Eテストでは、ユーザーの視点からの検証が重要なので、基本的には`cursors`の情報を中心に検証することを推奨します。ただし、カーソルの内部状態や振る舞いを詳細に検証したい場合は、`cursorInstances`の情報も活用してください。
+In E2E tests, verification from the user's perspective is important, so it is recommended to focus on verifying `cursors` information. However, if you want to verify the internal state or behavior of the cursor in detail, please utilize `cursorInstances` information as well.
 
-## 実際のデータ構造
+## Actual Data Structure
 
-実際のデータ構造は以下のようになっています：
+The actual data structure is as follows:
 
 ```json
 {
@@ -206,16 +206,16 @@ E2Eテストでは、ユーザーの視点からの検証が重要なので、�
 }
 ```
 
-## ブラウザでのデバッグ
+## Debugging in Browser
 
-ブラウザのコンソールからもカーソル情報を取得できます。
+You can also retrieve cursor information from the browser console.
 
 ```javascript
-// コンソールからカーソル情報を取得
+// Retrieve cursor information from console
 const cursorData = window.getCursorDebugData();
 console.log(cursorData);
 
-// 特定のパスのデータを取得
+// Retrieve data for a specific path
 const activeItemId = window.getCursorPathData("activeItemId");
 console.log(activeItemId);
 ```
