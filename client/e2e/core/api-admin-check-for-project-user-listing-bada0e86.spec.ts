@@ -8,15 +8,15 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 
 /**
- * @testcase 管理者チェック機能
- * @description Firebase Functions getProjectUsers が管理者のみアクセス可能であることを確認する
+ * @testcase Admin Check Feature
+ * @description Confirm that Firebase Functions getProjectUsers is accessible only by administrators
  */
 
-test.describe("管理者チェック (API-0003)", () => {
-    // APIテストのみなので、TestHelpers.prepareTestEnvironmentは不要
+test.describe("Admin Check (API-0003)", () => {
+    // API test only, so TestHelpers.prepareTestEnvironment is not needed
 
-    test("無効なトークンでは認証エラーが返る", async ({ page }) => {
-        // Firebase Hostingエミュレーターのヘルスチェック
+    test("Returns authentication error with invalid token", async ({ page }) => {
+        // Health check for Firebase Hosting emulator
         try {
             const healthResponse = await page.request.get("http://127.0.0.1:57000/api/health");
             console.log(`Health check status: ${healthResponse.status()}`);
@@ -27,20 +27,20 @@ test.describe("管理者チェック (API-0003)", () => {
             console.log(`Health check error: ${error.message}`);
         }
 
-        // まずFirebase Hostingエミュレーター経由でアクセスを試行
+        // First try accessing via Firebase Hosting emulator
         let response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
             data: { idToken: "invalid-token", projectId: "test-project" },
         });
 
-        // デバッグ情報を出力
+        // Output debug information
         console.log(`Hosting response status: ${response.status()}`);
         console.log(`Hosting response headers:`, response.headers());
 
-        // 404エラーの場合、直接Firebase Functionsエミュレーターにアクセス
+        // In case of 404 error, access Firebase Functions emulator directly
         if (response.status() === 404) {
             console.log("Hosting emulator returned 404, trying direct Functions emulator access");
 
-            // まずFunctions エミュレーターのヘルスチェック
+            // First, health check for Functions emulator
             try {
                 const functionsHealthResponse = await page.request.get(
                     "http://127.0.0.1:57070/outliner-d57b0/us-central1/health",
@@ -70,14 +70,14 @@ test.describe("管理者チェック (API-0003)", () => {
             console.log(`JSON parse error:`, error.message);
         }
 
-        // 無効なトークンの場合、Firebase認証エラーが返る（通常は401エラー）
+        // In case of invalid token, Firebase authentication error is returned (usually 401 error)
         expect(response.status()).toBe(401);
 
         expect(responseBody.error).toBe("Authentication failed");
     });
 
-    test("projectId未指定では400が返る", async ({ page }) => {
-        // projectIdを指定せずにFirebase Functions APIを呼び出し、400エラーが返ることを確認
+    test("Returns 400 when projectId is not specified", async ({ page }) => {
+        // Call Firebase Functions API without specifying projectId and confirm that 400 error is returned
         const response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
             data: { idToken: "any-token" },
         });
@@ -88,8 +88,8 @@ test.describe("管理者チェック (API-0003)", () => {
         expect(responseBody.error).toBe("Project ID is required");
     });
 
-    test("IDトークンが未指定では400が返る", async ({ page }) => {
-        // IDトークンを指定せずにFirebase Functions APIを呼び出し、400エラーが返ることを確認
+    test("Returns 400 when ID token is not specified", async ({ page }) => {
+        // Call Firebase Functions API without specifying ID token and confirm that 400 error is returned
         const response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
             data: { projectId: "test-project" },
         });
@@ -100,8 +100,8 @@ test.describe("管理者チェック (API-0003)", () => {
         expect(responseBody.error).toBe("ID token required");
     });
 
-    test("空のIDトークンでは400が返る", async ({ page }) => {
-        // 空のIDトークンでFirebase Functions APIを呼び出し、400エラーが返ることを確認
+    test("Returns 400 with empty ID token", async ({ page }) => {
+        // Call Firebase Functions API with empty ID token and confirm that 400 error is returned
         const response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
             data: { idToken: "", projectId: "test-project" },
         });
