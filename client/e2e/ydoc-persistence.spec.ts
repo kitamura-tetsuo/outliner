@@ -9,8 +9,8 @@ import { TestHelpers } from "./utils/testHelpers";
  *  Title: Y.Doc persistence and offline editing
  *  Source: docs/client-features.yaml
  *
- * このテストスイートは、Y.Docのローカルキャッシュ機能とオフライン編集機能を検証します。
- * IndexedDBを使用した永続化により、ページリロード後もコンテンツが復元されることを確認します。
+ * This test suite validates Y.Doc's local caching and offline editing capabilities.
+ * It verifies that content is restored after a page reload through persistence using IndexedDB.
  */
 test.describe("Y.Doc persistence and offline editing", () => {
     /**
