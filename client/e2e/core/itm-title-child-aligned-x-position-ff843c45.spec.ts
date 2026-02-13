@@ -2,18 +2,18 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature ITM-ff843c45
- *  Title   : タイトルと子アイテムの水平位置を揃える
+ *  Title   : Title and child align horizontally
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("ITM-ff843c45: タイトルと子アイテムの位置", () => {
+test.describe("ITM-ff843c45: Position of title and child items", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("タイトルと子アイテムのX座標が同じ", async ({ page }) => {
+    test("X coordinates of title and child items are the same", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
         const titleId = await TestHelpers.getItemIdByIndex(page, 0);
         await TestHelpers.setCursor(page, titleId!);
