@@ -2,18 +2,18 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature LNK-0004
- *  Title   : 仮ページ機能
+ *  Title   : Temporary Page Feature
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("LNK-0004: 仮ページ表示", () => {
+test.describe("LNK-0004: Temporary Page Display", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("存在しないページへのリンクをクリックした場合に仮ページが表示される", async ({ page }) => {
+    test("Temporary page is displayed when clicking a link to a non-existent page", async ({ page }) => {
         const sourceUrl = page.url();
         const nonExistentPage = "non-existent-page-" + Date.now().toString().slice(-6);
         await page.goto(`${sourceUrl}${nonExistentPage}`);
