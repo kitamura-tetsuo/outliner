@@ -2,20 +2,20 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0003
- *  Title   : 行末まで選択
+ *  Title   : Select to the end of the line
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0003: 行末まで選択", () => {
+test.describe("SLR-0003: Select to the end of the line", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed with 3 lines
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line", "Third line"]);
         // Wait for Title + 3 items
         await TestHelpers.waitForOutlinerItems(page, 4, 10000);
 
-        // 最初のアイテムを選択してカーソルを表示させる
+        // Select the first item and display the cursor
         const item = page.locator(".outliner-item").first();
         await item.waitFor({ state: "visible" });
         await item.locator(".item-content").click({ force: true });
@@ -24,95 +24,95 @@ test.describe("SLR-0003: 行末まで選択", () => {
         await TestHelpers.waitForCursorVisible(page);
     });
 
-    test("Shift + Endで現在位置から行末までを選択する", async ({ page }) => {
-        // カーソルが表示されるまで待機
+    test("Select from current position to end of line using Shift + End", async ({ page }) => {
+        // Wait for the cursor to be visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // アクティブなアイテムIDを取得
+        // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
         expect(activeItemId).not.toBeNull();
 
-        // アクティブなアイテムを取得
+        // Get active item
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
 
-        // カーソルを行の途中に移動
+        // Move cursor to the middle of the line
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
 
-        // 初期状態では選択範囲がないことを確認
+        // Verify that no selection exists initially
         const initialSelectionExists = await page.evaluate(() => {
             return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(initialSelectionExists).toBe(false);
 
-        // Shift + Endを押下
+        // Press Shift + End
         await page.keyboard.down("Shift");
         await page.keyboard.press("End");
         await page.keyboard.up("Shift");
 
-        // 更新を待機
+        // Wait for update
         await page.waitForTimeout(100);
 
-        // 選択範囲が作成されたことを確認
+        // Verify that a selection has been created
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
-        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
+        // Get selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // 選択範囲が存在することを確認
+        // Verify that selection exists
         expect(selectionText.length).toBeGreaterThan(0);
     });
 
-    test("複数行のアイテムでは、現在のカーソルがある行の末尾までを選択する", async ({ page }) => {
-        // カーソルが表示されるまで待機
+    test("In multi-line items, select to the end of the line where the cursor is located", async ({ page }) => {
+        // Wait for the cursor to be visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // アクティブなアイテムIDを取得
+        // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
         expect(activeItemId).not.toBeNull();
 
-        // アクティブなアイテムを取得
+        // Get active item
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
 
-        // カーソルを3行目に移動し、行の途中に配置
+        // Move cursor to the 3rd line and place it in the middle
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
 
-        // 初期状態では選択範囲がないことを確認
+        // Verify that no selection exists initially
         const initialSelectionExists = await page.evaluate(() => {
             return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(initialSelectionExists).toBe(false);
 
-        // Shift + Endを押下
+        // Press Shift + End
         await page.keyboard.down("Shift");
         await page.keyboard.press("End");
         await page.keyboard.up("Shift");
 
-        // 更新を待機（十分な時間を確保）
+        // Wait for update (ensure sufficient time)
         await page.waitForTimeout(300);
 
-        // 選択範囲が作成されたことを確認
+        // Verify that a selection has been created
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
-        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
+        // Get selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // 選択範囲が存在することを確認
+        // Verify that selection exists
         expect(selectionText.length).toBeGreaterThan(0);
     });
 });
