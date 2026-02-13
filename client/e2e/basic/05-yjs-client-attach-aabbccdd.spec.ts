@@ -5,9 +5,9 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * 目的:
- * - Yjsプロジェクトが正しくアタッチされ、シードされた行がUIに反映されることを確認
- * - createAndSeedProjectを使用してHTTPベースの初期データを作成
+ * Purpose:
+ * - Verify that the Yjs project is correctly attached and seeded lines are reflected in the UI.
+ * - Use createAndSeedProject to create initial data via HTTP.
  */
 
 test.describe("Yjs client attach and DOM reflect", () => {
