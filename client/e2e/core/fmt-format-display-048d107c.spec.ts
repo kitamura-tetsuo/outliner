@@ -2,217 +2,217 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature FMT-0001
- *  Title   : フォーマット表示
+ *  Title   : Format Display
  *  Source  : docs/client-features.yaml
  */
 
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("フォーマット表示", () => {
+test.describe("Format Display", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("カーソルがないアイテムではフォーマットされた内容が表示される", async ({ page }) => {
-        // 最初のアイテムを選択
+    test("Formatted content is displayed in items without cursor", async ({ page }) => {
+        // Select the first item
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click();
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor visibility
         await TestHelpers.waitForCursorVisible(page);
 
-        // テキストを入力
-        await page.keyboard.type("これは[[太字]]のテキストです");
+        // Type text
+        await page.keyboard.type("This is [[bold]] text");
 
-        // 別のアイテムを作成してカーソルを移動
+        // Create another item and move cursor
         await page.keyboard.press("Enter");
-        await page.keyboard.type("別のアイテム");
+        await page.keyboard.type("Another item");
 
-        // 少し待機してフォーマットが適用されるのを待つ
+        // Wait for format application
         await page.waitForTimeout(300);
 
-        // 最初のアイテムのHTMLを確認
+        // Check HTML of the first item
         const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
 
-        // フォーマットされたHTMLを確認（制御文字は非表示、フォーマットは適用）
-        expect(firstItemHtml).toContain("<strong>太字</strong>");
+        // Check formatted HTML (control characters hidden, format applied)
+        expect(firstItemHtml).toContain("<strong>bold</strong>");
     });
 
-    test("カーソルがあるアイテムではプレーンテキストの入力内容がそのまま表示される", async ({ page }) => {
-        // 最初のアイテムを選択
+    test("Raw content is displayed in items with cursor", async ({ page }) => {
+        // Select the first item
         const item = page.locator(".outliner-item").first();
         const content = item.locator(".item-content");
         await content.waitFor({ state: "visible" });
         await content.click();
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor visibility
         await TestHelpers.waitForCursorVisible(page);
 
-        // テキストを入力
-        await page.keyboard.type("これは[[太字]]のテキストです");
+        // Type text
+        await page.keyboard.type("This is [[bold]] text");
 
-        // カーソルがあるアイテムのテキストを確認
+        // Check text of the item with cursor
         const itemText = await page.locator(".outliner-item").first().locator(".item-text").textContent();
 
-        // 制御文字を含むテキストが表示されていることを確認
-        // 注: 実際の実装では内部リンクとして解釈される可能性があるため、部分一致で確認
-        expect(itemText).toContain("これは");
-        expect(itemText).toContain("太字");
-        expect(itemText).toContain("のテキストです");
+        // Check that raw text is displayed (including control characters)
+        // Note: In actual implementation, it might be interpreted as internal link, so check partial match
+        expect(itemText).toContain("This is");
+        expect(itemText).toContain("bold");
+        expect(itemText).toContain("text");
 
-        // 制御文字が表示されていることを確認
+        // Check that control characters are displayed
         const itemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
-        // 注: 実際の実装では制御文字の表示方法が異なる可能性があるため、部分一致で確認
+        // Note: Check partial match as control char display might vary
         expect(itemHtml).toContain('class="control-char"');
     });
 
-    test("太字フォーマット（[[text]]）が視覚的に太字で表示される", async ({ page }) => {
-        // 最初のアイテムを選択
+    test("Bold format ([[text]]) is visually displayed as bold", async ({ page }) => {
+        // Select the first item
         const item = page.locator(".outliner-item").first();
         const content = item.locator(".item-content");
         await content.waitFor({ state: "visible" });
         await content.click();
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor visibility
         await TestHelpers.waitForCursorVisible(page);
 
-        // テキストを入力
-        await page.keyboard.type("これは[[太字]]のテキストです");
+        // Type text
+        await page.keyboard.type("This is [[bold]] text");
 
-        // 別のアイテムを作成してカーソルを移動
+        // Create another item and move cursor
         await page.keyboard.press("Enter");
-        await page.keyboard.type("別のアイテム");
+        await page.keyboard.type("Another item");
 
-        // 少し待機してフォーマットが適用されるのを待つ
+        // Wait for format application
         await page.waitForTimeout(300);
 
-        // 最初のアイテムのHTMLを確認
+        // Check HTML of the first item
         const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
 
-        // 太字フォーマットが適用されていることを確認
-        expect(firstItemHtml).toContain("<strong>太字</strong>");
+        // Check that bold format is applied
+        expect(firstItemHtml).toContain("<strong>bold</strong>");
     });
 
-    test("斜体フォーマット（[/ text]）が視覚的に斜体で表示される", async ({ page }) => {
-        // prepareTestEnvironment の lines パラメータでデータを作成
+    test("Italic format ([/ text]) is visually displayed as italic", async ({ page }) => {
+        // Create data with prepareTestEnvironment
         await TestHelpers.prepareTestEnvironment(page, test.info(), [
-            "これは[/ 斜体]のテキストです",
+            "This is [/ italic] text",
         ]);
 
-        // アイテムが読み込まれるまで待機
+        // Wait for item loading
         await page.waitForTimeout(2000);
 
-        // seededされたアイテムのHTMLを確認（index 0またはindex 1）
+        // Check HTML of the seeded item (index 0 or 1)
         const allItems = await page.locator(".outliner-item[data-item-id] .item-text").all();
         let foundItalic = false;
         for (const item of allItems) {
             const html = await item.innerHTML();
-            if (html.includes("<em>斜体</em>")) {
+            if (html.includes("<em>italic</em>")) {
                 foundItalic = true;
                 break;
             }
         }
 
-        // 斜体フォーマットが適用されているアイテムが存在することを確認
+        // Check that italic format is applied
         expect(foundItalic).toBe(true);
     });
 
-    test("取り消し線フォーマット（[- text]）が視覚的に取り消し線付きで表示される", async ({ page }) => {
-        // 最初のアイテムを選択
+    test("Strikethrough format ([- text]) is visually displayed with strikethrough", async ({ page }) => {
+        // Select the first item
         await TestHelpers.waitForOutlinerItems(page);
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click();
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor visibility
         await TestHelpers.waitForCursorVisible(page);
 
-        // テキストを入力
-        await page.keyboard.type("これは[-取り消し線]のテキストです");
+        // Type text
+        await page.keyboard.type("This is [-strikethrough] text");
 
-        // 別のアイテムを作成してカーソルを移動
+        // Create another item and move cursor
         await page.keyboard.press("Enter");
-        await page.keyboard.type("別のアイテム");
+        await page.keyboard.type("Another item");
 
-        // 少し待機してフォーマットが適用されるのを待つ
+        // Wait for format application
         await page.waitForTimeout(300);
 
-        // 最初のアイテムのHTMLを確認
+        // Check HTML of the first item
         const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
 
-        // 取り消し線フォーマットが適用されていることを確認
-        expect(firstItemHtml).toContain("<s>取り消し線</s>");
+        // Check that strikethrough format is applied
+        expect(firstItemHtml).toContain("<s>strikethrough</s>");
     });
 
-    test("コードフォーマット（`text`）が視覚的にコードスタイルで表示される", async ({ page }) => {
-        // 最初のアイテムを選択
+    test("Code format (`text`) is visually displayed as code", async ({ page }) => {
+        // Select the first item
         const item = page.locator(".outliner-item").first();
         const content = item.locator(".item-content");
         await content.waitFor({ state: "visible" });
         await content.click();
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor visibility
         await TestHelpers.waitForCursorVisible(page);
 
-        // テキストを入力
-        await page.keyboard.type("これは`コード`のテキストです");
+        // Type text
+        await page.keyboard.type("This is `code` text");
 
-        // 別のアイテムを作成してカーソルを移動
+        // Create another item and move cursor
         await page.keyboard.press("Enter");
-        await page.keyboard.type("別のアイテム");
+        await page.keyboard.type("Another item");
 
-        // 少し待機してフォーマットが適用されるのを待つ
+        // Wait for format application
         await page.waitForTimeout(300);
 
-        // 最初のアイテムのHTMLを確認
+        // Check HTML of the first item
         const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
 
-        // コードフォーマットが適用されていることを確認
-        expect(firstItemHtml).toContain("<code>コード</code>");
+        // Check that code format is applied
+        expect(firstItemHtml).toContain("<code>code</code>");
     });
 
-    test("アイテムをクリックするとプレーンテキストが表示される", async ({ page }) => {
-        // 最初のアイテムを選択
+    test("Clicking an item reveals plain text", async ({ page }) => {
+        // Select the first item
         const item = page.locator(".outliner-item").first();
         const content = item.locator(".item-content");
         await content.waitFor({ state: "visible" });
         await content.click();
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor visibility
         await TestHelpers.waitForCursorVisible(page);
 
-        // テキストを入力
-        await page.keyboard.type("これは[[太字]]のテキストです");
+        // Type text
+        await page.keyboard.type("This is [[bold]] text");
 
-        // 別のアイテムを作成してカーソルを移動
+        // Create another item and move cursor
         await page.keyboard.press("Enter");
-        await page.keyboard.type("別のアイテム");
+        await page.keyboard.type("Another item");
 
-        // 少し待機してフォーマットが適用されるのを待つ
+        // Wait for format application
         await page.waitForTimeout(300);
 
-        // 最初のアイテムのHTMLを確認（フォーマットされている）
+        // Check HTML of the first item (formatted)
         const firstItemHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
-        expect(firstItemHtml).toContain("<strong>太字</strong>");
+        expect(firstItemHtml).toContain("<strong>bold</strong>");
 
-        // 最初のアイテムをクリック
+        // Click the first item
         await page.locator(".outliner-item").first().locator(".item-content").click();
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor visibility
         await TestHelpers.waitForCursorVisible(page);
 
-        // クリック後のHTMLを確認（制御文字が表示される）
+        // Check HTML after click (control characters visible)
         const afterClickHtml = await page.locator(".outliner-item").first().locator(".item-text").innerHTML();
 
-        // 注: 実際の実装では制御文字の表示方法が異なる可能性があるため、部分一致で確認
+        // Note: Check partial match as control char display might vary
         expect(afterClickHtml).toContain('class="control-char"');
 
-        // カーソルがあるアイテムのテキストを確認
+        // Check text of the item with cursor
         const itemText = await page.locator(".outliner-item").first().locator(".item-text").textContent();
 
-        // 制御文字を含むテキストが表示されていることを確認
-        expect(itemText).toContain("これは");
-        expect(itemText).toContain("太字");
-        expect(itemText).toContain("のテキストです");
+        // Check that raw text is displayed (including control characters)
+        expect(itemText).toContain("This is");
+        expect(itemText).toContain("bold");
+        expect(itemText).toContain("text");
     });
 });
