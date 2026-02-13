@@ -7,7 +7,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ATT-0001: Drag and drop attachments", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // コンソールログを取得
+        // Capture console logs
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));
         page.on("pageerror", error => console.log("PAGE ERROR:", error.message));
 
@@ -20,7 +20,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
     test("attachment preview appears", async ({ page }) => {
         const item = page.locator(".outliner-item").first();
 
-        // DataTransfer をメインワールドで生成し、items.add(File) を実行
+        // Create DataTransfer in the main world and execute items.add(File)
         await page.evaluateHandle(() => {
             const dt = new DataTransfer();
             const blob = new Blob(["hello"], { type: "text/plain" });
@@ -32,20 +32,20 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
             return dt;
         });
 
-        // E2E専用: 実際のDnDイベントの代わりに、UI結果の決定的な再現として直接添付を追加
-        // __E2E_ADD_ATTACHMENT__ を用いて displayRef に直接添付を追加（DnD のUI結果を決定的に再現）
-        // ヘルパー露出を待つ
+        // E2E specific: Directly add attachment to displayRef using __E2E_ADD_ATTACHMENT__
+        // (deterministically reproduce DnD UI result instead of actual DnD event)
+        // Wait for helper exposure
         await page.waitForFunction(() => !!(window as any).__E2E_ADD_ATTACHMENT__, null, { timeout: 5000 });
-        // 対象要素を取得して直接追加
+        // Get target element and add directly
         await page.evaluate(() => {
             const el = document.querySelector(".outliner-item .item-content") as Element | null;
             if (!el) throw new Error("item-content not found");
             (window as any).__E2E_ADD_ATTACHMENT__?.(el, "hello");
         });
-        // DOM 上でプレビューが出るまで待つ（純Yjs表示に依存）
+        // Wait for preview to appear on DOM (depends on pure Yjs display)
         await page.locator(".attachment-preview").first().waitFor({ state: "visible", timeout: 10000 });
 
-        // テスト専用イベントで Yjs→UI ミラー反映の同期を確保
+        // Ensure synchronization of Yjs -> UI mirror reflection with test-specific event
         await page.evaluate(() =>
             new Promise<void>(resolve => {
                 const handler = () => {
@@ -55,7 +55,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
                     resolve();
                 };
                 window.addEventListener("item-attachments-changed", handler as any, { once: true } as any);
-                // 予備: 既に反映済みでイベントが来ない場合でも短いタイムアウト後に継続
+                // Fallback: Continue after a short timeout even if event doesn't come because it's already reflected
                 setTimeout(() => {
                     try {
                         window.removeEventListener("item-attachments-changed", handler as any);
@@ -71,8 +71,8 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
     test("multiple attachments can be added to same item", async ({ page }) => {
         const item = page.locator(".outliner-item").first();
 
-        // E2E専用ヘルパーで 2 回 添付を追加（DnD の最終結果を決定的に再現）
-        // __E2E_ADD_ATTACHMENT__ を 2 回呼び出し
+        // Add attachment twice with E2E specific helper (deterministically reproduce final result of DnD)
+        // Call __E2E_ADD_ATTACHMENT__ twice
         await page.waitForFunction(() => !!(window as any).__E2E_ADD_ATTACHMENT__, null, { timeout: 5000 });
         await page.evaluate(() => {
             const el = document.querySelector(".outliner-item .item-content") as Element | null;
@@ -80,7 +80,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
             (window as any).__E2E_ADD_ATTACHMENT__?.(el, "a");
             (window as any).__E2E_ADD_ATTACHMENT__?.(el, "b");
         });
-        // DOM 反映を待つ（同一アイテム内のプレビューが2つ以上表示されること）
+        // Wait for DOM reflection (at least 2 previews should be displayed in the same item)
         await expect(item.locator(".attachment-preview")).toHaveCount(2, { timeout: 10000 });
     });
 });
