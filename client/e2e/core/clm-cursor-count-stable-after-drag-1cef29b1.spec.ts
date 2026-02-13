@@ -2,18 +2,18 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature CLM-1cef29b1
- *  Title   : ドラッグ後もカーソル数は変化しない
+ *  Title   : Cursor count remains stable after drag
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("CLM-1cef29b1: ドラッグ後もカーソル数は変化しない", () => {
+test.describe("CLM-1cef29b1: Cursor count remains stable after drag", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item A", "Item B", "Item C"]);
     });
 
-    test("アイテムをドラッグして移動してもカーソル数が変化しない", async ({ page }) => {
+    test("Cursor count does not change even after dragging and moving an item", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page, 4, 10000); // Title + 3 items
 
         // Item 0 is Title. Item 1, 2, 3 are seeded items.
