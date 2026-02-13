@@ -584,16 +584,18 @@
     </div>
 
     <!-- Always mount OutlinerBase, switch display internally based on pageItem presence -->
-    <OutlinerBase
-        pageItem={store.currentPage}
-        projectName={projectName || ""}
-        pageName={pageName || ""}
-        isReadOnly={false}
-        isTemporary={store.currentPage
-            ? store.currentPage.id.startsWith("temp-")
-            : false}
-        onEdit={undefined}
-    />
+    {#if !error}
+        <OutlinerBase
+            pageItem={store.currentPage}
+            projectName={projectName || ""}
+            pageName={pageName || ""}
+            isReadOnly={false}
+            isTemporary={store.currentPage
+                ? store.currentPage.id.startsWith("temp-")
+                : false}
+            onEdit={undefined}
+        />
+    {/if}
 
     <!-- Backlink Panel (Hidden when temporary page) -->
     {#if store.currentPage && !store.currentPage.id.startsWith("temp-")}

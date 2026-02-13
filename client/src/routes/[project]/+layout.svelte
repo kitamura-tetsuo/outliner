@@ -39,11 +39,6 @@ async function loadProject(projectNameFromParam?: string) {
         let client = await getYjsClientByProjectTitle(projectName);
 
         if (client) {
-            // Attach access denied listener
-            (client as any).onAccessDenied = () => {
-                goto("/error/project-unavailable");
-            };
-
             yjsStore.yjsClient = client as any;
             project = client.getProject();
             // expose project to the global store so pages become available immediately
@@ -57,6 +52,9 @@ async function loadProject(projectNameFromParam?: string) {
         }
     } catch (err) {
         console.error("Failed to load project:", err);
+        if (err instanceof Error && err.message.includes("Access Denied")) {
+            goto("/error/project-unavailable");
+        }
     }
 }
 

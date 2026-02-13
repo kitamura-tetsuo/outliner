@@ -253,7 +253,7 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
 
     // Wait for initial sync to complete before returning
     // This ensures seeded data is available immediately
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
         if (provider.isSynced) {
             console.log(`[connectPageDoc] Provider already synced for room: ${room}`);
             resolve();
@@ -279,10 +279,28 @@ export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: stri
                 clearTimeout(timer);
                 console.log(`[connectPageDoc] Sync event fired for room: ${room}`);
                 provider.off("synced", syncHandler);
+                // Also remove the close handler to prevent leaks/errors after success
+                provider.off("close", closeHandler);
                 complete();
             }
         };
+
+        const closeHandler = (event: { code: number; reason: string; }) => {
+            if ([4003, 4006, 4008].includes(event.code)) {
+                clearTimeout(timer);
+                provider.off("synced", syncHandler);
+                provider.off("close", closeHandler);
+                console.error(
+                    `[connectPageDoc] Fatal close event ${event.code} received during initial sync for ${room}`,
+                );
+                reject(new Error("Access Denied"));
+                // Prevent further execution of complete()
+                solved = true;
+            }
+        };
+
         provider.on("synced", syncHandler);
+        provider.on("close", closeHandler);
     });
 
     // Brief wait for pageItems to be populated after WebSocket sync
@@ -447,7 +465,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
     // Wait for initial project sync to complete before connecting pages
     // This ensures the pagesMap is populated with all seeded pages
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
         if (provider.isSynced) {
             resolve();
         } else {
@@ -462,10 +480,25 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                 if (data.state) {
                     clearTimeout(timer);
                     provider.off("synced", syncHandler);
+                    provider.off("close", closeHandler);
                     resolve();
                 }
             };
+
+            const closeHandler = (event: { code: number; reason: string; }) => {
+                if ([4003, 4006, 4008].includes(event.code)) {
+                    clearTimeout(timer);
+                    provider.off("synced", syncHandler);
+                    provider.off("close", closeHandler);
+                    console.error(
+                        `[createProjectConnection] Fatal close event ${event.code} received during initial sync for ${room}`,
+                    );
+                    reject(new Error("Access Denied"));
+                }
+            };
+
             provider.on("synced", syncHandler);
+            provider.on("close", closeHandler);
         }
     });
 
