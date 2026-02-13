@@ -8,16 +8,16 @@ test.describe("Page Route Debug", () => {
     test("debug page route loading process", async ({ page }) => {
         console.log("Debug: Starting page route debug test");
 
-        // コンソールログをキャプチャ
+        // Capture console logs
         const logs: string[] = [];
         page.on("console", msg => {
             logs.push(`[${msg.type()}] ${msg.text()}`);
         });
 
-        // ホームページにアクセス
+        // Access home page
         await page.goto("/");
 
-        // テスト環境フラグを設定
+        // Set test environment flags
         await page.evaluate(() => {
             localStorage.setItem("VITE_IS_TEST", "true");
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
@@ -25,10 +25,10 @@ test.describe("Page Route Debug", () => {
 
         await page.reload();
 
-        // UserManagerの初期化を待機
+        // Wait for UserManager initialization
         await page.waitForFunction(() => (window as any).__USER_MANAGER__ !== undefined, { timeout: 30000 });
 
-        // 認証を実行
+        // Execute authentication
         const authResult = await page.evaluate(async () => {
             const userManager = (window as any).__USER_MANAGER__;
             return await userManager.signInWithEmailAndPassword("test@example.com", "password123");
@@ -36,18 +36,18 @@ test.describe("Page Route Debug", () => {
 
         console.log("Debug: Authentication result:", authResult);
 
-        // グローバル変数の設定を待機
+        // Wait for global variable setting
         await page.waitForFunction(() => {
             return (window as any).__SVELTE_GOTO__;
         }, { timeout: 30000 });
 
-        // プロジェクトとページを作成
+        // Create project and page
         const projectName = `Debug Project ${Date.now()}`;
         const pageName = `debug-page-${Date.now()}`;
 
         await TestHelpers.createAndSeedProject(page, null, [], { projectName, pageName });
 
-        // ページルートに移動
+        // Navigate to page route
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
         const url = `/${encodedProject}/${encodedPage}`;
@@ -55,7 +55,7 @@ test.describe("Page Route Debug", () => {
         console.log("Debug: Navigating to:", url);
         await page.goto(url);
 
-        // ページの状態を定期的にチェック
+        // Check page state periodically
         for (let i = 0; i < 30; i++) {
             const state = await page.evaluate((i) => {
                 const generalStore = (window as any).generalStore;
@@ -77,16 +77,16 @@ test.describe("Page Route Debug", () => {
 
             console.log(`Debug iteration ${i}:`, state);
 
-            // 条件が満たされたら終了
+            // End if conditions are met
             if (state.hasProject && state.hasPages && state.hasCurrentPage) {
                 console.log("Debug: All conditions met!");
                 break;
             }
 
-            await page.waitForTimeout(2000); // 2秒待機
+            await page.waitForTimeout(2000); // Wait for 2 seconds
         }
 
-        // 最終状態を確認
+        // Verify final state
         const finalState = await page.evaluate(() => {
             const generalStore = (window as any).generalStore;
 
@@ -104,13 +104,13 @@ test.describe("Page Route Debug", () => {
 
         console.log("Debug: Final state:", finalState);
 
-        // キャプチャしたコンソールログを出力
+        // Output captured console logs
         console.log("Debug: Browser console logs:");
         logs.forEach((log, index) => {
             console.log(`  ${index}: ${log}`);
         });
 
-        // テストは常に成功とする（デバッグ目的）
+        // Always succeed the test (for debug purposes)
         expect(true).toBe(true);
     });
 });
