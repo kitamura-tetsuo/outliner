@@ -8,25 +8,25 @@ test.describe("Issue #1512: Shift + Right Arrow selection duplication", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // 最初のアイテムを選択
+        // Select the first item
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
-        // カーソルが表示されるまで待機
+        // Wait until the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // グローバル textarea にフォーカスが当たるまで待機
+        // Wait until the global textarea is focused
         await page.waitForSelector("textarea.global-textarea:focus", { timeout: 10000 });
 
-        // テキストを入力
+        // Enter text
         await page.keyboard.type("Hello World");
 
-        // カーソルを先頭に移動
+        // Move cursor to the beginning
         await page.keyboard.press("Home");
     });
 
     test("Shift + Right Arrow should not duplicate selection highlights", async ({ page }) => {
-        // Shift + Right Arrow を複数回押す
+        // Press Shift + Right Arrow multiple times
         await page.keyboard.press("Shift+ArrowRight");
         await page.waitForTimeout(100);
         await page.keyboard.press("Shift+ArrowRight");
@@ -34,15 +34,15 @@ test.describe("Issue #1512: Shift + Right Arrow selection duplication", () => {
         await page.keyboard.press("Shift+ArrowRight");
         await page.waitForTimeout(100);
 
-        // 選択範囲の DOM 要素 (.selection) の数をカウント
+        // Count the number of selection DOM elements (.selection)
         const selectionCount = await page.locator(".editor-overlay .selection").count();
 
-        // 重複していれば count は 1 より大きくなるはず (単一アイテム内の選択なら通常1つ)
+        // If duplicated, count should be greater than 1 (usually 1 for selection within a single item)
         expect(selectionCount).toBe(1);
 
-        // カーソルの DOM 要素 (.cursor) の数をカウント
-        // カーソルIDでフィルタリングしないと、テスト用ダミーなどが含まれる可能性があるが、
-        // active クラスがついている、もしくは単に .cursor の数をチェック
+        // Count the number of cursor DOM elements (.cursor)
+        // Without filtering by cursor ID, test dummies might be included, but
+        // check for active class or simply count .cursor
         // EditorOverlay renders all cursors in store.cursors
         const cursorCount = await page.locator(".editor-overlay .cursor").count();
         expect(cursorCount).toBe(1);
