@@ -2,15 +2,15 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0007
- *  Title   : 複数アイテム選択範囲の削除
+ *  Title   : Delete Multi-Item Selection
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
+test.describe("SLR-0007: Delete Multi-Item Selection", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // デバッグモードを有効化
+        // Enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
@@ -25,40 +25,40 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
         // Wait for Title + 4 items
         await TestHelpers.waitForOutlinerItems(page, 5, 10000);
 
-        // 最初のアイテムを選択してカーソルを表示
+        // Select the first item to show the cursor
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
         await page.waitForSelector("textarea.global-textarea:focus");
         await TestHelpers.waitForCursorVisible(page);
 
-        // デバッグモードを再度有効化
+        // Re-enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
     });
 
-    test("複数アイテムにまたがる選択範囲をBackspaceキーで削除できる", async ({ page }) => {
-        // デバッグモードを有効化
+    test("Can delete selection spanning multiple items with Backspace key", async ({ page }) => {
+        // Enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 
-        // 2つ目のアイテムを取得
+        // Get the second item
         const secondItem = page.locator(".outliner-item").nth(1);
 
-        // 2つ目のアイテムをクリックして選択
+        // Click the second item to select it
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // 選択範囲を手動で作成
+        // Manually create selection
         await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
-            // 2つ目と3つ目のアイテムを選択
+            // Select the second and third items
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3) return;
 
@@ -67,7 +67,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
 
             if (!secondItemId || !thirdItemId) return;
 
-            // 選択範囲を設定
+            // Set the selection
             store.setSelection({
                 startItemId: secondItemId,
                 startOffset: 0,
@@ -80,59 +80,59 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             console.log("Selection created manually");
         });
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait a bit for the selection to be reflected
         await page.waitForTimeout(300);
 
-        // 選択範囲が作成されたことを確認
+        // Confirm that the selection was created
         await page.evaluate(() => {
             return document.querySelector(".editor-overlay .selection") !== null;
         });
 
-        // 削除前のアイテム数を取得
+        // Get item count before deletion
         const beforeCount = await page.locator(".outliner-item").count();
 
-        // Backspaceキーを押下して選択範囲を削除
+        // Press Backspace key to delete the selection
         await page.keyboard.press("Backspace");
 
-        // 少し待機して削除が反映されるのを待つ
+        // Wait a bit for the deletion to be reflected
         await page.waitForTimeout(300);
 
-        // 削除後のアイテム数を取得
+        // Get item count after deletion
         const afterCount = await page.locator(".outliner-item").count();
 
-        // アイテム数が同じか、または減少していることを確認
-        // 多くの場合、アイテム数は減少するが、選択範囲によっては同じ数になる場合もあるため
+        // Confirm that the item count is the same or has decreased
+        // Often the item count decreases, but depending on the selection it might remain the same
         expect(afterCount).toBeLessThanOrEqual(beforeCount);
 
-        // 残りのアイテムのテキストを確認
+        // Check the text of the remaining items
         const firstItemTextAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
         const secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
 
-        // テキストが存在することを確認
+        // Confirm that text exists
         expect(firstItemTextAfter || "").toBeTruthy();
         expect(secondItemTextAfter || "").toBeTruthy();
     });
 
-    test("複数アイテムにまたがる選択範囲をDeleteキーで削除できる", async ({ page }) => {
-        // デバッグモードを有効化
+    test("Can delete selection spanning multiple items with Delete key", async ({ page }) => {
+        // Enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 
-        // 2つ目のアイテムを取得
+        // Get the second item
         const secondItem = page.locator(".outliner-item").nth(1);
 
-        // 2つ目のアイテムをクリックして選択
+        // Click the second item to select it
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // 選択範囲を手動で作成
+        // Manually create selection
         await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
-            // 2つ目と3つ目のアイテムを選択
+            // Select the second and third items
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3) return;
 
@@ -141,7 +141,7 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
 
             if (!secondItemId || !thirdItemId) return;
 
-            // 選択範囲を設定
+            // Set the selection
             store.setSelection({
                 startItemId: secondItemId,
                 startOffset: 0,
@@ -154,10 +154,10 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             console.log("Selection created manually");
         });
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait a bit for the selection to be reflected
         await page.waitForTimeout(300);
 
-        // 選択範囲が作成されたことを確認
+        // Confirm that the selection was created
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
         } catch (e) {
@@ -166,55 +166,55 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             return;
         }
 
-        // 削除前のアイテム数を取得
+        // Get item count before deletion
         const beforeCount = await page.locator(".outliner-item").count();
 
-        // Deleteキーを押下して選択範囲を削除
+        // Press Delete key to delete the selection
         await page.keyboard.press("Delete");
 
-        // 少く待機して削除が反映されるのを待つ
+        // Wait a bit for the deletion to be reflected
         await page.waitForTimeout(300);
 
-        // 削除後のアイテム数を取得
+        // Get item count after deletion
         const afterCount = await page.locator(".outliner-item").count();
 
-        // アイテム数が同じか、または減少していることを確認
-        // 多くの場合、アイテム数は減少するが、選択範囲によっては同じ数になる場合もあるため
+        // Confirm that the item count is the same or has decreased
+        // Often the item count decreases, but depending on the selection it might remain the same
         expect(afterCount).toBeLessThanOrEqual(beforeCount);
 
-        // 残りのアイテムのテキストを確認
+        // Check the text of the remaining items
         const firstItemTextAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
         const secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
 
-        // テキストが存在することを確認
+        // Confirm that text exists
         expect(firstItemTextAfter || "").toBeTruthy();
 
-        // 2つ目のアイテムが存在しない場合もあるため、条件付きでチェック
+        // Check conditionally as the second item might not exist
         if (afterCount > 1) {
             expect(secondItemTextAfter || "").toBeTruthy();
         }
     });
 
-    test("削除後、アイテムが適切に結合される", async ({ page }) => {
-        // デバッグモードを有効化
+    test("Items are properly merged after deletion", async ({ page }) => {
+        // Enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 
-        // 2つ目のアイテムを取得
+        // Get the second item
         const secondItem = page.locator(".outliner-item").nth(1);
 
-        // 2つ目のアイテムをクリックして選択
+        // Click the second item to select it
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // 選択範囲を手動で作成
+        // Manually create selection
         await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
-            // 2つ目と3つ目のアイテムを選択（部分選択）
+            // Select the second and third items (partial selection)
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3) return;
 
@@ -223,12 +223,12 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
 
             if (!secondItemId || !thirdItemId) return;
 
-            // 選択範囲を設定
+            // Set the selection
             store.setSelection({
                 startItemId: secondItemId,
-                startOffset: 3, // "Sec" の後
+                startOffset: 3, // After "Sec"
                 endItemId: thirdItemId,
-                endOffset: 2, // "Th" の後
+                endOffset: 2, // After "Th"
                 userId: "local",
                 isReversed: false,
             });
@@ -236,10 +236,10 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             console.log("Selection created manually");
         });
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait a bit for the selection to be reflected
         await page.waitForTimeout(300);
 
-        // 選択範囲が作成されたことを確認
+        // Confirm that the selection was created
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
         } catch (e) {
@@ -248,49 +248,49 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             return;
         }
 
-        // 削除前のアイテム数を取得
+        // Get item count before deletion
         const beforeCount = await page.locator(".outliner-item").count();
 
-        // Deleteキーを押下して選択範囲を削除
+        // Press Delete key to delete the selection
         await page.keyboard.press("Delete");
 
-        // 少し待機して削除が反映されるのを待つ
+        // Wait a bit for the deletion to be reflected
         await page.waitForTimeout(300);
 
-        // 削除後のアイテム数を取得
+        // Get item count after deletion
         const afterCount = await page.locator(".outliner-item").count();
 
-        // アイテム数が減少していることを確認
+        // Confirm that the item count has decreased
         expect(afterCount).toBeLessThan(beforeCount);
 
-        // 結合されたアイテムのテキストを確認
+        // Check the text of the merged item
         const secondItemTextAfter = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
 
-        // 結合されたテキストが正しいことを確認（前半部分と後半部分が結合されている）
+        // Confirm that the merged text is correct (first and second parts are merged)
         expect(secondItemTextAfter).toContain("Sec");
         expect(secondItemTextAfter).toContain("ird item text");
     });
 
-    test("カーソル位置が適切に更新される", async ({ page }) => {
-        // デバッグモードを有効化
+    test("Cursor position is properly updated", async ({ page }) => {
+        // Enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 
-        // 最初のアイテムを取得
+        // Get the first item
         const firstItem = page.locator(".outliner-item").nth(0);
 
-        // 最初のアイテムをクリックして選択
+        // Click the first item to select it
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // 選択範囲を手動で作成
+        // Manually create selection
         await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
-            // 最初と2つ目のアイテムを選択（部分選択）
+            // Select the first and second items (partial selection)
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 2) return;
 
@@ -299,12 +299,12 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
 
             if (!firstItemId || !secondItemId) return;
 
-            // 選択範囲を設定
+            // Set the selection
             store.setSelection({
                 startItemId: firstItemId,
-                startOffset: 3, // "Fir" の後
+                startOffset: 3, // After "Fir"
                 endItemId: secondItemId,
-                endOffset: 0, // 2つ目のアイテムの先頭
+                endOffset: 0, // Start of the second item
                 userId: "local",
                 isReversed: false,
             });
@@ -312,10 +312,10 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             console.log("Selection created manually");
         });
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait a bit for the selection to be reflected
         await page.waitForTimeout(300);
 
-        // 選択範囲が作成されたことを確認
+        // Confirm that the selection was created
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
         } catch (e) {
@@ -324,24 +324,24 @@ test.describe("SLR-0007: 複数アイテム選択範囲の削除", () => {
             return;
         }
 
-        // Deleteキーを押下して選択範囲を削除
+        // Press Delete key to delete the selection
         await page.keyboard.press("Delete");
 
-        // 少し待機して削除が反映されるのを待つ
+        // Wait a bit for the deletion to be reflected
         await page.waitForTimeout(300);
 
-        // カーソルが表示されていることを確認
+        // Confirm that the cursor is displayed
         await page.evaluate(() => {
             return document.querySelector(".editor-overlay .cursor") !== null;
         });
 
-        // テキストを入力してカーソル位置を確認
+        // Enter text and check cursor position
         await page.keyboard.type("INSERTED");
 
-        // 入力されたテキストが正しい位置に挿入されたことを確認
+        // Confirm that the entered text was inserted at the correct position
         const firstItemTextAfter = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();
 
-        // 入力されたテキストが正しい位置に挿入されていることを確認
+        // Confirm that the entered text is inserted at the correct position
         expect(firstItemTextAfter).toContain("INSERTED");
     });
 });
