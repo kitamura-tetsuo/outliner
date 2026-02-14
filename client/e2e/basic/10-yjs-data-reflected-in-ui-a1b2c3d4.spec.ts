@@ -5,9 +5,9 @@ import { test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * 目的:
- * - createAndSeedProject の lines に与えた配列が、UI に同順で描画されることを確認する
- * - DOM は data-item-id ベースで検証し、Page Title アイテムは除外する
+ * Purpose:
+ * - Verify that the array given to createAndSeedProject lines is rendered in the UI in the same order.
+ * - Verify DOM based on data-item-id, excluding Page Title items.
  */
 
 test.describe("Yjs data is reflected in UI", () => {
@@ -25,13 +25,13 @@ test.describe("Yjs data is reflected in UI", () => {
     });
 
     test("lines are displayed in correct order", async ({ page }) => {
-        // currentPage がセットされるのを待機
+        // Wait for currentPage to be set
         await page.waitForFunction(() => {
             const gs = (window as { generalStore?: { currentPage?: Record<string, unknown>; }; }).generalStore;
             return !!(gs && gs.currentPage);
         }, { timeout: 15000 });
 
-        // 念のため: currentPage の子を lines に合わせて整える（不足分は生成、既存は上書き）
+        // Just in case: align currentPage children with lines (generate missing ones, overwrite existing ones)
         await page.evaluate((lines) => {
             const gs =
                 (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; }).generalStore;
@@ -40,19 +40,19 @@ test.describe("Yjs data is reflected in UI", () => {
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
 
             const existing = (items as any).length ?? 0;
-            // 既存分は上書き
+            // Overwrite existing items
             for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
                 const it = (items as any).at ? (items as any).at(i) : (items as any)[i];
                 (it as any)?.updateText?.(lines[i]);
             }
-            // 不足分は追加
+            // Add missing items
             for (let i = existing as number; i < lines.length; i++) {
                 const node = (items as any).addNode?.("tester");
                 (node as any)?.updateText?.(lines[i]);
             }
         }, lines);
 
-        // UI が想定に揃わない場合はUI経由で補正（安定化）
+        // Correct via UI if UI does not match expectation (stabilization)
         const matchedInitially = await page
             .waitForFunction(
                 (expected) => {
@@ -69,14 +69,14 @@ test.describe("Yjs data is reflected in UI", () => {
             .catch(() => false);
 
         if (!matchedInitially) {
-            // アイテムが不足していれば追加
-            const addBtn = page.locator(".outliner .toolbar .actions button", { hasText: "アイテム追加" }).first();
+            // Add items if missing
+            const addBtn = page.locator(".outliner .toolbar .actions button", { hasText: "Add Item" }).first();
             for (let i = 0; i < lines.length; i++) {
                 await addBtn.click({ force: true });
                 await page.waitForTimeout(200);
             }
 
-            // モデル側の件数が期待分になるまで待機
+            // Wait until the model count matches the expected count
             await page.waitForFunction(
                 (expectedLen) => {
                     const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
@@ -88,7 +88,7 @@ test.describe("Yjs data is reflected in UI", () => {
                 { timeout: 30000 },
             );
 
-            // 各アイテムのテキストをモデル経由で設定
+            // Set text for each item via model
             await page.evaluate((lines) => {
                 const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
                     .generalStore;
@@ -101,7 +101,7 @@ test.describe("Yjs data is reflected in UI", () => {
             }, lines);
         }
 
-        // 最終的にUIの順序と内容が一致することを確認
+        // Finally verify that UI order and content match
         await page.waitForFunction(
             (expected) => {
                 const nodes = Array.from(document.querySelectorAll(
