@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * ケース: Yjs 側でコメント追加/削除し、commentCountVisual が正しい最大値を表示
+ * Case: Add/remove comments via Yjs, and ensure commentCountVisual displays the correct maximum value
  */
 
 test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
@@ -77,13 +77,13 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
         });
         if (!itemId) throw new Error("item id not found");
 
-        // コメントボタンを押してスレッドを表示（OutlinerItem 側の購読がより確実になる）
+        // Click the comment button to show the thread (ensures OutlinerItem subscription is more reliable)
         await page.click(`[data-item-id="${itemId}"] [data-testid="comment-button-${itemId}"]`);
         await expect(page.locator('[data-testid="comment-thread"]')).toBeVisible();
 
         const badge = page.locator(`[data-item-id="${itemId}"] .comment-count`);
 
-        // Yjs 経由でコメント追加 x2 - use the currentPage approach which should match what the UI is using
+        // Add comments via Yjs x2 - use the currentPage approach which should match what the UI is using
         const idList = await page.evaluate((id) => {
             const gs: any = (window as any).generalStore;
 
@@ -136,7 +136,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
         // Wait for the comment count to update in the UI - give up to 10 seconds for the badge to update
         await expect(badge).toHaveText("2", { timeout: 10000 });
 
-        // 1件削除
+        // Delete 1 item
         await page.evaluate(([id, cid]) => {
             const gs: any = (window as any).generalStore;
             // Helper to delete comment from item
