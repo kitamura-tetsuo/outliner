@@ -120,7 +120,7 @@ test.describe("CMT-0001: comment threads", () => {
         await TestHelpers.waitForOutlinerItems(page);
         // Wait for outliner items to be populated (robust wait)
         await page.locator(".outliner-item[data-item-id]").nth(1).waitFor({ state: "attached", timeout: 30000 });
-        // インデックス1を使用（インデックス0はページタイトルでコメントボタンが表示されない）
+        // Use index 1 (index 0 is the page title where the comment button is not displayed)
         // Retry logic for getItemIdByIndex in case of transient state
         let firstId = await TestHelpers.getItemIdByIndex(page, 1);
         if (!firstId) {
@@ -173,15 +173,15 @@ test.describe("CMT-0001: comment threads", () => {
         const commentTestId = await comment.getAttribute("data-testid");
         const commentId = commentTestId?.replace("comment-", "") || "";
 
-        // 編集ボタンをクリック
+        // Click the edit button
         await page.click(`[data-testid="comment-${commentId}"] .edit`);
 
-        // 編集入力フィールドが表示されるまで待機
+        // Wait for the edit input field to appear
         const editInput = page.locator(`[data-testid="edit-input-${commentId}"]`);
         await editInput.waitFor({ state: "visible", timeout: 30000 });
         await editInput.focus();
 
-        // 編集入力フィールドをクリアしてから新しいテキストを入力
+        // Clear the edit input field and enter new text
         // Simply filling might be flaky if there are event handlers resetting it or if focus is lost
         // Use keyboard selection to clear the field completely
         // Use keyboard selection to clear the field completely
@@ -211,10 +211,10 @@ test.describe("CMT-0001: comment threads", () => {
         // Confirm input value is set correctly before saving
         await expect(editInput).toHaveValue("edited");
 
-        // 保存ボタンをクリック
+        // Click the save button
         await page.click(`[data-testid="save-edit-${commentId}"]`);
 
-        // 編集モードが終了するまで待機
+        // Wait for edit mode to end
         await expect(page.locator(`[data-testid="edit-input-${commentId}"]`)).not.toBeVisible({ timeout: 30000 });
 
         // Add a longer delay to ensure the Yjs update has time to propagate in full test suite
