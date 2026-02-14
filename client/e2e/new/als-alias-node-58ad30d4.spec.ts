@@ -48,17 +48,17 @@ test.describe("ALS-0001: Alias node", () => {
         const optionCount = await page.locator(".alias-picker").first().locator("li").count();
         expect(optionCount).toBeGreaterThan(0);
 
-        // エイリアスターゲットを設定する（DOM操作ベース）
+        // Set alias target (DOM operation based)
         await TestHelpers.selectAliasOption(page, secondId);
         await expect(page.locator(".alias-picker").first()).toBeHidden();
 
-        // エイリアスアイテムが作成されたことを確認
+        // Verify alias item is created
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
-        // Yjsモデルへの反映を待機（ポーリングで確認）
+        // Wait for Yjs model reflection (check by polling)
         await TestHelpers.waitForUIStable(page);
 
-        // aliasTargetIdが正しく設定されていることを確認（Yjsモデルから取得）
+        // Verify aliasTargetId is correctly set (retrieved from Yjs model)
         const deadline = Date.now() + 5000;
         let aliasTargetId: string | null = null;
         while (Date.now() < deadline) {
@@ -68,11 +68,11 @@ test.describe("ALS-0001: Alias node", () => {
         }
         expect(aliasTargetId).toBe(secondId);
 
-        // エイリアスパスが表示されていることを確認
+        // Verify alias path is displayed
         const isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);
         expect(isAliasPathVisible).toBe(true);
 
-        // エイリアスサブツリーが表示されていることを確認
+        // Verify alias subtree is displayed
         const isAliasSubtreeVisible = await TestHelpers.isAliasSubtreeVisible(page, aliasId);
         expect(isAliasSubtreeVisible).toBe(true);
     });
