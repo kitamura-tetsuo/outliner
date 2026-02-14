@@ -23,33 +23,33 @@ test.describe("IND-0001: Indentation variations", () => {
     });
 
     test("indent item multiple times with Tab", async ({ page }) => {
-        const secondId = await page
+        // Use the second item (Item 2) instead of the first item (Item 1)
+        // Item 1 cannot be indented.
+        const targetId = await page
             .locator("[data-item-id]")
-            .nth(1)
+            .nth(2)
             .getAttribute("data-item-id");
-        const item = page.locator(`.outliner-item[data-item-id="${secondId}"]`);
+        const item = page.locator(`.outliner-item[data-item-id="${targetId}"]`);
         await item.locator(".item-content").click({ force: true });
         await expect(item).toBeVisible();
 
-        let previous = await item.evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
+        let previous = (await item.boundingBox())!.x;
         for (let i = 0; i < 2; i++) {
             await page.keyboard.press("Tab");
-            const current = await item.evaluate(el =>
-                parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-            );
+            const current = (await item.boundingBox())!.x;
             expect(current).toBeGreaterThanOrEqual(previous);
             previous = current;
         }
     });
 
     test("indent and outdent multiple selected items", async ({ page }) => {
+        // Select Item 2 and Item 3 (indices 2 and 3)
+        // Indices: 0=Title, 1=Item1, 2=Item2, 3=Item3
         const ids = await page.$$eval(
             "[data-item-id]",
-            els => els.slice(0, 3).map(el => el.getAttribute("data-item-id")!),
+            els => els.slice(0, 4).map(el => el.getAttribute("data-item-id")!),
         );
-        const [, secondId, thirdId] = ids;
+        const [, , secondId, thirdId] = ids; // secondId=Item2, thirdId=Item3
 
         await page.evaluate(({ startId, endId }) => {
             const store: any = (window as any).editorOverlayStore;
@@ -68,27 +68,25 @@ test.describe("IND-0001: Indentation variations", () => {
         await expect(item2).toBeVisible();
         await expect(item3).toBeVisible();
 
+        const beforeX2 = (await item2.boundingBox())!.x;
+        const beforeX3 = (await item3.boundingBox())!.x;
+
         await page.keyboard.press("Tab");
         await page.waitForTimeout(100);
 
-        const depth2 = await page.locator(`.outliner-item[data-item-id="${secondId}"]`).evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
-        const depth3 = await page.locator(`.outliner-item[data-item-id="${thirdId}"]`).evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
-        expect(depth2).toBeGreaterThanOrEqual(1);
-        expect(depth3).toBeGreaterThanOrEqual(1);
+        const afterX2 = (await item2.boundingBox())!.x;
+        const afterX3 = (await item3.boundingBox())!.x;
+
+        expect(afterX2).toBeGreaterThan(beforeX2);
+        expect(afterX3).toBeGreaterThan(beforeX3);
 
         await page.keyboard.press("Shift+Tab");
         await page.waitForTimeout(100);
-        const depth2After = await page.locator(`.outliner-item[data-item-id="${secondId}"]`).evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
-        const depth3After = await page.locator(`.outliner-item[data-item-id="${thirdId}"]`).evaluate(el =>
-            parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-        );
-        expect(depth2After).toBeLessThanOrEqual(depth2);
-        expect(depth3After).toBeLessThanOrEqual(depth3);
+
+        const finalX2 = (await item2.boundingBox())!.x;
+        const finalX3 = (await item3.boundingBox())!.x;
+
+        expect(finalX2).toBeLessThan(afterX2);
+        expect(finalX3).toBeLessThan(afterX3);
     });
 });

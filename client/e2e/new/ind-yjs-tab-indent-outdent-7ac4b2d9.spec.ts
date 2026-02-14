@@ -10,10 +10,8 @@ import { TestHelpers } from "../utils/testHelpers";
 async function getDepth(page, itemId: string): Promise<number> {
     const sel = `.outliner-item[data-item-id="${itemId}"]`;
     await page.waitForSelector(sel);
-    const depth = await page.locator(sel).evaluate(el =>
-        parseInt(getComputedStyle(el as HTMLElement).getPropertyValue("--item-depth"))
-    );
-    return depth;
+    const box = await page.locator(sel).boundingBox();
+    return box ? box.x : 0;
 }
 
 async function pressTab(page) {

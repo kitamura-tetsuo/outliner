@@ -228,7 +228,6 @@ function findBestOffsetBinary(content: string, relX: number, span: HTMLElement):
 
 interface Props {
     model: OutlinerItemViewModel;
-    depth?: number;
     currentUser?: string;
     isReadOnly?: boolean;
     isCollapsed?: boolean;
@@ -239,7 +238,6 @@ interface Props {
 
 let {
     model,
-    depth = 0,
     currentUser = "anonymous",
     isReadOnly = false,
     isCollapsed = false,
@@ -1942,7 +1940,6 @@ export function setSelectionPosition(start: number, end: number = start) {
 <div
     class="outliner-item"
     class:page-title={isPageTitle}
-    style={"margin-left: " + (depth <= 1 ? 0 : (depth - 1) * 20) + "px"}
     onclick={handleClick}
     onmousedown={handleMouseDown}
     onmousemove={handleMouseMove}
