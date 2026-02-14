@@ -13,15 +13,15 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SRP-0001: Project-Wide Search & Replace", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(240000); // Allow extra time for heavy seeding (creating 4 pages)
-        // 検索テスト用に複数のページを含むテスト環境を準備
+        // Prepare test environment with multiple pages for search test
         // Reduced initial seed to improve setup speed
         const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "search target",
         ]);
 
-        // 追加ページを作成
+        // Create additional pages
         console.log("Creating additional pages for search test using Yjs generalStore...");
-        // 2番目のページOnly create ONE extra page to minimize setup time and timeouts
+        // Second page: Only create ONE extra page to minimize setup time and timeouts
         // The functionality of "search across multiple pages" is verified with 2 pages total (initial + this one)
         await TestHelpers.createAndSeedProject(page, null, ["Second page line"], {
             projectName: projectName,
@@ -61,7 +61,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             });
         });
 
-        // 最終確認（ページ作成が成功したかどうかに関わらず、現在のページ状況を確認）
+        // Final check (verify current page status regardless of creation success)
         const finalCheck = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
             const store = (window as any).appStore;
@@ -93,14 +93,14 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         console.log("Final pages check:", finalCheck);
 
-        // 最低1つのページがあることを確認（検索テストを実行するため）
+        // Ensure at least one page exists (to run search test)
         expect(finalCheck.pagesCount).toBeGreaterThanOrEqual(1);
     });
 
     test("search across pages and replace", async ({ page }) => {
-        // 検索機能が利用可能かどうかを確認
+        // Check if search feature is available
         const searchAvailable = await page.evaluate(() => {
-            // 検索機能の実装状況を確認
+            // Check implementation status of search feature
             const searchBtn = document.querySelector('[data-testid="search-toggle-button"]');
             return {
                 searchBtnExists: !!searchBtn,
@@ -113,10 +113,10 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         expect(searchAvailable.searchBtnExists).toBe(true);
 
-        // 検索ボタンが存在することを確認
+        // Ensure search button exists
         await expect(page.getByTestId("search-toggle-button")).toBeVisible();
 
-        // 検索ボタンの状態確認とクリック（必要ならforce）
+        // Check search button status and click (force if necessary)
         const btn = page.getByTestId("search-toggle-button");
         await expect(btn).toBeVisible({ timeout: 5000 });
         const box = await btn.boundingBox();
@@ -131,11 +131,11 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             });
         }
 
-        // 強制オープン（常に呼ぶ）
+        // Force open (always call)
         // eslint-disable-next-line no-restricted-globals
         await page.evaluate(() => (window as any).__OPEN_SEARCH__?.());
 
-        // 開いたことを確認
+        // Confirm opened
         // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(() => (window as any).__SEARCH_PANEL_VISIBLE__ === true, { timeout: 4000 }).catch(
             () => {
@@ -143,10 +143,10 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             },
         );
 
-        // DOM への出現を待機（存在）
+        // Wait for appearance in DOM (existence)
         await page.waitForFunction(() => !!document.querySelector('[data-testid="search-panel"]'), { timeout: 7000 });
 
-        // 可視性の確認（計算スタイルと bbox）
+        // Verify visibility (computed style and bbox)
         const visibleCheck = await page.evaluate(() => {
             const el = document.querySelector('[data-testid="search-panel"]') as HTMLElement | null;
             if (!el) return { exists: false };
@@ -167,7 +167,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         expect(visibleCheck.height).toBeGreaterThan(0);
         expect(visibleCheck.width).toBeGreaterThan(0);
 
-        // 実データの確認
+        // Verify actual data
         const dataCheck = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
             const store = (window as any).appStore;
@@ -199,17 +199,17 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         console.log("Data check before search:", dataCheck);
 
-        // 最低1つのページがあることを確認
+        // Ensure at least one page exists
         expect(dataCheck.totalPages).toBeGreaterThanOrEqual(1);
 
-        // 現在のページ構造を確認し、検索テストを実行可能な状態にする
-        // ページのタイトルではなく、ページの内容（items）に"line"が含まれているかを確認する必要がある
+        // Check current page structure and make search test executable
+        // Need to check if "line" is included in page content (items), not page title
 
-        // 検索テストを実行するため、現在利用可能なページで検索を実行
-        // "page"という文字列で検索を実行（実際に存在するテキスト）
+        // Execute search on currently available pages to run search test
+        // Execute search with string "page" (text that actually exists)
         console.log("Adjusting search test to use available data:", dataCheck.pages);
 
-        // ストア構造を詳しく調査
+        // Investigate store structure in detail
         const storeDebug = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
             const store = (window as any).appStore;
@@ -243,12 +243,12 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         console.log("Store debug result:", storeDebug);
 
-        // モックデータが設定されている場合は、SearchPanelにもモックデータを設定
+        // If mock data is set, also set mock data in SearchPanel
         const mockDataSetup = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
             const store = (window as any).appStore;
 
-            // より詳細なデバッグ情報
+            // More detailed debug info
             console.log("Attempting mock data setup...");
             console.log("Store available:", !!store);
 
@@ -264,7 +264,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                 console.log("Pages current data:", store.pages.current);
             }
 
-            // 条件を緩和してテスト
+            // Relax conditions and test
             if (store && store.pages && store.pages.current) {
                 const mockPages = store.pages.current;
                 console.log("Mock pages available:", mockPages.length);
@@ -284,8 +284,8 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         console.log("Mock data setup result:", mockDataSetup);
 
-        // 検索文字列を入力して検索実行（実際に存在するテキストを検索）
-        // 実際に作成されたページに含まれる文字列で検索
+        // Enter search string and execute search (search for actually existing text)
+        // Search for string included in actually created pages
         await page.fill("#search-input", "page");
         try {
             await page.click(".search-btn-action", { timeout: 2000 });
@@ -297,18 +297,18 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             });
         }
 
-        // 検索結果の表示を待機
+        // Wait for search results to display
         await expect.poll(async () => {
             return await page.locator('[data-testid="search-result-item"], .search-results .result-item').count();
         }, { timeout: 10000 }).toBeGreaterThan(0);
 
-        // 検索結果を確認（複数ページにまたがる検索結果があることを確認）
+        // Verify search results (confirm results spanning multiple pages)
         const searchResultsCount = await page.locator(
             '[data-testid="search-result-item"], .search-results .result-item',
         ).count();
         expect(searchResultsCount).toBeGreaterThanOrEqual(1);
 
-        // 作成されたページ数に応じて結果数を確認
+        // Verify result count according to created page count
         if (dataCheck.totalPages >= 2) {
             expect(searchResultsCount).toBeGreaterThanOrEqual(2);
         }
@@ -316,7 +316,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             expect(searchResultsCount).toBeGreaterThanOrEqual(3);
         }
 
-        // 置換文字列を入力してすべて置換
+        // Enter replacement string and replace all
         await page.getByTestId("replace-input").fill("UPDATED");
         try {
             await page.getByTestId("replace-all-button").click({ timeout: 2000 });
@@ -329,7 +329,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         }
         await page.waitForTimeout(1500);
 
-        // 再度検索して置換が完了したことを確認
+        // Search again and confirm replacement is complete
         await page.getByTestId("search-input").fill("page");
         await page.getByTestId("search-button").click();
         await page.waitForTimeout(500);
@@ -351,10 +351,10 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         console.log(`Search results after replacement:`, newSearchResults);
 
-        // 置換が成功したことを確認（検索結果が0になったことで確認）
+        // Confirm replacement success (confirmed by search results becoming 0)
         expect(newSearchResults.count).toBe(0);
 
-        // 実際のページ内容も確認
+        // Verify actual page content
         const pageTexts = await TestHelpers.getPageTexts(page);
         const pageContents = pageTexts.map(p => ({
             id: p.id,
@@ -365,20 +365,20 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         console.log("Page contents after replacement:", pageContents);
 
-        // "page"を含むページで置換が正常に実行されていることを確認
+        // Confirm replacement is correctly executed on pages containing "page"
         pageContents.forEach((page: any) => {
             if (page.hasUpdated) {
-                // 置換されたページでは"page"が存在しないことを確認
+                // Confirm "page" does not exist in replaced pages
                 expect(page.hasPage).toBe(false);
                 expect(page.hasUpdated).toBe(true);
             } else if (!page.hasPage && !page.hasUpdated) {
-                // "page"を含まないページは置換されないことを確認
+                // Confirm pages not containing "page" are not replaced
                 expect(page.hasPage).toBe(false);
                 expect(page.hasUpdated).toBe(false);
             }
         });
 
-        // 置換されたページが存在することを確認
+        // Confirm replaced pages exist
         const updatedPages = pageContents.filter((p: any) => p.hasUpdated);
         expect(updatedPages.length).toBeGreaterThanOrEqual(2);
     });
