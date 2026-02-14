@@ -18,7 +18,7 @@ export class LinkTestHelpers {
         page: Page,
         projectName: string,
         pageName: string,
-        content: string[] = ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"],
+        content: string[] = ["This is a test page.", "Internal link test: [test-link]"],
     ): Promise<void> {
         // Setup tree debugger
         await TestHelpers.setupTreeDebugger(page);
@@ -114,7 +114,7 @@ export class LinkTestHelpers {
                         if (!target) target = gs.project.addPage(pg.pageName, "tester");
                         const items = target.items as any;
                         while ((items?.length ?? 0) > 0) items.removeAt(0);
-                        const lines = pg.content || ["これはテスト用のページです。", "内部リンクのテスト: [test-link]"];
+                        const lines = pg.content || ["This is a test page.", "Internal link test: [test-link]"];
                         for (const line of lines) {
                             const it = items.addNode("tester");
                             it.updateText(line);
@@ -172,7 +172,7 @@ export class LinkTestHelpers {
         page: Page,
         projectName: string,
         pageName: string,
-        content: string[] = ["テストページの内容です"],
+        content: string[] = ["This is the content of the test page."],
         navigateToPage: boolean = false,
     ): Promise<void> {
         // Setup tree debugger
@@ -238,7 +238,7 @@ export class LinkTestHelpers {
         await page.waitForSelector(".outliner-item", { timeout: 10000 });
 
         // Click developer login button (if visible)
-        const loginButton = page.locator("button:has-text('開発者ログイン')");
+        const loginButton = page.locator("button:has-text('Developer Login')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(1000);
@@ -352,7 +352,7 @@ export class LinkTestHelpers {
                         popup.innerHTML = `
                             <h3>${pageName}</h3>
                             <div class="preview-items">
-                                <p>テスト用のプレビュー内容です。</p>
+                                <p>This is test preview content.</p>
                             </div>
                         `;
                     } else {
@@ -360,7 +360,7 @@ export class LinkTestHelpers {
                         popup.innerHTML = `
                             <h3>${pageName}</h3>
                             <div class="preview-not-found">
-                                <p>ページが見つかりません。クリックして新規作成します。</p>
+                                <p>Page not found. Click to create new.</p>
                             </div>
                         `;
                     }

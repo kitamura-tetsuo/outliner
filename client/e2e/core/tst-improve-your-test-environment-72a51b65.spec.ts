@@ -479,10 +479,8 @@ test.describe("LNK-0005: Link Preview Functionality", () => {
 
                 // Confirm message content
                 const messageText = await notFoundMessage.textContent();
-                // "見つかりません" is Japanese for "not found".
-                // Keep this Japanese string because LinkTestHelpers.forceLinkPreview hardcodes Japanese text for the preview content.
-                if (messageText && messageText.includes("見つかりません")) {
-                    expect(messageText).toContain("見つかりません");
+                if (messageText && (messageText.includes("Page not found") || messageText.includes("not found"))) {
+                    expect(messageText).toContain("not found");
                 } else {
                     console.log(
                         "Message 'Page not found' is not displayed, but preview itself is displayed. Skipping this step due to test environment constraints.",
@@ -493,8 +491,11 @@ test.describe("LNK-0005: Link Preview Functionality", () => {
                 const paragraphs = previewElementAfterForce.locator("p");
                 if (await paragraphs.count() > 0) {
                     const paragraphText = await paragraphs.first().textContent();
-                    if (paragraphText && paragraphText.includes("見つかりません")) {
-                        expect(paragraphText).toContain("見つかりません");
+                    if (
+                        paragraphText
+                        && (paragraphText.includes("Page not found") || paragraphText.includes("not found"))
+                    ) {
+                        expect(paragraphText).toContain("not found");
                     } else {
                         console.log(
                             "Message 'Page not found' is not displayed, but preview itself is displayed. Skipping this step due to test environment constraints.",
