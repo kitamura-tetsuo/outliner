@@ -140,7 +140,7 @@ test.describe("Sidebar Navigation", () => {
         await expect(sidebar).toBeVisible();
 
         // Click on Settings link
-        const settingsLink = page.locator(".settings-link");
+        const settingsLink = page.getByRole("link", { name: "Settings" });
         await expect(settingsLink).toBeVisible();
         await settingsLink.click();
 
@@ -248,7 +248,7 @@ test.describe("Sidebar Navigation", () => {
         }
 
         // Settings link should be a link
-        const settingsLink = page.locator(".settings-link");
+        const settingsLink = page.getByRole("link", { name: "Settings" });
         // Check for href attribute instead of role="button"
         await expect(settingsLink).toHaveAttribute("href", /\/settings/);
     });
@@ -357,7 +357,7 @@ test.describe("Sidebar Navigation", () => {
         await expect(sidebar).toBeVisible();
 
         // Focus on settings link
-        const settingsLink = page.locator(".settings-link");
+        const settingsLink = page.getByRole("link", { name: "Settings" });
         await settingsLink.focus();
 
         // Press Enter to activate

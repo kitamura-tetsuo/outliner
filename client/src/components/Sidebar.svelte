@@ -185,6 +185,34 @@
                     <span class="settings-text">Settings</span>
                 </span>
             </a>
+            <a
+                class="settings-link"
+                href="https://jules.google.com/repo/github/kitamura-tetsuo/outliner/overview"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                <span class="item-content-wrapper">
+                    <svg
+                        aria-hidden="true"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="item-icon"
+                    >
+                        <rect width="18" height="10" x="3" y="11" rx="2" />
+                        <circle cx="12" cy="5" r="2" />
+                        <path d="M12 7v4" />
+                        <line x1="8" x2="8" y1="16" y2="16" />
+                        <line x1="16" x2="16" y1="16" y2="16" />
+                    </svg>
+                    <span class="settings-text">Jules</span>
+                </span>
+            </a>
         </div>
     </div>
 </aside>
