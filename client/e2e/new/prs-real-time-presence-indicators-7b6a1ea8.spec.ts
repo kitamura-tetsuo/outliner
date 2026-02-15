@@ -21,17 +21,17 @@ test.describe("PRS-0001: presence indicators", () => {
     test("shows multiple user avatars", async ({ page }) => {
         await page.goto(`/${projectName}/${pageName}`);
 
-        // プレゼンス要素が表示されるまで待つ
+        // Wait for presence elements to be visible
         await expect(page.locator('[data-testid="presence-row"]')).toBeVisible({ timeout: 10000 });
 
-        // ユーザーが認証済みになるまで待つ
+        // Wait for user to be authenticated
         await expect(page.locator('[data-testid="login-status-indicator"]')).toHaveAttribute(
             "data-status",
             "authenticated",
             { timeout: 10000 },
         );
 
-        // プレゼンスストアの状態をデバッグ
+        // Debug presence store state
         const presenceDebug = await page.evaluate(() => {
             const store = (window as any).presenceStore;
             return {
@@ -41,11 +41,11 @@ test.describe("PRS-0001: presence indicators", () => {
         });
         console.log("Presence debug info:", presenceDebug);
 
-        // 既存のユーザーがいることを確認（自動的に追加されたユーザー）
+        // Verify existing user (automatically added user)
         const avatars = page.locator('[data-testid="presence-row"] .presence-avatar');
         await expect(avatars).toHaveCount(1, { timeout: 10000 });
 
-        // 手動で2番目のユーザーを追加してテスト
+        // Manually add a second user for testing
         await page.evaluate(() => {
             const store = (window as any).presenceStore;
             if (store) {
@@ -57,7 +57,7 @@ test.describe("PRS-0001: presence indicators", () => {
             }
         });
 
-        // 2つのアバターが表示されるまで待つ
+        // Wait for two avatars to be displayed
         await expect(avatars).toHaveCount(2, { timeout: 10000 });
 
         const firstColor = await avatars.nth(0).evaluate(el => getComputedStyle(el).backgroundColor);
@@ -66,7 +66,7 @@ test.describe("PRS-0001: presence indicators", () => {
         expect(secondColor).not.toBe("");
         expect(firstColor).not.toBe(secondColor);
 
-        // ユーザーを削除してアバターが減ることを確認
+        // Verify avatar count decreases after removing user
         await page.evaluate(() => {
             const store = (window as any).presenceStore;
             if (store) {
