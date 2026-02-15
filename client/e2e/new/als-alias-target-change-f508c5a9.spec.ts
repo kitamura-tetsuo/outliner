@@ -52,7 +52,7 @@ test.describe("ALS-0001: Alias change target", () => {
         const aliasId = await TestHelpers.getItemIdByIndex(page, newIndex);
         if (!aliasId) throw new Error("alias item not found");
 
-        // 最初のターゲットを設定（secondId） — UIに依存せずストア経由で確定
+        // Set initial target (secondId) - confirm via store without relying on UI
         await page.evaluate(({ aliasId, secondId }) => {
             const store: any = (window as any).aliasPickerStore;
             if (store) {
@@ -62,13 +62,13 @@ test.describe("ALS-0001: Alias change target", () => {
         }, { aliasId, secondId });
         await expect(page.locator(".alias-picker").first()).toBeHidden();
 
-        // エイリアスアイテムが作成されたことを確認
+        // Verify that the alias item has been created
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
-        // Yjsモデルへの反映を待機（ポーリングで確認）
+        // Wait for reflection to Yjs model (check via polling)
         await TestHelpers.waitForUIStable(page);
 
-        // 最初のaliasTargetIdが正しく設定されていることを確認
+        // Verify that the initial aliasTargetId is set correctly
         let deadline = Date.now() + 5000;
         let aliasTargetId: string | null = null;
         while (Date.now() < deadline) {
@@ -78,11 +78,11 @@ test.describe("ALS-0001: Alias change target", () => {
         }
         expect(aliasTargetId).toBe(secondId);
 
-        // エイリアスパスが表示されていることを確認
+        // Verify that the alias path is displayed
         let isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);
         expect(isAliasPathVisible).toBe(true);
 
-        // エイリアスターゲットを変更（thirdIdに変更） — ストア経由で確定
+        // Change alias target (change to thirdId) - confirm via store
         await page.evaluate(({ aliasId, thirdId }) => {
             const store: any = (window as any).aliasPickerStore;
             if (store) {
@@ -91,10 +91,10 @@ test.describe("ALS-0001: Alias change target", () => {
             }
         }, { aliasId, thirdId });
 
-        // Yjsモデルへの反映を待機（ポーリングで確認）
+        // Wait for reflection to Yjs model (check via polling)
         await TestHelpers.waitForUIStable(page);
 
-        // 変更後のaliasTargetIdが正しく設定されていることを確認
+        // Verify that the updated aliasTargetId is set correctly
         deadline = Date.now() + 5000;
         aliasTargetId = null;
         while (Date.now() < deadline) {
@@ -104,7 +104,7 @@ test.describe("ALS-0001: Alias change target", () => {
         }
         expect(aliasTargetId).toBe(thirdId);
 
-        // エイリアスパスが更新されていることを確認
+        // Verify that the alias path has been updated
         isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);
         expect(isAliasPathVisible).toBe(true);
     });
