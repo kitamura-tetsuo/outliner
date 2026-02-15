@@ -23,13 +23,13 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         }
         if (!id || id === "null") throw new Error("first item ID not found");
 
-        // アイテムをクリックしてフォーカスを当てる
+        // Click the item to focus it
         const itemLocator = page.locator(`.outliner-item[data-item-id="${id}"] .item-content`);
         await itemLocator.waitFor({ state: "visible" });
         await itemLocator.click();
         await page.waitForTimeout(200); // Wait for focus to settle
 
-        // グローバルテキストエリアにフォーカスを確実に設定
+        // Ensure focus is set on the global textarea
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             if (textarea) {
@@ -40,12 +40,12 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         await page.keyboard.type("/");
 
-        // デバッグ: コマンドパレットの状態を確認
+        // Debug: Check command palette state
         await page.waitForTimeout(200);
         const paletteExists = await page.locator(".slash-command-palette").count();
         console.log(`Command palette exists: ${paletteExists}`);
 
-        // 追加のデバッグ情報
+        // Additional debug info
         const paletteDebugInfo = await page.evaluate(() => {
             const palette = document.querySelector(".slash-command-palette");
             return {
@@ -59,7 +59,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         });
         console.log("Palette debug info:", paletteDebugInfo);
 
-        // デバッグ: ページの状態を確認
+        // Debug: Check page state
         const debugInfo = await page.evaluate(() => {
             return {
                 commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
@@ -75,13 +75,13 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         });
         console.log("Debug info:", debugInfo);
 
-        // コマンドパレットが存在することを確認（visibilityチェックをスキップ）
+        // Verify command palette exists (skipping visibility check)
         expect(paletteExists).toBeGreaterThan(0);
 
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("ArrowUp");
 
-        // デバッグ: Enterキー前の選択状態を確認
+        // Debug: Check selection state before Enter
         const beforeEnterInfo = await page.evaluate(() => {
             return {
                 selectedIndex: (window as any).commandPaletteStore?.selectedIndex,
@@ -93,7 +93,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         });
         console.log("Before Enter info:", beforeEnterInfo);
 
-        // Enterキーを押す前の状態を記録
+        // Record state before pressing Enter
         const beforeEnterInfo2 = await page.evaluate(() => {
             return {
                 commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
@@ -102,7 +102,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         });
         console.log("Before Enter:", beforeEnterInfo2);
 
-        // confirmとinsertメソッドにログを追加
+        // Add logs to confirm and insert methods
         await page.evaluate(() => {
             const originalConfirm = (window as any).commandPaletteStore.confirm;
             (window as any).commandPaletteStore.confirm = function(this: any) {
@@ -133,7 +133,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
             };
         });
 
-        // Enterキー直前のコマンドパレット状態を確認
+        // Check command palette state immediately before Enter
         const beforeEnterPaletteInfo = await page.evaluate(() => {
             const cursors = (window as any).editorOverlayStore?.getCursorInstances() || [];
             const cursor = cursors[0];
@@ -154,7 +154,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         });
         console.log("Before Enter palette info:", beforeEnterPaletteInfo);
 
-        // コンソールログを監視
+        // Monitor console logs
         const logs: string[] = [];
         page.on("console", msg => {
             logs.push(`${msg.type()}: ${msg.text()}`);
@@ -162,12 +162,12 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         await page.keyboard.press("Enter");
 
-        // ログを出力
+        // Output logs
         console.log("Browser console logs:", logs);
 
-        await page.waitForTimeout(2000); // 処理が完了するまで待機
+        await page.waitForTimeout(2000); // Wait for process to complete
 
-        // Enterキー処理の詳細を確認
+        // Check details of Enter key processing
         const enterProcessInfo = await page.evaluate(() => {
             return {
                 commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
@@ -181,7 +181,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         });
         console.log("Enter process info:", enterProcessInfo);
 
-        // デバッグ: Enter後の状態を確認
+        // Debug: Check state after Enter
         const afterEnterInfo = await page.evaluate(() => {
             const allItems = Array.from(document.querySelectorAll("[data-item-id]"));
             const itemDetails = allItems.map(el => ({
@@ -212,7 +212,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         });
         console.log("After Enter info:", afterEnterInfo);
 
-        // 追加のデバッグ情報：OutlinerItemコンポーネントの状態を確認
+        // Additional debug info: Check OutlinerItem component state
         const componentStateInfo = await page.evaluate(() => {
             const items = (window as any).generalStore?.currentPage?.items;
             if (!items) return { error: "No items found" };
@@ -237,7 +237,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
     test("filter and insert chart", async ({ page }) => {
         await TestHelpers.waitForOutlinerItems(page);
 
-        // ページタイトルアイテムをクリックしてフォーカスを当てる（テーブルテストと同じアプローチ）
+        // Click page title item to focus (same approach as table test)
         await TestHelpers.waitForOutlinerItems(page);
         let titleId = await TestHelpers.getItemIdByIndex(page, 0);
         if (!titleId || titleId === "null") {
@@ -247,7 +247,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         await page.click(`.outliner-item[data-item-id="${titleId}"] .item-content`);
         await page.waitForTimeout(500); // Wait for focus to settle
 
-        // グローバルテキストエリアにフォーカスを確実に設定
+        // Ensure focus is set on the global textarea
         await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             if (textarea) {
