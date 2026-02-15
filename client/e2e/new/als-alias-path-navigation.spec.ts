@@ -35,17 +35,17 @@ test.describe("ALS-0001: Alias path navigation", () => {
         const optionCount = await page.locator(".alias-picker").first().locator("li").count();
         expect(optionCount).toBeGreaterThan(0);
 
-        // エイリアスターゲットを設定
+        // Set alias target
         await TestHelpers.selectAliasOption(page, secondId);
         await expect(page.locator(".alias-picker").first()).toBeHidden();
 
-        // エイリアスアイテムが作成されたことを確認
+        // Verify alias item creation
         await page.locator(`.outliner-item[data-item-id="${aliasId}"]`).waitFor({ state: "visible", timeout: 5000 });
 
-        // Yjsモデルへの反映を待機（ポーリングで確認）
+        // Wait for Yjs model reflection (polling confirmation)
         await page.waitForTimeout(500);
 
-        // aliasTargetIdが設定されるまで待機
+        // Wait until aliasTargetId is set
         const deadline = Date.now() + 5000;
         let aliasTargetId: string | null = null;
         while (Date.now() < deadline) {
@@ -55,17 +55,17 @@ test.describe("ALS-0001: Alias path navigation", () => {
         }
         expect(aliasTargetId).toBe(secondId);
 
-        // エイリアスパスが表示されていることを確認
+        // Verify alias path visibility
         const isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);
         expect(isAliasPathVisible).toBe(true);
 
-        // エイリアスパス内のボタンの数を確認（存在しない環境ではスキップ可能）
+        // Check button count in alias path (skippable if not present)
         const buttonCount = await TestHelpers.getAliasPathButtonCount(page, aliasId);
         if (buttonCount > 0) {
-            // エイリアスパス内の最初のボタンをクリックしてナビゲーションをテスト
-            // 注意: ナビゲーション機能は実装されているが、テスト環境での動作確認のみ
+            // Click the first button in alias path to test navigation
+            // Note: Navigation functionality is implemented, only verifying operation in test environment
             await TestHelpers.clickAliasPathButton(page, aliasId, 0);
-            // ナビゲーション後の安定化待機（環境により再レンダリングが入ることがある）
+            // Wait for stabilization after navigation (re-rendering may occur depending on environment)
             await page.waitForTimeout(500);
         } else {
             console.warn("Alias path buttons not rendered yet; skipping navigation click check.");
