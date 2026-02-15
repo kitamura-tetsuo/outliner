@@ -9,25 +9,25 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * ケース: aliasPickerStore.lastConfirmedTargetId によるフォールバックが 2 秒以内に有効で、UI にパスが表示される
+ * Case: Fallback via aliasPickerStore.lastConfirmedTargetId is effective within 2 seconds, and the path is displayed in the UI.
  */
 
 test.describe("ALS-8a1f2c30: alias fallback shows path within 2s", () => {
     test("lastConfirmedTargetId fallback renders alias path text", async ({ page }, testInfo) => {
-        // 特定の行でページを初期化（ターゲット用とエイリアス用）
+        // Initialize page with specific items (for target and alias)
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "PAGE TITLE",
             "TARGET AAA",
             "ALIAS PLACEHOLDER",
         ]);
 
-        // プロジェクトページへ（prepare で遷移済みだが明示）
+        // Go to project page (already navigated in prepare, but explicit)
         // await page.goto(`/${projectName}/${pageName}`);
 
         // Wait for the target item to be rendered before trying to find its ID
         await expect(page.locator(".outliner-item", { hasText: "TARGET AAA" })).toBeVisible();
 
-        // 文言から安定的にターゲット/エイリアスのIDを取得
+        // Stably retrieve target/alias IDs from text content
         const [targetId, aliasId] = await page.evaluate(() => {
             const findIdByExactText = (text: string): string | null => {
                 const nodes = Array.from(
@@ -49,14 +49,14 @@ test.describe("ALS-8a1f2c30: alias fallback shows path within 2s", () => {
         expect(targetId).toBeTruthy();
         expect(aliasId).toBeTruthy();
 
-        // aliasPickerStore の直近確定情報をセット（2秒以内）
+        // Set aliasPickerStore's last confirmed information (within 2 seconds)
         await page.evaluate(([itemId, targetId]) => {
             const ap: any = (window as any).aliasPickerStore;
             if (!ap) throw new Error("aliasPickerStore not found");
             ap.lastConfirmedItemId = itemId;
             ap.lastConfirmedTargetId = targetId;
             ap.lastConfirmedAt = Date.now();
-            // 依存の再計算を確実にするため、対象アイテムの text を微変更して再描画を促す
+            // Slightly modify target item text to trigger re-render and ensure dependency recalculation
             const gs: any = (window as any).generalStore;
             const items = gs?.currentPage?.items as any;
             const len = items?.length ?? 0;
@@ -70,17 +70,17 @@ test.describe("ALS-8a1f2c30: alias fallback shows path within 2s", () => {
             }
         }, [aliasId!, targetId!]);
 
-        // data-alias-target-id が反映されるのをまず待機（派生の発火を確実に）
+        // First wait for data-alias-target-id to be reflected (ensure derived stores fire)
         await page.waitForSelector(`[data-item-id="${aliasId}"][data-alias-target-id="${targetId}"]`, {
             timeout: 6000,
             state: "attached",
         });
 
-        // エイリアスパスがレンダリングされるまで待機（2秒以内のフォールバックが効く）
+        // Wait until alias path is rendered (fallback within 2 seconds is effective)
         const aliasPath = page.locator(`[data-item-id="${aliasId}"] .alias-path[data-alias-owner-id="${aliasId}"]`);
         await expect(aliasPath).toBeVisible({ timeout: 6000 });
 
-        // パスのテキストにターゲットの文字列が含まれる
+        // Verify the path text contains the target string
         await expect(aliasPath).toContainText("TARGET AAA");
     });
 });
