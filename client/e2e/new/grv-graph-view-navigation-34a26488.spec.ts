@@ -18,20 +18,20 @@ test.describe("GRV-0001: Graph View navigation", () => {
     });
 
     test("graph view renders and node click navigates", async ({ page }) => {
-        // グラフビューボタンをクリックしてグラフページに移動
+        // Click the graph view button to navigate to the graph page
         await page.click('[data-testid="graph-view-button"]');
 
-        // ページ遷移を待機
+        // Wait for page transition
         await page.waitForURL(/\/.*\/graph$/, { timeout: 5000 });
 
         await expect(page.locator(".graph-view")).toBeVisible();
 
-        // チャートが初期化されるまで待機
+        // Wait until the chart is initialized
         await page.waitForFunction(() => {
             return typeof (window as any).__GRAPH_CHART__ !== "undefined";
         }, { timeout: 5000 });
 
-        // モックデータでグラフを初期化（他のテストと同様）
+        // Initialize the graph with mock data (similar to other tests)
         await page.evaluate(() => {
             const chart = (window as any).__GRAPH_CHART__;
             if (chart) {
@@ -55,7 +55,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
             }
         });
 
-        // グラフにデータが設定されるまで待機
+        // Wait until data is set on the graph
         await page.waitForFunction(() => {
             const chart = (window as any).__GRAPH_CHART__;
             if (!chart) return false;
@@ -68,10 +68,10 @@ test.describe("GRV-0001: Graph View navigation", () => {
             }
         }, { timeout: 5000 });
 
-        // canvas要素が生成されるまで待機
+        // Wait until the canvas element is generated
         await expect(page.locator(".graph-view canvas")).toBeVisible();
 
-        // モックデータから最初のページ名とプロジェクト名を取得
+        // Get the first page name and project name from mock data
         const { firstPageName, projectName } = await page.evaluate(() => {
             const chart = (window as any).__GRAPH_CHART__;
             if (!chart) throw new Error("Chart not available");
@@ -80,7 +80,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
             const nodes = option.series[0].data;
             if (!nodes || nodes.length === 0) throw new Error("No nodes available");
 
-            // appStoreからプロジェクト名を取得
+            // Get project name from appStore
             const appStore = (window as any).appStore;
             const projectName = appStore?.project?.title;
 
@@ -90,7 +90,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
             };
         });
 
-        // グラフのノードをクリックしてナビゲーション
+        // Click a node in the graph to navigate
         // In test environments, use Playwright's native navigation instead of __SVELTE_GOTO__
         const targetUrl = projectName ? `/${projectName}/${firstPageName}` : `/${firstPageName}`;
         console.log(`Navigating to: ${targetUrl}`);
@@ -108,16 +108,16 @@ test.describe("GRV-0001: Graph View navigation", () => {
         // Check for page title instead of items, as Page1 is empty (leaf node)
         await expect(page.locator("h1")).toContainText(firstPageName, { timeout: 15000 });
 
-        // ナビゲーションが成功したことを確認
-        // 実際のURLを確認してから適切な検証を行う
+        // Confirm navigation was successful
+        // Check the actual URL before performing appropriate validation
         const currentUrl = page.url();
         console.log("Current URL after navigation:", currentUrl);
 
-        // URLデコードして比較
+        // URL decode and compare
         const decodedUrl = decodeURIComponent(currentUrl);
         console.log("Decoded URL:", decodedUrl);
 
-        // URLに期待するページ名とプロジェクト名が含まれていることを確認
+        // Confirm the URL contains the expected page name and project name
         expect(decodedUrl).toContain(firstPageName);
         if (projectName) {
             expect(decodedUrl).toContain(projectName);
