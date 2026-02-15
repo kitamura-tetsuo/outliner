@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * ケース: Yjs で attachments を追加・削除した際に UI が即時に反映される
+ * Case: Attachments are immediately reflected in the UI when added/removed via Yjs
  */
 
 test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
@@ -35,10 +35,10 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
         const selector = `[data-item-id="${itemId}"]`;
         const attachments = page.locator(`${selector} .attachments`);
 
-        // 初期状態: 添付なし
+        // Initial state: No attachments
         await expect(attachments).toHaveCount(0);
 
-        // Yjs 経由で添付を追加
+        // Add attachment via Yjs
         const url1 = "https://example.com/a.png";
         await page.evaluate(([id, url]) => {
             const gs: any = (window as any).generalStore;
@@ -54,10 +54,10 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
             }
         }, [itemId, url1]);
 
-        // 1件のプレビューが表示
+        // 1 preview displayed
         await expect(page.locator(`${selector} .attachments img`)).toHaveCount(1);
 
-        // 2件目追加
+        // Add 2nd attachment
         const url2 = "https://example.com/b.png";
         await page.evaluate(([id, url]) => {
             const gs: any = (window as any).generalStore;
@@ -74,7 +74,7 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
 
         await expect(page.locator(`${selector} .attachments img`)).toHaveCount(2);
 
-        // 1件削除
+        // Remove 1 attachment
         await page.evaluate(([id, url]) => {
             const gs: any = (window as any).generalStore;
             const items = gs?.currentPage?.items as any;
