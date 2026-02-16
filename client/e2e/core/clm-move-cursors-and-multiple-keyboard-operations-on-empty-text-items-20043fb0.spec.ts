@@ -2,21 +2,21 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature CLM-0102
- *  Title   : 空のテキストアイテムでのカーソル移動と複数回のキーボード操作
+ *  Title   : Cursor movement and multiple keyboard operations on empty text items
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-// このテストは時間がかかるため、タイムアウトを増やす
+// Increase timeout because this test takes time
 
-test.describe("空のテキストアイテムでのカーソル移動", () => {
+test.describe("Cursor movement on empty text items", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed with two empty items so we don't have to create them with flaky keys
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["", ""]);
     });
 
-    test("空のテキストアイテムでのカーソル移動と複数回のキーボード操作", async ({ page }) => {
+    test("Cursor movement and multiple keyboard operations on empty text items", async ({ page }) => {
         // Debug: Check page state and item count
         const debugInfo = await page.evaluate(() => {
             const gs = (window as any).generalStore;
@@ -39,8 +39,8 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
 
         // If no items exist, create them
         if (debugInfo.itemCount < 2) {
-            // Try to create items using the addItem button
-            const addButton = page.locator("button:has-text('アイテム追加')").first();
+            // Try to create items using the "Add Item" button
+            const addButton = page.locator("button:has-text('Add Item')").first();
             if (await addButton.isVisible({ timeout: 5000 }).catch(() => false)) {
                 for (let i = 0; i < 2; i++) {
                     await addButton.click();
@@ -59,7 +59,7 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
         console.log(`Found ${itemCount} items`);
         expect(itemCount).toBeGreaterThanOrEqual(2);
 
-        // 1. 最初のアイテムをクリック
+        // 1. Click the first item
         // Get the first item (skip title which is index 0)
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(firstItemId).not.toBeNull();
@@ -68,103 +68,103 @@ test.describe("空のテキストアイテムでのカーソル移動", () => {
         await TestHelpers.waitForCursorVisible(page);
         await page.waitForTimeout(500);
 
-        // 6. カーソルの数を確認（1つだけのはず）
+        // 6. Check the number of cursors (should be only 1)
         const initialCursorCount = await page.evaluate(() => {
             return document.querySelectorAll(".cursor").length;
         });
-        console.log(`初期カーソル数: ${initialCursorCount}`);
-        expect(initialCursorCount).toBe(1); // カーソルが1つだけ存在することを確認
+        console.log(`Initial cursor count: ${initialCursorCount}`);
+        expect(initialCursorCount).toBe(1); // Confirm that only one cursor exists
 
-        // 7. 右矢印キーを押して2番目のアイテムに移動
+        // 7. Press the right arrow key to move to the second item
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(500);
 
-        // 8. カーソルの数を確認（1つだけのはず）
+        // 8. Check the number of cursors (should be only 1)
         const cursorCountAfterFirstMove = await page.evaluate(() => {
             return document.querySelectorAll(".cursor").length;
         });
-        console.log(`1回目の移動後のカーソル数: ${cursorCountAfterFirstMove}`);
-        expect(cursorCountAfterFirstMove).toBe(1); // カーソルが1つだけ存在することを確認
+        console.log(`Cursor count after first move: ${cursorCountAfterFirstMove}`);
+        expect(cursorCountAfterFirstMove).toBe(1); // Confirm that only one cursor exists
 
-        // 9. 左矢印キーを押して1番目のアイテムに戻る
+        // 9. Press the left arrow key to return to the first item
         await page.keyboard.press("ArrowLeft");
         await page.waitForTimeout(500);
 
-        // 10. カーソルの数を確認（1つだけのはず）
+        // 10. Check the number of cursors (should be only 1)
         const cursorCountAfterSecondMove = await page.evaluate(() => {
             return document.querySelectorAll(".cursor").length;
         });
-        console.log(`2回目の移動後のカーソル数: ${cursorCountAfterSecondMove}`);
-        expect(cursorCountAfterSecondMove).toBe(1); // カーソルが1つだけ存在することを確認
+        console.log(`Cursor count after second move: ${cursorCountAfterSecondMove}`);
+        expect(cursorCountAfterSecondMove).toBe(1); // Confirm that only one cursor exists
 
-        // 11. 右矢印キーを押して2番目のアイテムに移動
+        // 11. Press the right arrow key to move to the second item
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(500);
 
-        // 12. カーソルの数を確認（1つだけのはず）
+        // 12. Check the number of cursors (should be only 1)
         const cursorCountAfterThirdMove = await page.evaluate(() => {
             return document.querySelectorAll(".cursor").length;
         });
-        console.log(`3回目の移動後のカーソル数: ${cursorCountAfterThirdMove}`);
-        expect(cursorCountAfterThirdMove).toBe(1); // カーソルが1つだけ存在することを確認
+        console.log(`Cursor count after third move: ${cursorCountAfterThirdMove}`);
+        expect(cursorCountAfterThirdMove).toBe(1); // Confirm that only one cursor exists
 
-        // 13. 左矢印キーを押して1番目のアイテムに戻る
+        // 13. Press the left arrow key to return to the first item
         await page.keyboard.press("ArrowLeft");
         await page.waitForTimeout(500);
 
-        // 14. カーソルの数を確認（1つだけのはず）
+        // 14. Check the number of cursors (should be only 1)
         const cursorCountAfterFourthMove = await page.evaluate(() => {
             return document.querySelectorAll(".cursor").length;
         });
-        console.log(`4回目の移動後のカーソル数: ${cursorCountAfterFourthMove}`);
-        expect(cursorCountAfterFourthMove).toBe(1); // カーソルが1つだけ存在することを確認
+        console.log(`Cursor count after fourth move: ${cursorCountAfterFourthMove}`);
+        expect(cursorCountAfterFourthMove).toBe(1); // Confirm that only one cursor exists
 
-        // 15. 1番目のアイテムにテキストを入力
+        // 15. Enter text into the first item
         await page.keyboard.type("Test text 1");
         await page.waitForTimeout(500);
 
-        // 16. 1番目のアイテムのテキスト内容を確認
+        // 16. Check the text content of the first item
         const firstItemSelector = `.outliner-item[data-item-id="${firstItemId}"]`;
         const firstItemText = await page.locator(firstItemSelector).locator(".item-text").textContent();
-        console.log(`1番目のアイテムのテキスト: ${firstItemText}`);
+        console.log(`Text of the first item: ${firstItemText}`);
         expect(firstItemText).toContain("Test text 1");
 
-        // 17. 右矢印キーを押して2番目のアイテムに移動
+        // 17. Press the right arrow key to move to the second item
         await page.keyboard.press("End");
         await page.waitForTimeout(500);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(500);
 
-        // 18. 2番目のアイテムにテキストを入力
+        // 18. Enter text into the second item
         await page.keyboard.type("Test text 2");
         await page.waitForTimeout(500);
 
-        // 19. 2番目のアイテムのテキスト内容を確認
+        // 19. Check the text content of the second item
         const secondItemId = await TestHelpers.getItemIdByIndex(page, 2);
 
         if (secondItemId) {
             const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"] .item-text`)
                 .textContent();
-            console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
+            console.log(`Text of the second item: ${secondItemText}`);
             expect(secondItemText).toContain("Test text 2");
 
-            // 20. 左矢印キーを押して1番目のアイテムに戻る
+            // 20. Press the left arrow key to return to the first item
             await page.keyboard.press("Home");
             await page.waitForTimeout(500);
             await page.keyboard.press("ArrowLeft");
             await page.waitForTimeout(500);
 
-            // 21. カーソルの数を確認
+            // 21. Check the number of cursors
             const cursorCountAfterMove4 = await page.evaluate(() => {
                 return document.querySelectorAll(".cursor").length;
             });
-            console.log(`4回目の移動後のカーソル数: ${cursorCountAfterMove4}`);
+            console.log(`Cursor count after fourth move: ${cursorCountAfterMove4}`);
             expect(cursorCountAfterMove4).toBe(1);
         } else {
-            console.log("2番目のアイテムが見つかりませんでした。テストを続行します。");
+            console.log("Second item not found. Continuing test.");
         }
 
-        // テストを成功とする
+        // Mark test as successful
         expect(true).toBe(true);
     });
 });
