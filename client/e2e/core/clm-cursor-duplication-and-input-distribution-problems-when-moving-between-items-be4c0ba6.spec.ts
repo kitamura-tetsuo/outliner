@@ -2,7 +2,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature CLM-0101
- *  Title   : アイテム間移動時のカーソル重複と入力分散問題
+ *  Title   : Cursor duplication and input distribution problems when moving between items
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
@@ -10,70 +10,73 @@ import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("カーソル重複問題の検証", () => {
+test.describe("Verify cursor duplication issue", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["", ""]);
     });
 
-    test("修正後：アイテム間をクリックで移動してもカーソルが1つだけ存在する", async ({ page }) => {
-        // 1. 最初のアイテムを3回クリック（重複カーソル作成の可能性をテスト）
+    test("Fixed: Verify only one cursor exists even when clicking between items", async ({ page }) => {
+        const uniqueTextA = "unique-text-A";
+        const uniqueTextB = "unique-text-B";
+
+        // 1. Click the first item 3 times (test potential for duplicate cursor creation)
         await page.locator(".item-content").first().click();
         await TestHelpers.waitForCursorVisible(page);
-        await CursorValidator.validateCursorState(page, 1, "1回目のクリック後");
+        await CursorValidator.validateCursorState(page, 1, "After 1st click");
 
         await page.locator(".item-content").first().click();
         await TestHelpers.waitForCursorVisible(page);
-        await CursorValidator.validateCursorState(page, 1, "2回目のクリック後");
+        await CursorValidator.validateCursorState(page, 1, "After 2nd click");
 
         await page.locator(".item-content").first().click();
         await TestHelpers.waitForCursorVisible(page);
-        await CursorValidator.validateCursorState(page, 1, "3回目のクリック後");
+        await CursorValidator.validateCursorState(page, 1, "After 3rd click");
 
-        // 2. 2番目のアイテムをクリック
+        // 2. Click the second item
         await page.locator("div:nth-child(2) > .outliner-item > .item-header > .item-content-container > .item-content")
             .click();
         await TestHelpers.waitForCursorVisible(page);
-        await CursorValidator.validateCursorState(page, 1, "2番目のアイテムクリック後");
+        await CursorValidator.validateCursorState(page, 1, "After clicking 2nd item");
 
-        // 3. テキスト「123」を入力
-        await page.keyboard.type("123");
-        await page.waitForTimeout(300); // テキスト入力の反映を待つ
-        await CursorValidator.validateCursorState(page, 1, "テキスト入力後");
+        // 3. Type text "unique-text-A"
+        await page.keyboard.type(uniqueTextA);
+        await page.waitForTimeout(300); // Wait for text input to reflect
+        await CursorValidator.validateCursorState(page, 1, "After text input");
 
-        // 4. 2番目のアイテムのテキスト内容を確認
+        // 4. Verify text content of the second item
         const secondItemText = await page.locator("div:nth-child(2) > .outliner-item").locator(".item-text")
             .textContent();
-        console.log(`2番目のアイテムのテキスト: ${secondItemText}`);
-        expect(secondItemText).toContain("123"); // 2番目のアイテムに「123」が含まれていることを確認
+        console.log(`Text of 2nd item: ${secondItemText}`);
+        expect(secondItemText).toContain(uniqueTextA); // Verify 2nd item contains "unique-text-A"
 
-        // 5. 1番目のアイテムのテキスト内容を確認
+        // 5. Verify text content of the first item
         const firstItemText = await page.locator(".outliner-item").first().locator(".item-text").textContent();
-        console.log(`1番目のアイテムのテキスト: ${firstItemText}`);
-        expect(firstItemText).not.toContain("123"); // 1番目のアイテムに「123」が含まれていないことを確認
+        console.log(`Text of 1st item: ${firstItemText}`);
+        expect(firstItemText).not.toContain(uniqueTextA); // Verify 1st item does not contain "unique-text-A"
 
-        // 6. 1番目のアイテムをクリック
+        // 6. Click the first item
         await page.locator(".item-content").first().click();
         await TestHelpers.waitForCursorVisible(page);
-        await CursorValidator.validateCursorState(page, 1, "1番目のアイテムに戻った後");
+        await CursorValidator.validateCursorState(page, 1, "After returning to 1st item");
 
-        // 7. テキスト「456」を入力
-        await page.keyboard.type("456");
-        await page.waitForTimeout(300); // テキスト入力の反映を待つ
-        await CursorValidator.validateCursorState(page, 1, "2回目のテキスト入力後");
+        // 7. Type text "unique-text-B"
+        await page.keyboard.type(uniqueTextB);
+        await page.waitForTimeout(300); // Wait for text input to reflect
+        await CursorValidator.validateCursorState(page, 1, "After 2nd text input");
 
-        // 8. 1番目のアイテムのテキスト内容を確認
+        // 8. Verify text content of the first item
         const updatedFirstItemText = await page.locator(".outliner-item").first().locator(".item-text").textContent();
-        console.log(`更新後の1番目のアイテムのテキスト: ${updatedFirstItemText}`);
-        expect(updatedFirstItemText).toContain("456"); // 1番目のアイテムに「456」が含まれていることを確認
+        console.log(`Updated text of 1st item: ${updatedFirstItemText}`);
+        expect(updatedFirstItemText).toContain(uniqueTextB); // Verify 1st item contains "unique-text-B"
 
-        // 9. 2番目のアイテムのテキスト内容を再確認
+        // 9. Re-verify text content of the second item
         const updatedSecondItemText = await page.locator("div:nth-child(2) > .outliner-item").locator(".item-text")
             .textContent();
-        console.log(`更新後の2番目のアイテムのテキスト: ${updatedSecondItemText}`);
-        expect(updatedSecondItemText).not.toContain("456"); // 2番目のアイテムに「456」が含まれていないことを確認
-        expect(updatedSecondItemText).toContain("123"); // 2番目のアイテムには「123」が含まれていることを確認
+        console.log(`Updated text of 2nd item: ${updatedSecondItemText}`);
+        expect(updatedSecondItemText).not.toContain(uniqueTextB); // Verify 2nd item does not contain "unique-text-B"
+        expect(updatedSecondItemText).toContain(uniqueTextA); // Verify 2nd item still contains "unique-text-A"
 
-        // 10. 最終的なカーソル状態を確認（点滅状態に関係なく、カーソルの存在のみを確認）
-        await CursorValidator.validateCursorState(page, 1, "テスト終了時");
+        // 10. Verify final cursor state (confirm only cursor existence regardless of blinking state)
+        await CursorValidator.validateCursorState(page, 1, "At test end");
     });
 });
