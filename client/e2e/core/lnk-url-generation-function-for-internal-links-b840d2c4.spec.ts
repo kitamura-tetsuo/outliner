@@ -2,7 +2,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature LNK-0001
- *  Title   : 内部リンクのURL生成機能
+ *  Title   : Internal link URL generation function
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
@@ -10,15 +10,15 @@ import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @file LNK-0001.spec.ts
- * @description 内部リンクのナビゲーション機能のテスト
- * 内部リンクのURLが正しく生成されることを確認します。
+ * @description Tests for internal link navigation features
+ * Verifies that internal link URLs are generated correctly.
  * @playwright
- * @title 内部リンクのナビゲーション機能
+ * @title Internal Link Navigation
  */
 
-test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
+test.describe("LNK-0001: Internal Link Navigation", () => {
     test.beforeEach(async ({ page }) => {
-        // ブラウザコンソールの出力を取得
+        // Capture browser console output
         page.on("console", msg => {
             if (msg.type() === "log" || msg.type() === "error") {
                 console.log(`Browser ${msg.type()}: ${msg.text()}`);
@@ -26,23 +26,23 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         });
     });
     /**
-     * @testcase 内部リンクのURLが正しく生成される
-     * @description 内部リンクのURLが正しく生成されることを確認するテスト
+     * @testcase Internal link URLs are generated correctly
+     * @description Verifies that internal link URLs are generated correctly
      */
     /**
-     * @testcase テキスト入力が正しく反映される
-     * @description テキスト入力が正しく反映されることを確認するテスト
+     * @testcase Text input is reflected correctly
+     * @description Verifies that text input is reflected correctly
      */
-    test("テキスト入力が正しく反映される", async ({ page }, testInfo) => {
+    test("Text input is reflected correctly", async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
-        // アウトライナーアイテムが表示されるのを待つ (最低2つ: ページタイトル + 1つ目のアイテム)
+        // Wait for outliner items to appear (minimum 2: page title + first item)
         await TestHelpers.waitForItemCount(page, 2, 30000);
 
-        // デバッグ: アイテム数を確認
+        // Debug: Check item count
         const itemCount = await page.locator(".outliner-item").count();
         console.log("Total outliner items:", itemCount);
 
-        // デバッグ: 各アイテムの存在を確認
+        // Debug: Check existence of each item
         for (let i = 0; i < itemCount; i++) {
             const item = page.locator(".outliner-item").nth(i);
             const exists = await item.count();
@@ -53,38 +53,38 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
             }
         }
 
-        // 最初の編集可能なアイテムを見つける（通常は1番目のアイテム）
+        // Find the first editable item (usually the first item)
         const firstItem = page.locator(".outliner-item").nth(1);
 
-        // まず、アイテムのIDを取得
+        // First, get the item ID
         const firstItemId = await firstItem.getAttribute("data-item-id");
         console.log("First item ID:", firstItemId);
 
-        // 実際のページ名を取得（より確実な方法）
+        // Get the actual page name (more reliable method)
         const actualPageName = await page.evaluate(() => {
-            // まずストアから取得を試す
+            // First try to get from store
             // eslint-disable-next-line no-restricted-globals
             const store = (window as any).store;
             if (store && store.currentPage && store.currentPage.text) {
                 return store.currentPage.text;
             }
 
-            // フォールバックとしてDOMから取得
+            // Fallback: get from DOM
             const pageTitle = document.querySelector(".page-title-content .item-text");
             return pageTitle ? pageTitle.textContent?.trim() : "test-page";
         });
         console.log("Actual page name:", actualPageName);
 
-        // 従来の方法でテキスト入力を試す
+        // Try text input using the conventional method
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("Control+a");
         await page.waitForTimeout(100);
         await page.keyboard.type(`[${actualPageName}]`);
-        // Yjsの同期を待つために少し待機
+        // Wait a bit for Yjs synchronization
         await page.waitForTimeout(1000);
 
-        // テキスト入力が成功したかを確認
+        // Check if text input was successful
         console.log("Checking if text input was successful...");
         const inputSuccess = await page.evaluate(pageName => {
             const items = document.querySelectorAll(".outliner-item");
@@ -105,52 +105,52 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
     });
 
     /**
-     * @testcase 内部リンクのURLが正しく生成される
-     * @description 内部リンクのURLが正しく生成されることを確認するテスト
+     * @testcase Internal link URLs are generated correctly
+     * @description Verifies that internal link URLs are generated correctly
      */
-    test("内部リンクのURLが正しく生成される", async ({ page }, testInfo) => {
-        // プロジェクト内部リンクを含むテストデータをAPI経由で作成
-        // ページ名は自動生成されるので、後で取得する
+    test("Internal link URLs are generated correctly", async ({ page }, testInfo) => {
+        // Create test data including project internal links via API
+        // Page name is auto-generated, so retrieve it later
         const { pageName: currentPageName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "First line: Test",
-            `[PLACEHOLDER_PAGE_NAME]`, // 後で置換する
+            `[PLACEHOLDER_PAGE_NAME]`, // To be replaced later
             "[/project-name/page-name]", // This will be formatted as a project internal link
-            "3つ目のアイテム",
+            "Third item",
             "Second line: Yjs reflection",
             "Third line: Order check",
         ]);
 
-        // アイテムが表示されていることを確認
+        // Verify that items are displayed
         await TestHelpers.waitForItemCount(page, 7, 30000); // Title + 6 seeded lines
 
-        // PLACEHOLDERを実際のページ名に置換（prepareTestEnvironmentでページ名が確定してから）
+        // Replace PLACEHOLDER with actual page name (after page name is determined in prepareTestEnvironment)
         await page.evaluate(() => {
             const items = document.querySelectorAll(".outliner-item");
             for (const item of items) {
                 if (item.textContent?.includes("[PLACEHOLDER_PAGE_NAME]")) {
                     // const textEl = item.querySelector(".item-text");
-                    // 簡易的にDOMを書き換えるのではなく、ストア経由か入力でやるのが正しいが、
-                    // ここでは既に表示されているアイテムのテキスト置換をシミュレート
-                    // Yjsの更新が必要なので、実際には入力操作を行うのがベストだが、
-                    // テストの安定性のためにDOM操作+Yjs反映を待つか、再度シードする方が良い。
-                    // 今回はprepareTestEnvironmentの戻り値を使えない構造だったので、
-                    // ここではAPIでシードする際にページ名を指定できない制約がある。
-                    // したがって、既存のロジックに合わせて、アイテムのテキストを更新する。
+                    // Simply rewriting DOM is not correct, better to use store or input,
+                    // but here we simulate text replacement of already displayed items.
+                    // Since Yjs update is needed, actually performing input operation is best,
+                    // but for test stability, waiting for DOM manipulation + Yjs reflection or reseeding is better.
+                    // Since prepareTestEnvironment's return value couldn't be used in this structure,
+                    // there is a constraint that page name cannot be specified when seeding via API here.
+                    // Therefore, we update the item text to match existing logic.
 
-                    // しかし、prepareTestEnvironmentはページ名を返すので、それを使って
-                    // 2行目のテキストを更新するアクションを実行するのが確実。
+                    // However, prepareTestEnvironment returns the page name, so using that
+                    // to execute an action to update the text of the 2nd line is reliable.
                 }
             }
         }, { pageName: currentPageName });
 
-        // NOTE: 上記のevaluateでの置換は不完全なので、
-        // 実際には updateText を使って更新する。
+        // NOTE: The replacement in evaluate above is incomplete,
+        // so actually use updateText to update.
         await page.evaluate(({ pageName }) => {
             // eslint-disable-next-line no-restricted-globals
             const store = (window as any).generalStore || (window as any).appStore;
             const items = store?.currentPage?.items;
             if (!items) return;
-            // 2番目のアイテム（インデックス1）を取得
+            // Get the 2nd item (index 1)
             const targetItem = items.at ? items.at(1) : (items as any)[1];
             if (targetItem && typeof targetItem.updateText === "function") {
                 targetItem.updateText(`[${pageName}]`);
@@ -160,7 +160,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         // We need to ensure the page is loaded and formatted, so wait a bit
         await page.waitForTimeout(1000);
 
-        // フォーカスを外して内部リンクが正しく表示されるようにする
+        // Blur focus so that internal links are displayed correctly
         await page.evaluate(() => {
             const activeElement = document.activeElement;
             if (activeElement && activeElement.tagName === "TEXTAREA") {
@@ -171,9 +171,9 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
 
         const actualPageName = currentPageName;
 
-        // ScrapboxFormatterの動作をテスト
+        // Test ScrapboxFormatter behavior
         const formatterTest = await page.evaluate(pageName => {
-            // ScrapboxFormatterが利用可能かチェック
+            // Check if ScrapboxFormatter is available
             // eslint-disable-next-line no-restricted-globals
             if (typeof window.ScrapboxFormatter === "undefined") {
                 return { error: "ScrapboxFormatter not available" };
@@ -192,7 +192,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         }, actualPageName);
         console.log("ScrapboxFormatter test result:", formatterTest);
 
-        // プロジェクト内部リンクのテスト
+        // Test project internal link
         const projectLinkTestResult = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
             if (typeof window.ScrapboxFormatter === "undefined") {
@@ -213,16 +213,16 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
         });
         console.log("Project link test result:", projectLinkTestResult);
 
-        // リンクの確認を行う
+        // Verify links
         console.log("Checking for internal links...");
 
-        // まず、要素の数を確認
+        // First, check the number of elements
         const currentItemCount = await page.locator(".outliner-item").count();
         console.log("Current item count:", currentItemCount);
 
         const linkCheckResult = [];
 
-        // 各アイテムを個別に処理
+        // Process each item individually
         for (let i = 0; i < currentItemCount; i++) {
             const item = page.locator(".outliner-item").nth(i);
 
@@ -243,7 +243,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
                     index: i,
                     textContent: textContent.substring(0, 100),
                     hasItemText: itemTextCount > 0,
-                    itemTextHTML: itemTextHTML, // 完全なHTMLを保持
+                    itemTextHTML: itemTextHTML, // Keep full HTML
                     hasTestPageText: textContent.includes(`[${actualPageName}]`)
                         || textContent.includes(actualPageName),
                     hasProjectPageText: textContent.includes("[/project-name/page-name]")
@@ -271,7 +271,7 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
 
         console.log("Link check results:", JSON.stringify(linkCheckResult, null, 2));
 
-        // 内部リンクが正しく生成されているアイテムを確認
+        // Verify item with correctly generated internal link
         const currentUrl = page.url();
         const urlParts = new URL(currentUrl).pathname.split("/").filter(Boolean);
         const projectNameEncoded = urlParts[0];
@@ -283,20 +283,20 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
             expect(linkItemResult.itemTextHTML).toContain(actualPageName);
             expect(linkItemResult.itemTextHTML).toContain(`href="/${projectNameEncoded}/${actualPageName}"`);
         } else {
-            // 内部リンクが見つからない場合、詳細情報を表示
+            // If internal link not found, show details
             const itemsWithTestPage = linkCheckResult.filter(r => r.hasTestPageText);
             console.log("Items with test page text but no internal link:", itemsWithTestPage);
-            // 失敗しても即座にエラーにせず、次のアサーションで落ちるようにするか、ここでエラーにする
-            // ここではエラーにする
+            // Fail here if not found, or let next assertion fail
+            // Failing here
             // throw new Error(`No item found with internal link for [${actualPageName}]`);
-            // NOTE: リンク生成が非同期で遅れる場合があるので、ここで失敗させる
+            // NOTE: Link generation may be delayed asynchronously, so fail here
             expect(linkItemResult, `No internal link found for [${actualPageName}]`).toBeDefined();
         }
 
-        // 2番目のアイテムで内部リンクが正しく生成されているかを確認
-        // プロジェクト内部リンクが正しく生成されているか、HTML要素を確認
+        // Verify internal link is correctly generated in the 2nd item
+        // Check HTML element to verify project internal link is correctly generated
         const projectLinkExists = await page.evaluate(() => {
-            // ページ全体を検索して、href="/project-name/page-name" というリンクが存在するか確認
+            // Search whole page to check if link with href="/project-name/page-name" exists
             const links = document.querySelectorAll("a.internal-link");
             for (const link of links) {
                 if (
@@ -317,14 +317,14 @@ test.describe("LNK-0001: 内部リンクのナビゲーション機能", () => {
     });
 
     /**
-     * @testcase 内部リンクのHTMLが正しく生成される
-     * @description 内部リンクのHTMLが正しく生成されることを確認するテスト
+     * @testcase Internal link HTML is generated correctly
+     * @description Verifies that internal link HTML is generated correctly
      */
-    test("内部リンクのHTMLが正しく生成される", async ({ page }, testInfo) => {
+    test("Internal link HTML is generated correctly", async ({ page }, testInfo) => {
         const { pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "[placeholder]",
             "[/project-name/page-name]",
-            "3つ目のアイテム",
+            "Third item",
         ]);
 
         await TestHelpers.waitForItemCount(page, 4, 30000); // Title + 3 seeded lines
