@@ -49,17 +49,17 @@ test.describe("ALS-0001: Alias self-reference prevention", () => {
         const optionCount = await page.locator(".alias-picker").first().locator("li").count();
         expect(optionCount).toBeGreaterThan(0);
 
-        // 自己参照エイリアスを試行（自分自身を選択）
+        // Attempt self-referencing alias (selecting itself)
         const selfButtonCount = await page.locator(".alias-picker").first().locator(`button[data-id="${aliasId}"]`)
             .count();
         expect(selfButtonCount).toBe(0);
         await TestHelpers.hideAliasPicker(page);
 
-        // aliasTargetIdが設定されていないことを確認（自己参照は防止される）
+        // Confirm aliasTargetId is not set (self-reference is prevented)
         const aliasTargetId = await TestHelpers.getAliasTargetId(page, aliasId);
         expect(aliasTargetId).toBeNull();
 
-        // エイリアスパスが表示されていないことを確認
+        // Confirm alias path is not displayed
         const isAliasPathVisible = await TestHelpers.isAliasPathVisible(page, aliasId);
         expect(isAliasPathVisible).toBe(false);
     });
