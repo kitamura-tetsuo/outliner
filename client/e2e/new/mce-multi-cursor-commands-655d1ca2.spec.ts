@@ -23,19 +23,19 @@ test.describe("MCE-0002: multi-cursor commands", () => {
         await TestHelpers.setCursor(page, firstId!, 0, "local");
         await TestHelpers.waitForCursorVisible(page);
 
-        // カーソル追加前の状態を確認
+        // Verify state before adding cursor
         const countBefore = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
         expect(countBefore).toBe(1);
 
-        // キーボードショートカットでカーソルを追加
+        // Add cursor using keyboard shortcut
         await page.keyboard.press("Control+Shift+Alt+ArrowDown");
         await TestHelpers.waitForCursorVisible(page);
 
-        // カーソル追加後の状態を確認
+        // Verify state after adding cursor
         const countAfter = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
         expect(countAfter).toBe(2);
 
-        // Undoでカーソルを削除
+        // Remove cursor using Undo
         await page.keyboard.press("Control+Shift+z");
         const countUndo = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
         expect(countUndo).toBe(1);
