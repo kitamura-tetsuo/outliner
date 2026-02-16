@@ -75,7 +75,7 @@ test.describe("snapshot diff viewer", () => {
             console.log("Warning: currentPage not set on diff page, continuing anyway");
         }
 
-        // Debug page state.
+        // Log page state for debugging.
         const pageContent = await page.content();
         console.log("Page content length:", pageContent.length);
 
@@ -85,7 +85,7 @@ test.describe("snapshot diff viewer", () => {
         });
         console.log("Snapshot service exists:", snapshotServiceExists);
 
-        // Check page parameters.
+        // Verify page parameters.
         const pageParams = await page.evaluate(() => {
             return {
                 // eslint-disable-next-line no-restricted-globals
@@ -98,7 +98,7 @@ test.describe("snapshot diff viewer", () => {
         });
         console.log("Page params:", pageParams);
 
-        // Check if SnapshotDiffModal component exists.
+        // Verify SnapshotDiffModal existence.
         const modalExists = await page.locator(".p-4.bg-white.rounded.shadow-lg").count();
         console.log("SnapshotDiffModal exists:", modalExists);
 
@@ -109,7 +109,7 @@ test.describe("snapshot diff viewer", () => {
             const allButtons = await page.locator("button").allTextContents();
             console.log("All buttons on page:", allButtons);
 
-            // Check main elements of the page.
+            // Verify main page elements.
             const mainContent = await page.locator("main, body > div").first().innerHTML();
             console.log("Main content (first 500 chars):", mainContent.substring(0, 500));
         }
