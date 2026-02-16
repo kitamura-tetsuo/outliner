@@ -84,13 +84,13 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         const md = "- ImportedPage\n  - Child\n    - Grand";
         await page.fill("textarea[data-testid='import-input']", md);
 
-        // インポート前の状態を確認
+        // Verify the state before import
         const selectedFormat = await page.locator("select[data-testid='import-format-select']").inputValue();
         const inputText = await page.locator("textarea[data-testid='import-input']").inputValue();
         console.log("Selected format:", selectedFormat);
         console.log("Input text:", inputText);
 
-        // ブラウザのコンソールログをキャプチャ
+        // Capture browser console logs
         const consoleLogs: string[] = [];
         page.on("console", msg => {
             consoleLogs.push(`${msg.type()}: ${msg.text()}`);
@@ -131,7 +131,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
             console.log("Warning: 'Child' item not found within timeout, continuing with test");
         });
 
-        // ページ表示後のツリーデータを確認
+        // Verify tree data after page display
         const pageTreeData = await TreeValidator.getTreeData(page);
         console.log("Page tree data after navigation:", JSON.stringify(pageTreeData, null, 2));
 
@@ -192,13 +192,13 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         const xml = "<opml><body><outline text='Imported'><outline text='Child'/></outline></body></opml>";
         await page.fill("textarea[data-testid='import-input']", xml);
 
-        // インポート前の状態を確認
+        // Verify the state before import
         const selectedFormat = await page.locator("select[data-testid='import-format-select']").inputValue();
         const inputText = await page.locator("textarea[data-testid='import-input']").inputValue();
         console.log("Selected format:", selectedFormat);
         console.log("Input text:", inputText);
 
-        // ブラウザのコンソールログをキャプチャ
+        // Capture browser console logs
         const consoleLogs: string[] = [];
         page.on("console", msg => {
             consoleLogs.push(`${msg.type()}: ${msg.text()}`);
@@ -241,7 +241,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
             console.log("Warning: 'Child' item not found within timeout, continuing with test");
         });
 
-        // ページ表示後のツリーデータを確認
+        // Verify tree data after page display
         const pageTreeData = await TreeValidator.getTreeData(page);
         console.log("Page tree data after navigation:", JSON.stringify(pageTreeData, null, 2));
 
@@ -267,13 +267,13 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         const md = "- Parent\n  - Child\n    - Grand";
         await page.fill("textarea[data-testid='import-input']", md);
 
-        // インポートボタンをクリックする前の状態を確認
+        // Verify state before clicking the import button
         console.log("Before clicking import button");
         const importButton = page.locator("button", { hasText: "Import" });
         await expect(importButton).toBeVisible();
         console.log("Import button is visible");
 
-        // ブラウザのコンソールログをキャプチャ
+        // Capture browser console logs
         const consoleLogs: string[] = [];
         page.on("console", msg => {
             consoleLogs.push(`${msg.type()}: ${msg.text()}`);
@@ -324,11 +324,11 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
 
         await TestHelpers.waitForOutlinerItems(page);
 
-        // SharedTreeの状態を確認
+        // Verify SharedTree state
         const treeData = await TreeValidator.getTreeData(page);
         console.log("Tree data after import:", JSON.stringify(treeData, null, 2));
 
-        // コンソールログを確認
+        // Check console logs
         console.log("Browser console logs:", consoleLogs);
 
         // Wait for items to be visible and check what's actually on the page
