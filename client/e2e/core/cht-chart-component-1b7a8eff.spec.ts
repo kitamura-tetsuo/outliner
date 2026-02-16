@@ -47,14 +47,14 @@ test.describe("CHT-001: Chart auto-refresh", () => {
     });
 
     test("Chart component implementation check", async ({ page }) => {
-        // SvelteKitアプリケーションのルートページに移動
+        // Navigate to the root page of the SvelteKit application
         await page.goto("http://localhost:7090/");
         await page.waitForLoadState("domcontentloaded");
 
-        // 基本的なページ表示テスト
+        // Basic page visibility test
         await expect(page.locator("body")).toBeVisible();
 
-        // /graphルートが存在するかを確認
+        // Check if the /graph route exists
         const hasGraphRoute = await page.evaluate(async () => {
             try {
                 const response = await fetch("/graph");
@@ -65,19 +65,19 @@ test.describe("CHT-001: Chart auto-refresh", () => {
         });
 
         if (hasGraphRoute) {
-            // /graphページが存在する場合は、そのページをテスト
+            // If the /graph page exists, test that page
             await page.goto("/graph");
             await page.waitForLoadState("domcontentloaded");
             await expect(page.locator("body")).toBeVisible();
 
-            // チャートコンテナが存在するかを確認（存在しなくても失敗しない）
+            // Check if the chart container exists (does not fail if it doesn't exist)
             const chartContainerExists = await page.locator("div.chart-container").count() > 0;
             console.log("Chart container exists:", chartContainerExists);
 
-            // ページが正常に表示されることを確認
+            // Verify that the page is displayed correctly
             expect(hasGraphRoute).toBe(true);
         } else {
-            // /graphページが存在しない場合
+            // If the /graph page does not exist
             expect(hasGraphRoute).toBe(false);
         }
     });
