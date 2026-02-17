@@ -2,26 +2,26 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature LNK-0003
- *  Title   : 内部リンクのナビゲーション機能
+ *  Title   : Internal link navigation function
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
+test.describe("LNK-0003: Internal link navigation function", () => {
     let projectName: string;
 
     test.beforeEach(async ({ page }, testInfo) => {
         // Create a page with an internal link pointing to another page
         const result = await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "[target-page]",
-            "別のアイテム",
-            "3つ目のアイテム",
+            "Another item",
+            "Third item",
         ]);
         projectName = result.projectName;
     });
 
-    test("内部リンクをクリックして遷移先のページ内容が正しく表示される", async ({ page }) => {
+    test("Clicking an internal link correctly displays the destination page content", async ({ page }) => {
         await page.waitForTimeout(500);
 
         // Create the target page that the internal link points to
