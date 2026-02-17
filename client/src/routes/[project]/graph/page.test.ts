@@ -28,12 +28,12 @@ vi.mock("../../../services", () => ({
     getYjsClientByProjectTitle: vi.fn().mockResolvedValue({
         getProject: () => ({
             items: { length: 0 },
-            title: "Test Project"
+            title: "Test Project",
         }),
         isContainerConnected: true,
         wsProvider: {
-            on: vi.fn()
-        }
+            on: vi.fn(),
+        },
     }),
 }));
 
