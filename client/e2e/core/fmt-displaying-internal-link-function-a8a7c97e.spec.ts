@@ -2,7 +2,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature FMT-0007
- *  Title   : 内部リンク機能の表示
+ *  Title   : Display of Internal Link Function
  *  Source  : docs/client-features.yaml
  */
 import type { Page } from "@playwright/test";
@@ -12,13 +12,13 @@ import { TreeValidator } from "../utils/treeValidation";
 
 /**
  * @file FMT-0007.spec.ts
- * @description 内部リンク機能のテスト
- * 内部リンクの表示と機能をテストします。
+ * @description Tests for internal link function
+ * Tests the display and functionality of internal links.
  * @playwright
- * @title 内部リンク機能
+ * @title Internal Link Functionality
  */
 
-test.describe("FMT-0007: 内部リンク機能", () => {
+test.describe("FMT-0007: Internal Link Functionality", () => {
     const ensureOutlinerReady = async (page: Page, timeout = 30000): Promise<void> => {
         try {
             await TestHelpers.waitForOutlinerItems(page, 1, timeout);
@@ -98,37 +98,37 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     });
 
     /**
-     * @testcase 通常の内部リンク構文が正しく表示される
-     * @description [page-name] 形式の内部リンクが正しく表示されることを確認するテスト
+     * @testcase Standard internal link syntax is displayed correctly
+     * @description Test to confirm that internal links in [page-name] format are displayed correctly
      */
-    test("通常の内部リンク構文が正しく表示される", async ({ page }) => {
-        // テストページをセットアップ
+    test("Standard internal link syntax is displayed correctly", async ({ page }) => {
+        // Setup test page
         await ensureOutlinerReady(page);
 
-        // 最初のアイテムを選択
+        // Select the first item
         const firstItemId = await createBlankItem(page);
         const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // 内部リンクテキストを入力
+        // Enter internal link text
         await page.keyboard.type("[test-page]");
 
-        // 2つ目のアイテムをプログラムで作成してフォーカス
+        // Programmatically create and focus the second item
         const secondItemId = await createBlankItem(page);
         const secondItem = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
         await secondItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.type("別のアイテム");
+        await page.keyboard.type("Another item");
 
-        // 3つ目のアイテムも作成してカーソルを移動
+        // Create the third item and move cursor
         const thirdItemId = await createBlankItem(page);
         const thirdItem = page.locator(`.outliner-item[data-item-id="${thirdItemId}"]`);
         await thirdItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.type("3つ目のアイテム");
+        await page.keyboard.type("Third item");
 
-        // 明示的にフォーカスを外してレンダリングを安定化
+        // Explicitly unfocus to stabilize rendering
         await page.locator("body").click({ position: { x: 5, y: 5 } });
         await page.waitForTimeout(500);
         await page.waitForFunction(
@@ -141,10 +141,10 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         );
         await expect(firstItem.locator(".item-text .internal-link")).toBeVisible({ timeout: 5000 });
 
-        // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
+        // Check the text content of the first item (internal link should be applied)
         const firstItemText = await firstItem.locator(".item-text").innerHTML();
 
-        // 内部リンクが適用されていることを確認
+        // Verify that the internal link is applied
         const currentUrl = page.url();
         const urlParts = new URL(currentUrl).pathname.split("/").filter(Boolean);
         const projectNameEncoded = urlParts[0];
@@ -155,23 +155,23 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     });
 
     /**
-     * @testcase プロジェクト内部リンク構文が正しく表示される
-     * @description [/project-name/page-name] 形式の内部リンクが正しく表示されることを確認するテスト
+     * @testcase Project internal link syntax is displayed correctly
+     * @description Test to confirm that internal links in [/project-name/page-name] format are displayed correctly
      */
-    test("プロジェクト内部リンク構文が正しく表示される", async ({ page }) => {
-        // テストページをセットアップ
+    test("Project internal link syntax is displayed correctly", async ({ page }) => {
+        // Setup test page
         await ensureOutlinerReady(page);
 
-        // 最初のアイテムを選択
+        // Select the first item
         const firstItemId = await createBlankItem(page);
         const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await setItemText(page, firstItemId, "[/project-name/page-name]");
 
         const secondItemId = await createBlankItem(page);
-        await setItemText(page, secondItemId, "別のアイテム");
+        await setItemText(page, secondItemId, "Another item");
 
         const thirdItemId = await createBlankItem(page);
-        await setItemText(page, thirdItemId, "3つ目のアイテム");
+        await setItemText(page, thirdItemId, "Third item");
 
         await page.locator("body").click({ position: { x: 5, y: 5 } });
         await page.waitForTimeout(500);
@@ -186,10 +186,10 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         await expect(firstItem.locator(".item-text .internal-link")).toBeVisible({ timeout: 5000 });
         await expect(firstItem.locator(".item-text .project-link")).toBeVisible({ timeout: 5000 });
 
-        // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
+        // Check the text content of the first item (internal link should be applied)
         const firstItemText = await firstItem.locator(".item-text").innerHTML();
 
-        // 内部リンクが適用されていることを確認
+        // Verify that the internal link is applied
         expect(firstItemText).toContain("internal-link");
         expect(firstItemText).toContain("project-link");
         expect(firstItemText).toContain("project-name/page-name");
@@ -197,14 +197,14 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     });
 
     /**
-     * @testcase カーソルがあるアイテムでは内部リンクがプレーンテキストで表示される
-     * @description カーソルがあるアイテムでは内部リンクがプレーンテキストで表示されることを確認するテスト
+     * @testcase Internal links are displayed as plain text in items with cursor
+     * @description Test to confirm that internal links are displayed as plain text in items with cursor
      */
-    test("カーソルがあるアイテムでは内部リンクがプレーンテキストで表示される", async ({ page }) => {
-        // テストページをセットアップ
+    test("Internal links are displayed as plain text in items with cursor", async ({ page }) => {
+        // Setup test page
         await ensureOutlinerReady(page);
 
-        // 最初のアイテムを選択
+        // Select the first item
         const firstItemId = await createBlankItem(page);
         const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await setItemText(page, firstItemId, "[test-page]");
@@ -218,7 +218,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
         expect(firstItemTextWithCursor).not.toContain('href="/test-page"');
 
         const secondItemId = await createBlankItem(page);
-        await setItemText(page, secondItemId, "別のアイテム");
+        await setItemText(page, secondItemId, "Another item");
         await TestHelpers.setCursor(page, secondItemId, 0, "local");
         await TestHelpers.waitForCursorVisible(page);
 
@@ -231,10 +231,10 @@ test.describe("FMT-0007: 内部リンク機能", () => {
             { timeout: 5000 },
         );
 
-        // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
+        // Check the text content of the first item (internal link should be applied)
         const firstItemTextWithoutCursor = await firstItem.locator(".item-text").innerHTML();
 
-        // 内部リンクが適用されていることを確認
+        // Verify that the internal link is applied
         const currentUrl = page.url();
         const urlParts = new URL(currentUrl).pathname.split("/").filter(Boolean);
         const projectNameEncoded = urlParts[0];
@@ -245,18 +245,18 @@ test.describe("FMT-0007: 内部リンク機能", () => {
     });
 
     /**
-     * @testcase 内部リンクのデータが正しく保存される
-     * @description 内部リンクのデータが正しく保存されることを確認するテスト
+     * @testcase Internal link data is saved correctly
+     * @description Test to confirm that internal link data is saved correctly
      */
-    test("内部リンクのデータが正しく保存される", async ({ page }) => {
-        // ページタイトル以外のアイテムを選択（2番目のアイテム）
+    test("Internal link data is saved correctly", async ({ page }) => {
+        // Select an item other than the page title (second item)
         await ensureOutlinerReady(page);
         const firstItemId = await createBlankItem(page);
         const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // カーソルの状態を確認し、必要に応じて作成
+        // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
@@ -270,7 +270,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
             };
         });
 
-        // カーソルインスタンスが存在しない場合、作成する
+        // Create cursor instance if it does not exist
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
@@ -288,26 +288,26 @@ test.describe("FMT-0007: 内部リンク機能", () => {
             });
         }
 
-        // cursor.insertText()を使用して通常の内部リンクを挿入
+        // Insert standard internal link using cursor.insertText()
         await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    // 既存のテキストをクリア
+                    // Clear existing text
                     const target = cursor.findTarget();
                     if (target) {
                         target.updateText("");
                         cursor.offset = 0;
                     }
-                    // 通常の内部リンクを挿入
+                    // Insert standard internal link
                     cursor.insertText("[test-page]");
                 }
             }
         });
 
-        // 改行を挿入して新しいアイテムを作成
+        // Insert newline to create a new item
         await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
@@ -319,7 +319,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
             }
         });
 
-        // プロジェクト内部リンクを挿入
+        // Insert project internal link
         await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
@@ -331,13 +331,13 @@ test.describe("FMT-0007: 内部リンク機能", () => {
             }
         });
 
-        // 少し待機してデータが反映されるのを待つ
+        // Wait a bit for data to be reflected
         await page.waitForTimeout(500);
 
-        // SharedTreeのデータを取得（フォールバック機能付き）
+        // Get SharedTree data (with fallback)
         const treeData = await TreeValidator.getTreeData(page);
 
-        // デバッグ情報を出力
+        // Output debug info
         console.log("Tree data items:");
         treeData.items.forEach((item: any, index: number) => {
             console.log(`  Item ${index}: "${item.text}"`);
@@ -348,13 +348,13 @@ test.describe("FMT-0007: 内部リンク機能", () => {
             }
         });
 
-        // データが正しく保存されていることを確認
-        // サブアイテムから両方のリンクを含むアイテムを検索
+        // Verify data is saved correctly
+        // Search for item containing both links from sub-items
         let linkItem = null;
 
         for (const item of treeData.items) {
             if (item.items) {
-                // itemsがオブジェクトの場合（実際のデータ構造）
+                // If items is an object (actual data structure)
                 const itemsArray = Array.isArray(item.items) ? item.items : Object.values(item.items);
                 for (const subItem of itemsArray) {
                     if (subItem.text.includes("[test-page]") && subItem.text.includes("[/project-name/page-name]")) {
@@ -365,7 +365,7 @@ test.describe("FMT-0007: 内部リンク機能", () => {
             }
         }
 
-        // 両方のリンクを含むアイテムが見つかることを確認
+        // Verify that an item containing both links is found
         expect(linkItem).not.toBeNull();
         expect(linkItem!.text).toContain("[test-page]");
         expect(linkItem!.text).toContain("[/project-name/page-name]");
