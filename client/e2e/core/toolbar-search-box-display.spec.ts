@@ -2,25 +2,25 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature TOO-0001
- *  Title   : ツールバーのSearchBox表示機能
+ *  Title   : Toolbar SearchBox Display Feature
  *  Source  : manual test
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
+test.describe("TOO-0001: Toolbar SearchBox Display Feature", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("ツールバーが上部に固定表示される", async ({ page }) => {
-        // ツールバーが表示されることを確認
-        // SSRシェルのtoolbarではなく、クライアント側でマウントされたtoolbarを選択
-        // 2番目の要素がクライアント側のtoolbar
+    test("Toolbar is fixed at the top", async ({ page }) => {
+        // Verify that the toolbar is displayed
+        // Select the client-side mounted toolbar, not the SSR shell toolbar
+        // The second element is the client-side toolbar
         const toolbar = page.getByTestId("main-toolbar").last();
         await expect(toolbar).toBeVisible();
 
-        // ツールバーが固定位置にあることを確認
+        // Verify that the toolbar is in a fixed position
         const toolbarStyles = await toolbar.evaluate((el) => {
             const styles = window.getComputedStyle(el);
             return {
@@ -35,27 +35,27 @@ test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
         expect(parseInt(toolbarStyles.zIndex)).toBeGreaterThan(999);
     });
 
-    test("SearchBoxがツールバー内に表示される", async ({ page }) => {
-        // SearchBoxが表示されることを確認
+    test("SearchBox is displayed within the toolbar", async ({ page }) => {
+        // Verify that the SearchBox is displayed
         const searchBox = page.locator(".page-search-box");
         await expect(searchBox).toBeVisible();
 
-        // SearchBoxがツールバー内にあることを確認
-        // SSRシェルのtoolbarではなく、クライアント側でマウントされたtoolbarを選択
-        // 2番目の要素がクライアント側のtoolbar
+        // Verify that the SearchBox is inside the toolbar
+        // Select the client-side mounted toolbar, not the SSR shell toolbar
+        // The second element is the client-side toolbar
         const toolbar = page.getByTestId("main-toolbar").last();
         const searchBoxInToolbar = toolbar.locator(".page-search-box");
         await expect(searchBoxInToolbar).toBeVisible();
     });
 
-    test("メインコンテンツがツールバーの下に表示される", async ({ page }) => {
-        // メインコンテンツが表示されることを確認
-        // SSRシェルのmain-contentではなく、クライアント側でマウントされたmain-contentを選択
-        // 2番目の要素がクライアント側のmain-content
+    test("Main content is displayed below the toolbar", async ({ page }) => {
+        // Verify that the main content is displayed
+        // Select the client-side mounted main-content, not the SSR shell main-content
+        // The second element is the client-side main-content
         const mainContent = page.locator(".main-content").last();
         await expect(mainContent).toBeVisible();
 
-        // メインコンテンツにパディングが適用されていることを確認
+        // Verify that padding is applied to the main content
         const mainContentStyles = await mainContent.evaluate((el) => {
             const styles = window.getComputedStyle(el);
             return {
@@ -63,21 +63,21 @@ test.describe("TOO-0001: ツールバーのSearchBox表示機能", () => {
             };
         });
 
-        // 4rem = 64px のパディングが適用されていることを確認
+        // Verify that 4rem = 64px padding is applied
         expect(parseInt(mainContentStyles.paddingTop)).toBeGreaterThanOrEqual(60);
     });
 
-    test("SearchBoxの入力フィールドが機能する", async ({ page }) => {
-        // SearchBoxの入力フィールドを取得
-        // SSRシェルのinputではなく、クライアント側でマウントされたinputを選択
-        // 2番目の要素がクライアント側のinput
+    test("SearchBox input field is functional", async ({ page }) => {
+        // Get the SearchBox input field
+        // Select the client-side mounted input, not the SSR shell input
+        // The second element is the client-side input
         const searchInput = page.locator(".page-search-box input").last();
         await expect(searchInput).toBeVisible();
 
-        // 入力フィールドにテキストを入力
+        // Enter text into the input field
         await searchInput.fill("test");
 
-        // 入力された値を確認
+        // Verify the entered value
         await expect(searchInput).toHaveValue("test");
     });
 });
