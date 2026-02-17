@@ -1,4 +1,4 @@
-// このファイルはテスト実行前にロードされ、環境変数を設定します
+// This file is loaded before test execution and sets environment variables
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
@@ -29,11 +29,11 @@ if (typeof (globalThis as any).$state === "undefined") {
 }
 
 if (!process.env.CI) {
-    // ES Modulesで__dirnameの代わりに現在のファイルのディレクトリを取得
+    // Get the current file directory instead of __dirname in ES Modules
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
 
-    // 環境変数に応じて適切な.envファイルを選択
+    // Select the appropriate .env file according to environment variables
     const isLocalhostEnv = process.env.TEST_ENV === "localhost";
     const envFileName = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
     const envFilePath = path.join(__dirname, "..", envFileName);
