@@ -13,7 +13,7 @@ test.describe("SLR-0006: Copy and paste multiple item selection ranges", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("複数行テキストをペーストすると適切に複数アイテムに分割される", async ({ page }) => {
+    test("Pasting multi-line text is appropriately split into multiple items", async ({ page }) => {
         const firstItem = page.locator(".outliner-item").nth(0);
         await firstItem.locator(".item-content").click({ force: true });
         const clipboardText = "line1\nline2\nline3";
