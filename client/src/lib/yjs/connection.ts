@@ -3,7 +3,7 @@ import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
 import { createPersistence, waitForSync } from "../yjsPersistence";
-import { pageRoomPath, projectRoomPath } from "./roomPath";
+import { projectRoomPath } from "./roomPath";
 import { yjsService } from "./service";
 import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefresh";
 
@@ -55,18 +55,10 @@ function isIndexedDBEnabled(): boolean {
     return true; // Enable IndexedDB for offline support and reload persistence
 }
 
-export type PageConnection = {
-    doc: Y.Doc;
-    provider: HocuspocusProvider;
-    awareness: Awareness | null;
-    dispose: () => void;
-};
-
 export type ProjectConnection = {
     doc: Y.Doc;
     provider: HocuspocusProvider;
     awareness: Awareness | null;
-    getPageConnection: (pageId: string) => PageConnection | undefined;
     dispose: () => void;
 };
 
@@ -184,201 +176,6 @@ function constructWsUrl(wsBase: string, room: string, token: string): string {
     const roomPath = room.startsWith("/") ? room.slice(1) : room;
     const url = `${baseUrl}/${roomPath}`;
     return token ? `${url}?token=${token}` : url;
-}
-
-export async function connectPageDoc(doc: Y.Doc, projectId: string, pageId: string): Promise<PageConnection> {
-    const wsBase = getWsBase();
-    const room = pageRoomPath(projectId, pageId);
-    console.log(`[connectPageDoc] Connecting to page room: ${room}, doc.guid=${doc.guid}`);
-    if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
-        try {
-            const persistence = createPersistence(room, doc);
-            await waitForSync(persistence);
-        } catch { /* no-op in Node */ }
-    }
-
-    // HocuspocusProvider uses a token function for dynamic token refresh
-    // eslint-disable-next-line prefer-const
-    let provider: HocuspocusProvider;
-    const tokenFn = async () => {
-        try {
-            const t = await getFreshIdToken();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const config = provider.configuration as any;
-            if (provider && config?.url && typeof config.url === "string" && t) {
-                const urlObj = new URL(config.url);
-                urlObj.searchParams.set("token", t);
-                config.url = urlObj.toString();
-                // Also update the provider.url property if it exists, as some versions/usages might rely on it
-                if ((provider as TokenRefreshableProvider).url) {
-                    (provider as TokenRefreshableProvider).url = config.url;
-                }
-                console.log("[connectPageDoc] Updated provider URL with fresh token");
-            }
-            return t;
-        } catch {
-            return "";
-        }
-    };
-
-    // Load the subdoc to ensure local state is ready
-    // Note: Data from the server is fetched via WebSocket sync, which we wait for below
-    try {
-        doc.load();
-        console.log(`[connectPageDoc] Loaded subdoc for room: ${room}`);
-    } catch (e) {
-        console.log(`[connectPageDoc] Subdoc load failed for room: ${room}, continuing anyway`, e);
-    }
-
-    // Ensure token is available for initial connection URL (required by server upgrade handler)
-    let initialToken = "";
-    try {
-        initialToken = await getFreshIdToken();
-    } catch {}
-
-    provider = new HocuspocusProvider({
-        url: constructWsUrl(wsBase, room, initialToken),
-        name: room,
-        document: doc,
-        token: tokenFn,
-    });
-
-    // In valid test environments without a real backend, we might not get a sync event.
-    // So we don't want to block forever.
-    const isTest = import.meta.env.MODE === "test" || process.env.NODE_ENV === "test";
-    const syncTimeout = isTest ? 5000 : 15000;
-    provider.on("synced", (data: { state: boolean; }) => {
-        console.log(`[connectPageDoc] Sync event received for ${room}, isSynced=${data.state}`);
-    });
-
-    // Wait for initial sync to complete before returning
-    // This ensures seeded data is available immediately
-    await new Promise<void>((resolve, reject) => {
-        if (provider.isSynced) {
-            console.log(`[connectPageDoc] Provider already synced for room: ${room}`);
-            resolve();
-            return;
-        }
-
-        let solved = false;
-        const complete = () => {
-            if (solved) return;
-            solved = true;
-            resolve();
-        };
-
-        const timer = setTimeout(() => {
-            console.log(
-                `[connectPageDoc] Timeout waiting for sync (${syncTimeout}ms), proceeding anyway for room: ${room}`,
-            );
-            complete();
-        }, syncTimeout);
-
-        const syncHandler = (data: { state: boolean; }) => {
-            if (data.state) {
-                clearTimeout(timer);
-                console.log(`[connectPageDoc] Sync event fired for room: ${room}`);
-                provider.off("synced", syncHandler);
-                // Also remove the close handler to prevent leaks/errors after success
-                provider.off("close", closeHandler);
-                complete();
-            }
-        };
-
-        const closeHandler = (event: { code: number; reason: string; }) => {
-            if ([4003, 4006, 4008].includes(event.code)) {
-                clearTimeout(timer);
-                provider.off("synced", syncHandler);
-                provider.off("close", closeHandler);
-                console.error(
-                    `[connectPageDoc] Fatal close event ${event.code} received during initial sync for ${room}`,
-                );
-                reject(new Error("Access Denied"));
-                // Prevent further execution of complete()
-                solved = true;
-            }
-        };
-
-        provider.on("synced", syncHandler);
-        provider.on("close", closeHandler);
-    });
-
-    // Brief wait for pageItems to be populated after WebSocket sync
-    // This is a best-effort wait; for newly created pages, items may not be available immediately
-    try {
-        const pageItemsMap = doc.getMap("pageItems");
-        let waitCount = 0;
-        const maxWait = isTest ? 50 : 200; // Wait up to 20 seconds (restored for stability), 5s in tests
-        const initialSize = pageItemsMap.size;
-        console.log(`[connectPageDoc] Initial pageItemsMap size: ${initialSize} for room: ${room}`);
-        while (pageItemsMap.size <= 1 && waitCount < maxWait) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            waitCount++;
-        }
-        const finalSize = pageItemsMap.size;
-        console.log(
-            `[connectPageDoc] Waited ${waitCount} iterations for pageItems after sync, initialSize=${initialSize}, finalSize=${finalSize} for room: ${room}`,
-        );
-        // Log warning if items not populated, but continue anyway
-        if (finalSize <= 1) {
-            console.warn(
-                `[connectPageDoc] WARNING: pageItems not fully populated for room: ${room}, size=${finalSize}`,
-            );
-        }
-    } catch (e) {
-        console.log(`[connectPageDoc] Error waiting for pageItems after sync for room: ${room}, continuing anyway`, e);
-    }
-
-    console.log(`[connectPageDoc] Connected to page room: ${room}, returning connection`);
-
-    const awareness = provider.awareness;
-    // Debug hook (guarded)
-    attachConnDebug(room, provider, awareness, doc);
-    const current = userManager.getCurrentUser();
-    if (current && awareness) {
-        awareness.setLocalStateField("user", {
-            userId: current.id,
-            name: current.name,
-            color: undefined,
-        });
-    }
-    const unbind = yjsService.bindPagePresence(awareness as Awareness);
-    const unsub = attachTokenRefresh(provider as any); // HocuspocusProvider compatible
-    const dispose = () => {
-        try {
-            unbind();
-        } catch {}
-        try {
-            unsub();
-        } catch {}
-        try {
-            provider.destroy();
-        } catch {}
-    };
-
-    // Attach fatal error handling for page doc
-    // Attach fatal error handling for page doc
-    provider.on("close", (event: { code: number; reason: string; }) => {
-        console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
-
-        // Handle Auth errors (4001: Unauthorized)
-        if (event.code === 4001) {
-            console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
-            // Force token refresh
-            void userManager.refreshToken().then(() => {
-                console.log(`[yjs-conn] Token refresh triggered for ${room}`);
-            });
-            return;
-        }
-
-        // Fatal errors: 4003 (Forbidden), 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
-        // 4003 is treated as fatal access denied (user not in project list)
-        if ([4003, 4006, 4008].includes(event.code)) {
-            console.error(`[yjs-conn] FATAL ERROR: ${event.code} ${event.reason}. Stopping reconnection for ${room}`);
-            provider.destroy();
-        }
-    });
-    return { doc, provider, awareness, dispose };
 }
 
 export async function createProjectConnection(projectId: string): Promise<ProjectConnection> {
@@ -519,160 +316,6 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Refresh auth param on token refresh
     const unsub = attachTokenRefresh(provider as TokenRefreshableProvider);
 
-    const pages = new Map<string, PageConnection>();
-
-    // Track page connections being processed to avoid duplicates between subdocs and pagesMap observers
-    // Uses Map with promise values for atomic check-and-set pattern
-    const trackedConnections = new Map<string, Promise<void>>();
-    // Store resolvers for promises so they can be resolved when connection completes
-    const connectionResolvers = new Map<string, () => void>();
-
-    // Helper to get or create a connection promise atomically
-    // Returns true if we should proceed with connection, false if already being connected
-    const getOrCreateConnectionPromise = (key: string): { promise: Promise<void>; isNew: boolean; } => {
-        const existing = trackedConnections.get(key);
-        if (existing) {
-            return { promise: existing, isNew: false };
-        }
-        // Create a promise that can be resolved later
-        // Use a simple object to store the resolver, avoiding TypeScript's unassigned variable error
-        const resolverHolder: { resolve?: () => void; } = {};
-        const promise = new Promise<void>(r => {
-            resolverHolder.resolve = r;
-        });
-        trackedConnections.set(key, promise);
-        connectionResolvers.set(key, () => resolverHolder.resolve?.());
-        return { promise, isNew: true };
-    };
-
-    // Helper to resolve the connection promise when done
-    const resolveConnectionPromise = (key: string, connection: PageConnection) => {
-        pages.set(key, connection);
-        console.log(`[createProjectConnection] Page ${key} connected and added to pages Map`);
-        const resolver = connectionResolvers.get(key);
-        if (resolver) {
-            resolver();
-            trackedConnections.delete(key);
-            connectionResolvers.delete(key);
-        }
-    };
-
-    doc.on("subdocs", (evt: { added: Set<Y.Doc>; removed: Set<Y.Doc>; }) => {
-        evt.added.forEach((s: Y.Doc) => {
-            // Skip if already being connected (avoid duplicate with pagesMap observer)
-            const pageId = s.guid;
-            if (trackedConnections.has(pageId)) {
-                console.log(
-                    `[createProjectConnection] subdocs handler: page ${pageId} already being connected, skipping`,
-                );
-                return;
-            }
-            void connectPageDoc(s, projectId, pageId).then(c => {
-                // Only set if not already set by pagesMap observer
-                if (!pages.has(pageId)) {
-                    resolveConnectionPromise(pageId, c);
-                    console.log(`[createProjectConnection] subdocs handler: page ${pageId} connected`);
-                }
-            });
-        });
-        evt.removed.forEach((s: Y.Doc) => {
-            const c = pages.get(s.guid);
-            c?.dispose();
-            pages.delete(s.guid);
-        });
-    });
-
-    // Fallback: also observe direct changes to the pages map (helps in test env)
-    try {
-        const pagesMap = doc.getMap<Y.Doc>("pages");
-        pagesMap.observe(async (e: Y.YMapEvent<Y.Doc>) => {
-            const keysChanged = e.changes.keys;
-            for (const key of keysChanged.keys()) {
-                const sub = pagesMap.get(key);
-                console.log(
-                    `[createProjectConnection] pagesMap observer: key=${key}, sub=${!!sub}, pages.has=${
-                        pages.has(key)
-                    }`,
-                );
-                if (sub && !pages.has(key)) {
-                    // Use atomic check-and-set to prevent race conditions
-                    const { promise, isNew } = getOrCreateConnectionPromise(key);
-                    if (!isNew) {
-                        console.log(
-                            `[createProjectConnection] Page ${key} already being connected, waiting for existing connection`,
-                        );
-                        await promise;
-                        continue;
-                    }
-                    // Explicitly load the subdoc to ensure server data is fetched before connecting
-                    // This is critical for seeded data to be available immediately
-                    try {
-                        sub.load();
-                        console.log(`[createProjectConnection] Called sub.load() for page: ${key}`);
-                    } catch {}
-                    console.log(`[createProjectConnection] Connecting page via observer: ${key}`);
-                    const connection = await connectPageDoc(sub, projectId, key);
-                    resolveConnectionPromise(key, connection);
-                }
-                if (!sub && pages.has(key)) {
-                    const c = pages.get(key);
-                    c?.dispose();
-                    pages.delete(key);
-                }
-            }
-        });
-        // Connect any pages that were already in the map before the observer was attached
-        // This ensures pages seeded via HTTP API are properly connected
-        console.log(`[createProjectConnection] Connecting initial pages from pagesMap, count=${pagesMap.size}`);
-        const initialPagePromises: Promise<void>[] = [];
-        for (const key of pagesMap.keys()) {
-            const sub = pagesMap.get(key);
-            console.log(
-                `[createProjectConnection] Initial page: key=${key}, sub=${!!sub}, pages.has=${pages.has(key)}`,
-            );
-            if (sub && !pages.has(key)) {
-                // Use atomic check-and-set to prevent race conditions with observer
-                const { promise, isNew } = getOrCreateConnectionPromise(key);
-                if (!isNew) {
-                    console.log(`[createProjectConnection] Page ${key} already being connected by observer, waiting`);
-                    initialPagePromises.push(promise);
-                    continue;
-                }
-                // Explicitly load the subdoc to ensure server data is fetched before connecting
-                // This is critical for seeded data to be available immediately
-                try {
-                    sub.load();
-                    console.log(`[createProjectConnection] Called sub.load() for page: ${key}`);
-                } catch {}
-                console.log(`[createProjectConnection] Starting connectPageDoc for page: ${key}`);
-                const connection = await connectPageDoc(sub, projectId, key);
-                resolveConnectionPromise(key, connection);
-                initialPagePromises.push(promise);
-            }
-        }
-        // Wait for all initial page connections to complete before returning
-        // This ensures seeded data is available immediately
-        if (initialPagePromises.length > 0) {
-            console.log(
-                `[createProjectConnection] Waiting for ${initialPagePromises.length} initial page connections...`,
-            );
-            await Promise.all(initialPagePromises);
-            console.log(`[createProjectConnection] All initial page connections completed, pages.size=${pages.size}`);
-        }
-
-        // Also wait for any pages that were added via observer during the initial wait
-        // This ensures all seeded pages are connected before returning
-        if (trackedConnections.size > 0) {
-            console.log(
-                `[createProjectConnection] Waiting for ${trackedConnections.size} pending page connections from observer...`,
-            );
-            await Promise.all(trackedConnections.values());
-            console.log(`[createProjectConnection] All pending page connections completed, pages.size=${pages.size}`);
-        }
-    } catch (e) {
-        console.error(`[createProjectConnection] Error in pagesMap setup: ${e}`);
-    }
-
     const dispose = () => {
         try {
             unbind();
@@ -683,17 +326,12 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         try {
             provider.destroy();
         } catch {}
-        pages.forEach(p => {
-            try {
-                p.dispose();
-            } catch {}
-        });
         try {
             doc.destroy();
         } catch {}
     };
 
-    return { doc, provider, awareness, getPageConnection: id => pages.get(id), dispose };
+    return { doc, provider, awareness, dispose };
 }
 
 export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<{
