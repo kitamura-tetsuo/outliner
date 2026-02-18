@@ -187,21 +187,35 @@ test.describe("CMT-0001: comment threads", () => {
         // Use keyboard selection to clear the field completely
         await editInput.click(); // Ensure focus
 
-        // Robust clearing loop: Select All + Backspace until empty or timeout
+        // Robust clearing loop: Use fill("") first as it's most reliable, then keyboard shortcuts if needed
         // This handles cases where framework reactivity or auto-save might restore the value
         const clearDeadline = Date.now() + 10000;
         await editInput.focus();
         while (Date.now() < clearDeadline) {
+            // Primary method: direct fill
+            await editInput.fill("");
+
+            // Wait a bit for the value to update and potential framework reactivity
+            await page.waitForTimeout(100);
+
+            const val = await editInput.inputValue();
+            if (val === "") {
+                // Double check to ensure it stays empty
+                await page.waitForTimeout(100);
+                if (await editInput.inputValue() === "") break;
+            }
+
+            // Secondary method: keyboard shortcuts (Control+A, Backspace)
             await editInput.press("Control+A");
             await editInput.press("Backspace");
-            const val = await editInput.inputValue();
-            if (val === "") break;
+            await page.waitForTimeout(100);
 
-            // Fallback: forceful clear if keyboard events fail
-            if (Date.now() > clearDeadline - 5000) {
-                await editInput.fill("");
-            }
-            await page.waitForTimeout(200);
+            if (await editInput.inputValue() === "") break;
+
+            // Tertiary method: Meta+A (Mac) just in case
+            await editInput.press("Meta+A");
+            await editInput.press("Backspace");
+            await page.waitForTimeout(100);
         }
         // Verify it is empty and allow for potential framework reactivity to settle
         await expect(editInput).toHaveValue("", { timeout: 10000 });
