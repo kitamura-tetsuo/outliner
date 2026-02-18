@@ -2,24 +2,24 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature LNK-0004
- *  Title   : 仮ページ機能
+ *  Title   : Temporary Page Functionality
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("LNK-0004: 仮ページ未編集確認", () => {
+test.describe("LNK-0004: Verify Temporary Page No-Edit", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("仮ページにアクセスしただけではページが作成されないことを確認", async ({ page }) => {
+    test("Confirm that accessing a temporary page does not create it", async ({ page }) => {
         const sourceUrl = page.url();
         const nonExistentPage = "no-edit-temp-page-" + Date.now().toString().slice(-6);
         await page.goto(`${sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
-        const loginButton = page.locator("button:has-text('開発者ログイン')");
+        const loginButton = page.locator("button:has-text('Developer Login')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(300);
@@ -31,7 +31,7 @@ test.describe("LNK-0004: 仮ページ未編集確認", () => {
         await page.goto(`${sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
-        const loginButton2 = page.locator("button:has-text('開発者ログイン')");
+        const loginButton2 = page.locator("button:has-text('Developer Login')");
         if (await loginButton2.isVisible()) {
             await loginButton2.click();
             await page.waitForTimeout(300);
