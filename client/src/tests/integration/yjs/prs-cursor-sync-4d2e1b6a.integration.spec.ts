@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { createProjectConnection } from "../../../lib/yjs/connection";
-import { Project } from "../../../schema/app-schema";
 
 describe("yjs presence", () => {
     it("propagates cursor between clients", async () => {
