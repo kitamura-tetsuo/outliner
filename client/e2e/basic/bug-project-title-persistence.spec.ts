@@ -48,7 +48,7 @@ test.describe("Bug Fix Verification: Project title persistence", () => {
         await page.waitForFunction(() => {
             const ps = (window as any).__PROJECT_STORE__;
             return ps && ps.projects && ps.projects.length > 0;
-        }, { timeout: 10000 }).catch(_e => console.log("Timeout waiting for PROJECT_STORE update"));
+        }, { timeout: 10000 }).catch(() => console.log("Timeout waiting for PROJECT_STORE update"));
 
         // Wait for the selector to appear and populate
         const selector = page.locator("select.project-select");
@@ -63,18 +63,17 @@ test.describe("Bug Fix Verification: Project title persistence", () => {
             const foundId = options.some(opt => opt.includes(projectId));
 
             if (!foundName) {
-                console.log(`[Retry] Project NAME "${projectName}" not found. Options: ${options.join(", ")}`);
+                 console.log(`[Retry] Project NAME "${projectName}" not found. Options: ${options.join(", ")}`);
             }
 
-            expect(
-                foundName,
-                `Project NAME "${projectName}" should be found in selector options. Found: ${options.join(", ")}`,
+            expect(foundName,
+                `Project NAME "${projectName}" should be found in selector options. Found: ${options.join(", ")}`
             ).toBe(true);
 
             // Just to be sure we aren't seeing the ID (unless the ID IS the name, which it isn't here)
             // Note: If this fails, it means we are seeing the ID already, which is the bug!
             if (foundId && !foundName) {
-                throw new Error(`Found ID "${projectId}" but NOT Name "${projectName}". This is the bug!`);
+                 throw new Error(`Found ID "${projectId}" but NOT Name "${projectName}". This is the bug!`);
             }
         }).toPass();
 
@@ -94,15 +93,14 @@ test.describe("Bug Fix Verification: Project title persistence", () => {
             const foundId = options.some(opt => opt.includes(projectId));
 
             if (foundId && !foundName) {
-                throw new Error(`[REPRODUCED] Found ID "${projectId}" instead of Name "${projectName}" after reload.`);
+                 throw new Error(`[REPRODUCED] Found ID "${projectId}" instead of Name "${projectName}" after reload.`);
             }
 
-            expect(
-                foundName,
-                `After reload, Project NAME "${projectName}" should be visible. Found: ${options.join(", ")}`,
+            expect(foundName,
+                `After reload, Project NAME "${projectName}" should be visible. Found: ${options.join(", ")}`
             ).toBe(true);
         }).toPass({ timeout: 10000 });
 
-        await page.screenshot({ path: "client/test-results/bug-project-title-persistence.png" });
+        await page.screenshot({ path: 'client/test-results/bug-project-title-persistence.png' });
     });
 });
