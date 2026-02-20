@@ -95,7 +95,24 @@ export function getServiceAccount() {
         type: "service_account",
         project_id: process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "outliner-d57b0",
         private_key_id: secretManager.getSecret("FIREBASE_PRIVATE_KEY_ID") || process.env.FIREBASE_PRIVATE_KEY_ID,
-        private_key: privateKey.replace(/\\n/g, "\n"),
+        private_key: (() => {
+            let key = typeof privateKey === "string" ? privateKey : "";
+
+            // Remove surrounding quotes if present (double or single)
+            if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+                key = key.slice(1, -1);
+            }
+
+            // Handle escaped newlines (e.g. from .env or JSON string)
+            key = key.replace(/\\n/g, "\n");
+
+            // Validate simple PEM format check
+            if (key && !key.includes("-----BEGIN PRIVATE KEY-----")) {
+                logger.warn("Private key does not contain standard PEM header. It might be malformed.");
+                logger.warn(`Key start: ${key.substring(0, 20)}... Key length: ${key.length}`);
+            }
+            return key;
+        })(),
         client_email: secretManager.getSecret("FIREBASE_CLIENT_EMAIL") || process.env.FIREBASE_CLIENT_EMAIL,
         client_id: secretManager.getSecret("FIREBASE_CLIENT_ID") || process.env.FIREBASE_CLIENT_ID,
         auth_uri: "https://accounts.google.com/o/oauth2/auth",

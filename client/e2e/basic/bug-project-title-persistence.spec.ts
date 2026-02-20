@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 // Copy of the function from client/src/lib/yjsService.svelte.ts
 function stableIdFromTitle(title: string): string {

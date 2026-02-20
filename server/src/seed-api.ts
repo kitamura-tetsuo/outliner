@@ -142,9 +142,7 @@ export function createSeedRouter(
                 }
 
                 // Use transact for proper change handling
-                // IMPORTANT: We avoid using Project.addPage because it creates subdocuments
-                // with subdoc.load() which doesn't work correctly with Hocuspocus's Document class.
-                // Instead, we create pages directly in the orderedTree without subdocuments.
+                // Pages are stored directly within the single project document's YTree.
                 await directConnection.transact((document: any) => {
                     const ydoc = document as unknown as Y.Doc;
 
@@ -162,10 +160,8 @@ export function createSeedRouter(
                     for (const pageData of pages) {
                         logger.info({ event: "seed_page", pageName: pageData.name });
 
-                        // Create page node directly using Items.addNode (avoids subdoc creation)
-                        // This creates a node in the YTree with the page name as text
-                        const page = items.addNode("seed-server");
-                        page.updateText(pageData.name);
+                        // Create page node directly in the YTree
+                        const page = project.addPage(pageData.name, "seed-server");
 
                         // Add content items (lines) as children of the page
                         if (pageData.lines && pageData.lines.length > 0) {
