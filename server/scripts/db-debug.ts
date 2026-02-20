@@ -6,7 +6,7 @@ import * as Y from "yjs";
 import { loadConfig } from "../src/config.js";
 import { getServiceAccount } from "../src/firebase-init.js";
 import { createPersistence } from "../src/persistence.js";
-import { Project } from "../src/schema/app-schema.js";
+import { Item, Project } from "../src/schema/app-schema.js";
 
 // We need to define the type for persistence because it returns 'any'
 interface Persistence {
@@ -177,13 +177,97 @@ async function inspectDocument(persistence: Persistence, docName?: string) {
             result[key] = type.toJSON();
         }
 
-        console.log(chalk.cyan("Metadata:"));
-        console.log(JSON.stringify(doc.getMap("metadata").toJSON(), null, 2));
-
-        console.log(chalk.cyan("Document Content:"));
-        console.log(JSON.stringify(result, null, 2));
+        try {
+            const project = Project.fromDoc(doc);
+            await exploreNode(project, result);
+        } catch (e: any) {
+            console.log(chalk.red(`  (Could not parse document as Project: ${e.message})`));
+            console.log(chalk.cyan("Metadata:"));
+            console.log(JSON.stringify(doc.getMap("metadata").toJSON(), null, 2));
+            console.log(chalk.cyan("Document Content:"));
+            console.log(JSON.stringify(result, null, 2));
+        }
     } catch (e: any) {
         console.error(chalk.red("Error fetching document:", e.message));
+    }
+}
+
+async function exploreNode(node: Project | Item, rawDocJson?: Record<string, any>) {
+    let running = true;
+    while (running) {
+        if (node instanceof Project) {
+            console.log(chalk.cyan(`\n=== Project: ${node.title || "(Untitled)"} ===`));
+        } else {
+            console.log(chalk.cyan(`\n=== Item: ${node.text.substring(0, 50).replace(/\n/g, " ") || "(Empty)"} ===`));
+            console.log(chalk.gray(`  ID: ${node.id}`));
+            if (node.author) console.log(chalk.gray(`  Author: ${node.author}`));
+            if (node.created) console.log(chalk.gray(`  Created: ${new Date(node.created).toLocaleString()}`));
+            if (node.lastChanged) {
+                console.log(chalk.gray(`  Last Changed: ${new Date(node.lastChanged).toLocaleString()}`));
+            }
+            if (node.componentType) console.log(chalk.gray(`  Type: ${node.componentType}`));
+            if (node.chartQuery) console.log(chalk.gray(`  ChartQuery: ${node.chartQuery}`));
+            if (node.aliasTargetId) console.log(chalk.gray(`  AliasTarget: ${node.aliasTargetId}`));
+
+            console.log(chalk.gray(`  Text Content:`));
+            console.log(chalk.white(`    ${node.text}`));
+
+            const votes = node.votes.toJSON();
+            if (votes.length > 0) console.log(chalk.gray(`  Votes:`), votes);
+
+            const attachments = node.attachments.toJSON();
+            if (attachments.length > 0) console.log(chalk.gray(`  Attachments:`), attachments);
+
+            const comments = node.comments.toPlain();
+            if (comments.length > 0) {
+                console.log(chalk.gray(`  Comments:`));
+                comments.forEach(c => {
+                    console.log(chalk.gray(`    - ${c.author}: ${c.text}`));
+                });
+            }
+        }
+
+        const children = node.items ? Array.from(node.items) : [];
+        const choices = children.map((child, index) => {
+            const preview = child.text.substring(0, 40).replace(/\n/g, " ") || "(Empty)";
+            const childrenCount = child.items ? Array.from(child.items).length : 0;
+            return {
+                name: `├─ [${index + 1}] ${preview} ${childrenCount > 0 ? `(📁 ${childrenCount} children)` : ""}`,
+                value: child,
+            };
+        });
+
+        if (choices.length === 0) {
+            console.log(chalk.gray("  (No children)"));
+        }
+
+        const menuChoices: any[] = [
+            ...choices,
+            new inquirer.Separator(),
+        ];
+
+        if (node instanceof Project && rawDocJson) {
+            menuChoices.push({ name: "📦 View Raw Y.Doc JSON", value: "raw" });
+        }
+        menuChoices.push({ name: "🔙 Go Back", value: "back" });
+
+        const { action } = await inquirer.prompt([{
+            type: "select",
+            name: "action",
+            message: node instanceof Project ? "Select a page to inspect:" : "Select a child item to inspect:",
+            choices: menuChoices,
+            pageSize: 15,
+        }]);
+
+        if (action === "back") {
+            running = false;
+        } else if (action === "raw") {
+            console.log(chalk.cyan("\n--- Raw Y.Doc Content ---"));
+            console.log(JSON.stringify(rawDocJson, null, 2));
+            console.log(chalk.cyan("-------------------------\n"));
+        } else {
+            await exploreNode(action);
+        }
     }
 }
 
