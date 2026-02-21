@@ -55,6 +55,45 @@ function isIndexedDBEnabled(): boolean {
     return true; // Enable IndexedDB for offline support and reload persistence
 }
 
+/**
+ * Update the WebSocket URL with a fresh token on BOTH the HocuspocusProvider
+ * AND its internal HocuspocusProviderWebsocket.
+ *
+ * HocuspocusProvider stores its own `configuration.url` but delegates
+ * actual WebSocket creation to an internal HocuspocusProviderWebsocket
+ * instance which has a SEPARATE copy of `configuration.url`.
+ * If we only update the provider's URL, reconnections still use the
+ * stale token from the websocketProvider's URL, causing auth failures.
+ */
+function updateProviderUrlWithToken(provider: HocuspocusProvider, token: string): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const config = provider.configuration as any;
+    if (!config?.url || typeof config.url !== "string" || !token) return;
+
+    const urlObj = new URL(config.url);
+    const oldToken = urlObj.searchParams.get("token") || "none";
+    urlObj.searchParams.set("token", token);
+    const newUrl = urlObj.toString();
+    console.log(
+        `[updateProviderUrlWithToken] Updating URL. Token: ${oldToken.slice(0, 10)}... -> ${token.slice(0, 10)}...`,
+    );
+
+    // 1. Update the HocuspocusProvider's own config.url
+    config.url = newUrl;
+
+    // 2. Update provider.url if writable (some versions expose it)
+    if ((provider as TokenRefreshableProvider).url) {
+        (provider as TokenRefreshableProvider).url = newUrl;
+    }
+
+    // 3. CRITICAL: Update the internal HocuspocusProviderWebsocket's config.url
+    //    This is the URL actually used when creating new WebSocket connections on reconnect.
+    const wsProvider = config.websocketProvider;
+    if (wsProvider?.configuration && typeof wsProvider.configuration.url === "string") {
+        wsProvider.configuration.url = newUrl;
+    }
+}
+
 export type ProjectConnection = {
     doc: Y.Doc;
     provider: HocuspocusProvider;
@@ -154,7 +193,7 @@ async function getFreshIdToken(): Promise<string> {
     }
 
     try {
-        const token = await auth.currentUser.getIdToken();
+        const token = await auth.currentUser.getIdToken(true);
         if (!token) throw new Error("Token is empty");
         return token;
     } catch (e) {
@@ -199,16 +238,8 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     const tokenFn = async () => {
         try {
             const t = await getFreshIdToken();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const config = provider.configuration as any;
-            if (provider && config?.url && typeof config.url === "string" && t) {
-                const urlObj = new URL(config.url);
-                urlObj.searchParams.set("token", t);
-                config.url = urlObj.toString();
-                // Also update the provider.url property if it exists
-                if ((provider as TokenRefreshableProvider).url) {
-                    (provider as TokenRefreshableProvider).url = config.url;
-                }
+            if (t) {
+                updateProviderUrlWithToken(provider, t);
                 console.log("[createProjectConnection] Updated provider URL with fresh token");
             }
             return t;
@@ -353,16 +384,8 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     const tokenFn = async () => {
         try {
             const t = await getFreshIdToken();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const config = provider.configuration as any;
-            if (provider && config?.url && typeof config.url === "string" && t) {
-                const urlObj = new URL(config.url);
-                urlObj.searchParams.set("token", t);
-                config.url = urlObj.toString();
-                // Also update the provider.url property if it exists
-                if ((provider as TokenRefreshableProvider).url) {
-                    (provider as TokenRefreshableProvider).url = config.url;
-                }
+            if (t) {
+                updateProviderUrlWithToken(provider, t);
                 console.log("[connectProjectDoc] Updated provider URL with fresh token");
             }
             return t;
@@ -425,15 +448,8 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     const tokenFn = async () => {
         try {
             const t = await getFreshIdToken();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const config = provider.configuration as any;
-            if (provider && config?.url && typeof config.url === "string" && t) {
-                const urlObj = new URL(config.url);
-                urlObj.searchParams.set("token", t);
-                config.url = urlObj.toString();
-                if ((provider as TokenRefreshableProvider).url) {
-                    (provider as TokenRefreshableProvider).url = config.url;
-                }
+            if (t) {
+                updateProviderUrlWithToken(provider, t);
             }
             return t;
         } catch {

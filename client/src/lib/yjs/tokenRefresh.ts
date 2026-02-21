@@ -43,16 +43,24 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
             }
             // Update the URL with the new token so that future reconnections (which rely on the URL for handshake) pass
             // HocuspocusProvider re-uses the initial URL string, so if we don't update it, it sends the old/expired token.
+            // CRITICAL: Must update BOTH the HocuspocusProvider's config AND the internal
+            // HocuspocusProviderWebsocket's config, since the WebSocket actually reads from the latter.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const config = provider.configuration as any;
             if (config?.url && typeof config.url === "string") {
                 const urlObj = new URL(config.url);
                 urlObj.searchParams.set("token", t);
-                config.url = urlObj.toString();
+                const newUrl = urlObj.toString();
+                config.url = newUrl;
                 if ((provider as TokenRefreshableProvider).url) {
-                    (provider as TokenRefreshableProvider).url = config.url;
+                    (provider as TokenRefreshableProvider).url = newUrl;
                 }
-                console.log("[tokenRefresh] Updated provider.configuration.url & provider.url with fresh token");
+                // Also update the internal websocketProvider's URL (separate config object)
+                const wsProvider = config.websocketProvider;
+                if (wsProvider?.configuration && typeof wsProvider.configuration.url === "string") {
+                    wsProvider.configuration.url = newUrl;
+                }
+                console.log("[tokenRefresh] Updated provider + websocketProvider URLs with fresh token");
             }
 
             // For HocuspocusProvider, we call sendToken() to refresh authentication

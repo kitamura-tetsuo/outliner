@@ -202,8 +202,19 @@ export class Items {
     ) {}
 
     private childrenKeys(): string[] {
-        const children = this.tree.getNodeChildrenFromKey(this.parentKey);
-        return this.tree.sortChildrenByOrder(children, this.parentKey);
+        try {
+            const children = this.tree.getNodeChildrenFromKey(this.parentKey);
+            return this.tree.sortChildrenByOrder(children, this.parentKey);
+        } catch (e: unknown) {
+            const error = e as Error;
+            // If the tree is empty (e.g. brand new project not yet synced),
+            // yjs-orderedtree might throw that the node doesn't exist.
+            // We swallow this for the root node and return empty.
+            if (this.parentKey === "root" && error.message?.includes("does not exist")) {
+                return [];
+            }
+            throw e;
+        }
     }
 
     get length(): number {
