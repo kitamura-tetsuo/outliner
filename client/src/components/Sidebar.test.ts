@@ -179,6 +179,25 @@ describe("Sidebar", () => {
             expect(settingsLinkDiv).toBeInTheDocument();
         });
 
+        it("should render the GitHub link", () => {
+            render(Sidebar, { isOpen: true });
+
+            const githubLink = screen.getByText("GitHub").closest("a");
+            expect(githubLink).toBeInTheDocument();
+            expect(githubLink).toHaveAttribute("href", "https://github.com/kitamura-tetsuo/outliner/");
+        });
+
+        it("should render the Jules link", () => {
+            render(Sidebar, { isOpen: true });
+
+            const julesLink = screen.getByText("Jules").closest("a");
+            expect(julesLink).toBeInTheDocument();
+            expect(julesLink).toHaveAttribute(
+                "href",
+                "https://jules.google.com/repo/github/kitamura-tetsuo/outliner/overview",
+            );
+        });
+
         it("should render project items when containers exist", () => {
             render(Sidebar, { isOpen: true });
 
