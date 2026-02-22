@@ -29,6 +29,21 @@
         }
         return result;
     });
+
+    // Compute the display title for the current project
+    // If the current project title is an ID, try to resolve it to a name from the project list
+    let projectDisplayTitle = $derived.by(() => {
+        const titleOrId = store.project?.title;
+        if (!titleOrId) return "Untitled Project";
+
+        // Check if titleOrId matches a known project ID
+        const matchedProject = projectStore.projects.find((p) => p.id === titleOrId);
+        if (matchedProject) {
+            return matchedProject.name;
+        }
+
+        return titleOrId;
+    });
 </script>
 
 <aside class="sidebar" class:open={isOpen}>
@@ -135,7 +150,7 @@
                     {:else}
                         {#each pages as page (page.id)}
                             {@const pageHref = resolve(
-                                `/${encodeURIComponent(store.project?.title || "Untitled Project")}/${encodeURIComponent(page.text)}`,
+                                `/${encodeURIComponent(projectDisplayTitle)}/${encodeURIComponent(page.text)}`,
                             )}
                             <li>
                                 <a
