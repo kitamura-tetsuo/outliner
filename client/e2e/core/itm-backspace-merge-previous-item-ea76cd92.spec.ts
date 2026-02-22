@@ -2,8 +2,8 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature ITM-ea76cd92
- *  Title   : Merge with previous item using Backspace
- *  Source  : docs/client-features.yaml
+ *  Title   : Merge with previous item on Backspace at start
+ *  Source  : docs/client-features/itm-backspace-merge-previous-item-ea76cd92.yaml
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
