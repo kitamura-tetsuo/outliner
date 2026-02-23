@@ -2,24 +2,24 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0101
- *  Title   : ボックス選択（矩形選択）コピー・キャンセル・ペーストのタイミング回帰テスト
+ *  Title   : Box Selection (Rectangular Selection) Copy/Cancel/Paste Timing Regression Test
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * SLR-0101 回帰テスト: ボックス選択のコピー・キャンセル・ペーストのタイミング問題
+ * SLR-0101 Regression Test: Box Selection Copy/Cancel/Paste Timing Issue
  *
- * このテストでは、以下のシーケンスを検証します:
- * 1. 矩形選択でテキストをコピー
- * 2. Escキーでキャンセル（ペーストせずに）
- * 3. 再度矩形選択を作成
- * 4. ペースト
+ * This test verifies the following sequence:
+ * 1. Copy text using box selection
+ * 2. Cancel with Esc key (without pasting)
+ * 3. Create box selection again
+ * 4. Paste
  *
- * このシーケンスは、タイミング問題による回帰を検出するために重要です。
+ * This sequence is critical for detecting regressions due to timing issues.
  */
-test.describe("ボックス選択のコピー・キャンセル・ペーストのタイミング回帰テスト", () => {
+test.describe("Box Selection Copy/Cancel/Paste Timing Regression Test", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "First line of text",
@@ -89,18 +89,18 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         }
     });
 
-    test("矩形選択でコピー → Escでキャンセル → 再度矩形選択 → ペースト", async ({ page }) => {
-        // デバッグモードを有効化とクリップボードモックの設定
+    test("Copy with box selection -> Cancel with Esc -> Box selection again -> Paste", async ({ page }) => {
+        // Enable debug mode and setup clipboard mock
         try {
             await page.evaluate(() => {
                 (window as any).DEBUG_MODE = true;
 
-                // モック: readText は lastCopiedText を返す
+                // Mock: readText returns lastCopiedText
                 (navigator as any).clipboard.readText = async () => {
                     return (window as any).lastCopiedText || "";
                 };
 
-                // モック: writeText は lastCopiedText を更新する
+                // Mock: writeText updates lastCopiedText
                 (navigator as any).clipboard.writeText = async (text: string) => {
                     (window as any).lastCopiedText = text;
                     console.log(`[Mock] writeText: ${text}`);
@@ -108,7 +108,7 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
                 };
             });
         } catch (error) {
-            console.log(`デバッグモード設定中にエラーが発生しました: ${error}`);
+            console.log(`Error occurred while setting up debug mode: ${error}`);
         }
 
         // Wait for all items to be rendered
@@ -135,7 +135,7 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         // Click start item to ensure we have focus in the area
         await page.locator(`.outliner-item[data-item-id="${startItemId}"]`).click();
 
-        // Alt+Shiftキーを押しながらマウスドラッグ
+        // Mouse drag while holding Alt+Shift keys
         await page.keyboard.down("Alt");
         await page.keyboard.down("Shift");
 
@@ -147,7 +147,7 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         await page.keyboard.up("Shift");
         await page.keyboard.up("Alt");
 
-        // 矩形選択が作成されたことを確認 (waitForFunctionを使用)
+        // Verify box selection is created (using waitForFunction)
         await page.waitForFunction(
             () => {
                 if (!(window as any).editorOverlayStore) return false;
@@ -158,10 +158,10 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
             { timeout: 5000 },
         );
 
-        // 3. テキストをコピー
+        // 3. Copy text
         await page.keyboard.press("Control+c");
 
-        // コピーされたテキストを確認 (waitForFunctionを使用)
+        // Verify copied text (using waitForFunction)
         await page.waitForFunction(
             () => {
                 const text = (window as any).lastCopiedText;
@@ -172,12 +172,12 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         );
 
         const copiedText = await page.evaluate(() => (window as any).lastCopiedText);
-        console.log(`コピーされたテキスト: "${copiedText}"`);
+        console.log(`Copied text: "${copiedText}"`);
 
-        // 4. Escキーでキャンセル（ペーストせずに）
+        // 4. Cancel with Esc key (without pasting)
         await page.keyboard.press("Escape");
 
-        // 明示的にcancelBoxSelectionを呼び出す
+        // Explicitly call cancelBoxSelection
         await page.evaluate(() => {
             if (
                 (window as any).KeyEventHandler
@@ -186,16 +186,16 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
                 (window as any).KeyEventHandler.cancelBoxSelection();
             }
 
-            // 選択範囲を強制的にクリア
+            // Force clear selection
             if ((window as any).editorOverlayStore) {
                 (window as any).editorOverlayStore.clearSelections();
             }
         });
 
-        // 矩形選択がキャンセルされたことを確認 (waitForFunctionを使用)
+        // Verify box selection is canceled (using waitForFunction)
         await page.waitForFunction(
             () => {
-                if (!(window as any).editorOverlayStore) return true; // Storeがない場合は選択なしとみなす
+                if (!(window as any).editorOverlayStore) return true; // Consider no selection if Store is missing
                 const selections = Object.values((window as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 0;
             },
@@ -203,7 +203,7 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
             { timeout: 5000 },
         );
 
-        // 5. 再度矩形選択を作成
+        // 5. Create box selection again
         await page.keyboard.down("Alt");
         await page.keyboard.down("Shift");
 
@@ -215,7 +215,7 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         await page.keyboard.up("Shift");
         await page.keyboard.up("Alt");
 
-        // 矩形選択が再度作成されたことを確認 (waitForFunctionを使用)
+        // Verify box selection is created again (using waitForFunction)
         await page.waitForFunction(
             () => {
                 if (!(window as any).editorOverlayStore) return false;
@@ -226,11 +226,11 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
             { timeout: 5000 },
         );
 
-        // 6. ペースト
+        // 6. Paste
         await TestHelpers.focusGlobalTextarea(page);
         await page.keyboard.press("Control+v");
 
-        // ペーストが成功したことを確認 (waitForFunctionを使用)
+        // Verify paste success (using waitForFunction)
         await page.waitForFunction(
             () => {
                 const pasted = (window as any).lastPastedText || "";
@@ -241,11 +241,11 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         );
 
         const pastedText = await page.evaluate(() => (window as any).lastPastedText || "");
-        console.log(`ペーストされたテキスト: "${pastedText}"`);
+        console.log(`Pasted text: "${pastedText}"`);
         expect(pastedText).toContain("First line");
 
-        // 7. 最終的な状態を確認
-        // ペースト後は選択範囲がクリアされるべき (waitForFunctionを使用)
+        // 7. Verify final state
+        // Selection should be cleared after paste (using waitForFunction)
         await page.waitForFunction(
             () => {
                 if (!(window as any).editorOverlayStore) return true;
