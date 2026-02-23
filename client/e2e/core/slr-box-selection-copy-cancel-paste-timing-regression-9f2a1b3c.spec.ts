@@ -195,7 +195,9 @@ test.describe("Box Selection Copy/Cancel/Paste Timing Regression Test", () => {
         // Verify box selection is canceled (using waitForFunction)
         await page.waitForFunction(
             () => {
+                // eslint-disable-next-line no-restricted-globals
                 if (!(window as any).editorOverlayStore) return true; // Consider no selection if Store is missing
+                // eslint-disable-next-line no-restricted-globals
                 const selections = Object.values((window as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 0;
             },
