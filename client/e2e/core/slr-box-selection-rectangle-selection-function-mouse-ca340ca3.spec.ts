@@ -2,92 +2,92 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0101
- *  Title   : ボックス選択（矩形選択）機能 - マウス
+ *  Title   : Box Selection (Rectangle Selection) Feature - Mouse
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * SLR-0101: ボックス選択（矩形選択）機能 - マウス
+ * SLR-0101: Box Selection (Rectangle Selection) Feature - Mouse
  *
- * このテストでは、Alt+Shift+マウスドラッグによる矩形選択機能をテストします。
+ * This test verifies the box selection feature using Alt+Shift+Mouse Drag.
  *
- * テスト内容:
- * 1. Alt+Shift+マウスドラッグで矩形選択を開始
- * 2. 矩形選択範囲のテキストをコピー
- * 3. 矩形選択範囲にテキストをペースト
+ * Test contents:
+ * 1. Start box selection with Alt+Shift+Mouse Drag
+ * 2. Copy text within the box selection
+ * 3. Paste text into the box selection
  */
-test.describe("マウスによる矩形選択テスト", () => {
+test.describe("Box Selection Test via Mouse", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test.afterEach(async () => {
-        // 必要に応じてクリーンアップ処理を実装
+        // Implement cleanup process if necessary
     });
 
-    test("Alt+Shift+マウスドラッグによる矩形選択", async ({ page }) => {
-        // テストタイムアウトを延長
+    test("Box Selection via Alt+Shift+Mouse Drag", async ({ page }) => {
+        // Extend test timeout
 
-        // デバッグモードを有効化
+        // Enable debug mode
         try {
             await page.evaluate(() => {
                 (window as any).DEBUG_MODE = true;
             });
         } catch (error) {
-            console.log(`デバッグモード設定中にエラーが発生しました: ${error}`);
+            console.log(`Error occurred while setting debug mode: ${error}`);
         }
 
-        // 最初のアイテムが表示されるまで待機
+        // Wait until the first item is displayed
         await page.waitForSelector(".outliner-item", { timeout: 5000 });
 
-        // 1. 初期状態の確認
-        // 最初のアイテムにテキストを入力
+        // 1. Check initial state
+        // Enter text into the first item
         await page.locator(".outliner-item").first().click();
         await page.keyboard.type("First line of text");
 
-        // Enterキーを押して新しいアイテムを作成
+        // Press Enter to create a new item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second line of text");
 
-        // Enterキーを押して新しいアイテムを作成
+        // Press Enter to create a new item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Third line of text");
 
-        // 最初のアイテムをクリック
+        // Click the first item
         await page.locator(".outliner-item").first().click();
 
-        // 2. Alt+Shift+マウスドラッグで矩形選択を開始
-        // 最初のアイテムの位置を取得
+        // 2. Start box selection with Alt+Shift+Mouse Drag
+        // Get the position of the first item
         const firstItemBounds = await page.locator(".outliner-item").first().boundingBox();
         if (!firstItemBounds) {
-            console.log("最初のアイテムの位置を取得できませんでした。");
+            console.log("Could not get the position of the first item.");
             return;
         }
 
-        // 2番目のアイテムの位置を取得
+        // Get the position of the second item
         const secondItemBounds = await page.locator(".outliner-item").nth(1).boundingBox();
         if (!secondItemBounds) {
-            console.log("2番目のアイテムの位置を取得できませんでした。");
+            console.log("Could not get the position of the second item.");
             return;
         }
 
-        // Alt+Shiftキーを押しながらマウスドラッグ
+        // Mouse drag while holding Alt+Shift keys
         await page.keyboard.down("Alt");
         await page.keyboard.down("Shift");
 
-        // ドラッグ操作
+        // Drag operation
         await page.mouse.move(firstItemBounds.x + 5, firstItemBounds.y + firstItemBounds.height / 2);
         await page.mouse.down();
         await page.mouse.move(firstItemBounds.x + 10, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
         await page.mouse.up();
 
-        // キーを離す
+        // Release keys
         await page.keyboard.up("Shift");
         await page.keyboard.up("Alt");
 
-        // 矩形選択が作成されたことを確認
+        // Verify that box selection is created
         const boxSelectionCount = await page.evaluate(() => {
             if (!(window as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
@@ -97,66 +97,66 @@ test.describe("マウスによる矩形選択テスト", () => {
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
             return boxSelections.length;
         });
-        console.log(`矩形選択の数: ${boxSelectionCount}`);
+        console.log(`Number of box selections: ${boxSelectionCount}`);
 
-        // 矩形選択が作成されたことを確認
+        // Verify that box selection is created
         expect(boxSelectionCount).toBe(1);
 
-        // 3. 矩形選択範囲のテキストをコピー
+        // 3. Copy text within the box selection
         await page.keyboard.press("Control+c");
 
-        // 少し待機してコピー処理を確実にする
+        // Wait a bit to ensure copy process
         await page.waitForTimeout(100);
 
-        // コピーされたテキストを取得（グローバル変数から直接取得）
+        // Get copied text (directly from global variable)
         const copiedText = await page.evaluate(() => {
             return (window as any).lastCopiedText || "";
         });
-        console.log(`コピーされたテキスト: "${copiedText}"`);
+        console.log(`Copied text: "${copiedText}"`);
 
-        // コピーされたテキストが空でないことを確認
+        // Verify that copied text is not empty
         expect(copiedText.length).toBeGreaterThan(0);
 
-        // 4. 矩形選択範囲にテキストをペースト
-        // 再度矩形選択を作成
+        // 4. Paste text into the box selection
+        // Create box selection again
         await page.keyboard.down("Alt");
         await page.keyboard.down("Shift");
 
-        // ドラッグ操作
+        // Drag operation
         await page.mouse.move(firstItemBounds.x + 15, firstItemBounds.y + firstItemBounds.height / 2);
         await page.mouse.down();
         await page.mouse.move(firstItemBounds.x + 20, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
         await page.mouse.up();
 
-        // キーを離す
+        // Release keys
         await page.keyboard.up("Shift");
         await page.keyboard.up("Alt");
 
-        // テキストをペースト
+        // Paste text
         await page.keyboard.press("Control+v");
 
-        // 5. 矩形選択範囲のテキストを削除
-        // 再度矩形選択を作成
+        // 5. Delete text within the box selection
+        // Create box selection again
         await page.keyboard.down("Alt");
         await page.keyboard.down("Shift");
 
-        // ドラッグ操作
+        // Drag operation
         await page.mouse.move(firstItemBounds.x + 25, firstItemBounds.y + firstItemBounds.height / 2);
         await page.mouse.down();
         await page.mouse.move(firstItemBounds.x + 30, secondItemBounds.y + secondItemBounds.height / 2, { steps: 10 });
         await page.mouse.up();
 
-        // キーを離す
+        // Release keys
         await page.keyboard.up("Shift");
         await page.keyboard.up("Alt");
 
-        // 削除
+        // Delete
         await page.keyboard.press("Delete");
 
-        // 6. Escキーで矩形選択をキャンセル
+        // 6. Cancel box selection with Esc key
         await page.keyboard.press("Escape");
 
-        // 明示的にcancelBoxSelectionを呼び出す
+        // Explicitly call cancelBoxSelection
         await page.evaluate(() => {
             if (
                 (window as any).KeyEventHandler
@@ -168,17 +168,17 @@ test.describe("マウスによる矩形選択テスト", () => {
                 console.log("KeyEventHandler.cancelBoxSelection not available");
             }
 
-            // 選択範囲を強制的にクリア
+            // Force clear selection range
             if ((window as any).editorOverlayStore) {
                 (window as any).editorOverlayStore.clearSelections();
                 console.log("Explicitly called editorOverlayStore.clearSelections()");
             }
         });
 
-        // 少し待機して選択範囲のクリアを確実にする
+        // Wait a bit to ensure selection clear
         await page.waitForTimeout(100);
 
-        // 矩形選択がキャンセルされたことを確認
+        // Verify that box selection is cancelled
         const boxSelectionCount2 = await page.evaluate(() => {
             if (!(window as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
@@ -190,9 +190,9 @@ test.describe("マウスによる矩形選択テスト", () => {
             console.log("Box selections after cancel:", boxSelections);
             return boxSelections.length;
         });
-        console.log(`キャンセル後の矩形選択の数: ${boxSelectionCount2}`);
+        console.log(`Number of box selections after cancel: ${boxSelectionCount2}`);
 
-        // 矩形選択がキャンセルされたことを確認
+        // Verify that box selection is cancelled
         expect(boxSelectionCount2).toBe(0);
     });
 });

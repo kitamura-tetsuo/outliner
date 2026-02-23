@@ -37,6 +37,10 @@ const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 
 const admin = require("firebase-admin");
+const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" ||
+  !!process.env.FIRESTORE_EMULATOR_HOST ||
+  !!process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+  !!process.env.FIREBASE_STORAGE_EMULATOR_HOST;
 const Sentry = require("@sentry/node");
 
 if (process.env.SENTRY_DSN) {
@@ -60,7 +64,7 @@ if (process.env.SENTRY_DSN) {
     },
   });
 } else {
-  if (process.env.NODE_ENV === "production") {
+  if (!isEmulator) {
     logger.warn("Sentry DSN not found. Sentry logging is disabled.");
   } else {
     logger.info(
@@ -128,7 +132,7 @@ function setCorsHeaders(req, res) {
 
   // HSTS (Strict-Transport-Security)
   // Only enable in production to avoid issues with local development (HTTP)
-  if (process.env.NODE_ENV === "production") {
+  if (!isEmulator) {
     res.set(
       "Strict-Transport-Security",
       "max-age=31536000; includeSubDomains",
@@ -206,7 +210,7 @@ if (!admin.apps.length) {
 logger.info(`Firebase project ID: ${admin.app().options.projectId}`);
 
 // Storage Emulator settings
-if (process.env.NODE_ENV === "development" || process.env.FUNCTIONS_EMULATOR) {
+if (isEmulator || process.env.NODE_ENV === "development") {
   process.env.FIREBASE_STORAGE_EMULATOR_HOST = "localhost:59200";
 }
 
@@ -230,7 +234,7 @@ async function checkContainerAccess(userId, containerId) {
   try {
     // In test environment, allow access for test users
     if (
-      process.env.FUNCTIONS_EMULATOR === "true" ||
+      isEmulator ||
       process.env.NODE_ENV === "test" ||
       process.env.NODE_ENV === "development"
     ) {
@@ -700,14 +704,10 @@ exports.createTestUser = onRequest(
     }
 
     // Production environment check
-    const isProduction = !process.env.FUNCTIONS_EMULATOR &&
-      !process.env.FIRESTORE_EMULATOR_HOST &&
-      process.env.NODE_ENV === "production";
-
-    if (isProduction) {
-      logger.warn("Attempted to create test user in production environment");
+    if (!isEmulator) {
+      logger.warn("Attempted to create test user in non-emulator environment");
       return res.status(403).json({
-        error: "Test user creation is disabled in production",
+        error: "Test user creation is only allowed in emulator environment",
       });
     }
 
@@ -1422,8 +1422,7 @@ exports.createSchedule = onRequest(
 
       // Verify token with Firebase Admin SDK
       // Set checkRevoked: false in emulator environment as unsigned tokens are issued
-      const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-        process.env.FUNCTIONS_EMULATOR === "true");
+      const isEmulatorEnv = isEmulator;
 
       if (isEmulatorEnv) {
         // Check emulator environment
@@ -1578,8 +1577,7 @@ exports.updateSchedule = onRequest(
 
       // Verify token with Firebase Admin SDK
       // Set checkRevoked: false in emulator environment as unsigned tokens are issued
-      const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-        process.env.FUNCTIONS_EMULATOR === "true");
+      const isEmulatorEnv = isEmulator;
 
       if (isEmulatorEnv) {
         logger.info(
@@ -1627,8 +1625,6 @@ exports.updateSchedule = onRequest(
       }
       // Permission check: only the creator of the schedule can update it
       // Relax permission check in emulator environment
-      const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-        process.env.FUNCTIONS_EMULATOR === "true";
       if (!isEmulator && scheduleSnap.data().createdBy !== uid) {
         return res.status(403).json({ error: "Forbidden" });
       } else if (isEmulator) {
@@ -1682,8 +1678,7 @@ exports.listSchedules = onRequest(
     try {
       // Verify token with Firebase Admin SDK
       // Set checkRevoked: false in emulator environment as unsigned tokens are issued
-      const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-        process.env.FUNCTIONS_EMULATOR === "true");
+      const isEmulatorEnv = isEmulator;
 
       if (isEmulatorEnv) {
         logger.info(
@@ -1770,8 +1765,7 @@ exports.exportSchedulesIcal = onRequest(
     }
 
     try {
-      const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-        process.env.FUNCTIONS_EMULATOR === "true");
+      const isEmulatorEnv = isEmulator;
 
       if (isEmulatorEnv) {
         logger.info(
@@ -1884,8 +1878,7 @@ exports.cancelSchedule = onRequest(
 
       // Verify token with Firebase Admin SDK
       // Set checkRevoked: false in emulator environment as unsigned tokens are issued
-      const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-        process.env.FUNCTIONS_EMULATOR === "true");
+      const isEmulatorEnv = isEmulator;
 
       if (isEmulatorEnv) {
         logger.info(
@@ -1933,8 +1926,6 @@ exports.cancelSchedule = onRequest(
       }
       // Permission check: only the creator of the schedule can cancel it
       // Relax permission check in emulator environment
-      const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-        process.env.FUNCTIONS_EMULATOR === "true";
       if (!isEmulator && scheduleSnap.data().createdBy !== uid) {
         return res.status(403).json({ error: "Permission denied" });
       } else if (isEmulator) {
@@ -2081,12 +2072,11 @@ exports.uploadAttachment = onRequest(
       }
 
       // Set appropriate bucket name in test environment
-      const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
-        process.env.NODE_ENV === "development";
-      const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
+      const isLocal = isEmulator || process.env.NODE_ENV === "development";
+      const bucketName = isLocal ? "test-project-id.appspot.com" : undefined;
       const bucket = admin.storage().bucket(bucketName);
       logger.info(
-        `uploadAttachment using bucket: ${bucket.name}, isEmulator: ${isEmulator}`,
+        `uploadAttachment using bucket: ${bucket.name}, isEmulator: ${isLocal}`,
       );
 
       const filePath = `attachments/${containerId}/${itemId}/${fileName}`;
@@ -2136,7 +2126,7 @@ exports.uploadAttachment = onRequest(
 
       let url;
 
-      if (isEmulator) {
+      if (isLocal) {
         // Generate direct URL in Emulator environment
         const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
           "localhost:59200";
@@ -2215,9 +2205,8 @@ exports.listAttachments = onRequest(
       }
 
       // Set appropriate bucket name in test environment
-      const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
-        process.env.NODE_ENV === "development";
-      const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
+      const isLocal = isEmulator || process.env.NODE_ENV === "development";
+      const bucketName = isLocal ? "test-project-id.appspot.com" : undefined;
       const bucket = admin.storage().bucket(bucketName);
 
       const prefix = `attachments/${containerId}/${itemId}/`;
@@ -2225,7 +2214,7 @@ exports.listAttachments = onRequest(
 
       let urls;
 
-      if (isEmulator) {
+      if (isLocal) {
         // Generate direct URL in Emulator environment
         const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
           "localhost:59200";
@@ -2305,9 +2294,8 @@ exports.deleteAttachment = onRequest(
       }
 
       // Set appropriate bucket name in test environment
-      const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
-        process.env.NODE_ENV === "development";
-      const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
+      const isLocal = isEmulator || process.env.NODE_ENV === "development";
+      const bucketName = isLocal ? "test-project-id.appspot.com" : undefined;
       const bucket = admin.storage().bucket(bucketName);
 
       const filePath = `attachments/${containerId}/${itemId}/${fileName}`;
@@ -2615,10 +2603,7 @@ exports.deleteAllProductionData = onRequest(
       }
 
       // Production environment check
-      const isProduction = !process.env.FUNCTIONS_EMULATOR &&
-        !process.env.FIRESTORE_EMULATOR_HOST &&
-        process.env.NODE_ENV === "production";
-
+      const isProduction = !isEmulator && process.env.NODE_ENV === "production";
       if (!isProduction) {
         logger.warn(
           "Production data deletion attempted in non-production environment",

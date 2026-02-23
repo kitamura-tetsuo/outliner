@@ -2,29 +2,29 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature TST-0005
- *  Title   : テスト環境の初期化と準備
+ *  Title   : Initialization and Preparation of Test Environment
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 
 /**
  * @file basic.spec.ts
- * @description 基本機能確認テスト
- * アプリの基本機能、特にページ表示と認証コンポーネントが正しく動作することを確認するテスト群です。
+ * @description Basic Functionality Verification Test
+ * Tests to verify basic app functionality, specifically ensuring correct page rendering and authentication component operation.
  * @playwright
- * @title 基本テスト
+ * @title Basic Test
  */
 
 /**
- * @testcase ホームページが正常に表示される
- * @description アプリのホームページが正常に表示されることを確認するテスト
- * @check エミュレータを使用して初期状態を設定する
- * @check ページにアクセスするとタイトル「Outliner App」が表示される
- * @check 認証コンポーネントが画面上に表示される
+ * @testcase Homepage displays correctly
+ * @description Test to verify that the app homepage displays correctly
+ * @check Configure initial state using emulator
+ * @check "Outliner App" title appears upon accessing the page
+ * @check Authentication component appears on screen
  */
-test("ホームページが正常に表示される", async ({ page }) => {
+test("Homepage displays correctly", async ({ page }) => {
     await page.goto("/");
 
-    // タイトルが表示されることを確認
+    // Verify title is displayed
     await expect(page.locator("h1")).toContainText("Outliner");
 });

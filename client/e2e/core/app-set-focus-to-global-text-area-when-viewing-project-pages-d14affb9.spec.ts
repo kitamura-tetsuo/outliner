@@ -2,30 +2,30 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature APP-0001
- *  Title   : プロジェクトページ表示時にグローバルテキストエリアにフォーカスを設定
+ *  Title   : Set focus to global text area when viewing project pages
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * @testcase プロジェクトページ表示時にグローバルテキストエリアにフォーカスが設定される
- * @description プロジェクトページ表示時に自動的にグローバルテキストエリアにフォーカスが設定されることを確認するテスト
- * @check プロジェクトページ表示時にグローバルテキストエリアにフォーカスが設定される
- * @check カーソルが表示される
- * @check テキスト入力が可能になる
+ * @testcase Focus is set to global text area when viewing project page
+ * @description Verify that focus is automatically set to the global text area when viewing a project page
+ * @check Focus is set to global text area when viewing project page
+ * @check Cursor is visible
+ * @check Text input is possible
  */
-test.describe("プロジェクトページ表示時のフォーカス設定", () => {
+test.describe("Focus settings when viewing project page", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("プロジェクトページ表示時にグローバルテキストエリアにフォーカスが設定される", async ({ page }) => {
-        // OutlinerItem が表示されるのを待つ
+    test("Focus is set to global text area when viewing project page", async ({ page }) => {
+        // Wait for OutlinerItem to be displayed
         await page.waitForSelector(".outliner-item", { timeout: 30000 });
         console.log("Found outliner items");
 
-        // ページ内の要素を確認
+        // Check elements in the page
         const elements = await page.evaluate(() => {
             return {
                 outlinerItems: document.querySelectorAll(".outliner-item").length,
@@ -36,16 +36,16 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         });
         console.log("Page elements:", elements);
 
-        // グローバルテキストエリアが存在することを確認
+        // Confirm that global text area exists
         expect(elements.globalTextarea).toBe(true);
 
-        // 最初のアイテムをクリックしてフォーカスを設定
+        // Click the first item to set focus
         const firstItem = page.locator(".outliner-item[data-item-id]").first();
         await firstItem.waitFor();
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // フォーカス状態を確認
+        // Check focus state
         const focusState = await page.evaluate(() => {
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
             return {
@@ -57,10 +57,10 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         });
         console.log("Focus state after click:", focusState);
 
-        // フォーカスが設定されていることを確認
+        // Confirm focus is set
         expect(focusState.focused).toBe(true);
 
-        // カーソルの状態を確認し、必要に応じて作成
+        // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as {
                 editorOverlayStore?: {
@@ -80,7 +80,7 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
         });
         console.log("Cursor state:", cursorState);
 
-        // カーソルインスタンスが存在しない場合、作成する
+        // If no cursor instances exist, create one
         if (cursorState.cursorInstancesCount === 0) {
             console.log("No cursor instances found, creating cursor");
             await page.evaluate(() => {
@@ -107,8 +107,8 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
             });
         }
 
-        // テキスト入力が可能であることを確認（cursor.insertText()を使用）
-        const testText = "テスト用テキスト";
+        // Confirm text input is possible (using cursor.insertText())
+        const testText = "Test text";
         await page.evaluate(text => {
             const editorStore = (window as {
                 editorOverlayStore?: {
@@ -123,23 +123,23 @@ test.describe("プロジェクトページ表示時のフォーカス設定", ()
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    // 既存のテキストをクリア
+                    // Clear existing text
                     const target = cursor.findTarget();
                     if (target) {
                         target.updateText("");
                         cursor.offset = 0;
                     }
-                    // 新しいテキストを挿入
+                    // Insert new text
                     cursor.insertText(text);
                     console.log("Text inserted via cursor.insertText");
                 }
             }
         }, testText);
 
-        // 少し待機してからテキストが入力されていることを確認
+        // Wait slightly and confirm text is input
         await page.waitForTimeout(300);
 
-        // アイテムのテキストを確認
+        // Check item text
         const itemText = await firstItem.textContent();
         console.log("Item text after input:", itemText);
         expect(itemText).toContain(testText);

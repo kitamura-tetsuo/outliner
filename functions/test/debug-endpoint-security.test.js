@@ -1,4 +1,6 @@
-const { describe, it, expect, afterAll, beforeAll, beforeEach } = require("@jest/globals");
+const { describe, it, expect, afterAll, beforeAll, beforeEach } = require(
+  "@jest/globals",
+);
 const admin = require("firebase-admin");
 const functions = require("firebase-functions-test")();
 
@@ -175,7 +177,7 @@ describe("debugUserProjects Security", () => {
     const verifyIdTokenMock = jest.fn().mockResolvedValue({
       uid: "admin123",
       role: "admin",
-      email: "admin@example.com"
+      email: "admin@example.com",
     });
     authSpy.mockReturnValue({
       verifyIdToken: verifyIdTokenMock,
@@ -191,9 +193,9 @@ describe("debugUserProjects Security", () => {
       exists: true,
       data: () => ({ some: "data" }),
     }).mockResolvedValueOnce({
-      forEach: (callback) => {
+      forEach: callback => {
         callback({ id: "p1", data: () => ({ title: "Project 1" }) });
-      }
+      },
     });
 
     await myFunctions.debugUserProjects(req, res);

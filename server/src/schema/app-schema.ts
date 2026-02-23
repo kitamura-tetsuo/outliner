@@ -409,8 +409,21 @@ export class Items implements Iterable<Item> {
     }
 
     private childrenKeys(): string[] {
-        const children = this.tree.getNodeChildrenFromKey(this.parentKey);
-        return this.tree.sortChildrenByOrder(children, this.parentKey);
+        try {
+            // Ensure root exists if we are at the top level
+            const treeInternal = this.tree as unknown as { ymap?: Y.Map<unknown>; };
+            if (this.parentKey === "root" && treeInternal.ymap?.size === 0) {
+                return [];
+            }
+            const children = this.tree.getNodeChildrenFromKey(this.parentKey);
+            return this.tree.sortChildrenByOrder(children, this.parentKey);
+        } catch (e: unknown) {
+            const error = e as Error;
+            if (this.parentKey === "root" && error.message?.includes("does not exist")) {
+                return [];
+            }
+            throw e;
+        }
     }
 
     get length(): number {
@@ -463,7 +476,23 @@ export class Items implements Iterable<Item> {
         value.set("attachments", new Y.Array<string>());
         value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
 
-        this.tree.createNode(this.parentKey, nodeKey, value);
+        // Structural resilience: ensure parent exists or is virtualized
+        try {
+            this.tree.createNode(this.parentKey, nodeKey, value);
+        } catch (e: unknown) {
+            const error = e as Error;
+            if (this.parentKey === "root" && error.message?.includes("does not exist")) {
+                // Force initialization of the root node if it is missing (as per yjs-orderedtree patch logic)
+                const root = new Y.Map();
+                root.set("_parentHistory", new Y.Map());
+                const treeInternal = this.tree as unknown as { ymap: Y.Map<unknown>; };
+                treeInternal.ymap.set("root", root);
+                // Retry creation
+                this.tree.createNode(this.parentKey, nodeKey, value);
+            } else {
+                throw e;
+            }
+        }
 
         if (index === undefined) {
             this.tree.setNodeOrderToEnd(nodeKey);
@@ -536,10 +565,6 @@ export class Project {
     addPage(title: string, author: string) {
         const page = (this.items as Items).addNode(author);
         page.updateText(title);
-        const pages = this.ydoc.getMap<Y.Doc>("pages");
-        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as YDocOptions);
-        pages.set(page.id, subdoc);
-        subdoc.load();
         return page;
     }
 }
