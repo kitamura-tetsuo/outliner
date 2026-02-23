@@ -382,7 +382,29 @@ async function handlePaste(event: ClipboardEvent) {
 }
 
 // Add processing for focus loss
-function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-eslint/no-unused-vars
+function handleBlur(event: FocusEvent) {
+    const relatedTarget = event.relatedTarget as HTMLElement | null;
+
+    // Helper to identify interactive elements where focus should be allowed to move
+    const isInteractive = (el: HTMLElement) => {
+        return (
+            el.tagName === "INPUT" ||
+            el.tagName === "TEXTAREA" ||
+            el.tagName === "SELECT" ||
+            el.tagName === "BUTTON" ||
+            el.tagName === "A" ||
+            el.closest('[role="button"]') ||
+            el.closest('[role="combobox"]') ||
+            el.closest('[role="search"]') ||
+            el.closest(".page-search-box")
+        );
+    };
+
+    // If focus is moving to an interactive element, allow it
+    if (relatedTarget && isInteractive(relatedTarget)) {
+        return;
+    }
+
     const activeItemId = store.getActiveItem();
     // Do not restore focus while alias picker is visible
     if (aliasPickerStore.isVisible) {
@@ -391,17 +413,27 @@ function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-esl
     if (activeItemId) {
         // Multiple attempts to ensure focus is set
         setTimeout(() => {
-            if (textareaRef && !aliasPickerStore.isVisible) {
-                textareaRef.focus();
+            if (!textareaRef || aliasPickerStore.isVisible) return;
 
-                // Debug information
-                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    console.log(
-                        `GlobalTextArea: focus restored after blur. Active element is textarea: ${
-                            document.activeElement === textareaRef
-                        }`,
-                    );
-                }
+            // Check if focus has moved to a valid interactive element in the meantime
+            const currentActive = document.activeElement as HTMLElement | null;
+            if (
+                currentActive &&
+                currentActive !== textareaRef &&
+                isInteractive(currentActive)
+            ) {
+                return;
+            }
+
+            textareaRef.focus();
+
+            // Debug information
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(
+                    `GlobalTextArea: focus restored after blur. Active element is textarea: ${
+                        document.activeElement === textareaRef
+                    }`,
+                );
             }
         }, 10);
     }

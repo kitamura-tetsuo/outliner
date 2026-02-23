@@ -3,13 +3,13 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 // @ts-nocheck
 /** @feature SLR-0013
- *  Title   : 現在行を選択
+ *  Title   : Select Current Line
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0013: 現在行を選択", () => {
+test.describe("SLR-0013: Select Current Line", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "First line",
@@ -23,7 +23,7 @@ test.describe("SLR-0013: 現在行を選択", () => {
     });
 
     test("Ctrl+L selects entire line", async ({ page }) => {
-        // 初期状態の確認
+        // Check initial state
         const initialState = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
@@ -42,7 +42,7 @@ test.describe("SLR-0013: 現在行を選択", () => {
         await page.keyboard.up("Control");
         await page.waitForTimeout(300);
 
-        // 選択後の状態を確認
+        // Check state after selection
         const afterSelectionState = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
@@ -57,10 +57,10 @@ test.describe("SLR-0013: 現在行を選択", () => {
         });
         console.log("After Ctrl+L state:", afterSelectionState);
 
-        // Ctrl+L機能が実装されているかを確認
+        // Check if Ctrl+L function is implemented
         if (!afterSelectionState.selectedText || afterSelectionState.selectedText.length === 0) {
             console.log("Ctrl+L feature may not be implemented. Testing basic line selection instead.");
-            // 基本的な行選択機能をテスト（Shift+Home, Shift+End）
+            // Test basic line selection (Shift+Home, Shift+End)
             await page.keyboard.press("Home");
             await page.keyboard.down("Shift");
             await page.keyboard.press("End");
@@ -75,10 +75,10 @@ test.describe("SLR-0013: 現在行を選択", () => {
             });
             console.log("Basic line selection state:", basicSelectionState);
 
-            // 基本的な行選択が動作することを確認
+            // Verify that basic line selection works
             expect(basicSelectionState.selectedText).toBe("Second line");
         } else {
-            // Ctrl+L機能が実装されている場合
+            // If Ctrl+L function is implemented
             await expect(page.locator(".editor-overlay .selection")).toBeVisible();
             expect(afterSelectionState.selectedText).toBe("Second line");
         }

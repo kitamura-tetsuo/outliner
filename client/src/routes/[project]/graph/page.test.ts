@@ -30,6 +30,10 @@ vi.mock("../../../services", () => ({
             items: [],
             title: "Test Project",
         }),
+        isContainerConnected: true,
+        wsProvider: {
+            on: vi.fn(),
+        },
     }),
 }));
 
