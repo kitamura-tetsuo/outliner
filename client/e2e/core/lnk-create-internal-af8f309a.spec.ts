@@ -17,7 +17,7 @@ test.describe("LNK-0003: Internal link navigation feature", () => {
         // Select the first item
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
-        await TestHelpers.waitForCursorVisible(page);
+        await TestHelpers.ensureCursorReady(page);
 
         // Check focus state
         const focusState = await page.evaluate(() => {
