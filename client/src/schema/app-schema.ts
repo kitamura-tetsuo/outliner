@@ -577,6 +577,12 @@ export class Project {
     addPage(title: string, author: string) {
         const page = (this.items as Items).addNode(author);
         page.updateText(title);
+
+        // Add subdoc for the page
+        const pages = this.ydoc.getMap("pages");
+        const subdoc = new Y.Doc({ guid: page.id });
+        pages.set(page.id, subdoc);
+
         return page;
     }
 }
