@@ -1,14 +1,14 @@
-import { test, expect } from '@playwright/test';
-import { TestHelpers } from '../utils/testHelpers';
+import { expect, test } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
 
-test.describe('Search Box Focus', () => {
+test.describe("Search Box Focus", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test('Focus should remain on search box when clicked', async ({ page }) => {
+    test("Focus should remain on search box when clicked", async ({ page }) => {
         // Wait for items to appear
-        const firstItem = page.locator('.outliner-item[data-item-id]').first();
+        const firstItem = page.locator(".outliner-item[data-item-id]").first();
         await firstItem.waitFor();
 
         // Click on the first item to focus the editor
@@ -18,7 +18,7 @@ test.describe('Search Box Focus', () => {
         await page.waitForTimeout(500);
 
         // Click on the search box
-        const searchInput = page.locator('#search-pages-input');
+        const searchInput = page.locator("#search-pages-input");
         await searchInput.click();
 
         // Wait a bit for potential focus stealing
@@ -28,7 +28,7 @@ test.describe('Search Box Focus', () => {
         await expect(searchInput).toBeFocused();
 
         // Try typing
-        await searchInput.fill('Search Term');
-        await expect(searchInput).toHaveValue('Search Term');
+        await searchInput.fill("Search Term");
+        await expect(searchInput).toHaveValue("Search Term");
     });
 });
