@@ -52,7 +52,7 @@ if (isDevelopment) {
         devAuthHelper = await import("./scripts/setup-dev-auth.js");
         logger.info("Development auth helper loaded");
     } catch (error: any) {
-        logger.warn(`Development auth helper not available: ${error.message}`);
+        logger.warn(error, "Development auth helper not available");
     }
 }
 
@@ -149,30 +149,32 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
         try {
             logger.info(`Firebase connection attempt ${retryCount + 1}/${maxRetries}...`);
             const listUsersResult = await admin.auth().listUsers(1);
-            logger.info(`Firebase emulator connection successful. Found users: ${listUsersResult.users.length}`);
+            logger.info({ userCount: listUsersResult.users.length }, "Firebase emulator connection successful");
             if (listUsersResult.users.length > 0) {
                 logger.info(
-                    `First user: ${
-                        JSON.stringify({
-                            uid: listUsersResult.users[0].uid,
-                            email: listUsersResult.users[0].email,
-                            displayName: listUsersResult.users[0].displayName,
-                        })
-                    }`,
+                    {
+                        uid: listUsersResult.users[0].uid,
+                        email: listUsersResult.users[0].email,
+                        displayName: listUsersResult.users[0].displayName,
+                    },
+                    "First user",
                 );
             }
             return;
         } catch (error: any) {
             retryCount++;
             if (error.code === "ECONNREFUSED" || error.message.includes("ECONNREFUSED")) {
-                logger.warn(`Firebase emulator not ready yet (attempt ${retryCount}/${maxRetries}): ${error.message}`);
+                logger.warn(
+                    error,
+                    `Firebase emulator not ready yet (attempt ${retryCount}/${maxRetries})`,
+                );
                 if (retryCount < maxRetries) {
-                    logger.info(`Waiting ${delay}ms before next retry...`);
+                    logger.info({ delayMs: delay }, "Waiting before next retry...");
                     await new Promise(resolve => setTimeout(resolve, delay));
                     delay = Math.min(delay * 1.5, maxDelay);
                 }
             } else {
-                logger.error(`Firebase emulator connection failed with non-connection error: ${error.message}`);
+                logger.error(error, "Firebase emulator connection failed with non-connection error");
                 throw error;
             }
         }
@@ -218,7 +220,7 @@ async function clearFirestoreEmulatorData() {
             return false;
         }
     } catch (error: any) {
-        logger.error(`An error occurred while clearing Firestore emulator data: ${error.message}`);
+        logger.error(error, "An error occurred while clearing Firestore emulator data");
         // Continue process even if an error occurs
         return false;
     }
@@ -254,7 +256,7 @@ export async function initializeFirebase() {
                 logger.info("Previous Firebase Admin SDK instance deleted");
             }
         } catch (deleteError: any) {
-            logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);
+            logger.warn(deleteError, "Previous Firebase Admin SDK instance deletion failed");
         }
         const emulatorVariables = {
             FIREBASE_EMULATOR_HOST: process.env.FIREBASE_EMULATOR_HOST,
@@ -277,13 +279,13 @@ export async function initializeFirebase() {
         } else {
             admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
         }
-        logger.info(`Firebase Admin SDK initialized successfully. Project ID: ${serviceAccount.project_id}`);
+        logger.info({ projectId: serviceAccount.project_id }, "Firebase Admin SDK initialized successfully");
         if (isDevelopment) {
             try {
                 await waitForFirebaseEmulator();
                 logger.info("Firebase emulator connection established successfully");
             } catch (error: any) {
-                logger.error(`Firebase emulator connection failed after retries: ${error.message}`);
+                logger.error(error, "Firebase emulator connection failed after retries");
             }
         }
         if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
@@ -292,7 +294,7 @@ export async function initializeFirebase() {
         if (isDevelopment && devAuthHelper) {
             try {
                 const user = await devAuthHelper.setupTestUser();
-                logger.info(`Setup development test user: ${user.email} (${user.uid})`);
+                logger.info({ email: user.email, uid: user.uid }, "Setup development test user");
                 const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
                 if (isEmulator) {
                     try {
@@ -302,17 +304,17 @@ export async function initializeFirebase() {
                             logger.info("Cleared development Firestore emulator data");
                         }
                     } catch (error: any) {
-                        logger.error(`Failed to clear Firestore emulator data: ${error.message}`);
+                        logger.error(error, "Failed to clear Firestore emulator data");
                         // Continue process even if an error occurs
                         logger.info("Firestore data clearing failed, but continuing process");
                     }
                 }
             } catch (error: any) {
-                logger.warn(`Failed to setup test user: ${error.message}`);
+                logger.warn(error, "Failed to setup test user");
             }
         }
     } catch (error: any) {
-        logger.error(`Firebase initialization error: ${error.message}`);
+        logger.error(error, "Firebase initialization error");
         throw error;
     }
 }

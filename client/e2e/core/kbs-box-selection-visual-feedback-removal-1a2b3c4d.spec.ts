@@ -57,7 +57,6 @@ test.describe("Box selection feedback", () => {
         // Enable debug mode to help troubleshoot
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
-            console.log("DEBUG_MODE enabled:", (window as any).DEBUG_MODE);
         });
 
         await page.waitForTimeout(100); // Wait for DEBUG_MODE to be set

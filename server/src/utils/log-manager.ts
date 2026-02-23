@@ -37,15 +37,14 @@ function ensureLogDirectories() {
         // Server log directory
         if (!fs.existsSync(serverLogDir)) {
             fs.mkdirSync(serverLogDir, { recursive: true });
-            console.log(`Created server log directory: ${serverLogDir}`);
         }
 
         // Client log directory
         if (!fs.existsSync(clientLogDir)) {
             fs.mkdirSync(clientLogDir, { recursive: true });
-            console.log(`Created client log directory: ${clientLogDir}`);
         }
     } catch (error: any) {
+        // Use console during bootstrap before logger is initialized
         console.warn(`Failed to create log directories: ${error.message}`);
         console.warn(`Server log directory: ${serverLogDir}`);
         console.warn(`Client log directory: ${clientLogDir}`);
@@ -149,7 +148,7 @@ export async function rotateLogFile(logFilePath: string, maxBackups = 2): Promis
     try {
         // Check if log file exists, create if not
         if (!await fsExtra.pathExists(logFilePath)) {
-            console.log(`Log file does not exist. Creating: ${logFilePath}`);
+            serverLogger.info({ path: logFilePath }, "Log file does not exist. Creating.");
             await fsExtra.ensureFile(logFilePath);
         }
 
@@ -174,7 +173,7 @@ export async function rotateLogFile(logFilePath: string, maxBackups = 2): Promis
         // Delete backup files exceeding max retention count
         for (let i = maxBackups; i < backupFiles.length; i++) {
             await fsExtra.remove(backupFiles[i].path);
-            console.log(`Deleted old log file: ${backupFiles[i].path}`);
+            serverLogger.info({ path: backupFiles[i].path }, "Deleted old log file");
         }
 
         // Increment suffix number of existing backup files
@@ -184,22 +183,22 @@ export async function rotateLogFile(logFilePath: string, maxBackups = 2): Promis
             if (newSuffix <= maxBackups) {
                 const newPath = path.join(directory, `${basename}.${newSuffix}`);
                 await fsExtra.move(file.path, newPath, { overwrite: true });
-                console.log(`Rotated log file: ${file.path} -> ${newPath}`);
+                serverLogger.info({ from: file.path, to: newPath }, "Rotated log file");
             }
         }
 
         // Rename current log file with .1 suffix
         const backupPath = path.join(directory, `${basename}.1`);
         await fsExtra.move(logFilePath, backupPath, { overwrite: true });
-        console.log(`Backed up current log file: ${logFilePath} -> ${backupPath}`);
+        serverLogger.info({ from: logFilePath, to: backupPath }, "Backed up current log file");
 
         // Create new empty log file
         await fsExtra.ensureFile(logFilePath);
-        console.log(`Created new log file: ${logFilePath}`);
+        serverLogger.info({ path: logFilePath }, "Created new log file");
 
         return true;
-    } catch (error) {
-        console.error("Error occurred during log rotation:", error);
+    } catch (error: any) {
+        serverLogger.error(error, "Error occurred during log rotation");
         return false;
     }
 }
@@ -283,10 +282,10 @@ export function refreshClientLogStream(): fs.WriteStream {
         // Replace properties of existing logger object with those of new logger
         Object.assign(clientLogger, newLogger);
 
-        console.log("Updated client log stream");
+        serverLogger.info("Updated client log stream");
         return newClientLogStream;
-    } catch (error) {
-        console.error("Client log stream update error:", error);
+    } catch (error: any) {
+        serverLogger.error(error, "Client log stream update error");
         // Even if error occurs, create and return new stream
         return fs.createWriteStream(clientLogPath, { flags: "a" });
     }
@@ -326,10 +325,10 @@ export function refreshTelemetryLogStream(): fs.WriteStream {
         // Replace properties of existing logger object with those of new logger
         Object.assign(telemetryLogger, newLogger);
 
-        console.log("Updated telemetry log stream");
+        serverLogger.info("Updated telemetry log stream");
         return newTelemetryLogStream;
-    } catch (error) {
-        console.error("Telemetry log stream update error:", error);
+    } catch (error: any) {
+        serverLogger.error(error, "Telemetry log stream update error");
         // Even if error occurs, create and return new stream
         return fs.createWriteStream(telemetryLogPath, { flags: "a" });
     }
@@ -378,9 +377,10 @@ export function refreshServerLogStream(): fs.WriteStream {
         // Replace properties of existing logger object with those of new logger
         Object.assign(serverLogger, newLogger);
 
-        console.log("Updated server log stream");
+        serverLogger.info("Updated server log stream");
         return newServerLogStream;
-    } catch (error) {
+    } catch (error: any) {
+        // Use console as fallback if serverLogger might be broken
         console.error("Server log stream update error:", error);
         // Even if error occurs, create and return new stream
         return fs.createWriteStream(serverLogPath, { flags: "a" });
