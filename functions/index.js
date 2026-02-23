@@ -218,7 +218,10 @@ const userContainersCollection = db.collection("userContainers");
 
 // Determine if the decoded Firebase token represents an admin user
 function isAdmin(decodedToken) {
-  return decodedToken && decodedToken.role === "admin";
+  return (
+    decodedToken &&
+    (decodedToken.role === "admin" || decodedToken.admin === true)
+  );
 }
 
 // Check if user has access to a specific project
@@ -301,37 +304,34 @@ function getAzureConfig() {
 
 // Confirmation of Azure settings initialization
 try {
-  // Confirm environment variables directly
-  logger.info("Checking environment variables:");
-  logger.info(`AZURE_TENANT_ID: ${process.env.AZURE_TENANT_ID || "not set"}`);
-  logger.info(`AZURE_ENDPOINT: ${process.env.AZURE_ENDPOINT || "not set"}`);
-  logger.info(
-    `AZURE_PRIMARY_KEY: ${process.env.AZURE_PRIMARY_KEY ? "set" : "not set"}`,
+  const isEmulatorEnv = !!(
+    process.env.FUNCTIONS_EMULATOR === "true" ||
+    process.env.NODE_ENV === "test" ||
+    process.env.NODE_ENV === "development"
   );
-  logger.info(
-    `AZURE_SECONDARY_KEY: ${
-      process.env.AZURE_SECONDARY_KEY ? "set" : "not set"
-    }`,
-  );
-  logger.info(`AZURE_ACTIVE_KEY: ${process.env.AZURE_ACTIVE_KEY || "not set"}`);
 
   const config = getAzureConfig();
   if (!config.tenantId || !config.primaryKey) {
     logger.warn(
       "Azure settings are incomplete. Please check environment variables.",
     );
-    logger.warn(
-      `Current settings: tenantId=${
-        config.tenantId ? "set" : "not set"
-      }, primaryKey=${config.primaryKey ? "set" : "not set"}, endpoint=${
-        config.endpoint ? "set" : "not set"
-      }`,
-    );
+    if (isEmulatorEnv) {
+      logger.warn(
+        `Current settings: tenantId=${
+          config.tenantId ? "set" : "not set"
+        }, primaryKey=${config.primaryKey ? "set" : "not set"}, endpoint=${
+          config.endpoint ? "set" : "not set"
+        }`,
+      );
+    }
   } else {
     logger.info("Azure settings loaded successfully.");
-    logger.info(
-      `tenantId: ${config.tenantId}, endpoint: ${config.endpoint}, activeKey: ${config.activeKey}`,
-    );
+    if (isEmulatorEnv) {
+      // Detailed logs only in emulator/test environment
+      logger.info(
+        `tenantId: ${config.tenantId}, endpoint: ${config.endpoint}, activeKey: ${config.activeKey}`,
+      );
+    }
   }
 } catch (error) {
   logger.error("Failed to get Azure settings:", error.message);
@@ -355,7 +355,12 @@ exports.saveProject = onRequest(
     }
 
     try {
-      const { idToken, projectId, title } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
+
+      const { projectId, title } = req.body;
 
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
@@ -470,7 +475,10 @@ exports.getUserProjects = onRequest(
     }
 
     try {
-      const { idToken } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
 
       // Verify Firebase token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
@@ -515,7 +523,12 @@ exports.saveContainer = onRequest(
     }
 
     try {
-      const { idToken, containerId } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
+
+      const { containerId } = req.body;
 
       if (!containerId) {
         return res.status(400).json({ error: "Container ID is required" });
@@ -632,7 +645,10 @@ exports.getUserContainers = onRequest(
     }
 
     try {
-      const { idToken } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
 
       // Verify Firebase token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
@@ -746,7 +762,10 @@ exports.deleteUser = onRequest(
     }
 
     try {
-      const { idToken } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
 
       if (!idToken) {
         return res.status(400).json({ error: "ID token is required" });
@@ -850,7 +869,12 @@ exports.deleteProject = onRequest(
     }
 
     try {
-      const { idToken, projectId } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
+
+      const { projectId } = req.body;
 
       if (!idToken) {
         return res.status(400).json({ error: "ID token is required" });
@@ -984,7 +1008,12 @@ exports.generateProjectShareLink = onRequest(
     }
 
     try {
-      const { idToken, projectId } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
+
+      const { projectId } = req.body;
       if (!idToken || !projectId) {
         return res.status(400).json({ error: "Invalid request" });
       }
@@ -1032,7 +1061,12 @@ exports.acceptProjectShareLink = onRequest(
     }
 
     try {
-      const { idToken, token } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
+
+      const { token } = req.body;
       if (!idToken || !token) {
         return res.status(400).json({ error: "Invalid request" });
       }
@@ -1125,7 +1159,12 @@ exports.getProjectUsers = onRequest(
     }
 
     try {
-      const { idToken, projectId } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
+
+      const { projectId } = req.body;
 
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
@@ -1238,7 +1277,10 @@ exports.listUsers = onRequest(
     }
 
     try {
-      const { idToken } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
 
       if (!idToken) {
         return res.status(400).json({ error: "ID token required" });
@@ -1359,7 +1401,11 @@ exports.createSchedule = onRequest(
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
-    const { idToken, pageId, schedule } = req.body || {};
+    let idToken = req.headers.authorization?.replace("Bearer ", "");
+    if (!idToken) {
+      idToken = req.body?.idToken;
+    }
+    const { pageId, schedule } = req.body || {};
     if (!idToken || !pageId || !schedule) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -1372,17 +1418,6 @@ exports.createSchedule = onRequest(
     }
 
     try {
-      // Check emulator environment
-      logger.info(
-        `createSchedule: Environment check - FIREBASE_AUTH_EMULATOR_HOST: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`,
-      );
-      logger.info(
-        `createSchedule: Environment check - FUNCTIONS_EMULATOR: ${process.env.FUNCTIONS_EMULATOR}`,
-      );
-      logger.info(
-        `createSchedule: Environment check - NODE_ENV: ${process.env.NODE_ENV}`,
-      );
-
       let uid;
 
       // Verify token with Firebase Admin SDK
@@ -1391,6 +1426,16 @@ exports.createSchedule = onRequest(
         process.env.FUNCTIONS_EMULATOR === "true");
 
       if (isEmulatorEnv) {
+        // Check emulator environment
+        logger.info(
+          `createSchedule: Environment check - FIREBASE_AUTH_EMULATOR_HOST: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`,
+        );
+        logger.info(
+          `createSchedule: Environment check - FUNCTIONS_EMULATOR: ${process.env.FUNCTIONS_EMULATOR}`,
+        );
+        logger.info(
+          `createSchedule: Environment check - NODE_ENV: ${process.env.NODE_ENV}`,
+        );
         logger.info(
           "createSchedule: Using emulator environment token verification",
         );
@@ -1512,7 +1557,11 @@ exports.updateSchedule = onRequest(
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
-    const { idToken, pageId, scheduleId, schedule } = req.body || {};
+    let idToken = req.headers.authorization?.replace("Bearer ", "");
+    if (!idToken) {
+      idToken = req.body?.idToken;
+    }
+    const { pageId, scheduleId, schedule } = req.body || {};
     if (!idToken || !pageId || !scheduleId || !schedule) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -1621,7 +1670,11 @@ exports.listSchedules = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    const { idToken, pageId } = req.body || {};
+    let idToken = req.headers.authorization?.replace("Bearer ", "");
+    if (!idToken) {
+      idToken = req.body?.idToken;
+    }
+    const { pageId } = req.body || {};
     if (!idToken || !pageId) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -1707,7 +1760,11 @@ exports.exportSchedulesIcal = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    const { idToken, pageId } = req.body || {};
+    let idToken = req.headers.authorization?.replace("Bearer ", "");
+    if (!idToken) {
+      idToken = req.body?.idToken;
+    }
+    const { pageId } = req.body || {};
     if (!idToken || !pageId) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -1813,7 +1870,11 @@ exports.cancelSchedule = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    const { idToken, pageId, scheduleId } = req.body || {};
+    let idToken = req.headers.authorization?.replace("Bearer ", "");
+    if (!idToken) {
+      idToken = req.body?.idToken;
+    }
+    const { pageId, scheduleId } = req.body || {};
     if (!idToken || !pageId || !scheduleId) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -1955,7 +2016,11 @@ exports.uploadAttachment = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    const { idToken, containerId, itemId, fileName, fileData } = req.body || {};
+    let idToken = req.headers.authorization?.replace("Bearer ", "");
+    if (!idToken) {
+      idToken = req.body?.idToken;
+    }
+    const { containerId, itemId, fileName, fileData } = req.body || {};
     logger.info(
       `uploadAttachment request: containerId=${containerId}, itemId=${itemId}, fileName=${fileName}, fileDataLength=${fileData?.length}`,
     );
@@ -2120,7 +2185,11 @@ exports.listAttachments = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    const { idToken, containerId, itemId } = req.body || {};
+    let idToken = req.headers.authorization?.replace("Bearer ", "");
+    if (!idToken) {
+      idToken = req.body?.idToken;
+    }
+    const { containerId, itemId } = req.body || {};
     if (!idToken || !containerId || !itemId) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -2206,7 +2275,11 @@ exports.deleteAttachment = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    const { idToken, containerId, itemId, fileName } = req.body || {};
+    let idToken = req.headers.authorization?.replace("Bearer ", "");
+    if (!idToken) {
+      idToken = req.body?.idToken;
+    }
+    const { containerId, itemId, fileName } = req.body || {};
     if (!idToken || !containerId || !itemId || !fileName) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -2259,11 +2332,9 @@ exports.deleteAttachment = onRequest(
 exports.adminCheckForProjectUserListing = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
-    logger.info("adminCheckForProjectUserListing called");
     setCorsHeaders(req, res);
 
     if (req.method === "OPTIONS") {
-      logger.info("OPTIONS request received");
       return res.status(204).send();
     }
 
@@ -2273,14 +2344,12 @@ exports.adminCheckForProjectUserListing = onRequest(
       if (!idToken) {
         idToken = req.body.idToken;
       }
-      logger.info("ID token received:", idToken ? "present" : "missing");
+
       if (!idToken) {
-        logger.info("Returning 400: ID token required");
         return res.status(400).json({ error: "ID token required" });
       }
 
       if (idToken.trim() === "") {
-        logger.info("Returning 400: ID token empty");
         return res.status(400).json({ error: "ID token required" });
       }
 
@@ -2292,13 +2361,9 @@ exports.adminCheckForProjectUserListing = onRequest(
 
       // Verify ID token with Firebase Admin SDK
       const decodedToken = await admin.auth().verifyIdToken(idToken);
-      const uid = decodedToken.uid;
 
       // Check admin privileges
-      const userRecord = await admin.auth().getUser(uid);
-      const customClaims = userRecord.customClaims || {};
-
-      if (!customClaims.admin && customClaims.role !== "admin") {
+      if (!isAdmin(decodedToken)) {
         return res.status(403).json({ error: "Admin access required" });
       }
 
@@ -2348,21 +2413,20 @@ exports.adminUserList = onRequest(
     }
 
     try {
-      // Verify ID token
-      const idToken = req.headers.authorization?.replace("Bearer ", "");
+      // Verify ID token (get from Authorization header or request body)
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
       if (!idToken) {
         return res.status(400).json({ error: "ID token required" });
       }
 
       // Verify ID token with Firebase Admin SDK
       const decodedToken = await admin.auth().verifyIdToken(idToken);
-      const uid = decodedToken.uid;
 
       // Check admin privileges
-      const userRecord = await admin.auth().getUser(uid);
-      const customClaims = userRecord.customClaims || {};
-
-      if (!customClaims.admin && customClaims.role !== "admin") {
+      if (!isAdmin(decodedToken)) {
         return res.status(403).json({ error: "Admin access required" });
       }
 
@@ -2409,7 +2473,10 @@ exports.debugUserProjects = onRequest(
     }
 
     try {
-      const { idToken } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
 
       if (!idToken) {
         return res.status(400).json({ error: "ID token is required" });
@@ -2419,18 +2486,33 @@ exports.debugUserProjects = onRequest(
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
+      // Hardened: Only allow admin users to access debug endpoint
+      if (!isAdmin(decodedToken)) {
+        logger.warn(`Non-admin access attempt to debugUserProjects: ${userId}`);
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      // Hardened: Disable debug endpoint in production environment
+      const isProduction = !process.env.FUNCTIONS_EMULATOR &&
+        process.env.NODE_ENV === "production";
+      if (isProduction) {
+        logger.warn(`Debug endpoint accessed in production: ${userId}`);
+        return res.status(403).json({
+          error: "Debug endpoint is disabled in production",
+        });
+      }
+
       logger.info(`Debug: Checking projects for user: ${userId}`);
 
-      // Check userProjects collection
-      const userProjectDoc = await db.collection("userProjects").doc(userId)
-        .get();
+      // Parallelize Firestore operations
+      const [userProjectDoc, projectUsersQuery] = await Promise.all([
+        db.collection("userProjects").doc(userId).get(),
+        db.collection("projectUsers")
+          .where("accessibleUserIds", "array-contains", userId)
+          .get(),
+      ]);
       const userProjectData = userProjectDoc.exists ?
         userProjectDoc.data() : null;
-
-      // Search matching documents in projectUsers collection
-      const projectUsersQuery = await db.collection("projectUsers")
-        .where("accessibleUserIds", "array-contains", userId)
-        .get();
 
       const projectUsersData = [];
       projectUsersQuery.forEach(doc => {
@@ -2449,10 +2531,6 @@ exports.debugUserProjects = onRequest(
           data: userProjectData,
         },
         projectUsers: projectUsersData,
-        environment: {
-          NODE_ENV: process.env.NODE_ENV,
-          FUNCTIONS_EMULATOR: process.env.FUNCTIONS_EMULATOR,
-        },
       });
     } catch (error) {
       Sentry.captureException(error);
@@ -2480,7 +2558,12 @@ exports.deleteAllProductionData = onRequest(
     }
 
     try {
-      const { adminToken, confirmationCode, idToken } = req.body;
+      let idToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!idToken) {
+        idToken = req.body.idToken;
+      }
+
+      const { adminToken, confirmationCode } = req.body;
 
       // Authenticate Admin User (Defense in Depth)
       if (!idToken) {
