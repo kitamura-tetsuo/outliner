@@ -85,7 +85,7 @@ test.describe("Chromium Debug Test", () => {
                 return (window as any).generalStore || (window as any).appStore;
             }, { timeout: 10000 });
 
-            // タイトルを確認 (expect any non-empty title rather than just truthy)
+            // Verify the title (expect any non-empty title rather than just truthy)
             const title = await page.title();
             console.log("Debug: Page title:", title);
 
