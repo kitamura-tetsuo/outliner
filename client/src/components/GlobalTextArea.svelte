@@ -143,6 +143,17 @@ onMount(() => {
             // Leave to existing forwarders while alias picker/command palette is visible
             if (aliasPickerStore.isVisible || window.commandPaletteStore?.isVisible) return;
 
+            // Ignore if focus is on another interactive element (Search Box, etc.)
+            const ae = document.activeElement;
+            if (ae && ae !== textareaRef && (
+                ae.tagName === "INPUT" ||
+                ae.tagName === "TEXTAREA" ||
+                ae.tagName === "SELECT" ||
+                (ae as HTMLElement).isContentEditable
+            )) {
+                return;
+            }
+
             const activeId = store.getActiveItem();
             const ta = textareaRef;
             // If textarea is already focused, leave it to the normal process
@@ -263,6 +274,18 @@ onMount(() => {
             const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
                 (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
             if (ev.isComposing || (!isBoxSelectionKey && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
+
+            // Ignore if focus is on another interactive element (Search Box, etc.)
+            const ae = document.activeElement;
+            if (ae && ae !== textareaRef && (
+                ae.tagName === "INPUT" ||
+                ae.tagName === "TEXTAREA" ||
+                ae.tagName === "SELECT" ||
+                (ae as HTMLElement).isContentEditable
+            )) {
+                return;
+            }
+
             // Always delegate to KeyEventHandler (processed internally only when necessary)
             KeyEventHandler.handleKeyDown(ev);
         };
