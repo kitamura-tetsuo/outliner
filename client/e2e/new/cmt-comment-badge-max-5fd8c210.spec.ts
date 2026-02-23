@@ -59,7 +59,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
         });
 
         // Wait for the specific "COMMENT TARGET" text to appear
-        await page.waitForSelector(".outliner-item .item-text", { hasText: "COMMENT TARGET" }, { timeout: 30000 })
+        await page.locator(".outliner-item .item-text", { hasText: "COMMENT TARGET" }).waitFor({ state: "visible", timeout: 30000 })
             .catch(() => {
                 console.log("Warning: 'COMMENT TARGET' text not found within timeout, continuing anyway");
             });

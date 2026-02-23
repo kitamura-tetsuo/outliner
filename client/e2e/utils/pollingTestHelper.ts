@@ -27,38 +27,52 @@ export interface PollingTestResult {
  */
 export async function initPollingMonitor(page: Page) {
     await page.addInitScript(() => {
-        // Inline pollingMonitor.ts content
+        // Robust PollingMonitor implementation (mirrors client/src/lib/pollingMonitor.ts)
         class PollingMonitor {
             private calls: Map<number, any> = new Map();
             private nextId = 1;
             private enabled = false;
-            private originalSetInterval: any;
-            private originalSetTimeout: any;
+
+            private originalSetInterval: typeof setInterval;
+            private originalSetTimeout: typeof setTimeout;
+            private originalClearInterval: typeof clearInterval;
+            private originalClearTimeout: typeof clearTimeout;
+            private originalRequestAnimationFrame: typeof requestAnimationFrame;
+            private originalCancelAnimationFrame: typeof cancelAnimationFrame;
+
             private disablePatterns: RegExp[] = [];
 
             constructor() {
                 this.originalSetInterval = window.setInterval.bind(window);
                 this.originalSetTimeout = window.setTimeout.bind(window);
+                this.originalClearInterval = window.clearInterval.bind(window);
+                this.originalClearTimeout = window.clearTimeout.bind(window);
+                this.originalRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+                this.originalCancelAnimationFrame = window.cancelAnimationFrame.bind(window);
             }
 
             start() {
                 if (this.enabled) return;
                 this.enabled = true;
 
-                window.setInterval = (callback: any, delay?: number, ...args: any[]): any => {
+                window.setInterval = ((callback: any, delay?: number, ...args: any[]): number => {
                     const stack = new Error().stack || "";
-                    const id = this.nextId++;
                     const disabled = this.disablePatterns.some(p => p.test(stack));
+                    const id = disabled ? -(this.nextId++) : this.nextId++;
 
-                    this.calls.set(id, {
+                    const call = {
                         id,
                         type: "setInterval",
                         delay,
                         stack,
                         createdAt: Date.now(),
                         executionCount: 0,
+                        lastExecutedAt: undefined as number | undefined,
                         disabled,
-                    });
+                        timerId: undefined as number | undefined
+                    };
+
+                    this.calls.set(id, call);
 
                     if (disabled) {
                         console.log(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);
@@ -66,31 +80,51 @@ export async function initPollingMonitor(page: Page) {
                     }
 
                     const wrappedCallback = (...callbackArgs: any[]) => {
-                        const call = this.calls.get(id);
-                        if (call) {
-                            call.executionCount++;
-                            call.lastExecutedAt = Date.now();
+                        call.executionCount++;
+                        call.lastExecutedAt = Date.now();
+                        if (typeof callback === "function") {
+                            return callback(...callbackArgs);
+                        } else {
+
+                            return eval(callback);
                         }
-                        return callback(...callbackArgs);
                     };
 
-                    return this.originalSetInterval(wrappedCallback, delay, ...args);
+                    const timerId = this.originalSetInterval(wrappedCallback, delay, ...args);
+                    call.timerId = timerId;
+                    return timerId;
+                }) as any;
+
+                window.clearInterval = (id: any) => {
+                    if (id !== undefined) {
+                        for (const [internalId, call] of this.calls.entries()) {
+                            if (call.timerId === id || (call.disabled && call.id === id)) {
+                                this.calls.delete(internalId);
+                                break;
+                            }
+                        }
+                    }
+                    return this.originalClearInterval(id);
                 };
 
-                window.setTimeout = ((callback: any, delay?: number, ...args: any[]): any => {
+                window.setTimeout = ((callback: any, delay?: number, ...args: any[]): number => {
                     const stack = new Error().stack || "";
-                    const id = this.nextId++;
                     const disabled = this.disablePatterns.some(p => p.test(stack));
+                    const id = disabled ? -(this.nextId++) : this.nextId++;
 
-                    this.calls.set(id, {
+                    const call = {
                         id,
                         type: "setTimeout",
                         delay,
                         stack,
                         createdAt: Date.now(),
                         executionCount: 0,
+                        lastExecutedAt: undefined as number | undefined,
                         disabled,
-                    });
+                        timerId: undefined as number | undefined
+                    };
+
+                    this.calls.set(id, call);
 
                     if (disabled) {
                         console.log(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);
@@ -98,17 +132,78 @@ export async function initPollingMonitor(page: Page) {
                     }
 
                     const wrappedCallback = (...callbackArgs: any[]) => {
-                        const call = this.calls.get(id);
-                        if (call) {
-                            call.executionCount++;
-                            call.lastExecutedAt = Date.now();
-                        }
+                        call.executionCount++;
+                        call.lastExecutedAt = Date.now();
                         this.calls.delete(id);
-                        return callback(...callbackArgs);
+                        if (typeof callback === "function") {
+                            return callback(...callbackArgs);
+                        } else {
+
+                            return eval(callback);
+                        }
                     };
 
-                    return this.originalSetTimeout(wrappedCallback, delay, ...args);
-                }) as unknown as typeof window.setTimeout;
+                    const timerId = this.originalSetTimeout(wrappedCallback, delay, ...args);
+                    call.timerId = timerId;
+                    return timerId;
+                }) as any;
+
+                window.clearTimeout = (id: any) => {
+                    if (id !== undefined) {
+                        for (const [internalId, call] of this.calls.entries()) {
+                            if (call.timerId === id || (call.disabled && call.id === id)) {
+                                this.calls.delete(internalId);
+                                break;
+                            }
+                        }
+                    }
+                    return this.originalClearTimeout(id);
+                };
+
+                window.requestAnimationFrame = (callback: any): number => {
+                    const stack = new Error().stack || "";
+                    const disabled = this.disablePatterns.some(p => p.test(stack));
+                    const id = disabled ? -(this.nextId++) : this.nextId++;
+
+                    const call = {
+                        id,
+                        type: "requestAnimationFrame",
+                        stack,
+                        createdAt: Date.now(),
+                        executionCount: 0,
+                        lastExecutedAt: undefined as number | undefined,
+                        disabled,
+                        frameId: undefined as number | undefined
+                    };
+
+                    this.calls.set(id, call);
+
+                    if (disabled) {
+                        console.log(`[PollingMonitor] Disabled requestAnimationFrame (id=${id})`);
+                        return id;
+                    }
+
+                    const wrappedCallback = (time: number) => {
+                        call.executionCount++;
+                        call.lastExecutedAt = Date.now();
+                        this.calls.delete(id);
+                        return callback(time);
+                    };
+
+                    const frameId = this.originalRequestAnimationFrame(wrappedCallback);
+                    call.frameId = frameId;
+                    return frameId;
+                };
+
+                window.cancelAnimationFrame = (id: number) => {
+                    for (const [internalId, call] of this.calls.entries()) {
+                        if (call.frameId === id || (call.disabled && call.id === id)) {
+                            this.calls.delete(internalId);
+                            break;
+                        }
+                    }
+                    return this.originalCancelAnimationFrame(id);
+                };
             }
 
             addDisablePattern(pattern: RegExp) {
