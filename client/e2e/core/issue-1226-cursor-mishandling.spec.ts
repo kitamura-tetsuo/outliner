@@ -1,8 +1,6 @@
-import { expect, test } from "../fixtures/console-forward.ts";
+import { expect, test } from "../fixtures/console-forward";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-import { TestHelpers } from "../utils/testHelpers.ts";
-registerCoverageHooks();
-
+import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
 test.describe("Cursor positioning on scroll", () => {

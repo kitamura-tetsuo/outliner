@@ -55,12 +55,8 @@ export function createSeedRouter(
             const token = authHeader.split(" ")[1];
             const decoded = await verifyIdTokenCached(token);
             uid = decoded.uid;
-        } catch (e) {
-            logger.warn({
-                event: "seed_unauthorized",
-                reason: "invalid_token",
-                error: e instanceof Error ? e.message : String(e),
-            });
+        } catch (e: any) {
+            logger.warn(e, "Seed unauthorized: invalid token");
             res.status(401).json({ error: "Unauthorized" });
             return;
         }
@@ -118,11 +114,8 @@ export function createSeedRouter(
                         return;
                     }
                 }
-            } catch (authError) {
-                logger.error({
-                    event: "seed_auth_check_error",
-                    error: authError instanceof Error ? authError.message : String(authError),
-                });
+            } catch (authError: any) {
+                logger.error(authError, "Seed auth check error");
                 res.status(500).json({ error: "Internal Server Error during authorization check" });
                 return;
             }
@@ -194,10 +187,9 @@ export function createSeedRouter(
                 await directConnection.disconnect();
                 throw transactError;
             }
-        } catch (error) {
+        } catch (error: any) {
+            logger.error(error, "Seeding failed");
             const errorMessage = error instanceof Error ? error.message : String(error);
-            const errorStack = error instanceof Error ? error.stack : undefined;
-            logger.error({ event: "seed_error", error: errorMessage, stack: errorStack });
             res.status(500).json({ error: "Seeding failed", message: errorMessage });
         }
     });
