@@ -13,7 +13,7 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("カーソルが点滅する", async ({ page }) => {
+    test("Cursor blinks", async ({ page }) => {
         await page.screenshot({ path: "client/test-results/CLM-0001-blink-start.png" });
         const item = page.locator(".outliner-item.page-title[data-item-id]");
         if (await item.count() === 0) {
