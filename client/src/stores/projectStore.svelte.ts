@@ -41,6 +41,9 @@ export function projectsFromUserProject(
                 if (!name || name.trim() === "") {
                     name = getProjectTitle(id);
                 }
+                if ((!name || name.trim() === "") && data?.projectTitles?.[id]) {
+                    name = data.projectTitles[id];
+                }
                 if (!name || name.trim() === "") {
                     name = id;
                 }

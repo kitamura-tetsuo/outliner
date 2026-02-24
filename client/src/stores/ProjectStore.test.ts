@@ -20,7 +20,7 @@ vi.mock("../lib/projectTitleProvider", () => ({
             "p1": "Test Project 1",
             "p2": "Test Project 2",
         };
-        return titles[id] || "Default Project";
+        return titles[id] || "";
     }),
 }));
 
@@ -28,8 +28,11 @@ describe("ProjectStore", () => {
     beforeEach(() => {
         firestoreStore.userProject = {
             userId: "test",
-            accessibleProjectIds: ["p1", "p2"],
+            accessibleProjectIds: ["p1", "p2", "p3"],
             defaultProjectId: "p1",
+            projectTitles: {
+                "p3": "Firestore Title",
+            },
             createdAt: new Date(),
             updatedAt: new Date(),
         } as UserProject;
@@ -39,12 +42,16 @@ describe("ProjectStore", () => {
 
     it("maps firestore projects to info objects", () => {
         const list = projectStore.projects;
-        expect(list.length).toBe(2);
+        expect(list.length).toBe(3);
         expect(list[0].id).toBe("p1");
         expect(list[0].name).toBe("Test Project 1");
         expect(list[0].isDefault).toBe(true);
         expect(list[1].id).toBe("p2");
         expect(list[1].name).toBe("Test Project 2");
         expect(list[1].isDefault).toBe(false);
+        // Expect fallback to Firestore title
+        expect(list[2].id).toBe("p3");
+        expect(list[2].name).toBe("Firestore Title");
+        expect(list[2].isDefault).toBe(false);
     });
 });
