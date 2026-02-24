@@ -495,6 +495,16 @@ export class Cursor implements CursorEditingContext {
         this.editor.insertLineBreak();
     }
 
+    indent() {
+        this.resetInitialColumn();
+        this.editor.indent();
+    }
+
+    outdent() {
+        this.resetInitialColumn();
+        this.editor.outdent();
+    }
+
     onInput(event: InputEvent) {
         this.editor.onInput(event);
     }
