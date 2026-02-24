@@ -12,14 +12,14 @@ test.describe("Authentication Test", () => {
             waitUntil: "domcontentloaded",
         });
 
-        // UserManagerが初期化されるまで待機
+        // Wait until UserManager is initialized
         await page.waitForFunction(
             () => (window as { __USER_MANAGER__?: any; }).__USER_MANAGER__ !== undefined,
             { timeout: 30000 },
         );
         console.log("Debug: UserManager found");
 
-        // 認証前の状態を確認
+        // Check the state before authentication
         const beforeAuth = await page.evaluate(() => {
             const win = window as { __USER_MANAGER__?: { currentUser?: any; }; __SVELTE_GOTO__?: any; };
             return {
@@ -30,7 +30,7 @@ test.describe("Authentication Test", () => {
         });
         console.log("Debug: Before authentication:", beforeAuth);
 
-        // 認証を実行
+        // Perform authentication
         const authResult = await page.evaluate<{
             success?: boolean;
             user?: any;
@@ -50,7 +50,7 @@ test.describe("Authentication Test", () => {
             try {
                 console.log("Starting authentication...");
 
-                // 認証状態の変更を監視
+                // Monitor changes in authentication state
                 let authCompleted = false;
                 const authPromise = new Promise(resolve => {
                     const cleanup = userManager.addEventListener((authResult: { user?: any; }) => {
@@ -62,7 +62,7 @@ test.describe("Authentication Test", () => {
                         }
                     });
 
-                    // 10秒後にタイムアウト
+                    // Timeout after 10 seconds
                     setTimeout(() => {
                         if (!authCompleted) {
                             cleanup();
@@ -71,7 +71,7 @@ test.describe("Authentication Test", () => {
                     }, 10000);
                 });
 
-                // ログイン実行
+                // Execute login
                 await userManager.loginWithEmailPassword("test@example.com", "password");
                 console.log("Login method called, waiting for auth state change...");
 
@@ -84,8 +84,8 @@ test.describe("Authentication Test", () => {
 
         console.log("Debug: Authentication result:", authResult);
 
-        // 認証後の状態を確認
-        await page.waitForTimeout(500); // 認証完了待機（カーソル不使用）
+        // Check the state after authentication
+        await page.waitForTimeout(500); // Wait for authentication completion (no cursor usage)
 
         const afterAuth = await page.evaluate(() => {
             const win = window as { __USER_MANAGER__?: { currentUser?: any; }; __SVELTE_GOTO__?: any; };
@@ -98,7 +98,7 @@ test.describe("Authentication Test", () => {
         });
         console.log("Debug: After authentication:", afterAuth);
 
-        // 認証が成功した場合の追加チェック
+        // Additional checks if authentication is successful
         // Note: In test environments, __SVELTE_GOTO__ is intentionally not set (see debug.ts)
         // So we skip waiting for it to avoid test timeout
         if (authResult?.success) {
