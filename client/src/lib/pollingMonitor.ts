@@ -94,7 +94,6 @@ export class PollingMonitor {
                     if (typeof callback === "function") {
                         return callback(...callbackArgs);
                     } else {
-
                         return eval(callback);
                     }
                 };
@@ -152,7 +151,6 @@ export class PollingMonitor {
                     if (typeof callback === "function") {
                         return callback(...callbackArgs);
                     } else {
-
                         return eval(callback);
                     }
                 };

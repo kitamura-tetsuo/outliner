@@ -4,6 +4,7 @@ import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
+import { yjsService } from "../yjs/service";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
 import {
     getSelectionForUser,
@@ -362,6 +363,24 @@ export class CursorEditor {
 
     formatCode() {
         this.applyScrapboxFormatting("code");
+    }
+
+    indent() {
+        const project = generalStore.project;
+        if (project) {
+            yjsService.indentItem(project, this.cursor.itemId);
+            this.cursor.applyToStore();
+            store.triggerOnEdit();
+        }
+    }
+
+    outdent() {
+        const project = generalStore.project;
+        if (project) {
+            yjsService.outdentItem(project, this.cursor.itemId);
+            this.cursor.applyToStore();
+            store.triggerOnEdit();
+        }
     }
 
     private mergeWithPreviousItem() {

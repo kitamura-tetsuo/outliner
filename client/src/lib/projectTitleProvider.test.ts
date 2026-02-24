@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // Mock yjsService before importing projectTitleProvider
 vi.mock("./yjsService.svelte", () => ({
-    getProjectTitle: vi.fn((id) => id === "p1" ? "Project One" : "")
+    getProjectTitle: vi.fn((id) => id === "p1" ? "Project One" : ""),
 }));
 
 import { getProjectTitle } from "./projectTitleProvider";

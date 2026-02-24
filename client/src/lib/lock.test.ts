@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { AsyncLock, AsyncLockManager } from "./lock";
 
 describe("AsyncLock", () => {
@@ -42,8 +42,14 @@ describe("AsyncLock", () => {
 
         const release1 = await lock.acquire();
 
-        const p2 = lock.acquire().then((release: () => void) => { order.push(2); release(); });
-        const p3 = lock.acquire().then((release: () => void) => { order.push(3); release(); });
+        const p2 = lock.acquire().then((release: () => void) => {
+            order.push(2);
+            release();
+        });
+        const p3 = lock.acquire().then((release: () => void) => {
+            order.push(3);
+            release();
+        });
 
         release1();
         await Promise.all([p2, p3]);

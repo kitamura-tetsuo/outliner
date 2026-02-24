@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { projectRoomPath, pageRoomPath } from "./roomPath";
+import { describe, expect, it } from "vitest";
+import { pageRoomPath, projectRoomPath } from "./roomPath";
 
 describe("roomPath", () => {
     it("should return project room path", () => {

@@ -70,7 +70,7 @@ export async function initPollingMonitor(page: Page) {
                         executionCount: 0,
                         lastExecutedAt: undefined as number | undefined,
                         disabled,
-                        timerId: undefined as number | undefined
+                        timerId: undefined as number | undefined,
                     };
 
                     this.calls.set(id, call);
@@ -86,7 +86,6 @@ export async function initPollingMonitor(page: Page) {
                         if (typeof callback === "function") {
                             return callback(...callbackArgs);
                         } else {
-
                             return eval(callback);
                         }
                     };
@@ -122,7 +121,7 @@ export async function initPollingMonitor(page: Page) {
                         executionCount: 0,
                         lastExecutedAt: undefined as number | undefined,
                         disabled,
-                        timerId: undefined as number | undefined
+                        timerId: undefined as number | undefined,
                     };
 
                     this.calls.set(id, call);
@@ -139,7 +138,6 @@ export async function initPollingMonitor(page: Page) {
                         if (typeof callback === "function") {
                             return callback(...callbackArgs);
                         } else {
-
                             return eval(callback);
                         }
                     };
@@ -174,7 +172,7 @@ export async function initPollingMonitor(page: Page) {
                         executionCount: 0,
                         lastExecutedAt: undefined as number | undefined,
                         disabled,
-                        frameId: undefined as number | undefined
+                        frameId: undefined as number | undefined,
                     };
 
                     this.calls.set(id, call);
