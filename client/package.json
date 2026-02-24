@@ -59,7 +59,7 @@
         "@vitest/ui": "4.0.17",
         "chokidar-cli": "^3.0.0",
         "concurrently": "^9.2.0",
-        "eslint": "^9.39.1",
+        "eslint": "^10.0.2",
         "eslint-formatter-unix": "^9.0.1",
         "eslint-plugin-svelte": "^3.15.0",
         "fake-indexeddb": "^6.2.5",
