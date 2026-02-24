@@ -403,30 +403,33 @@ onMount(async () => {
             const yjsClient = yjsStore.yjsClient;
             if (yjsClient) {
                 for (let waitIter = 0; waitIter < 50; waitIter++) {
-                    // Check if items are synced in the main doc
-                    const currentItems = store.pages?.current;
-                    const len = currentItems?.length ?? 0;
-                    let pageRef: Item | undefined;
-                    for (let i = 0; i < len; i++) {
-                        const p = currentItems?.at(i);
-                        if (!p) continue;
-                        if (String(p.id) === String(pageId)) {
-                            pageRef = p;
-                            break;
+                    const pageConn = yjsClient.getPageConnection?.(pageId);
+                    if (pageConn) {
+                        // Get the page reference to check if items are synced
+                        const currentItems = store.pages?.current;
+                        const len = currentItems?.length ?? 0;
+                        let pageRef: Item | undefined;
+                        for (let i = 0; i < len; i++) {
+                            const p = currentItems?.at(i);
+                            if (!p) continue;
+                            if (String(p.id) === String(pageId)) {
+                                pageRef = p;
+                                break;
+                            }
                         }
-                    }
-                    if (pageRef) {
-                        const itemCount = pageRef?.items?.length ?? 0;
-                        if (itemCount > 0) {
-                            console.log("Schedule page: Page items found", { pageId, itemCount });
-                            break;
+                        if (pageRef) {
+                            const itemCount = pageRef?.items?.length ?? 0;
+                            if (itemCount > 0) {
+                                console.log("Schedule page: Page subdocument connected with items", { pageId, itemCount });
+                                break;
+                            }
                         }
                     }
                     await new Promise(resolve => setTimeout(resolve, 100));
                 }
             }
         } catch (e) {
-            console.warn("Schedule page: Error waiting for page items:", e);
+            console.warn("Schedule page: Error waiting for page connection:", e);
         }
     }
 

@@ -9,24 +9,15 @@ export const metaDoc = new Y.Doc();
 // Use a separate database name from container Y.Docs to avoid conflicts
 const persistence = new IndexeddbPersistence("outliner-meta", metaDoc);
 
-// Reactive state for tracking metadata updates
-export const metaDocState = $state({ version: 0 });
-
 // Promise to track when metadata is loaded from IndexedDB
 export const metaDocLoaded = new Promise<void>((resolve) => {
     persistence.once("synced", () => {
-        metaDocState.version++;
         resolve();
     });
 });
 
 // Y.Map structure for storing container metadata
 export const containersMap = metaDoc.getMap("containers");
-
-// Track changes to container metadata
-containersMap.observe(() => {
-    metaDocState.version++;
-});
 
 // Type for container metadata
 interface ContainerMetadata {

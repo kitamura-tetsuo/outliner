@@ -337,7 +337,194 @@ export class Project {
     addPage(title: string, author: string): Item {
         const page = this.items.addNode(author ?? "user");
         page.updateText(title ?? "");
+        const pages = this.ydoc.getMap<Y.Doc>("pages");
+        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as any);
+        subdoc.load();
+        // Create a map to store page-specific items within the subdoc
+        const pageItems = subdoc.getMap<any>("pageItems");
+        pageItems.set("initialized", Date.now());
+        pages.set(page.id, subdoc);
         return page;
+    }
+
+    /**
+     * Get items for a specific page by page ID.
+     * Handles items stored in the page subdocument's pageItems map.
+     * Returns raw item data for use in merging/copying.
+     */
+    async getPageItems(pageId: string): Promise<Array<{ id: string; text: string; author: string; }>> {
+        try {
+            // First check if page exists
+            const page = this.findPage(pageId);
+            if (!page) {
+                console.log(`[hydrate] Page ${pageId} not found in project tree`);
+                return [];
+            }
+
+            // Try to get items from page subdoc's pageItems map
+            const pages = this.ydoc.getMap<Y.Doc>("pages");
+            const subdoc = pages.get(pageId);
+            if (!subdoc) {
+                console.log(`[hydrate] Subdoc not found for page ${pageId}`);
+                return [];
+            }
+
+            // CRITICAL: Ensure subdoc is loaded before accessing its data
+            // This is needed because subdocs may not be fully loaded when first accessed
+            try {
+                subdoc.load();
+            } catch {
+                // load() may fail if subdoc doesn't have persistence, continue anyway
+            }
+
+            const pageItems = subdoc.getMap<Y.Map<any>>("pageItems");
+            let pageItemsSize = pageItems.size;
+
+            // Wait for items to be available if subdoc just loaded
+            let waitCount = 0;
+            const maxWait = 100; // Increase to 10s for slow CI environments
+            while (pageItemsSize <= 1 && waitCount < maxWait) { // <= 1 means only "initialized" key
+                await new Promise(resolve => setTimeout(resolve, 100));
+                const newSize = pageItems.size;
+                if (newSize === pageItemsSize) {
+                    // Size hasn't changed, no more items to wait for
+                    break;
+                }
+                pageItemsSize = newSize;
+                waitCount++;
+            }
+
+            const itemKeys = Array.from(pageItems.keys()).filter(k => k !== "initialized");
+            console.log(
+                `[hydrate] Page ${pageId}: pageItems.size=${pageItemsSize}, itemKeys=${itemKeys.length}, waitCount=${waitCount}`,
+            );
+
+            if (itemKeys.length === 0) {
+                console.log(`[hydrate] No items in pageItems map for page ${pageId}`);
+                return [];
+            }
+
+            return itemKeys.map(key => {
+                const value = pageItems.get(key);
+                if (!value) return null;
+                return {
+                    id: value.get("id") as string,
+                    text: value.get("text") as string,
+                    author: value.get("author") as string,
+                };
+            }).filter(Boolean) as Array<{ id: string; text: string; author: string; }>;
+        } catch (e) {
+            console.log(`[hydrate] Error getting page items for ${pageId}:`, e);
+        }
+        return [];
+    }
+
+    /**
+     * Copy items from page subdoc's pageItems map to the page's items in the main tree.
+     * This bridges the gap between how items are stored (in page subdoc) and how they're accessed (via page.items).
+     */
+    async hydratePageItems(pageId: string): Promise<void> {
+        const pageItems = await this.getPageItems(pageId);
+        const page = this.findPage(pageId);
+        if (!page) {
+            console.log(`[hydrate] Cannot hydrate: page ${pageId} not found`);
+            return;
+        }
+
+        // Always attempt to hydrate items, even if page has no items yet
+        if (pageItems.length === 0) {
+            console.log(`[hydrate] No items to hydrate for page ${pageId}`);
+            return;
+        }
+
+        // Get existing item IDs and texts for this page to avoid duplicates
+        // Also track texts to catch duplicates even if IDs don't match
+        const existingIds = new Set<string>();
+        const existingTexts = new Set<string>();
+        const pageItemsLen = page.items.length;
+        for (let i = 0; i < pageItemsLen; i++) {
+            const item = page.items.at(i);
+            if (item) {
+                existingIds.add(item.id);
+                const text = item.text?.toString?.() ?? String(item.text ?? "");
+                if (text) existingTexts.add(text);
+            }
+        }
+
+        console.log(
+            `[hydrate] Hydrating ${pageItems.length} items for page ${pageId}, existingIds=${existingIds.size}, existingTexts=${existingTexts.size}`,
+        );
+
+        // Add each item from pageItems to the page's items
+        // Skip if ID already exists OR if text already exists (double protection against duplicates)
+        let addedCount = 0;
+        let skippedCount = 0;
+        for (const itemData of pageItems) {
+            // Skip if ID already exists
+            if (existingIds.has(itemData.id)) {
+                console.log(`[hydrate] Skipping item with existing ID: ${itemData.id}`);
+                skippedCount++;
+                continue;
+            }
+            // Also skip if text already exists (catch duplicates from different ID sources)
+            if (existingTexts.has(itemData.text)) {
+                console.log(`[hydrate] Skipping item with existing text: ${itemData.text}`);
+                skippedCount++;
+                continue;
+            }
+            const newItem = page.items.addNode(itemData.author);
+            // The new item already has an empty text, we need to update it
+            // Handle both Y.Text objects (from schema) and strings (from server seeding)
+            const textValue = (newItem as any).value.get("text");
+            if (textValue instanceof Y.Text) {
+                // Normal case: text is a Y.Text object
+                textValue.delete(0, textValue.length);
+                if (itemData.text) {
+                    textValue.insert(0, itemData.text);
+                }
+            } else if (typeof textValue === "string") {
+                // Server seeding case: text is stored as a string
+                // Replace the string with a proper Y.Text
+                const newText = new Y.Text();
+                if (itemData.text) {
+                    newText.insert(0, itemData.text);
+                }
+                (newItem as any).value.set("text", newText);
+            } else {
+                // Fallback: try to use the value directly
+                try {
+                    const textField = textValue as Y.Text;
+                    textField.delete(0, textField.length);
+                    if (itemData.text) {
+                        textField.insert(0, itemData.text);
+                    }
+                } catch {}
+            }
+            addedCount++;
+        }
+        console.log(`[hydrate] Added ${addedCount} items, skipped ${skippedCount} duplicates for page ${pageId}`);
+    }
+
+    /**
+     * Get the keys of items that belong to a specific page (stored in main tree at root level).
+     * This is a workaround for the schema issue where page items are stored at root level.
+     */
+    private getPageItemKeys(pageId: string): string[] {
+        // In the current schema, page items are stored at the root level
+        // We identify them by checking if they're near the page in the tree order
+        // This is a temporary solution until the schema is fixed
+        const keys: string[] = [];
+        const len = this.items.length;
+        for (let i = 0; i < len; i++) {
+            const item = this.items.at(i);
+            if (item && item.id !== pageId) {
+                // In the current broken schema, all items are at root level
+                // We can't easily distinguish page items from other items
+                // For now, return all item IDs (this is a known limitation)
+                keys.push(item.id);
+            }
+        }
+        return keys;
     }
 }
 

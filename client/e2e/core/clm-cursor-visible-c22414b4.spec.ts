@@ -13,7 +13,7 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("Cursor is visible", async ({ page }) => {
+    test("カーソルが表示される", async ({ page }) => {
         await page.waitForTimeout(100);
         // Screenshot removed to prevent ENOSPC errors in test environment
     });

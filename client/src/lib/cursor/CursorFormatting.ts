@@ -1,8 +1,8 @@
 // import type { Item } from "../../schema/yjs-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
-import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { escapeId } from "../../utils/domUtils";
+import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
 export class CursorFormatting {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

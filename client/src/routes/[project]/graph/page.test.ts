@@ -27,13 +27,9 @@ vi.mock("$app/paths", () => ({
 vi.mock("../../../services", () => ({
     getYjsClientByProjectTitle: vi.fn().mockResolvedValue({
         getProject: () => ({
-            items: { length: 0 },
+            items: [],
             title: "Test Project",
         }),
-        isContainerConnected: true,
-        wsProvider: {
-            on: vi.fn(),
-        },
     }),
 }));
 

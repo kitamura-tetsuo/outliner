@@ -1006,7 +1006,9 @@ export class EditorOverlayStore {
         }
 
         // Fallback: Get text from DOM element
-        const textEl = document.querySelector(`[data-item-id="${escapeId(sel.startItemId)}"] .item-text`) as HTMLElement;
+        const textEl = document.querySelector(
+            `[data-item-id="${escapeId(sel.startItemId)}"] .item-text`,
+        ) as HTMLElement;
         if (!textEl) {
             return "";
         }
@@ -1177,7 +1179,9 @@ export class EditorOverlayStore {
         const lines: string[] = [];
 
         for (const range of sel.boxSelectionRanges) {
-            const textEl = document.querySelector(`[data-item-id="${escapeId(range.itemId)}"] .item-text`) as HTMLElement;
+            const textEl = document.querySelector(
+                `[data-item-id="${escapeId(range.itemId)}"] .item-text`,
+            ) as HTMLElement;
             if (!textEl) {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Text element not found for item ${range.itemId}`);

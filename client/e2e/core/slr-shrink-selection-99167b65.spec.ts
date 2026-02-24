@@ -2,13 +2,13 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0012
- *  Title   : Shrink Selection
+ *  Title   : Shrink selection
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0012: Shrink Selection", () => {
+test.describe("SLR-0012: Shrink selection", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
         const item = page.locator(".outliner-item").first();

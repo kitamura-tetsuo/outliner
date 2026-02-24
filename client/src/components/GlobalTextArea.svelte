@@ -440,13 +440,23 @@ function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-esl
     top: 0;
     left: 0;
     width: 1px;
-    height: 1px;
+    height: 1.5em;
+    padding: 0;
+    border: 0;
+    outline: none;
+    overflow: hidden;
+    resize: none;
     opacity: 0;
     pointer-events: none;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.5;
+    caret-color: transparent;
 }
 :global(.ime-input) {
     z-index: 10;
     color: transparent;
     background-color: transparent;
+    caret-color: black;
 }
 </style>

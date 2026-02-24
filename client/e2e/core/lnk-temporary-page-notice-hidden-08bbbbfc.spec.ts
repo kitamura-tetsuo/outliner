@@ -2,18 +2,18 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature LNK-0004
- *  Title   : Temporary Page Functionality
+ *  Title   : 仮ページ機能
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("LNK-0004: Temporary page notice hidden", () => {
+test.describe("LNK-0004: 仮ページ通知非表示", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("Temporary page notice UI is hidden", async ({ page }) => {
+    test("仮ページの通知UIが非表示になっている", async ({ page }) => {
         const consoleMessages: string[] = [];
         page.on("console", msg => {
             consoleMessages.push(`${msg.type()}: ${msg.text()}`);
@@ -24,7 +24,7 @@ test.describe("LNK-0004: Temporary page notice hidden", () => {
         await page.goto(`${sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
-        const loginButton = page.locator("button:has-text('Developer Login')");
+        const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(300);
