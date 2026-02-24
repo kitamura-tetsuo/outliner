@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { KeyEventHandler } from "./KeyEventHandler";
 
 // Mock stores to avoid circular dependency
@@ -27,7 +27,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
     const mockOutdent = vi.fn();
 
     // Store mocks in global for test access
-    (globalThis as unknown as { __testMocks: GlobalTestMocks }).__testMocks = {
+    (globalThis as unknown as { __testMocks: GlobalTestMocks; }).__testMocks = {
         mockIndent,
         mockOutdent,
     };
@@ -43,7 +43,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
                 cursorId: "cursor-1",
                 itemId: "item-1",
                 isActive: true,
-                userId: "local"
+                userId: "local",
             }],
             getTextareaRef: vi.fn(() => ({ focus: vi.fn() })),
             selections: {},
@@ -58,13 +58,13 @@ describe("KeyEventHandler Tab Handling", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        const mocks = (globalThis as unknown as { __testMocks: GlobalTestMocks }).__testMocks;
+        const mocks = (globalThis as unknown as { __testMocks: GlobalTestMocks; }).__testMocks;
         mockIndent = mocks.mockIndent;
         mockOutdent = mocks.mockOutdent;
 
         // Reset key handlers to ensure they are re-initialized
-        if ((KeyEventHandler as unknown as { keyHandlers: Map<unknown, unknown> }).keyHandlers) {
-            (KeyEventHandler as unknown as { keyHandlers: Map<unknown, unknown> }).keyHandlers.clear();
+        if ((KeyEventHandler as unknown as { keyHandlers: Map<unknown, unknown>; }).keyHandlers) {
+            (KeyEventHandler as unknown as { keyHandlers: Map<unknown, unknown>; }).keyHandlers.clear();
         }
 
         // Mock document
@@ -79,14 +79,18 @@ describe("KeyEventHandler Tab Handling", () => {
         } as unknown as Document;
 
         // Mock requestAnimationFrame
-        (global as unknown as { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame = (cb: FrameRequestCallback) => { cb(0); return 0; };
+        (global as unknown as { requestAnimationFrame: (cb: FrameRequestCallback) => number; }).requestAnimationFrame =
+            (cb: FrameRequestCallback) => {
+                cb(0);
+                return 0;
+            };
     });
 
     afterEach(() => {
         if (originalDocument) {
             global.document = originalDocument;
         }
-        delete (global as unknown as { requestAnimationFrame?: unknown }).requestAnimationFrame;
+        delete (global as unknown as { requestAnimationFrame?: unknown; }).requestAnimationFrame;
     });
 
     const createKeyEvent = (key: string, shiftKey: boolean = false): KeyboardEvent => {
