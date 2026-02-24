@@ -19,6 +19,7 @@ vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
         cursorInstances: new Map(),
         cursors: {}, // Add cursors object
         clearCursorAndSelection: vi.fn(), // Add clearCursorAndSelection method
+        forceUpdate: vi.fn(),
     };
     return {
         editorOverlayStore: mockStore,
