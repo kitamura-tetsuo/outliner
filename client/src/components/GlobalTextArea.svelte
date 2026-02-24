@@ -498,6 +498,8 @@ function handleBlur(event: FocusEvent) {
     height: 1.5em;
     padding: 0;
     border: 0;
+    outline: none;
+    overflow: hidden;
     resize: none;
     opacity: 0;
     pointer-events: none;
