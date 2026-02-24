@@ -358,6 +358,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         // Find the correct text node and offset for the given character position
         const findTextPosition = (element: Node, targetOffset: number): { node: Text, offset: number } | null => {
             let currentOffset = 0;
+            let lastTextNode: Text | null = null;
 
             const walker = document.createTreeWalker(
                 element,
@@ -371,6 +372,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
 
             while (walker.nextNode()) {
                 const textNode = walker.currentNode as Text;
+                lastTextNode = textNode;
                 const textLength = textNode.textContent?.length || 0;
 
                 if (targetOffset < currentOffset + textLength) {
@@ -381,6 +383,13 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
                 }
 
                 currentOffset += textLength;
+            }
+
+            if (targetOffset === currentOffset && lastTextNode) {
+                return {
+                    node: lastTextNode,
+                    offset: lastTextNode.textContent?.length || 0
+                };
             }
 
             return null;
