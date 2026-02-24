@@ -3,8 +3,6 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
-registerCoverageHooks();
-
 test.describe("Cursor positioning on scroll", () => {
     test("should correctly position the cursor after vertical scrolling", async ({ page }) => {
         // 1. Prepare the test environment and add enough content to make the page scrollable
