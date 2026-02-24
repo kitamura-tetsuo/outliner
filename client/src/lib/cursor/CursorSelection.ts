@@ -1,5 +1,6 @@
 // import type { Item } from "../../schema/yjs-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
+import { escapeId } from "../../utils/domUtils";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
 
 export class CursorSelection {
@@ -454,16 +455,18 @@ export class CursorSelection {
             isReversed = startOffset > endOffset;
         } // If different items, determine direction by DOM order
         else {
-            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-            const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
-            const startIdx = allItemIds.indexOf(startItemId);
-            const endIdx = allItemIds.indexOf(endItemId);
+            const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);
+            const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`);
 
-            // Default to forward direction if index not found
-            if (startIdx === -1 || endIdx === -1) {
-                isReversed = false;
+            if (startEl && endEl) {
+                const comparison = startEl.compareDocumentPosition(endEl);
+                if (comparison & Node.DOCUMENT_POSITION_PRECEDING) {
+                    isReversed = true;
+                } else {
+                    isReversed = false;
+                }
             } else {
-                isReversed = startIdx > endIdx;
+                isReversed = false;
             }
         }
 

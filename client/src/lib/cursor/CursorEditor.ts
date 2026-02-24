@@ -4,6 +4,7 @@ import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
+import { escapeId } from "../../utils/domUtils";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
 import {
     getSelectionForUser,
@@ -673,26 +674,42 @@ export class CursorEditor {
         const { startItemId, endItemId, startOffset, endOffset } = selection;
         const isReversed = !!selection.isReversed;
 
-        const allItemElements = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-        const allItemIds = allItemElements
-            .map(el => el.getAttribute("data-item-id"))
-            .filter((value): value is string => !!value);
+        const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);
+        const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`);
 
-        const startIdx = allItemIds.indexOf(startItemId);
-        const endIdx = allItemIds.indexOf(endItemId);
-        if (startIdx === -1 || endIdx === -1) return;
+        if (!startEl || !endEl) return;
 
-        const firstIdx = Math.min(startIdx, endIdx);
-        const lastIdx = Math.max(startIdx, endIdx);
+        // Determine order
+        const comparison = startEl.compareDocumentPosition(endEl);
+        let firstEl: Element, lastEl: Element;
 
-        for (let i = firstIdx; i <= lastIdx; i++) {
-            const itemId = allItemIds[i];
+        if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+            firstEl = startEl;
+            lastEl = endEl;
+        } else {
+            firstEl = endEl;
+            lastEl = startEl;
+        }
+
+        const root = document.querySelector(".outliner") || document.body;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+            acceptNode(node) {
+                return (node as Element).hasAttribute("data-item-id")
+                    ? NodeFilter.FILTER_ACCEPT
+                    : NodeFilter.FILTER_SKIP;
+            },
+        });
+        walker.currentNode = firstEl;
+
+        while (walker.currentNode) {
+            const current = walker.currentNode as HTMLElement;
+            const itemId = current.getAttribute("data-item-id")!;
             const item = searchItem(generalStore.currentPage as any, itemId);
             if (!item) continue;
 
             const text = (item as any).text || "";
 
-            if (i === firstIdx && i === lastIdx) {
+            if (current === firstEl && current === lastEl) {
                 const start = isReversed ? endOffset : startOffset;
                 const end = isReversed ? startOffset : endOffset;
                 const selectedText = text.substring(start, end);
@@ -721,6 +738,9 @@ export class CursorEditor {
             } else {
                 // Detailed formatting for selection ranges spanning multiple items is not supported
             }
+
+            if (current === lastEl) break;
+            if (!walker.nextNode()) break;
         }
 
         cursor.itemId = isReversed ? startItemId : endItemId;

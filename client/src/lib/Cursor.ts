@@ -2,6 +2,7 @@ import type { Item } from "../schema/app-schema";
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
+import { escapeId } from "../utils/domUtils";
 import {
     findNextItem,
     findPreviousItem,
@@ -202,12 +203,20 @@ export class Cursor implements CursorEditingContext {
         if (text.length > 0 && this.offset >= text.length) {
             // Try to find the next item directly in the DOM first
             if (typeof document !== "undefined") {
-                const currentItemElement = document.querySelector(`[data-item-id="${this.itemId}"]`);
+                const currentItemElement = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`);
                 if (currentItemElement) {
-                    const allItems = Array.from(document.querySelectorAll("[data-item-id]"));
-                    const currentIndex = allItems.indexOf(currentItemElement);
-                    if (currentIndex !== -1 && currentIndex < allItems.length - 1) {
-                        const nextElement = allItems[currentIndex + 1] as HTMLElement;
+                    const root = document.querySelector(".outliner") || document.body;
+                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                        acceptNode(node) {
+                            return (node as Element).hasAttribute("data-item-id")
+                                ? NodeFilter.FILTER_ACCEPT
+                                : NodeFilter.FILTER_SKIP;
+                        },
+                    });
+                    walker.currentNode = currentItemElement;
+                    const nextElement = walker.nextNode() as HTMLElement | null;
+
+                    if (nextElement) {
                         const nextItemId = nextElement.getAttribute("data-item-id");
 
                         if (nextItemId && nextItemId !== this.itemId) {
@@ -727,14 +736,17 @@ export class Cursor implements CursorEditingContext {
 
         // If in different items, determine direction by DOM order
         if (typeof document !== "undefined") {
-            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-            const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
-            const startIdx = allItemIds.indexOf(startItemId);
-            const endIdx = allItemIds.indexOf(endItemId);
+            const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);
+            const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`);
 
-            // Use index if found
-            if (startIdx !== -1 && endIdx !== -1) {
-                return startIdx > endIdx;
+            if (startEl && endEl) {
+                const comparison = startEl.compareDocumentPosition(endEl);
+                if (comparison & Node.DOCUMENT_POSITION_PRECEDING) {
+                    return true; // end is before start
+                }
+                if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    return false; // end is after start
+                }
             }
         }
 
@@ -1314,37 +1326,38 @@ export class Cursor implements CursorEditingContext {
             // DOM fallback: when tree lookup fails (e.g., first child under page title),
             // try to use the visual order to locate the previous item.
             if (!prevItem && typeof document !== "undefined") {
-                const currentEl = document.querySelector(`[data-item-id="${this.itemId}"]`);
+                const currentEl = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`);
                 if (currentEl) {
-                    const allItems = Array.from(document.querySelectorAll("[data-item-id]"));
-                    const currentIndex = allItems.indexOf(currentEl);
-                    if (currentIndex > 0) {
-                        // Walk backwards until we find a previous element that is not an ancestor
-                        // of the current element. Moving to an ancestor would incorrectly jump
-                        // to the parent item when the current item has no previous sibling.
-                        let prevEl: HTMLElement | undefined;
-                        for (let i = currentIndex - 1; i >= 0; i--) {
-                            const candidate = allItems[i] as HTMLElement;
-                            if (candidate.contains(currentEl)) {
-                                continue;
-                            }
-                            prevEl = candidate;
-                            break;
-                        }
-                        if (prevEl) {
-                            const prevItemId = prevEl.getAttribute("data-item-id");
-                            if (prevItemId && prevItemId !== this.itemId) {
-                                prevItem = searchItem(generalStore.currentPage as any, prevItemId);
-                                newItemId = prevItemId;
-                                const treeTextLength = prevItem
-                                    ? this.getTargetText(prevItem as any).length
-                                    : undefined;
-                                const domTextLength = prevEl.querySelector(".item-text")?.textContent?.length
-                                    ?? prevEl.textContent?.length
-                                    ?? 0;
-                                newOffset = treeTextLength ?? domTextLength ?? 0;
-                                itemChanged = true;
-                            }
+                    const root = document.querySelector(".outliner") || document.body;
+                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                        acceptNode(node) {
+                            return (node as Element).hasAttribute("data-item-id")
+                                ? NodeFilter.FILTER_ACCEPT
+                                : NodeFilter.FILTER_SKIP;
+                        },
+                    });
+                    walker.currentNode = currentEl;
+                    let prevEl = walker.previousNode() as HTMLElement | null;
+
+                    // Walk backwards until we find a previous element that is not an ancestor
+                    // of the current element.
+                    while (prevEl && prevEl.contains(currentEl)) {
+                        prevEl = walker.previousNode() as HTMLElement | null;
+                    }
+
+                    if (prevEl) {
+                        const prevItemId = prevEl.getAttribute("data-item-id");
+                        if (prevItemId && prevItemId !== this.itemId) {
+                            prevItem = searchItem(generalStore.currentPage as any, prevItemId);
+                            newItemId = prevItemId;
+                            const treeTextLength = prevItem
+                                ? this.getTargetText(prevItem as any).length
+                                : undefined;
+                            const domTextLength = prevEl.querySelector(".item-text")?.textContent?.length
+                                ?? prevEl.textContent?.length
+                                ?? 0;
+                            newOffset = treeTextLength ?? domTextLength ?? 0;
+                            itemChanged = true;
                         }
                     }
                 }
@@ -1387,30 +1400,28 @@ export class Cursor implements CursorEditingContext {
             // If we're at the end of the current item and still don't have a next item,
             // try additional DOM-based approaches with broader selectors
             if (atEndOfCurrentItem && !nextItem) {
-                // Try to get all potential item elements, with a broader selector
-                const allItemElements = Array.from(
-                    document.querySelectorAll(
-                        ".outliner-item[data-item-id], [data-item-id].outliner-item, [data-item-id]",
-                    ),
-                ) as HTMLElement[];
+                // Try to find the next item via TreeWalker
+                const currentEl = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`);
+                if (currentEl) {
+                    const root = document.querySelector(".outliner") || document.body;
+                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                        acceptNode(node) {
+                            return (node as Element).hasAttribute("data-item-id")
+                                ? NodeFilter.FILTER_ACCEPT
+                                : NodeFilter.FILTER_SKIP;
+                        },
+                    });
+                    walker.currentNode = currentEl;
+                    const nextItemElement = walker.nextNode() as HTMLElement | null;
 
-                let currentIndex = -1;
-                for (let i = 0; i < allItemElements.length; i++) {
-                    if (allItemElements[i].getAttribute("data-item-id") === this.itemId) {
-                        currentIndex = i;
-                        break;
-                    }
-                }
-
-                if (currentIndex !== -1 && currentIndex < allItemElements.length - 1) {
-                    const nextItemElement = allItemElements[currentIndex + 1];
-                    const nextItemId = nextItemElement.getAttribute("data-item-id");
-
-                    if (nextItemId) {
-                        // Try to find this item in the Yjs tree
-                        const root = generalStore.currentPage as any;
-                        if (root) {
-                            nextItem = searchItem(root, nextItemId);
+                    if (nextItemElement) {
+                        const nextItemId = nextItemElement.getAttribute("data-item-id");
+                        if (nextItemId) {
+                            // Try to find this item in the Yjs tree
+                            const root = generalStore.currentPage as any;
+                            if (root) {
+                                nextItem = searchItem(root, nextItemId);
+                            }
                         }
                     }
                 }
@@ -1429,41 +1440,22 @@ export class Cursor implements CursorEditingContext {
                 // DOM-based approach to find the next item by looking for visually adjacent elements
                 try {
                     // Most direct approach: Find the element with the current item ID and get its next sibling
-                    const currentItemElement = document.querySelector(`[data-item-id="${this.itemId}"]`);
+                    const currentItemElement = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`);
 
                     if (currentItemElement) {
-                        // First try to get the immediate next sibling
-                        let nextItemElement: Element | null = currentItemElement.nextElementSibling;
+                        const root = document.querySelector(".outliner") || document.body;
+                        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                            acceptNode(node) {
+                                return (node as Element).hasAttribute("data-item-id")
+                                    ? NodeFilter.FILTER_ACCEPT
+                                    : NodeFilter.FILTER_SKIP;
+                            },
+                        });
+                        walker.currentNode = currentItemElement;
+                        const nextItemElement = walker.nextNode() as HTMLElement | null;
 
-                        // If no immediate sibling, traverse up and try again
-                        let parentElement: Element | null = currentItemElement.parentElement;
-                        while (!nextItemElement && parentElement) {
-                            nextItemElement = parentElement.nextElementSibling;
-                            if (!nextItemElement) {
-                                parentElement = parentElement.parentElement;
-                            }
-                        }
-
-                        // If still no next element found, use querySelector to get elements after current one
-                        if (!nextItemElement) {
-                            const allItems = Array.from(document.querySelectorAll("[data-item-id]"));
-                            const currentIndex = allItems.indexOf(currentItemElement);
-                            if (currentIndex !== -1 && currentIndex < allItems.length - 1) {
-                                nextItemElement = allItems[currentIndex + 1];
-                            }
-                        }
-
-                        // Try to get the ID from the found element
                         if (nextItemElement) {
-                            let nextItemId = nextItemElement.getAttribute("data-item-id");
-
-                            // If not found directly, try to find a child element that has the ID
-                            if (!nextItemId) {
-                                const childWithId = nextItemElement.querySelector("[data-item-id]");
-                                if (childWithId) {
-                                    nextItemId = childWithId.getAttribute("data-item-id");
-                                }
-                            }
+                            const nextItemId = nextItemElement.getAttribute("data-item-id");
 
                             if (nextItemId && nextItemId !== this.itemId) {
                                 // Directly use the found next item ID
@@ -1537,39 +1529,6 @@ export class Cursor implements CursorEditingContext {
                     }
                 }
 
-                // ABSOLUTE LAST RESORT: If itemChanged is still false after all attempts,
-                // try to get all items from the DOM directly and move to the visually next one
-                if (!itemChanged) {
-                    try {
-                        // Get all elements with data-item-id attributes
-                        const allElements = Array.from(document.querySelectorAll("[data-item-id]"));
-
-                        // Find the current item's index
-                        const currentElement = document.querySelector(`[data-item-id="${this.itemId}"]`);
-                        if (currentElement) {
-                            const currentIndex = allElements.indexOf(currentElement);
-                            if (currentIndex !== -1 && currentIndex < allElements.length - 1) {
-                                // Get the next element in the DOM
-                                const nextElement = allElements[currentIndex + 1] as HTMLElement;
-                                const nextItemId = nextElement.getAttribute("data-item-id");
-
-                                if (nextItemId && nextItemId !== this.itemId) {
-                                    newItemId = nextItemId;
-                                    newOffset = 0;
-                                    itemChanged = true;
-
-                                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                                        console.log(
-                                            `Moving right to next item (last resort DOM): id=${nextItemId}, offset=${newOffset}`,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        console.error("Error in last resort DOM approach:", e);
-                    }
-                }
 
                 // If itemChanged is still false after ALL attempts, we're at the end but couldn't find a next item
                 // In this case, we should remain at the end of the current item, but still trigger the update
@@ -1812,13 +1771,12 @@ export class Cursor implements CursorEditingContext {
         if (!textarea) return;
 
         // Get text of items
-        const startItemEl = document.querySelector(`[data-item-id="${startItemId}"] .item-text`) as HTMLElement;
-        const endItemEl = document.querySelector(`[data-item-id="${endItemId}"] .item-text`) as HTMLElement;
+        const startItemEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"] .item-text`) as HTMLElement;
+        const endItemEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"] .item-text`) as HTMLElement;
 
         if (!startItemEl || !endItemEl) return;
 
         const startItemText = startItemEl.textContent || "";
-        // const endItemText = endItemEl.textContent || ""; // Not used
 
         // If the selection is within a single item
         if (startItemId === endItemId) {
@@ -1829,72 +1787,72 @@ export class Cursor implements CursorEditingContext {
             textarea.setSelectionRange(startOffset, endOffset);
         } else {
             // If the selection spans multiple items
-            // Get all items
-            const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-            const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
+            const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);
+            const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`);
 
-            // Get indices of start and end items
-            const startIdx = allItemIds.indexOf(startItemId);
-            const endIdx = allItemIds.indexOf(endItemId);
+            if (!startEl || !endEl) return;
 
-            if (startIdx === -1 || endIdx === -1) return;
+            // Determine order
+            const comparison = startEl.compareDocumentPosition(endEl);
+            let firstEl: Element, lastEl: Element;
+            let firstOffset: number, lastOffset: number;
 
-            // Normalize start and end indices
-            const firstIdx = Math.min(startIdx, endIdx);
-            const lastIdx = Math.max(startIdx, endIdx);
+            if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+                firstEl = startEl;
+                lastEl = endEl;
+                firstOffset = startOffset;
+                lastOffset = endOffset;
+            } else {
+                firstEl = endEl;
+                lastEl = startEl;
+                firstOffset = endOffset;
+                lastOffset = startOffset;
+            }
 
-            // Concatenate text of items within selection
+            // Traverse and build text
             let combinedText = "";
-            for (let i = firstIdx; i <= lastIdx; i++) {
-                const itemId = allItemIds[i];
-                const itemEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement;
-                if (itemEl) {
-                    combinedText += itemEl.textContent || "";
-                    if (i < lastIdx) combinedText += "\n";
+            let selectionStart = 0;
+            let selectionEnd = 0;
+
+            const root = document.querySelector(".outliner") || document.body;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                acceptNode(node) {
+                    return (node as Element).hasAttribute("data-item-id")
+                        ? NodeFilter.FILTER_ACCEPT
+                        : NodeFilter.FILTER_SKIP;
+                },
+            });
+            walker.currentNode = firstEl;
+
+            while (walker.currentNode) {
+                const current = walker.currentNode as HTMLElement;
+                const textEl = current.querySelector(".item-text");
+                const text = textEl?.textContent || "";
+
+                if (current === firstEl) {
+                    selectionStart = combinedText.length + firstOffset;
                 }
+                combinedText += text;
+                if (current === lastEl) {
+                    selectionEnd = combinedText.length - text.length + lastOffset;
+                }
+
+                if (current === lastEl) break;
+                combinedText += "\n";
+                if (!walker.nextNode()) break;
             }
 
             // Update textarea content
             textarea.value = combinedText;
 
-            // Calculate start and end positions of selection
-            let selectionStart = 0;
-            let selectionEnd = 0;
-
-            // Calculate text length from start item to start position
-            if (startIdx === firstIdx) {
-                selectionStart = startOffset;
+            // Handle reversed selection
+            if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+                // start is before end
+                textarea.setSelectionRange(selectionStart, selectionEnd);
             } else {
-                // If start item is after end item (reverse selection)
-                let textBeforeStart = 0;
-                for (let i = firstIdx; i < startIdx; i++) {
-                    const itemId = allItemIds[i];
-                    const itemEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement;
-                    if (itemEl) {
-                        textBeforeStart += (itemEl.textContent || "").length + 1; // +1 for newline
-                    }
-                }
-                selectionStart = textBeforeStart + startOffset;
+                // end is before start
+                textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
             }
-
-            // Calculate text length from end item to end position
-            if (endIdx === lastIdx) {
-                let textBeforeEnd = 0;
-                for (let i = firstIdx; i < endIdx; i++) {
-                    const itemId = allItemIds[i];
-                    const itemEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement;
-                    if (itemEl) {
-                        textBeforeEnd += (itemEl.textContent || "").length + 1; // +1 for newline
-                    }
-                }
-                selectionEnd = textBeforeEnd + endOffset;
-            } else {
-                // If end item is before start item (reverse selection)
-                selectionEnd = endOffset;
-            }
-
-            // Set selection
-            textarea.setSelectionRange(selectionStart, selectionEnd);
         }
     }
 
@@ -1943,38 +1901,20 @@ export class Cursor implements CursorEditingContext {
         if (typeof document === "undefined") return undefined;
 
         // Find the current element in the DOM
-        const currentEl = document.querySelector(`[data-item-id="${currentItemId}"]`) as HTMLElement;
+        const currentEl = document.querySelector(`[data-item-id="${escapeId(currentItemId)}"]`) as HTMLElement;
         if (!currentEl) return undefined;
 
-        // Try to find the next element with data-item-id attribute
-        // Look for the next sibling first
-        let nextEl: HTMLElement | null = currentEl.nextElementSibling as HTMLElement;
-
-        // If no direct sibling, try to find next item in the DOM tree
-        let searchEl = currentEl;
-        while (!nextEl && searchEl.parentElement) {
-            nextEl = searchEl.parentElement.nextElementSibling as HTMLElement;
-            if (!nextEl) {
-                searchEl = searchEl.parentElement;
-            }
-        }
-
-        // If no sibling at current level, try to find next item among descendants
-        if (!nextEl) {
-            // Look for next item in the subtree
-            const allItems = document.querySelectorAll("[data-item-id]") as NodeListOf<HTMLElement>;
-            let foundCurrent = false;
-
-            for (let i = 0; i < allItems.length; i++) {
-                if (foundCurrent) {
-                    nextEl = allItems[i];
-                    break;
-                }
-                if (allItems[i].getAttribute("data-item-id") === currentItemId) {
-                    foundCurrent = true;
-                }
-            }
-        }
+        // Use TreeWalker for robust next item discovery
+        const root = document.querySelector(".outliner") || document.body;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+            acceptNode(node) {
+                return (node as Element).hasAttribute("data-item-id")
+                    ? NodeFilter.FILTER_ACCEPT
+                    : NodeFilter.FILTER_SKIP;
+            },
+        });
+        walker.currentNode = currentEl;
+        const nextEl = walker.nextNode() as HTMLElement | null;
 
         if (nextEl) {
             const nextItemId = nextEl.getAttribute("data-item-id");

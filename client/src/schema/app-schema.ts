@@ -3,7 +3,7 @@
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
-import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types.js";
+import type { CommentValueType, ItemValueType, PlainItemData } from "../types/yjs-types.js";
 
 console.log("HELLO WORLD APP SCHEMA LOADED");
 

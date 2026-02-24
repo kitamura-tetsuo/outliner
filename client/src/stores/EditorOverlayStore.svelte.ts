@@ -1,5 +1,6 @@
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { yjsService } from "../lib/yjs/service";
+import { escapeId } from "../utils/domUtils";
 import { yjsStore } from "./yjsStore.svelte";
 
 // Exported types
@@ -1005,7 +1006,7 @@ export class EditorOverlayStore {
         }
 
         // Fallback: Get text from DOM element
-        const textEl = document.querySelector(`[data-item-id="${sel.startItemId}"] .item-text`) as HTMLElement;
+        const textEl = document.querySelector(`[data-item-id="${escapeId(sel.startItemId)}"] .item-text`) as HTMLElement;
         if (!textEl) {
             return "";
         }
@@ -1176,7 +1177,7 @@ export class EditorOverlayStore {
         const lines: string[] = [];
 
         for (const range of sel.boxSelectionRanges) {
-            const textEl = document.querySelector(`[data-item-id="${range.itemId}"] .item-text`) as HTMLElement;
+            const textEl = document.querySelector(`[data-item-id="${escapeId(range.itemId)}"] .item-text`) as HTMLElement;
             if (!textEl) {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Text element not found for item ${range.itemId}`);
@@ -1327,16 +1328,29 @@ export class EditorOverlayStore {
             };
         }
 
-        // Get all items
-        const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-
-        // Create mapping of item IDs to indices
+        // Use TreeWalker to traverse items in DOM order efficiently.
+        const allItems: HTMLElement[] = [];
         // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary local map for calculation, not reactive state
         const itemIdToIndex = new Map<string, number>();
-        allItems.forEach((el, index) => {
-            const id = el.getAttribute("data-item-id");
-            if (id) itemIdToIndex.set(id, index);
+
+        const root = document.querySelector(".outliner") || document.body;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+            acceptNode(node) {
+                return (node as Element).hasAttribute("data-item-id")
+                    ? NodeFilter.FILTER_ACCEPT
+                    : NodeFilter.FILTER_SKIP;
+            },
         });
+
+        let index = 0;
+        while (walker.nextNode()) {
+            const el = walker.currentNode as HTMLElement;
+            const id = el.getAttribute("data-item-id");
+            if (id) {
+                allItems.push(el);
+                itemIdToIndex.set(id, index++);
+            }
+        }
 
         // Update cache
         this._itemsMappingCache = {

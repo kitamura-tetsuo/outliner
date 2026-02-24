@@ -1,6 +1,7 @@
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
+import { escapeId } from "../utils/domUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
 
 /**
@@ -254,10 +255,25 @@ export class KeyEventHandler {
                                         } catch {}
                                         aliasEl.setAttribute("data-alias-target-id", String(firstContent.id));
                                     }
-                                    const allItems = document.querySelectorAll(
-                                        ".outliner-item[data-item-id]:not(.page-title)",
-                                    ) as NodeListOf<HTMLElement>;
-                                    const last = allItems.length > 0 ? allItems[allItems.length - 1] : null;
+                                    const outlinerRoot = document.querySelector(".outliner") || document.body;
+                                    const walker = document.createTreeWalker(
+                                        outlinerRoot,
+                                        NodeFilter.SHOW_ELEMENT,
+                                        {
+                                            acceptNode(node) {
+                                                const el = node as Element;
+                                                return el.classList.contains("outliner-item") &&
+                                                    el.hasAttribute("data-item-id") &&
+                                                    !el.classList.contains("page-title")
+                                                    ? NodeFilter.FILTER_ACCEPT
+                                                    : NodeFilter.FILTER_SKIP;
+                                            },
+                                        },
+                                    );
+                                    let last: HTMLElement | null = null;
+                                    while (walker.nextNode()) {
+                                        last = walker.currentNode as HTMLElement;
+                                    }
                                     const lastId = last?.getAttribute("data-item-id");
                                     if (last && lastId && !last.getAttribute("data-alias-target-id")) {
                                         try {
@@ -1431,16 +1447,12 @@ export class KeyEventHandler {
     private static getItemText(itemId: string | null): string {
         if (!itemId) return "";
 
-        // Get item
-        const items = document.querySelectorAll(".outliner-item");
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i] as HTMLElement;
-            if (item.getAttribute("data-item-id") === itemId) {
-                const textElement = item.querySelector(".item-text");
-                return textElement ? textElement.textContent || "" : "";
-            }
-        }
-        return "";
+        // Get item efficiently using attribute selector.
+        // While jsdom may be slow with this, it is highly optimized in modern browsers.
+        const textElement = document.querySelector(
+            `.outliner-item[data-item-id="${escapeId(itemId)}"] .item-text`,
+        );
+        return textElement ? textElement.textContent || "" : "";
     }
 
     /**
@@ -1455,20 +1467,26 @@ export class KeyEventHandler {
     ): { id: string; text: string; } | null {
         if (!itemId) return null;
 
-        // Get item
-        const items = Array.from(document.querySelectorAll(".outliner-item"));
-        const currentIndex = items.findIndex(item => item.getAttribute("data-item-id") === itemId);
+        // Find current item
+        const currentItem = document.querySelector(
+            `.outliner-item[data-item-id="${escapeId(itemId)}"]`,
+        );
+        if (!currentItem) return null;
 
-        if (currentIndex === -1) return null;
+        // Use TreeWalker for robust, DOM-order-based traversal regardless of nesting structure.
+        const root = document.querySelector(".outliner") || document.body;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+            acceptNode(node) {
+                return (node as Element).classList.contains("outliner-item")
+                    ? NodeFilter.FILTER_ACCEPT
+                    : NodeFilter.FILTER_SKIP;
+            },
+        });
+        walker.currentNode = currentItem;
 
-        // Calculate index of adjacent item
-        const adjacentIndex = direction === "prev" ? currentIndex - 1 : currentIndex + 1;
+        const adjacentItem = (direction === "prev" ? walker.previousNode() : walker.nextNode()) as HTMLElement | null;
+        if (!adjacentItem) return null;
 
-        // Return null if index is out of range
-        if (adjacentIndex < 0 || adjacentIndex >= items.length) return null;
-
-        // Get adjacent item
-        const adjacentItem = items[adjacentIndex] as HTMLElement;
         const adjacentItemId = adjacentItem.getAttribute("data-item-id");
         if (!adjacentItemId) return null;
 
@@ -1492,48 +1510,63 @@ export class KeyEventHandler {
         }
 
         if (!startItemId || !endItemId) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                console.log(`Invalid item IDs: startItemId=${startItemId}, endItemId=${endItemId}`);
-            }
             return [];
         }
 
         try {
-            // Get items
-            const items = Array.from(document.querySelectorAll(".outliner-item"));
+            const startEl = document.querySelector(
+                `.outliner-item[data-item-id="${escapeId(startItemId)}"]`,
+            );
+            const endEl = document.querySelector(
+                `.outliner-item[data-item-id="${escapeId(endItemId)}"]`,
+            );
 
-            if (items.length === 0) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`No outliner items found in the document`);
-                }
+            if (!startEl || !endEl) {
                 return [];
             }
 
-            const startIndex = items.findIndex(item => item.getAttribute("data-item-id") === startItemId);
-            const endIndex = items.findIndex(item => item.getAttribute("data-item-id") === endItemId);
-
-            if (startIndex === -1 || endIndex === -1) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Item not found: startIndex=${startIndex}, endIndex=${endIndex}`);
-                }
-                return [];
+            if (startEl === endEl) {
+                const textEl = startEl.querySelector(".item-text");
+                return [{ id: startItemId, text: textEl?.textContent || "" }];
             }
 
-            // Normalize start and end indices
-            const minIndex = Math.min(startIndex, endIndex);
-            const maxIndex = Math.max(startIndex, endIndex);
+            // Compare position to find first and last
+            const comparison = startEl.compareDocumentPosition(endEl);
+            let firstEl: Element;
+            let lastEl: Element;
 
-            // Get items in range
+            if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+                firstEl = startEl;
+                lastEl = endEl;
+            } else {
+                firstEl = endEl;
+                lastEl = startEl;
+            }
+
             const itemsInRange: Array<{ id: string; text: string; }> = [];
-            for (let i = minIndex; i <= maxIndex; i++) {
-                const item = items[i] as HTMLElement;
-                const itemId = item.getAttribute("data-item-id");
-                if (!itemId) continue;
 
-                const textElement = item.querySelector(".item-text");
-                const text = textElement ? textElement.textContent || "" : "";
+            // Use TreeWalker for robust traversal between first and last elements in DOM order.
+            const root = document.querySelector(".outliner") || document.body;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                acceptNode(node) {
+                    return (node as Element).classList.contains("outliner-item")
+                        ? NodeFilter.FILTER_ACCEPT
+                        : NodeFilter.FILTER_SKIP;
+                },
+            });
+            walker.currentNode = firstEl;
 
-                itemsInRange.push({ id: itemId, text });
+            while (walker.currentNode) {
+                const current = walker.currentNode as HTMLElement;
+                const itemId = current.getAttribute("data-item-id");
+                if (itemId) {
+                    const textElement = current.querySelector(".item-text");
+                    const text = textElement ? textElement.textContent || "" : "";
+                    itemsInRange.push({ id: itemId, text });
+                }
+
+                if (current === lastEl) break;
+                if (!walker.nextNode()) break;
             }
 
             // Debug info
@@ -1546,10 +1579,6 @@ export class KeyEventHandler {
             // Log if error occurs
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.error(`Error in getItemsBetween:`, error);
-                if (error instanceof Error) {
-                    console.error(`Error message: ${error.message}`);
-                    console.error(`Error stack: ${error.stack}`);
-                }
             }
             return [];
         }
@@ -1569,14 +1598,14 @@ export class KeyEventHandler {
         }
 
         try {
-            // Get item indices
-            const items = Array.from(document.querySelectorAll(".outliner-item"));
-            const startIndex = items.findIndex(item =>
-                item.getAttribute("data-item-id") === KeyEventHandler.boxSelectionState.startItemId
+            const startEl = document.querySelector(
+                `.outliner-item[data-item-id="${escapeId(KeyEventHandler.boxSelectionState.startItemId)}"]`,
             );
-            const endIndex = items.findIndex(item =>
-                item.getAttribute("data-item-id") === KeyEventHandler.boxSelectionState.endItemId
+            const endEl = document.querySelector(
+                `.outliner-item[data-item-id="${escapeId(KeyEventHandler.boxSelectionState.endItemId)}"]`,
             );
+
+            if (!startEl || !endEl) return "";
 
             // Calculate horizontal selection range
             const startX = KeyEventHandler.boxSelectionState.startOffset;
@@ -1585,10 +1614,11 @@ export class KeyEventHandler {
             // Determine direction
             let direction = "";
 
-            // Vertical direction
-            if (startIndex < endIndex) {
+            // Vertical direction via DOM position comparison
+            const comparison = startEl.compareDocumentPosition(endEl);
+            if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
                 direction += "↓"; // Down
-            } else if (startIndex > endIndex) {
+            } else if (comparison & Node.DOCUMENT_POSITION_PRECEDING) {
                 direction += "↑"; // Up
             }
 

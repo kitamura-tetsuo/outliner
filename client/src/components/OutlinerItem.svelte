@@ -474,19 +474,35 @@ $effect(() => {
             // Set attribute on this item
             (itemRef as HTMLElement)?.setAttribute?.('data-alias-target-id', String(targetId));
 
-            // Set attribute on all matching items
-            const els = document.querySelectorAll(`[data-item-id="${itemId}"]`) as NodeListOf<HTMLElement>;
-            els.forEach(el => el?.setAttribute?.('data-alias-target-id', String(targetId)));
+            // Set attribute on all matching items efficiently
+            const root = document.querySelector(".outliner") || document.body;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                acceptNode(node) {
+                    return (node as Element).getAttribute("data-item-id") === itemId
+                        ? NodeFilter.FILTER_ACCEPT
+                        : NodeFilter.FILTER_SKIP;
+                },
+            });
+            while (walker.nextNode()) {
+                (walker.currentNode as HTMLElement).setAttribute('data-alias-target-id', String(targetId));
+            }
 
             // E2E support: set attribute on all items in test environment
             const isTest = (typeof localStorage !== 'undefined') && localStorage.getItem('VITE_IS_TEST') === 'true';
             if (isTest) {
-                const all = document.querySelectorAll('[data-item-id]') as NodeListOf<HTMLElement>;
-                all.forEach(el => {
+                const allWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                    acceptNode(node) {
+                        return (node as Element).hasAttribute("data-item-id")
+                            ? NodeFilter.FILTER_ACCEPT
+                            : NodeFilter.FILTER_SKIP;
+                    },
+                });
+                while (allWalker.nextNode()) {
+                    const el = allWalker.currentNode as HTMLElement;
                     if (!el.classList.contains('page-title')) {
                         el.setAttribute('data-alias-target-id', String(targetId));
                     }
-                });
+                }
 
                 // Create mirror element for E2E utility world
                 let mirror = document.getElementById('e2e-alias-mirror') as HTMLElement | null;
@@ -1257,29 +1273,41 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
         rect: DOMRect;
     }> = [];
 
-    // Get all displayed items and determine if they are within box selection range
-    // Assume DOM order matches visual order to avoid high-cost sorting
-    // Avoid copy by Array.from(document.querySelectorAll) and use forEach directly
-    document.querySelectorAll(".outliner-item").forEach(itemElement => {
+    // Use TreeWalker to traverse items in DOM order efficiently.
+    const root = document.querySelector(".outliner") || document.body;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+        acceptNode(node) {
+            return (node as Element).classList.contains("outliner-item")
+                ? NodeFilter.FILTER_ACCEPT
+                : NodeFilter.FILTER_SKIP;
+        },
+    });
+
+    while (walker.nextNode()) {
+        const itemElement = walker.currentNode as HTMLElement;
         const itemId = itemElement.getAttribute("data-item-id");
-        if (!itemId) return;
+        if (!itemId) continue;
 
         const rect = itemElement.getBoundingClientRect();
 
+        // Stop traversing if we've passed the bottom of the selection box
+        if (rect.top > bottomY) {
+            break;
+        }
+
         // Determine if item is within box selection range
         // Select items with Y coordinate within range (including partial overlap)
-        // But exclude those completely out of range
         const verticalOverlap = Math.max(0, Math.min(rect.bottom, bottomY) - Math.max(rect.top, topY));
-        
+
         // If overlapping by at least 1 pixel or is the current item
         if (itemId === model.id || verticalOverlap > 0) {
             itemsInRange.push({
                 itemId,
-                element: itemElement as HTMLElement,
+                element: itemElement,
                 rect,
             });
         }
-    });
+    }
 
     // Do nothing if no items are within box selection range
     if (itemsInRange.length === 0) return;
