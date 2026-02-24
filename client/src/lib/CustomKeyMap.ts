@@ -1,20 +1,14 @@
 export class CustomKeyMap<T, V> {
     // Internal map using string keys
-    protected map = new Map<string, V>();
+    private map = new Map<string, V>();
     // Array to hold original keys
-    protected keys: T[] = [];
+    private keys: T[] = [];
     // Mapping between serialized keys and original keys
-    protected keyMap = new Map<string, T>();
-    // Custom key function
-    protected keyFn: (key: T) => string;
+    private keyMap = new Map<string, T>();
 
-    constructor(keyFn: (key: T) => string = (k) => JSON.stringify(k)) {
-        this.keyFn = keyFn;
-    }
-
-    // Helper function to convert key to string
-    protected serialize(key: T): string {
-        return this.keyFn(key);
+    // Helper function to convert key to string using JSON.stringify
+    private serialize(key: T): string {
+        return JSON.stringify(key);
     }
 
     // Method to set a value
@@ -88,15 +82,5 @@ export class CustomKeyMap<T, V> {
     // Method to get key-value pairs as an array
     getEntries(): [T, V][] {
         return this.keys.map(key => [key, this.get(key)!] as [T, V]);
-    }
-}
-
-/**
- * A reactive version of CustomKeyMap for use in Svelte components.
- * Note: Real implementation would use Svelte 5 $state, but for now we provide a stub for tests.
- */
-export class CustomKeySvelteMap<T, V> extends CustomKeyMap<T, V> {
-    constructor(keyFn: (key: T) => string = (k) => JSON.stringify(k)) {
-        super(keyFn);
     }
 }

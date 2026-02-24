@@ -504,16 +504,6 @@ export class Cursor implements CursorEditingContext {
         this.editor.insertLineBreak();
     }
 
-    indent() {
-        this.resetInitialColumn();
-        this.editor.indent();
-    }
-
-    outdent() {
-        this.resetInitialColumn();
-        this.editor.outdent();
-    }
-
     onInput(event: InputEvent) {
         this.editor.onInput(event);
     }
@@ -1539,6 +1529,7 @@ export class Cursor implements CursorEditingContext {
                     }
                 }
 
+
                 // If itemChanged is still false after ALL attempts, we're at the end but couldn't find a next item
                 // In this case, we should remain at the end of the current item, but still trigger the update
                 if (!itemChanged) {
@@ -1780,9 +1771,7 @@ export class Cursor implements CursorEditingContext {
         if (!textarea) return;
 
         // Get text of items
-        const startItemEl = document.querySelector(
-            `[data-item-id="${escapeId(startItemId)}"] .item-text`,
-        ) as HTMLElement;
+        const startItemEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"] .item-text`) as HTMLElement;
         const endItemEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"] .item-text`) as HTMLElement;
 
         if (!startItemEl || !endItemEl) return;

@@ -206,22 +206,7 @@
 
             // 5. Set current page and hydration
             if (targetPage) {
-                // Only update if the ID has changed to avoid unnecessary re-renders of the editor
-                // when simply renaming the page (which changes the URL and triggers a reload)
-                if (store.currentPage?.id !== targetPage.id) {
-                    store.currentPage = targetPage as any;
-                }
-
-                // Load items (Hydration)
-                if (
-                    targetPage.id &&
-                    typeof project.hydratePageItems === "function"
-                ) {
-                    logger.info(
-                        `loadProjectAndPage: Hydrating items for page ${targetPage.id}`,
-                    );
-                    await project.hydratePageItems(targetPage.id);
-                }
+                store.currentPage = targetPage as any;
 
                 // Wait for page list store update (optional)
                 if (!store.pages) {
@@ -303,49 +288,6 @@
         });
         onDestroy(unsub);
     });
-
-    // Sync URL with page title changes
-    $effect(() => {
-        const pageItem = store.currentPage;
-        if (!pageItem) return;
-
-        // Use internal Yjs structure access similar to OutlinerItem
-        const anyItem = pageItem as any;
-        const tree = anyItem?.tree;
-        const key = anyItem?.key;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        const m = tree?.getNodeValueFromKey?.(key) as any;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        const t = m?.get?.("text");
-
-        if (t && typeof t.observe === "function") {
-            const updateUrl = () => {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-                const newTitle = (t.toString?.() ?? "") as string;
-                // Avoid empty titles or unchanged titles
-                if (!newTitle || newTitle === pageName) return;
-
-                const newPath = `/${encodeURIComponent(projectName)}/${encodeURIComponent(newTitle)}`;
-                goto(newPath, { replaceState: true, keepFocus: true, noScroll: true });
-            };
-
-            // Debounce the URL update
-            let timer: ReturnType<typeof setTimeout>;
-            const debouncedUpdate = () => {
-                clearTimeout(timer);
-                timer = setTimeout(updateUrl, 500);
-            };
-
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-            t.observe(debouncedUpdate);
-            return () => {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-                t.unobserve(debouncedUpdate);
-                clearTimeout(timer);
-            };
-        }
-    });
-
     // For schedule integration: Save pageId candidate from current page to session
     function capturePageIdForSchedule() {
         try {

@@ -88,18 +88,6 @@ export class KeyEventHandler {
             store.undoLastCursor();
         });
 
-        // Tab indent
-        add("Tab", false, false, false, (event, cursors) => {
-            cursors.forEach(c => c.indent());
-            event.preventDefault(); // Prevent focus change
-        });
-
-        // Shift+Tab outdent
-        add("Tab", false, false, true, (event, cursors) => {
-            cursors.forEach(c => c.outdent());
-            event.preventDefault(); // Prevent focus change
-        });
-
         // Alt+PageUp/PageDown scroll
         add("PageUp", false, true, false, (_, cursors) => {
             cursors.forEach(c => c.altPageUp());
@@ -274,9 +262,9 @@ export class KeyEventHandler {
                                         {
                                             acceptNode(node) {
                                                 const el = node as Element;
-                                                return el.classList.contains("outliner-item")
-                                                        && el.hasAttribute("data-item-id")
-                                                        && !el.classList.contains("page-title")
+                                                return el.classList.contains("outliner-item") &&
+                                                    el.hasAttribute("data-item-id") &&
+                                                    !el.classList.contains("page-title")
                                                     ? NodeFilter.FILTER_ACCEPT
                                                     : NodeFilter.FILTER_SKIP;
                                             },

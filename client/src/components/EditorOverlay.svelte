@@ -1,4 +1,5 @@
 <script lang="ts">
+import { SvelteSet } from "svelte/reactivity";
 import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
@@ -357,7 +358,6 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         // Find the correct text node and offset for the given character position
         const findTextPosition = (element: Node, targetOffset: number): { node: Text, offset: number } | null => {
             let currentOffset = 0;
-            let lastTextNode: Text | null = null;
 
             const walker = document.createTreeWalker(
                 element,
@@ -371,7 +371,6 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
 
             while (walker.nextNode()) {
                 const textNode = walker.currentNode as Text;
-                lastTextNode = textNode;
                 const textLength = textNode.textContent?.length || 0;
 
                 if (targetOffset < currentOffset + textLength) {
@@ -382,13 +381,6 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
                 }
 
                 currentOffset += textLength;
-            }
-
-            if (targetOffset === currentOffset && lastTextNode) {
-                return {
-                    node: lastTextNode,
-                    offset: lastTextNode.textContent?.length || 0
-                };
             }
 
             return null;
@@ -530,30 +522,40 @@ function calculateSelectionPixelRange(
 function updatePositionMap() {
     const newMap: CursorPositionMap = {};
 
-    // Use TreeWalker to traverse items in DOM order efficiently.
-    const root = document.querySelector(".outliner") || document.body;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-        acceptNode(node) {
-            return (node as Element).hasAttribute("data-item-id")
-                ? NodeFilter.FILTER_ACCEPT
-                : NodeFilter.FILTER_SKIP;
-        },
-    });
+    // Optimization: Instead of scanning the entire document,
+    // we only populate information for items that are currently "active"
+    // (i.e. have a cursor or are part of a selection).
+    const idsToTrack = new SvelteSet<string>();
 
-    while (walker.nextNode()) {
-        const itemElement = walker.currentNode as HTMLElement;
-        const itemId = itemElement.getAttribute('data-item-id');
-        if (!itemId) continue;
+    // 1) Items with cursors
+    for (const c of cursorList) {
+        if (c.itemId) idsToTrack.add(c.itemId);
+    }
+
+    // 2) Items in selections
+    for (const s of selectionList) {
+        if (s.startItemId === s.endItemId) {
+            idsToTrack.add(s.startItemId);
+        } else {
+            // Selection spans multiple items. We need to identify all items in between.
+            // Since we use DOM order for selection rendering, we can find them via TreeWalker.
+            const items = getItemsInRange(s.startItemId, s.endItemId);
+            for (const id of items) idsToTrack.add(id);
+        }
+    }
+
+    const root = document.querySelector(".outliner") || document.body;
+
+    for (const itemId of idsToTrack) {
+        // Targeted querySelector is O(1) in modern browsers
+        const itemElement = root.querySelector(`.outliner-item[data-item-id="${escapeId(itemId)}"]`) as HTMLElement | null;
+        if (!itemElement) continue;
 
         const textElement = itemElement.querySelector('.item-text');
         if (!textElement || !(textElement instanceof HTMLElement)) continue;
 
         // Get element position information
         const elementRect = itemElement.getBoundingClientRect();
-
-        // Content container position information
-        const contentContainer = textElement.closest('.item-content-container');
-        if (!contentContainer) continue;
 
         // Get computed style
         const styles = window.getComputedStyle(textElement);
@@ -578,8 +580,42 @@ function updatePositionMap() {
     positionMap = newMap;
 
     if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-        console.log("Position map updated:", Object.keys(newMap));
+        console.log("Position map updated (targeted):", Object.keys(newMap));
     }
+}
+
+// Helper to get item IDs in range efficiently
+function getItemsInRange(startId: string, endId: string): string[] {
+    const startEl = document.querySelector(`[data-item-id="${escapeId(startId)}"]`);
+    const endEl = document.querySelector(`[data-item-id="${escapeId(endId)}"]`);
+    if (!startEl || !endEl) return [startId, endId].filter(id => id);
+
+    const comparison = startEl.compareDocumentPosition(endEl);
+    let firstEl: Element, lastEl: Element;
+    if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+        firstEl = startEl; lastEl = endEl;
+    } else {
+        firstEl = endEl; lastEl = startEl;
+    }
+
+    const root = document.querySelector(".outliner") || document.body;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+        acceptNode(node) {
+            return (node as Element).hasAttribute("data-item-id")
+                ? NodeFilter.FILTER_ACCEPT
+                : NodeFilter.FILTER_SKIP;
+        },
+    });
+    walker.currentNode = firstEl;
+    const items = [];
+    while (walker.currentNode) {
+        const current = walker.currentNode as HTMLElement;
+        const id = current.getAttribute("data-item-id")!;
+        items.push(id);
+        if (current === lastEl) break;
+        if (!walker.nextNode()) break;
+    }
+    return items;
 }
 
 // MutationObserver to monitor DOM changes
@@ -1393,38 +1429,7 @@ function handlePaste(event: ClipboardEvent) {
                 {/if}
             {:else}
                 <!-- Multi-item selection -->
-                {@const itemsInRange = (function() {
-                    const startEl = document.querySelector(`[data-item-id="${escapeId(sel.startItemId)}"]`);
-                    const endEl = document.querySelector(`[data-item-id="${escapeId(sel.endItemId)}"]`);
-                    if (!startEl || !endEl) return [];
-
-                    const comparison = startEl.compareDocumentPosition(endEl);
-                    let firstEl: Element, lastEl: Element;
-                    if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
-                        firstEl = startEl; lastEl = endEl;
-                    } else {
-                        firstEl = endEl; lastEl = startEl;
-                    }
-
-                    const root = document.querySelector(".outliner") || document.body;
-                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-                        acceptNode(node) {
-                            return (node as Element).hasAttribute("data-item-id")
-                                ? NodeFilter.FILTER_ACCEPT
-                                : NodeFilter.FILTER_SKIP;
-                        },
-                    });
-                    walker.currentNode = firstEl;
-                    const items = [];
-                    while (walker.currentNode) {
-                        const current = walker.currentNode as HTMLElement;
-                        const id = current.getAttribute("data-item-id")!;
-                        items.push(id);
-                        if (current === lastEl) break;
-                        if (!walker.nextNode()) break;
-                    }
-                    return items;
-                })()}
+                {@const itemsInRange = getItemsInRange(sel.startItemId, sel.endItemId)}
 
                 {#if itemsInRange.length > 0}
                     {@const forward = !sel.isReversed}
