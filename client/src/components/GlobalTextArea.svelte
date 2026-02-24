@@ -440,7 +440,7 @@ function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-esl
     top: 0;
     left: 0;
     width: 1px;
-    height: 1.5em;
+    height: 40px;
     padding: 0;
     border: 0;
     outline: none;
