@@ -218,7 +218,7 @@ export class TestHelpers {
         page: Page,
         projectNames: string[] = ["test-project-1", "test-project-2"],
     ): Promise<void> {
-        TestHelpers.slog("Calling setAccessibleProjects");
+        console.log("DEBUG: Calling setAccessibleProjects inner evaluate");
         // Wait for Firestore store to be initialized
         try {
             await page.waitForFunction(
@@ -259,6 +259,9 @@ export class TestHelpers {
                 console.error("[E2E] setAccessibleProjects: userId is null!");
                 throw new Error("setAccessibleProjects: Not authenticated");
             }
+            console.log("DEBUG: setAccessibleProjects START inside evaluate");
+
+            console.log("DEBUG: setAccessibleProjects using userId:", userId);
 
             if (fs && fs.setUserProject) {
                 fs.setUserProject({

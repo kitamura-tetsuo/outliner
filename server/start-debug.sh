@@ -26,8 +26,6 @@ du -b /home/node/.ssh-local/authorized_keys || echo "File not found"
 
 # Configure SSH to look for keys
 echo 'AuthorizedKeysFile .ssh/authorized_keys .ssh-local/authorized_keys' | sudo tee -a /etc/ssh/sshd_config
-echo 'AllowTcpForwarding yes' | sudo tee -a /etc/ssh/sshd_config
-echo 'X11Forwarding yes' | sudo tee -a /etc/ssh/sshd_config
 
 # Start SSHD
 echo "Starting SSHD..."

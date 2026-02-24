@@ -2,99 +2,99 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0001
- *  Title   : Shift + Up/Down/Left/Right
+ *  Title   : Shift + 上下左右
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
+test.describe("SLR-0001: Shift + 上下左右", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // Select the first item
+        // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
-        // Wait until the cursor is visible
+        // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
-        // Wait until global textarea is focused
+        // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus", { timeout: 10000 });
 
-        // Enter multi-line text
+        // 複数行のテキストを入力
         await page.keyboard.type("First line\nSecond line\nThird line");
 
-        // Move cursor to the beginning
+        // カーソルを先頭に移動
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
     });
 
-    test("Shift + Right expands the selection to the right", async ({ page }) => {
-        // Get active item element
+    test("Shift + 右で選択範囲の右端を広げる", async ({ page }) => {
+        // アクティブなアイテム要素を取得
         const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
         expect(activeItemLocator).not.toBeNull();
 
-        // Verify no selection initially
+        // 初期状態では選択範囲がないことを確認
         const selections = await page.locator(".editor-overlay .selection").count();
         expect(selections).toBe(0);
 
-        // Get text content before selection
+        // 選択前のテキスト内容を取得
         const activeItemId = await TestHelpers.getActiveItemId(page);
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.locator(".item-text").textContent();
 
-        // Press Shift + Right Arrow
+        // Shift + 右矢印キーを押下
         await page.keyboard.press("Shift+ArrowRight");
         await page.waitForTimeout(300);
 
-        // Verify selection is created
+        // 選択範囲が作成されたことを確認
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
-        // Get selection text (from application selection management system)
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // Verify selection exists
+        // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
 
-        // Expand selection further
+        // さらに選択範囲を広げる
         await page.keyboard.press("Shift+ArrowRight");
         await page.keyboard.press("Shift+ArrowRight");
         await page.waitForTimeout(300);
 
-        // Get selection text (from application selection management system)
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const newSelectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // Verify selection expanded
+        // 選択範囲が広がったことを確認
         expect(newSelectionText.length).toBeGreaterThan(selectionText.length);
 
-        // Get and verify cursor info
+        // カーソル情報を取得して検証
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBe(1);
         expect(cursorData.selectionCount).toBeGreaterThan(0);
     });
 
-    test("Shift + Left expands the selection to the left", async ({ page }) => {
-        // Get active item element
+    test("Shift + 左で選択範囲の左端を広げる", async ({ page }) => {
+        // アクティブなアイテム要素を取得
         const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
         expect(activeItemLocator).not.toBeNull();
 
-        // Move cursor a few characters to the right
+        // カーソルを数文字右に移動
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
 
-        // Verify no selection initially
+        // 初期状態では選択範囲がないことを確認
         const selections = await page.locator(".editor-overlay .selection").count();
         expect(selections).toBe(0);
 
@@ -103,126 +103,126 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         {
             await page.waitForTimeout(300);
-            // Get and verify cursor info
+            // カーソル情報を取得して検証
             const cursorData = await CursorValidator.getCursorData(page);
             expect(cursorData.cursorCount).toBe(1);
             expect(cursorData.selectionCount).toBeGreaterThan(0);
         }
-        // // Verify selection is created
+        // // 選択範囲が作成されたことを確認
         // const selectionExists = await page.evaluate(() => {
         //     return document.querySelector('.editor-overlay .selection') !== null;
         // });
         // expect(selectionExists).toBe(true);
 
-        // Get selection text (from application selection management system)
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // Verify selection exists
+        // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
 
-        // Expand selection further
+        // さらに選択範囲を広げる
         await page.keyboard.press("Shift+ArrowLeft");
         await page.keyboard.press("Shift+ArrowLeft");
         await page.waitForTimeout(300);
 
-        // Get selection text (from application selection management system)
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const newSelectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // Verify selection expanded
+        // 選択範囲が広がったことを確認
         expect(newSelectionText.length).toBeGreaterThan(selectionText.length);
 
         {
-            // Get and verify cursor info
+            // カーソル情報を取得して検証
             const cursorData = await CursorValidator.getCursorData(page);
             expect(cursorData.cursorCount).toBe(1);
             expect(cursorData.selectionCount).toBeGreaterThan(0);
         }
     });
 
-    test("Shift + Down expands the selection to the bottom", async ({ page }) => {
-        // Get active item element
+    test("Shift + 下で選択範囲の下端を広げる", async ({ page }) => {
+        // アクティブなアイテム要素を取得
         const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
         expect(activeItemLocator).not.toBeNull();
 
-        // Verify no selection initially
+        // 初期状態では選択範囲がないことを確認
         const selections = await page.locator(".editor-overlay .selection").count();
         expect(selections).toBe(0);
 
-        // Press Shift + Down Arrow
+        // Shift + 下矢印キーを押下
         await page.keyboard.press("Shift+ArrowDown");
         await page.waitForTimeout(300);
 
-        // Verify selection is created
+        // 選択範囲が作成されたことを確認
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
-        // Get selection text (from application selection management system)
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // Verify selection exists
+        // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
         expect(selectionText).toContain("First line");
 
-        // Verify selection spans multiple lines
+        // 選択範囲が複数行にまたがっていることを確認
         const lines = selectionText.split("\n");
         expect(lines.length).toBeGreaterThanOrEqual(1);
 
-        // Get and verify cursor info
+        // カーソル情報を取得して検証
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBe(1);
         expect(cursorData.selectionCount).toBeGreaterThan(0);
     });
 
-    test("Shift + Up expands the selection to the top", async ({ page }) => {
-        // Get active item element
+    test("Shift + 上で選択範囲の上端を広げる", async ({ page }) => {
+        // アクティブなアイテム要素を取得
         const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
         expect(activeItemLocator).not.toBeNull();
 
-        // Move cursor to the second line
+        // カーソルを2行目に移動
         await page.keyboard.press("ArrowDown");
 
-        // Verify no selection initially
+        // 初期状態では選択範囲がないことを確認
         const selections = await page.locator(".editor-overlay .selection").count();
         expect(selections).toBe(0);
 
-        // Press Shift + Up Arrow
+        // Shift + 上矢印キーを押下
         await page.keyboard.press("Shift+ArrowUp");
         await page.waitForTimeout(300);
 
-        // Verify selection is created
+        // 選択範囲が作成されたことを確認
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
-        // Get selection text (from application selection management system)
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // Verify selection exists
+        // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
 
-        // Verify selection text (should contain either "First line" or "Second line")
+        // 選択範囲のテキストを確認（"First line" または "Second line" のいずれかが含まれていればOK）
         const containsFirstLine = selectionText.includes("First line");
         const containsSecondLine = selectionText.includes("Second line");
         expect(containsFirstLine || containsSecondLine).toBe(true);
 
-        // Verify selection spans multiple lines
+        // 選択範囲が複数行にまたがっていることを確認
         const lines = selectionText.split("\n");
         expect(lines.length).toBeGreaterThanOrEqual(1);
 
-        // Get and verify cursor info
+        // カーソル情報を取得して検証
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBe(1);
         expect(cursorData.selectionCount).toBeGreaterThan(0);

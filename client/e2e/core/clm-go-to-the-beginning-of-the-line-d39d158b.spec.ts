@@ -2,53 +2,53 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature CLM-0007
- *  Title   : Go to the beginning of the line
+ *  Title   : 行頭へ移動
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
-// Increase timeout because this test takes time
+// このテストは時間がかかるため、タイムアウトを増やす
 
-test.describe("CLM-0007: Go to the beginning of the line", () => {
+test.describe("CLM-0007: 行頭へ移動", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line", "Third line"]);
         await TestHelpers.waitForOutlinerItems(page, 3, 30000);
         // Ensure all seeded items are visible
         await page.locator(".outliner-item[data-item-id] >> nth=2").waitFor();
 
-        // Get and click the second item (Second line)
+        // 2番目のアイテム（Second line）を取得してクリック
         const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId).not.toBeNull();
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"] .item-content`);
         await item.click({ force: true });
 
-        // Wait until the global textarea is focused
+        // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus");
 
-        // Wait until the cursor is visible
+        // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
-        // Move the cursor slightly to the right (to verify the effect of the Home key)
+        // カーソルを少し右に移動させておく（Homeキーの効果を確認するため）
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
     });
 
-    test("Pressing the Home key moves the cursor to the beginning of the current line", async ({ page }) => {
-        // Wait until the cursor is visible
+    test("Homeキーを押すと、カーソルが現在の行の先頭に移動する", async ({ page }) => {
+        // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
-        // Get the active item ID
+        // アクティブなアイテムIDを取得
         const activeItemId = await TestHelpers.getActiveItemId(page);
         expect(activeItemId).not.toBeNull();
 
-        // Get the active item
+        // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
 
-        // Wait until cursor instances exist
+        // カーソルインスタンスが存在するまで待機
         await page.waitForFunction(() => {
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (!editorOverlayStore) return false;
@@ -56,76 +56,76 @@ test.describe("CLM-0007: Go to the beginning of the line", () => {
             return cursorInstances && cursorInstances.length > 0;
         }, { timeout: 10000 });
 
-        // Wait a bit for the DOM to update
+        // 少し待機してDOMが更新されるのを待つ
         await page.waitForTimeout(100);
 
-        // Wait for the editor overlay to be visible
+        // エディタオーバーレイが表示されるまで待機
         await expect(page.locator(".editor-overlay")).toBeVisible({ timeout: 10000 });
 
-        // Wait for the cursor element to be visible
+        // カーソル要素が表示されるまで待機
         const cursorLocator = page.locator(".editor-overlay .cursor");
         await expect(cursorLocator.first()).toBeVisible({ timeout: 10000 });
 
-        // Use the first cursor if there are multiple
+        // 複数のカーソルがある場合は最初のものを使用
         const cursor = cursorLocator.first();
 
-        // Wait to get cursor info and check initial state
+        // カーソル情報取得を待機して初期状態を確認
         await page.waitForTimeout(300);
         const initialCursorData = await CursorValidator.getCursorData(page);
         console.log(`Initial cursor data:`, initialCursorData);
         expect(initialCursorData.cursorCount).toBeGreaterThan(0);
 
-        // Get initial cursor position
+        // 初期カーソル位置を取得
         const initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
         console.log(`Initial cursor X position: ${initialX}`);
 
-        // Confirm that the textarea has focus
+        // テキストエリアにフォーカスがあることを確認
         await page.waitForSelector("textarea.global-textarea:focus", { timeout: 5000 });
 
-        // Press the Home key
+        // Homeキーを押下
         await page.keyboard.press("Home");
-        // Wait for update (cursor movement might be delayed)
+        // 更新を待機（カーソル移動がある程度遅れる可能性があるため）
         await page.waitForTimeout(800); // Wait a bit more for DOM update
 
-        // Get and check the new cursor offset
+        // 新しいカーソルオフセットを取得して確認
         const newCursorData = await CursorValidator.getCursorData(page);
         console.log(`New cursor data:`, newCursorData);
 
-        // Wait for the editor overlay DOM to update
+        // エディタオーバーレイのDOMが更新されるのを待機
         await expect(cursor).toBeVisible({ timeout: 10000 });
 
-        // Get the new cursor position
+        // 新しいカーソル位置を取得
         const newX = await cursor.evaluate(el => el.getBoundingClientRect().left);
         console.log(`New cursor X position: ${newX}`);
 
-        // Confirm the cursor moved left (check internal offset, not DOM position)
-        // Confirm the offset is reset to 0 by the Home key
+        // カーソルが左に移動していることを確認（DOM位置ではなく内部オフセットで確認）
+        // Homeキーによりオフセットが0にリセットされていることを確認
         expect(newCursorData.cursors[0].offset).toBeLessThan(initialCursorData.cursors[0].offset);
-        expect(newCursorData.cursors[0].offset).toBe(0); // Home key moves to beginning of line (offset 0)
+        expect(newCursorData.cursors[0].offset).toBe(0); // Homeキーは行頭（オフセット0）に移動する
 
-        // Confirm cursor position is at the beginning of the line (as internal state)
-        // Re-confirm offset is 0 after pressing Home key
+        // カーソルの位置が行の先頭にあることを確認（内部状態として）
+        // Homeキーを押した後、オフセットが0になっていることを再確認
         const finalCursorData = await CursorValidator.getCursorData(page);
         expect(finalCursorData.cursors[0].offset).toBe(0);
         expect(finalCursorData.activeItemId).not.toBeNull();
     });
 
-    test("In multi-line items, moves to the beginning of the line where the cursor is currently located", async ({ page }) => {
-        // Wait until the cursor is visible
+    test("複数行のアイテムでは、現在のカーソルがある行の先頭に移動する", async ({ page }) => {
+        // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
-        // Get the active item ID
+        // アクティブなアイテムIDを取得
         const activeItemId = await TestHelpers.getActiveItemId(page);
         expect(activeItemId).not.toBeNull();
 
-        // Get the active item
+        // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
 
-        // Move cursor to the 3rd line
+        // カーソルを3行目に移動
         await page.keyboard.press("ArrowDown");
 
-        // Wait until cursor instances exist
+        // カーソルインスタンスが存在するまで待機
         await page.waitForFunction(() => {
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (!editorOverlayStore) return false;
@@ -133,55 +133,55 @@ test.describe("CLM-0007: Go to the beginning of the line", () => {
             return cursorInstances && cursorInstances.length > 0;
         }, { timeout: 10000 });
 
-        // Wait a bit for the DOM to update
+        // 少し待機してDOMが更新されるのを待つ
         await page.waitForTimeout(100);
 
-        // Wait for the editor overlay to be visible
+        // エディタオーバーレイが表示されるまで待機
         await expect(page.locator(".editor-overlay")).toBeVisible({ timeout: 10000 });
 
-        // Wait for the cursor element to be visible
+        // カーソル要素が表示されるまで待機
         const cursorLocator = page.locator(".editor-overlay .cursor");
         await expect(cursorLocator.first()).toBeVisible({ timeout: 10000 });
 
-        // Use the first cursor if there are multiple
+        // 複数のカーソルがある場合は最初のものを使用
         const cursor = cursorLocator.first();
 
-        // Wait to get cursor info and check initial state
+        // カーソル情報取得を待機して初期状態を確認
         await page.waitForTimeout(300);
         const initialCursorData = await CursorValidator.getCursorData(page);
         console.log(`Initial cursor data in second test:`, initialCursorData);
         expect(initialCursorData.cursorCount).toBeGreaterThan(0);
 
-        // Get initial cursor position
+        // 初期カーソル位置を取得
         const initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
         console.log(`Initial cursor X position in second test: ${initialX}`);
 
-        // Confirm that the textarea has focus
+        // テキストエリアにフォーカスがあることを確認
         await page.waitForSelector("textarea.global-textarea:focus", { timeout: 5000 });
 
-        // Press the Home key
+        // Homeキーを押下
         await page.keyboard.press("Home");
-        // Wait for update (cursor movement might be delayed)
+        // 更新を待機（カーソル移動がある程度遅れる可能性があるため）
         await page.waitForTimeout(800); // Wait a bit more for DOM update
 
-        // Get and check the new cursor offset
+        // 新しいカーソルオフセットを取得して確認
         const newCursorData = await CursorValidator.getCursorData(page);
         console.log(`New cursor data in second test:`, newCursorData);
 
-        // Wait for the editor overlay DOM to update
+        // エディタオーバーレイのDOMが更新されるのを待機
         await expect(cursor).toBeVisible({ timeout: 10000 });
 
-        // Get the new cursor position
+        // 新しいカーソル位置を取得
         const newX = await cursor.evaluate(el => el.getBoundingClientRect().left);
         console.log(`New cursor X position in second test: ${newX}`);
 
-        // Confirm the cursor moved left (check internal offset, not DOM position)
-        // Confirm the offset is reset to 0 by the Home key
+        // カーソルが左に移動していることを確認（DOM位置ではなく内部オフセットで確認）
+        // Homeキーによりオフセットが0にリセットされていることを確認
         expect(newCursorData.cursors[0].offset).toBeLessThan(initialCursorData.cursors[0].offset);
-        expect(newCursorData.cursors[0].offset).toBe(0); // Home key moves to beginning of line (offset 0)
+        expect(newCursorData.cursors[0].offset).toBe(0); // Homeキーは行頭（オフセット0）に移動する
 
-        // Confirm cursor position is at the beginning of the line (as internal state)
-        // Re-confirm offset is 0 after pressing Home key
+        // カーソルの位置が行の先頭にあることを確認（内部状態として）
+        // Homeキーを押した後、オフセットが0になっていることを再確認
         const finalCursorData = await CursorValidator.getCursorData(page);
         expect(finalCursorData.cursors[0].offset).toBe(0);
         expect(finalCursorData.activeItemId).not.toBeNull();

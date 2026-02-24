@@ -37,10 +37,6 @@ const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 
 const admin = require("firebase-admin");
-const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" ||
-  !!process.env.FIRESTORE_EMULATOR_HOST ||
-  !!process.env.FIREBASE_AUTH_EMULATOR_HOST ||
-  !!process.env.FIREBASE_STORAGE_EMULATOR_HOST;
 const Sentry = require("@sentry/node");
 
 if (process.env.SENTRY_DSN) {
@@ -64,7 +60,7 @@ if (process.env.SENTRY_DSN) {
     },
   });
 } else {
-  if (!isEmulator) {
+  if (process.env.NODE_ENV === "production") {
     logger.warn("Sentry DSN not found. Sentry logging is disabled.");
   } else {
     logger.info(
@@ -132,7 +128,7 @@ function setCorsHeaders(req, res) {
 
   // HSTS (Strict-Transport-Security)
   // Only enable in production to avoid issues with local development (HTTP)
-  if (!isEmulator) {
+  if (process.env.NODE_ENV === "production") {
     res.set(
       "Strict-Transport-Security",
       "max-age=31536000; includeSubDomains",
@@ -210,7 +206,7 @@ if (!admin.apps.length) {
 logger.info(`Firebase project ID: ${admin.app().options.projectId}`);
 
 // Storage Emulator settings
-if (isEmulator || process.env.NODE_ENV === "development") {
+if (process.env.NODE_ENV === "development" || process.env.FUNCTIONS_EMULATOR) {
   process.env.FIREBASE_STORAGE_EMULATOR_HOST = "localhost:59200";
 }
 
@@ -222,10 +218,7 @@ const userContainersCollection = db.collection("userContainers");
 
 // Determine if the decoded Firebase token represents an admin user
 function isAdmin(decodedToken) {
-  return (
-    decodedToken &&
-    (decodedToken.role === "admin" || decodedToken.admin === true)
-  );
+  return decodedToken && decodedToken.role === "admin";
 }
 
 // Check if user has access to a specific project
@@ -234,7 +227,7 @@ async function checkContainerAccess(userId, containerId) {
   try {
     // In test environment, allow access for test users
     if (
-      isEmulator ||
+      process.env.FUNCTIONS_EMULATOR === "true" ||
       process.env.NODE_ENV === "test" ||
       process.env.NODE_ENV === "development"
     ) {
@@ -308,34 +301,37 @@ function getAzureConfig() {
 
 // Confirmation of Azure settings initialization
 try {
-  const isEmulatorEnv = !!(
-    process.env.FUNCTIONS_EMULATOR === "true" ||
-    process.env.NODE_ENV === "test" ||
-    process.env.NODE_ENV === "development"
+  // Confirm environment variables directly
+  logger.info("Checking environment variables:");
+  logger.info(`AZURE_TENANT_ID: ${process.env.AZURE_TENANT_ID || "not set"}`);
+  logger.info(`AZURE_ENDPOINT: ${process.env.AZURE_ENDPOINT || "not set"}`);
+  logger.info(
+    `AZURE_PRIMARY_KEY: ${process.env.AZURE_PRIMARY_KEY ? "set" : "not set"}`,
   );
+  logger.info(
+    `AZURE_SECONDARY_KEY: ${
+      process.env.AZURE_SECONDARY_KEY ? "set" : "not set"
+    }`,
+  );
+  logger.info(`AZURE_ACTIVE_KEY: ${process.env.AZURE_ACTIVE_KEY || "not set"}`);
 
   const config = getAzureConfig();
   if (!config.tenantId || !config.primaryKey) {
     logger.warn(
       "Azure settings are incomplete. Please check environment variables.",
     );
-    if (isEmulatorEnv) {
-      logger.warn(
-        `Current settings: tenantId=${
-          config.tenantId ? "set" : "not set"
-        }, primaryKey=${config.primaryKey ? "set" : "not set"}, endpoint=${
-          config.endpoint ? "set" : "not set"
-        }`,
-      );
-    }
+    logger.warn(
+      `Current settings: tenantId=${
+        config.tenantId ? "set" : "not set"
+      }, primaryKey=${config.primaryKey ? "set" : "not set"}, endpoint=${
+        config.endpoint ? "set" : "not set"
+      }`,
+    );
   } else {
     logger.info("Azure settings loaded successfully.");
-    if (isEmulatorEnv) {
-      // Detailed logs only in emulator/test environment
-      logger.info(
-        `tenantId: ${config.tenantId}, endpoint: ${config.endpoint}, activeKey: ${config.activeKey}`,
-      );
-    }
+    logger.info(
+      `tenantId: ${config.tenantId}, endpoint: ${config.endpoint}, activeKey: ${config.activeKey}`,
+    );
   }
 } catch (error) {
   logger.error("Failed to get Azure settings:", error.message);
@@ -359,12 +355,7 @@ exports.saveProject = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
-
-      const { projectId, title } = req.body;
+      const { idToken, projectId, title } = req.body;
 
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
@@ -479,10 +470,7 @@ exports.getUserProjects = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
+      const { idToken } = req.body;
 
       // Verify Firebase token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
@@ -527,12 +515,7 @@ exports.saveContainer = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
-
-      const { containerId } = req.body;
+      const { idToken, containerId } = req.body;
 
       if (!containerId) {
         return res.status(400).json({ error: "Container ID is required" });
@@ -649,10 +632,7 @@ exports.getUserContainers = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
+      const { idToken } = req.body;
 
       // Verify Firebase token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
@@ -704,10 +684,14 @@ exports.createTestUser = onRequest(
     }
 
     // Production environment check
-    if (!isEmulator) {
-      logger.warn("Attempted to create test user in non-emulator environment");
+    const isProduction = !process.env.FUNCTIONS_EMULATOR &&
+      !process.env.FIRESTORE_EMULATOR_HOST &&
+      process.env.NODE_ENV === "production";
+
+    if (isProduction) {
+      logger.warn("Attempted to create test user in production environment");
       return res.status(403).json({
-        error: "Test user creation is only allowed in emulator environment",
+        error: "Test user creation is disabled in production",
       });
     }
 
@@ -762,10 +746,7 @@ exports.deleteUser = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
+      const { idToken } = req.body;
 
       if (!idToken) {
         return res.status(400).json({ error: "ID token is required" });
@@ -869,12 +850,7 @@ exports.deleteProject = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
-
-      const { projectId } = req.body;
+      const { idToken, projectId } = req.body;
 
       if (!idToken) {
         return res.status(400).json({ error: "ID token is required" });
@@ -1008,12 +984,7 @@ exports.generateProjectShareLink = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
-
-      const { projectId } = req.body;
+      const { idToken, projectId } = req.body;
       if (!idToken || !projectId) {
         return res.status(400).json({ error: "Invalid request" });
       }
@@ -1061,12 +1032,7 @@ exports.acceptProjectShareLink = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
-
-      const { token } = req.body;
+      const { idToken, token } = req.body;
       if (!idToken || !token) {
         return res.status(400).json({ error: "Invalid request" });
       }
@@ -1159,12 +1125,7 @@ exports.getProjectUsers = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
-
-      const { projectId } = req.body;
+      const { idToken, projectId } = req.body;
 
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
@@ -1277,10 +1238,7 @@ exports.listUsers = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
+      const { idToken } = req.body;
 
       if (!idToken) {
         return res.status(400).json({ error: "ID token required" });
@@ -1401,11 +1359,7 @@ exports.createSchedule = onRequest(
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
-    let idToken = req.headers.authorization?.replace("Bearer ", "");
-    if (!idToken) {
-      idToken = req.body?.idToken;
-    }
-    const { pageId, schedule } = req.body || {};
+    const { idToken, pageId, schedule } = req.body || {};
     if (!idToken || !pageId || !schedule) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -1418,23 +1372,25 @@ exports.createSchedule = onRequest(
     }
 
     try {
+      // Check emulator environment
+      logger.info(
+        `createSchedule: Environment check - FIREBASE_AUTH_EMULATOR_HOST: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`,
+      );
+      logger.info(
+        `createSchedule: Environment check - FUNCTIONS_EMULATOR: ${process.env.FUNCTIONS_EMULATOR}`,
+      );
+      logger.info(
+        `createSchedule: Environment check - NODE_ENV: ${process.env.NODE_ENV}`,
+      );
+
       let uid;
 
       // Verify token with Firebase Admin SDK
       // Set checkRevoked: false in emulator environment as unsigned tokens are issued
-      const isEmulatorEnv = isEmulator;
+      const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+        process.env.FUNCTIONS_EMULATOR === "true");
 
       if (isEmulatorEnv) {
-        // Check emulator environment
-        logger.info(
-          `createSchedule: Environment check - FIREBASE_AUTH_EMULATOR_HOST: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`,
-        );
-        logger.info(
-          `createSchedule: Environment check - FUNCTIONS_EMULATOR: ${process.env.FUNCTIONS_EMULATOR}`,
-        );
-        logger.info(
-          `createSchedule: Environment check - NODE_ENV: ${process.env.NODE_ENV}`,
-        );
         logger.info(
           "createSchedule: Using emulator environment token verification",
         );
@@ -1556,11 +1512,7 @@ exports.updateSchedule = onRequest(
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method Not Allowed" });
     }
-    let idToken = req.headers.authorization?.replace("Bearer ", "");
-    if (!idToken) {
-      idToken = req.body?.idToken;
-    }
-    const { pageId, scheduleId, schedule } = req.body || {};
+    const { idToken, pageId, scheduleId, schedule } = req.body || {};
     if (!idToken || !pageId || !scheduleId || !schedule) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -1577,7 +1529,8 @@ exports.updateSchedule = onRequest(
 
       // Verify token with Firebase Admin SDK
       // Set checkRevoked: false in emulator environment as unsigned tokens are issued
-      const isEmulatorEnv = isEmulator;
+      const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+        process.env.FUNCTIONS_EMULATOR === "true");
 
       if (isEmulatorEnv) {
         logger.info(
@@ -1625,6 +1578,8 @@ exports.updateSchedule = onRequest(
       }
       // Permission check: only the creator of the schedule can update it
       // Relax permission check in emulator environment
+      const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+        process.env.FUNCTIONS_EMULATOR === "true";
       if (!isEmulator && scheduleSnap.data().createdBy !== uid) {
         return res.status(403).json({ error: "Forbidden" });
       } else if (isEmulator) {
@@ -1666,11 +1621,7 @@ exports.listSchedules = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    let idToken = req.headers.authorization?.replace("Bearer ", "");
-    if (!idToken) {
-      idToken = req.body?.idToken;
-    }
-    const { pageId } = req.body || {};
+    const { idToken, pageId } = req.body || {};
     if (!idToken || !pageId) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -1678,7 +1629,8 @@ exports.listSchedules = onRequest(
     try {
       // Verify token with Firebase Admin SDK
       // Set checkRevoked: false in emulator environment as unsigned tokens are issued
-      const isEmulatorEnv = isEmulator;
+      const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+        process.env.FUNCTIONS_EMULATOR === "true");
 
       if (isEmulatorEnv) {
         logger.info(
@@ -1755,17 +1707,14 @@ exports.exportSchedulesIcal = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    let idToken = req.headers.authorization?.replace("Bearer ", "");
-    if (!idToken) {
-      idToken = req.body?.idToken;
-    }
-    const { pageId } = req.body || {};
+    const { idToken, pageId } = req.body || {};
     if (!idToken || !pageId) {
       return res.status(400).json({ error: "Invalid request" });
     }
 
     try {
-      const isEmulatorEnv = isEmulator;
+      const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+        process.env.FUNCTIONS_EMULATOR === "true");
 
       if (isEmulatorEnv) {
         logger.info(
@@ -1864,11 +1813,7 @@ exports.cancelSchedule = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    let idToken = req.headers.authorization?.replace("Bearer ", "");
-    if (!idToken) {
-      idToken = req.body?.idToken;
-    }
-    const { pageId, scheduleId } = req.body || {};
+    const { idToken, pageId, scheduleId } = req.body || {};
     if (!idToken || !pageId || !scheduleId) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -1878,7 +1823,8 @@ exports.cancelSchedule = onRequest(
 
       // Verify token with Firebase Admin SDK
       // Set checkRevoked: false in emulator environment as unsigned tokens are issued
-      const isEmulatorEnv = isEmulator;
+      const isEmulatorEnv = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+        process.env.FUNCTIONS_EMULATOR === "true");
 
       if (isEmulatorEnv) {
         logger.info(
@@ -1926,6 +1872,8 @@ exports.cancelSchedule = onRequest(
       }
       // Permission check: only the creator of the schedule can cancel it
       // Relax permission check in emulator environment
+      const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+        process.env.FUNCTIONS_EMULATOR === "true";
       if (!isEmulator && scheduleSnap.data().createdBy !== uid) {
         return res.status(403).json({ error: "Permission denied" });
       } else if (isEmulator) {
@@ -2007,11 +1955,7 @@ exports.uploadAttachment = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    let idToken = req.headers.authorization?.replace("Bearer ", "");
-    if (!idToken) {
-      idToken = req.body?.idToken;
-    }
-    const { containerId, itemId, fileName, fileData } = req.body || {};
+    const { idToken, containerId, itemId, fileName, fileData } = req.body || {};
     logger.info(
       `uploadAttachment request: containerId=${containerId}, itemId=${itemId}, fileName=${fileName}, fileDataLength=${fileData?.length}`,
     );
@@ -2072,11 +2016,12 @@ exports.uploadAttachment = onRequest(
       }
 
       // Set appropriate bucket name in test environment
-      const isLocal = isEmulator || process.env.NODE_ENV === "development";
-      const bucketName = isLocal ? "test-project-id.appspot.com" : undefined;
+      const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
+        process.env.NODE_ENV === "development";
+      const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
       const bucket = admin.storage().bucket(bucketName);
       logger.info(
-        `uploadAttachment using bucket: ${bucket.name}, isEmulator: ${isLocal}`,
+        `uploadAttachment using bucket: ${bucket.name}, isEmulator: ${isEmulator}`,
       );
 
       const filePath = `attachments/${containerId}/${itemId}/${fileName}`;
@@ -2126,7 +2071,7 @@ exports.uploadAttachment = onRequest(
 
       let url;
 
-      if (isLocal) {
+      if (isEmulator) {
         // Generate direct URL in Emulator environment
         const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
           "localhost:59200";
@@ -2175,11 +2120,7 @@ exports.listAttachments = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    let idToken = req.headers.authorization?.replace("Bearer ", "");
-    if (!idToken) {
-      idToken = req.body?.idToken;
-    }
-    const { containerId, itemId } = req.body || {};
+    const { idToken, containerId, itemId } = req.body || {};
     if (!idToken || !containerId || !itemId) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -2205,8 +2146,9 @@ exports.listAttachments = onRequest(
       }
 
       // Set appropriate bucket name in test environment
-      const isLocal = isEmulator || process.env.NODE_ENV === "development";
-      const bucketName = isLocal ? "test-project-id.appspot.com" : undefined;
+      const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
+        process.env.NODE_ENV === "development";
+      const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
       const bucket = admin.storage().bucket(bucketName);
 
       const prefix = `attachments/${containerId}/${itemId}/`;
@@ -2214,7 +2156,7 @@ exports.listAttachments = onRequest(
 
       let urls;
 
-      if (isLocal) {
+      if (isEmulator) {
         // Generate direct URL in Emulator environment
         const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
           "localhost:59200";
@@ -2264,11 +2206,7 @@ exports.deleteAttachment = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    let idToken = req.headers.authorization?.replace("Bearer ", "");
-    if (!idToken) {
-      idToken = req.body?.idToken;
-    }
-    const { containerId, itemId, fileName } = req.body || {};
+    const { idToken, containerId, itemId, fileName } = req.body || {};
     if (!idToken || !containerId || !itemId || !fileName) {
       return res.status(400).json({ error: "Invalid request" });
     }
@@ -2294,8 +2232,9 @@ exports.deleteAttachment = onRequest(
       }
 
       // Set appropriate bucket name in test environment
-      const isLocal = isEmulator || process.env.NODE_ENV === "development";
-      const bucketName = isLocal ? "test-project-id.appspot.com" : undefined;
+      const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
+        process.env.NODE_ENV === "development";
+      const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
       const bucket = admin.storage().bucket(bucketName);
 
       const filePath = `attachments/${containerId}/${itemId}/${fileName}`;
@@ -2320,9 +2259,11 @@ exports.deleteAttachment = onRequest(
 exports.adminCheckForProjectUserListing = onRequest(
   { cors: true },
   wrapWithSentry(async (req, res) => {
+    logger.info("adminCheckForProjectUserListing called");
     setCorsHeaders(req, res);
 
     if (req.method === "OPTIONS") {
+      logger.info("OPTIONS request received");
       return res.status(204).send();
     }
 
@@ -2332,12 +2273,14 @@ exports.adminCheckForProjectUserListing = onRequest(
       if (!idToken) {
         idToken = req.body.idToken;
       }
-
+      logger.info("ID token received:", idToken ? "present" : "missing");
       if (!idToken) {
+        logger.info("Returning 400: ID token required");
         return res.status(400).json({ error: "ID token required" });
       }
 
       if (idToken.trim() === "") {
+        logger.info("Returning 400: ID token empty");
         return res.status(400).json({ error: "ID token required" });
       }
 
@@ -2349,9 +2292,13 @@ exports.adminCheckForProjectUserListing = onRequest(
 
       // Verify ID token with Firebase Admin SDK
       const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const uid = decodedToken.uid;
 
       // Check admin privileges
-      if (!isAdmin(decodedToken)) {
+      const userRecord = await admin.auth().getUser(uid);
+      const customClaims = userRecord.customClaims || {};
+
+      if (!customClaims.admin && customClaims.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
       }
 
@@ -2401,20 +2348,21 @@ exports.adminUserList = onRequest(
     }
 
     try {
-      // Verify ID token (get from Authorization header or request body)
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
+      // Verify ID token
+      const idToken = req.headers.authorization?.replace("Bearer ", "");
       if (!idToken) {
         return res.status(400).json({ error: "ID token required" });
       }
 
       // Verify ID token with Firebase Admin SDK
       const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const uid = decodedToken.uid;
 
       // Check admin privileges
-      if (!isAdmin(decodedToken)) {
+      const userRecord = await admin.auth().getUser(uid);
+      const customClaims = userRecord.customClaims || {};
+
+      if (!customClaims.admin && customClaims.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
       }
 
@@ -2461,10 +2409,7 @@ exports.debugUserProjects = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
+      const { idToken } = req.body;
 
       if (!idToken) {
         return res.status(400).json({ error: "ID token is required" });
@@ -2474,33 +2419,18 @@ exports.debugUserProjects = onRequest(
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
-      // Hardened: Only allow admin users to access debug endpoint
-      if (!isAdmin(decodedToken)) {
-        logger.warn(`Non-admin access attempt to debugUserProjects: ${userId}`);
-        return res.status(403).json({ error: "Admin access required" });
-      }
-
-      // Hardened: Disable debug endpoint in production environment
-      const isProduction = !process.env.FUNCTIONS_EMULATOR &&
-        process.env.NODE_ENV === "production";
-      if (isProduction) {
-        logger.warn(`Debug endpoint accessed in production: ${userId}`);
-        return res.status(403).json({
-          error: "Debug endpoint is disabled in production",
-        });
-      }
-
       logger.info(`Debug: Checking projects for user: ${userId}`);
 
-      // Parallelize Firestore operations
-      const [userProjectDoc, projectUsersQuery] = await Promise.all([
-        db.collection("userProjects").doc(userId).get(),
-        db.collection("projectUsers")
-          .where("accessibleUserIds", "array-contains", userId)
-          .get(),
-      ]);
+      // Check userProjects collection
+      const userProjectDoc = await db.collection("userProjects").doc(userId)
+        .get();
       const userProjectData = userProjectDoc.exists ?
         userProjectDoc.data() : null;
+
+      // Search matching documents in projectUsers collection
+      const projectUsersQuery = await db.collection("projectUsers")
+        .where("accessibleUserIds", "array-contains", userId)
+        .get();
 
       const projectUsersData = [];
       projectUsersQuery.forEach(doc => {
@@ -2519,6 +2449,10 @@ exports.debugUserProjects = onRequest(
           data: userProjectData,
         },
         projectUsers: projectUsersData,
+        environment: {
+          NODE_ENV: process.env.NODE_ENV,
+          FUNCTIONS_EMULATOR: process.env.FUNCTIONS_EMULATOR,
+        },
       });
     } catch (error) {
       Sentry.captureException(error);
@@ -2546,12 +2480,7 @@ exports.deleteAllProductionData = onRequest(
     }
 
     try {
-      let idToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!idToken) {
-        idToken = req.body.idToken;
-      }
-
-      const { adminToken, confirmationCode } = req.body;
+      const { adminToken, confirmationCode, idToken } = req.body;
 
       // Authenticate Admin User (Defense in Depth)
       if (!idToken) {
@@ -2603,7 +2532,10 @@ exports.deleteAllProductionData = onRequest(
       }
 
       // Production environment check
-      const isProduction = !isEmulator && process.env.NODE_ENV === "production";
+      const isProduction = !process.env.FUNCTIONS_EMULATOR &&
+        !process.env.FIRESTORE_EMULATOR_HOST &&
+        process.env.NODE_ENV === "production";
+
       if (!isProduction) {
         logger.warn(
           "Production data deletion attempted in non-production environment",

@@ -1,4 +1,5 @@
 import { Logger } from "@hocuspocus/extension-logger";
+console.log("DEBUG: LOADING server/src/server.ts");
 import { Hocuspocus, Server } from "@hocuspocus/server";
 import cors from "cors";
 import express from "express";
@@ -94,8 +95,10 @@ export async function startServer(
     // Additional check to ensure Persistence is ready
     if (persistence) {
         logger.info({ event: "persistence_ready" }, "Persistence initialized: ENABLED");
+        console.log("Persistence: ENABLED (SQLite)");
     } else {
         logger.warn({ event: "persistence_disabled" }, "Persistence initialized: DISABLED");
+        console.log("Persistence: DISABLED");
     }
 
     const intervals: NodeJS.Timeout[] = [];
@@ -244,16 +247,16 @@ export async function startServer(
                 timestamp: new Date().toISOString(),
             });
 
-            logger.info(
-                {
+            logger.info(`Log rotation completed: ${
+                JSON.stringify({
                     clientRotated,
                     telemetryRotated,
                     serverRotated,
-                },
-                "Log rotation completed",
-            );
+                    timestamp: new Date().toISOString(),
+                })
+            }`);
         } catch (error: any) {
-            logger.error(error, "Log rotation error");
+            logger.error(`Log rotation error: ${error.message}`);
             res.status(500).json({
                 success: false,
                 error: error.message,
@@ -271,7 +274,10 @@ export async function startServer(
             // --- Manual Connection Handling (Hooks Replacement) ---
             const ip = getClientIp(request);
             const origin = request.headers.origin || "";
-            logger.debug({ headers: request.headers, ip }, "WebSocket upgrade request details");
+            if (process.env.NODE_ENV === "production") {
+                console.log("[DEBUG] Upgrade Headers:", JSON.stringify(request.headers, null, 2));
+                console.log("[DEBUG] Detected IP:", ip);
+            }
 
             // Helper to close
             const reject = (code: number, reason: string) => {
@@ -378,12 +384,12 @@ export async function startServer(
                         ip,
                     };
                     hocuspocus.handleConnection(ws, request, context);
-                } catch (e: any) {
-                    logger.error(e, "Error handling Hocuspocus connection");
+                } catch (e) {
+                    console.error("Error handling Hocuspocus connection:", e);
                     ws.close(1011);
                 }
             } catch (e: any) {
-                logger.error(e, "WebSocket setup error");
+                logger.error({ event: "ws_setup_error", error: e.message });
                 ws.close(4001, e.message || "Unauthorized");
             }
         });

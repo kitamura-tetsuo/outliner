@@ -7,14 +7,14 @@ test.describe("Browser Basic Test", () => {
     test("can create a page", async ({ page }) => {
         console.log("Debug: Testing basic page creation");
 
-        // Check that the page has been created
+        // ページが作成されたことを確認
         expect(page).toBeDefined();
         console.log("Debug: Page created successfully");
 
-        // Check the page URL
+        // ページのURLを確認
         console.log("Debug: Initial page URL:", page.url());
 
-        // Test basic page operations
+        // 基本的なページ操作をテスト
         await page.setContent("<html><body><h1>Test Page</h1></body></html>");
         console.log("Debug: Content set successfully");
 

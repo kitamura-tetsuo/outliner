@@ -2,7 +2,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature FMT-0006
- *  Title   : Consistency of format display when moving cursors
+ *  Title   : カーソル移動時のフォーマット表示の一貫性
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
@@ -10,36 +10,36 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 
-test.describe("Consistency of format display when moving cursors", () => {
+test.describe("カーソル移動時のフォーマット表示の一貫性", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("Control characters display/hide appropriately when moving cursor", async ({ page }) => {
-        // Setup test page
+    test("カーソル移動時に制御文字の表示/非表示が適切に切り替わる", async ({ page }) => {
+        // テストページをセットアップ
 
-        // Select the first item
+        // 最初のアイテムを選択
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("Control+a");
         await page.keyboard.press("Backspace");
 
-        // Enter bold text
+        // 太字テキストを入力
         await page.keyboard.type("[[aasdd]]");
 
-        // Create a second item
+        // 2つ目のアイテムを作成
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
 
-        // Enter internal link text
+        // 内部リンクテキストを入力
         await page.keyboard.type("[asd]");
 
-        // Create a third item
+        // 3つ目のアイテムを作成
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
 
-        // Create an empty item
+        // 空のアイテムを作成
         await page.keyboard.type("temp");
         await page.waitForTimeout(300); // Wait for UI to update
         const thirdItem = page.locator(".outliner-item").nth(2);
@@ -53,13 +53,13 @@ test.describe("Consistency of format display when moving cursors", () => {
         }
         await page.waitForTimeout(300);
 
-        // Check text content of the first item (control characters are hidden and format is applied)
+        // 1つ目のアイテムのテキスト内容を確認（制御文字が非表示でフォーマットが適用されていること）
         await page.waitForTimeout(300);
         await expect.poll(async () => {
             return await firstItem.locator(".item-text").innerHTML();
         }).toContain("<strong>aasdd</strong>");
 
-        // Check text content of the second item (control characters are hidden and internal link is applied)
+        // 2つ目のアイテムのテキスト内容を確認（制御文字が非表示で内部リンクが適用されていること）
         const secondItem = page.locator(".outliner-item").nth(1);
 
         // Wait for UI to update after cursor changes
@@ -74,73 +74,73 @@ test.describe("Consistency of format display when moving cursors", () => {
         expect(secondItemHtmlInactive).toContain("internal-link");
         expect(secondItemHtmlInactive).not.toContain("control-char");
 
-        // Return to the first item
+        // 最初のアイテムに戻る
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Get text content of the first item (confirm control characters are displayed)
+        // 最初のアイテムのテキストコンテンツを取得（制御文字が表示されていることを確認）
         const firstItemHtmlActive = await firstItem.locator(".item-text").innerHTML();
         expect(firstItemHtmlActive).toContain("<strong>aasdd</strong>");
 
-        // Click the second item
+        // 2つ目のアイテムをクリック
         await secondItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Get text content of the second item (confirm control characters are displayed)
+        // 2つ目のアイテムのテキストコンテンツを取得（制御文字が表示されていることを確認）
         const secondItemHtmlActive = await secondItem.locator(".item-text").innerHTML();
         expect(secondItemHtmlActive).toContain('<span class="control-char">[</span>asd');
     });
 
-    test("Title is displayed as normal text", async ({ page }) => {
-        // Setup test page
+    test("タイトルは通常のテキスト表示される", async ({ page }) => {
+        // テストページをセットアップ
 
-        // Select title
+        // タイトルを選択
         const pageTitle = page.locator(".page-title");
         await pageTitle.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Clear existing text and enter new text
+        // 既存のテキストをクリアしてから新しいテキストを入力
         await page.keyboard.press("Control+a");
         await page.keyboard.type("aasdd");
 
-        // Click a normal item
+        // 通常のアイテムをクリック
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check title style (title-text class is applied)
+        // タイトルのスタイルを確認（title-textクラスが適用されていること）
         const titleClasses = await pageTitle.locator(".item-text").getAttribute("class");
         expect(titleClasses).toContain("title-text");
 
-        // Check title CSS style
+        // タイトルのCSSスタイルを確認
         const titleFontWeight = await pageTitle.locator(".item-text").evaluate(el => {
             return window.getComputedStyle(el).fontWeight;
         });
         console.log("Title font weight:", titleFontWeight);
-        // Confirm title font weight is set (check actual value in log)
+        // タイトルのフォントウェイトが設定されていることを確認（実際の値をログで確認）
         expect(titleFontWeight).toBeDefined();
 
-        // Click title
+        // タイトルをクリック
         await pageTitle.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check title text content (plain text is displayed without control characters)
+        // タイトルのテキスト内容を確認（制御文字なしでプレーンテキストが表示されていること）
         const titleText = await pageTitle.locator(".item-text").textContent();
         expect(titleText).toBe("aasdd");
 
-        // Click a normal item
+        // 通常のアイテムをクリック
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check title text content (displayed as normal text)
+        // タイトルのテキスト内容を確認（通常のテキスト表示されていること）
         const titleTextWithoutCursor = await pageTitle.locator(".item-text").textContent();
         expect(titleTextWithoutCursor).toBe("aasdd");
     });
 
-    test("External link syntax is displayed correctly", async ({ page }) => {
-        // Setup test page
+    test("外部リンク構文が正しく表示される", async ({ page }) => {
+        // テストページをセットアップ
 
-        // Select the first item
+        // 最初のアイテムを選択
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
@@ -151,11 +151,11 @@ test.describe("Consistency of format display when moving cursors", () => {
         await TestHelpers.setCursor(page, firstItemIdForLink!, 0, "local");
         await TestHelpers.insertText(page, firstItemIdForLink!, "[https://example.com]");
 
-        // Create a second item
+        // 2つ目のアイテムを作成
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check text content of the first item (link is applied)
+        // 最初のアイテムのテキスト内容を確認（リンクが適用されていること）
         const pageTextsAfterLink = await TestHelpers.getPageTexts(page);
         expect(
             pageTextsAfterLink.some(({ text }) =>
@@ -167,19 +167,19 @@ test.describe("Consistency of format display when moving cursors", () => {
         const firstItemTextContentInactive = await firstItem.locator(".item-text").textContent();
         expect(firstItemTextContentInactive).toContain("https://example.com");
 
-        // Click the first item
+        // 最初のアイテムをクリック
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check text content of the first item (control characters are displayed)
+        // 最初のアイテムのテキスト内容を確認（制御文字が表示されていること）
         const firstItemTextContentActive = await firstItem.locator(".item-text").textContent();
         expect(firstItemTextContentActive).toContain("https://example.com");
     });
 
-    test("Internal link syntax is displayed correctly", async ({ page }) => {
-        // Setup test page
+    test("内部リンク構文が正しく表示される", async ({ page }) => {
+        // テストページをセットアップ
 
-        // Select the first item
+        // 最初のアイテムを選択
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
@@ -190,42 +190,42 @@ test.describe("Consistency of format display when moving cursors", () => {
         await TestHelpers.setCursor(page, firstItemIdForInternalLink!, 0, "local");
         await TestHelpers.insertText(page, firstItemIdForInternalLink!, "[asd]");
 
-        // Create a second item
+        // 2つ目のアイテムを作成
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check text content of the first item (internal link is applied)
+        // 最初のアイテムのテキスト内容を確認（内部リンクが適用されていること）
         const pageTextsAfterInternalLink = await TestHelpers.getPageTexts(page);
         expect(pageTextsAfterInternalLink.some(({ text }) => text === "[asd]" || text?.includes("[asd]"))).toBe(true);
         await page.waitForTimeout(300);
         const firstItemTextContentInactiveInternal = await firstItem.locator(".item-text").textContent();
-        // Since internal link is rendered when inactive, only link text is displayed without control characters
+        // 非アクティブ時は内部リンクがレンダリングされるため、制御文字なしでリンクテキストのみ表示される
         expect(firstItemTextContentInactiveInternal).toContain("asd");
         expect(firstItemTextContentInactiveInternal).not.toContain("[asd]");
 
-        // Click the first item
+        // 最初のアイテムをクリック
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Get text content of the first item (confirm control characters are displayed)
+        // 最初のアイテムのテキストコンテンツを取得（制御文字が表示されていることを確認）
         const firstItemTextContentActiveInternal = await firstItem.locator(".item-text").textContent();
         expect(firstItemTextContentActiveInternal).toContain("[asd]");
     });
 
-    test("SharedTree data is saved correctly", async ({ page }) => {
-        // Select the first item (title), press Enter, and create a second item
+    test("SharedTreeデータが正しく保存される", async ({ page }) => {
+        // 最初のアイテム（タイトル）を選択してEnterキーを押下し、2つ目のアイテムを作成
         const titleItem = page.locator(".outliner-item").first();
         await titleItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
 
-        // Select the second item (the item created just before)
+        // 2つ目のアイテム（直前で作成したアイテム）を選択
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check cursor state and create if necessary
+        // カーソルの状態を確認し、必要に応じて作成
         const cursorState = await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
@@ -239,7 +239,7 @@ test.describe("Consistency of format display when moving cursors", () => {
             };
         });
 
-        // Create cursor instance if it does not exist
+        // カーソルインスタンスが存在しない場合、作成する
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
                 const editorStore = (window as any).editorOverlayStore;
@@ -257,48 +257,48 @@ test.describe("Consistency of format display when moving cursors", () => {
             });
         }
 
-        // Insert text using cursor.insertText()
+        // cursor.insertText()を使用してテキストを挿入
         await page.evaluate(() => {
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
-                    // Clear existing text
+                    // 既存のテキストをクリア
                     const target = cursor.findTarget();
                     if (target) {
                         target.updateText("");
                         cursor.offset = 0;
                     }
-                    // Insert bold text
+                    // 太字テキストを挿入
                     cursor.insertText("[[aasdd]]");
                 }
             }
         });
 
-        // Wait a bit for data to be reflected
+        // 少し待機してデータが反映されるのを待つ
         await page.waitForTimeout(300);
 
-        // Get SharedTree data (with fallback)
+        // SharedTreeのデータを取得（フォールバック機能付き）
         const treeData = await TreeValidator.getTreeData(page);
 
-        // Output debug information
+        // デバッグ情報を出力
         console.log("Tree data structure:", JSON.stringify(treeData, null, 2));
         console.log("Items count:", treeData.items?.length);
 
-        // Confirm data is saved correctly
+        // データが正しく保存されていることを確認
         expect(treeData.items).toBeDefined();
         expect(treeData.items.length).toBeGreaterThan(0);
 
-        // Check child items of the first item (page title)
+        // 最初のアイテム（ページタイトル）の子アイテムを確認
         const pageItem = treeData.items[0];
         expect(pageItem.items).toBeDefined();
 
-        // If items is an object (actual data structure)
+        // itemsがオブジェクトの場合（実際のデータ構造）
         const itemsArray = Object.values(pageItem.items);
         expect(itemsArray.length).toBeGreaterThan(0);
 
-        // Confirm bold text is saved
+        // 太字テキストが保存されていることを確認
         const hasFormattedText = itemsArray.some((item: any) => item.text === "[[aasdd]]");
         expect(hasFormattedText).toBe(true);
     });

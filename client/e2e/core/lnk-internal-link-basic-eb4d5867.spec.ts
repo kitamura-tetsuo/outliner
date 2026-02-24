@@ -2,25 +2,25 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature LNK-0002
- *  Title   : Internal link function verification
+ *  Title   : 内部リンクの機能検証
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("LNK-0002: Basic internal link function", () => {
+test.describe("LNK-0002: 内部リンクの基本機能", () => {
     let projectName: string;
 
     test.beforeEach(async ({ page }, testInfo) => {
         const result = await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "[test-page]",
-            "Another item",
-            "Third item",
+            "別のアイテム",
+            "3つ目のアイテム",
         ]);
         projectName = result.projectName;
     });
 
-    test("Internal links function correctly", async ({ page }) => {
+    test("内部リンクが正しく機能する", async ({ page }) => {
         await page.waitForTimeout(500);
         const encodedProject = encodeURIComponent(projectName);
         const internalLink = page.locator(`a.internal-link[href="/${encodedProject}/test-page"]`);

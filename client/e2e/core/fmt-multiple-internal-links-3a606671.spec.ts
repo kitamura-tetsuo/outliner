@@ -20,7 +20,7 @@ test.describe("FMT-0008: multiple internal links", () => {
     });
 
     test("multiple internal links are displayed", async ({ page }) => {
-        // Create data using the 'lines' parameter of prepareTestEnvironment
+        // prepareTestEnvironment の lines パラメータでデータを作成
         await TestHelpers.prepareTestEnvironment(page, test.info(), [
             "This is [test-page] and [/project/other-page]",
         ]);

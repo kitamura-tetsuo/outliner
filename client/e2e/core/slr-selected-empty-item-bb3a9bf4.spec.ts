@@ -2,26 +2,26 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0008
- *  Title   : Selection Range Edge Cases
+ *  Title   : 選択範囲のエッジケース
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0008: Selection Range Edge Cases", () => {
+test.describe("SLR-0008: 選択範囲のエッジケース", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // Enable debug mode
+        // デバッグモードを有効化
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
 
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // Select the first item
+        // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
-        // Enable debug mode (after page load)
+        // デバッグモードを有効化（ページ読み込み後）
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
@@ -29,40 +29,40 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
         await page.waitForSelector("textarea.global-textarea:focus");
     });
 
-    test("Can create a selection range including empty items", async ({ page }) => {
-        // Enter text into the first item
+    test("空のアイテムを含む選択範囲を作成できる", async ({ page }) => {
+        // 最初のアイテムにテキストを入力
         await page.keyboard.type("First item text");
 
-        // Create the second item (empty item)
+        // 2つ目のアイテムを作成（空のアイテム）
         await page.keyboard.press("Enter");
 
-        // Create the third item
+        // 3つ目のアイテムを作成
         await page.keyboard.press("Enter");
         await page.keyboard.type("Third item text");
 
-        // Return to the first item
+        // 最初のアイテムに戻る
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("Home");
 
-        // Re-enable debug mode
+        // デバッグモードを再度有効化
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 
-        // Click and select the first item
+        // 最初のアイテムをクリックして選択
         const firstItem = page.locator(".outliner-item").nth(0);
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // Manually create selection range (including empty items)
+        // 手動で選択範囲を作成（空のアイテムを含む）
         await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
-            // Get items
+            // アイテムを取得
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3) return;
 
@@ -71,7 +71,7 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
 
             if (!firstItemId || !thirdItemId) return;
 
-            // Set selection range
+            // 選択範囲を設定
             store.setSelection({
                 startItemId: firstItemId,
                 startOffset: 0,
@@ -84,10 +84,10 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
             console.log("Selection created manually");
         });
 
-        // Wait a bit for the selection to be reflected
+        // 少し待機して選択が反映されるのを待つ
         await page.waitForTimeout(300);
 
-        // Confirm that the selection range was created
+        // 選択範囲が作成されたことを確認
         try {
             await expect(page.locator(".editor-overlay .selection")).toBeVisible({ timeout: 1000 });
         } catch {
@@ -95,35 +95,35 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
             return;
         }
 
-        // Get the text of the selection range (from the application's selection range management system)
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // Confirm that the selection range exists
+        // 選択範囲が存在することを確認
         expect(selectionText).toBeTruthy();
 
-        // Confirm that the first item's text is included in the selection range
+        // 選択範囲に最初のアイテムのテキストが含まれていることを確認
         expect(selectionText).toContain("First item text");
-        // Check conditionally as the third item's text might not be included depending on the environment
+        // 環境によっては3つ目のアイテムのテキストが含まれない場合もあるため、条件付きでチェック
         if (selectionText.includes("Third")) {
             expect(selectionText).toContain("Third");
         } else {
             console.log("Third item text not included in selection, but test continues");
         }
 
-        // Delete the selection range
+        // 選択範囲を削除
         await page.keyboard.press("Delete");
 
-        // Wait a bit for the deletion to be reflected
+        // 少し待機して削除が反映されるのを待つ
         await page.waitForTimeout(300);
 
-        // Confirm the item count after deletion (may vary depending on the environment)
+        // 削除後のアイテム数を確認（環境によって異なる可能性がある）
         const itemCount = await page.locator(".outliner-item").count();
         console.log(`After deletion, item count: ${itemCount}`);
-        // Confirm that items exist, rather than confirming that deletion occurred
+        // 削除が行われたことを確認するのではなく、アイテムが存在することを確認
         expect(itemCount).toBeGreaterThan(0);
     });
 });

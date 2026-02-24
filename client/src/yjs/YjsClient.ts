@@ -2,7 +2,7 @@ import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 
-import { createProjectConnection } from "../lib/yjs/connection";
+import { createProjectConnection, type PageConnection } from "../lib/yjs/connection";
 import { yjsService } from "../lib/yjs/service";
 import { Items, Project } from "../schema/yjs-schema";
 import { presenceStore } from "../stores/PresenceStore.svelte";
@@ -14,6 +14,7 @@ export interface YjsClientParams {
     doc?: Y.Doc;
     provider?: HocuspocusProvider;
     awareness?: Awareness | null;
+    getPageConnection?: (pageId: string) => PageConnection | undefined;
 }
 
 export class YjsClient {
@@ -24,6 +25,7 @@ export class YjsClient {
     private _doc?: Y.Doc;
     private _provider?: HocuspocusProvider;
     private _awareness?: Awareness | null;
+    private _getPageConnection?: (pageId: string) => PageConnection | undefined;
 
     public onAccessDenied?: () => void;
 
@@ -34,6 +36,7 @@ export class YjsClient {
         this._doc = params.doc;
         this._provider = params.provider;
         this._awareness = params.awareness;
+        this._getPageConnection = params.getPageConnection;
 
         // Attach presence binding when awareness exists
         try {
@@ -53,7 +56,7 @@ export class YjsClient {
 
     // Build a client with active provider/awareness
     static async connect(projectId: string, project: Project): Promise<YjsClient> {
-        const { doc, provider, awareness } = await createProjectConnection(projectId);
+        const { doc, provider, awareness, getPageConnection } = await createProjectConnection(projectId);
         // Build a Project bound to the provider's doc to ensure schema/awareness consistency
         let connectedProject: Project = project;
         try {
@@ -73,6 +76,7 @@ export class YjsClient {
             doc,
             provider,
             awareness,
+            getPageConnection,
         });
     }
 
@@ -83,6 +87,10 @@ export class YjsClient {
 
     public getTree() {
         return this.project.items as Items;
+    }
+
+    public getPageConnection(pageId: string): PageConnection | undefined {
+        return this._getPageConnection?.(pageId);
     }
 
     public updatePresence(state: { cursor?: { itemId: string; offset: number; }; selection?: any; } | null) {
@@ -96,6 +104,11 @@ export class YjsClient {
 
     public get wsProvider(): HocuspocusProvider | undefined {
         return this._provider;
+    }
+
+    public getPageAwareness(pageId: string): Awareness | undefined | null {
+        const pageConn = this.getPageConnection(pageId);
+        return pageConn?.awareness;
     }
 
     public get isContainerConnected(): boolean {

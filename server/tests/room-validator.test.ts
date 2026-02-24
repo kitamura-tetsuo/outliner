@@ -7,6 +7,11 @@ describe("room-validator", () => {
         expect(result).to.deep.equal({ project: "my-project" });
     });
 
+    it("should parse valid page room", () => {
+        const result = parseRoom("/projects/my-project/pages/my-page");
+        expect(result).to.deep.equal({ project: "my-project", page: "my-page" });
+    });
+
     it("should handle URL encoded characters", () => {
         const result = parseRoom("/projects/my%20project");
         expect(result).to.deep.equal({ project: "my project" });

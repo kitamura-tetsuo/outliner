@@ -1,17 +1,16 @@
 import admin from "firebase-admin";
 import type { IncomingMessage } from "http";
 import { getServiceAccount } from "./firebase-init.js";
-import { logger } from "./logger.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 
 if (!admin.apps.length) {
     const serviceAccount = getServiceAccount();
     const projectId = serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
     if (projectId) {
-        logger.info({ projectId }, "[Auth] Initializing Firebase Admin");
+        console.log(`[Auth] Initializing Firebase Admin with projectId=${projectId}`);
         admin.initializeApp({ projectId });
     } else {
-        logger.warn("[Auth] No project ID found, skipping auto-initialization");
+        console.warn("[Auth] No project ID found, skipping auto-initialization");
     }
 }
 
@@ -45,13 +44,10 @@ export function extractAuthToken(req: IncomingMessage): string | undefined {
         const url = new URL(req.url ?? "", "http://localhost");
         // Check for 'token' parameter (used by y-websocket when token option is provided)
         const token = url.searchParams.get("token") || url.searchParams.get("auth");
-        logger.debug(
-            { url: sanitizeUrl(req.url), tokenFound: !!token },
-            "[Auth] Extracting auth token",
-        );
+        console.log(`[Auth] req.url=${sanitizeUrl(req.url)}, token=${token ? "FOUND" : "MISSING"}`);
         return token || undefined;
     } catch {
-        logger.error("[Auth] URL parse error");
+        console.error("[Auth] URL parse error");
         return undefined;
     }
 }
@@ -75,13 +71,11 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
             const isTestEnv = process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development"
                 || process.env.ALLOW_TEST_ACCESS === "true" || process.env.CI === "true";
             if (!isTestEnv) {
-                logger.warn(
-                    "[Auth] Security Warning: alg:none token rejected in non-test environment",
-                );
+                console.warn("[Auth] Security Warning: alg:none token rejected in non-test environment");
                 throw new Error("alg:none tokens are not allowed in this environment");
             }
 
-            logger.debug("[Auth] Detected alg:none token");
+            console.log("[Auth] Detected alg:none token");
             // ... continue with logic
             const parts = token.split(".");
 
@@ -99,7 +93,7 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
                 auth_time: payload.auth_time || Math.floor(now / 1000),
                 firebase: payload.firebase || { identities: {}, sign_in_provider: "custom" },
             };
-            logger.debug({ uid: decoded.uid }, "[Auth] Test mode: allowing alg:none token");
+            console.log("[Auth] Test mode: allowing alg:none token", decoded.uid);
             const expKey = Math.min(decoded.exp * 1000, now + CACHE_TTL_MS);
             tokenCache.set(token, { decoded, exp: expKey });
             return decoded;
@@ -108,12 +102,12 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
         if (e.message && e.message.includes("alg:none tokens are not allowed")) {
             throw e;
         }
-        logger.warn(e, "[Auth] Test mode: failed to parse alg:none token");
+        console.warn("[Auth] Test mode: failed to parse alg:none token", e);
     }
 
     try {
         const decoded = await admin.auth().verifyIdToken(token);
-        logger.info({ uid: decoded.uid }, "[Auth] Verified token");
+        console.log(`[Auth] Verified token for uid=${decoded.uid}`);
         const exp = Math.min(decoded.exp ? decoded.exp * 1000 : now + CACHE_TTL_MS, now + CACHE_TTL_MS);
         tokenCache.set(token, { decoded, exp });
         return decoded;
@@ -124,21 +118,16 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
             if (parts.length === 3) {
                 const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
                 const nowSec = Math.floor(Date.now() / 1000);
-                logger.error(
-                    {
-                        exp: payload.exp,
-                        iat: payload.iat,
-                        now: nowSec,
-                        diff: payload.exp - nowSec,
-                        uid: payload.uid || payload.user_id,
-                    },
-                    "[Auth] Verification failed token debug",
+                console.error(
+                    `[Auth] Verification failed. Token debug: exp=${payload.exp}, iat=${payload.iat}, now=${nowSec}, diff=${
+                        payload.exp - nowSec
+                    }, uid=${payload.uid || payload.user_id}`,
                 );
             }
-        } catch (parseErr: any) {
-            logger.error(parseErr, "[Auth] Failed to parse failed token for debug");
+        } catch (parseErr) {
+            console.error("[Auth] Failed to parse failed token for debug");
         }
-        logger.error(e, "[Auth] Token verification failed");
+        console.error(`[Auth] Token verification failed: ${e.message}`);
         throw e;
     }
 }

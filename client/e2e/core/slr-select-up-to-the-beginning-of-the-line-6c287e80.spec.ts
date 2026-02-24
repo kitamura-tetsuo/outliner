@@ -2,37 +2,37 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0002
- *  Title   : Select up to the beginning of the line
+ *  Title   : 行頭まで選択
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0002: Select up to the beginning of the line", () => {
-    // Set test timeout to 120 seconds
+test.describe("SLR-0002: 行頭まで選択", () => {
+    // テストのタイムアウトを120秒に設定
 
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // Select the first item
+        // 最初のアイテムを選択
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
-        // Wait for the cursor to be visible
+        // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
-        // Wait for the global textarea to be focused
+        // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus", { timeout: 10000 });
 
-        // Enter test text (explicitly entering newlines)
+        // テスト用のテキストを入力（改行を明示的に入力）
         await page.keyboard.type("First line");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second line");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Third line");
 
-        // Move the cursor to the middle of the second line
+        // カーソルを2行目の途中に移動
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowRight");
@@ -40,68 +40,68 @@ test.describe("SLR-0002: Select up to the beginning of the line", () => {
         await page.keyboard.press("ArrowRight");
     });
 
-    test("Select from the current position to the beginning of the line with Shift + Home", async ({ page }) => {
-        // Get the active item element
+    test("Shift + Homeで現在位置から行頭までを選択する", async ({ page }) => {
+        // アクティブなアイテム要素を取得
         const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
         expect(activeItemLocator).not.toBeNull();
 
-        // Move the cursor to the middle of the line
+        // カーソルを行の途中に移動
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
 
-        // Verify that there is no initial selection
+        // 初期状態では選択範囲がないことを確認
         const initialSelectionExists = await page.evaluate(() => {
             return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(initialSelectionExists).toBe(false);
 
-        // Press Shift + Home
+        // Shift + Homeを押下
         await page.keyboard.down("Shift");
         await page.keyboard.press("Home");
         await page.keyboard.up("Shift");
 
-        // Wait for update
+        // 更新を待機
         await page.waitForTimeout(100);
 
-        // Verify that a selection has been created
+        // 選択範囲が作成されたことを確認
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
-        // Get the selection text (from the application's selection management system)
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // Verify that the selection exists
+        // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
 
-        // Get and verify cursor information
+        // カーソル情報を取得して検証
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBe(1);
         expect(cursorData.selectionCount).toBeGreaterThan(0);
     });
 
-    test("In a multi-line item, select up to the beginning of the current line", async ({ page }) => {
-        // Get the active item element
+    test("複数行のアイテムでは、現在のカーソルがある行の先頭までを選択する", async ({ page }) => {
+        // アクティブなアイテム要素を取得
         const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
         expect(activeItemLocator).not.toBeNull();
 
-        // Clear the text once and enter new text
+        // テキストを一度クリアして、新しいテキストを入力
         await page.keyboard.press("Control+a");
         await page.keyboard.press("Delete");
         await page.waitForTimeout(100);
 
-        // Enter multi-line text
+        // 複数行のテキストを入力
         await page.keyboard.type("First line");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second line");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Third line with more text");
 
-        // Move the cursor to the middle of the third line
+        // カーソルを3行目の途中に移動
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
@@ -114,38 +114,38 @@ test.describe("SLR-0002: Select up to the beginning of the line", () => {
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
 
-        // Verify that there is no initial selection
+        // 初期状態では選択範囲がないことを確認
         const initialSelectionExists = await page.evaluate(() => {
             return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(initialSelectionExists).toBe(false);
 
-        // Check current cursor position
+        // 現在のカーソル位置を確認
         const cursorData = await CursorValidator.getCursorData(page);
         console.log("Current cursor position:", cursorData.cursors[0]);
 
-        // Press Shift + Home
+        // Shift + Homeを押下
         await page.keyboard.down("Shift");
         await page.keyboard.press("Home");
         await page.keyboard.up("Shift");
 
-        // Wait for update
+        // 更新を待機
         await page.waitForTimeout(300);
 
-        // Verify that a selection has been created
+        // 選択範囲が作成されたことを確認
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
-        // Get the selection text (from the application's selection management system)
+        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // Verify that the selection exists
+        // 選択範囲が存在することを確認
         expect(selectionText.length).toBeGreaterThan(0);
 
-        // Get and verify cursor information
+        // カーソル情報を取得して検証
         const updatedCursorData = await CursorValidator.getCursorData(page);
         expect(updatedCursorData.cursorCount).toBe(1);
         expect(updatedCursorData.selectionCount).toBeGreaterThan(0);

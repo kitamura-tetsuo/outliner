@@ -2,7 +2,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature API-0001
- *  Title   : Fixing Firebase Functions API Server
+ *  Title   : Firebase Functions APIサーバーの修正
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
