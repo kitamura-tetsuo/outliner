@@ -2,77 +2,77 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature FMT-0002
- *  Title   : Format Combination
+ *  Title   : フォーマット組み合わせ
  *  Source  : docs/client-features.yaml
  */
 
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("Format Combination", () => {
+test.describe("フォーマット組み合わせ", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("Bold and italic combination is displayed correctly", async ({ page }) => {
-        // Create data using the lines parameter of prepareTestEnvironment
+    test("太字と斜体の組み合わせが正しく表示される", async ({ page }) => {
+        // prepareTestEnvironment の lines パラメータでデータを作成
         await TestHelpers.prepareTestEnvironment(page, test.info(), [
-            "This is [[bold and [/ italic] combination]]",
+            "これは[[太字と[/ 斜体]の組み合わせ]]です",
         ]);
 
-        // Wait for the format to be applied
+        // 少し待機してフォーマットが適用されるのを待つ
         await TestHelpers.waitForOutlinerItems(page);
 
-        // Get the second item (the first item that is not the page title)
+        // 2番目のアイテム(ページタイトルではない最初のアイテム)を取得
         const firstItem = page.locator(".outliner-item").nth(1);
 
-        // Get the HTML of the .item-text element
+        // .item-text要素のHTMLを取得
         const firstItemHtml = await firstItem.locator(".item-text").first().innerHTML();
 
-        // Verify that the bold and italic combination is displayed correctly
+        // 太字と斜体の組み合わせが正しく表示されていることを確認
         expect(firstItemHtml).toContain("<strong>");
-        expect(firstItemHtml).toContain("bold and");
+        expect(firstItemHtml).toContain("太字と");
         expect(firstItemHtml).toContain("<em>");
-        expect(firstItemHtml).toContain("italic");
+        expect(firstItemHtml).toContain("斜体");
         expect(firstItemHtml).toContain("</em>");
-        expect(firstItemHtml).toContain(" combination");
+        expect(firstItemHtml).toContain("の組み合わせ");
         expect(firstItemHtml).toContain("</strong>");
     });
 
-    test("Bold and strikethrough combination is displayed correctly", async ({ page }) => {
-        // Create data using the lines parameter of prepareTestEnvironment
+    test("太字と取り消し線の組み合わせが正しく表示される", async ({ page }) => {
+        // prepareTestEnvironment の lines パラメータでデータを作成
         await TestHelpers.prepareTestEnvironment(page, test.info(), [
-            "This is [[bold and [-strikethrough] combination]]",
+            "これは[[太字と[-取り消し線]の組み合わせ]]です",
         ]);
 
-        // Wait for the format to be applied
+        // 少し待機してフォーマットが適用されるのを待つ
         await TestHelpers.waitForOutlinerItems(page);
 
-        // Check the HTML of the second item (the first item that is not the page title)
+        // 2番目のアイテム(ページタイトルではない最初のアイテム)のHTMLを確認
         const secondItem = page.locator(".outliner-item").nth(1);
         await secondItem.waitFor({ state: "visible" });
         const firstItemHtml = await secondItem.locator(".item-text").first().innerHTML();
 
-        // Verify that the bold and strikethrough combination is displayed correctly
+        // 太字と取り消し線の組み合わせが正しく表示されていることを確認
         expect(firstItemHtml).toContain("<strong>");
-        expect(firstItemHtml).toContain("bold and");
+        expect(firstItemHtml).toContain("太字と");
         expect(firstItemHtml).toContain("<s>");
-        expect(firstItemHtml).toContain("strikethrough");
+        expect(firstItemHtml).toContain("取り消し線");
         expect(firstItemHtml).toContain("</s>");
-        expect(firstItemHtml).toContain(" combination");
+        expect(firstItemHtml).toContain("の組み合わせ");
         expect(firstItemHtml).toContain("</strong>");
     });
 
-    test("Italic and code combination is displayed correctly", async ({ page }) => {
-        // Create data using the lines parameter of prepareTestEnvironment
+    test("斜体とコードの組み合わせが正しく表示される", async ({ page }) => {
+        // prepareTestEnvironment の lines パラメータでデータを作成
         await TestHelpers.prepareTestEnvironment(page, test.info(), [
-            "This is [/ italic and `code` combination]",
+            "これは[/ 斜体と`コード`の組み合わせ]です",
         ]);
 
-        // Wait for the format to be applied
+        // 少し待機してフォーマットが適用されるのを待つ
         await TestHelpers.waitForOutlinerItems(page);
 
-        // Check the HTML of the second item (the first item that is not the page title)
+        // 2番目のアイテム(ページタイトルではない最初のアイテム)のHTMLを確認
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.waitFor({ state: "visible" });
         // Wait for specific formatting to appear to handle hydration/rendering delays
@@ -80,70 +80,70 @@ test.describe("Format Combination", () => {
 
         const firstItemHtml = await firstItem.locator(".item-text").first().innerHTML();
 
-        // Verify that the italic and code combination is displayed correctly
+        // 斜体とコードの組み合わせが正しく表示されていることを確認
         expect(firstItemHtml).toContain("<em>");
-        expect(firstItemHtml).toContain("italic and");
+        expect(firstItemHtml).toContain("斜体と");
         expect(firstItemHtml).toContain("<code>");
-        expect(firstItemHtml).toContain("code");
+        expect(firstItemHtml).toContain("コード");
         expect(firstItemHtml).toContain("</code>");
-        expect(firstItemHtml).toContain(" combination");
+        expect(firstItemHtml).toContain("の組み合わせ");
         expect(firstItemHtml).toContain("</em>");
     });
 
-    test("Multiple nested formats are displayed correctly", async ({ page }) => {
-        // Create data using the lines parameter of prepareTestEnvironment
+    test("複数のフォーマットが入れ子になっている場合も正しく表示される", async ({ page }) => {
+        // prepareTestEnvironment の lines パラメータでデータを作成
         await TestHelpers.prepareTestEnvironment(page, test.info(), [
-            "This is [[bold and [/ italic and [-strikethrough] and `code`]]]",
+            "これは[[太字と[/ 斜体と[-取り消し線]と`コード`]]]です",
         ]);
 
-        // Wait for the format to be applied
+        // 少し待機してフォーマットが適用されるのを待つ
         await TestHelpers.waitForOutlinerItems(page);
 
-        // Check the HTML of the second item (the first item that is not the page title)
+        // 2番目のアイテム(ページタイトルではない最初のアイテム)のHTMLを確認
         const firstItemHtml = await page.locator(".outliner-item").nth(1).locator(".item-text").first().innerHTML();
 
-        // Verify that the complex combination is displayed correctly
+        // 複雑な組み合わせが正しく表示されていることを確認
         expect(firstItemHtml).toContain("<strong>");
-        expect(firstItemHtml).toContain("bold and");
+        expect(firstItemHtml).toContain("太字と");
         expect(firstItemHtml).toContain("<em>");
-        expect(firstItemHtml).toContain("italic and");
+        expect(firstItemHtml).toContain("斜体と");
         expect(firstItemHtml).toContain("<s>");
-        expect(firstItemHtml).toContain("strikethrough");
+        expect(firstItemHtml).toContain("取り消し線");
         expect(firstItemHtml).toContain("</s>");
         expect(firstItemHtml).toContain("<code>");
-        expect(firstItemHtml).toContain("code");
+        expect(firstItemHtml).toContain("コード");
         expect(firstItemHtml).toContain("</code>");
         expect(firstItemHtml).toContain("</em>");
         expect(firstItemHtml).toContain("</strong>");
     });
 
-    test("Combined formats are displayed as plain text in the item with the cursor", async ({ page }) => {
-        // Create data using the lines parameter of prepareTestEnvironment
+    test("カーソルがあるアイテムでは組み合わせフォーマットもプレーンテキストで表示される", async ({ page }) => {
+        // prepareTestEnvironment の lines パラメータでデータを作成
         await TestHelpers.prepareTestEnvironment(page, test.info(), [
-            "This is [[bold and [/ italic and [-strikethrough] and `code`]]]",
+            "これは[[太字と[/ 斜体と[-取り消し線]と`コード`]]]です",
         ]);
 
-        // Wait for the format to be applied
+        // 少し待機してフォーマットが適用されるのを待つ
         await TestHelpers.waitForOutlinerItems(page);
 
-        // Select the first item that is not the page title
+        // ページタイトルではない最初のアイテムを選択
         const item = page.locator(".outliner-item").nth(1);
         await item.locator(".item-content").click();
 
-        // Wait until the cursor is visible
+        // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check the HTML of the item with the cursor
+        // カーソルがあるアイテムのHTMLを確認
         const itemHtml = await page.locator(".outliner-item").nth(1).locator(".item-text").first().innerHTML();
 
-        // Verify that control characters are displayed
+        // 制御文字が表示されていることを確認
         expect(itemHtml).toContain('<span class="control-char">[</span>');
         expect(itemHtml).toContain('<span class="control-char">/</span>');
         expect(itemHtml).toContain('<span class="control-char">-</span>');
         expect(itemHtml).toContain('<span class="control-char">`</span>');
 
-        // Verify the text content
+        // テキスト内容も確認
         const itemText = await page.locator(".outliner-item").nth(1).locator(".item-text").first().textContent();
-        expect(itemText).toContain("This is [[bold and [/ italic and [-strikethrough] and `code`]]]");
+        expect(itemText).toContain("これは[[太字と[/ 斜体と[-取り消し線]と`コード`]]]です");
     });
 });

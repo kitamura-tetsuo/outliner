@@ -1,8 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from "vitest";
 import { getLogger, log } from "./logger";
 
 describe("logger", () => {
-    let consoleSpy: any;
+    let consoleSpy: {
+        log: MockInstance;
+        info: MockInstance;
+        warn: MockInstance;
+        error: MockInstance;
+    };
 
     beforeEach(() => {
         consoleSpy = {

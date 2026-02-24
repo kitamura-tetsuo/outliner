@@ -83,8 +83,8 @@ describe("PollingMonitor", () => {
             monitor.start();
             window.setInterval("window.__test_val = (window.__test_val || 0) + 1", 100);
             vi.advanceTimersByTime(100);
-            expect((window as { __test_val?: number; }).__test_val).toBe(1);
-            delete (window as { __test_val?: number; }).__test_val;
+            expect((window as { __test_val?: number }).__test_val).toBe(1);
+            delete (window as { __test_val?: number }).__test_val;
         });
 
         it("should handle clearInterval(undefined)", () => {
@@ -126,8 +126,8 @@ describe("PollingMonitor", () => {
             monitor.start();
             window.setTimeout("window.__test_val_timeout = (window.__test_val_timeout || 0) + 1", 100);
             vi.advanceTimersByTime(100);
-            expect((window as { __test_val_timeout?: number; }).__test_val_timeout).toBe(1);
-            delete (window as { __test_val_timeout?: number; }).__test_val_timeout;
+            expect((window as { __test_val_timeout?: number }).__test_val_timeout).toBe(1);
+            delete (window as { __test_val_timeout?: number }).__test_val_timeout;
         });
 
         it("should handle clearTimeout(undefined)", () => {

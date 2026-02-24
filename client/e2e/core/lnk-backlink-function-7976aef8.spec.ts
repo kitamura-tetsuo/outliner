@@ -2,7 +2,7 @@
 // import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 // registerCoverageHooks();
 /** @feature LNK-0007
- *  Title   : Backlink Functionality
+ *  Title   : バックリンク機能
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
@@ -10,39 +10,39 @@ import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @file LNK-0007.spec.ts
- * @description Backlink Functionality Test
+ * @description バックリンク機能のテスト
  * @category navigation
- * @title Backlink Functionality
+ * @title バックリンク機能
  */
-test.describe("LNK-0007: Backlink Functionality", () => {
+test.describe("LNK-0007: バックリンク機能", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         page.on("console", msg => console.log(`[BROWSER] ${msg.text()}`));
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     /**
-     * @testcase Backlink panel is displayed on the page
-     * @description Test to confirm that the backlink panel is displayed on the page
+     * @testcase ページにバックリンクパネルが表示される
+     * @description ページにバックリンクパネルが表示されることを確認するテスト
      */
-    test("Backlink panel is displayed on the page", async ({ page }) => {
-        // Set authentication state
+    test("ページにバックリンクパネルが表示される", async ({ page }) => {
+        // 認証状態を設定
         await page.addInitScript(() => {
         });
 
-        // Setup test page
+        // テストページをセットアップ
 
-        // Save the URL of the first page
+        // 最初のページのURLを保存
         const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
-        // Generate target page name for testing
+        // テスト用のターゲットページ名を生成
         const targetPageName = "target-page-" + Date.now().toString().slice(-6);
 
-        // Create a test page
+        // テスト用のページを作成
         await page.keyboard.type(`[${targetPageName}]`);
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
-        // Click the link to navigate to the new page
+        // リンクをクリックして新しいページに移動
         const link = page.locator(`text=${targetPageName}`);
         if (await link.count() === 0) {
             console.log("Link not found:", targetPageName);
@@ -51,51 +51,51 @@ test.describe("LNK-0007: Backlink Functionality", () => {
         await link.click();
         await page.waitForTimeout(500);
 
-        // Click the developer login button
+        // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(500);
         }
 
-        // Enter text on the new page
-        await page.keyboard.type("This is the content of the target page.");
+        // 新しいページにテキストを入力
+        await page.keyboard.type("これはターゲットページの内容です。");
         await page.waitForTimeout(500);
 
-        // Verify that the backlink panel is displayed
+        // バックリンクパネルが表示されていることを確認
         const backlinkPanel = page.locator(".backlink-panel");
         await expect(backlinkPanel).toBeVisible();
 
-        // Test success
-        console.log("Test 'Backlink panel is displayed on the page' passed.");
+        // テスト成功
+        console.log("ページにバックリンクパネルが表示されるテストが成功しました。");
     });
 
     /**
-     * @testcase List of linking pages is displayed in the backlink panel
-     * @description Test to confirm that the list of linking pages is displayed in the backlink panel
+     * @testcase バックリンクパネルにリンク元ページの一覧が表示される
+     * @description バックリンクパネルにリンク元ページの一覧が表示されることを確認するテスト
      */
-    test("List of linking pages is displayed in the backlink panel", async ({ page }) => {
-        // Set authentication state
+    test("バックリンクパネルにリンク元ページの一覧が表示される", async ({ page }) => {
+        // 認証状態を設定
         await page.addInitScript(() => {
         });
 
-        // Setup test page
+        // テストページをセットアップ
 
-        // Save the URL of the first page
+        // 最初のページのURLを保存
         const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
-        // Get the title of the first page
+        // 最初のページのタイトルを取得
         const sourceTitle = await page.locator("h1").textContent(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
-        // Generate target page name for testing
+        // テスト用のターゲットページ名を生成
         const targetPageName = "backlink-target-" + Date.now().toString().slice(-6);
 
-        // Create a test page
+        // テスト用のページを作成
         await page.keyboard.type(`[${targetPageName}]`);
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
-        // Click the link to navigate to the new page
+        // リンクをクリックして新しいページに移動
         const link2 = page.locator(`text=${targetPageName}`);
         if (await link2.count() === 0) {
             console.log("Link not found:", targetPageName);
@@ -104,90 +104,90 @@ test.describe("LNK-0007: Backlink Functionality", () => {
         await link2.click();
         await page.waitForTimeout(500);
 
-        // Click the developer login button
+        // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(500);
         }
 
-        // Enter text on the new page
-        await page.keyboard.type("This is the content of the target page.");
+        // 新しいページにテキストを入力
+        await page.keyboard.type("これはターゲットページの内容です。");
         await page.waitForTimeout(500);
 
-        // Open the backlink panel
+        // バックリンクパネルを開く
         await TestHelpers.openBacklinkPanel(page);
         await page.waitForTimeout(500);
 
-        // Verify that the content of the backlink panel is displayed
+        // バックリンクパネルの内容が表示されていることを確認
         const backlinkContent = page.locator(".backlink-content");
         const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
 
         if (!isContentVisible) {
-            console.log("Backlink panel content is not displayed. Clicking the open button again.");
-            // Try clicking the toggle button again
+            console.log("バックリンクパネルの内容が表示されていません。もう一度開くボタンをクリックします。");
+            // もう一度トグルボタンをクリックしてみる
             const toggleButton = page.locator(".backlink-toggle-button");
             await toggleButton.click();
             await page.waitForTimeout(500);
         }
 
-        // Verify that the backlink panel content is visible
+        // バックリンクパネルの内容が表示されていることを確認
         await expect(backlinkContent).toBeVisible();
 
-        // Verify that the backlink list is visible
+        // バックリンクリストが表示されていることを確認
         const backlinkList = page.locator(".backlink-list");
         await expect(backlinkList).toBeVisible();
 
-        // Verify that the source page is displayed
+        // リンク元ページが表示されていることを確認
         const sourcePageLink = backlinkList.locator(".source-page-link");
         if (await sourcePageLink.count() > 0) {
             await expect(sourcePageLink).toBeVisible();
 
-            // Verify that the source page context is displayed
+            // リンク元ページのコンテキストが表示されていることを確認
             const backlinkContext = backlinkList.locator(".backlink-context");
             if (await backlinkContext.count() > 0) {
                 await expect(backlinkContext).toBeVisible();
 
-                // Verify that the context contains the target page name
+                // コンテキストにターゲットページ名が含まれているか確認
                 const contextText = await backlinkContext.textContent();
                 if (contextText) {
-                    // Case-insensitive search
+                    // 大文字小文字を区別せずに検索
                     expect(contextText.toLowerCase()).toContain(targetPageName.toLowerCase());
                 }
             } else {
-                console.log("Backlink context not found. Skipping due to test environment constraints.");
+                console.log("バックリンクコンテキストが見つかりませんでした。テスト環境の制約によりスキップします。");
             }
         } else {
-            console.log("Source page link not found. Skipping due to test environment constraints.");
+            console.log("ソースページリンクが見つかりませんでした。テスト環境の制約によりスキップします。");
         }
 
-        // Test success
-        console.log("Test 'List of linking pages is displayed in the backlink panel' passed.");
+        // テスト成功
+        console.log("バックリンクパネルにリンク元ページの一覧が表示されるテストが成功しました。");
     });
 
     /**
-     * @testcase Number of backlinks is displayed as a badge
-     * @description Test to confirm that the number of backlinks is displayed as a badge
+     * @testcase バックリンクの数がバッジとして表示される
+     * @description バックリンクの数がバッジとして表示されることを確認するテスト
      */
-    test("Number of backlinks is displayed as a badge", async ({ page }) => {
-        // Set authentication state
+    test("バックリンクの数がバッジとして表示される", async ({ page }) => {
+        // 認証状態を設定
         await page.addInitScript(() => {
         });
 
-        // Setup test page
+        // テストページをセットアップ
 
-        // Save the URL of the first page
+        // 最初のページのURLを保存
         const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
-        // Generate target page name for testing
+        // テスト用のターゲットページ名を生成
         const targetPageName = "badge-target-" + Date.now().toString().slice(-6);
 
-        // Create a test page
+        // テスト用のページを作成
         await page.keyboard.type(`[${targetPageName}]`);
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
-        // Click the link to navigate to the new page
+        // リンクをクリックして新しいページに移動
         const link3 = page.locator(`text=${targetPageName}`);
         if (await link3.count() === 0) {
             console.log("Link not found:", targetPageName);
@@ -196,53 +196,53 @@ test.describe("LNK-0007: Backlink Functionality", () => {
         await link3.click();
         await page.waitForTimeout(500);
 
-        // Click the developer login button
+        // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(500);
         }
 
-        // Enter text on the new page
-        await page.keyboard.type("This is the content of the target page.");
+        // 新しいページにテキストを入力
+        await page.keyboard.type("これはターゲットページの内容です。");
         await page.waitForTimeout(500);
 
-        // Verify that the badge displaying the number of backlinks is visible
+        // バックリンクの数を表示するバッジが表示されていることを確認
         const backlinkCount = page.locator(".backlink-count");
         await expect(backlinkCount).toBeVisible();
 
-        // Verify that a number is displayed in the badge
+        // バッジに数字が表示されていることを確認
         const countText = await backlinkCount.textContent();
         expect(countText).toMatch(/\d+/);
 
-        // Test success
-        console.log("Test 'Number of backlinks is displayed as a badge' passed.");
+        // テスト成功
+        console.log("バックリンクの数がバッジとして表示されるテストが成功しました。");
     });
 
     /**
-     * @testcase Backlink panel can be toggled
-     * @description Test to confirm that the backlink panel can be opened and closed
+     * @testcase バックリンクパネルを開閉できる
+     * @description バックリンクパネルを開閉できることを確認するテスト
      */
-    test("Backlink panel can be toggled", async ({ page }) => {
-        // Skip this test due to test environment constraints
-        // Set authentication state
+    test("バックリンクパネルを開閉できる", async ({ page }) => {
+        // テスト環境の制約により、このテストはスキップします
+        // 認証状態を設定
         await page.addInitScript(() => {
         });
 
-        // Setup test page
+        // テストページをセットアップ
 
-        // Save the URL of the first page
+        // 最初のページのURLを保存
         const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
-        // Generate target page name for testing
+        // テスト用のターゲットページ名を生成
         const targetPageName = "toggle-target-" + Date.now().toString().slice(-6);
 
-        // Create a test page
+        // テスト用のページを作成
         await page.keyboard.type(`[${targetPageName}]`);
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
-        // Click the link to navigate to the new page
+        // リンクをクリックして新しいページに移動
         const link4 = page.locator(`text=${targetPageName}`);
         if (await link4.count() === 0) {
             console.log("Link not found:", targetPageName);
@@ -251,66 +251,66 @@ test.describe("LNK-0007: Backlink Functionality", () => {
         await link4.click();
         await page.waitForTimeout(500);
 
-        // Click the developer login button
+        // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(500);
         }
 
-        // Enter text on the new page
-        await page.keyboard.type("This is the content of the target page.");
+        // 新しいページにテキストを入力
+        await page.keyboard.type("これはターゲットページの内容です。");
         await page.waitForTimeout(500);
 
-        // Verify that the backlink panel content is initially hidden
+        // 初期状態ではバックリンクパネルの内容が非表示であることを確認
         const backlinkContent = page.locator(".backlink-content");
         await expect(backlinkContent).not.toBeVisible();
 
-        // Click the toggle button of the backlink panel
+        // バックリンクパネルのトグルボタンをクリック
         const toggleButton = page.locator(".backlink-toggle-button");
         await toggleButton.click();
         await page.waitForTimeout(500);
 
-        // Verify that the backlink panel content is displayed
+        // バックリンクパネルの内容が表示されていることを確認
         await expect(backlinkContent).toBeVisible();
 
-        // Click the toggle button again
+        // もう一度トグルボタンをクリック
         await toggleButton.click();
         await page.waitForTimeout(500);
 
-        // Verify that the backlink panel content is hidden
+        // バックリンクパネルの内容が非表示になっていることを確認
         await expect(backlinkContent).not.toBeVisible();
 
-        // Test success
-        console.log("Test 'Backlink panel can be toggled' passed.");
+        // テスト成功
+        console.log("バックリンクパネルを開閉できるテストが成功しました。");
     });
 
     /**
-     * @testcase Clicking a backlink navigates to the linking page
-     * @description Test to confirm that clicking a backlink navigates to the linking page
+     * @testcase バックリンクをクリックするとリンク元ページに移動できる
+     * @description バックリンクをクリックするとリンク元ページに移動できることを確認するテスト
      */
-    test("Clicking a backlink navigates to the linking page", async ({ page }) => {
-        // Set authentication state
+    test("バックリンクをクリックするとリンク元ページに移動できる", async ({ page }) => {
+        // 認証状態を設定
         await page.addInitScript(() => {
         });
 
-        // Setup test page
+        // テストページをセットアップ
 
-        // Save the URL of the first page
+        // 最初のページのURLを保存
         const sourceUrl = page.url();
 
-        // Get the title of the first page
+        // 最初のページのタイトルを取得
         const sourceTitle = await page.locator("h1").textContent(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
-        // Generate target page name for testing
+        // テスト用のターゲットページ名を生成
         const targetPageName = "click-target-" + Date.now().toString().slice(-6);
 
-        // Create a test page
+        // テスト用のページを作成
         await page.keyboard.type(`[${targetPageName}]`);
         await page.keyboard.press("Enter");
         await page.waitForTimeout(500);
 
-        // Click the link to navigate to the new page
+        // リンクをクリックして新しいページに移動
         const link5 = page.locator(`text=${targetPageName}`);
         if (await link5.count() === 0) {
             console.log("Link not found:", targetPageName);
@@ -319,56 +319,56 @@ test.describe("LNK-0007: Backlink Functionality", () => {
         await link5.click();
         await page.waitForTimeout(500);
 
-        // Click the developer login button
+        // 開発者ログインボタンをクリック
         const loginButton = page.locator("button:has-text('開発者ログイン')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(500);
         }
 
-        // Enter text on the new page
-        await page.keyboard.type("This is the content of the target page.");
+        // 新しいページにテキストを入力
+        await page.keyboard.type("これはターゲットページの内容です。");
         await page.waitForTimeout(500);
 
-        // Open the backlink panel
+        // バックリンクパネルを開く
         await TestHelpers.openBacklinkPanel(page);
         await page.waitForTimeout(500);
 
-        // Verify that the content of the backlink panel is displayed
+        // バックリンクパネルの内容が表示されていることを確認
         const backlinkContent = page.locator(".backlink-content"); // eslint-disable-line @typescript-eslint/no-unused-vars
         const isContentVisible = await TestHelpers.forceCheckVisibility(".backlink-content", page);
 
         if (!isContentVisible) {
-            console.log("Backlink panel content is not displayed. Clicking the open button again.");
-            // Try clicking the toggle button again
+            console.log("バックリンクパネルの内容が表示されていません。もう一度開くボタンをクリックします。");
+            // もう一度トグルボタンをクリックしてみる
             const toggleButton = page.locator(".backlink-toggle-button");
             await toggleButton.click();
             await page.waitForTimeout(500);
         }
 
-        // Verify that the backlink list is displayed
+        // バックリンクリストが表示されていることを確認
         const backlinkList = page.locator(".backlink-list");
-        // Click the link to the source page
+        // リンク元ページへのリンクをクリック
         const sourcePageLink = backlinkList.locator(".source-page-link").first();
-        // Click the link
+        // リンクをクリック
         await sourcePageLink.click();
         await page.waitForTimeout(500);
 
-        // Verify that we have returned to the original page
+        // 元のページに戻ったことを確認
         const currentUrl = page.url();
 
-        // Verify that the URL has changed
+        // URLが変更されたことを確認
         expect(currentUrl).not.toContain(targetPageName);
 
-        // Verify that it matches the original URL if possible
+        // 可能であれば元のURLと一致することを確認
         if (sourceUrl) {
-            // Compare only the path part of the URL (ignoring query parameters, etc.)
+            // URLのパス部分だけを比較（クエリパラメータなどは無視）
             const currentPath = new URL(currentUrl).pathname;
             const sourcePath = new URL(sourceUrl).pathname;
             expect(currentPath).toBe(sourcePath);
         }
 
-        // Test success
-        console.log("Test 'Clicking a backlink navigates to the linking page' passed.");
+        // テスト成功
+        console.log("バックリンクをクリックするとリンク元ページに移動できるテストが成功しました。");
     });
 });

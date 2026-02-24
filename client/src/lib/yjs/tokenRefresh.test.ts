@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { userManager } from "../../auth/UserManager";
-import { attachTokenRefresh, refreshAuthAndReconnect } from "./tokenRefresh";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { refreshAuthAndReconnect, attachTokenRefresh } from "./tokenRefresh";
 import type { TokenRefreshableProvider } from "./tokenRefresh";
+import { userManager } from "../../auth/UserManager";
 
 vi.mock("../../auth/UserManager", () => ({
     userManager: {
@@ -22,7 +22,7 @@ describe("tokenRefresh", () => {
         status?: string;
         configuration: {
             url?: string;
-            websocketProvider?: { status: string; };
+            websocketProvider?: { status: string };
         };
         url?: string;
         __wsDisabled?: boolean;
@@ -37,9 +37,9 @@ describe("tokenRefresh", () => {
             status: "connected",
             configuration: {
                 url: "ws://localhost:1234?token=old",
-                websocketProvider: { status: "connected" },
+                websocketProvider: { status: "connected" }
             },
-            url: "ws://localhost:1234?token=old",
+            url: "ws://localhost:1234?token=old"
         };
     });
 
@@ -157,11 +157,7 @@ describe("tokenRefresh", () => {
             expect(result).toBe(unregister);
 
             const handler = vi.mocked(userManager.addEventListener).mock.calls[0][0];
-            handler(
-                {
-                    user: { id: "test", name: "Test" },
-                } as unknown as any, /* eslint-disable-line @typescript-eslint/no-explicit-any */
-            );
+            handler({ user: { id: "test", name: "Test" } } as unknown as any /* eslint-disable-line @typescript-eslint/no-explicit-any */);
         });
     });
 });

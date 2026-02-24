@@ -3,7 +3,6 @@
     import { resolve } from "$app/paths";
     import { createYjsClient } from "../services";
     import { getLogger } from "../lib/logger";
-    import { metaDocState } from "../lib/metaDoc.svelte";
     import { projectsFromUserProject } from "../stores/projectStore.svelte";
     import { yjsStore } from "../stores/yjsStore.svelte";
     import { firestoreStore } from "../stores/firestoreStore.svelte";
@@ -29,7 +28,6 @@
     let projects = $derived.by(() => {
         void firestoreStore.ucVersion; // Dependency only
         void redraw; // Provisional dependency (event-driven compatibility)
-        void metaDocState.version; // Re-calculate when metadata loads/changes
         return projectsFromUserProject(firestoreStore.userProject);
     });
     $effect(() => {

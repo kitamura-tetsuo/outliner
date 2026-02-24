@@ -2,81 +2,81 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature CLM-0008
- *  Title   : Move to the end of the line
+ *  Title   : 行末へ移動
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
-// Set test timeout (increase duration)
+// テストのタイムアウトを設定（長めに設定）
 
-test.describe("CLM-0008: Move to the end of the line", () => {
+test.describe("CLM-0008: 行末へ移動", () => {
     test.setTimeout(60000); // Increase test timeout to 60 seconds
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // Click the first item
+        // 最初のアイテムをクリック
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
-        // Wait until the global textarea receives focus
+        // グローバル textarea にフォーカスが当たるまで待機
         await page.waitForSelector("textarea.global-textarea:focus");
 
-        // Wait until the cursor is visible
+        // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
-        // Enter test text (explicitly entering line breaks)
+        // テスト用のテキストを入力（改行を明示的に入力）
         await page.keyboard.type("First line");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second line");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Third line");
 
-        // Move cursor to the beginning of the second line
+        // カーソルを2行目の先頭に移動
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("Home");
     });
 
-    test("Pressing End key moves cursor to the end of the current line", async ({ page }) => {
-        // Wait until the cursor is visible
+    test("Endキーを押すと、カーソルが現在の行の末尾に移動する", async ({ page }) => {
+        // カーソルが表示されるまで待機
         await TestHelpers.waitForCursorVisible(page);
 
-        // Get active item ID
+        // アクティブなアイテムIDを取得
         const activeItemId = await TestHelpers.getActiveItemId(page);
         expect(activeItemId).not.toBeNull();
 
-        // Get active item
+        // アクティブなアイテムを取得
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
 
-        // Retrieve and verify cursor information (more reliable method)
+        // カーソル情報の取得と検証 (より信頼性の高い方法)
         const initialCursorData = await CursorValidator.getCursorData(page);
         expect(initialCursorData.cursorCount).toBeGreaterThan(0);
         expect(initialCursorData.activeItemId).not.toBeNull();
 
-        // Verify cursor element in DOM (search without active class)
+        // DOM上のカーソル要素も確認 (activeクラスなしで検索)
         const editorOverlay = page.locator(".editor-overlay");
         await editorOverlay.waitFor({ state: "attached", timeout: 10000 });
 
-        // Search for cursor element more generally
+        // カーソル要素をより一般的に検索
         const cursor = page.locator(".editor-overlay .cursor").first();
 
-        // Ensure cursor element exists (check 'attached' instead of 'visibility')
+        // カーソル要素が存在することを確認 (visibilityではなくattachedで確認)
         await expect(cursor).toBeAttached({ timeout: 15000 });
 
-        // Get initial cursor position (use default if not present)
+        // 初期カーソル位置を取得 (存在しない場合はデフォルト値を使用)
         let initialX = 0;
         try {
             initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
         } catch (_) { // eslint-disable-line @typescript-eslint/no-unused-vars
-            // Continue even if cursor element is not yet rendered
+            // カーソル要素がまだ描画されていない場合でも処理を続行
             console.log("Initial cursor position not available, continuing test");
         }
 
-        // Press End key
+        // Endキーを押下
         await page.keyboard.press("End");
 
         // Wait for the UI to update after pressing End key
@@ -91,12 +91,12 @@ test.describe("CLM-0008: Move to the end of the line", () => {
                 && activeElement.classList.contains("global-textarea");
         }, { timeout: 10000 });
 
-        // Re-acquire cursor info to verify movement (based on app state)
+        // カーソル情報を再取得して移動を確認 (アプリケーション状態に基づく)
         const afterEndCursorData = await CursorValidator.getCursorData(page);
         expect(afterEndCursorData.cursorCount).toBeGreaterThan(0);
         expect(afterEndCursorData.activeItemId).not.toBeNull();
 
-        // Get new cursor position (handle exception if element missing)
+        // 新しいカーソル位置を取得 (同じく、要素が存在しない場合の例外処理)
         let newX = 0;
         try {
             newX = await cursor.evaluate(el => el.getBoundingClientRect().left);
@@ -104,10 +104,10 @@ test.describe("CLM-0008: Move to the end of the line", () => {
             console.log("New cursor position not available, continuing test");
         }
 
-        // Verify cursor moved right (confirm success at app level)
-        expect(newX).toBeGreaterThanOrEqual(initialX); // >= because it may be acceptable if values are the same
+        // カーソルが右に移動していることを確認 (カーソル移動が成功したことをアプリケーションレベルで確認)
+        expect(newX).toBeGreaterThanOrEqual(initialX); // 値が同じでも問題ない場合があるため >=
 
-        // Verify cursor is at the end of the line (if DOM element exists)
+        // カーソルの位置が行の末尾にあることを確認 (DOM要素が存在すれば確認)
         try {
             const cursorOffset = await page.evaluate(() => {
                 const cursor = document.querySelector(".editor-overlay .cursor");
@@ -123,7 +123,7 @@ test.describe("CLM-0008: Move to the end of the line", () => {
                 expect(cursorOffset).not.toBeNull();
             }
         } catch (_) { // eslint-disable-line @typescript-eslint/no-unused-vars
-            // Failure to get DOM element is acceptable if app state is verified
+            // DOM要素の取得が失敗しても、アプリケーション状態の検証ができれば問題なし
             console.log("Cursor offset check failed, but continuing since app state was verified");
         }
     });

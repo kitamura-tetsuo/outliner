@@ -208,6 +208,17 @@
             if (targetPage) {
                 store.currentPage = targetPage as any;
 
+                // Load items (Hydration)
+                if (
+                    targetPage.id &&
+                    typeof project.hydratePageItems === "function"
+                ) {
+                    logger.info(
+                        `loadProjectAndPage: Hydrating items for page ${targetPage.id}`,
+                    );
+                    await project.hydratePageItems(targetPage.id);
+                }
+
                 // Wait for page list store update (optional)
                 if (!store.pages) {
                     // Might need to wait a bit to get page list on initial load

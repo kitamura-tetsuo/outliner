@@ -2,22 +2,22 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature LNK-0002
- *  Title   : Internal Link Functionality Verification
+ *  Title   : 内部リンクの機能検証
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("LNK-0002: Project Internal Link", () => {
+test.describe("LNK-0002: プロジェクト内部リンク", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "[/project-name/page-name]",
-            "Another item",
-            "Third item",
+            "別のアイテム",
+            "3つ目のアイテム",
         ]);
     });
 
-    test("Project internal link functions correctly", async ({ page }) => {
+    test("プロジェクト内部リンクが正しく機能する", async ({ page }) => {
         const projectLink = page.locator('a.internal-link.project-link[href="/project-name/page-name"]');
         await projectLink.waitFor({ state: "visible", timeout: 10000 });
         await expect(projectLink).toHaveCount(1);

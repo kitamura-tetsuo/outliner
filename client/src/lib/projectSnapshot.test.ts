@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
+import { saveProjectSnapshot, loadProjectSnapshot } from "./projectSnapshot";
 import { Project } from "../schema/app-schema";
-import { loadProjectSnapshot, saveProjectSnapshot } from "./projectSnapshot";
 
 describe("projectSnapshot", () => {
     beforeEach(() => {
@@ -43,10 +43,10 @@ describe("snapshot conversion", () => {
             {
                 text: "Item 1",
                 children: [
-                    { text: "Child 1", children: [] },
-                ],
-            },
-        ],
+                    { text: "Child 1", children: [] }
+                ]
+            }
+        ]
     };
 
     it("should convert to markdown", () => {

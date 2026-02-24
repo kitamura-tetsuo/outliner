@@ -14,8 +14,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         const decoded = await verifyIdTokenCached(token);
         (req as any).user = decoded;
         next();
-    } catch (error: any) {
-        logger.warn(error, "Auth failed");
+    } catch (error) {
+        logger.warn({ event: "auth_failed", error: (error as Error).message, ip: req.ip });
         res.status(401).json({ error: "Unauthorized: Invalid token" });
     }
 }

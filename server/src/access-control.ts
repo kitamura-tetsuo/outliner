@@ -73,9 +73,14 @@ export async function checkContainerAccess(
 
         logger.warn({ event: "access_denied", userId, containerId });
         return false;
-    } catch (error: any) {
+    } catch (error) {
         // Log the full error object for debugging, but treat as denied safe-fail
-        logger.error(error, `[AccessControl] Access check error for user: ${userId}, container: ${containerId}`);
+        logger.error({
+            event: "access_check_error",
+            message: error instanceof Error ? error.message : String(error),
+            userId,
+            containerId,
+        });
         return false;
     }
 }

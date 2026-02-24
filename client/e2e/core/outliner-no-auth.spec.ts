@@ -8,45 +8,45 @@ test.describe("Outliner No Auth Test", () => {
     test("can load and interact with outliner without authentication", async ({ page }, testInfo) => {
         console.log("Debug: Testing outliner without authentication");
 
-        // Setup error monitoring
+        // エラー監視を設定
         const errors = TestHelpersNoAuth.setupErrorMonitoring(page);
 
-        // Setup network monitoring
+        // ネットワーク監視を設定
         const network = TestHelpersNoAuth.setupNetworkMonitoring(page);
 
-        // Prepare environment (no auth)
+        // 環境準備（認証なし）
         const envResult = await TestHelpersNoAuth.prepareTestEnvironmentNoAuth(page, testInfo);
         console.log("Debug: Environment preparation result:", envResult);
 
         expect(envResult.success).toBe(true);
 
-        // Verify basic elements
+        // 基本要素の確認
         const elementsValid = await TestHelpersNoAuth.verifyBasicElements(page);
         expect(elementsValid).toBe(true);
 
-        // Verify outliner elements
+        // アウトライナー要素の確認
         const outlinerElements = await TestHelpersNoAuth.findOutlinerElements(page);
         console.log("Debug: Outliner elements found:", outlinerElements);
 
-        // Test basic keyboard interactions
+        // 基本的なキーボード操作をテスト
         await page.keyboard.press("Escape");
         console.log("Debug: Pressed Escape key");
 
-        // Wait a bit to collect errors
+        // 少し待機してエラーを収集
         await page.waitForTimeout(300);
 
-        // Error report
+        // エラーレポート
         if (errors.length > 0) {
             console.log("Debug: JavaScript errors detected:", errors);
         } else {
             console.log("Debug: No JavaScript errors detected");
         }
 
-        // Network report
+        // ネットワークレポート
         console.log("Debug: Network requests:", network.requests.length);
         console.log("Debug: Network responses:", network.responses.length);
 
-        // Check failed requests
+        // 失敗したリクエストを確認
         const failedRequests = network.responses.filter(r => r.status >= 400);
         if (failedRequests.length > 0) {
             console.log("Debug: Failed requests:", failedRequests);
@@ -56,44 +56,44 @@ test.describe("Outliner No Auth Test", () => {
     test("can check application state without authentication", async ({ page }, testInfo) => {
         console.log("Debug: Testing application state without authentication");
 
-        // Prepare environment
+        // 環境準備
         const envResult = await TestHelpersNoAuth.prepareTestEnvironmentNoAuth(page, testInfo);
         expect(envResult.success).toBe(true);
 
-        // Check application state
+        // アプリケーションの状態を確認
         const appState = await page.evaluate(() => {
             const win = window as any;
             return {
-                // Check global variables
+                // グローバル変数の確認
                 userManager: typeof win.__USER_MANAGER__,
                 svelteGoto: typeof win.__SVELTE_GOTO__,
                 firebaseApp: typeof win.__firebase_client_app__,
 
-                // Check DOM state
+                // DOM状態の確認
                 readyState: document.readyState,
                 location: window.location.href,
 
-                // Check basic DOM elements
+                // 基本的なDOM要素の確認
                 bodyExists: !!document.body,
                 headExists: !!document.head,
 
-                // Check Svelte app state
+                // Svelteアプリの状態
                 svelteKit: typeof win.__SVELTEKIT_DEV__,
 
-                // Available global variables
+                // 利用可能なグローバル変数
                 allGlobals: Object.keys(win).filter(key => key.startsWith("__")),
             };
         });
 
         console.log("Debug: Application state:", appState);
 
-        // Check basic state
+        // 基本的な状態の確認
         expect(appState.readyState).toBe("complete");
         expect(appState.bodyExists).toBe(true);
         expect(appState.headExists).toBe(true);
         expect(appState.location).toMatch(/(localhost|127\.0\.0\.1):7090/);
 
-        // Verify UserManager exists (initialized even without auth)
+        // UserManagerが存在することを確認（認証なしでも初期化される）
         if (appState.userManager === "object") {
             console.log("Debug: UserManager is available");
         } else {
@@ -104,16 +104,16 @@ test.describe("Outliner No Auth Test", () => {
     test("can perform basic DOM interactions without authentication", async ({ page }, testInfo) => {
         console.log("Debug: Testing basic DOM interactions without authentication");
 
-        // Prepare environment
+        // 環境準備
         const envResult = await TestHelpersNoAuth.prepareTestEnvironmentNoAuth(page, testInfo);
         expect(envResult.success).toBe(true);
 
-        // Basic click interaction
+        // 基本的なクリック操作
         const body = page.locator("body");
         await body.click();
         console.log("Debug: Clicked on body");
 
-        // Keyboard interaction
+        // キーボード操作
         await page.keyboard.press("Tab");
         console.log("Debug: Pressed Tab key");
 
@@ -126,14 +126,14 @@ test.describe("Outliner No Auth Test", () => {
         await page.keyboard.press("ArrowUp");
         console.log("Debug: Pressed ArrowUp key");
 
-        // Test text input
+        // テキスト入力をテスト
         await page.keyboard.type("test input");
         console.log("Debug: Typed test input");
 
-        // Wait a bit
+        // 少し待機
         await page.waitForTimeout(300);
 
-        // Ensure page state is stable
+        // ページの状態が安定していることを確認
         const finalUrl = page.url();
         console.log("Debug: Final URL:", finalUrl);
         expect(finalUrl).toMatch(/(localhost|127\.0\.0\.1):7090/);

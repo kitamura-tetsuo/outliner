@@ -133,8 +133,7 @@ describe("backlinkCollector", () => {
     });
 
     it("should extract context around link", () => {
-        const longText =
-            "This is a very long text that should be truncated when extracting context. It contains a link to [TargetPage] and more text after it to ensure truncation works correctly.";
+        const longText = "This is a very long text that should be truncated when extracting context. It contains a link to [TargetPage] and more text after it to ensure truncation works correctly.";
         const mockPages = [
             {
                 id: "page1",
@@ -202,9 +201,7 @@ describe("backlinkCollector", () => {
     it("should handle errors gracefully", () => {
         // @ts-expect-error - mock store
         store.pages.current = {
-            [Symbol.iterator]: () => {
-                throw new Error("Iter error");
-            },
+            [Symbol.iterator]: () => { throw new Error("Iter error"); },
         };
 
         const result = collectBacklinks("TargetPage");

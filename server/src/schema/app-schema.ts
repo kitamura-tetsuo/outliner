@@ -29,7 +29,13 @@ export class Comments {
         c.set("text", text);
         c.set("created", time);
         c.set("lastChanged", time);
+        try {
+            console.info("[Comments.addComment] pushing comment to Y.Array");
+        } catch {}
         this.yArray.push([c]);
+        try {
+            console.info("[Comments.addComment] pushed. current length=", this.yArray.length);
+        } catch {}
         return { id: c.get("id") as string };
     }
 
@@ -279,6 +285,9 @@ export class Item {
         // 2) Add to this node itself as usual
         const arr = this.attachments; // ensure exists
         try {
+            console.debug("[Item.addAttachment] pushing url=", url, "id=", this.id);
+        } catch {}
+        try {
             interface WindowWithLogs extends Window {
                 E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
             }
@@ -316,6 +325,9 @@ export class Item {
     }
 
     addComment(author: string, text: string) {
+        try {
+            console.info("[Item.addComment] id=", this.id);
+        } catch {}
         const res = this.comments.addComment(author, text);
         try {
             const arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
@@ -326,6 +338,7 @@ export class Item {
             // Window broadcast (for immediate reflection to UI, deterministic)
             try {
                 if (typeof window !== "undefined") {
+                    console.info("[Item.addComment] dispatch item-comment-count id=", this.id, "count=", len);
                     window.dispatchEvent(
                         new CustomEvent("item-comment-count", { detail: { id: this.id, count: len } }),
                     );
@@ -396,21 +409,8 @@ export class Items implements Iterable<Item> {
     }
 
     private childrenKeys(): string[] {
-        try {
-            // Ensure root exists if we are at the top level
-            const treeInternal = this.tree as unknown as { ymap?: Y.Map<unknown>; };
-            if (this.parentKey === "root" && treeInternal.ymap?.size === 0) {
-                return [];
-            }
-            const children = this.tree.getNodeChildrenFromKey(this.parentKey);
-            return this.tree.sortChildrenByOrder(children, this.parentKey);
-        } catch (e: unknown) {
-            const error = e as Error;
-            if (this.parentKey === "root" && error.message?.includes("does not exist")) {
-                return [];
-            }
-            throw e;
-        }
+        const children = this.tree.getNodeChildrenFromKey(this.parentKey);
+        return this.tree.sortChildrenByOrder(children, this.parentKey);
     }
 
     get length(): number {
@@ -463,23 +463,7 @@ export class Items implements Iterable<Item> {
         value.set("attachments", new Y.Array<string>());
         value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
 
-        // Structural resilience: ensure parent exists or is virtualized
-        try {
-            this.tree.createNode(this.parentKey, nodeKey, value);
-        } catch (e: unknown) {
-            const error = e as Error;
-            if (this.parentKey === "root" && error.message?.includes("does not exist")) {
-                // Force initialization of the root node if it is missing (as per yjs-orderedtree patch logic)
-                const root = new Y.Map();
-                root.set("_parentHistory", new Y.Map());
-                const treeInternal = this.tree as unknown as { ymap: Y.Map<unknown>; };
-                treeInternal.ymap.set("root", root);
-                // Retry creation
-                this.tree.createNode(this.parentKey, nodeKey, value);
-            } else {
-                throw e;
-            }
-        }
+        this.tree.createNode(this.parentKey, nodeKey, value);
 
         if (index === undefined) {
             this.tree.setNodeOrderToEnd(nodeKey);
@@ -552,6 +536,10 @@ export class Project {
     addPage(title: string, author: string) {
         const page = (this.items as Items).addNode(author);
         page.updateText(title);
+        const pages = this.ydoc.getMap<Y.Doc>("pages");
+        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as YDocOptions);
+        pages.set(page.id, subdoc);
+        subdoc.load();
         return page;
     }
 }

@@ -2,13 +2,13 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0009
- *  Title   : Text movement by drag and drop
+ *  Title   : ドラッグ＆ドロップによるテキスト移動
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0009: Item Drag and Drop", () => {
+test.describe("SLR-0009: アイテムドラッグ＆ドロップ", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
@@ -50,7 +50,7 @@ test.describe("SLR-0009: Item Drag and Drop", () => {
         await page.keyboard.press("Home");
     });
 
-    test("Can move entire item by drag and drop", async ({ page }) => {
+    test("アイテム全体をドラッグ＆ドロップで移動できる", async ({ page }) => {
         const itemCount = await page.locator(".outliner-item").count();
         expect(itemCount).toBeGreaterThanOrEqual(3);
         const firstItemText = await page.locator(".outliner-item").nth(0).locator(".item-text").textContent();

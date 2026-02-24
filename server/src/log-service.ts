@@ -28,7 +28,7 @@ async function startServer() {
         logger.info("Firebase initialization completed, starting log service...");
         return startLogService();
     } catch (error: any) {
-        logger.error(error, "Failed to initialize Firebase");
+        logger.error(`Failed to initialize Firebase: ${error.message}`);
         throw error;
     }
 }
@@ -54,16 +54,16 @@ function startLogService() {
                 refreshServerLogStream();
             }
 
-            logger.info(
-                {
+            logger.info(`Periodic log rotation completed: ${
+                JSON.stringify({
                     clientRotated,
                     telemetryRotated,
                     serverRotated,
-                },
-                "Periodic log rotation completed",
-            );
+                    timestamp: new Date().toISOString(),
+                })
+            }`);
         } catch (error: any) {
-            logger.error(error, "Error during periodic log rotation");
+            logger.error(`Error during periodic log rotation: ${error.message}`);
         }
     };
 
@@ -100,10 +100,10 @@ function startLogService() {
                 return defaultOrigins;
             }
 
-            logger.info({ origins: safeOrigins }, "Using CORS origins");
+            logger.info(`Using CORS origins: ${safeOrigins.join(", ")}`);
             return safeOrigins;
         } catch (error: any) {
-            logger.error(error, "Error parsing CORS_ORIGIN, using defaults");
+            logger.error(`Error parsing CORS_ORIGIN: ${error.message}, using defaults`);
             return defaultOrigins;
         }
     }
@@ -166,12 +166,12 @@ function startLogService() {
                         });
                     }
                 } catch (error: any) {
-                    logger.error(error, "Development login error");
+                    logger.error(`Development login error: ${error.message}`);
                 }
             }
             return res.status(401).json({ error: "Invalid credentials" });
         } catch (error: any) {
-            logger.error(error, "Login error");
+            logger.error(`Login error: ${error.message}`);
             return res.status(500).json({ error: "Authentication failed" });
         }
     });
@@ -219,7 +219,7 @@ function startLogService() {
 
             return res.status(200).json({ success: true });
         } catch (error: any) {
-            logger.error(error, "Log processing error");
+            logger.error(`Log processing error: ${error.message}`);
             return res.status(500).json({ error: "Failed to process log" });
         }
     });
@@ -239,7 +239,7 @@ function startLogService() {
 
                 fs.open(telemetryLogPath, "r", (err, fd) => {
                     if (err) {
-                        logger.error(err, "Failed to open Telemetry log file");
+                        logger.error(`Failed to open Telemetry log file: ${err.message}`);
                         res.status(500).json({ error: "Failed to open file" });
                         return;
                     }
@@ -249,7 +249,7 @@ function startLogService() {
                         fs.close(fd, () => {});
 
                         if (err) {
-                            logger.error(err, "Failed to read Telemetry log file");
+                            logger.error(`Failed to read Telemetry log file: ${err.message}`);
                             res.status(500).json({ error: "Failed to read file" });
                             return;
                         }
@@ -273,7 +273,7 @@ function startLogService() {
                     });
                 });
             } catch (error: any) {
-                logger.error(error, "Telemetry log retrieval error");
+                logger.error(`Telemetry log retrieval error: ${error.message}`);
                 return res.status(500).json({ error: "Failed to retrieve Telemetry log" });
             }
         });
@@ -303,16 +303,16 @@ function startLogService() {
                 timestamp: new Date().toISOString(),
             });
 
-            logger.info(
-                {
+            logger.info(`Rotated log files: ${
+                JSON.stringify({
                     clientRotated,
                     telemetryRotated,
                     serverRotated,
-                },
-                "Rotated log files",
-            );
+                    timestamp: new Date().toISOString(),
+                })
+            }`);
         } catch (error: any) {
-            logger.error(error, "Error occurred during log rotation");
+            logger.error(`Error occurred during log rotation: ${error.message}`);
             res.status(500).json({
                 success: false,
                 error: error.message,
@@ -386,27 +386,27 @@ function startLogService() {
                 role: "user",
             });
 
-            logger.info({ uid: userRecord.uid }, "Successfully created test user");
+            logger.info(`Successfully created test user: ${userRecord.uid}`);
             return res.status(200).json({
                 message: "User created successfully",
                 uid: userRecord.uid,
             });
         } catch (error: any) {
-            logger.error(error, "Error creating test user");
+            logger.error(`Error creating test user: ${error.message}`);
             return res.status(500).json({ error: error.message });
         }
     });
 
     const PORT = process.env.PORT || 7071;
     app.listen(PORT, () => {
-        logger.info({ port: PORT }, "Auth service running");
-        logger.info({ origin: process.env.CORS_ORIGIN || "*" }, "CORS configured");
+        logger.info(`Auth service running on port ${PORT}`);
+        logger.info(`CORS origin: ${process.env.CORS_ORIGIN || "*"}`);
     });
 
     return app;
 }
 
-startServer().catch((error: any) => {
-    logger.error(error, "Failed to start server");
+startServer().catch(error => {
+    logger.error(`Failed to start server: ${error.message}`);
     process.exit(1);
 });

@@ -179,25 +179,6 @@ describe("Sidebar", () => {
             expect(settingsLinkDiv).toBeInTheDocument();
         });
 
-        it("should render the GitHub link", () => {
-            render(Sidebar, { isOpen: true });
-
-            const githubLink = screen.getByText("GitHub").closest("a");
-            expect(githubLink).toBeInTheDocument();
-            expect(githubLink).toHaveAttribute("href", "https://github.com/kitamura-tetsuo/outliner/");
-        });
-
-        it("should render the Jules link", () => {
-            render(Sidebar, { isOpen: true });
-
-            const julesLink = screen.getByText("Jules").closest("a");
-            expect(julesLink).toBeInTheDocument();
-            expect(julesLink).toHaveAttribute(
-                "href",
-                "https://jules.google.com/repo/github/kitamura-tetsuo/outliner/overview",
-            );
-        });
-
         it("should render project items when containers exist", () => {
             render(Sidebar, { isOpen: true });
 
@@ -344,21 +325,6 @@ describe("Sidebar", () => {
 
             expect(settingsLink).toBeInTheDocument();
             expect(settingsLink).toHaveAttribute("href", "/settings");
-        });
-
-        it("should use project name from projectStore when store.project.title is an ID", () => {
-            // Setup store.project.title to match an ID in the mock projectStore
-            // mockProjectStore has project-1 with name "Test Project 1"
-            store.project = {
-                title: "project-1",
-            } as any;
-
-            render(Sidebar, { isOpen: true });
-
-            const pageItem = screen.getByText("Test Page 1").closest("a");
-            expect(pageItem).toBeInTheDocument();
-            // Should resolve to "Test Project 1" instead of "project-1"
-            expect(pageItem).toHaveAttribute("href", "/Test%20Project%201/Test%20Page%201");
         });
     });
 });

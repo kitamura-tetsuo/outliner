@@ -55,8 +55,12 @@ export function createSeedRouter(
             const token = authHeader.split(" ")[1];
             const decoded = await verifyIdTokenCached(token);
             uid = decoded.uid;
-        } catch (e: any) {
-            logger.warn(e, "Seed unauthorized: invalid token");
+        } catch (e) {
+            logger.warn({
+                event: "seed_unauthorized",
+                reason: "invalid_token",
+                error: e instanceof Error ? e.message : String(e),
+            });
             res.status(401).json({ error: "Unauthorized" });
             return;
         }
@@ -114,8 +118,11 @@ export function createSeedRouter(
                         return;
                     }
                 }
-            } catch (authError: any) {
-                logger.error(authError, "Seed auth check error");
+            } catch (authError) {
+                logger.error({
+                    event: "seed_auth_check_error",
+                    error: authError instanceof Error ? authError.message : String(authError),
+                });
                 res.status(500).json({ error: "Internal Server Error during authorization check" });
                 return;
             }
@@ -135,7 +142,9 @@ export function createSeedRouter(
                 }
 
                 // Use transact for proper change handling
-                // Pages are stored directly within the single project document's YTree.
+                // IMPORTANT: We avoid using Project.addPage because it creates subdocuments
+                // with subdoc.load() which doesn't work correctly with Hocuspocus's Document class.
+                // Instead, we create pages directly in the orderedTree without subdocuments.
                 await directConnection.transact((document: any) => {
                     const ydoc = document as unknown as Y.Doc;
 
@@ -153,8 +162,10 @@ export function createSeedRouter(
                     for (const pageData of pages) {
                         logger.info({ event: "seed_page", pageName: pageData.name });
 
-                        // Create page node directly in the YTree
-                        const page = project.addPage(pageData.name, "seed-server");
+                        // Create page node directly using Items.addNode (avoids subdoc creation)
+                        // This creates a node in the YTree with the page name as text
+                        const page = items.addNode("seed-server");
+                        page.updateText(pageData.name);
 
                         // Add content items (lines) as children of the page
                         if (pageData.lines && pageData.lines.length > 0) {
@@ -187,9 +198,10 @@ export function createSeedRouter(
                 await directConnection.disconnect();
                 throw transactError;
             }
-        } catch (error: any) {
-            logger.error(error, "Seeding failed");
+        } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            logger.error({ event: "seed_error", error: errorMessage, stack: errorStack });
             res.status(500).json({ error: "Seeding failed", message: errorMessage });
         }
     });
