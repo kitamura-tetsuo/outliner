@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { KeyEventHandler } from "./KeyEventHandler";
 
 // Mock stores to avoid circular dependency
@@ -16,13 +16,18 @@ vi.mock("../stores/AliasPickerStore.svelte", () => ({
     },
 }));
 
+interface GlobalTestMocks {
+    mockIndent: Mock;
+    mockOutdent: Mock;
+}
+
 // Svelte store mock
 vi.mock("../stores/EditorOverlayStore.svelte", () => {
     const mockIndent = vi.fn();
     const mockOutdent = vi.fn();
 
     // Store mocks in global for test access
-    (globalThis as any).__testMocks = {
+    (globalThis as unknown as { __testMocks: GlobalTestMocks }).__testMocks = {
         mockIndent,
         mockOutdent,
     };
@@ -38,7 +43,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
                 cursorId: "cursor-1",
                 itemId: "item-1",
                 isActive: true,
-                userId: "local",
+                userId: "local"
             }],
             getTextareaRef: vi.fn(() => ({ focus: vi.fn() })),
             selections: {},
@@ -47,19 +52,19 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
 });
 
 describe("KeyEventHandler Tab Handling", () => {
-    let mockIndent: any;
-    let mockOutdent: any;
-    let originalDocument: any;
+    let mockIndent: Mock;
+    let mockOutdent: Mock;
+    let originalDocument: Document | undefined;
 
     beforeEach(() => {
         vi.clearAllMocks();
-        const mocks = (globalThis as any).__testMocks;
+        const mocks = (globalThis as unknown as { __testMocks: GlobalTestMocks }).__testMocks;
         mockIndent = mocks.mockIndent;
         mockOutdent = mocks.mockOutdent;
 
         // Reset key handlers to ensure they are re-initialized
-        if ((KeyEventHandler as any).keyHandlers) {
-            (KeyEventHandler as any).keyHandlers.clear();
+        if ((KeyEventHandler as unknown as { keyHandlers: Map<unknown, unknown> }).keyHandlers) {
+            (KeyEventHandler as unknown as { keyHandlers: Map<unknown, unknown> }).keyHandlers.clear();
         }
 
         // Mock document
@@ -71,15 +76,17 @@ describe("KeyEventHandler Tab Handling", () => {
             dispatchEvent: vi.fn(),
             createElement: vi.fn(() => ({ style: {} })),
             body: { appendChild: vi.fn(), removeChild: vi.fn() },
-        } as any;
+        } as unknown as Document;
 
         // Mock requestAnimationFrame
-        (global as any).requestAnimationFrame = (cb: any) => cb();
+        (global as unknown as { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame = (cb: FrameRequestCallback) => { cb(0); return 0; };
     });
 
     afterEach(() => {
-        global.document = originalDocument;
-        delete (global as any).requestAnimationFrame;
+        if (originalDocument) {
+            global.document = originalDocument;
+        }
+        delete (global as unknown as { requestAnimationFrame?: unknown }).requestAnimationFrame;
     });
 
     const createKeyEvent = (key: string, shiftKey: boolean = false): KeyboardEvent => {
