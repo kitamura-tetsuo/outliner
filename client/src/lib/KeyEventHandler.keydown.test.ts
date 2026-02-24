@@ -38,7 +38,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
                 cursorId: "cursor-1",
                 itemId: "item-1",
                 isActive: true,
-                userId: "local"
+                userId: "local",
             }],
             getTextareaRef: vi.fn(() => ({ focus: vi.fn() })),
             selections: {},
