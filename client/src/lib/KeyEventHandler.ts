@@ -262,9 +262,9 @@ export class KeyEventHandler {
                                         {
                                             acceptNode(node) {
                                                 const el = node as Element;
-                                                return el.classList.contains("outliner-item") &&
-                                                    el.hasAttribute("data-item-id") &&
-                                                    !el.classList.contains("page-title")
+                                                return el.classList.contains("outliner-item")
+                                                        && el.hasAttribute("data-item-id")
+                                                        && !el.classList.contains("page-title")
                                                     ? NodeFilter.FILTER_ACCEPT
                                                     : NodeFilter.FILTER_SKIP;
                                             },

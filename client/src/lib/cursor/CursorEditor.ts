@@ -3,8 +3,8 @@ import { Items } from "../../schema/yjs-schema";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
-import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { escapeId } from "../../utils/domUtils";
+import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
 import {
     getSelectionForUser,
