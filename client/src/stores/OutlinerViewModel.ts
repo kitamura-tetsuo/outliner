@@ -79,10 +79,10 @@ export class OutlinerViewModel {
         try {
             this._isUpdating = true;
 
-            console.error(
+            debugLog(
                 `OutlinerViewModel: updateFromModel for pageItem.id=${pageItem.id} isItemLike=${isItemLike(pageItem)}`,
             );
-            console.error(
+            debugLog(
                 "OutlinerViewModel: pageItem.items length:",
                 (pageItem.items as any)?.length || 0,
             );
@@ -90,7 +90,7 @@ export class OutlinerViewModel {
             // Update or add existing view models
             this.ensureViewModelsItemExist(pageItem);
 
-            console.error(
+            debugLog(
                 "OutlinerViewModel: viewModels count after ensure:",
                 this.viewModels.size,
             );
@@ -98,7 +98,7 @@ export class OutlinerViewModel {
             // Recalculate display order and depth - start from pageItem itself
             this.recalculateOrderAndDepthItem(pageItem);
 
-            console.error(
+            debugLog(
                 "OutlinerViewModel: visibleOrder length after recalculate:",
                 this.visibleOrder.length,
             );
@@ -272,7 +272,7 @@ export class OutlinerViewModel {
                 `OutlinerViewModel: Skipping children for "${item.text}" because it's collapsed`,
             );
         } else if (!hasChildren) {
-            console.log(`OutlinerViewModel: No children for "${item.text}"`);
+            debugLog(`OutlinerViewModel: No children for "${item.text}"`);
         }
     }
 
