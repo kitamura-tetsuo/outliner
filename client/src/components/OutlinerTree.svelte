@@ -1884,113 +1884,112 @@
                 </svg>
             </button>
         {/if}
+
+        <!-- Mobile Action Toolbar (Always visible at bottom) -->
+        <div
+            class="mobile-action-toolbar"
+            data-testid="mobile-action-toolbar"
+            role="toolbar"
+            aria-label="Action Toolbar"
+        >
+            <button
+                class="mobile-toolbar-btn"
+                aria-label="Indent"
+                title="Indent"
+                onclick={() => {
+                    const activeItemId = resolveActiveItemId();
+                    if (!activeItemId) return;
+                    editorOverlayStore.setActiveItem(activeItemId);
+                    const mockEvent = {
+                        detail: { itemId: activeItemId },
+                    } as CustomEvent;
+                    handleIndent(mockEvent);
+                }}
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+            <button
+                class="mobile-toolbar-btn"
+                aria-label="Outdent"
+                title="Outdent"
+                onclick={() => {
+                    const activeItemId = resolveActiveItemId();
+                    if (!activeItemId) return;
+                    editorOverlayStore.setActiveItem(activeItemId);
+                    const mockEvent = {
+                        detail: { itemId: activeItemId },
+                    } as CustomEvent;
+                    handleUnindent(mockEvent);
+                }}
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            <button
+                class="mobile-toolbar-btn"
+                aria-label="Insert Above"
+                title="Insert Above"
+                onclick={() => {
+                    const activeItemId = resolveActiveItemId();
+                    if (!activeItemId) return;
+                    editorOverlayStore.setActiveItem(activeItemId);
+                    const mockEvent = {
+                        detail: { itemId: activeItemId, position: "above" },
+                    } as CustomEvent;
+                    handleAddSibling(mockEvent);
+                }}
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+            </button>
+            <button
+                class="mobile-toolbar-btn"
+                aria-label="Insert Below"
+                title="Insert Below"
+                onclick={() => {
+                    const activeItemId = resolveActiveItemId();
+                    if (!activeItemId) return;
+                    editorOverlayStore.setActiveItem(activeItemId);
+                    const mockEvent = {
+                        detail: { itemId: activeItemId, position: "below" },
+                    } as CustomEvent;
+                    handleAddSibling(mockEvent);
+                }}
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+            </button>
+            <button
+                class="mobile-toolbar-btn"
+                aria-label="New Child"
+                title="New Child"
+                onclick={() => {
+                    const activeItemId = resolveActiveItemId();
+                    if (!activeItemId) return;
+                    editorOverlayStore.setActiveItem(activeItemId);
+                    const mockEvent = {
+                        detail: { itemId: activeItemId, position: "child" },
+                    } as CustomEvent;
+                    handleAddSibling(mockEvent);
+                }}
+            >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+        </div>
     </div>
 {/key}
-
-<!-- Mobile Action Toolbar (appears on mobile devices when needed) -->
-<div
-    class="mobile-action-toolbar"
-    data-testid="mobile-action-toolbar"
-    role="toolbar"
-    aria-label="Mobile Action Toolbar"
->
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="Indent"
-        title="Indent"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId },
-            } as CustomEvent;
-            handleIndent(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-    </button>
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="Outdent"
-        title="Outdent"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId },
-            } as CustomEvent;
-            handleUnindent(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-    </button>
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="Insert Above"
-        title="Insert Above"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId, position: "above" },
-            } as CustomEvent;
-            handleAddSibling(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
-    </button>
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="Insert Below"
-        title="Insert Below"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId, position: "below" },
-            } as CustomEvent;
-            handleAddSibling(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
-    </button>
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="New Child"
-        title="New Child"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId, position: "child" },
-            } as CustomEvent;
-            handleAddSibling(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-    </button>
-</div>
 
 <style>
     /* Mobile Action Toolbar */
     .mobile-action-toolbar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: none; /* Hidden by default */
+        /* Always visible at bottom of flex container */
+        display: flex;
+        flex-shrink: 0;
         background: white;
         border-top: 1px solid #ddd;
         padding: 8px;
-        z-index: 1000;
         justify-content: space-around;
         align-items: center;
         height: 50px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .mobile-toolbar-btn {
@@ -2009,13 +2008,6 @@
 
     .mobile-toolbar-btn:hover {
         background: #e0e0e0;
-    }
-
-    /* Show mobile toolbar only on small screens */
-    @media (max-width: 768px) {
-        .mobile-action-toolbar {
-            display: flex;
-        }
     }
 
     .outliner {
@@ -2132,7 +2124,7 @@
 
     .scroll-top-btn {
         position: absolute;
-        bottom: 20px;
+        bottom: 80px;
         right: 20px;
         width: 40px;
         height: 40px;
