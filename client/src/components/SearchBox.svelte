@@ -108,7 +108,7 @@
                         if (arr.length) {
                             if (
                                 typeof window !== "undefined" &&
-                                (window as any).__E2E__
+                                (window as any).DEBUG_MODE
                             ) {
                                 console.log(
                                     "[SearchBox Debug] Source found items:",
@@ -156,7 +156,7 @@
                 }
             }
 
-            if (typeof window !== "undefined" && (window as any).__E2E__) {
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(
                     "[SearchBox Debug] collectPages found NO items. Sources tried:",
                     sources.length,
