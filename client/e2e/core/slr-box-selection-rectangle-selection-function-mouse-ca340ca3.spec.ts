@@ -33,7 +33,7 @@ test.describe("Box Selection Test via Mouse", () => {
         // Enable debug mode
         try {
             await page.evaluate(() => {
-                (window as any).DEBUG_MODE = true;
+                // (window as any).DEBUG_MODE = true;
             });
         } catch (error) {
             console.log(`Error occurred while setting debug mode: ${error}`);

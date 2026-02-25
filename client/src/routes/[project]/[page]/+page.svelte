@@ -249,13 +249,13 @@
     onMount(() => {
         try {
             // DIRECT DEBUG: This should appear if onMount is called
-            if (typeof console !== "undefined") {
-                console.log("[DEBUG] onMount called");
-            }
+            // if (typeof console !== "undefined") {
+            //     console.log("[DEBUG] onMount called");
+            // }
             // Attempt initial load
             scheduleLoadIfNeeded();
         } catch (e) {
-            console.error("[DEBUG] onMount error:", e);
+            logger.error("[DEBUG] onMount error:", e);
         }
 
         // E2E Stabilization: Track initial generation of currentPage.items and capture pageId as needed
@@ -302,10 +302,8 @@
             if (id) {
                 const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
                 window.sessionStorage?.setItem(key, String(id));
-                console.log(
-                    "[+page.svelte] capturePageIdForSchedule saved:",
-                    key,
-                    id,
+                logger.debug(
+                    `[+page.svelte] capturePageIdForSchedule saved: ${key} ${id}`,
                 );
             }
         } catch {}

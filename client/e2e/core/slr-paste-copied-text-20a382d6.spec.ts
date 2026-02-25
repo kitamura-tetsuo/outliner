@@ -19,7 +19,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
     test("コピーしたテキストを別の場所にペーストできる", async ({ page }) => {
         // デバッグモードを有効化
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 

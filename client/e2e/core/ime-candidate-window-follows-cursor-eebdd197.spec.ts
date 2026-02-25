@@ -40,7 +40,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
             if (itemId) {
                 await page.evaluate(itemId => {
                     // デバッグモードを有効にする
-                    (window as any).DEBUG_MODE = true;
+                    // (window as any).DEBUG_MODE = true;
 
                     const store = (window as any).editorOverlayStore;
                     if (store) {
@@ -65,7 +65,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
         } else {
             // カーソルが表示されている場合もデバッグモードを有効にする
             await page.evaluate(() => {
-                (window as any).DEBUG_MODE = true;
+                // (window as any).DEBUG_MODE = true;
             });
         }
 
@@ -121,7 +121,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
 
         // デバッグモードを有効にして$effectの動作を確認
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
         });
 
         // 実装側でtextarea位置が自動更新されるのを待つ

@@ -93,7 +93,7 @@ test.describe("ボックス選択のコピー・キャンセル・ペースト�
         // デバッグモードを有効化とクリップボードモックの設定
         try {
             await page.evaluate(() => {
-                (window as any).DEBUG_MODE = true;
+                // (window as any).DEBUG_MODE = true;
 
                 // モック: readText は lastCopiedText を返す
                 (navigator as any).clipboard.readText = async () => {

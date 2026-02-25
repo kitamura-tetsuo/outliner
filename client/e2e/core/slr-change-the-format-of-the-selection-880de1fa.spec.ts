@@ -14,7 +14,7 @@ test.describe("SLR-0010: Change selection format", () => {
         // Enable debug mode
         await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
         });
 
         // Seed with data

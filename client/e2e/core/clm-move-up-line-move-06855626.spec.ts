@@ -33,7 +33,7 @@ test.describe("CLM-0004: 上へ移動", () => {
     test("カーソルを1行上に移動する", async ({ page }) => {
         // デバッグモードを有効にする
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
         });
 
         // カーソルデータを取得して確認

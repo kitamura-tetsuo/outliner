@@ -14,7 +14,7 @@ test.describe("SLR-3724726f: 選択範囲の方向切り替え", () => {
     test("選択範囲の方向（正方向/逆方向）を切り替えることができる", async ({ page }) => {
         // デバッグモードを再度有効化
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 

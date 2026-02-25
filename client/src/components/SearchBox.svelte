@@ -108,7 +108,7 @@
                         if (arr.length) {
                             if (
                                 typeof window !== "undefined" &&
-                                (window as any).__E2E__
+                                (window as any).__E2E_VERBOSE__
                             ) {
                                 console.log(
                                     "[SearchBox Debug] Source found items:",
@@ -156,7 +156,10 @@
                 }
             }
 
-            if (typeof window !== "undefined" && (window as any).__E2E__) {
+            if (
+                typeof window !== "undefined" &&
+                (window as any).__E2E_VERBOSE__
+            ) {
                 console.log(
                     "[SearchBox Debug] collectPages found NO items. Sources tried:",
                     sources.length,
@@ -368,25 +371,32 @@
                       cls: (eCenter as HTMLElement).className,
                   }
                 : null;
-            console.info(logPrefix, "mount", {
-                inputReady: !!inputEl,
-                inputRect: rect
-                    ? { x: rect.x, y: rect.y, w: rect.width, h: rect.height }
-                    : null,
-                at20x20: e20
-                    ? {
-                          tag: e20.tagName,
-                          id: (e20 as HTMLElement).id,
-                          cls: (e20 as HTMLElement).className,
-                      }
-                    : null,
-                atCenter: eCenterInfo,
-                clientRectsCount,
-                inDOM,
-                bboxNonZero,
-                viewportIntersect,
-                inputStyles: styles(inputEl as Element),
-            });
+            if ((window as any).__E2E_VERBOSE__) {
+                console.info(logPrefix, "mount", {
+                    inputReady: !!inputEl,
+                    inputRect: rect
+                        ? {
+                              x: rect.x,
+                              y: rect.y,
+                              w: rect.width,
+                              h: rect.height,
+                          }
+                        : null,
+                    at20x20: e20
+                        ? {
+                              tag: e20.tagName,
+                              id: (e20 as HTMLElement).id,
+                              cls: (e20 as HTMLElement).className,
+                          }
+                        : null,
+                    atCenter: eCenterInfo,
+                    clientRectsCount,
+                    inDOM,
+                    bboxNonZero,
+                    viewportIntersect,
+                    inputStyles: styles(inputEl as Element),
+                });
+            }
             // Trace and measure computed styles up the parent chain
             type ChainInfo = {
                 tag: string;
@@ -408,11 +418,13 @@
                 node = node.parentElement;
                 count++;
             }
-            console.info(logPrefix, "ancestor-styles", chain);
-            const toolbar = document.querySelector(
-                '[data-testid="main-toolbar"]',
-            ) as HTMLElement | null;
-            console.info(logPrefix, "main-toolbar styles", styles(toolbar));
+            if ((window as any).__E2E_VERBOSE__) {
+                console.info(logPrefix, "ancestor-styles", chain);
+                const toolbar = document.querySelector(
+                    '[data-testid="main-toolbar"]',
+                ) as HTMLElement | null;
+                console.info(logPrefix, "main-toolbar styles", styles(toolbar));
+            }
         } catch {}
         // schedule a few ticks to help early reactivity with global generalStore
         for (let i = 0; i < 8; i++)

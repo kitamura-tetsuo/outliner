@@ -14,7 +14,7 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
         await page.evaluate(async () => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
             // 他のテストの影響を受けないようにグローバル変数をクリア
             delete (window as any).lastCopiedText;
             delete (window as any).lastPastedText;
@@ -28,7 +28,7 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         });
         await TestHelpers.prepareTestEnvironment(page, testInfo);
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
         });
         const item = page.locator(".outliner-item.page-title");
         if (await item.count() === 0) {

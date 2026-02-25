@@ -33,7 +33,7 @@ test.describe("選択範囲管理テスト", () => {
         // デバッグモードを有効化
         try {
             await page.evaluate(() => {
-                (window as any).DEBUG_MODE = true;
+                // (window as any).DEBUG_MODE = true;
             });
         } catch (error) {
             console.log(`デバッグモード設定中にエラーが発生しました: ${error}`);

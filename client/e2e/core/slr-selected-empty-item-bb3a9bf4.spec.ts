@@ -12,7 +12,7 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Enable debug mode
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
         });
 
         await TestHelpers.prepareTestEnvironment(page, testInfo);
@@ -23,7 +23,7 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
 
         // Enable debug mode (after page load)
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
         });
 
         await page.waitForSelector("textarea.global-textarea:focus");
@@ -48,7 +48,7 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
 
         // Re-enable debug mode
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 

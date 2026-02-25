@@ -45,7 +45,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
 
         // デバッグモードを再度有効化
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
     });
@@ -60,7 +60,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
 
         // デバッグモードを有効化
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 

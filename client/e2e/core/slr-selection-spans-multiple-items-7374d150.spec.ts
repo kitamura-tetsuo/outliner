@@ -43,7 +43,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
     test("Shift+上下キーで複数アイテムにまたがる選択範囲を作成できる", async ({ page }) => {
         // デバッグモードを有効化
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
         });
 
         // カーソルが表示されるまで待機
@@ -158,7 +158,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
     test("マウスドラッグで複数アイテムにまたがる選択範囲を作成できる", async ({ page }) => {
         // デバッグモードを有効化
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            // (window as any).DEBUG_MODE = true;
         });
 
         // カーソルが表示されるまで待機
