@@ -24,11 +24,8 @@ test.describe("CLM-0007: Move to the beginning of the line", () => {
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"] .item-content`);
         await item.click({ force: true });
 
-        // Wait for global textarea to be focused
-        await page.waitForSelector("textarea.global-textarea:focus");
-
-        // Wait for cursor to be visible
-        await TestHelpers.waitForCursorVisible(page);
+        // Ensure cursor is ready and textarea is focused
+        await TestHelpers.ensureCursorReady(page);
 
         // Move cursor slightly to the right (to verify Home key effect)
         await page.keyboard.press("ArrowRight");

@@ -67,8 +67,9 @@ export class TestHelpers {
     ): Promise<{ projectName: string; pageName: string; }> {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
-            // ALWAYS attach for debugging
+            // Respect E2E_VERBOSE_SLOG=1 to avoid CI log flooding
             page.on("console", (msg) => {
+                if (!TestHelpers.LOG_ENABLED) return;
                 const type = msg.type();
                 const txt = msg.text();
                 // Avoid too much noise from some expected logs if necessary,
@@ -324,6 +325,7 @@ export class TestHelpers {
         // First, ensure we have a loaded page to work with (needed for page.evaluate)
         if (!page.isClosed()) {
             page.on("console", msg => {
+                if (!TestHelpers.LOG_ENABLED) return;
                 const type = msg.type();
                 console.log(`[BROWSER][${type}] ${msg.text()}`);
             });
@@ -521,6 +523,7 @@ export class TestHelpers {
         // Attach verbose console/pageerror/requestfailed listeners for debugging
         try {
             page.on("console", (msg) => {
+                if (!TestHelpers.LOG_ENABLED) return;
                 const type = msg.type();
                 const txt = msg.text();
                 console.log(`[BROWSER-CONSOLE:${type}]`, txt);
