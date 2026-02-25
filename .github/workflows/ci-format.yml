@@ -31,7 +31,7 @@ jobs:
           node-version: '22'
 
       - name: Install dprint
-        run: npm install -g dprint@0.45.1
+        run: npm install -g dprint@0.51.1
 
       - name: Check formatting
         id: format_check
