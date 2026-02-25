@@ -49,7 +49,9 @@ export function pageExists(pageName: string, projectName?: string): boolean {
 
     // Search for a page with a matching name
     for (const page of store.pages.current) {
-        if (page.text.toLowerCase() === pageName.toLowerCase()) {
+        // Ensure page.text is treated as a string, handling Y.Text if necessary
+        const pageText = typeof page.text === "string" ? page.text : (page.text?.toString() ?? "");
+        if (pageText.toLowerCase() === pageName.toLowerCase()) {
             return true;
         }
     }
@@ -67,7 +69,9 @@ function findPageByName(name: string): Item | null {
 
     // Search for a page with a matching name
     for (const page of store.pages.current) {
-        if (page.text.toLowerCase() === name.toLowerCase()) {
+        // Ensure page.text is treated as a string
+        const pageText = typeof page.text === "string" ? page.text : (page.text?.toString() ?? "");
+        if (pageText.toLowerCase() === name.toLowerCase()) {
             return page;
         }
     }
@@ -111,7 +115,9 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
 
         // Title
         const titleElement = document.createElement("h3");
-        titleElement.textContent = foundPage.text;
+        // Ensure text is string
+        const titleText = typeof foundPage.text === "string" ? foundPage.text : (foundPage.text?.toString() ?? "");
+        titleElement.textContent = titleText;
         titleElement.style.fontSize = "16px";
         titleElement.style.fontWeight = "600";
         titleElement.style.margin = "0 0 8px 0";
@@ -136,7 +142,9 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
                 const item = (foundPage.items as any)[i];
                 if (item) {
                     const li = document.createElement("li");
-                    li.textContent = item.text || "";
+                    // Ensure item.text is string
+                    const itemText = typeof item.text === "string" ? item.text : (item.text?.toString() ?? "");
+                    li.textContent = itemText;
                     li.style.marginBottom = "4px";
                     li.style.color = "#555";
                     li.style.lineHeight = "1.4";

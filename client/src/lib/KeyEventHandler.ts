@@ -166,11 +166,13 @@ export class KeyEventHandler {
                                 const tid = opts[si]?.id;
                                 if (tid) {
                                     try {
-                                        console.log("KeyEventHandler(Enter@Picker): confirmById via store", {
-                                            si,
-                                            tid,
-                                            opts: opts.length,
-                                        });
+                                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                            console.log("KeyEventHandler(Enter@Picker): confirmById via store", {
+                                                si,
+                                                tid,
+                                                opts: opts.length,
+                                            });
+                                        }
                                     } catch {}
                                     ap.confirmById(tid);
                                     event.preventDefault();
@@ -183,18 +185,24 @@ export class KeyEventHandler {
                             ".alias-picker li button",
                         ) as NodeListOf<HTMLButtonElement>;
                         try {
-                            console.log("KeyEventHandler: alias-picker buttons found:", all.length);
+                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                console.log("KeyEventHandler: alias-picker buttons found:", all.length);
+                            }
                         } catch {}
                         const index = Math.min(1, Math.max(0, all.length - 1));
                         const btn = all[index] ?? null;
                         if (btn) {
                             try {
-                                console.log("KeyEventHandler: clicking alias option index", index);
+                                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                    console.log("KeyEventHandler: clicking alias option index", index);
+                                }
                             } catch {}
                             btn.click();
                         } else {
                             try {
-                                console.log("KeyEventHandler: no alias option button yet; ignoring this Enter");
+                                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                    console.log("KeyEventHandler: no alias option button yet; ignoring this Enter");
+                                }
                             } catch {}
                             // Do nothing (don't hide) as DOM might not be ready
                         }
@@ -233,12 +241,14 @@ export class KeyEventHandler {
                                 const aliasItem = find(root, aliasId);
                                 if (aliasItem && !aliasItem.aliasTargetId) {
                                     try {
-                                        console.log(
-                                            "KeyEventHandler: fallback setting aliasTargetId on",
-                                            aliasId,
-                                            "to",
-                                            firstContent.id,
-                                        );
+                                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                            console.log(
+                                                "KeyEventHandler: fallback setting aliasTargetId on",
+                                                aliasId,
+                                                "to",
+                                                firstContent.id,
+                                            );
+                                        }
                                     } catch {}
                                     aliasItem.aliasTargetId = firstContent.id;
                                 }
@@ -248,10 +258,12 @@ export class KeyEventHandler {
                                     ) as HTMLElement | null;
                                     if (aliasEl && !aliasEl.getAttribute("data-alias-target-id")) {
                                         try {
-                                            console.log(
-                                                "KeyEventHandler: setting DOM data-alias-target-id for aliasId",
-                                                aliasId,
-                                            );
+                                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                                console.log(
+                                                    "KeyEventHandler: setting DOM data-alias-target-id for aliasId",
+                                                    aliasId,
+                                                );
+                                            }
                                         } catch {}
                                         aliasEl.setAttribute("data-alias-target-id", String(firstContent.id));
                                     }
@@ -277,10 +289,12 @@ export class KeyEventHandler {
                                     const lastId = last?.getAttribute("data-item-id");
                                     if (last && lastId && !last.getAttribute("data-alias-target-id")) {
                                         try {
-                                            console.log(
-                                                "KeyEventHandler: setting DOM data-alias-target-id for lastId",
-                                                lastId,
-                                            );
+                                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                                console.log(
+                                                    "KeyEventHandler: setting DOM data-alias-target-id for lastId",
+                                                    lastId,
+                                                );
+                                            }
                                         } catch {}
                                         last.setAttribute("data-alias-target-id", String(firstContent.id));
                                     }
@@ -290,12 +304,14 @@ export class KeyEventHandler {
                                         const aliasItem2 = find(root, lastId);
                                         if (aliasItem2 && !aliasItem2.aliasTargetId) {
                                             try {
-                                                console.log(
-                                                    "KeyEventHandler: fallback setting aliasTargetId on lastId",
-                                                    lastId,
-                                                    "to",
-                                                    firstContent.id,
-                                                );
+                                                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                                    console.log(
+                                                        "KeyEventHandler: fallback setting aliasTargetId on lastId",
+                                                        lastId,
+                                                        "to",
+                                                        firstContent.id,
+                                                    );
+                                                }
                                             } catch {}
                                             aliasItem2.aliasTargetId = firstContent.id;
                                         }
@@ -315,18 +331,20 @@ export class KeyEventHandler {
         const cursorInstances = store.getCursorInstances();
 
         // Debug info
-        console.log(
-            `KeyEventHandler.handleKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}, altKey=${event.altKey}`,
-        );
-        const tgt = (event.target as any)?.tagName || typeof (event.target as any)?.nodeName === "string"
-            ? (event.target as any).nodeName
-            : typeof event.target;
-        const ae =
-            (document.activeElement as any)?.tagName || typeof (document.activeElement as any)?.nodeName === "string"
-                ? (document.activeElement as any).nodeName
-                : typeof document.activeElement;
-        console.log(`KeyEventHandler.handleKeyDown: target=${tgt}, active=${ae}`);
-        console.log(`Current cursor instances: ${cursorInstances.length}`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `KeyEventHandler.handleKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}, altKey=${event.altKey}`,
+            );
+            const tgt = (event.target as any)?.tagName || typeof (event.target as any)?.nodeName === "string"
+                ? (event.target as any).nodeName
+                : typeof event.target;
+            const ae =
+                (document.activeElement as any)?.tagName || typeof (document.activeElement as any)?.nodeName === "string"
+                    ? (document.activeElement as any).nodeName
+                    : typeof document.activeElement;
+            console.log(`KeyEventHandler.handleKeyDown: target=${tgt}, active=${ae}`);
+            console.log(`Current cursor instances: ${cursorInstances.length}`);
+        }
 
         // Pre-evaluate if "/alias" trigger exists on Enter (flag to open picker after subsequent default processing)
         let shouldOpenAliasPickerAfterDefault = false;
@@ -353,28 +371,28 @@ export class KeyEventHandler {
             const aliasDetected = /\/alias$/i.test(srcBefore) || /(^|[^a-zA-Z])alias$/i.test(before)
                 || /^alias$/i.test(cmd) || /^alias$/i.test(srcCmd);
             try {
-                console.log(
-                    "KeyEventHandler Early Enter check: before=",
-                    before,
-                    " cmd=",
-                    cmd,
-                    " paletteVisible=",
-                    commandPaletteStore.isVisible,
-                );
-            } catch {}
-            try {
-                console.log(
-                    "KeyEventHandler Early aliasDetected=",
-                    aliasDetected,
-                    " srcBefore=",
-                    srcBefore,
-                    " before=",
-                    before,
-                    " srcCmd=",
-                    srcCmd,
-                    " cmd=",
-                    cmd,
-                );
+                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    console.log(
+                        "KeyEventHandler Early Enter check: before=",
+                        before,
+                        " cmd=",
+                        cmd,
+                        " paletteVisible=",
+                        commandPaletteStore.isVisible,
+                    );
+                    console.log(
+                        "KeyEventHandler Early aliasDetected=",
+                        aliasDetected,
+                        " srcBefore=",
+                        srcBefore,
+                        " before=",
+                        before,
+                        " srcCmd=",
+                        srcCmd,
+                        " cmd=",
+                        cmd,
+                    );
+                }
             } catch {}
             if (aliasDetected) {
                 shouldOpenAliasPickerAfterDefault = true;
@@ -388,7 +406,9 @@ export class KeyEventHandler {
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    // Ensure text is string
+                    const rawText: any = node?.text;
+                    const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
                     const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
 
                     // Do not show palette immediately after internal link start ([/) or within [ ... ]
@@ -433,9 +453,11 @@ export class KeyEventHandler {
                     const hasAlias = filtered.some(c => c?.type === "alias");
                     if (hasAlias) {
                         try {
-                            console.log(
-                                "KeyEventHandler Palette Enter: forcing alias insert based on filtered results",
-                            );
+                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                console.log(
+                                    "KeyEventHandler Palette Enter: forcing alias insert based on filtered results",
+                                );
+                            }
                         } catch {}
                         commandPaletteStore.insert("alias");
                         commandPaletteStore.hide();
@@ -448,12 +470,16 @@ export class KeyEventHandler {
                 try {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    // Ensure text is string
+                    const rawText: any = node?.text;
+                    const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
                     const before = text.slice(0, cursor.offset);
                     const lastSlash = before.lastIndexOf("/");
                     const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
                     try {
-                        console.log("KeyEventHandler Palette Enter: before=", before, " cmd=", cmd);
+                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            console.log("KeyEventHandler Palette Enter: before=", before, " cmd=", cmd);
+                        }
                     } catch {}
                     if (/^alias$/i.test(cmd)) {
                         commandPaletteStore.hide();
@@ -490,7 +516,9 @@ export class KeyEventHandler {
                                 newItem.text = "";
                                 (newItem as any).aliasTargetId = undefined;
                                 try {
-                                    console.log("KeyEventHandler(Palette): showing AliasPicker for", newItem.id);
+                                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                        console.log("KeyEventHandler(Palette): showing AliasPicker for", newItem.id);
+                                    }
                                 } catch {}
                                 {
                                     const w: any = typeof window !== "undefined" ? (window as any) : null;
@@ -512,7 +540,9 @@ export class KeyEventHandler {
                 } catch (e) {
                     // Fallback to confirm if fallback fails
                     try {
-                        console.warn("KeyEventHandler Palette Enter alias handling failed:", e);
+                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            console.warn("KeyEventHandler Palette Enter alias handling failed:", e);
+                        }
                     } catch {}
                 }
                 // Normal palette confirm
@@ -543,7 +573,9 @@ export class KeyEventHandler {
             try {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
-                const text = node?.text || "";
+                // Ensure text is string
+                const rawText: any = node?.text;
+                const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
                 const before = text.slice(0, cursor.offset);
                 const lastSlash = before.lastIndexOf("/");
                 const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
@@ -560,16 +592,18 @@ export class KeyEventHandler {
                 const aliasDetected = /\/alias$/i.test(srcBefore) || /(^|[^a-zA-Z])alias$/i.test(before)
                     || /^alias$/i.test(cmd) || /^alias$/i.test(srcCmd);
                 try {
-                    console.log(
-                        "KeyEventHandler Enter fallback: before=",
-                        before,
-                        " cmd=",
-                        cmd,
-                        " srcBefore=",
-                        srcBefore,
-                        " srcCmd=",
-                        srcCmd,
-                    );
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        console.log(
+                            "KeyEventHandler Enter fallback: before=",
+                            before,
+                            " cmd=",
+                            cmd,
+                            " srcBefore=",
+                            srcBefore,
+                            " srcCmd=",
+                            srcCmd,
+                        );
+                    }
                 } catch {}
 
                 if (aliasDetected) {
@@ -599,7 +633,9 @@ export class KeyEventHandler {
                             newItem.text = "";
                             (newItem as any).aliasTargetId = undefined;
                             try {
-                                console.log("KeyEventHandler: showing AliasPicker for", newItem.id);
+                                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                    console.log("KeyEventHandler: showing AliasPicker for", newItem.id);
+                                }
                             } catch {}
                             {
                                 const w: any = typeof window !== "undefined" ? (window as any) : null;
@@ -657,21 +693,25 @@ export class KeyEventHandler {
                                     if (activeId) {
                                         (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
                                         try {
-                                            console.log(
-                                                "KeyEventHandler(Post): showing AliasPicker for activeId",
-                                                activeId,
-                                                " after default handler. before=",
-                                                earlyBeforeForLog,
-                                            );
+                                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                                console.log(
+                                                    "KeyEventHandler(Post): showing AliasPicker for activeId",
+                                                    activeId,
+                                                    " after default handler. before=",
+                                                    earlyBeforeForLog,
+                                                );
+                                            }
                                         } catch {}
                                         return;
                                     }
                                     if (attempt < 10) {
                                         setTimeout(() => tryOpen(attempt + 1), 10);
                                     } else {
-                                        console.warn(
-                                            "KeyEventHandler(Post): active item not found to open AliasPicker",
-                                        );
+                                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                            console.warn(
+                                                "KeyEventHandler(Post): active item not found to open AliasPicker",
+                                            );
+                                        }
                                     }
                                 } catch (e) {
                                     console.error(
@@ -733,19 +773,23 @@ export class KeyEventHandler {
                                     if (activeId) {
                                         (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
                                         try {
-                                            console.log(
-                                                "KeyEventHandler(Post2): showing AliasPicker for activeId",
-                                                activeId,
-                                            );
+                                            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                                console.log(
+                                                    "KeyEventHandler(Post2): showing AliasPicker for activeId",
+                                                    activeId,
+                                                );
+                                            }
                                         } catch {}
                                         return;
                                     }
                                     if (attempt < 10) {
                                         setTimeout(() => tryOpen(attempt + 1), 10);
                                     } else {
-                                        console.warn(
-                                            "KeyEventHandler(Post2): active item not found to open AliasPicker",
-                                        );
+                                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                                            console.warn(
+                                                "KeyEventHandler(Post2): active item not found to open AliasPicker",
+                                            );
+                                        }
                                     }
                                 } catch (e) {
                                     console.error(
@@ -788,11 +832,13 @@ export class KeyEventHandler {
         } catch {}
 
         // Debug info
-        console.log(
-            `KeyEventHandler.handleInput called with inputType=${inputEvent.inputType}, isComposing=${inputEvent.isComposing}`,
-        );
-        console.log(`Input data: "${inputEvent.data}"`);
-        console.log(`Current active element: ${document.activeElement?.tagName}`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(
+                `KeyEventHandler.handleInput called with inputType=${inputEvent.inputType}, isComposing=${inputEvent.isComposing}`,
+            );
+            console.log(`Input data: "${inputEvent.data}"`);
+            console.log(`Current active element: ${document.activeElement?.tagName}`);
+        }
 
         // Buffer the latest input stream (for fallback detection of palette)
         try {
@@ -876,9 +922,13 @@ export class KeyEventHandler {
         }
 
         // Apply input to each cursor
-        console.log(`Applying input to ${cursorInstances.length} cursor instances`);
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            console.log(`Applying input to ${cursorInstances.length} cursor instances`);
+        }
         cursorInstances.forEach((cursor, index) => {
-            console.log(`Applying input to cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Applying input to cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
+            }
             cursor.onInput(inputEvent);
         });
 
@@ -929,20 +979,24 @@ export class KeyEventHandler {
         }
 
         // Check current value of textarea
-        const textareaRef = store.getTextareaRef();
-        if (textareaRef) {
-            console.log(`Textarea value: "${textareaRef.value}"`);
-            console.log(`Textarea selection: start=${textareaRef.selectionStart}, end=${textareaRef.selectionEnd}`);
-        } else {
-            console.log(`Textarea not found in KeyEventHandler.handleInput`);
-        }
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            const textareaRef = store.getTextareaRef();
+            if (textareaRef) {
+                console.log(`Textarea value: "${textareaRef.value}"`);
+                console.log(
+                    `Textarea selection: start=${textareaRef.selectionStart}, end=${textareaRef.selectionEnd}`,
+                );
+            } else {
+                console.log(`Textarea not found in KeyEventHandler.handleInput`);
+            }
 
-        // Check state of cursor instances
-        const cursorInstancesAfter = store.getCursorInstances();
-        console.log(`Number of cursor instances: ${cursorInstancesAfter.length}`);
-        cursorInstancesAfter.forEach((cursor, index) => {
-            console.log(`Cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
-        });
+            // Check state of cursor instances
+            const cursorInstancesAfter = store.getCursorInstances();
+            console.log(`Number of cursor instances: ${cursorInstancesAfter.length}`);
+            cursorInstancesAfter.forEach((cursor, index) => {
+                console.log(`Cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
+            });
+        }
     }
 
     // Retain current composition length
