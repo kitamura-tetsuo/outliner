@@ -36,7 +36,7 @@ const logger = getLogger("OutlinerItem");
 
 // Debug/Test flags and logger.debug suppression
 const DEBUG_LOG: boolean = (typeof window !== 'undefined') && (((window as any).__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
+const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && ((window as any).__E2E__ === true));
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
     const __origDebug = (logger as any)?.debug?.bind?.(logger);
@@ -841,7 +841,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     const preserveAltClick = event?.altKey === true;
 
     // Debug info
-    if (typeof window !== "undefined" && window.DEBUG_MODE) {
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
         // Intentionally empty: placeholder for debug logging
     }
 
@@ -1035,7 +1035,7 @@ function handleClick(event: MouseEvent) {
         const pos = getClickPosition(event, textString);
 
         // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             // Intentionally empty: placeholder for debug logging
         }
 
@@ -1048,7 +1048,7 @@ function handleClick(event: MouseEvent) {
         });
 
         // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             // Intentionally empty: placeholder for debug logging
         }
 
@@ -1070,7 +1070,7 @@ function handleClick(event: MouseEvent) {
                     textarea.focus();
 
                     // Check if focus was set
-                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         // Intentionally empty: placeholder for debug logging
                     }
                 }, 10);
@@ -1250,7 +1250,7 @@ function handleMouseMove(event: MouseEvent) {
  */
 function handleBoxSelection(event: MouseEvent, currentPosition: number) {
     // Debug info
-    if (typeof window !== "undefined" && window.DEBUG_MODE) {
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
         // Intentionally empty: placeholder for debug logging
     }
 
@@ -1677,7 +1677,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             } else {
                 // E2E final fallback: Add dummy attachment in test environment if file cannot be obtained from DataTransfer,
                 // to enable UI path (preview display) verification
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
@@ -1694,7 +1694,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     }
 
     // E2E final final fallback: Add dummy attachment in test even if DataTransfer is missing/empty
-    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
+    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) && (!dt || (((dt as any).files?.length ?? 0) === 0 && ((dt as any).items?.length ?? 0) === 0))) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);

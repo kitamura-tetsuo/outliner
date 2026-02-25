@@ -10,7 +10,7 @@ import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefres
 // Helper to detect test environment
 function isTestEnv(): boolean {
     return import.meta.env.MODE === "test"
-        || (typeof window !== "undefined" && window.__E2E__)
+        || (typeof window !== "undefined" && (window as any).__E2E__)
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
 }
 

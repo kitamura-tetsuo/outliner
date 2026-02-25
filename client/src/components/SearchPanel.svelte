@@ -107,7 +107,7 @@
         } catch {}
         // 2) Fallback to generalStore.pages.current
         try {
-            const gs = window.generalStore;
+            const gs = (window as any).generalStore;
             const pages = gs?.pages?.current;
             const arr: any[] = [];
             if (pages) {

@@ -95,6 +95,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
+                localStorage.removeItem("DEBUG_MODE"); // Disable verbose component logging
                 (window as Window & Record<string, any>).__E2E__ = true;
                 console.log("[E2E] Test environment flags set in localStorage");
             } catch {}

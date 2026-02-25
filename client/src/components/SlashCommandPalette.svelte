@@ -21,7 +21,7 @@ $effect(() => {
     
     // Log component state for debugging
     try {
-        if (window.DEBUG_MODE) {
+        if ((window as any).DEBUG_MODE) {
             console.log('[SlashCommandPalette] isVisible:', commandPaletteStore.isVisible);
             console.log('[SlashCommandPalette] visible length:', visible.length);
             console.log('[SlashCommandPalette] visible items:', visible.map(c => c.label));

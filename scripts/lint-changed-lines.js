@@ -85,7 +85,7 @@ if (Object.keys(fileRanges).length === 0) {
 }
 
 // 3) Run ESLint on changed files (JSON output)
-const eslintCmd = `npx eslint -f json ${Object.keys(fileRanges).map(f => `"${f}"`).join(" ")}`;
+const eslintCmd = `npx eslint -f json ${Object.keys(fileRanges).map(f => `"${f}"`).join(" ")} --cache`;
 /** @type {string} */
 let eslintOut;
 try {
