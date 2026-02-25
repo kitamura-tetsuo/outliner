@@ -4,7 +4,7 @@ import { Item, Items } from "../schema/app-schema";
 const logger = getLogger();
 // Use DEBUG_MODE strategy consistent with components
 const debugLog = (...args: any[]) => {
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         console.log(...args);
     }
 };

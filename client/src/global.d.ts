@@ -50,4 +50,8 @@ interface Window {
     __PALETTE_FWD__?: (ev: KeyboardEvent) => void;
     __GLOBAL_KEY_FWD__?: (ev: KeyboardEvent) => void;
     DEBUG_MODE?: string | boolean;
+    __E2E__?: boolean;
+    __CURRENT_PROJECT__?: unknown;
+    __USER_MANAGER__?: unknown;
+    editorOverlayStore?: unknown;
 }

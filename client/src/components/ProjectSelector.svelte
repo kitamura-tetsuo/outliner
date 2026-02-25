@@ -64,7 +64,7 @@
                 import.meta.env.VITE_IS_TEST === "true" ||
                 window.location.hostname === "localhost" ||
                 window.localStorage?.getItem?.("VITE_IS_TEST") === "true" ||
-                (window as any).__E2E__ === true;
+                window.__E2E__ === true;
 
             if (isTestEnv) {
                 // In test environment, provide a backstop to follow ucVersion changes

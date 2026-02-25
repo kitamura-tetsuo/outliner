@@ -15,7 +15,7 @@ import { getEnv } from "../lib/env";
 import { getFirebaseApp } from "../lib/firebase-app";
 import { getLogger } from "../lib/logger"; // Import log function
 
-const logger = getLogger() as any;
+const logger = getLogger();
 
 // User information type definition
 export interface IUser {

@@ -42,7 +42,7 @@
     // Ensure a minimal currentPage on mount (effectivePageItem follows thereafter)
     onMount(() => {
         try {
-            if ((window as any).DEBUG_MODE) {
+            if (window.DEBUG_MODE) {
                 console.log("OutlinerBase effectivePageItem:", effectivePageItem);
             }
         } catch {}
@@ -72,7 +72,7 @@
 
                 // Log for debugging
                 try {
-                    if ((window as any).DEBUG_MODE) {
+                    if (window.DEBUG_MODE) {
                         console.log("OutlinerBase script executed - console.log");
                         console.log("OutlinerBase props received:", {
                             pageItemExists: !!pageItem,
@@ -201,7 +201,7 @@
                     try {
                         const gs: any =
                             (typeof window !== "undefined" &&
-                                (window as any).generalStore) ||
+                                window.generalStore) ||
                             generalStore;
                         const pageAny: any = gs?.currentPage;
                         const items: any = pageAny?.items;

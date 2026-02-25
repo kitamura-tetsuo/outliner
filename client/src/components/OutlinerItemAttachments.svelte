@@ -5,7 +5,7 @@ import { getLogger } from "../lib/logger";
 
 const logger = getLogger("OutlinerItemAttachments");
 
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && ((window as any).__E2E__ === true));
+const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
 
 interface Props {
     modelId: string;

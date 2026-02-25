@@ -348,7 +348,7 @@
                       cls: (eCenter as HTMLElement).className,
                   }
                 : null;
-            if ((window as any).DEBUG_MODE) {
+            if (window.DEBUG_MODE) {
                 console.info(logPrefix, "mount", {
                     inputReady: !!inputEl,
                     inputRect: rect
