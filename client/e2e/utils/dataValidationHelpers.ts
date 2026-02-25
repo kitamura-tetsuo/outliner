@@ -28,8 +28,8 @@ export class DataValidationHelpers {
                 // Check if page is still open before trying to dump logs
                 if (!page.isClosed()) {
                     // Dump E2E logs if present
-                // Disabled to prevent CI log flooding
-                /*
+                    // Disabled to prevent CI log flooding
+                    /*
                     const logs = await page.evaluate(() => {
                         const w: any = window as any;
                         return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
