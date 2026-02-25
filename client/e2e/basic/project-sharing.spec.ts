@@ -110,7 +110,7 @@ test.describe("Project Sharing E2E", () => {
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-                localStorage.setItem("VITE_YJS_DEBUG", "true");
+                localStorage.setItem("VITE_YJS_DEBUG", "false");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as any).__E2E__ = true;
             } catch {}

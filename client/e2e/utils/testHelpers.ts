@@ -94,7 +94,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-                localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
+                localStorage.setItem("VITE_YJS_DEBUG", "false"); // DISABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 localStorage.removeItem("DEBUG_MODE"); // Disable verbose component logging
                 (window as Window & Record<string, any>).__E2E__ = true;
@@ -341,7 +341,7 @@ export class TestHelpers {
                         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                         localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
                         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-                        localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
+                        localStorage.setItem("VITE_YJS_DEBUG", "false"); // DISABLE DEBUG
                         localStorage.removeItem("VITE_YJS_DISABLE_WS");
                         (window as Window & Record<string, any>).__E2E__ = true;
                     } catch {}
@@ -540,7 +540,7 @@ export class TestHelpers {
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-                localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
+                localStorage.setItem("VITE_YJS_DEBUG", "false"); // DISABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as Window & Record<string, any>).__E2E__ = true;
             } catch {}

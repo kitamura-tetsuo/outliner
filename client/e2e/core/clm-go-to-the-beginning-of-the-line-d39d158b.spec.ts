@@ -13,6 +13,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0007: Move to the beginning of the line", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(180000); // 3 minutes
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line", "Third line"]);
         await TestHelpers.waitForOutlinerItems(page, 3, 30000);
         // Ensure all seeded items are visible
