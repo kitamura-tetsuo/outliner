@@ -302,7 +302,7 @@
             if (id) {
                 const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
                 window.sessionStorage?.setItem(key, String(id));
-                console.log(
+                logger.debug(
                     "[+page.svelte] capturePageIdForSchedule saved:",
                     key,
                     id,
