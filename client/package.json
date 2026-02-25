@@ -22,8 +22,8 @@
     },
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.51.1",
-        "@eslint/compat": "^2.0.1",
-        "@eslint/js": "^9.31.0",
+        "@eslint/compat": "^2.0.2",
+        "@eslint/js": "^10.0.1",
         "@fluidframework/test-client-utils": "^1.4.0",
         "@fluidframework/tinylicious-client": "^2.82.0",
         "@inlang/message-lint-rule-empty-pattern": "^1.4.8",
@@ -59,7 +59,7 @@
         "@vitest/ui": "4.0.17",
         "chokidar-cli": "^3.0.0",
         "concurrently": "^9.2.0",
-        "eslint": "^9.39.1",
+        "eslint": "^10.0.2",
         "eslint-formatter-unix": "^9.0.1",
         "eslint-plugin-svelte": "^3.15.0",
         "fake-indexeddb": "^6.2.5",
@@ -80,7 +80,7 @@
         "tinylicious": "^6.0.0",
         "ts-prune": "^0.10.3",
         "typescript": "^5.9.3",
-        "typescript-eslint": "^8.55.0",
+        "typescript-eslint": "^8.56.1",
         "vite": "^7.3.1",
         "vitest": "4.0.17",
         "ws": "^8.19.0"
