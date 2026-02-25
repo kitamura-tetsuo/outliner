@@ -272,7 +272,7 @@ export class OutlinerViewModel {
                 `OutlinerViewModel: Skipping children for "${item.text}" because it's collapsed`,
             );
         } else if (!hasChildren) {
-            console.log(`OutlinerViewModel: No children for "${item.text}"`);
+            debugLog(`OutlinerViewModel: No children for "${item.text}"`);
         }
     }
 
