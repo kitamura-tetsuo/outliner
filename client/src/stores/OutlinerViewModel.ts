@@ -3,6 +3,7 @@ import { Item, Items } from "../schema/app-schema";
 
 const logger = getLogger();
 // Use DEBUG_MODE strategy consistent with components
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const debugLog = (..._args: any[]) => {
     // Disable verbose logging even in debug mode to prevent CI timeouts
     // if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
