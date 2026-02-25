@@ -1,139 +1,173 @@
 <script lang="ts">
+    import { goto } from "$app/navigation";
     import { page } from "$app/stores";
-    import { getFirebaseFunctionUrl } from "$lib/firebaseFunctionsUrl";
-    import { authStore } from "$stores/authStore.svelte";
-    import { userManager } from "../../../auth/UserManager";
-    import { stableIdFromTitle } from "$lib/yjsService.svelte";
 
-    let projectId = $derived($page.params.project);
-    let generatedLink = $state<string | null>(null);
-    let error = $state<string | null>(null);
-    let isLoading = $state(false);
+    import {
+        setContainerTitleInMetaDoc,
+    } from "../../../lib/metaDoc.svelte";
+    import {
+        firestoreStore,
+        saveProjectIdToServer,
+    } from "../../../stores/firestoreStore.svelte";
+    import { projectStore } from "../../../stores/projectStore.svelte";
 
-    async function generateLink() {
-        if (!authStore.user) {
-            error = "You must be logged in.";
+    let currentTitle = $derived($page.params.project);
+    let project = $derived(
+        projectStore.projects.find((p) => p.name === currentTitle),
+    );
+    let isLoading = $derived(!firestoreStore.userProject);
+
+    let newTitle = $state("");
+    let error = $state("");
+    let isSaving = $state(false);
+
+    // Initialize newTitle when currentTitle changes
+    $effect(() => {
+        if (currentTitle && !isSaving) {
+            newTitle = currentTitle;
+        }
+    });
+
+    async function saveTitle() {
+        if (!project) return;
+        if (!newTitle.trim()) {
+            error = "Title cannot be empty";
             return;
         }
-        isLoading = true;
-        error = null;
-        try {
-            // Determine effective ID (Hash in test mode, UUID/Title in prod)
-            let effectiveId = projectId;
-            if (typeof window !== "undefined" && localStorage.getItem("VITE_IS_TEST") === "true") {
-                effectiveId = stableIdFromTitle(projectId);
-                console.log(`[Settings] Test mode: resolved "${projectId}" to "${effectiveId}"`);
-            }
+        if (newTitle === currentTitle) {
+            // No change
+            return;
+        }
 
-            const token = await userManager.auth.currentUser?.getIdToken();
-            const res = await fetch(getFirebaseFunctionUrl("generateProjectShareLink"), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ idToken: token, projectId: effectiveId }),
-            });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || "Failed to generate link");
+        const projectId = project.id; // Capture ID before async operation
+        isSaving = true;
+        error = "";
+
+        try {
+            const success = await saveProjectIdToServer(projectId, newTitle);
+            if (success) {
+                // Update local metadata immediately
+                setContainerTitleInMetaDoc(projectId, newTitle);
+
+                // For immediate UI feedback, the redirect will reload the page with new title in URL.
+                // But if the store isn't updated, the new page might show "Project not found" if we look for newTitle.
+                // Ah! This is a race condition.
+                // If I redirect to /settings/NewTitle, but projectStore still has OldTitle,
+                // find(p => p.name === "NewTitle") will return undefined.
+
+                // So I must wait for the store to update?
+                // Or I can update firestoreStore locally via saveProjectIdToServer's test logic?
+                // saveProjectIdToServer implementation:
+                // if test env -> updates local store.
+                // if prod -> calls API.
+
+                // If API succeeds, Firestore will update, listener will fire, store will update.
+                // This might take a few seconds.
+
+                // Workaround:
+                // After success, I can try to manually inject the change into firestoreStore.userProject.projectTitles if possible.
+                // firestoreStore.userProject is read-only? No, it has `setUserProject`.
+
+                // However, `saveProjectIdToServer` doesn't return the new state.
+
+                // Maybe I should stay on the page and show "Saved!" until the store updates?
+                // Or just redirect and hope? Or show a spinner "Updating...".
+
+                // Let's implement a wait loop for the store to reflect the change before redirecting.
+                const checkInterval = setInterval(() => {
+                   const updated = projectStore.projects.find(p => p.name === newTitle);
+                   if (updated) {
+                       clearInterval(checkInterval);
+                       goto(`/settings/${encodeURIComponent(newTitle)}`, { replaceState: true });
+                   }
+                }, 100);
+
+                // Safety timeout
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    // Fallback redirect
+                    goto(`/settings/${encodeURIComponent(newTitle)}`, { replaceState: true });
+                }, 5000);
+
+            } else {
+                error = "Failed to save project title to server.";
+                isSaving = false;
             }
-            const data = await res.json();
-            const origin = window.location.origin;
-            generatedLink = `${origin}/share/${data.token}`;
-        } catch (e: any) {
-            error = e.message;
-        } finally {
-            isLoading = false;
+        } catch (e) {
+            console.error(e);
+            error = "An error occurred while saving.";
+            isSaving = false;
         }
     }
 </script>
 
-<div class="settings-page">
-    <h1>Project Settings: {projectId}</h1>
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-4">
+        <a href="/settings" class="text-blue-600 hover:underline">&larr; Back to Settings</a>
+    </div>
 
-    <div class="card">
-        <h2>Share Project</h2>
-        <p>Generate a unique link to share this project with others.</p>
+    {#if isLoading}
+         <div class="flex justify-center py-8">
+            <div class="loader">Loading...</div>
+        </div>
+    {:else if !project}
+        <div class="p-4 bg-yellow-50 text-yellow-800 rounded">
+            Project "{currentTitle}" not found.
+        </div>
+    {:else}
+        <h1 class="text-3xl font-bold mb-8">Settings for {currentTitle}</h1>
 
-        {#if generatedLink}
-            <div class="link-display">
-                <input type="text" readonly value={generatedLink} aria-label="Generated Link" />
-                <button onclick={() => navigator.clipboard.writeText(generatedLink!)} class="copy-btn">Copy</button>
+        <div class="max-w-lg">
+            <div class="mb-6">
+                <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
+                    Project Title
+                </label>
+                <input
+                    id="title"
+                    type="text"
+                    bind:value={newTitle}
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    disabled={isSaving}
+                />
             </div>
-        {/if}
 
-        {#if error}
-            <div class="error">{error}</div>
-        {/if}
+            {#if error}
+                <div class="mb-4 p-3 bg-red-50 text-red-700 rounded text-sm">
+                    {error}
+                </div>
+            {/if}
 
-        <button onclick={generateLink} disabled={isLoading} class="generate-btn">
-            {isLoading ? "Generating..." : "Generate Invitation Link"}
-        </button>
-    </div>
-
-    <div class="actions">
-        <a href="/{projectId}" class="back-link">Back to Project</a>
-    </div>
+            <button
+                onclick={saveTitle}
+                disabled={isSaving || !newTitle.trim()}
+                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            >
+                {#if isSaving}
+                     <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                {:else}
+                    Save Changes
+                {/if}
+            </button>
+        </div>
+    {/if}
 </div>
 
 <style>
-    .settings-page {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 2rem;
+    .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
     }
-    .card {
-        background: #f9f9f9;
-        padding: 1.5rem;
-        border-radius: 8px;
-        margin-bottom: 2rem;
-        border: 1px solid #eee;
-    }
-    .link-display {
-        display: flex;
-        gap: 0.5rem;
-        margin: 1rem 0;
-    }
-    .link-display input {
-        flex: 1;
-        padding: 0.5rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-    .error {
-        color: #d32f2f;
-        margin: 1rem 0;
-        padding: 0.5rem;
-        background: #ffebee;
-        border-radius: 4px;
-    }
-    .actions {
-        margin-top: 2rem;
-    }
-    .generate-btn {
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 1rem;
-    }
-    .generate-btn:disabled {
-        background-color: #a5d6a7;
-        cursor: not-allowed;
-    }
-    .copy-btn {
-        background-color: #2196f3;
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-    .back-link {
-        text-decoration: none;
-        color: #666;
-    }
-    .back-link:hover {
-        text-decoration: underline;
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
 </style>
