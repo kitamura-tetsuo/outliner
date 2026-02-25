@@ -374,6 +374,42 @@ export class CursorEditor {
         }
     }
 
+    moveItemUp() {
+        const project = generalStore.project;
+        if (project) {
+            yjsService.moveItemUp(project, this.cursor.itemId);
+            this.cursor.applyToStore();
+            store.triggerOnEdit();
+        }
+    }
+
+    moveItemDown() {
+        const project = generalStore.project;
+        if (project) {
+            yjsService.moveItemDown(project, this.cursor.itemId);
+            this.cursor.applyToStore();
+            store.triggerOnEdit();
+        }
+    }
+
+    moveSubtreeUp() {
+        const project = generalStore.project;
+        if (project) {
+            yjsService.moveSubtreeUp(project, this.cursor.itemId);
+            this.cursor.applyToStore();
+            store.triggerOnEdit();
+        }
+    }
+
+    moveSubtreeDown() {
+        const project = generalStore.project;
+        if (project) {
+            yjsService.moveSubtreeDown(project, this.cursor.itemId);
+            this.cursor.applyToStore();
+            store.triggerOnEdit();
+        }
+    }
+
     outdent() {
         const project = generalStore.project;
         if (project) {

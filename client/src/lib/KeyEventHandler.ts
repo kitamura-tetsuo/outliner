@@ -87,6 +87,23 @@ export class KeyEventHandler {
             store.undoLastCursor();
         });
 
+        // Ctrl+Up move item up
+        add("ArrowUp", true, false, false, (_, cursors) => {
+            cursors.forEach(c => c.moveItemUp());
+        });
+        // Ctrl+Down move item down
+        add("ArrowDown", true, false, false, (_, cursors) => {
+            cursors.forEach(c => c.moveItemDown());
+        });
+        // Alt+Up move subtree up
+        add("ArrowUp", false, true, false, (_, cursors) => {
+            cursors.forEach(c => c.moveSubtreeUp());
+        });
+        // Alt+Down move subtree down
+        add("ArrowDown", false, true, false, (_, cursors) => {
+            cursors.forEach(c => c.moveSubtreeDown());
+        });
+
         // Tab indent
         add("Tab", false, false, false, (event, cursors) => {
             cursors.forEach(c => c.indent());

@@ -505,6 +505,26 @@ export class Cursor implements CursorEditingContext {
         this.editor.outdent();
     }
 
+    moveItemUp() {
+        this.resetInitialColumn();
+        this.editor.moveItemUp();
+    }
+
+    moveItemDown() {
+        this.resetInitialColumn();
+        this.editor.moveItemDown();
+    }
+
+    moveSubtreeUp() {
+        this.resetInitialColumn();
+        this.editor.moveSubtreeUp();
+    }
+
+    moveSubtreeDown() {
+        this.resetInitialColumn();
+        this.editor.moveSubtreeDown();
+    }
+
     onInput(event: InputEvent) {
         this.editor.onInput(event);
     }
@@ -2024,4 +2044,3 @@ export class Cursor implements CursorEditingContext {
         return ids;
     }
 }
-// test 1760075045
