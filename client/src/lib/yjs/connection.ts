@@ -73,11 +73,15 @@ function getWsBase(): string {
             return `ws://localhost:${port}`;
         }
     } catch {}
-    console.log(
-        `[yjs-conn] WS Port determination: env=${import.meta.env.VITE_YJS_PORT}, ls=${
-            typeof window !== "undefined" ? window.localStorage?.getItem("VITE_YJS_PORT") : "N/A"
-        }, final=${port}`,
-    );
+    // Suppress log in E2E/Test
+    const isTest = import.meta.env.MODE === "test" || (typeof window !== "undefined" && (window as any).__E2E__);
+    if (!isTest) {
+        console.log(
+            `[yjs-conn] WS Port determination: env=${import.meta.env.VITE_YJS_PORT}, ls=${
+                typeof window !== "undefined" ? window.localStorage?.getItem("VITE_YJS_PORT") : "N/A"
+            }, final=${port}`,
+        );
+    }
     const url = import.meta.env.VITE_YJS_WS_URL || `ws://localhost:${port}`;
     return url as string;
 }
@@ -115,7 +119,9 @@ async function getFreshIdToken(): Promise<string> {
     const isTestEnv = import.meta.env.MODE === "test"
         || (typeof window !== "undefined"
             && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true" || (window as any).__E2E__ === true));
-    console.log(`[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth.currentUser}`);
+    if (!isTestEnv) {
+        console.log(`[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth.currentUser}`);
+    }
 
     const generateMockToken = () => {
         // Generate mock token for E2E tests (server accepts alg:none in test mode)
@@ -179,11 +185,13 @@ function constructWsUrl(wsBase: string, room: string, token: string): string {
 }
 
 export async function createProjectConnection(projectId: string): Promise<ProjectConnection> {
-    console.log(`[createProjectConnection] Starting for projectId=${projectId}`);
+    // Suppress logs in E2E
+    const isTest = import.meta.env.MODE === "test" || (typeof window !== "undefined" && (window as any).__E2E__);
+    if (!isTest) console.log(`[createProjectConnection] Starting for projectId=${projectId}`);
     const doc = new Y.Doc({ guid: projectId });
     const wsBase = getWsBase();
     const room = projectRoomPath(projectId);
-    console.log(`[createProjectConnection] wsBase=${wsBase}, room=${room}`);
+    if (!isTest) console.log(`[createProjectConnection] wsBase=${wsBase}, room=${room}`);
 
     // Attach IndexedDB persistence and wait for initial sync
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
@@ -209,7 +217,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                 if ((provider as TokenRefreshableProvider).url) {
                     (provider as TokenRefreshableProvider).url = config.url;
                 }
-                console.log("[createProjectConnection] Updated provider URL with fresh token");
+                if (!isTest) console.log("[createProjectConnection] Updated provider URL with fresh token");
             }
             return t;
         } catch {
@@ -229,19 +237,25 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         document: doc,
         token: tokenFn,
     });
-    console.log(
-        `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}`,
-    );
-    provider.on("status", (event: { status: string; }) => console.log(`[yjs-conn] ${room} status: ${event.status}`));
+    if (!isTest) {
+        console.log(
+            `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}`,
+        );
+    }
+    provider.on("status", (event: { status: string; }) => {
+        if (!isTest) console.log(`[yjs-conn] ${room} status: ${event.status}`);
+    });
     provider.on("close", (event: { code: number; reason: string; }) => {
-        console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
+        if (!isTest) console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
 
         // Handle Auth errors (4001: Unauthorized)
         if (event.code === 4001) {
-            console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
+            if (!isTest) {
+                console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
+            }
             // Force token refresh
             void userManager.refreshToken().then(() => {
-                console.log(`[yjs-conn] Token refresh triggered for ${room}`);
+                if (!isTest) console.log(`[yjs-conn] Token refresh triggered for ${room}`);
             });
             return;
         }
@@ -257,7 +271,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         }
     });
     provider.on("disconnect", (event: { code: number; reason: string; }) => {
-        console.log(`[yjs-conn] ${room} disconnect code=${event.code} reason=${event.reason}`);
+        if (!isTest) console.log(`[yjs-conn] ${room} disconnect code=${event.code} reason=${event.reason}`);
     });
 
     // Wait for initial project sync to complete before connecting pages
@@ -267,9 +281,11 @@ export async function createProjectConnection(projectId: string): Promise<Projec
             resolve();
         } else {
             const timer = setTimeout(() => {
-                console.log(
-                    `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
-                );
+                if (!isTest) {
+                    console.log(
+                        `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
+                    );
+                }
                 resolve();
             }, 15000);
 
