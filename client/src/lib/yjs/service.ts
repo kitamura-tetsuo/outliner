@@ -203,6 +203,57 @@ export const yjsService = {
         (awareness as any).on("change", update);
         return () => (awareness as any).off("change", update);
     },
+
+    promoteChildren(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tree = project.tree as any;
+        const children = childrenKeys(tree, itemKey);
+        if (children.length === 0) return;
+
+        const parentKey = tree.getNodeParentFromKey(itemKey);
+        if (!parentKey) return;
+
+        const siblings = childrenKeys(tree, parentKey);
+        const itemIndex = siblings.indexOf(itemKey);
+
+        children.forEach((childKey, i) => {
+            yjsService.moveItem(project, childKey, parentKey, itemIndex + 1 + i);
+        });
+    },
+
+    moveSubtreeUp(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tree = project.tree as any;
+        const parentKey = tree.getNodeParentFromKey(itemKey);
+        if (!parentKey) return;
+        const siblings = childrenKeys(tree, parentKey);
+        const index = siblings.indexOf(itemKey);
+        if (index > 0) {
+            yjsService.moveItem(project, itemKey, parentKey, index - 1);
+        }
+    },
+
+    moveSubtreeDown(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tree = project.tree as any;
+        const parentKey = tree.getNodeParentFromKey(itemKey);
+        if (!parentKey) return;
+        const siblings = childrenKeys(tree, parentKey);
+        const index = siblings.indexOf(itemKey);
+        if (index !== -1 && index < siblings.length - 1) {
+            yjsService.moveItem(project, itemKey, parentKey, index + 1);
+        }
+    },
+
+    moveItemUp(project: Project, itemKey: string) {
+        yjsService.promoteChildren(project, itemKey);
+        yjsService.moveSubtreeUp(project, itemKey);
+    },
+
+    moveItemDown(project: Project, itemKey: string) {
+        yjsService.promoteChildren(project, itemKey);
+        yjsService.moveSubtreeDown(project, itemKey);
+    },
 };
 
 export type YjsService = typeof yjsService;
