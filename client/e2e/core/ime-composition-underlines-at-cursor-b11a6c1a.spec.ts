@@ -33,7 +33,6 @@ test.describe("IME-0003: IME composition underline follows cursor", () => {
 
         // Find the focused item's text container to compare styles and take a screenshot
         const activeItem = page.locator('.outliner-item[data-active="true"]');
-        const activeTextEl = activeItem.locator(".item-text");
 
         await page.evaluate(() => {
             const el = document.querySelector("textarea.global-textarea")! as HTMLTextAreaElement;
@@ -83,7 +82,10 @@ test.describe("IME-0003: IME composition underline follows cursor", () => {
         // 2. Localized Visual Regression Testing (VRT)
         // Ensure cursor is visible, then snapshot ONLY the specific outliner-item wrapper.
         // This makes the test resilient to unrelated UI changes outside the editor item.
-        expect(await activeItem.screenshot()).toMatchSnapshot("ime-composition-underline-at-cursor.png");
+        // Allowing a small pixel difference to handle cross-environment rendering nuances (e.g. antialiasing)
+        expect(await activeItem.screenshot()).toMatchSnapshot("ime-composition-underline-at-cursor.png", {
+            maxDiffPixels: 100,
+        });
 
         const width = await textarea.evaluate(el => parseFloat(getComputedStyle(el).width));
         expect(width).toBeGreaterThan(1);
