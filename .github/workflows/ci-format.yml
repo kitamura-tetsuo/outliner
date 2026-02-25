@@ -30,16 +30,13 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install dependencies
-        working-directory: client
-        run: npm ci
+      - name: Install dprint
+        run: npm install -g dprint@0.52.0
 
       - name: Check formatting
         id: format_check
         run: |
           echo "Running formatting check..."
-          # Ensure npx can find dprint from client/node_modules
-          export PATH="$GITHUB_WORKSPACE/client/node_modules/.bin:$PATH"
           if ! ./scripts/check_format.sh; then
             echo "❌ Code is not properly formatted!"
             echo "format_needed=true" >> $GITHUB_OUTPUT
@@ -53,8 +50,7 @@ jobs:
         if: steps.format_check.outputs.format_needed == 'true'
         run: |
           echo "🔧 Auto-fixing formatting issues..."
-          export PATH="$GITHUB_WORKSPACE/client/node_modules/.bin:$PATH"
-          npx dprint fmt
+          dprint fmt
 
           # Check if there are any changes
           if git diff --quiet; then
