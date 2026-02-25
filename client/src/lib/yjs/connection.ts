@@ -254,7 +254,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
         // Handle Auth errors (4001: Unauthorized)
         if (event.code === 4001) {
-            if (!isTest) console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
+            if (!isTest) {
+                console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
+            }
             // Force token refresh
             void userManager.refreshToken().then(() => {
                 if (!isTest) console.log(`[yjs-conn] Token refresh triggered for ${room}`);
