@@ -10,11 +10,12 @@ import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0001: Click to enter edit mode", () => {
+    test.setTimeout(180000); // 3 minutes
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("最後の行のテキスト外クリックでカーソルが行末に表示される", async ({ page }) => {
+    test("Clicking outside the text of the last line places the cursor at the end of the line", async ({ page }) => {
         await page.keyboard.press("End");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second line text");

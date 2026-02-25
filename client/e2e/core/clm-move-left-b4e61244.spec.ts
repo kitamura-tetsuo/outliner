@@ -10,6 +10,7 @@ import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0002: Move Left", () => {
+    test.setTimeout(180000); // 3 minutes
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 

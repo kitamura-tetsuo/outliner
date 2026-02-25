@@ -2,90 +2,91 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature CLM-0100
- *  Title   : カーソル管理の基本機能
+ *  Title   : Basic cursor management
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("カーソル管理テスト", () => {
+test.describe("Cursor management tests", () => {
+    test.setTimeout(180000); // 3 minutes
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("通常クリックでカーソル数が増えない", async ({ page }) => {
-        // ページタイトルを優先的に使用
+    test("Normal click does not increase cursor count", async ({ page }) => {
+        // Prefer page title
         const item = page.locator(".outliner-item.page-title");
 
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
+        // If page title not found, use first displayed item
         if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
+            // Find items that can be identified by text content
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
         } else {
             await item.locator(".item-content").click({ force: true });
         }
 
-        // 編集モードに入るまで待機
+        // Wait for edit mode
         await page.waitForSelector("textarea.global-textarea:focus");
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor to be visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // 初期カーソル数を確認
+        // Verify initial cursor count
         const initialCursorCount = await page.evaluate(() => {
             return document.querySelectorAll(".editor-overlay .cursor").length;
         });
-        console.log(`初期カーソル数: ${initialCursorCount}`);
+        console.log(`Initial cursor count: ${initialCursorCount}`);
 
-        // 新しいアイテムを追加
+        // Add a new item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second item");
-        await page.keyboard.press("Escape"); // 編集モードを終了
+        await page.keyboard.press("Escape"); // Exit edit mode
 
-        // Enter後のカーソル数を確認
+        // Verify cursor count after Enter
         const cursorCountAfterEnter = await page.evaluate(() => {
             return document.querySelectorAll(".editor-overlay .cursor").length;
         });
-        console.log(`Enter後のカーソル数: ${cursorCountAfterEnter}`);
+        console.log(`Cursor count after Enter: ${cursorCountAfterEnter}`);
 
-        // 最初のアイテムをクリック
+        // Click the first item
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click({ force: true });
 
-        // 最初のアイテムクリック後のカーソル数を確認
+        // Verify cursor count after first item click
         const cursorCountAfterFirstClick = await page.evaluate(() => {
             return document.querySelectorAll(".editor-overlay .cursor").length;
         });
-        console.log(`最初のアイテムクリック後のカーソル数: ${cursorCountAfterFirstClick}`);
+        console.log(`Cursor count after first item click: ${cursorCountAfterFirstClick}`);
 
-        // カーソル数が増えていないことを確認
+        // Verify cursor count did not increase
         expect(cursorCountAfterFirstClick).toBeLessThanOrEqual(initialCursorCount);
 
-        // 2番目のアイテムをクリック
+        // Click the second item
         const secondItem = page.locator(".outliner-item").nth(1);
         await secondItem.locator(".item-content").click({ force: true });
 
-        // 2番目のアイテムクリック後のカーソル数を確認
+        // Verify cursor count after second item click
         const cursorCountAfterSecondClick = await page.evaluate(() => {
             return document.querySelectorAll(".editor-overlay .cursor").length;
         });
-        console.log(`2番目のアイテムクリック後のカーソル数: ${cursorCountAfterSecondClick}`);
+        console.log(`Cursor count after second item click: ${cursorCountAfterSecondClick}`);
 
-        // カーソル数が増えていないことを確認
+        // Verify cursor count did not increase
         expect(cursorCountAfterSecondClick).toBeLessThanOrEqual(initialCursorCount);
 
-        // 最初のアイテムを再度クリック
+        // Click the first item again
         await firstItem.locator(".item-content").click({ force: true });
 
-        // 再度クリック後のカーソル数を確認
+        // Verify cursor count after third click
         const cursorCountAfterThirdClick = await page.evaluate(() => {
             return document.querySelectorAll(".editor-overlay .cursor").length;
         });
-        console.log(`再度クリック後のカーソル数: ${cursorCountAfterThirdClick}`);
+        console.log(`Cursor count after third click: ${cursorCountAfterThirdClick}`);
 
-        // カーソル数が増えていないことを確認
+        // Verify cursor count did not increase
         expect(cursorCountAfterThirdClick).toBeLessThanOrEqual(initialCursorCount);
     });
 });

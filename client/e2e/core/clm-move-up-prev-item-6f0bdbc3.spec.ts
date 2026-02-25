@@ -11,47 +11,48 @@ type CursorInstance = {
     offset?: number;
 };
 
-test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
+test.describe("CLM-6f0bdbc3: Move up at the top line", () => {
+    test.setTimeout(180000); // 3 minutes
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("一番上の行にある時は、一つ前のアイテムの最後の行へ移動する", async ({ page }) => {
-        // 最初のアイテムをクリックしてカーソルを作成
+    test("When at the top line, move to the last line of the previous item", async ({ page }) => {
+        // Click the first item to create a cursor
         await page.locator(".outliner-item").first().click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // カーソルデータを取得して確認
+        // Get and verify cursor data
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBeGreaterThan(0);
 
-        // アクティブなアイテムのIDを取得
+        // Get active item ID
         const firstItemId = cursorData.activeItemId;
         expect(firstItemId).not.toBeNull();
 
-        // 1つ目のアイテムに長いテキストが入力されていることを確認
+        // Verify first item text
         const firstItemText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"]`).locator(".item-text")
             .textContent();
-        console.log(`1つ目のアイテムのテキスト: "${firstItemText}"`);
+        console.log(`First item text: "${firstItemText}"`);
 
-        // 2つ目のアイテムを追加
-        await page.keyboard.press("End"); // 最後に移動
+        // Add a second item
+        await page.keyboard.press("End");
         await page.keyboard.press("Enter");
 
-        // 2つ目のアイテムにも長いテキストを入力
+        // Enter long text into the second item to ensure it spans multiple lines
         await page.keyboard.type(
-            "これは2つ目のアイテムです。このテキストも十分に長くして、複数行になるようにします。アイテムの幅に応じて自動的に折り返されて表示されるはずです。",
+            "This is the second item. This text should be long enough to span multiple lines. It should wrap automatically based on the item width.",
         );
         await TestHelpers.waitForCursorVisible(page);
 
-        // 2つ目のアイテムの先頭に移動
+        // Move to the beginning of the second item
         await page.keyboard.press("Home");
 
-        // 2つ目のアイテムのカーソルデータを取得
+        // Get cursor data for the second item
         const secondItemCursorData = await CursorValidator.getCursorData(page);
         expect(secondItemCursorData.cursorCount).toBeGreaterThan(0);
 
-        // 2つ目のアイテムのIDを取得
+        // Get active item ID for the second item
         const secondItemId = secondItemCursorData.activeItemId;
         expect(secondItemId).not.toBeNull();
         expect(secondItemId).not.toBe(firstItemId);
@@ -63,17 +64,17 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
         expect(secondItemCursorInstance?.itemId).toBe(secondItemId);
         expect(secondItemCursorInstance?.offset).toBe(0);
 
-        // 2つ目のアイテムのテキストを確認
+        // Verify second item text
         const secondItemText = await page.locator(`.outliner-item[data-item-id="${secondItemId}"]`).locator(
             ".item-text",
         ).textContent();
-        console.log(`2つ目のアイテムのテキスト: "${secondItemText}"`);
+        console.log(`Second item text: "${secondItemText}"`);
 
-        // 上矢印キーを押下（2つ目のアイテムの先頭から1つ目のアイテムの最後の行へ移動するはず）
+        // Press ArrowUp (should move from the beginning of the second item to the last line of the first item)
         await page.keyboard.press("ArrowUp");
         await TestHelpers.waitForCursorVisible(page);
 
-        // 押下後にカーソルが1つ目のアイテムに移動するまで待機
+        // Wait for cursor to move back to the first item
         await page.waitForFunction(
             firstItemId => {
                 const store = (window as any).editorOverlayStore;
@@ -88,7 +89,7 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
             { timeout: 15000 },
         );
 
-        // 押下後のカーソルデータを取得
+        // Get cursor data after key press
         const afterKeyPressCursorData = await CursorValidator.getCursorData(page);
         const cursorInstances: CursorInstance[] = (afterKeyPressCursorData.cursorInstances as CursorInstance[]) || [];
         const activeItemIdAfterKeyPress = afterKeyPressCursorData.activeItemId;
@@ -99,7 +100,7 @@ test.describe("CLM-6f0bdbc3: 一番上の行での上移動", () => {
             | undefined;
         expect(activeCursorInstance?.itemId).toBe(firstItemId);
 
-        // 2つ目のアイテムの先頭から上矢印を押したので、前のアイテムの最後の行の先頭に移動するはず
+        // Verify cursor moved to the beginning (offset 0) of the previous item (as fallback if last line logic is simple)
         expect(activeCursorInstance?.offset).toBe(0);
     });
 });

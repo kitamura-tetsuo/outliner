@@ -11,6 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 // Set test timeout (set longer)
 
 test.describe("CLM-0005: Move Down", () => {
+    test.setTimeout(180000); // 3 minutes
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line"]);
 

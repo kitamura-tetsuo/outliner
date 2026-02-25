@@ -7,17 +7,20 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("Issue #1512: Shift + Right Arrow selection duplication", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(180000); // 3 minutes
-        // Seed with one empty line to ensure we have a content item
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
+        // Seed with a visible line to ensure we have a content item that is rendered
+        await TestHelpers.prepareTestEnvironment(page, testInfo, ["item1"]);
 
         // Select the first content item (not the page title)
         const item = page.locator(".outliner-item:not(.page-title)").first();
+        await item.waitFor({ state: "visible", timeout: 30000 });
         await item.locator(".item-content").click({ force: true });
 
         // Ensure cursor is ready and textarea is focused
         await TestHelpers.ensureCursorReady(page);
 
-        // Enter text
+        // Clear existing text and enter new text for the test
+        await page.keyboard.press("Control+A");
+        await page.keyboard.press("Backspace");
         await page.keyboard.type("Hello World");
 
         // Move cursor to the beginning

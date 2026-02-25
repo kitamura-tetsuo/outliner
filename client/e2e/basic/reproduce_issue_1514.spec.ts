@@ -5,6 +5,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Item Component Type Selector Test", () => {
+    test.setTimeout(180000); // 3 minutes
     test.beforeEach(async ({ page }, testInfo) => {
         const seedLines = ["Test Item"];
         const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, seedLines);

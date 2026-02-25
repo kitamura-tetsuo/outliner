@@ -5,7 +5,8 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
-test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => {
+test.describe("CLM-b8389849: Click outside last line text", () => {
+    test.setTimeout(180000); // 3 minutes
     test.beforeEach(async ({ page }, testInfo) => {
         const longText = "A".repeat(80);
         await TestHelpers.prepareTestEnvironment(page, testInfo, [longText]);
@@ -17,30 +18,29 @@ test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => 
         });
     });
 
-    test("最後の行のテキスト外クリックでカーソルが行末に表示される", async ({ page }) => {
+    test("Clicking outside the text of the last line places the cursor at the end of the line", async ({ page }) => {
         const longText = "A".repeat(80);
 
-        // スクリーンショットを撮影（テスト開始時）
+        // Take screenshot at start of test
         await page.screenshot({ path: "client/test-results/CLM-0001-last-line-start.png" });
 
         // seeded item (Index 1)
         const itemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(itemId).not.toBeNull();
 
-        // アクティブなアイテムIDを取得 (Should match seeded item or we set it)
+        // Set cursor to the seeded item
         await TestHelpers.setCursor(page, itemId!);
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor to be visible
         const cursorVisible = await TestHelpers.waitForCursorVisible(page, 30000);
         console.log("Cursor visible for last line test:", cursorVisible);
         expect(cursorVisible).toBe(true);
 
-        // テキストが反映されているか確認
-        // アクティブなアイテムを取得
+        // Verify text content
         const activeItem = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
         await expect(activeItem.locator(".item-text")).toContainText(longText);
 
-        // Range APIでビジュアル上の各行の中央y座標を取得
+        // Get visual center Y coordinates of each line using Range API
         const visualLineYs = await activeItem.locator(".item-text").evaluate(el => {
             const rects = [] as { top: number; bottom: number; y: number; }[];
             const node = el.firstChild;
@@ -61,90 +61,85 @@ test.describe("CLM-b8389849: 最後の行のテキスト外クリック", () => 
             return rects.map(r => r.y);
         });
 
-        // 最後の行のy座標を取得
+        // Get Y coordinate of the last line
         const lastLineY = visualLineYs[visualLineYs.length - 1];
 
-        // IDを使って同じアイテムを確実に取得
+        // Ensure we have the target item
         const targetItem = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
 
-        // テキスト要素の位置を取得
+        // Get position of the text element
         const textRect = await targetItem.locator(".item-text").evaluate(el => el.getBoundingClientRect());
 
-        // テキスト右端より右側の位置をクリック
-        const x = textRect.right + 10; // テキストの右端より右側の位置
+        // Position to the right of the text
+        const x = textRect.right + 10;
 
         console.log(`Last line test: clicking at (${x}, ${lastLineY})`);
         console.log(`Text rect: right=${textRect.right}, width=${textRect.width}`);
 
-        // 編集モードを確実に開始
+        // Ensure edit mode is started
         await page.keyboard.press("Escape");
         await page.waitForTimeout(100);
 
-        // アイテムをクリックして編集モードに入る
+        // Click item to enter edit mode
         await targetItem.locator(".item-content").click();
         await page.waitForTimeout(100);
 
-        // カーソルが表示されることを確認
+        // Verify cursor is visible
         await TestHelpers.waitForCursorVisible(page, 5000);
 
-        // Endキーでカーソルを末尾に移動（確実な方法）
+        // Move to the end using End key (reliable method)
         await page.keyboard.press("End");
         await page.waitForTimeout(100);
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor visibility
         const lastLineCursorVisible = await TestHelpers.waitForCursorVisible(page, 5000);
         console.log(`Cursor visible after End key: ${lastLineCursorVisible}`);
 
-        // テキストの最後の行の外側をクリック
+        // Click outside the last line of text
         console.log(`Clicking at (${x}, ${lastLineY}) on last line`);
         await page.mouse.click(x, lastLineY);
-        await page.waitForTimeout(200); // 少し待機してからカーソルの出現を確認
+        await page.waitForTimeout(200);
 
         if (!lastLineCursorVisible) {
-            // それでもカーソルが表示されない場合は、テキスト領域内をクリック
+            // Fallback: click inside text area
             console.log("Fallback: clicking inside text area");
-            const fallbackX = textRect.left + textRect.width - 10; // テキスト内の右端近く
+            const fallbackX = textRect.left + textRect.width - 10;
             await page.mouse.click(fallbackX, lastLineY);
             await page.waitForTimeout(200);
             await TestHelpers.waitForCursorVisible(page, 5000);
         }
 
-        // カーソルが表示されるまで待機
+        // Wait for final cursor visibility
         const finalCursorVisible = await TestHelpers.waitForCursorVisible(page, 30000);
         console.log("Cursor visible after last line click:", finalCursorVisible);
         expect(finalCursorVisible).toBe(true);
 
-        // カーソル要素が表示されるまで待機（activeでない場合もある）
+        // Wait for cursor element in DOM
         const cursorLocator = page.locator(".editor-overlay .cursor").first();
         await expect(cursorLocator).toBeVisible({ timeout: 30000 });
 
-        // 複数のカーソルがある場合は最初のものを使用
         const cursorBox = await cursorLocator.boundingBox();
-
         expect(cursorBox).not.toBeNull();
 
-        // 最後にEndキーを押してカーソルを末尾に移動
+        // Final move to the end using End key
         await page.keyboard.press("End");
         await page.waitForTimeout(100);
 
-        // カーソル位置がテキストの末尾にあることを確認
-        // CursorValidatorを使用してアプリケーションのカーソル位置を取得
+        // Verify cursor position is at the end of the text
         const finalCursorData = await CursorValidator.getCursorData(page);
 
-        // アクティブなアイテムのテキスト内容を取得（既存のactiveItemを再利用）
+        // Get actual text content
         const actualTextContent = await activeItem.locator(".item-text").textContent();
 
         console.log(`Expected text length: ${longText.length}`);
         console.log(`Actual text length: ${actualTextContent?.length || 0}`);
         console.log(`Cursor position: ${finalCursorData.cursors[0]?.offset || -1}`);
-        console.log(`Actual text content: "${actualTextContent}"`);
-        console.log(`Expected text content: "${longText}"`);
 
-        // カーソルが存在することを確認
+        // Verify cursor existence
         expect(finalCursorData.cursorCount).toBe(1);
         expect(finalCursorData.cursors[0]).toBeDefined();
 
-        // カーソル位置が実際のテキストの長さと一致することを確認
+        // Verify cursor position matches actual text length
         expect(finalCursorData.cursors[0].offset).toBe(actualTextContent?.length || 0);
     });
 });

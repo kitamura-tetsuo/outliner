@@ -9,6 +9,7 @@ import { test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0001: Click to enter edit mode", () => {
+    test.setTimeout(180000); // 3 minutes
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });

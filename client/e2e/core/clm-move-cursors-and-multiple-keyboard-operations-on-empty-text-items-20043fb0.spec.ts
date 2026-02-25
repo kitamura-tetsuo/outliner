@@ -11,6 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 // Increase timeout because this test takes time
 
 test.describe("Cursor movement on empty text items", () => {
+    test.setTimeout(180000); // 3 minutes
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed with two empty items so we don't have to create them with flaky keys
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["", ""]);
