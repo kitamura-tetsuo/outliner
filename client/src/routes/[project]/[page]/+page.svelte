@@ -157,7 +157,7 @@
                         }
                     }
                     if (len > 0) {
-                        logger.debug(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
+                        console.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
                     }
                 }
                 return null;
@@ -249,7 +249,7 @@
     onMount(() => {
         try {
             // DIRECT DEBUG: This should appear if onMount is called
-            if (typeof console !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof console !== "undefined") {
                 console.log("[DEBUG] onMount called");
             }
             // Attempt initial load
@@ -302,13 +302,11 @@
             if (id) {
                 const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
                 window.sessionStorage?.setItem(key, String(id));
-                if ((window as any).DEBUG_MODE) {
-                    console.log(
-                        "[+page.svelte] capturePageIdForSchedule saved:",
-                        key,
-                        id,
-                    );
-                }
+                console.log(
+                    "[+page.svelte] capturePageIdForSchedule saved:",
+                    key,
+                    id,
+                );
             }
         } catch {}
     }

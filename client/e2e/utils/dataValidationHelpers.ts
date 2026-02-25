@@ -28,6 +28,8 @@ export class DataValidationHelpers {
                 // Check if page is still open before trying to dump logs
                 if (!page.isClosed()) {
                     // Dump E2E logs if present
+                // Disabled to prevent CI log flooding
+                /*
                     const logs = await page.evaluate(() => {
                         const w: any = window as any;
                         return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
@@ -35,6 +37,7 @@ export class DataValidationHelpers {
                     if (Array.isArray(logs) && logs.length) {
                         console.log("[afterEach] E2E_LOGS (last 200):", logs);
                     }
+                */
                 } else {
                     console.log("[afterEach] Page already closed, skipping log dump");
                 }

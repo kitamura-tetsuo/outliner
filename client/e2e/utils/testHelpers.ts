@@ -71,8 +71,16 @@ export class TestHelpers {
             page.on("console", (msg) => {
                 const type = msg.type();
                 const txt = msg.text();
-                // Avoid too much noise from some expected logs if necessary,
-                // but for now let's see everything.
+                // Filter out verbose logs to prevent CI timeouts
+                if (
+                    txt.includes("[yjs-conn]")
+                    || txt.includes("OutlinerTree: observeDeep")
+                    || txt.includes("[pushPresenceState]")
+                    || txt.includes("GlobalTextArea")
+                    || txt.includes("KeyEventHandler")
+                ) {
+                    return;
+                }
                 console.log(`[BROWSER-CONSOLE:${type}]`, txt);
             });
             page.on("pageerror", (err) => {
@@ -93,7 +101,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-                localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
+                localStorage.setItem("VITE_YJS_DEBUG", "false"); // DISABLE DEBUG to prevent log flooding
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as Window & Record<string, any>).__E2E__ = true;
                 console.log("[E2E] Test environment flags set in localStorage");
@@ -536,7 +544,7 @@ export class TestHelpers {
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-                localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
+                localStorage.setItem("VITE_YJS_DEBUG", "false"); // DISABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (window as Window & Record<string, any>).__E2E__ = true;
             } catch {}
