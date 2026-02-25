@@ -907,7 +907,7 @@ export class EditorOverlayStore {
 
         // Process each selection range
         for (const sel of selections) {
-            let selectionText = "";
+            let selectionText: string;
 
             try {
                 if (sel.isBoxSelection && sel.boxSelectionRanges) {

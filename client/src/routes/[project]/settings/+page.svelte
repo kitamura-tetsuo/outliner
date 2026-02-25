@@ -244,7 +244,7 @@
                 } catch {}
 
                 // Get text - handle both Yjs getter and plain property
-                let pageName = "";
+                let pageName: string;
                 try {
                     pageName =
                         typeof firstPage.text === "function"
