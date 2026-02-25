@@ -17,19 +17,36 @@ function isConnDebugEnabled(): boolean {
     }
 }
 
+// Suppress logs in E2E/Test environments unless strictly needed
+const __IS_TEST__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+    || import.meta.env.MODE === "test"
+    || import.meta.env.VITE_IS_TEST === "true";
+
+function log(...args: unknown[]) {
+    if (!__IS_TEST__) {
+        console.log(...args);
+    }
+}
+
+function error(...args: unknown[]) {
+    if (!__IS_TEST__) {
+        console.error(...args);
+    }
+}
+
 function attachConnDebug(label: string, provider: HocuspocusProvider, awareness: Awareness | null, doc: Y.Doc) {
     if (!isConnDebugEnabled()) return;
     try {
         // provider.synced transitions
         provider.on("synced", (data: { state: boolean; }) => {
-            console.log(`[yjs-conn] ${label} sync=${data.state}`);
+            log(`[yjs-conn] ${label} sync=${data.state}`);
         });
         // awareness states count
         const logAwareness = () => {
             try {
                 const states = (awareness as { getStates?: () => Map<number, unknown>; })?.getStates?.();
                 const count = states?.size ?? 0;
-                console.log(`[yjs-conn] ${label} awareness.states=${count}`);
+                log(`[yjs-conn] ${label} awareness.states=${count}`);
             } catch {}
         };
         if (awareness) {
@@ -44,7 +61,7 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
         doc.on("update", (u: Uint8Array) => {
             updCount++;
             const bytes = u?.length ?? 0;
-            console.log(`[yjs-conn] ${label} update#${updCount} bytes=${bytes}`);
+            log(`[yjs-conn] ${label} update#${updCount} bytes=${bytes}`);
         });
     } catch {
         // ignore debug wiring errors
@@ -73,7 +90,7 @@ function getWsBase(): string {
             return `ws://localhost:${port}`;
         }
     } catch {}
-    console.log(
+    log(
         `[yjs-conn] WS Port determination: env=${import.meta.env.VITE_YJS_PORT}, ls=${
             typeof window !== "undefined" ? window.localStorage?.getItem("VITE_YJS_PORT") : "N/A"
         }, final=${port}`,
@@ -115,7 +132,7 @@ async function getFreshIdToken(): Promise<string> {
     const isTestEnv = import.meta.env.MODE === "test"
         || (typeof window !== "undefined"
             && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true" || (window as any).__E2E__ === true));
-    console.log(`[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth.currentUser}`);
+    log(`[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth.currentUser}`);
 
     const generateMockToken = () => {
         // Generate mock token for E2E tests (server accepts alg:none in test mode)
@@ -179,11 +196,11 @@ function constructWsUrl(wsBase: string, room: string, token: string): string {
 }
 
 export async function createProjectConnection(projectId: string): Promise<ProjectConnection> {
-    console.log(`[createProjectConnection] Starting for projectId=${projectId}`);
+    log(`[createProjectConnection] Starting for projectId=${projectId}`);
     const doc = new Y.Doc({ guid: projectId });
     const wsBase = getWsBase();
     const room = projectRoomPath(projectId);
-    console.log(`[createProjectConnection] wsBase=${wsBase}, room=${room}`);
+    log(`[createProjectConnection] wsBase=${wsBase}, room=${room}`);
 
     // Attach IndexedDB persistence and wait for initial sync
     if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
@@ -209,7 +226,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                 if ((provider as TokenRefreshableProvider).url) {
                     (provider as TokenRefreshableProvider).url = config.url;
                 }
-                console.log("[createProjectConnection] Updated provider URL with fresh token");
+                log("[createProjectConnection] Updated provider URL with fresh token");
             }
             return t;
         } catch {
@@ -229,19 +246,19 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         document: doc,
         token: tokenFn,
     });
-    console.log(
+    log(
         `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}`,
     );
-    provider.on("status", (event: { status: string; }) => console.log(`[yjs-conn] ${room} status: ${event.status}`));
+    provider.on("status", (event: { status: string; }) => log(`[yjs-conn] ${room} status: ${event.status}`));
     provider.on("close", (event: { code: number; reason: string; }) => {
-        console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
+        log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
 
         // Handle Auth errors (4001: Unauthorized)
         if (event.code === 4001) {
-            console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
+            log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
             // Force token refresh
             void userManager.refreshToken().then(() => {
-                console.log(`[yjs-conn] Token refresh triggered for ${room}`);
+                log(`[yjs-conn] Token refresh triggered for ${room}`);
             });
             return;
         }
@@ -249,7 +266,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         // Fatal errors: 4003 (Forbidden), 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
         // 4003 is treated as fatal access denied (user not in project list)
         if ([4003, 4006, 4008].includes(event.code)) {
-            console.error(`[yjs-conn] FATAL ERROR: ${event.code} ${event.reason}. Stopping reconnection for ${room}`);
+            error(`[yjs-conn] FATAL ERROR: ${event.code} ${event.reason}. Stopping reconnection for ${room}`);
             provider.configuration.token = async () => Promise.resolve(""); // Prevent further auth attempts
             provider.disconnect(); // Ensure completely stopped
             // destroy() might be better but disconnect() + nuke config is safer to not break references
@@ -257,7 +274,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         }
     });
     provider.on("disconnect", (event: { code: number; reason: string; }) => {
-        console.log(`[yjs-conn] ${room} disconnect code=${event.code} reason=${event.reason}`);
+        log(`[yjs-conn] ${room} disconnect code=${event.code} reason=${event.reason}`);
     });
 
     // Wait for initial project sync to complete before connecting pages
@@ -267,7 +284,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
             resolve();
         } else {
             const timer = setTimeout(() => {
-                console.log(
+                log(
                     `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
                 );
                 resolve();
@@ -287,7 +304,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
                     clearTimeout(timer);
                     provider.off("synced", syncHandler);
                     provider.off("close", closeHandler);
-                    console.error(
+                    error(
                         `[createProjectConnection] Fatal close event ${event.code} received during initial sync for ${room}`,
                     );
                     reject(new Error("Access Denied"));
@@ -363,11 +380,11 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
                 if ((provider as TokenRefreshableProvider).url) {
                     (provider as TokenRefreshableProvider).url = config.url;
                 }
-                console.log("[connectProjectDoc] Updated provider URL with fresh token");
+                log("[connectProjectDoc] Updated provider URL with fresh token");
             }
             return t;
         } catch (e) {
-            console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
+            error("[connectProjectDoc] getFreshIdToken FAILED:", e);
             return "";
         }
     };
@@ -377,7 +394,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     try {
         initialToken = await getFreshIdToken();
     } catch (e) {
-        console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
+        error("[connectProjectDoc] getFreshIdToken FAILED:", e);
     }
 
     provider = new HocuspocusProvider({

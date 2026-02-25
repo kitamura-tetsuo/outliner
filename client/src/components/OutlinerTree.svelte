@@ -98,7 +98,7 @@
                     try {
                         if (
                             typeof window !== "undefined" &&
-                            (window as any).__E2E__
+                            (window as any).__E2E_VERBOSE__
                         ) {
                             console.log("OutlinerTree: observeDeep tick");
                             events.forEach((e) => {

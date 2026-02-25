@@ -241,7 +241,11 @@ onMount(async () => {
                     (window as any).__E2E_DROP_PATCHED__ = true;
 
                     const wrap = function(this: any, orig: any, event: Event): boolean {
-                        try { console.log('[E2E] dispatchEvent:', event?.type, 'instanceof DragEvent=', event instanceof DragEvent); } catch {}
+                        try {
+                            if ((window as any).__E2E_VERBOSE__) {
+                                console.log('[E2E] dispatchEvent:', event?.type, 'instanceof DragEvent=', event instanceof DragEvent);
+                            }
+                        } catch {}
                         try { if (event && event.type === 'drop') { (window as any).__E2E_ATTEMPTED_DROP__ = true; } } catch {}
                         try {
                             if (event && event.type === 'drop' && !(event instanceof DragEvent)) {
