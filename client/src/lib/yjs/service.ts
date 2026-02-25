@@ -205,6 +205,7 @@ export const yjsService = {
     },
 
     promoteChildren(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = project.tree as any;
         const children = childrenKeys(tree, itemKey);
         if (children.length === 0) return;
@@ -221,6 +222,7 @@ export const yjsService = {
     },
 
     moveSubtreeUp(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = project.tree as any;
         const parentKey = tree.getNodeParentFromKey(itemKey);
         if (!parentKey) return;
@@ -232,6 +234,7 @@ export const yjsService = {
     },
 
     moveSubtreeDown(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = project.tree as any;
         const parentKey = tree.getNodeParentFromKey(itemKey);
         if (!parentKey) return;
