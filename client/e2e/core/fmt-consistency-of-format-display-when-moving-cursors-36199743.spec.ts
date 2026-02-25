@@ -15,8 +15,8 @@ test.describe("Consistency of format display when moving cursors", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("Display/hide of control characters switches appropriately when moving cursor", async ({ page }) => {
-        // Set up test page
+    test("Control characters display/hide appropriately when moving cursor", async ({ page }) => {
+        // Setup test page
 
         // Select the first item
         const firstItem = page.locator(".outliner-item").first();
@@ -28,14 +28,14 @@ test.describe("Consistency of format display when moving cursors", () => {
         // Enter bold text
         await page.keyboard.type("[[aasdd]]");
 
-        // Create the second item
+        // Create a second item
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
 
         // Enter internal link text
         await page.keyboard.type("[asd]");
 
-        // Create the third item
+        // Create a third item
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
 
@@ -53,13 +53,13 @@ test.describe("Consistency of format display when moving cursors", () => {
         }
         await page.waitForTimeout(300);
 
-        // Check the text content of the first item (control characters are hidden and format is applied)
+        // Check text content of the first item (control characters are hidden and format is applied)
         await page.waitForTimeout(300);
         await expect.poll(async () => {
             return await firstItem.locator(".item-text").innerHTML();
         }).toContain("<strong>aasdd</strong>");
 
-        // Check the text content of the second item (control characters are hidden and internal link is applied)
+        // Check text content of the second item (control characters are hidden and internal link is applied)
         const secondItem = page.locator(".outliner-item").nth(1);
 
         // Wait for UI to update after cursor changes
@@ -78,7 +78,7 @@ test.describe("Consistency of format display when moving cursors", () => {
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Get the text content of the first item (confirm control characters are displayed)
+        // Get text content of the first item (confirm control characters are displayed)
         const firstItemHtmlActive = await firstItem.locator(".item-text").innerHTML();
         expect(firstItemHtmlActive).toContain("<strong>aasdd</strong>");
 
@@ -86,15 +86,15 @@ test.describe("Consistency of format display when moving cursors", () => {
         await secondItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Get the text content of the second item (confirm control characters are displayed)
+        // Get text content of the second item (confirm control characters are displayed)
         const secondItemHtmlActive = await secondItem.locator(".item-text").innerHTML();
         expect(secondItemHtmlActive).toContain('<span class="control-char">[</span>asd');
     });
 
     test("Title is displayed as normal text", async ({ page }) => {
-        // Set up test page
+        // Setup test page
 
-        // Select the title
+        // Select title
         const pageTitle = page.locator(".page-title");
         await pageTitle.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
@@ -120,7 +120,7 @@ test.describe("Consistency of format display when moving cursors", () => {
         // Confirm title font weight is set (check actual value in log)
         expect(titleFontWeight).toBeDefined();
 
-        // Click the title
+        // Click title
         await pageTitle.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
@@ -138,7 +138,7 @@ test.describe("Consistency of format display when moving cursors", () => {
     });
 
     test("External link syntax is displayed correctly", async ({ page }) => {
-        // Set up test page
+        // Setup test page
 
         // Select the first item
         const firstItem = page.locator(".outliner-item").first();
@@ -151,11 +151,11 @@ test.describe("Consistency of format display when moving cursors", () => {
         await TestHelpers.setCursor(page, firstItemIdForLink!, 0, "local");
         await TestHelpers.insertText(page, firstItemIdForLink!, "[https://example.com]");
 
-        // Create the second item
+        // Create a second item
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check the text content of the first item (link is applied)
+        // Check text content of the first item (link is applied)
         const pageTextsAfterLink = await TestHelpers.getPageTexts(page);
         expect(
             pageTextsAfterLink.some(({ text }) =>
@@ -171,13 +171,13 @@ test.describe("Consistency of format display when moving cursors", () => {
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check the text content of the first item (control characters are displayed)
+        // Check text content of the first item (control characters are displayed)
         const firstItemTextContentActive = await firstItem.locator(".item-text").textContent();
         expect(firstItemTextContentActive).toContain("https://example.com");
     });
 
     test("Internal link syntax is displayed correctly", async ({ page }) => {
-        // Set up test page
+        // Setup test page
 
         // Select the first item
         const firstItem = page.locator(".outliner-item").first();
@@ -190,16 +190,16 @@ test.describe("Consistency of format display when moving cursors", () => {
         await TestHelpers.setCursor(page, firstItemIdForInternalLink!, 0, "local");
         await TestHelpers.insertText(page, firstItemIdForInternalLink!, "[asd]");
 
-        // Create the second item
+        // Create a second item
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check the text content of the first item (internal link is applied)
+        // Check text content of the first item (internal link is applied)
         const pageTextsAfterInternalLink = await TestHelpers.getPageTexts(page);
         expect(pageTextsAfterInternalLink.some(({ text }) => text === "[asd]" || text?.includes("[asd]"))).toBe(true);
         await page.waitForTimeout(300);
         const firstItemTextContentInactiveInternal = await firstItem.locator(".item-text").textContent();
-        // When inactive, internal link is rendered, so only link text is displayed without control characters
+        // Since internal link is rendered when inactive, only link text is displayed without control characters
         expect(firstItemTextContentInactiveInternal).toContain("asd");
         expect(firstItemTextContentInactiveInternal).not.toContain("[asd]");
 
@@ -207,20 +207,20 @@ test.describe("Consistency of format display when moving cursors", () => {
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
 
-        // Get the text content of the first item (confirm control characters are displayed)
+        // Get text content of the first item (confirm control characters are displayed)
         const firstItemTextContentActiveInternal = await firstItem.locator(".item-text").textContent();
         expect(firstItemTextContentActiveInternal).toContain("[asd]");
     });
 
     test("SharedTree data is saved correctly", async ({ page }) => {
-        // Select the first item (title), press Enter to create the second item
+        // Select the first item (title), press Enter, and create a second item
         const titleItem = page.locator(".outliner-item").first();
         await titleItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("Enter");
         await TestHelpers.waitForCursorVisible(page);
 
-        // Select the second item (the one just created)
+        // Select the second item (the item created just before)
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
@@ -282,7 +282,7 @@ test.describe("Consistency of format display when moving cursors", () => {
         // Get SharedTree data (with fallback)
         const treeData = await TreeValidator.getTreeData(page);
 
-        // Output debug info
+        // Output debug information
         console.log("Tree data structure:", JSON.stringify(treeData, null, 2));
         console.log("Items count:", treeData.items?.length);
 

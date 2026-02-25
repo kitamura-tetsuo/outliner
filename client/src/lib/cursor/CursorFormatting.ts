@@ -1,6 +1,7 @@
 // import type { Item } from "../../schema/yjs-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
+import { escapeId } from "../../utils/domUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
 export class CursorFormatting {
@@ -125,31 +126,49 @@ export class CursorFormatting {
         const endOffset = selection.endOffset;
         const isReversed = selection.isReversed;
 
-        // Get all item IDs
-        const allItemElements = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
-        const allItemIds = allItemElements.map(el => el.getAttribute("data-item-id")!);
+        const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);
+        const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`);
 
-        // Get start and end item indices
-        const startIdx = allItemIds.indexOf(startItemId);
-        const endIdx = allItemIds.indexOf(endItemId);
+        if (!startEl || !endEl) return;
 
-        if (startIdx === -1 || endIdx === -1) return;
+        // Determine order
+        const comparison = startEl.compareDocumentPosition(endEl);
+        let firstEl: Element, lastEl: Element;
 
-        // Normalize start and end indices
-        const firstIdx = Math.min(startIdx, endIdx);
-        const lastIdx = Math.max(startIdx, endIdx);
+        if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+            firstEl = startEl;
+            lastEl = endEl;
+        } else {
+            firstEl = endEl;
+            lastEl = startEl;
+        }
+
+        const root = document.querySelector(".outliner") || document.body;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+            acceptNode(node) {
+                return (node as Element).hasAttribute("data-item-id")
+                    ? NodeFilter.FILTER_ACCEPT
+                    : NodeFilter.FILTER_SKIP;
+            },
+        });
+        walker.currentNode = firstEl;
 
         // Apply format to each item in the selection
-        for (let i = firstIdx; i <= lastIdx; i++) {
-            const itemId = allItemIds[i];
+        while (walker.currentNode) {
+            const current = walker.currentNode as HTMLElement;
+            const itemId = current.getAttribute("data-item-id")!;
             const item = this.cursor.searchItem(generalStore.currentPage!, itemId);
 
-            if (!item) continue;
+            if (!item) {
+                if (current === lastEl) break;
+                if (!walker.nextNode()) break;
+                continue;
+            }
 
             const text = item.text || "";
 
             // Apply format according to item position
-            if (i === firstIdx && i === lastIdx) {
+            if (current === firstEl && current === lastEl) {
                 // Selection within a single item
                 const start = isReversed ? endOffset : startOffset;
                 const end = isReversed ? startOffset : endOffset;
@@ -182,6 +201,9 @@ export class CursorFormatting {
                 // Currently only single item selection is supported.
                 // Add implementation here for multi-item selection support.
             }
+
+            if (current === lastEl) break;
+            if (!walker.nextNode()) break;
         }
 
         // Update cursor position (set to end of selection)

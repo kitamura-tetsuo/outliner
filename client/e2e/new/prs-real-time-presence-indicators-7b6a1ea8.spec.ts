@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
@@ -52,7 +53,7 @@ test.describe("PRS-0001: presence indicators", () => {
                 store.setUser({
                     userId: "test-user-2",
                     userName: "Test User 2",
-                    color: "hsl(240, 70%, 50%)",
+                    color: "hsl(30, 70%, 50%)", // Use orange to avoid collision with default user color
                 });
             }
         });

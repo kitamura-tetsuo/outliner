@@ -29,7 +29,7 @@ export interface PollingStats {
     calls: Map<number, PollingCall>;
 }
 
-export class PollingMonitor {
+class PollingMonitor {
     private calls: Map<number, PollingCall> = new Map();
     private nextId = 1;
     private enabled = false;
@@ -46,12 +46,12 @@ export class PollingMonitor {
     private disablePatterns: RegExp[] = [];
 
     constructor() {
-        this.originalSetInterval = window.setInterval;
-        this.originalSetTimeout = window.setTimeout;
-        this.originalClearInterval = window.clearInterval;
-        this.originalClearTimeout = window.clearTimeout;
-        this.originalRequestAnimationFrame = window.requestAnimationFrame;
-        this.originalCancelAnimationFrame = window.cancelAnimationFrame;
+        this.originalSetInterval = window.setInterval.bind(window);
+        this.originalSetTimeout = window.setTimeout.bind(window);
+        this.originalClearInterval = window.clearInterval.bind(window);
+        this.originalClearTimeout = window.clearTimeout.bind(window);
+        this.originalRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+        this.originalCancelAnimationFrame = window.cancelAnimationFrame.bind(window);
     }
 
     /**
@@ -65,9 +65,7 @@ export class PollingMonitor {
         window.setInterval =
             ((callback: ((...args: unknown[]) => void) | string, delay?: number, ...args: unknown[]): number => {
                 const stack = new Error().stack || "";
-                const disabled = this.shouldDisable(stack);
-                // Use negative IDs for disabled calls to avoid collision with native timer IDs
-                const id = disabled ? -(this.nextId++) : this.nextId++;
+                const id = this.nextId++;
 
                 const call: PollingCall = {
                     id,
@@ -76,7 +74,7 @@ export class PollingMonitor {
                     stack,
                     createdAt: Date.now(),
                     executionCount: 0,
-                    disabled,
+                    disabled: this.shouldDisable(stack),
                 };
 
                 this.calls.set(id, call);
@@ -87,18 +85,18 @@ export class PollingMonitor {
                     return id;
                 }
 
+                const callbackFn: (...cbArgs: unknown[]) => unknown = typeof callback === "function"
+                    ? (...cbArgs: unknown[]) => (callback as (...args: unknown[]) => unknown)(...cbArgs)
+                    : () => {};
+
                 // Wrapped callback
                 const wrappedCallback = (...callbackArgs: unknown[]) => {
                     call.executionCount++;
                     call.lastExecutedAt = Date.now();
-                    if (typeof callback === "function") {
-                        return callback(...callbackArgs);
-                    } else {
-                        return eval(callback);
-                    }
+                    return callbackFn(...callbackArgs);
                 };
 
-                const timerId = this.originalSetInterval.call(window, wrappedCallback, delay, ...args);
+                const timerId = this.originalSetInterval(wrappedCallback, delay, ...args);
 
                 // Map timer ID
                 call.timerId = timerId;
@@ -106,26 +104,11 @@ export class PollingMonitor {
                 return timerId;
             }) as typeof window.setInterval;
 
-        // Intercept clearInterval
-        window.clearInterval = (id: number | undefined) => {
-            if (id !== undefined) {
-                for (const [internalId, call] of this.calls.entries()) {
-                    if (call.timerId === id || (call.disabled && call.id === id)) {
-                        this.calls.delete(internalId);
-                        break;
-                    }
-                }
-            }
-            return this.originalClearInterval.call(window, id);
-        };
-
         // Intercept setTimeout
         const wrappedSetTimeout =
             ((callback: ((...args: unknown[]) => void) | string, delay?: number, ...args: unknown[]) => {
                 const stack = new Error().stack || "";
-                const disabled = this.shouldDisable(stack);
-                // Use negative IDs for disabled calls to avoid collision with native timer IDs
-                const id = disabled ? -(this.nextId++) : this.nextId++;
+                const id = this.nextId++;
 
                 const call: PollingCall = {
                     id,
@@ -134,7 +117,7 @@ export class PollingMonitor {
                     stack,
                     createdAt: Date.now(),
                     executionCount: 0,
-                    disabled,
+                    disabled: this.shouldDisable(stack),
                 };
 
                 this.calls.set(id, call);
@@ -144,18 +127,17 @@ export class PollingMonitor {
                     return id;
                 }
 
+                const callbackFn: (...cbArgs: unknown[]) => unknown = typeof callback === "function"
+                    ? (...cbArgs: unknown[]) => (callback as (...args: unknown[]) => unknown)(...cbArgs)
+                    : () => {};
                 const wrappedCallback = (...callbackArgs: unknown[]) => {
                     call.executionCount++;
                     call.lastExecutedAt = Date.now();
                     this.calls.delete(id); // setTimeout is executed only once
-                    if (typeof callback === "function") {
-                        return callback(...callbackArgs);
-                    } else {
-                        return eval(callback);
-                    }
+                    return callbackFn(...callbackArgs);
                 };
 
-                const timerId = this.originalSetTimeout.call(window, wrappedCallback, delay, ...args);
+                const timerId = this.originalSetTimeout(wrappedCallback, delay, ...(args as unknown[]));
                 call.timerId = timerId;
 
                 return timerId;
@@ -167,25 +149,10 @@ export class PollingMonitor {
 
         window.setTimeout = wrappedSetTimeout;
 
-        // Intercept clearTimeout
-        window.clearTimeout = (id: number | undefined) => {
-            if (id !== undefined) {
-                for (const [internalId, call] of this.calls.entries()) {
-                    if (call.timerId === id || (call.disabled && call.id === id)) {
-                        this.calls.delete(internalId);
-                        break;
-                    }
-                }
-            }
-            return this.originalClearTimeout.call(window, id);
-        };
-
         // Intercept requestAnimationFrame
         window.requestAnimationFrame = (callback: FrameRequestCallback): number => {
             const stack = new Error().stack || "";
-            const disabled = this.shouldDisable(stack);
-            // Use negative IDs for disabled calls to avoid collision with native timer IDs
-            const id = disabled ? -(this.nextId++) : this.nextId++;
+            const id = this.nextId++;
 
             const call: PollingCall = {
                 id,
@@ -193,7 +160,7 @@ export class PollingMonitor {
                 stack,
                 createdAt: Date.now(),
                 executionCount: 0,
-                disabled,
+                disabled: this.shouldDisable(stack),
             };
 
             this.calls.set(id, call);
@@ -210,21 +177,10 @@ export class PollingMonitor {
                 return callback(time);
             };
 
-            const frameId = this.originalRequestAnimationFrame.call(window, wrappedCallback);
+            const frameId = this.originalRequestAnimationFrame(wrappedCallback);
             call.frameId = frameId;
 
             return frameId;
-        };
-
-        // Intercept cancelAnimationFrame
-        window.cancelAnimationFrame = (id: number) => {
-            for (const [internalId, call] of this.calls.entries()) {
-                if (call.frameId === id || (call.disabled && call.id === id)) {
-                    this.calls.delete(internalId);
-                    break;
-                }
-            }
-            return this.originalCancelAnimationFrame.call(window, id);
         };
 
         console.log("[PollingMonitor] Monitoring started");

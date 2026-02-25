@@ -548,10 +548,6 @@ export class Project {
     addPage(title: string, author: string) {
         const page = (this.items as Items).addNode(author);
         page.updateText(title);
-        const pages = this.ydoc.getMap<Y.Doc>("pages");
-        const subdoc = new Y.Doc({ guid: page.id, parent: this.ydoc } as YDocOptions);
-        pages.set(page.id, subdoc);
-        subdoc.load();
         return page;
     }
 }
@@ -603,3 +599,4 @@ function wrapArrayLike(items: Items): Items {
         },
     });
 }
+export type { YDocOptions };

@@ -9,13 +9,13 @@ test.describe("Outliner No Auth Test", () => {
     test("can load and interact with outliner without authentication", async ({ page }, testInfo) => {
         console.log("Debug: Testing outliner without authentication");
 
-        // Set up error monitoring
+        // Setup error monitoring
         const errors = TestHelpersNoAuth.setupErrorMonitoring(page);
 
-        // Set up network monitoring
+        // Setup network monitoring
         const network = TestHelpersNoAuth.setupNetworkMonitoring(page);
 
-        // Prepare environment (no authentication)
+        // Prepare environment (no auth)
         const envResult = await TestHelpersNoAuth.prepareTestEnvironmentNoAuth(page, testInfo);
         console.log("Debug: Environment preparation result:", envResult);
 
@@ -29,11 +29,11 @@ test.describe("Outliner No Auth Test", () => {
         const outlinerElements = await TestHelpersNoAuth.findOutlinerElements(page);
         console.log("Debug: Outliner elements found:", outlinerElements);
 
-        // Test basic keyboard operations
+        // Test basic keyboard interactions
         await page.keyboard.press("Escape");
         console.log("Debug: Pressed Escape key");
 
-        // Wait a moment and collect errors
+        // Wait a bit to collect errors
         await page.waitForTimeout(300);
 
         // Error report
@@ -78,7 +78,7 @@ test.describe("Outliner No Auth Test", () => {
                 bodyExists: !!document.body,
                 headExists: !!document.head,
 
-                // Svelte app state
+                // Check Svelte app state
                 svelteKit: typeof win.__SVELTEKIT_DEV__,
 
                 // Available global variables
@@ -94,7 +94,7 @@ test.describe("Outliner No Auth Test", () => {
         expect(appState.headExists).toBe(true);
         expect(appState.location).toMatch(/(localhost|127\.0\.0\.1):7090/);
 
-        // Verify that UserManager exists (initialized even without authentication)
+        // Verify UserManager exists (initialized even without auth)
         if (appState.userManager === "object") {
             console.log("Debug: UserManager is available");
         } else {
@@ -109,12 +109,12 @@ test.describe("Outliner No Auth Test", () => {
         const envResult = await TestHelpersNoAuth.prepareTestEnvironmentNoAuth(page, testInfo);
         expect(envResult.success).toBe(true);
 
-        // Basic click operation
+        // Basic click interaction
         const body = page.locator("body");
         await body.click();
         console.log("Debug: Clicked on body");
 
-        // Keyboard operation
+        // Keyboard interaction
         await page.keyboard.press("Tab");
         console.log("Debug: Pressed Tab key");
 
@@ -131,10 +131,10 @@ test.describe("Outliner No Auth Test", () => {
         await page.keyboard.type("test input");
         console.log("Debug: Typed test input");
 
-        // Wait a moment
+        // Wait a bit
         await page.waitForTimeout(300);
 
-        // Verify that page state is stable
+        // Ensure page state is stable
         const finalUrl = page.url();
         console.log("Debug: Final URL:", finalUrl);
         expect(finalUrl).toMatch(/(localhost|127\.0\.0\.1):7090/);

@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
@@ -60,10 +59,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
         });
 
         // Wait for the specific "COMMENT TARGET" text to appear
-        await page.locator(".outliner-item .item-text", { hasText: "COMMENT TARGET" }).waitFor({
-            state: "visible",
-            timeout: 30000,
-        })
+        await page.locator(".outliner-item .item-text", { hasText: "COMMENT TARGET" }).waitFor({ timeout: 30000 })
             .catch(() => {
                 console.log("Warning: 'COMMENT TARGET' text not found within timeout, continuing anyway");
             });

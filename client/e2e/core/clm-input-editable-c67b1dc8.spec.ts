@@ -13,13 +13,13 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("編集モードで文字入力が可能", async ({ page }) => {
-        // ページタイトルを優先的に使用
+    test("Text input is possible in edit mode", async ({ page }) => {
+        // Prioritize using the page title
         const item = page.locator(".outliner-item.page-title");
 
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
+        // If page title is not found, use the first visible item
         if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
+            // Find items that can be identified by text content
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
             console.log("Clicked first visible item for input test");
@@ -28,21 +28,21 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
             console.log("Clicked page title item for input test");
         }
 
-        // カーソルが表示されるまで待機
+        // Wait until the cursor is visible
         const cursorVisible = await TestHelpers.waitForCursorVisible(page, 30000);
         console.log("Cursor visible for input test:", cursorVisible);
         expect(cursorVisible).toBe(true);
 
-        // スクリーンショットを撮影（クリック後）
+        // Take screenshot (after click)
         await page.screenshot({ path: "client/test-results/CLM-0001-input-after-click.png" });
 
-        // アクティブなアイテムIDを取得
+        // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
         const testText = "Hello world";
         await page.keyboard.type(testText);
         await page.waitForTimeout(300);
 
-        // スクリーンショットを撮影（入力後）
+        // Take screenshot (after typing)
         await page.screenshot({ path: "client/test-results/CLM-0001-input-after-typing.png" });
 
         try {

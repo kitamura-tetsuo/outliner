@@ -1,7 +1,9 @@
 <script lang="ts">
+import { SvelteSet } from "svelte/reactivity";
 import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
+import { escapeId } from '../utils/domUtils';
 import { presenceStore } from '../stores/PresenceStore.svelte';
 import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
 
@@ -529,22 +531,40 @@ function calculateSelectionPixelRange(
 function updatePositionMap() {
     const newMap: CursorPositionMap = {};
 
-    // Get all items and their text elements
-    const itemElements = document.querySelectorAll('[data-item-id]');
+    // Optimization: Instead of scanning the entire document,
+    // we only populate information for items that are currently "active"
+    // (i.e. have a cursor or are part of a selection).
+    const idsToTrack = new SvelteSet<string>();
 
-    itemElements.forEach(itemElement => {
-        const itemId = itemElement.getAttribute('data-item-id');
-        if (!itemId) return;
+    // 1) Items with cursors
+    for (const c of cursorList) {
+        if (c.itemId) idsToTrack.add(c.itemId);
+    }
+
+    // 2) Items in selections
+    for (const s of selectionList) {
+        if (s.startItemId === s.endItemId) {
+            idsToTrack.add(s.startItemId);
+        } else {
+            // Selection spans multiple items. We need to identify all items in between.
+            // Since we use DOM order for selection rendering, we can find them via TreeWalker.
+            const items = getItemsInRange(s.startItemId, s.endItemId);
+            for (const id of items) idsToTrack.add(id);
+        }
+    }
+
+    const root = document.querySelector(".outliner") || document.body;
+
+    for (const itemId of idsToTrack) {
+        // Targeted querySelector is O(1) in modern browsers
+        const itemElement = root.querySelector(`.outliner-item[data-item-id="${escapeId(itemId)}"]`) as HTMLElement | null;
+        if (!itemElement) continue;
 
         const textElement = itemElement.querySelector('.item-text');
-        if (!textElement || !(textElement instanceof HTMLElement)) return;
+        if (!textElement || !(textElement instanceof HTMLElement)) continue;
 
         // Get element position information
         const elementRect = itemElement.getBoundingClientRect();
-
-        // Content container position information
-        const contentContainer = textElement.closest('.item-content-container');
-        if (!contentContainer) return;
 
         // Get computed style
         const styles = window.getComputedStyle(textElement);
@@ -564,13 +584,47 @@ function updatePositionMap() {
             lineHeight,
             fontProperties
         };
-    });
+    }
 
     positionMap = newMap;
 
     if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-        console.log("Position map updated:", Object.keys(newMap));
+        console.log("Position map updated (targeted):", Object.keys(newMap));
     }
+}
+
+// Helper to get item IDs in range efficiently
+function getItemsInRange(startId: string, endId: string): string[] {
+    const startEl = document.querySelector(`[data-item-id="${escapeId(startId)}"]`);
+    const endEl = document.querySelector(`[data-item-id="${escapeId(endId)}"]`);
+    if (!startEl || !endEl) return [startId, endId].filter(id => id);
+
+    const comparison = startEl.compareDocumentPosition(endEl);
+    let firstEl: Element, lastEl: Element;
+    if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+        firstEl = startEl; lastEl = endEl;
+    } else {
+        firstEl = endEl; lastEl = startEl;
+    }
+
+    const root = document.querySelector(".outliner") || document.body;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+        acceptNode(node) {
+            return (node as Element).hasAttribute("data-item-id")
+                ? NodeFilter.FILTER_ACCEPT
+                : NodeFilter.FILTER_SKIP;
+        },
+    });
+    walker.currentNode = firstEl;
+    const items = [];
+    while (walker.currentNode) {
+        const current = walker.currentNode as HTMLElement;
+        const id = current.getAttribute("data-item-id")!;
+        items.push(id);
+        if (current === lastEl) break;
+        if (!walker.nextNode()) break;
+    }
+    return items;
 }
 
 // MutationObserver to monitor DOM changes
@@ -730,7 +784,7 @@ onDestroy(() => {
 // Safely get current text from item ID (DOM -> active textarea -> Yjs order)
 function getTextByItemId(itemId: string): string {
   // 1) .item-text in DOM
-  const el = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement | null;
+  const el = document.querySelector(`[data-item-id="${escapeId(itemId)}"] .item-text`) as HTMLElement | null;
   if (el && el.textContent) return el.textContent;
 
   // 2) Active textarea
@@ -938,7 +992,7 @@ function handleCopy(event: ClipboardEvent) {
   // Case of selection within a single item
   if (selections.length === 1 && selections[0].startItemId === selections[0].endItemId) {
     const sel = selections[0];
-    const textEl = document.querySelector(`[data-item-id="${sel.startItemId}"] .item-text`) as HTMLElement;
+    const textEl = document.querySelector(`[data-item-id="${escapeId(sel.startItemId)}"] .item-text`) as HTMLElement;
     if (!textEl) return;
 
     const text = textEl.textContent || '';
@@ -970,9 +1024,23 @@ function handleCopy(event: ClipboardEvent) {
   }
 
   // Case of selection spanning multiple items
-  // Get items in DOM order
-  const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
-  const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
+  // Get items in DOM order efficiently
+  const allItemIds: string[] = [];
+  const allItems: HTMLElement[] = [];
+  const root = document.querySelector(".outliner") || document.body;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+      acceptNode(node) {
+          return (node as Element).hasAttribute("data-item-id")
+              ? NodeFilter.FILTER_ACCEPT
+              : NodeFilter.FILTER_SKIP;
+      },
+  });
+  while (walker.nextNode()) {
+      const el = walker.currentNode as HTMLElement;
+      const id = el.getAttribute("data-item-id")!;
+      allItems.push(el);
+      allItemIds.push(id);
+  }
 
   let combinedText = '';
 
@@ -1370,20 +1438,14 @@ function handlePaste(event: ClipboardEvent) {
                 {/if}
             {:else}
                 <!-- Multi-item selection -->
-                {@const allEls = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[]}
-                {@const ids = allEls.map(el => el.getAttribute('data-item-id')!)}
-                {@const sIdx = ids.indexOf(sel.startItemId)}
-                {@const eIdx = ids.indexOf(sel.endItemId)}
+                {@const itemsInRange = getItemsInRange(sel.startItemId, sel.endItemId)}
 
-                <!-- Skip if index is not found -->
-                {#if sIdx >= 0 && eIdx >= 0}
+                {#if itemsInRange.length > 0}
                     {@const forward = !sel.isReversed}
-                    {@const startIdx = forward ? sIdx : eIdx}
-                    {@const endIdx   = forward ? eIdx : sIdx}
 
                     <!-- Draw selection range for each item within range -->
-                    {#each ids.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1) as itemId (itemId)}
-                        {@const textEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement}
+                    {#each itemsInRange as itemId (itemId)}
+                        {@const textEl = document.querySelector(`[data-item-id="${escapeId(itemId)}"] .item-text`) as HTMLElement}
                         {@const len = textEl?.textContent?.length || 0}
 
                         <!-- offset calculation: start item, end item, others -->

@@ -39,7 +39,7 @@ test.describe("Cursor positioning on scroll", () => {
         expect(cursorBox).not.toBeNull();
         expect(itemBox).not.toBeNull();
 
-        // Allow a small difference (e.g. 10px) to account for minor rendering variations or padding adjustments
+        // Allow a slightly larger difference (e.g. 10px) to account for minor rendering variations or padding adjustments
         expect(Math.abs(cursorBox!.y - itemBox!.y)).toBeLessThan(10);
     });
 });
