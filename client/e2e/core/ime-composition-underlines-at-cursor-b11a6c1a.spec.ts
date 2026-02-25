@@ -13,7 +13,7 @@ test.describe("IME-0003: IME composition underline follows cursor", () => {
         // Use fixed names to ensure deterministic snapshot rendering (no random timestamps)
         await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, {
             projectName: "fixed-ime-project",
-            pageName: "fixed-ime-page"
+            pageName: "fixed-ime-page",
         });
     });
 
