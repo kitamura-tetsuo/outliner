@@ -11,7 +11,7 @@
             <p class="text-gray-500">No projects found.</p>
         {:else}
             <ul class="space-y-2">
-                {#each projectStore.projects as project}
+                {#each projectStore.projects as project (project.id)}
                     <li>
                         <a
                             href="/settings/{encodeURIComponent(project.name)}"
