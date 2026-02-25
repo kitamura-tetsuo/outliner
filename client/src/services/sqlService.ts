@@ -188,7 +188,13 @@ export function runQuery(sql: string) {
         queryStore.set({ rows: [], columnsMeta: [] });
         return;
     }
-    const res = results[0];
+    const res = results[results.length - 1];
+    if (!res || !res.columns) {
+        console.warn("SQL execution returned a result without columns:", res);
+        queryStore.set({ rows: [], columnsMeta: [] });
+        return;
+    }
+
     const pkAliases: Record<string, string> = {};
     res.columns.forEach(col => {
         const m = col.match(/^(\w+)_pk$/);
