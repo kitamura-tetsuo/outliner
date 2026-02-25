@@ -10,7 +10,8 @@ type Console = typeof console;
 // Always return true in test environments
 const isTestEnvironment = (typeof import.meta !== "undefined" && import.meta.env?.NODE_ENV === "test")
     || (typeof import.meta !== "undefined" && import.meta.env?.VITEST === "true")
-    || (typeof process !== "undefined" && process.env?.NODE_ENV === "test");
+    || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
+    || (typeof window !== "undefined" && window.localStorage?.getItem("VITE_IS_TEST") === "true");
 
 const useConsoleAPI = isTestEnvironment
     || (typeof window !== "undefined" && typeof window.console !== "undefined");

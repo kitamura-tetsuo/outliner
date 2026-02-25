@@ -90,7 +90,14 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 	        && "tree" in value;
 	}
 
+    // Helper to check if running in test environment
+    function isTestEnv() {
+        if (typeof window !== "undefined" && window.localStorage?.getItem("VITE_IS_TEST") === "true") return true;
+        return false;
+    }
+
 function dumpToolbarState(tag: string) {
+    if (isTestEnv()) return; // Suppress logs in test env
     try {
         const toolbars = Array.from(document.querySelectorAll('[data-testid="main-toolbar"]')) as HTMLDivElement[];
         const summary = toolbars.map((n, i) => ({
@@ -131,7 +138,9 @@ function dedupeToolbars() {
         // Previously we removed duplicate toolbars which could detach the element
         // Playwright had already scoped to, causing getByTestId(...).getByRole(...).waitFor()
         // to hang. To avoid destabilizing locators, we now keep all nodes and only log.
-        console.info("[Toolbar][dedupe] toolbar nodes present:", nodes.length);
+        if (!isTestEnv()) {
+            console.info("[Toolbar][dedupe] toolbar nodes present:", nodes.length);
+        }
         // If necessary in the future, we could hide duplicates instead of removing:
         // nodes.forEach((n, i) => { if (toolbarEl && n !== toolbarEl) n.style.display = 'none'; });
     } catch {}
@@ -262,8 +271,10 @@ if (typeof window !== "undefined") {
     min-width: 0;
     display: flex;
     align-items: center;
+    /* justify-content: flex-start;  Default */
 }
 
+/* Fix flex alignment issues */
 .toolbar-left > div {
     flex: 1 1 auto;
 }
