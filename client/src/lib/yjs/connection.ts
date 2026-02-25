@@ -7,8 +7,16 @@ import { projectRoomPath } from "./roomPath";
 import { yjsService } from "./service";
 import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefresh";
 
+// Helper to detect test environment
+function isTestEnv(): boolean {
+    return import.meta.env.MODE === "test" || (typeof window !== "undefined" && (window as any).__E2E__);
+}
+
 // Minimal guarded debug logging for initial sync progress (disabled in production by default)
 function isConnDebugEnabled(): boolean {
+    // Force disable in test environments to prevent log flooding and timeouts
+    if (isTestEnv()) return false;
+
     try {
         if (typeof window === "undefined") return false;
         return window.localStorage?.getItem?.("VITE_YJS_DEBUG") === "true";
@@ -73,9 +81,8 @@ function getWsBase(): string {
             return `ws://localhost:${port}`;
         }
     } catch {}
-    // Suppress log in E2E/Test
-    const isTest = import.meta.env.MODE === "test" || (typeof window !== "undefined" && (window as any).__E2E__);
-    if (!isTest) {
+
+    if (!isTestEnv()) {
         console.log(
             `[yjs-conn] WS Port determination: env=${import.meta.env.VITE_YJS_PORT}, ls=${
                 typeof window !== "undefined" ? window.localStorage?.getItem("VITE_YJS_PORT") : "N/A"
@@ -116,11 +123,9 @@ function isAuthRequired(): boolean {
 async function getFreshIdToken(): Promise<string> {
     // Wait for auth and fetch a fresh ID token
     const auth = userManager.auth;
-    const isTestEnv = import.meta.env.MODE === "test"
-        || (typeof window !== "undefined"
-            && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true" || (window as any).__E2E__ === true));
-    if (!isTestEnv) {
-        console.log(`[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth.currentUser}`);
+    const isTest = isTestEnv();
+    if (!isTest) {
+        console.log(`[getFreshIdToken] isTestEnv=${isTest}, auth.currentUser=${!!auth.currentUser}`);
     }
 
     const generateMockToken = () => {
@@ -150,7 +155,7 @@ async function getFreshIdToken(): Promise<string> {
     }
 
     if (!auth.currentUser) {
-        if (isTestEnv) {
+        if (isTest) {
             return generateMockToken();
         }
         if (!mustAuth) {
@@ -164,7 +169,7 @@ async function getFreshIdToken(): Promise<string> {
         if (!token) throw new Error("Token is empty");
         return token;
     } catch (e) {
-        if (isTestEnv) {
+        if (isTest) {
             console.warn("[getFreshIdToken] Auth failed in test mode, using mock token:", e);
             return generateMockToken();
         }
@@ -185,8 +190,7 @@ function constructWsUrl(wsBase: string, room: string, token: string): string {
 }
 
 export async function createProjectConnection(projectId: string): Promise<ProjectConnection> {
-    // Suppress logs in E2E
-    const isTest = import.meta.env.MODE === "test" || (typeof window !== "undefined" && (window as any).__E2E__);
+    const isTest = isTestEnv();
     if (!isTest) console.log(`[createProjectConnection] Starting for projectId=${projectId}`);
     const doc = new Y.Doc({ guid: projectId });
     const wsBase = getWsBase();
@@ -250,9 +254,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
         // Handle Auth errors (4001: Unauthorized)
         if (event.code === 4001) {
-            if (!isTest) {
-                console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
-            }
+            if (!isTest) console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
             // Force token refresh
             void userManager.refreshToken().then(() => {
                 if (!isTest) console.log(`[yjs-conn] Token refresh triggered for ${room}`);
