@@ -41,12 +41,14 @@
 
     onMount(() => {
         try {
-            console.log("OutlinerTree props:", {
-                pageItem,
-                projectName,
-                pageName,
-                isReadOnly,
-            });
+            if ((window as any).DEBUG_MODE) {
+                console.log("OutlinerTree props:", {
+                    pageItem,
+                    projectName,
+                    pageName,
+                    isReadOnly,
+                });
+            }
         } catch {}
     });
 
@@ -98,7 +100,7 @@
                     try {
                         if (
                             typeof window !== "undefined" &&
-                            (window as any).__E2E__
+                            (window as any).DEBUG_MODE
                         ) {
                             console.log("OutlinerTree: observeDeep tick");
                             events.forEach((e) => {

@@ -41,7 +41,11 @@
 
     // Ensure a minimal currentPage on mount (effectivePageItem follows thereafter)
     onMount(() => {
-        console.log("OutlinerBase effectivePageItem:", effectivePageItem);
+        try {
+            if ((window as any).DEBUG_MODE) {
+                console.log("OutlinerBase effectivePageItem:", effectivePageItem);
+            }
+        } catch {}
 
         // Prototype patch for updating comment counts (for test stabilization and deterministic reflection)
         try {
@@ -68,22 +72,24 @@
 
                 // Log for debugging
                 try {
-                    console.log("OutlinerBase script executed - console.log");
-                    console.log("OutlinerBase props received:", {
-                        pageItemExists: !!pageItem,
-                        pageItemId: pageItem?.id,
-                        isTemporary,
-                        onEditExists: !!onEdit,
-                    });
-                    console.log("Store state in OutlinerBase:", {
-                        projectExists: !!generalStore.project,
-                        projectTitle: generalStore.project?.title,
-                        currentPageExists: !!generalStore.currentPage,
-                        currentPageId: generalStore.currentPage?.id,
-                        pagesExists: !!generalStore.pages,
-                        pagesLength: generalStore.pages?.current?.length,
-                    });
-                    console.log("OutlinerBase script completed successfully");
+                    if ((window as any).DEBUG_MODE) {
+                        console.log("OutlinerBase script executed - console.log");
+                        console.log("OutlinerBase props received:", {
+                            pageItemExists: !!pageItem,
+                            pageItemId: pageItem?.id,
+                            isTemporary,
+                            onEditExists: !!onEdit,
+                        });
+                        console.log("Store state in OutlinerBase:", {
+                            projectExists: !!generalStore.project,
+                            projectTitle: generalStore.project?.title,
+                            currentPageExists: !!generalStore.currentPage,
+                            currentPageId: generalStore.currentPage?.id,
+                            pagesExists: !!generalStore.pages,
+                            pagesLength: generalStore.pages?.current?.length,
+                        });
+                        console.log("OutlinerBase script completed successfully");
+                    }
                 } catch {}
 
                 const ItemCls: any = Item;

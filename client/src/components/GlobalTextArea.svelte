@@ -44,7 +44,7 @@ onMount(() => {
     store.setTextareaRef(textareaRef);
     // Keep a reference in generalStore as well (used as a fallback for the command palette)
     try { generalStore.textareaRef = textareaRef; } catch {}
-    console.log("GlobalTextArea: Textarea reference set in store");
+    // console.log("GlobalTextArea: Textarea reference set in store");
 
     // Expose KeyEventHandler globally (for testing)
     if (typeof window !== "undefined") {
@@ -54,19 +54,19 @@ onMount(() => {
     // Set initial focus
     if (textareaRef) {
         textareaRef.focus();
-        console.log("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
+        // console.log("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
 
         // Additional attempts to ensure focus
         requestAnimationFrame(() => {
             if (textareaRef) {
                 textareaRef.focus();
-                console.log("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
+                // console.log("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
 
                 setTimeout(() => {
                     if (textareaRef) {
                         textareaRef.focus();
-                        const isFocused = document.activeElement === textareaRef;
-                        console.log("GlobalTextArea: Final focus set, focused:", isFocused);
+                        // const isFocused = document.activeElement === textareaRef;
+                        // console.log("GlobalTextArea: Final focus set, focused:", isFocused);
                     }
                 }, 10);
             }
@@ -135,7 +135,7 @@ onMount(() => {
     // Fallback: Reflect input even if the textarea is not focused
     try {
         const typingFallback = (ev: KeyboardEvent) => {
-            try { console.log("typingFallback fired:", ev.key, "active=", !!store.getActiveItem()); } catch {}
+            // try { console.log("typingFallback fired:", ev.key, "active=", !!store.getActiveItem()); } catch {}
             // Ignore during IME composition or with modifier keys (except Alt+Shift+Arrow is allowed for rectangular selection)
             const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
                 (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
@@ -153,7 +153,7 @@ onMount(() => {
             const k = ev.key;
             if (k.length === 1) {
                 const cursors = store.getCursorInstances();
-                try { console.log("typingFallback chars:", k, "cursors=", cursors.length); } catch {}
+                // try { console.log("typingFallback chars:", k, "cursors=", cursors.length); } catch {}
                 if (cursors.length > 0 && ta) {
                     ev.preventDefault();
 
@@ -309,11 +309,12 @@ function handleCompositionStart(event: CompositionEvent) {
 
 // Delegate keydown event to KeyEventHandler
 function handleKeyDown(event: KeyboardEvent) {
+    /*
     console.log("GlobalTextArea.handleKeyDown called with key:", event.key);
     console.log("GlobalTextArea.handleKeyDown: event.target:", event.target);
     console.log("GlobalTextArea.handleKeyDown: textareaRef:", textareaRef);
     console.log("GlobalTextArea.handleKeyDown: activeElement:", document.activeElement);
-
+    */
 
     KeyEventHandler.handleKeyDown(event);
 
@@ -326,7 +327,7 @@ function handleKeyDown(event: KeyboardEvent) {
         if (isTest && isPrintable && !isModifier && !aliasPickerStore.isVisible && !isTextareaFocused && !event.defaultPrevented) {
             const cursors = store.getCursorInstances();
             if (cursors.length > 0) {
-                console.log("GlobalTextArea.handleKeyDown fallback insert:", event.key, "cursors=", cursors.length);
+                // console.log("GlobalTextArea.handleKeyDown fallback insert:", event.key, "cursors=", cursors.length);
                 cursors.forEach(c => c.insertText(event.key));
                 store.startCursorBlink();
             }
@@ -336,11 +337,12 @@ function handleKeyDown(event: KeyboardEvent) {
 
 // Delegate input event to KeyEventHandler
 function handleInput(event: Event) {
+    /*
     console.log("GlobalTextArea.handleInput called with event:", event);
     console.log("GlobalTextArea.handleInput: event.target:", event.target);
     console.log("GlobalTextArea.handleInput: textareaRef:", textareaRef);
     console.log("GlobalTextArea.handleInput: activeElement:", document.activeElement);
-
+    */
 
     KeyEventHandler.handleInput(event);
 }

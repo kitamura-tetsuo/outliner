@@ -2,12 +2,11 @@ import { getLogger } from "../lib/logger";
 import { Item, Items } from "../schema/app-schema";
 
 const logger = getLogger();
-// Suppress verbose logs in E2E/Test environments
-const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-    || import.meta.env.MODE === "test"
-    || import.meta.env.VITE_IS_TEST === "true";
+// Use DEBUG_MODE strategy consistent with components
 const debugLog = (...args: any[]) => {
-    if (!__IS_E2E__) console.log(...args);
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(...args);
+    }
 };
 
 const isItemLike = (obj: any): boolean => {

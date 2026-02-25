@@ -21,11 +21,13 @@ $effect(() => {
     
     // Log component state for debugging
     try {
-        console.log('[SlashCommandPalette] isVisible:', commandPaletteStore.isVisible);
-        console.log('[SlashCommandPalette] visible length:', visible.length);
-        console.log('[SlashCommandPalette] visible items:', visible.map(c => c.label));
-        console.log('[SlashCommandPalette] query:', query);
-        console.log('[SlashCommandPalette] filtered:', commandPaletteStore.filtered.map(c => c.label));
+        if ((window as any).DEBUG_MODE) {
+            console.log('[SlashCommandPalette] isVisible:', commandPaletteStore.isVisible);
+            console.log('[SlashCommandPalette] visible length:', visible.length);
+            console.log('[SlashCommandPalette] visible items:', visible.map(c => c.label));
+            console.log('[SlashCommandPalette] query:', query);
+            console.log('[SlashCommandPalette] filtered:', commandPaletteStore.filtered.map(c => c.label));
+        }
     } catch {}
 });
 </script>
