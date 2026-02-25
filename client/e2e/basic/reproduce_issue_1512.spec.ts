@@ -9,14 +9,11 @@ test.describe("Issue #1512: Shift + Right Arrow selection duplication", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
         // Select the first item
-        const item = page.locator(".outliner-item").first();
+        const item = page.locator(".outliner-item[data-item-id]").first();
         await item.locator(".item-content").click({ force: true });
 
-        // Wait until the cursor is visible
-        await TestHelpers.waitForCursorVisible(page);
-
-        // Wait until the global textarea is focused
-        await page.waitForSelector("textarea.global-textarea:focus", { timeout: 10000 });
+        // Wait until the cursor is visible and global textarea is focused
+        await TestHelpers.ensureCursorReady(page);
 
         // Enter text
         await page.keyboard.type("Hello World");
