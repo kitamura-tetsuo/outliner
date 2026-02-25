@@ -8,13 +8,13 @@ vi.mock("../../stores/EditorOverlayStore.svelte", () => ({
         setSelection: vi.fn(),
         clearCursorAndSelection: vi.fn(),
         clearSelectionForUser: vi.fn(),
-    }
+    },
 }));
 vi.mock("../../stores/PresenceStore.svelte", () => ({
     presenceStore: {
         setUser: vi.fn(),
         removeUser: vi.fn(),
-    }
+    },
 }));
 vi.mock("../../stores/colorForUser", () => ({
     colorForUser: () => "#000000",
@@ -145,7 +145,7 @@ describe("yjsService move operations", () => {
         expect(itemItems.at(0)?.id).toBe(child1.id);
     });
 
-     it("moveSubtreeDown moves item and children", () => {
+    it("moveSubtreeDown moves item and children", () => {
         const project = yjsService.createProject("test");
         const parent = yjsService.addItem(project, "root", "u1");
         const item = yjsService.addItem(project, parent.id, "u1");
