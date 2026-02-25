@@ -338,10 +338,10 @@ export class KeyEventHandler {
             const tgt = (event.target as any)?.tagName || typeof (event.target as any)?.nodeName === "string"
                 ? (event.target as any).nodeName
                 : typeof event.target;
-            const ae =
-                (document.activeElement as any)?.tagName || typeof (document.activeElement as any)?.nodeName === "string"
-                    ? (document.activeElement as any).nodeName
-                    : typeof document.activeElement;
+            const ae = (document.activeElement as any)?.tagName
+                    || typeof (document.activeElement as any)?.nodeName === "string"
+                ? (document.activeElement as any).nodeName
+                : typeof document.activeElement;
             console.log(`KeyEventHandler.handleKeyDown: target=${tgt}, active=${ae}`);
             console.log(`Current cursor instances: ${cursorInstances.length}`);
         }
