@@ -10,7 +10,11 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("IME-0003: IME composition underline follows cursor", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        // Use fixed names to ensure deterministic snapshot rendering (no random timestamps)
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, {
+            projectName: "fixed-ime-project",
+            pageName: "fixed-ime-page"
+        });
     });
 
     test("textarea has ime-input class during composition", async ({ page }) => {
