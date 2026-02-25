@@ -174,6 +174,17 @@ function updateTextareaPosition() {
         // Position the textarea using viewport coordinates
         textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left}px`, 'important');
         textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top}px`, 'important');
+        
+        // Sync font styles to ensure IME composition underlines perfectly match the text baseline
+        if (itemInfo.fontProperties) {
+            textareaRef.style.setProperty('font-family', itemInfo.fontProperties.fontFamily, 'important');
+            textareaRef.style.setProperty('font-size', itemInfo.fontProperties.fontSize, 'important');
+            textareaRef.style.setProperty('font-weight', itemInfo.fontProperties.fontWeight, 'important');
+            textareaRef.style.setProperty('letter-spacing', itemInfo.fontProperties.letterSpacing, 'important');
+        }
+        if (itemInfo.lineHeight) {
+            textareaRef.style.setProperty('line-height', `${itemInfo.lineHeight}px`, 'important');
+        }
     } catch (e) {
         console.error("Error in updateTextareaPosition:", e);
     }
