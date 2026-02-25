@@ -6,10 +6,10 @@ const logger = getLogger();
 const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     || import.meta.env.MODE === "test"
     || import.meta.env.VITE_IS_TEST === "true";
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
     if (!__IS_E2E__) console.log(...args);
 };
-const debugError = (...args: any[]) => {
+const debugError = (...args: unknown[]) => {
     if (!__IS_E2E__) console.error(...args);
 };
 
