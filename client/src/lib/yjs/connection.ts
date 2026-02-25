@@ -52,7 +52,13 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
 }
 
 function isIndexedDBEnabled(): boolean {
-    return true; // Enable IndexedDB for offline support and reload persistence
+    // Disable if explicitly requested in env (critical for suppressing IndexedDB noise/delays in E2E)
+    if (import.meta.env?.VITE_DISABLE_YJS_INDEXEDDB === "true") return false;
+    if (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_DISABLE_YJS_INDEXEDDB") === "true") {
+        return false;
+    }
+
+    return true; // Default to enabled for offline support
 }
 
 export type ProjectConnection = {
