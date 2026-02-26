@@ -19,7 +19,7 @@ test.describe("LNK-0004: 仮ページ通知ボタン", () => {
         await page.goto(`${sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
-        const loginButton = page.locator("button:has-text('開発者ログイン')");
+        const loginButton = page.locator("button:has-text('Developer Login')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(300);
@@ -36,7 +36,7 @@ test.describe("LNK-0004: 仮ページ通知ボタン", () => {
         await page.reload();
         await page.waitForSelector("body", { timeout: 10000 });
 
-        const loginButton2 = page.locator("button:has-text('開発者ログイン')");
+        const loginButton2 = page.locator("button:has-text('Developer Login')");
         if (await loginButton2.isVisible()) {
             await loginButton2.click();
             await page.waitForTimeout(300);
@@ -49,7 +49,7 @@ test.describe("LNK-0004: 仮ページ通知ボタン", () => {
         await page.goto(`${sourceUrl}${anotherNonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
-        const loginButton3 = page.locator("button:has-text('開発者ログイン')");
+        const loginButton3 = page.locator("button:has-text('Developer Login')");
         if (await loginButton3.isVisible()) {
             await loginButton3.click();
             await page.waitForTimeout(300);
