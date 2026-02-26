@@ -184,11 +184,28 @@ export function runQuery(sql: string) {
     const idx = extended.toUpperCase().lastIndexOf("SELECT");
     currentSelect = idx >= 0 ? extended.slice(idx) : extended;
     const results = db.exec(extended);
-    if (results.length === 0) {
+
+    // Find the last result that has columns (likely the SELECT statement)
+    // In sql.js 1.14.0, 'columns' might be minified to 'lc'
+    let res;
+    for (let i = results.length - 1; i >= 0; i--) {
+        const r = results[i] as unknown as { columns: string[]; lc?: string[]; values: unknown[][]; };
+        if (r.columns) {
+            res = r;
+            break;
+        }
+        if (r.lc) {
+            r.columns = r.lc;
+            res = r;
+            break;
+        }
+    }
+
+    if (!res) {
         queryStore.set({ rows: [], columnsMeta: [] });
         return;
     }
-    const res = results[0];
+
     const pkAliases: Record<string, string> = {};
     res.columns.forEach(col => {
         const m = col.match(/^(\w+)_pk$/);
