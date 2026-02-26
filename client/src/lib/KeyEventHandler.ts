@@ -1017,7 +1017,7 @@ export class KeyEventHandler {
         const boxSelection = selections.find(sel => sel.isBoxSelection);
 
         // Get text of selection range
-        let selectedText: string;
+        let selectedText = "";
         let isBoxSelectionCopy = false;
 
         if (boxSelection) {
@@ -2023,7 +2023,7 @@ export class KeyEventHandler {
         const boxSelection = selections.find(sel => sel.isBoxSelection);
 
         // Get text of selection range
-        let selectedText: string;
+        let selectedText = "";
         let isBoxSelectionCut = false;
 
         if (boxSelection) {

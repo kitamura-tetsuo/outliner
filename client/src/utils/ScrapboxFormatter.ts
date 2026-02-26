@@ -202,6 +202,7 @@ export class ScrapboxFormatter {
                 const startIndex = match.index;
                 const endIndex = startIndex + match[0].length;
                 const content = match[1];
+                const isProjectLink = pattern.type === "internalLink" && pattern.start === "[/";
 
                 // Save URL and label for links
                 if (pattern.type === "link") {
@@ -216,7 +217,6 @@ export class ScrapboxFormatter {
                         url,
                     });
                 } else {
-                    const isProjectLink = pattern.type === "internalLink" && pattern.start === "[/";
                     matches.push({
                         type: pattern.type,
                         start: startIndex,
@@ -360,7 +360,7 @@ export class ScrapboxFormatter {
                             const projectName = parts[0];
                             const pageName = parts.slice(1).join("/");
 
-                            let existsClassTokens: string;
+                            let existsClassTokens = "page-not-exists"; // default for safety
                             try {
                                 existsClassTokens = this.checkPageExists(pageName, projectName)
                                     ? "page-exists"
@@ -489,8 +489,7 @@ export class ScrapboxFormatter {
 
         // Temporarily replace underline tags with placeholders
         const underlinePlaceholders: string[] = [];
-        let tempText: string;
-
+        let tempText = text;
         // Optimization: Skip expensive regex replacement if <u> tag is absent
         // RX_HTML_UNDERLINE is case-sensitive (/<u>...<\/u>/g), so checking for "<u>" is safe
         if (text.includes("<u>")) {
@@ -499,9 +498,9 @@ export class ScrapboxFormatter {
                 underlinePlaceholders.push(content);
                 return placeholder;
             });
-        } else {
-            tempText = text;
         }
+
+        // Global placeholder map (shared between recursive calls)
         const globalPlaceholders: Map<string, string> = new Map();
         let globalPlaceholderIndex = 0;
 
@@ -569,7 +568,7 @@ export class ScrapboxFormatter {
                         const pageName = parts.slice(1).join("/");
 
                         // Add class for page existence check
-                        let existsClass: string;
+                        let existsClass = "page-not-exists"; // default for safety
                         try {
                             existsClass = this.checkPageExists(pageName, projectName)
                                 ? "page-exists"
