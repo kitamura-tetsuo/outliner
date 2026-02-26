@@ -86,7 +86,8 @@ test.describe("CLM-0003: Move to the right", () => {
         await page.keyboard.press("End");
 
         // Wait for cursor to reach the end
-        const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"] .item-text`).textContent();
+        const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"] .item-text`)
+            .textContent();
         const textLength = initialText?.length ?? 0;
 
         await expect.poll(async () => {
@@ -117,11 +118,11 @@ test.describe("CLM-0003: Move to the right", () => {
             const data = await CursorValidator.getCursorData(page);
             return {
                 itemId: data.activeItemId,
-                offset: data.cursorInstances?.[0]?.offset
+                offset: data.cursorInstances?.[0]?.offset,
             };
         }, { timeout: 5000 }).toEqual({
             itemId: secondItemId,
-            offset: 0
+            offset: 0,
         });
 
         // Check cursor information after the key press
