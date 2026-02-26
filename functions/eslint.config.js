@@ -4,9 +4,7 @@ const eslintConfigPrettier = require("eslint-config-prettier");
 
 module.exports = [
   js.configs.recommended,
-  {
-    rules: googleConfig.rules,
-  },
+  googleConfig,
   eslintConfigPrettier,
   {
     languageOptions: {

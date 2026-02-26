@@ -188,19 +188,7 @@ export function runQuery(sql: string) {
         queryStore.set({ rows: [], columnsMeta: [] });
         return;
     }
-    // Find the last result that actually has columns (is a SELECT)
-    // db.exec returns an array of results, one for each statement.
-    // If a statement (like INSERT) has no return value, it might not even be in the list,
-    // or it might be there but without columns.
-    // We want the last SELECT's result.
-    const res = results.reverse().find(r => r.columns && r.columns.length > 0);
-
-    if (!res) {
-        console.warn("SQL execution returned no results with columns. Full results:", JSON.stringify(results));
-        queryStore.set({ rows: [], columnsMeta: [] });
-        return;
-    }
-
+    const res = results[0];
     const pkAliases: Record<string, string> = {};
     res.columns.forEach(col => {
         const m = col.match(/^(\w+)_pk$/);

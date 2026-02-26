@@ -172,24 +172,8 @@ function updateTextareaPosition() {
         const treeContainerRect = treeContainer.getBoundingClientRect();
 
         // Position the textarea using viewport coordinates
-        // Calculate document-relative coordinates
-        // pos.top includes treeContainer.scrollTop, so we remove it to get viewport relative, then add window.scrollY
-        const top = treeContainerRect.top + pos.top - treeContainer.scrollTop + window.scrollY;
-        const left = treeContainerRect.left + pos.left + window.scrollX;
-
-        textareaRef.style.setProperty('left', `${left}px`, 'important');
-        textareaRef.style.setProperty('top', `${top}px`, 'important');
-        
-        // Sync font styles to ensure IME composition underlines perfectly match the text baseline
-        if (itemInfo.fontProperties) {
-            textareaRef.style.setProperty('font-family', itemInfo.fontProperties.fontFamily, 'important');
-            textareaRef.style.setProperty('font-size', itemInfo.fontProperties.fontSize, 'important');
-            textareaRef.style.setProperty('font-weight', itemInfo.fontProperties.fontWeight, 'important');
-            textareaRef.style.setProperty('letter-spacing', itemInfo.fontProperties.letterSpacing, 'important');
-        }
-        if (itemInfo.lineHeight) {
-            textareaRef.style.setProperty('line-height', `${itemInfo.lineHeight}px`, 'important');
-        }
+        textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left}px`, 'important');
+        textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top}px`, 'important');
     } catch (e) {
         console.error("Error in updateTextareaPosition:", e);
     }

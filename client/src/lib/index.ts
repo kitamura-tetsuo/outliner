@@ -21,11 +21,11 @@ if (import.meta.env.MODE === "development") {
                 }
                 // Add URL to the original error message
                 if (error instanceof Error) {
-                    const enhancedError = new Error(`Failed to fetch from ${url}: ${error.message}`, { cause: error });
+                    const enhancedError = new Error(`Failed to fetch from ${url}: ${error.message}`);
                     enhancedError.stack = error.stack;
                     throw enhancedError;
                 } else {
-                    throw new Error(`Failed to fetch from ${url}: Unknown error`, { cause: error });
+                    throw new Error(`Failed to fetch from ${url}: Unknown error`);
                 }
             }
         };

@@ -1,4 +1,3 @@
-import { readFileSync } from "fs";
 import { createRequire } from "module";
 import initSqlJs from "sql.js";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -9,9 +8,7 @@ let db: any;
 const require = createRequire(import.meta.url);
 
 beforeAll(async () => {
-    const wasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
-    const wasmBinary = readFileSync(wasmPath);
-    const SQL = await initSqlJs({ wasmBinary });
+    const SQL = await initSqlJs({ locateFile: () => require.resolve("sql.js/dist/sql-wasm.wasm") });
     db = new SQL.Database();
     db.run("CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER)");
     db.run("INSERT INTO tbl VALUES('a',1)");
