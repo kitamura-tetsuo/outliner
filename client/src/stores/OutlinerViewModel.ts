@@ -6,8 +6,11 @@ const logger = getLogger();
 const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     || import.meta.env.MODE === "test"
     || import.meta.env.VITE_IS_TEST === "true";
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
     if (!__IS_E2E__) console.log(...args);
+};
+const debugError = (...args: unknown[]) => {
+    if (!__IS_E2E__) console.error(...args);
 };
 
 const isItemLike = (obj: any): boolean => {
@@ -72,17 +75,17 @@ export class OutlinerViewModel {
         if (this._isUpdating) return;
 
         if (!pageItem) {
-            console.error("OutlinerViewModel: updateFromModel called with null pageItem");
+            debugError("OutlinerViewModel: updateFromModel called with null pageItem");
             return;
         }
 
         try {
             this._isUpdating = true;
 
-            console.error(
+            debugLog(
                 `OutlinerViewModel: updateFromModel for pageItem.id=${pageItem.id} isItemLike=${isItemLike(pageItem)}`,
             );
-            console.error(
+            debugLog(
                 "OutlinerViewModel: pageItem.items length:",
                 (pageItem.items as any)?.length || 0,
             );
@@ -90,7 +93,7 @@ export class OutlinerViewModel {
             // Update or add existing view models
             this.ensureViewModelsItemExist(pageItem);
 
-            console.error(
+            debugLog(
                 "OutlinerViewModel: viewModels count after ensure:",
                 this.viewModels.size,
             );
@@ -98,12 +101,12 @@ export class OutlinerViewModel {
             // Recalculate display order and depth - start from pageItem itself
             this.recalculateOrderAndDepthItem(pageItem);
 
-            console.error(
+            debugLog(
                 "OutlinerViewModel: visibleOrder length after recalculate:",
                 this.visibleOrder.length,
             );
             if (this.visibleOrder.length === 0) {
-                console.error("OutlinerViewModel: visibleOrder is EMPTY!");
+                debugLog("OutlinerViewModel: visibleOrder is EMPTY!");
             }
         } catch (err) {
             console.error("OutlinerViewModel: Error in updateFromModel:", err);
