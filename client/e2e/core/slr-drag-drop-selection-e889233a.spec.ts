@@ -2,24 +2,24 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0009
- *  Title   : ドラッグ＆ドロップによるテキスト移動
+ *  Title   : Text movement by drag and drop
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
+test.describe("SLR-0009: Drag and drop selection", () => {
     test.beforeEach(async ({ page, context }, testInfo) => {
-        // クリップボードの権限を付与
+        // Grant clipboard permissions
         await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
         await page.evaluate(async () => {
             (window as any).DEBUG_MODE = true;
-            // 他のテストの影響を受けないようにグローバル変数をクリア
+            // Clear global variables to avoid affecting other tests
             delete (window as any).lastCopiedText;
             delete (window as any).lastPastedText;
 
-            // navigator.clipboard もクリア
+            // Also clear navigator.clipboard
             try {
                 await navigator.clipboard.writeText("");
             } catch (e) {
@@ -63,18 +63,18 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         await page.keyboard.press("Home");
     });
 
-    test("テキスト選択範囲をドラッグ＆ドロップで移動できる", async ({ page }) => {
+    test("Can move text selection by drag and drop", async ({ page }) => {
         const itemCount = await page.locator(".outliner-item").count();
         expect(itemCount).toBeGreaterThanOrEqual(3);
         const firstItem = page.locator(".outliner-item").nth(0);
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // カーソルを先頭に移動
+        // Move cursor to the beginning
         await page.keyboard.press("Home");
         await page.waitForTimeout(100);
 
-        // 5文字選択（"First"）
+        // Select 5 characters ("First")
         await page.keyboard.down("Shift");
         for (let i = 0; i < 5; i++) {
             await page.keyboard.press("ArrowRight");
@@ -93,7 +93,7 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
             return store.getSelectedText();
         });
 
-        // デバッグ情報を出力
+        // Output debug information
         console.log(`Selected text: "${selectedText}"`);
         const firstItemTextBefore = await firstItem.locator(".item-text").textContent() || "";
         console.log(`First item text before cut: "${firstItemTextBefore}"`);
@@ -104,7 +104,7 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         await page.keyboard.press("Control+x");
         await page.waitForTimeout(300);
 
-        // カット後の状態を確認
+        // Check state after cut
         const firstItemTextAfterCut = await firstItem.locator(".item-text").textContent() || "";
         console.log(`First item text after cut: "${firstItemTextAfterCut}"`);
 
@@ -113,11 +113,11 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         await thirdItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // カーソルを第三項目に設定
+        // Set cursor to the third item
         await TestHelpers.setCursor(page, thirdId!);
         await page.keyboard.press("End");
 
-        // ペースト前にグローバル変数を確認
+        // Check global variable before paste
         const globalText = await page.evaluate(() => {
             return (window as any).lastCopiedText || "not found";
         });
@@ -126,7 +126,7 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         await page.keyboard.press("Control+v");
         await page.waitForTimeout(300);
 
-        // ペースト後にグローバル変数を確認
+        // Check global variable after paste
         const pastedText = await page.evaluate(() => {
             return (window as any).lastPastedText || "not found";
         });
@@ -135,7 +135,7 @@ test.describe("SLR-0009: 選択範囲のドラッグ＆ドロップ", () => {
         const firstItemTextAfter = await firstItem.locator(".item-text").textContent() || "";
         const thirdItemTextAfter = await thirdItem.locator(".item-text").textContent() || "";
 
-        // デバッグ情報を出力
+        // Output debug information
         console.log(`First item text after paste: "${firstItemTextAfter}"`);
         console.log(`Third item text after paste: "${thirdItemTextAfter}"`);
 
