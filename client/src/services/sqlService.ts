@@ -189,7 +189,7 @@ export function runQuery(sql: string) {
     // In sql.js 1.14.0, 'columns' might be minified to 'lc'
     let res;
     for (let i = results.length - 1; i >= 0; i--) {
-        const r = results[i] as any;
+        const r = results[i] as unknown as { columns: string[]; lc?: string[]; values: unknown[][]; };
         if (r.columns) {
             res = r;
             break;
