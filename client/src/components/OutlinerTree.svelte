@@ -61,18 +61,20 @@
     // Throttle scroll event to improve performance
     let scrollTimeout: number | null = null;
     function handleScroll() {
-        if (!treeContainer || scrollTimeout) return;
+        if (scrollTimeout) return;
 
         scrollTimeout = requestAnimationFrame(() => {
-            if (treeContainer) {
-                showScrollTop = treeContainer.scrollTop > 300;
+            if (typeof window !== "undefined") {
+                showScrollTop = window.scrollY > 300;
             }
             scrollTimeout = null;
         });
     }
 
     function scrollToTop() {
-        treeContainer?.scrollTo({ top: 0, behavior: "smooth" });
+        if (typeof window !== "undefined") {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
         // Move focus back to the tree container or first item for accessibility
         // For now, keeping focus management simple as scrolling doesn't change context significantly
     }
@@ -151,12 +153,19 @@
             currentUser = result?.user.id ?? "anonymous";
         });
         editorOverlayStore.setOnEditCallback(handleEdit);
+        if (typeof window !== "undefined") {
+            window.addEventListener("scroll", handleScroll);
+        }
     });
 
     // Remeasure height in response to changes in visible item count ($effect is unused)
     // Legacy hook assuming update trigger via observeDeep (__displayItemsTick)
 
     onDestroy(() => {
+        if (typeof window !== "undefined") {
+            window.removeEventListener("scroll", handleScroll);
+        }
+
         // Clear onEdit callback
         editorOverlayStore.setOnEditCallback(null);
 
@@ -1811,7 +1820,6 @@
             role="region"
             aria-label="Outliner Tree"
             bind:this={treeContainer}
-            onscroll={handleScroll}
         >
             <!-- Flat display items (static placement) -->
             {#each displayItems as display, index (display.model.id)}
@@ -2022,12 +2030,11 @@
         background: white;
         border: 1px solid #ddd;
         border-radius: 6px;
-        overflow: hidden;
         margin-bottom: 20px;
-        height: calc(100vh - 40px); /* Value calculated by subtracting margin from browser height */
         display: flex;
         flex-direction: column;
         position: relative;
+        min-height: calc(100vh - 140px);
     }
 
     .toolbar {
@@ -2063,8 +2070,6 @@
         padding: 8px 16px;
         position: relative; /* Reference point for absolute positioning of child elements */
         min-height: 100px; /* Set minimum height */
-        flex: 1; /* Use all remaining space */
-        overflow-y: auto; /* Enable scrolling */
     }
 
     .item-container {

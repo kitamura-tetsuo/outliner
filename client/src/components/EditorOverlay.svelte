@@ -172,8 +172,8 @@ function updateTextareaPosition() {
         const treeContainerRect = treeContainer.getBoundingClientRect();
 
         // Position the textarea using viewport coordinates
-        textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left}px`, 'important');
-        textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top}px`, 'important');
+        textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left + window.scrollX}px`, 'important');
+        textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top + window.scrollY}px`, 'important');
     } catch (e) {
         console.error("Error in updateTextareaPosition:", e);
     }
