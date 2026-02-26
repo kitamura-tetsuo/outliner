@@ -326,7 +326,9 @@ pm2 delete all || true
 # Robust port cleanup
 cleanup_ports
 
-npx dprint fmt
+# Use dprint from client dependencies to ensure consistent version and configuration resolution
+# dprint.json is in root, so running from client will walk up to find it
+npm run format --prefix "${ROOT_DIR}/client"
 
 # Kill existing firebase emulators running in background (not managed by PM2)
 if pgrep -f "firebase.*emulators" > /dev/null; then
