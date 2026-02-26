@@ -39,7 +39,8 @@ $effect(() => {
     style={`position:absolute;top:${commandPaletteStore.position.top}px;left:${commandPaletteStore.position.left}px;z-index:1000;display:${commandPaletteStore.isVisible ? 'block' : 'none'};`}
 >
     <ul role="listbox" aria-label="Command suggestions">
-        {#each currentVisible as cmd, i (cmd.type)}
+        <!-- eslint-disable-next-line svelte/require-each-key -->
+        {#each currentVisible as cmd, i}
             <li
                 role="option"
                 aria-selected={i === commandPaletteStore.selectedIndex}
