@@ -326,6 +326,8 @@ pm2 delete all || true
 # Robust port cleanup
 cleanup_ports
 
+npx dprint fmt
+
 # Kill existing firebase emulators running in background (not managed by PM2)
 if pgrep -f "firebase.*emulators" > /dev/null; then
   echo "Stopping existing Firebase emulators..."

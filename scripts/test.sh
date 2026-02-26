@@ -54,6 +54,8 @@ cleanup_e2e_coverage() {
 
 cd "$PROJECT_ROOT"
 
+npx dprint fmt
+
 if [ $# -eq 0 ]; then
   cd "$CLIENT_DIR"
 
