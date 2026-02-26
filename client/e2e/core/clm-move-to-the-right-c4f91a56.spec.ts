@@ -30,29 +30,29 @@ test.describe("CLM-0003: Move to the right", () => {
 
         // Move cursor to the beginning (Home key)
         await page.keyboard.press("Home");
-        await page.waitForTimeout(300);
+
+        // Verify cursor moved to start
+        await expect.poll(async () => {
+            const data = await CursorValidator.getCursorData(page);
+            return data.cursorInstances?.[0]?.offset;
+        }, { timeout: 5000 }).toBe(0);
 
         // Re-acquire cursor information and verify
         cursorData = await CursorValidator.getCursorData(page);
-        expect(cursorData.cursorCount).toBeGreaterThan(0);
-        expect(cursorData.activeItemId).not.toBeNull();
-
-        // Confirm cursor is at the beginning
         const initialOffset = cursorData.cursorInstances?.[0]?.offset;
-        expect(initialOffset).not.toBeUndefined();
+        expect(initialOffset).toBe(0);
 
         // Press Right Arrow key to move cursor one character to the right
         await page.keyboard.press("ArrowRight");
 
-        // Wait for update
-        await page.waitForTimeout(300);
+        // Wait for cursor offset to update
+        await expect.poll(async () => {
+            const data = await CursorValidator.getCursorData(page);
+            return data.cursorInstances?.[0]?.offset;
+        }, { timeout: 5000 }).toBe(initialOffset! + 1);
 
         // Get new cursor information
         const updatedCursorData = await CursorValidator.getCursorData(page);
-        const newOffset = updatedCursorData.cursorInstances?.[0]?.offset;
-
-        // Confirm cursor offset has changed by 1 character (moved right)
-        expect(newOffset).toBe(initialOffset + 1);
 
         // Confirm cursor count remains 1
         expect(updatedCursorData.cursorCount).toBe(1);
@@ -85,8 +85,14 @@ test.describe("CLM-0003: Move to the right", () => {
         // Move cursor to end of line
         await page.keyboard.press("End");
 
-        // Wait a bit longer to confirm cursor movement - wait for End key processing completion
-        await page.waitForTimeout(300);
+        // Wait for cursor to reach the end
+        const initialText = await page.locator(`.outliner-item[data-item-id="${firstItemId}"] .item-text`).textContent();
+        const textLength = initialText?.length ?? 0;
+
+        await expect.poll(async () => {
+            const data = await CursorValidator.getCursorData(page);
+            return data.cursorInstances?.[0]?.offset;
+        }, { timeout: 5000 }).toBe(textLength);
 
         // Get cursor information and confirm it actually moved to the end
         let cursorData = await CursorValidator.getCursorData(page);
@@ -95,31 +101,28 @@ test.describe("CLM-0003: Move to the right", () => {
 
         const initialItemId = cursorData.activeItemId;
         const initialOffset = cursorData.cursorInstances?.[0]?.offset;
-        const initialText = await page.locator(`.outliner-item[data-item-id="${initialItemId}"] .item-text`)
-            .textContent();
+
         console.log(
-            `Before move: ItemID=${initialItemId}, Offset=${initialOffset}, Text Length=${initialText?.length}`,
+            `Before move: ItemID=${initialItemId}, Offset=${initialOffset}, Text Length=${textLength}`,
         );
 
-        // Confirm: Is cursor actually at the end? (Does offset match text length?)
-        expect(initialOffset).toBe(initialText?.length);
-
-        // Press End key again to ensure cursor position is at the end
-        await page.keyboard.press("End");
-        await page.waitForTimeout(200);
-
-        // Re-confirm
-        cursorData = await CursorValidator.getCursorData(page);
-        const confirmedOffset = cursorData.cursorInstances?.[0]?.offset;
-        console.log(`Re-confirm: Offset=${confirmedOffset}, Text Length=${initialText?.length}`);
-        expect(confirmedOffset).toBe(initialText?.length);
+        // Confirm: Is cursor actually at the end?
+        expect(initialOffset).toBe(textLength);
 
         // Press Right Arrow key
         await page.keyboard.press("ArrowRight");
 
-        // Rather than waiting for a fixed time, let's check if the cursor position changes
-        // Wait up to 1 second for any possible change to occur
-        await page.waitForTimeout(300);
+        // Wait for cursor to move to the next item
+        await expect.poll(async () => {
+            const data = await CursorValidator.getCursorData(page);
+            return {
+                itemId: data.activeItemId,
+                offset: data.cursorInstances?.[0]?.offset
+            };
+        }, { timeout: 5000 }).toEqual({
+            itemId: secondItemId,
+            offset: 0
+        });
 
         // Check cursor information after the key press
         cursorData = await CursorValidator.getCursorData(page);
@@ -135,7 +138,6 @@ test.describe("CLM-0003: Move to the right", () => {
 
         // The expected behavior is that when pressing ArrowRight at the end of an item,
         // the cursor should move to the next item at the beginning (offset 0)
-        // If the functionality is not working as expected, we need to document this
         expect(updatedItemId).toBe(secondItemId);
         expect(updatedOffset).toBe(0);
 
