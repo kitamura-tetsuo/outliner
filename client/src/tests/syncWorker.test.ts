@@ -1,5 +1,5 @@
-import { createRequire } from "module";
 import fs from "fs";
+import { createRequire } from "module";
 import initSqlJs from "sql.js";
 import { beforeAll, describe, expect, it } from "vitest";
 import { SyncWorker } from "../services/syncWorker";
