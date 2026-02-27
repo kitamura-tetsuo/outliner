@@ -19,7 +19,7 @@ import Toolbar from "../components/Toolbar.svelte";
 import AliasPicker from "../components/AliasPicker.svelte";
 import Sidebar from "../components/Sidebar.svelte";
 // Defer services import; it depends on UserManager
-import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
+// Removed unused import: userPreferencesStore
 
 
 
@@ -43,7 +43,7 @@ if (browser) {
 
 
 
-let currentTheme = $derived(userPreferencesStore.theme);
+// Removed unused derived state: currentTheme
 
 // Get API server URL
 const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
