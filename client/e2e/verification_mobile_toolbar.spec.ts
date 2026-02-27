@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "./utils/registerCoverageHooks";
+
+registerCoverageHooks();
 
 test("Mobile action toolbar should be visible", async ({ page }) => {
     // Use a mobile viewport size to ensure the mobile toolbar is rendered

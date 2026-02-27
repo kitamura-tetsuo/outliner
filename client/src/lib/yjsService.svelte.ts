@@ -268,6 +268,28 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     }
 
     // 4. Check Firestore Store for Name -> ID mapping (robust cross-device resolution)
+    if (!firestoreStore.isLoaded && !isTestEnvironment() && userManager.getCurrentUser()) {
+        console.log(`[getClientByProjectTitle] Waiting for firestoreStore to load...`);
+        await new Promise<void>((resolve, reject) => {
+            const start = Date.now();
+            const check = () => {
+                if (firestoreStore.isLoaded) {
+                    resolve();
+                } else if (Date.now() - start > 3000) {
+                    reject(
+                        new Error(
+                            "Timeout waiting for project data from the server. Please check your network connection and reload the page.",
+                        ),
+                    );
+                } else {
+                    setTimeout(check, 50);
+                }
+            };
+            check();
+        });
+        console.log(`[getClientByProjectTitle] firestoreStore wait finished. isLoaded=${firestoreStore.isLoaded}`);
+    }
+
     if (firestoreStore.userProject?.projectTitles) {
         for (const [pid, title] of Object.entries(firestoreStore.userProject.projectTitles)) {
             if (title === projectTitle) {

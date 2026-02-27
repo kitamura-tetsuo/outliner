@@ -32,6 +32,9 @@ class GeneralStore {
     // $state recalculation trigger
     public ucVersion = $state(0);
 
+    // Flag indicating if the first snapshot has been received
+    public isLoaded = $state(false);
+
     // Aliases for backwards compatibility
     get userContainer() {
         return this.userProject;
@@ -166,6 +169,7 @@ class GeneralStore {
             this.unsubscribe = onSnapshot(
                 userProjectRef,
                 snapshot => {
+                    firestoreStore.isLoaded = true;
                     if (snapshot.exists()) {
                         const data = snapshot.data();
 
