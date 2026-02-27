@@ -3,6 +3,7 @@ import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { escapeId } from "../utils/domUtils";
+import { yjsService } from "./yjs/service";
 import {
     findNextItem,
     findPreviousItem,
@@ -18,7 +19,6 @@ import {
     selectionSpansMultipleItems,
 } from "./cursor";
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
-import { yjsService } from "./yjs/service";
 
 interface CursorOptions {
     itemId: string;
