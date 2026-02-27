@@ -18,6 +18,7 @@ import {
     selectionSpansMultipleItems,
 } from "./cursor";
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
+import { yjsService } from "./yjs/service";
 
 interface CursorOptions {
     itemId: string;
@@ -551,7 +552,7 @@ export class Cursor implements CursorEditingContext {
                     // Leave paste processing to the browser's default behavior
                     return false;
                 case "ArrowLeft":
-                    this.moveWordLeft();
+                    this.outdent();
                     break;
                 case "ArrowRight":
                     this.moveWordRight();
@@ -712,6 +713,13 @@ export class Cursor implements CursorEditingContext {
                     break;
                 case "Escape":
                     this.clearSelection();
+                    break;
+                case "Tab":
+                    if (event.shiftKey) {
+                        this.outdent();
+                    } else {
+                        this.indent();
+                    }
                     break;
                 default:
                     return false;
@@ -1167,6 +1175,18 @@ export class Cursor implements CursorEditingContext {
 
     altPageDown() {
         if (typeof window !== "undefined") window.scrollBy(0, window.innerHeight);
+    }
+
+    indent() {
+        if (generalStore.project) {
+            yjsService.indentItem(generalStore.project, this.itemId);
+        }
+    }
+
+    outdent() {
+        if (generalStore.project) {
+            yjsService.outdentItem(generalStore.project, this.itemId);
+        }
     }
 
     // Formatting methods are defined below
