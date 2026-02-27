@@ -2,18 +2,18 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature CLM-0004
- *  Title   : 上へ移動
+ *  Title   : Move Up
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("CLM-0004: 上へ移動", () => {
+test.describe("CLM-0004: Move Up", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed test data directly to avoid slow keyboard input
         const longText =
-            "これは非常に長いテキストです。折り返しによって複数行になります。アイテムの幅に応じて自動的に折り返されて表示されるはずです。このテキストは十分に長いので、標準的な画面幅であれば少なくとも2行以上になるはずです。";
+            "This is a very long text designed to test cursor movement across multiple visual lines. It should wrap automatically based on the item width. We need enough text to ensure at least two lines are rendered on standard screen widths. This sentence is added to extend the length further and guarantee that the cursor can move up from the second line to the first line correctly.";
         await TestHelpers.prepareTestEnvironment(page, testInfo, [longText]);
 
         // Click on the first item (the seeded page title) to focus it
@@ -26,22 +26,22 @@ test.describe("CLM-0004: 上へ移動", () => {
             await visibleItems.first().locator(".item-content").click({ force: true });
         }
 
-        // カーソルが表示されるまで待機
+        // Wait until the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
     });
 
-    test("カーソルを1行上に移動する", async ({ page }) => {
-        // デバッグモードを有効にする
+    test("Move cursor up one line", async ({ page }) => {
+        // Enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
 
-        // カーソルデータを取得して確認
+        // Get cursor data and verify
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBeGreaterThan(0);
         expect(cursorData.activeItemId).not.toBeNull();
 
-        // アクティブなアイテムの高さを確認して複数行になっているかチェック
+        // Check the height of the active item to verify it spans multiple lines
         const itemHeight = await page.locator(`.outliner-item[data-item-id="${cursorData.activeItemId}"]`).locator(
             ".item-content",
         ).evaluate(el => {
@@ -52,15 +52,15 @@ test.describe("CLM-0004: 上へ移動", () => {
             return { height: rect.height, lineHeight, estimatedLines };
         });
 
-        console.log(`アイテムの高さ情報:`, itemHeight);
+        console.log(`Item height info:`, itemHeight);
 
-        // 複数行になっていることを確認
+        // Confirm it spans multiple lines
         expect(itemHeight.estimatedLines).toBeGreaterThan(1);
 
-        // カーソルを2行目に移動するため、まず行の先頭に移動
+        // To move the cursor to the second line, first move to the beginning of the line
         await page.keyboard.press("Home");
-        // 確実に2行目に到達するように60文字右に移動（1行目は0-49なので50文字目以降が2行目）
-        for (let i = 0; i < 60; i++) {
+        // Move 150 characters right to ensure reaching the second line (given English text width)
+        for (let i = 0; i < 150; i++) {
             await page.keyboard.press("ArrowRight");
         }
         await page.waitForTimeout(100);
@@ -77,13 +77,13 @@ test.describe("CLM-0004: 上へ移動", () => {
         const cursor = page.locator(".editor-overlay .cursor").first();
         await expect(cursor).toBeVisible({ timeout: 15000 });
 
-        // 初期カーソル位置とオフセットを取得
+        // Get initial cursor position and offset
         const initialPosition = await cursor.boundingBox();
         const initialOffset = await cursor.evaluate(el => parseInt(el.getAttribute("data-offset") || "-1"));
-        console.log(`初期カーソル位置:`, initialPosition);
-        console.log(`初期オフセット: ${initialOffset}`);
+        console.log(`Initial cursor position:`, initialPosition);
+        console.log(`Initial offset: ${initialOffset}`);
 
-        // 視覚的な行の情報をテスト
+        // Test visual line information
         const visualLineInfo = await page.evaluate(({ itemId, offset }: { itemId: string; offset: number; }) => {
             const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
             if (!itemElement) return null;
@@ -96,7 +96,7 @@ test.describe("CLM-0004: 上へ移動", () => {
             console.log(`Text length: ${text.length}`);
             console.log(`Current offset: ${offset}`);
 
-            // Range API を使用して視覚的な行を判定
+            // Determine visual lines using Range API
             const textNode = Array.from(textElement.childNodes).find(node => node.nodeType === Node.TEXT_NODE) as Text;
             if (!textNode) return null;
 
@@ -104,7 +104,7 @@ test.describe("CLM-0004: 上へ移動", () => {
             let currentLineY: number | null = null;
             let currentLineStart = 0;
 
-            // 10文字ごとにサンプリング
+            // Sample every 10 characters
             const step = 10;
 
             for (let i = 0; i <= text.length; i += step) {
@@ -121,8 +121,8 @@ test.describe("CLM-0004: 上へ移動", () => {
 
                 if (currentLineY === null) {
                     currentLineY = y;
-                } else if (Math.abs(y - currentLineY) > 5) { // 5px以上の差があれば新しい行
-                    // 新しい行が始まった
+                } else if (Math.abs(y - currentLineY) > 5) { // If difference is greater than 5px, it's a new line
+                    // New line started
                     lines.push({
                         startOffset: currentLineStart,
                         endOffset: actualOffset - 1,
@@ -134,7 +134,7 @@ test.describe("CLM-0004: 上へ移動", () => {
                 }
             }
 
-            // 最後の行を追加
+            // Add the last line
             if (currentLineY !== null) {
                 lines.push({
                     startOffset: currentLineStart,
@@ -148,29 +148,29 @@ test.describe("CLM-0004: 上へ移動", () => {
             return { lines, totalLines: lines.length };
         }, { itemId: cursorData.activeItemId, offset: initialOffset });
 
-        console.log(`視覚的な行の情報:`, visualLineInfo);
+        console.log(`Visual line info:`, visualLineInfo);
 
-        // 上矢印キーを押下
+        // Press Up Arrow key
         await page.keyboard.press("ArrowUp");
-        // 更新を待機
+        // Wait for update
         await page.waitForTimeout(500);
 
-        // 新しいカーソル位置を取得
+        // Get new cursor position
         const newPosition = await cursor.boundingBox();
         const newOffset = await cursor.evaluate(el => parseInt(el.getAttribute("data-offset") || "-1"));
-        console.log(`新しいカーソル位置:`, newPosition);
-        console.log(`新しいオフセット: ${newOffset}`);
+        console.log(`New cursor position:`, newPosition);
+        console.log(`New offset: ${newOffset}`);
 
-        // カーソルが上に移動したことを確認
+        // Verify cursor moved up
         if (newPosition && initialPosition) {
             if (newPosition.y < initialPosition.y) {
-                console.log("✓ カーソルが上に移動しました");
+                console.log("✓ Cursor moved up");
             } else if (newPosition.y === initialPosition.y && newPosition.x !== initialPosition.x) {
-                console.log("⚠ カーソルは同じ行内で移動しました（視覚的な行の移動が機能していない可能性）");
-                // 視覚的な行の移動が実装されていない場合は、オフセットの変化で確認
+                console.log("⚠ Cursor moved within the same line (visual line movement might not be working)");
+                // If visual line movement is not implemented, verify by offset change
                 expect(newOffset).not.toBe(initialOffset);
             } else {
-                console.log("✗ カーソルが移動していません");
+                console.log("✗ Cursor did not move");
                 // The original error occurred when both positions were exactly equal (381.390625)
                 // causing .toBeLessThan() to fail since 381.390625 is not < 381.390625.
                 // For the test to pass while addressing the precision issue, we should check if
