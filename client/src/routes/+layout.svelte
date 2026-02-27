@@ -470,13 +470,6 @@ onDestroy(async () => {
     <div id="main-content" class="main-content" class:with-sidebar={isSidebarOpen} tabindex="-1" style="outline: none;">
         {@render children()}
     </div>
-
-    <button
-        class="theme-toggle fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
-        onclick={() => userPreferencesStore.toggleTheme()}
-    >
-        {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
-    </button>
 </div>
 
 <style>
@@ -522,11 +515,6 @@ onDestroy(async () => {
 
 :global(html.dark) .sidebar-toggle:hover {
     background-color: #1e40af;
-}
-
-/* Theme toggle button - ensure it's above the sidebar */
-.theme-toggle {
-    z-index: 50;
 }
 
 /* Skip link for accessibility */

@@ -15,6 +15,10 @@ test.describe("THM-0001: Dark mode theme toggle", () => {
 
     test("toggle dark mode", async ({ page }) => {
         await expect(page.evaluate(() => document.documentElement.classList.contains("dark"))).resolves.toBe(false);
+
+        // navigate to settings page
+        await page.goto("/settings");
+
         await page.getByRole("button", { name: "Dark Mode" }).click();
         await expect(page.evaluate(() => document.documentElement.classList.contains("dark"))).resolves.toBe(true);
     });
