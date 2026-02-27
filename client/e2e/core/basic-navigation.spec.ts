@@ -17,11 +17,11 @@ test.describe("Basic Navigation Debug", () => {
             console.log("Debug: Successfully navigated to home page");
             console.log("Debug: Page URL after navigation:", page.url());
 
-            // ページタイトルを確認
+            // Check the page title
             const title = await page.title();
             console.log("Debug: Page title:", title);
 
-            // ページが読み込まれたことを確認
+            // Verify that the page has loaded
             await expect(page).toHaveURL(/.*(localhost|127\.0\.0\.1):7090.*/);
         } catch (error) {
             console.error("Debug: Navigation failed:", error);
