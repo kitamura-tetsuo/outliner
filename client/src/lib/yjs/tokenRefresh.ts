@@ -47,7 +47,17 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
             const config = provider.configuration as any;
             if (config?.url && typeof config.url === "string") {
                 const urlObj = new URL(config.url);
-                urlObj.searchParams.set("token", t);
+                if (t && urlObj.searchParams.get("token") === t) {
+                    console.log("[tokenRefresh] Token already up to date in URL, skipping refresh");
+                    return;
+                }
+
+                if (t) {
+                    urlObj.searchParams.set("token", t);
+                } else {
+                    urlObj.searchParams.delete("token");
+                }
+
                 config.url = urlObj.toString();
                 if ((provider as TokenRefreshableProvider).url) {
                     (provider as TokenRefreshableProvider).url = config.url;

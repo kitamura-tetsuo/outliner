@@ -194,24 +194,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     }
 
     // HocuspocusProvider uses a token function for dynamic token refresh
-    // eslint-disable-next-line prefer-const
-    let provider: HocuspocusProvider;
     const tokenFn = async () => {
         try {
-            const t = await getFreshIdToken();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const config = provider.configuration as any;
-            if (provider && config?.url && typeof config.url === "string" && t) {
-                const urlObj = new URL(config.url);
-                urlObj.searchParams.set("token", t);
-                config.url = urlObj.toString();
-                // Also update the provider.url property if it exists
-                if ((provider as TokenRefreshableProvider).url) {
-                    (provider as TokenRefreshableProvider).url = config.url;
-                }
-                console.log("[createProjectConnection] Updated provider URL with fresh token");
-            }
-            return t;
+            return await getFreshIdToken();
         } catch {
             return "";
         }
@@ -223,7 +208,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         initialToken = await getFreshIdToken();
     } catch {}
 
-    provider = new HocuspocusProvider({
+    const provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
@@ -347,25 +332,9 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         } catch { /* no-op in Node */ }
     }
 
-    // HocuspocusProvider uses a token function for dynamic token refresh
-    // eslint-disable-next-line prefer-const
-    let provider: HocuspocusProvider;
     const tokenFn = async () => {
         try {
-            const t = await getFreshIdToken();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const config = provider.configuration as any;
-            if (provider && config?.url && typeof config.url === "string" && t) {
-                const urlObj = new URL(config.url);
-                urlObj.searchParams.set("token", t);
-                config.url = urlObj.toString();
-                // Also update the provider.url property if it exists
-                if ((provider as TokenRefreshableProvider).url) {
-                    (provider as TokenRefreshableProvider).url = config.url;
-                }
-                console.log("[connectProjectDoc] Updated provider URL with fresh token");
-            }
-            return t;
+            return await getFreshIdToken();
         } catch (e) {
             console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
             return "";
@@ -380,7 +349,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
     }
 
-    provider = new HocuspocusProvider({
+    const provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
@@ -419,23 +388,9 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         } catch { /* no-op in Node */ }
     }
 
-    // HocuspocusProvider uses a token function for dynamic token refresh
-    // eslint-disable-next-line prefer-const
-    let provider: HocuspocusProvider;
     const tokenFn = async () => {
         try {
-            const t = await getFreshIdToken();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const config = provider.configuration as any;
-            if (provider && config?.url && typeof config.url === "string" && t) {
-                const urlObj = new URL(config.url);
-                urlObj.searchParams.set("token", t);
-                config.url = urlObj.toString();
-                if ((provider as TokenRefreshableProvider).url) {
-                    (provider as TokenRefreshableProvider).url = config.url;
-                }
-            }
-            return t;
+            return await getFreshIdToken();
         } catch {
             return "";
         }
@@ -447,7 +402,7 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         initialToken = await getFreshIdToken();
     } catch {}
 
-    provider = new HocuspocusProvider({
+    const provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
