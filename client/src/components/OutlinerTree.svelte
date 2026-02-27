@@ -57,6 +57,7 @@
 
     let treeContainer = $state<HTMLDivElement | null>(null);
     let showScrollTop = $state(false);
+    let mobileToolbarBottomOffset = $state(0);
 
     // Throttle scroll event to improve performance
     let scrollTimeout: number | null = null;
@@ -70,6 +71,35 @@
             scrollTimeout = null;
         });
     }
+
+    // Visual Viewport logic for mobile keyboard
+    function handleVisualViewportResize() {
+        if (typeof window === "undefined" || !window.visualViewport) return;
+        const vv = window.visualViewport;
+        // In iOS Safari, the layout viewport often does not shrink when the keyboard opens,
+        // but the visual viewport does. We calculate the difference to push the toolbar up.
+        // offsetTop is usually 0 unless scrolled within visual viewport, but good to include.
+        const offset = window.innerHeight - vv.height - vv.offsetTop;
+        // Clamp to 0 to prevent issues on desktop or when keyboard is hidden
+        mobileToolbarBottomOffset = Math.max(0, offset);
+    }
+
+    // Register visualViewport listeners separately from the main onMount logic
+    // to keep concerns separated and avoid conflict with the return cleanup of the main onMount.
+    // (Svelte 5 supports multiple onMount calls)
+    onMount(() => {
+        if (typeof window !== "undefined" && window.visualViewport) {
+            window.visualViewport.addEventListener("resize", handleVisualViewportResize);
+            window.visualViewport.addEventListener("scroll", handleVisualViewportResize);
+            handleVisualViewportResize(); // Initial check
+        }
+        return () => {
+            if (typeof window !== "undefined" && window.visualViewport) {
+                window.visualViewport.removeEventListener("resize", handleVisualViewportResize);
+                window.visualViewport.removeEventListener("scroll", handleVisualViewportResize);
+            }
+        };
+    });
 
     function scrollToTop() {
         if (typeof window !== "undefined") {
@@ -1901,6 +1931,7 @@
     data-testid="mobile-action-toolbar"
     role="toolbar"
     aria-label="Mobile Action Toolbar"
+    style="bottom: {mobileToolbarBottomOffset}px"
 >
     <button
         class="mobile-toolbar-btn"
