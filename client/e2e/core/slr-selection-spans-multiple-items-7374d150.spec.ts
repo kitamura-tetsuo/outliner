@@ -3,67 +3,67 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 // @ts-nocheck
 /** @feature SLR-0005
- *  Title   : 複数アイテムにまたがる選択
+ *  Title   : Selection spanning multiple items
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
+test.describe("SLR-0005: Selection spanning multiple items", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // 最初のアイテムを選択
+        // Select the first item
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
-        // カーソルが表示されるまで待機
+        // Wait until the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // テスト用のテキストを入力
+        // Enter test text
         await page.keyboard.type("First item text");
 
-        // 2つ目のアイテムを作成
+        // Create the second item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second item text");
 
-        // 3つ目のアイテムを作成
+        // Create the third item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Third item text");
 
-        // 最初のアイテムに戻る
+        // Return to the first item
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("Home");
     });
 
-    test("Shift+上下キーで複数アイテムにまたがる選択範囲を作成できる", async ({ page }) => {
-        // デバッグモードを有効化
+    test("Can create a selection spanning multiple items using Shift + Up/Down keys", async ({ page }) => {
+        // Enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
 
-        // カーソルが表示されるまで待機
+        // Wait until the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // アクティブなアイテムIDを取得
+        // Get active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
         expect(activeItemId).not.toBeNull();
 
-        // アクティブなアイテムを取得
+        // Get active item
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`);
         await activeItem.waitFor({ state: "visible" });
 
-        // 初期状態では選択範囲がないことを確認
+        // Verify that there is no selection initially
         const initialSelectionExists = await page.evaluate(() => {
             return document.querySelector(".editor-overlay .selection") !== null;
         });
         expect(initialSelectionExists).toBe(false);
 
-        // 現在のカーソル位置を確認
+        // Check current cursor position
         const initialCursorInfo = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return null;
@@ -72,7 +72,7 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         });
         console.log("Initial cursor position:", initialCursorInfo);
 
-        // アイテムの情報を確認
+        // Check item information
         await page.evaluate(() => {
             const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
             const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
@@ -83,34 +83,34 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
             console.log("All items:", allItemIds.map((id, i) => ({ id, text: allItemTexts[i] })));
         });
 
-        // 最初のアイテムをクリックして選択
+        // Click the first item to select
         const firstItem = page.locator(".outliner-item").nth(0);
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // Shift + 下矢印キーを2回押下して3つのアイテムを選択
+        // Press Shift + Down arrow key twice to select three items
         await page.keyboard.down("Shift");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.up("Shift");
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait briefly for the selection to be reflected
         await page.waitForTimeout(300);
 
-        // 選択範囲が作成されたことを確認
+        // Verify that a selection has been created
         await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait briefly for the selection to be reflected
         await page.waitForTimeout(300);
 
-        // 選択範囲の情報を確認
+        // Check selection information
         await page.evaluate(() => {
             console.log(
                 "Selections after second arrow down:",
                 Object.values((window as any).editorOverlayStore.selections),
             );
 
-            // 選択範囲の詳細情報を表示
+            // Display detailed selection information
             const sel = Object.values((window as any).editorOverlayStore.selections)[0] as any;
             if (sel) {
                 const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
@@ -128,50 +128,50 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
             }
         });
 
-        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
+        // Get selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // 選択範囲が存在することを確認
+        // Verify that a selection exists
         expect(selectionText.length).toBeGreaterThan(0);
 
-        // 少なくとも2つのアイテムのテキストが含まれていることを確認
-        // テキストの一部が含まれているかを確認（完全一致ではなく部分一致）
+        // Verify that text from at least two items is included
+        // Check if part of the text is included (partial match, not exact)
         const containsSecondItem = selectionText.includes("Second item");
         const containsThirdItem = selectionText.includes("Third item");
 
         console.log(`Contains second item: ${containsSecondItem}`);
         console.log(`Contains third item: ${containsThirdItem}`);
 
-        // どちらかのアイテムのテキストが含まれていればOK
+        // OK if text from either item is included
         expect(containsSecondItem || containsThirdItem).toBe(true);
 
-        // デバッグモードを無効化
+        // Disable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = false;
         });
     });
 
-    test("マウスドラッグで複数アイテムにまたがる選択範囲を作成できる", async ({ page }) => {
-        // デバッグモードを有効化
+    test("Can create a selection spanning multiple items by mouse drag", async ({ page }) => {
+        // Enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
 
-        // カーソルが表示されるまで待機
+        // Wait until the cursor is visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // 最初のアイテムを取得
+        // Get the first item
         const firstItem = page.locator(".outliner-item").nth(0);
 
-        // 最初のアイテムをクリックして選択状態をリセット
+        // Click the first item to reset selection state
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // キーボードで複数アイテムにまたがる選択範囲を作成（マウスドラッグの代わりに）
+        // Create a selection spanning multiple items using keyboard (instead of mouse drag)
         await page.keyboard.press("Home");
         await page.keyboard.down("Shift");
         await page.keyboard.press("ArrowDown");
@@ -179,17 +179,17 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
         await page.keyboard.press("End");
         await page.keyboard.up("Shift");
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait briefly for the selection to be reflected
         await page.waitForTimeout(800);
 
-        // 選択範囲の情報を確認
+        // Check selection information
         await page.evaluate(() => {
             console.log(
                 "Selections after keyboard selection:",
                 Object.values((window as any).editorOverlayStore.selections),
             );
 
-            // 選択範囲の詳細情報を表示
+            // Display detailed selection information
             const sel = Object.values((window as any).editorOverlayStore.selections)[0] as any;
             if (sel) {
                 const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
@@ -213,64 +213,64 @@ test.describe("SLR-0005: 複数アイテムにまたがる選択", () => {
             }
         });
 
-        // 選択範囲が作成されたことを確認
+        // Verify that a selection has been created
         await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
 
-        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
+        // Get selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // 選択範囲が存在することを確認
+        // Verify that a selection exists
         expect(selectionText.length).toBeGreaterThan(0);
 
-        // 少なくとも1つのアイテムのテキストが含まれていることを確認
+        // Verify that text from at least one item is included
         const containsFirstItem = selectionText.includes("First");
         const containsSecondItem = selectionText.includes("Second");
         const containsThirdItem = selectionText.includes("Third");
         expect(containsFirstItem || containsSecondItem || containsThirdItem).toBe(true);
 
-        // デバッグモードを無効化
+        // Disable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = false;
         });
     });
 
-    test("複数アイテムにまたがる選択範囲が視覚的に表示される", async ({ page }) => {
-        // 最初のアイテムを取得
+    test("Selection spanning multiple items is visually displayed", async ({ page }) => {
+        // Get the first item
         const firstItem = page.locator(".outliner-item").nth(0);
 
-        // 最初のアイテムをクリックして選択
+        // Click the first item to select
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // Shift + 下矢印キーを2回押下して3つのアイテムを選択
+        // Press Shift + Down arrow key twice to select three items
         await page.keyboard.down("Shift");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.up("Shift");
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait briefly for the selection to be reflected
         await page.waitForTimeout(300);
 
-        // 選択範囲の要素が存在することを確認
+        // Verify that selection elements exist
         const selectionElements = page.locator(".editor-overlay .selection");
 
-        // 少なくとも1つの選択範囲要素が表示されていることを確認
+        // Verify that at least one selection element is visible
         const count = await selectionElements.count();
         expect(count).toBeGreaterThan(0);
 
-        // 最初の選択範囲要素が表示されていることを確認
+        // Verify that the first selection element is visible
         await expect(selectionElements.first()).toBeVisible();
 
-        // 選択範囲の要素のスタイルを確認
+        // Check the style of the selection element
         const backgroundColor = await selectionElements.first().evaluate(el => {
             return window.getComputedStyle(el).backgroundColor;
         });
 
-        // 背景色が設定されていることを確認（rgba形式の値）
+        // Verify that background color is set (rgba format value)
         expect(backgroundColor).toMatch(/rgba\(.*\)/);
     });
 });
