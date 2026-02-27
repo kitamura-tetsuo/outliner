@@ -19,7 +19,7 @@ test.describe("LNK-0004: Temporary Page Display", () => {
         await page.goto(`${sourceUrl}${nonExistentPage}`);
         await page.waitForSelector("body", { timeout: 10000 });
 
-        const loginButton = page.locator("button:has-text('開発者ログイン')");
+        const loginButton = page.locator("button:has-text('Developer Login')");
         if (await loginButton.isVisible()) {
             await loginButton.click();
             await page.waitForTimeout(300);
