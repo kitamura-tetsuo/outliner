@@ -17,6 +17,9 @@ test.describe("THM-0002: Dark mode preference persists", () => {
         // initial state should be light mode
         await expect(page.evaluate(() => document.documentElement.classList.contains("dark"))).resolves.toBe(false);
 
+        // navigate to settings page
+        await page.goto("/settings");
+
         // enable dark mode
         await page.getByRole("button", { name: "Dark Mode" }).click();
         await expect(page.evaluate(() => document.documentElement.classList.contains("dark"))).resolves.toBe(true);

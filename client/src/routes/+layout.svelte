@@ -19,7 +19,7 @@ import Toolbar from "../components/Toolbar.svelte";
 import AliasPicker from "../components/AliasPicker.svelte";
 import Sidebar from "../components/Sidebar.svelte";
 // Defer services import; it depends on UserManager
-import { userPreferencesStore } from "../stores/UserPreferencesStore.svelte";
+// Removed unused import: userPreferencesStore
 
 
 
@@ -43,7 +43,7 @@ if (browser) {
 
 
 
-let currentTheme = $derived(userPreferencesStore.theme);
+// Removed unused derived state: currentTheme
 
 // Get API server URL
 const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
@@ -470,13 +470,6 @@ onDestroy(async () => {
     <div id="main-content" class="main-content" class:with-sidebar={isSidebarOpen} tabindex="-1" style="outline: none;">
         {@render children()}
     </div>
-
-    <button
-        class="theme-toggle fixed bottom-4 right-4 p-2 rounded bg-gray-200 dark:bg-gray-700"
-        onclick={() => userPreferencesStore.toggleTheme()}
-    >
-        {currentTheme === "light" ? "Dark Mode" : "Light Mode"}
-    </button>
 </div>
 
 <style>
@@ -522,11 +515,6 @@ onDestroy(async () => {
 
 :global(html.dark) .sidebar-toggle:hover {
     background-color: #1e40af;
-}
-
-/* Theme toggle button - ensure it's above the sidebar */
-.theme-toggle {
-    z-index: 50;
 }
 
 /* Skip link for accessibility */
