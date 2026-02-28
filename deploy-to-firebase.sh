@@ -9,11 +9,17 @@ fi
 
 echo "2. Building client application..."
 cd client
+npm install
 cp .env.firebase .env
 npm run build
 cd ..
 
-echo "3. Deploying Firebase Functions and Hosting..."
+echo "3. Preparing functions..."
+cd functions
+npm install
+cd ..
+
+echo "4. Deploying Firebase Functions and Hosting..."
 firebase deploy
 
 echo "Deployment completed!"

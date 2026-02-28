@@ -199,14 +199,14 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         initialToken = await getFreshIdToken();
     } catch {}
 
-    // Omit `token` configuration.
-    // Setting `token` causes HocuspocusProvider to send a Type 4 'Auth' message and wait for an 'Authenticated' response.
+    // Send a dummy `token` to satisfy HocuspocusServer's unconditional wait for a `MessageType.Auth` message.
     // Since our backend completely handles authentication during the HTTP WebSocket Upgrade via the URL `?token=` parameter,
-    // the server suppresses the `onAuthenticate` hook, so we skip the payload auth to avoid a deadlock!
+    // the server suppresses the `onAuthenticate` hook, but still expects the client to trigger the Auth flow!
     const provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
+        token: "1",
     });
     console.log(
         `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}`,
@@ -365,6 +365,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
+        token: "1",
     });
     const awareness = provider.awareness;
 
@@ -416,11 +417,12 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         initialToken = await getFreshIdToken();
     } catch {}
 
-    // Omit `token` for the same reason as in createProjectConnection
+    // Send a dummy `token` for the same reason as in createProjectConnection
     const provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
+        token: "1",
     });
     // HocuspocusProvider connects automatically, no need to call connect()
 

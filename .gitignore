@@ -115,3 +115,5 @@ server/ydb
 client/.eslintcache
 server/db
 .jdk/
+server/.env.production
+.codex-setup-installed
