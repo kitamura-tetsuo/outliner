@@ -79,15 +79,9 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
 
             if (status === "disconnected" || status === "connecting") {
                 console.log(`[tokenRefresh] Provider ${status}, ensuring connection`);
-                // If currently connecting, disconnect first to ensure we use the fresh token
-                // (the previous attempt might have used an old/expired token)
                 if (status === "connecting") {
-                    try {
-                        provider.disconnect();
-                        console.log("[tokenRefresh] Interrupted connecting state to force fresh token");
-                    } catch (e) {
-                        console.warn("[tokenRefresh] Disconnect failed:", e);
-                    }
+                    console.log("[tokenRefresh] Already connecting, letting it finish");
+                    return;
                 }
 
                 try {

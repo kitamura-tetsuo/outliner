@@ -202,8 +202,16 @@ export class Items {
     ) {}
 
     private childrenKeys(): string[] {
-        const children = this.tree.getNodeChildrenFromKey(this.parentKey);
-        return this.tree.sortChildrenByOrder(children, this.parentKey);
+        try {
+            const children = this.tree.getNodeChildrenFromKey(this.parentKey);
+            return this.tree.sortChildrenByOrder(children, this.parentKey);
+        } catch (e) {
+            // Handle missing root node gracefully during initial sync/loading
+            if (this.parentKey === "root") {
+                return [];
+            }
+            throw e;
+        }
     }
 
     get length(): number {

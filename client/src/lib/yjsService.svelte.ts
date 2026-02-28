@@ -291,12 +291,30 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     }
 
     if (firestoreStore.userProject?.projectTitles) {
+        const matches: string[] = [];
         for (const [pid, title] of Object.entries(firestoreStore.userProject.projectTitles)) {
             if (title === projectTitle) {
-                console.log(`[getClientByProjectTitle] Found ID in firestoreStore: ${pid}`);
-                projectId = pid;
-                break;
+                matches.push(pid);
             }
+        }
+
+        if (matches.length > 0) {
+            if (matches.length > 1) {
+                console.warn(
+                    `[getClientByProjectTitle] Multiple IDs found for title "${projectTitle}": ${matches.join(", ")}`,
+                );
+            }
+
+            // If we have multiple, prefer one that is already in registry
+            const user = userManager.getCurrentUser();
+            const userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
+            const registryMatch = matches.find(pid => {
+                const k = userId ? keyFor(userId, pid) : undefined;
+                return k && registry.has(k);
+            });
+
+            projectId = registryMatch || matches[0];
+            console.log(`[getClientByProjectTitle] Selected ID: ${projectId}`);
         }
     }
 

@@ -547,9 +547,14 @@ if (typeof window !== "undefined") {
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
         || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
-    // Enable automatic sync in E2E test environment (or allow manual call)
-    // Want to exclude only unit tests
-    const shouldAutoSync = !__isTestEnv || (typeof window !== "undefined" && (window as any).__E2E__ === true);
+    const isProd = import.meta.env.MODE === "production" || process.env.NODE_ENV === "production";
+
+    // Enable automatic sync if:
+    // 1) It's production (always sync in prod)
+    // 2) OR it's not a test environment
+    // 3) OR it's an E2E test
+    const shouldAutoSync = isProd || !__isTestEnv
+        || (typeof window !== "undefined" && (window as any).__E2E__ === true);
 
     if (shouldAutoSync) {
         let cleanup: (() => void) | null = null;
@@ -577,5 +582,9 @@ if (typeof window !== "undefined") {
             }
             unsubscribeAuth();
         });
+    } else {
+        console.warn(
+            "[firestoreStore] Firestore sync is DISABLED because environment is identified as non-E2E test environment. (isProd=false, isTest=true)",
+        );
     }
 }
