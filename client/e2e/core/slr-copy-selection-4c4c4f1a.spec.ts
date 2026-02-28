@@ -2,22 +2,22 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0006
- *  Title   : 複数アイテム選択範囲のコピー＆ペースト
+ *  Title   : Copy and paste selection across multiple items
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペースト", () => {
+test.describe("SLR-0006: Copy and paste selection across multiple items", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // ページタイトルを優先的に使用
+        // Prioritize page title
         const item = page.locator(".outliner-item.page-title");
 
-        // ページタイトルが見つからない場合は、表示されている最初のアイテムを使用
+        // If page title is not found, use the first visible item
         if (await item.count() === 0) {
-            // テキスト内容で特定できるアイテムを探す
+            // Find an item that can be identified by text content
             const visibleItems = page.locator(".outliner-item").filter({ hasText: /.*/ });
             await visibleItems.first().locator(".item-content").click({ force: true });
         } else {
@@ -26,56 +26,56 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
-        // テスト用のテキストを入力
+        // Input text for testing
         await page.keyboard.type("First item text");
 
-        // 2つ目のアイテムを作成
+        // Create a second item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second item text");
 
-        // 3つ目のアイテムを作成
+        // Create a third item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Third item text");
 
-        // 最初のアイテムに戻る
+        // Return to the first item
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("Home");
 
-        // デバッグモードを再度有効化
+        // Re-enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
     });
 
-    test("複数アイテムにまたがる選択範囲のテキストをコピーできる", async ({ page }) => {
-        // 最初のアイテムを取得
+    test("Can copy text from a selection spanning multiple items", async ({ page }) => {
+        // Get the first item
         const firstItem = page.locator(".outliner-item").nth(0);
 
-        // 最初のアイテムをクリックして選択
+        // Click the first item to select it
         await firstItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // デバッグモードを有効化
+        // Enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 
-        // 2つ目のアイテムをクリックして選択
+        // Click the second item to select it
         const secondItem = page.locator(".outliner-item").nth(1);
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // Shift + 下矢印キーを押下して2つのアイテムを選択
-        // 選択範囲を手動で作成
+        // Press Shift + Down Arrow to select two items
+        // Create selection manually
         await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
-            // 最初と2つ目のアイテムを選択
+            // Select the first and second items
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 2) return;
 
@@ -84,7 +84,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
 
             if (!firstItemId || !secondItemId) return;
 
-            // 選択範囲を設定
+            // Set selection
             store.setSelection({
                 startItemId: firstItemId,
                 startOffset: 0,
@@ -97,45 +97,45 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
             console.log("Selection created manually");
         });
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait briefly for selection to be applied
         await page.waitForTimeout(300);
 
-        // TestHelpersクラスが正しくインポートされているかを確認
+        // Verify TestHelpers class is imported correctly
         console.log("TestHelpers:", TestHelpers);
 
-        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
+        // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // 選択範囲が存在することを確認
+        // Verify selection exists
         console.log("Selection text:", selectionText);
         expect(selectionText || "").toBeTruthy();
 
-        // コピー操作を実行
+        // Execute copy operation
         await page.keyboard.press("Control+c");
 
-        // 新しいアイテムを追加
+        // Add a new item
         await page.keyboard.press("End");
         await page.keyboard.press("Enter");
 
-        // ペースト操作を実行
+        // Execute paste operation
         await page.keyboard.press("Control+v");
 
-        // KeyEventHandlerのhandlePasteを直接呼び出す
+        // Call KeyEventHandler.handlePaste directly
         await page.evaluate(async text => {
             console.log("Calling KeyEventHandler.handlePaste directly with text:", text);
 
-            // ClipboardEventを手動で作成
+            // Create ClipboardEvent manually
             const clipboardEvent = new ClipboardEvent("paste", {
                 clipboardData: new DataTransfer(),
                 bubbles: true,
                 cancelable: true,
             });
 
-            // DataTransferオブジェクトにテキストを設定
+            // Set text in DataTransfer object
             Object.defineProperty(clipboardEvent, "clipboardData", {
                 writable: false,
                 value: {
@@ -147,7 +147,7 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
                 },
             });
 
-            // KeyEventHandlerのhandlePasteを直接呼び出し
+            // Call KeyEventHandler.handlePaste directly
             const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
                 await KeyEventHandler.handlePaste(clipboardEvent);
@@ -157,52 +157,52 @@ test.describe("SLR-0006: 複数アイテム選択範囲のコピー＆ペース�
             }
         }, selectionText);
 
-        // 少し待機してペーストが反映されるのを待つ
+        // Wait briefly for paste to be applied
         await page.waitForTimeout(300);
 
-        // ペーストされたアイテムのテキストを確認
+        // Verify text of the pasted item
         const items = page.locator(".outliner-item");
         const count = await items.count();
 
-        // 少なくとも4つのアイテムが存在することを確認（元の3つ + ペーストされた1つ以上）
+        // Verify at least 4 items exist (original 3 + 1 or more pasted)
         expect(count).toBeGreaterThanOrEqual(4);
 
-        // ペーストされたアイテムのテキストを確認
-        // 直接テキストを取得するのではなく、アプリケーション内部の状態を確認
+        // Verify text of the pasted item
+        // Check application internal state instead of getting text directly
         const fourthItemText = await page.evaluate(() => {
-            // 4番目のアイテムのIDを取得
+            // Get the ID of the 4th item
             const fourthItem = document.querySelectorAll(".outliner-item")[3];
             if (!fourthItem) return "";
 
             const itemId = fourthItem.getAttribute("data-item-id");
             if (!itemId) return "";
 
-            // アイテムのテキストを取得
+            // Get the item text
             const textEl = fourthItem.querySelector(".item-text");
             return textEl ? textEl.textContent : "";
         });
 
-        // テスト結果を確認
+        // Verify test results
         console.log(`Fourth item text: "${fourthItemText}"`);
         expect(fourthItemText).toBeTruthy();
 
-        // 5つ目のアイテムがある場合のみテキストを取得
+        // Get text only if there is a 5th item
         if (count >= 5) {
             const fifthItemText = await page.evaluate(() => {
-                // 5番目のアイテムのIDを取得
+                // Get the ID of the 5th item
                 const fifthItem = document.querySelectorAll(".outliner-item")[4];
                 if (!fifthItem) return "";
 
                 const itemId = fifthItem.getAttribute("data-item-id");
                 if (!itemId) return "";
 
-                // アイテムのテキストを取得
+                // Get the item text
                 const textEl = fifthItem.querySelector(".item-text");
                 return textEl ? textEl.textContent : "";
             });
 
             console.log(`Fifth item text: "${fifthItemText}"`);
-            // 空文字列でも許容する（テスト環境によって結果が異なる可能性があるため）
+            // Allow empty string (results may vary depending on test environment)
         }
     });
 });
