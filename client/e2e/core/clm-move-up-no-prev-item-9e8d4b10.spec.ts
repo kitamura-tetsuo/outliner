@@ -14,10 +14,10 @@ test.describe("CLM-0004: Move up", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("一番上の行にある時で、一つ前のアイテムがない時は、同じアイテムの先頭へ移動する", async ({ page }) => {
+    test("When on the top line and there is no previous item, move to the beginning of the same item", async ({ page }) => {
         await page.keyboard.press("Escape");
 
-        // 最初のアイテム（ページタイトルまたは最初のアイテム）を特定
+        // Identify the first item (page title or first item)
         const itemLocator = page.locator(".outliner-item.page-title[data-item-id]");
         let firstItem;
         if ((await itemLocator.count()) === 0) {
@@ -29,48 +29,48 @@ test.describe("CLM-0004: Move up", () => {
         const itemId = await firstItem.getAttribute("data-item-id");
         expect(itemId).toBeTruthy();
 
-        // カーソルをアイテムの途中に設定
+        // Set cursor in the middle of the item
         const initialItemText = (await firstItem.locator(".item-text").textContent()) || "";
         await TestHelpers.setCursor(page, itemId!, Math.floor(initialItemText.length / 2));
 
-        // カーソルが表示されるまで待機
+        // Wait for the cursor to be visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // 現在のカーソルデータを取得
+        // Get current cursor data
         const beforeKeyPressCursorData = await CursorValidator.getCursorData(page);
         const itemIdBefore = beforeKeyPressCursorData.activeItemId;
 
-        // アクティブなカーソルインスタンスからオフセットを取得
+        // Get offset from the active cursor instance
         const activeCursorBefore = beforeKeyPressCursorData.cursorInstances.find((c: any) => c.isActive);
         const offsetBefore = activeCursorBefore ? activeCursorBefore.offset : 0;
 
-        console.log(`ArrowUp前: itemId=${itemIdBefore}, offset=${offsetBefore}`);
+        console.log(`Before ArrowUp: itemId=${itemIdBefore}, offset=${offsetBefore}`);
 
-        // 上矢印キーを押下
+        // Press ArrowUp key
         await page.keyboard.press("ArrowUp");
         await page.waitForTimeout(300);
 
-        // 押下後のカーソルデータを取得
+        // Get cursor data after key press
         const afterKeyPressCursorData = await CursorValidator.getCursorData(page);
         const activeItemIdAfterKeyPress = afterKeyPressCursorData.activeItemId;
 
-        // アクティブなカーソルインスタンスからオフセットを取得
+        // Get offset from the active cursor instance
         const activeCursorAfter = afterKeyPressCursorData.cursorInstances.find((c: any) => c.isActive);
         const offsetAfter = activeCursorAfter ? activeCursorAfter.offset : 0;
 
-        console.log(`ArrowUp後: itemId=${activeItemIdAfterKeyPress}, offset=${offsetAfter}`);
+        console.log(`After ArrowUp: itemId=${activeItemIdAfterKeyPress}, offset=${offsetAfter}`);
 
-        // 同じアイテムにいることを確認
+        // Verify that we are on the same item
         expect(activeItemIdAfterKeyPress).toBe(itemIdBefore);
 
-        // 前のアイテムがない場合は、同じアイテムの先頭（offset=0）に移動することを確認
+        // Verify that it moves to the beginning of the same item (offset=0) when there is no previous item
         expect(offsetAfter).toBe(0);
 
-        // アイテムのテキストを確認
+        // Verify the item text
         const itemText = await page.locator(`.outliner-item[data-item-id="${activeItemIdAfterKeyPress}"]`).locator(
             ".item-text",
         )
             .textContent();
-        expect(itemText).toBeTruthy(); // テキストが存在することを確認
+        expect(itemText).toBeTruthy(); // Verify that text exists
     });
 });
