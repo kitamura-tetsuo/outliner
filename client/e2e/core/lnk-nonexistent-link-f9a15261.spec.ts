@@ -2,41 +2,41 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature LNK-0003
- *  Title   : 内部リンクのナビゲーション機能
+ *  Title   : Internal link navigation feature
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
+test.describe("LNK-0003: Internal link navigation feature", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("存在しないページへの内部リンクをクリックした場合の挙動", async ({ page }) => {
-        // 存在しないページ名を生成
+    test("Behavior when clicking an internal link to a non-existent page", async ({ page }) => {
+        // Generate a non-existent page name
         const nonExistentPageName = "unknown-page-" + Date.now().toString().slice(-6);
 
-        // 最初のアイテムに存在しないページへの内部リンクを作成
+        // Create an internal link to a non-existent page in the first item
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
-        // 存在しないページへの内部リンクを入力
+        // Input an internal link to a non-existent page
         await page.keyboard.type(`This is a link to [${nonExistentPageName}]`);
 
-        // Enterキーを押してアイテムを終了（フォーマットが適用されるように）
+        // Press Enter to exit the item (so formatting is applied)
         await page.keyboard.press("Enter");
         await page.waitForTimeout(300);
 
-        // ページがリロードされるまで待機 (Yjs同期を待つ)
+        // Wait for page reload (wait for Yjs synchronization)
         await page.waitForTimeout(300);
 
-        // 内部リンクが生成されていることを確認
+        // Verify that the internal link is generated
         const linkElement = page.locator(`a.internal-link`).filter({ hasText: nonExistentPageName });
         await expect(linkElement).toBeVisible({ timeout: 10000 });
 
-        // リンクのhref属性を確認
+        // Verify the href attribute of the link
         const linkHref = await linkElement.getAttribute("href");
         console.log(`Non-existent page link href: ${linkHref}`);
 
@@ -46,14 +46,14 @@ test.describe("LNK-0003: 内部リンクのナビゲーション機能", () => {
 
         expect(linkHref).toBe(`/${projectNameEncoded}/${nonExistentPageName}`);
 
-        // リンクが存在しないページを示すクラスを持っていることを確認
+        // Verify that the link has a class indicating a non-existent page
         const linkClass = await linkElement.getAttribute("class");
         expect(linkClass).toContain("page-not-exists");
 
         console.log("Non-existent page link test completed successfully");
 
         await linkElement.click();
-        // 存在しないページに移動し、新規ページが作成されることを確認
+        // Move to the non-existent page and verify that a new page is created
         await expect(page).toHaveURL(new RegExp(nonExistentPageName));
         const pageTitle = page.locator(".page-title-content .item-text");
         await expect(pageTitle).toBeVisible({ timeout: 10000 });
