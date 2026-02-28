@@ -9,12 +9,8 @@ import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefres
 
 // Minimal guarded debug logging for initial sync progress (disabled in production by default)
 function isConnDebugEnabled(): boolean {
-    try {
-        if (typeof window === "undefined") return false;
-        return window.localStorage?.getItem?.("VITE_YJS_DEBUG") === "true";
-    } catch {
-        return false;
-    }
+    // ALWAYS return true for now to debug Android issues
+    return true;
 }
 
 function attachConnDebug(label: string, provider: HocuspocusProvider, awareness: Awareness | null, doc: Y.Doc) {
@@ -29,7 +25,8 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
             try {
                 const states = (awareness as { getStates?: () => Map<number, unknown>; })?.getStates?.();
                 const count = states?.size ?? 0;
-                console.log(`[yjs-conn] ${label} awareness.states=${count}`);
+                const tree = doc.getMap("orderedTree") as Y.Map<any>;
+                console.log(`[yjs-conn] ${label} awareness.states=${count} tree.size=${tree.size}`);
             } catch {}
         };
         if (awareness) {
@@ -154,10 +151,13 @@ async function getFreshIdToken(): Promise<string> {
     }
 
     try {
+        console.log("[getFreshIdToken] Fetching ID token from Firebase Auth...");
         const token = await auth.currentUser.getIdToken();
+        console.log(`[getFreshIdToken] Token fetched successfully (len=${token?.length ?? 0})`);
         if (!token) throw new Error("Token is empty");
         return token;
     } catch (e) {
+        console.error("[getFreshIdToken] Failed to fetch token:", e);
         if (isTestEnv) {
             console.warn("[getFreshIdToken] Auth failed in test mode, using mock token:", e);
             return generateMockToken();
@@ -193,95 +193,116 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         } catch { /* no-op in Node */ }
     }
 
-    // HocuspocusProvider uses a token function for dynamic token refresh
-    const tokenFn = async () => {
-        try {
-            return await getFreshIdToken();
-        } catch {
-            return "";
-        }
-    };
-
     // Ensure token is available for initial connection URL (required by server upgrade handler)
     let initialToken = "";
     try {
         initialToken = await getFreshIdToken();
     } catch {}
 
+    // Omit `token` configuration.
+    // Setting `token` causes HocuspocusProvider to send a Type 4 'Auth' message and wait for an 'Authenticated' response.
+    // Since our backend completely handles authentication during the HTTP WebSocket Upgrade via the URL `?token=` parameter,
+    // the server suppresses the `onAuthenticate` hook, so we skip the payload auth to avoid a deadlock!
     const provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
-        token: tokenFn,
     });
     console.log(
         `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}`,
     );
-    provider.on("status", (event: { status: string; }) => console.log(`[yjs-conn] ${room} status: ${event.status}`));
-    provider.on("close", (event: { code: number; reason: string; }) => {
-        console.log(`[yjs-conn] ${room} connection-close code=${event.code} reason=${event.reason}`);
+    provider.on("status", (event: { status: string; }) => {
+        console.log(`[yjs-conn] ${room} status: ${event.status}`);
+        if (event.status === "connected") {
+            const config = provider.configuration as any;
+            const hasWsHandshakeToken = config.url?.includes("token=");
+            console.log(`[yjs-conn] status:connected current-url-has-token=${hasWsHandshakeToken}`);
+        }
+    });
+    provider.on("close", (event: { code?: number; reason?: string; }) => {
+        const code = event.code;
+        const reason = event.reason;
+        console.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
 
         // Handle Auth errors (4001: Unauthorized)
-        if (event.code === 4001) {
-            console.log(`[yjs-conn] Auth error ${event.code} detected for ${room}, triggering token refresh...`);
+        if (code === 4001) {
+            console.log(`[yjs-conn] Auth error ${code} detected for ${room}, triggering token refresh...`);
             // Force token refresh
             void userManager.refreshToken().then(() => {
                 console.log(`[yjs-conn] Token refresh triggered for ${room}`);
             });
-            return;
-        }
-
-        // Fatal errors: 4003 (Forbidden), 4006 (Max Sockets per Room), 4008 (Max Sockets Total/IP)
-        // 4003 is treated as fatal access denied (user not in project list)
-        if ([4003, 4006, 4008].includes(event.code)) {
-            console.error(`[yjs-conn] FATAL ERROR: ${event.code} ${event.reason}. Stopping reconnection for ${room}`);
-            provider.configuration.token = async () => Promise.resolve(""); // Prevent further auth attempts
-            provider.disconnect(); // Ensure completely stopped
-            // destroy() might be better but disconnect() + nuke config is safer to not break references
-            provider.destroy();
         }
     });
+    provider.on("close", (event: { code?: number; reason?: string; }) => {
+        const code = event.code;
+        const reason = event.reason;
+        console.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
+
+        // Handle Auth errors (4001: Unauthorized)
+        if (code === 4001) {
+            console.error(`[yjs-conn] Auth error ${code} detected for ${room}, triggering token refresh...`);
+            // Force token refresh
+            void userManager.refreshToken().then(() => {
+                console.log(`[yjs-conn] Token refresh triggered for ${room}`);
+            });
+        }
+    });
+
+    // Detailed event logging for sync debugging
+    provider.on("authenticated", () => console.log(`[yjs-conn] ${room} authenticated`));
+    provider.on("authenticationFailed", (data: any) => console.error(`[yjs-conn] ${room} authenticationFailed`, data));
+    provider.on("stateless", (data: any) => console.log(`[yjs-conn] ${room} stateless event`, data));
+    provider.on("reconnect", () => console.log(`[yjs-conn] ${room} reconnecting...`));
     provider.on("disconnect", (event: { code: number; reason: string; }) => {
         console.log(`[yjs-conn] ${room} disconnect code=${event.code} reason=${event.reason}`);
     });
 
     // Wait for initial project sync to complete before connecting pages
-    // This ensures the pagesMap is populated with all seeded pages
+    // We attach the listener BEFORE any potential async gap to avoid missing it
     await new Promise<void>((resolve, reject) => {
         if (provider.isSynced) {
+            console.log(`[createProjectConnection] Room ${room} already synced`);
+            const treeSize = (doc.getMap("orderedTree") as Y.Map<any>).size;
+            console.log(`[createProjectConnection] Initial tree.size=${treeSize}`);
             resolve();
-        } else {
-            const timer = setTimeout(() => {
-                console.log(
-                    `[createProjectConnection] Timeout waiting for project sync, proceeding anyway for room: ${room}`,
-                );
-                resolve();
-            }, 15000);
-
-            const syncHandler = (data: { state: boolean; }) => {
-                if (data.state) {
-                    clearTimeout(timer);
-                    provider.off("synced", syncHandler);
-                    provider.off("close", closeHandler);
-                    resolve();
-                }
-            };
-
-            const closeHandler = (event: { code: number; reason: string; }) => {
-                if ([4003, 4006, 4008].includes(event.code)) {
-                    clearTimeout(timer);
-                    provider.off("synced", syncHandler);
-                    provider.off("close", closeHandler);
-                    console.error(
-                        `[createProjectConnection] Fatal close event ${event.code} received during initial sync for ${room}`,
-                    );
-                    reject(new Error("Access Denied"));
-                }
-            };
-
-            provider.on("synced", syncHandler);
-            provider.on("close", closeHandler);
+            return;
         }
+
+        const timer = setTimeout(() => {
+            console.warn(
+                `[createProjectConnection] Timeout (30s) waiting for project initial sync, proceeding anyway for room: ${room}`,
+            );
+            const treeSize = (doc.getMap("orderedTree") as Y.Map<any>).size;
+            console.log(`[createProjectConnection] Timeout tree.size=${treeSize}`);
+            resolve();
+        }, 30000);
+
+        const syncHandler = (data?: { state?: boolean; }) => {
+            if (!data || data.state !== false) {
+                clearTimeout(timer);
+                provider.off("synced", syncHandler);
+                provider.off("close", closeHandler);
+                const treeSize = (doc.getMap("orderedTree") as Y.Map<any>).size;
+                console.log(`[createProjectConnection] Sync complete for ${room}. tree.size=${treeSize}`);
+                resolve();
+            }
+        };
+
+        const closeHandler = (event: { code?: number; reason?: string; }) => {
+            const code = event.code;
+            if (code && [4003, 4006, 4008].includes(code)) {
+                clearTimeout(timer);
+                provider.off("synced", syncHandler);
+                provider.off("close", closeHandler);
+                console.error(
+                    `[createProjectConnection] Fatal close event ${code} received during initial sync for ${room}`,
+                );
+                reject(new Error(`Access Denied: ${code}`));
+            }
+        };
+
+        provider.on("synced", syncHandler);
+        provider.on("close", closeHandler);
     });
 
     // Awareness (presence)
@@ -332,15 +353,6 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         } catch { /* no-op in Node */ }
     }
 
-    const tokenFn = async () => {
-        try {
-            return await getFreshIdToken();
-        } catch (e) {
-            console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
-            return "";
-        }
-    };
-
     // Ensure token is available for initial connection URL (required by server upgrade handler)
     let initialToken = "";
     try {
@@ -353,9 +365,19 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
-        token: tokenFn,
     });
     const awareness = provider.awareness;
+
+    provider.on(
+        "status",
+        (event: { status: string; }) => console.log(`[connectProjectDoc] ${room} status: ${event.status}`),
+    );
+    provider.on("close", (event: { code?: number; reason?: string; }) => {
+        console.warn(
+            `[connectProjectDoc] ${room} connection-close code=${event.code} reason=${event.reason || "None"}`,
+        );
+    });
+
     // Debug hook (guarded)
     attachConnDebug(room, provider, awareness, doc);
     const current = userManager.getCurrentUser();
@@ -388,25 +410,17 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         } catch { /* no-op in Node */ }
     }
 
-    const tokenFn = async () => {
-        try {
-            return await getFreshIdToken();
-        } catch {
-            return "";
-        }
-    };
-
     // Ensure token is available for initial connection URL (required by server upgrade handler)
     let initialToken = "";
     try {
         initialToken = await getFreshIdToken();
     } catch {}
 
+    // Omit `token` for the same reason as in createProjectConnection
     const provider = new HocuspocusProvider({
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
-        token: tokenFn,
     });
     // HocuspocusProvider connects automatically, no need to call connect()
 
