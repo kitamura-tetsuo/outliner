@@ -7,13 +7,14 @@ WORKDIR /usr/src/app
 # Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
 
-# Install any needed packages
-RUN npm install
+# Install any needed packages (include dev to get typescript for tsc)
+RUN npm install --include=dev
 
 # Copy the rest of the application's code
 COPY . .
 
 # Build the TypeScript code
+RUN npm install -g typescript
 RUN npm run build
 
 # Make port 1234 available to the world outside this container
