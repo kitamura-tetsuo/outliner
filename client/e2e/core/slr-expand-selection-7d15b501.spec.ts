@@ -3,13 +3,13 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 // @ts-nocheck
 /** @feature SLR-0011
- *  Title   : 選択範囲の拡張
+ *  Title   : Expand selection
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0011: 選択範囲の拡張", () => {
+test.describe("SLR-0011: Expand selection", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
         const item = page.locator(".outliner-item").first();
@@ -22,7 +22,7 @@ test.describe("SLR-0011: 選択範囲の拡張", () => {
     });
 
     test("Shift+Alt+Right expands selection", async ({ page }) => {
-        // 初期状態の確認
+        // Check initial state
         const initialState = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
@@ -43,7 +43,7 @@ test.describe("SLR-0011: 選択範囲の拡張", () => {
         await page.keyboard.up("Shift");
         await page.waitForTimeout(200);
 
-        // 選択後の状態を確認
+        // Check state after selection
         const afterSelectionState = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
@@ -58,10 +58,10 @@ test.describe("SLR-0011: 選択範囲の拡張", () => {
         });
         console.log("After selection state:", afterSelectionState);
 
-        // 選択範囲拡張機能が実装されているかを確認
+        // Check if selection expansion feature is implemented
         if (afterSelectionState.selectedText === "H") {
             console.log("Selection expansion feature may not be implemented. Testing basic selection instead.");
-            // 基本的な選択機能をテスト（Shift+Right）
+            // Test basic selection feature (Shift+Right)
             await page.keyboard.press("Home");
             await page.keyboard.down("Shift");
             await page.keyboard.press("End");
@@ -76,10 +76,10 @@ test.describe("SLR-0011: 選択範囲の拡張", () => {
             });
             console.log("Basic selection state:", basicSelectionState);
 
-            // 基本的な選択が動作することを確認
+            // Confirm basic selection works
             expect(basicSelectionState.selectedText).toBe("Hello World");
         } else {
-            // 選択範囲拡張機能が実装されている場合
+            // If selection expansion feature is implemented
             await expect(page.locator(".editor-overlay .selection")).toBeVisible();
             expect(afterSelectionState.selectedText).toBe("Hello World");
         }
