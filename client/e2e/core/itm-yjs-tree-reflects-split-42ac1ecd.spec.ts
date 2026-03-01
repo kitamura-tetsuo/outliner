@@ -2,14 +2,14 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature ITM-0001
- *  Title   : Enterで新規アイテム追加
+ *  Title   : Add new item with Enter
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 import { TreeValidator } from "../utils/treeValidation";
 
-test.describe("ITM-0001: Enterで新規アイテム追加", () => {
+test.describe("ITM-0001: Add new item with Enter", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["First part of text. Second part of text."]);
         await TestHelpers.setupTreeDebugger(page);
