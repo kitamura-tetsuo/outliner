@@ -389,7 +389,11 @@ export async function startServer(
                     ws.close(1011);
                 }
             } catch (e: any) {
-                logger.error({ event: "ws_setup_error", error: e.message });
+                if (e.code === "auth/id-token-expired" || e.message?.includes("expired")) {
+                    logger.warn({ event: "ws_setup_warn", reason: "token_expired", message: e.message });
+                } else {
+                    logger.error({ event: "ws_setup_error", error: e.message });
+                }
                 ws.close(4001, e.message || "Unauthorized");
             }
         });

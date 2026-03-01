@@ -78,10 +78,12 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
             console.log(`[tokenRefresh] Provider status: ${status}`);
 
             if (status === "disconnected" || status === "connecting") {
-                console.log(`[tokenRefresh] Provider ${status}, ensuring connection`);
+                console.log(`[tokenRefresh] Provider ${status}, ensuring connection with fresh token`);
                 if (status === "connecting") {
-                    console.log("[tokenRefresh] Already connecting, letting it finish");
-                    return;
+                    console.log("[tokenRefresh] Aborting stale connection attempt to use new token");
+                    try {
+                        provider.disconnect();
+                    } catch {}
                 }
 
                 try {

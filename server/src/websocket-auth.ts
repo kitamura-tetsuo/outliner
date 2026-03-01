@@ -113,11 +113,12 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
         return decoded;
     } catch (e: any) {
         // Debug: Decode token to see why it failed
-        const isExpired = e.code === "auth/id-token-expired";
+        const errorCode = e.code || e.errorInfo?.code;
+        const isExpired = errorCode === "auth/id-token-expired" || e.message?.includes("expired");
 
         if (isExpired) {
-            console.log(`[Auth] Token expired (normal during reconnect)`);
-            throw e;
+            console.warn(`[Auth] Token expired (normal during reconnect)`);
+            throw Object.assign(new Error("auth/id-token-expired"), { code: "auth/id-token-expired" });
         }
 
         try {

@@ -117,3 +117,4 @@ server/db
 .jdk/
 server/.env.production
 .codex-setup-installed
+.agents/rules/docker.md

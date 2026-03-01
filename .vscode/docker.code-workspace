@@ -4,7 +4,10 @@
 			"path": ".."
 		},
 		{
-			"path": "../../srv/docker"
+			"path": "/srv/docker/outliner-yjs-ws"
+		},
+		{
+			"path": "/srv/docker/outliner-yjs-ws-deploy-from-local"
 		}
 	],
 	"settings": {

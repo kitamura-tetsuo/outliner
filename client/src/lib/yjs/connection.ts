@@ -233,20 +233,6 @@ export async function createProjectConnection(projectId: string): Promise<Projec
             });
         }
     });
-    provider.on("close", (event: { code?: number; reason?: string; }) => {
-        const code = event.code;
-        const reason = event.reason;
-        console.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
-
-        // Handle Auth errors (4001: Unauthorized)
-        if (code === 4001) {
-            console.error(`[yjs-conn] Auth error ${code} detected for ${room}, triggering token refresh...`);
-            // Force token refresh
-            void userManager.refreshToken().then(() => {
-                console.log(`[yjs-conn] Token refresh triggered for ${room}`);
-            });
-        }
-    });
 
     // Detailed event logging for sync debugging
     provider.on("authenticated", () => console.log(`[yjs-conn] ${room} authenticated`));
