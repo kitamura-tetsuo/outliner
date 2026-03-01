@@ -12,7 +12,7 @@ test.describe("Network Connectivity Test", () => {
             waitUntil: "domcontentloaded",
         });
 
-        // Firebaseエミュレーターへの接続をテスト
+        // Test connection to Firebase emulator
         const networkTest = await page.evaluate(async () => {
             const results: any = {};
 
@@ -66,10 +66,10 @@ test.describe("Network Connectivity Test", () => {
 
         console.log("Debug: Network test results:", networkTest);
 
-        // メインサーバーは接続できるはず
+        // Main server should be accessible
         expect(networkTest.mainServer.accessible).toBe(true);
 
-        // エミュレーターの接続状況を確認
+        // Check emulator connection status
         if (!networkTest.authEmulator.accessible) {
             console.log("Debug: Auth emulator not accessible:", networkTest.authEmulator.error);
         }
@@ -87,13 +87,13 @@ test.describe("Network Connectivity Test", () => {
             waitUntil: "domcontentloaded",
         });
 
-        // UserManagerが初期化されるまで待機
+        // Wait for UserManager to be initialized
         await page.waitForFunction(
             () => (window as any).__USER_MANAGER__ !== undefined,
             { timeout: 30000 },
         );
 
-        // Firebase設定を確認
+        // Check Firebase configuration
         const firebaseConfig = await page.evaluate(() => {
             const userManager = (window as any).__USER_MANAGER__;
             const firebaseApp = (window as any).__firebase_client_app__;
@@ -120,7 +120,7 @@ test.describe("Network Connectivity Test", () => {
     test("can test direct emulator connection", async ({ page }) => {
         console.log("Debug: Testing direct emulator connection");
 
-        // エミュレーターに直接アクセスしてみる
+        // Try accessing emulator directly
         try {
             await page.goto("http://localhost:59099/", {
                 timeout: 10000,
@@ -134,7 +134,7 @@ test.describe("Network Connectivity Test", () => {
             console.log("Debug: Failed to access Auth emulator directly:", error);
         }
 
-        // Firestoreエミュレーターもテスト
+        // Test Firestore emulator as well
         try {
             await page.goto("http://localhost:58080/", {
                 timeout: 10000,
