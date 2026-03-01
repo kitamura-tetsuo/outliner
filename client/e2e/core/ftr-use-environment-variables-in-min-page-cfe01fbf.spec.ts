@@ -15,7 +15,7 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
 
     test("Firebase config values come from environment variables", async ({ page }) => {
         await page.goto("/min");
-        // ページが完全に読み込まれるまで待機
+        // Wait until the page is fully loaded
         await page.waitForFunction(() => (window as any).testEnvVars !== undefined);
 
         const config = await page.evaluate(() => {
@@ -31,7 +31,7 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
 
     test("Token verification URL uses VITE_TOKEN_VERIFY_URL", async ({ page }) => {
         await page.goto("/min");
-        // ページが完全に読み込まれるまで待機
+        // Wait until the page is fully loaded
         await page.waitForFunction(() => (window as any).testEnvVars !== undefined);
 
         const url = await page.evaluate(() => {
@@ -42,29 +42,29 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
     });
 
     test("Environment variables are available in test environment", async ({ page }) => {
-        // Node.js環境での環境変数テスト
+        // Test environment variables in Node.js environment
         expect(process.env.VITE_FIREBASE_API_KEY).toBeTruthy();
         expect(process.env.VITE_FIREBASE_PROJECT_ID).toBeTruthy();
         expect(process.env.VITE_TOKEN_VERIFY_URL).toBeTruthy();
 
-        // ページアクセスのテスト
+        // Page access test
         await page.goto("/");
         await page.waitForLoadState("domcontentloaded");
         await expect(page.locator("body")).toBeVisible();
     });
 
     test("Min page can be accessed", async ({ page }) => {
-        // /minページへのアクセステスト
+        // Access test for /min page
         await page.goto("/min");
         await expect(page).toHaveURL("/min");
 
-        // ページが表示されることを確認
+        // Verify that the page is displayed
         await expect(page.locator("body")).toBeVisible();
         await expect(page.locator("h1")).toContainText("Firebase Google Login");
     });
 
     test("Environment variables configuration is correct", async ({ page }) => {
-        // 環境変数の値をテスト
+        // Test environment variable values
         const apiKey = process.env.VITE_FIREBASE_API_KEY;
         const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
         const tokenVerifyUrl = process.env.VITE_TOKEN_VERIFY_URL;
@@ -73,7 +73,7 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
         expect(projectId).toBe("outliner-d57b0");
         expect(tokenVerifyUrl).toMatch(/http:\/\/(localhost|127\.0\.0\.1):7091\/verify/);
 
-        // 基本的なページアクセス確認
+        // Basic page access verification
         await page.goto("/");
         await expect(page.locator("body")).toBeVisible();
     });
