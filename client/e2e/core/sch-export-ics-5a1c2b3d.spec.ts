@@ -36,7 +36,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         const env = await TestHelpers.prepareTestEnvironment(page, testInfo);
         projectName = env.projectName;
         pageName = env.pageName;
-        // pageId は後でスケジュールページのデバッグ要素から取得する（接続後のIDに合わせるため）
+        // pageId will be retrieved later from the schedule page debug element (to match the ID after connection)
         pageId = "";
 
         // Log session storage for debugging
@@ -55,7 +55,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
 
         const nextRunAt = Date.now() + 10 * 60 * 1000;
 
-        // まずスケジュールページへ遷移して、実際に使用される pageId を取得する
+        // First, navigate to the schedule page to get the actual pageId used
         const scheduleUrl = `http://127.0.0.1:7090/${encodeURIComponent(projectName)}/${
             encodeURIComponent(pageName)
         }/schedule`;
@@ -84,7 +84,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         // with a new pageId, which would invalidate the schedule we just created.
         // The pageId is already stable after the navigation flow in onMount.
 
-        // 取得した pageId でスケジュールを作成
+        // Create a schedule with the retrieved pageId
         const resp = await page.request.post("http://127.0.0.1:57000/api/create-schedule", {
             data: {
                 idToken,
@@ -97,7 +97,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         console.log(`[E2E] create-schedule status=${status} body=${bodyText}`);
         expect(status, `create-schedule failed: ${bodyText}`).toBe(200);
 
-        // スケジュール作成後にページを更新して新しいスケジュールを取得
+        // Refresh the page after creating a schedule to get the new schedule
         console.log(`[E2E] Refreshing schedules after creating schedule...`);
         await page.evaluate(async (pid) => {
             if (typeof window !== "undefined" && (window as any).refreshSchedules) {
@@ -105,8 +105,8 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
             }
         }, resolvedPageId);
 
-        // 作成したスケジュールを確認するためにページをリロードせず、ポーリングでスケジュールアイテム的出现を待つ
-        // (リロードするとページが再作成され、新しいpageIdが割り当てられてしまう)
+        // Without reloading the page to check the created schedule, poll for the appearance of schedule items
+        // (Reloading would recreate the page and assign a new pageId)
         console.log(`[E2E] Waiting for schedule to appear...`);
         let scheduleItems = await page.locator('[data-testid="schedule-item"]').all();
         let scheduleCount = scheduleItems.length;
