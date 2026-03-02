@@ -37,7 +37,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
         await page1.waitForFunction(() => {
             return !!(window as any).__USER_MANAGER__;
-        }, { timeout: 10000 });
+        }, null, { timeout: 20000 });
 
         await page1.evaluate(async () => {
             const mgr = (window as any).__USER_MANAGER__;
@@ -154,7 +154,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
         await page2.waitForFunction(() => {
             return !!(window as any).__USER_MANAGER__;
-        }, { timeout: 10000 });
+        }, null, { timeout: 20000 });
 
         await page2.evaluate(async () => {
             const mgr = (window as any).__USER_MANAGER__;

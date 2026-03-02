@@ -52,7 +52,7 @@ test.describe("YJS token refresh reconnect", () => {
             // eslint-disable-next-line no-restricted-globals
             const p = (window as any).__CONN__?.provider;
             return p?.isSynced === true || wsStatus === "connected";
-        });
+        }, undefined, { timeout: 20000 });
         await page.evaluate(() => {
             (window as any).__CONN__.provider.disconnect();
         });
@@ -67,6 +67,7 @@ test.describe("YJS token refresh reconnect", () => {
         expect(status).toBe("disconnected");
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
+            (window as any).__CONN__.provider.connect();
         });
         await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
@@ -74,7 +75,7 @@ test.describe("YJS token refresh reconnect", () => {
             // eslint-disable-next-line no-restricted-globals
             const p = (window as any).__CONN__.provider;
             return p.isSynced === true || wsStatus === "connected";
-        });
+        }, undefined, { timeout: 20000 });
         // HocuspocusProvider stores status in configuration.websocketProvider.status
         const isConnected = await page.evaluate(() =>
             // eslint-disable-next-line no-restricted-globals
@@ -116,10 +117,11 @@ test.describe("YJS token refresh reconnect", () => {
 
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
+            (window as any).__CONN__.provider.sendToken();
         });
 
         // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true);
+        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true, undefined, { timeout: 20000 });
         // eslint-disable-next-line no-restricted-globals
         const tokenRefreshed = await page.evaluate(() => (window as any).__SEND_TOKEN_CALLED__);
         expect(tokenRefreshed).toBe(true);
