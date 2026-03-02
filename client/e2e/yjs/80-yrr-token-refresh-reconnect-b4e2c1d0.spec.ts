@@ -135,9 +135,10 @@ test.describe("YJS token refresh reconnect", () => {
         await page.waitForTimeout(5000);
 
         // Use poll to repeatedly evaluate until condition is met
-        await expect.poll(async () => await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            return (window as any).__SEND_TOKEN_CALLED__;
-        }), { timeout: 30000 }).toBe(true);
+        await expect.poll(async () =>
+            await page.evaluate(() => {
+                // eslint-disable-next-line no-restricted-globals
+                return (window as any).__SEND_TOKEN_CALLED__;
+            }), { timeout: 30000 }).toBe(true);
     });
 });
