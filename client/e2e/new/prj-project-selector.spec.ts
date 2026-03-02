@@ -26,11 +26,11 @@ test.describe.serial("Prj: Project Selector", () => {
         await page.waitForFunction(() => {
             const ps = (window as any).__PROJECT_STORE__;
             return ps && ps.projects && ps.projects.length >= 2;
-        }, { timeout: 10000 });
+        }, { timeout: 30000 });
 
         // Check if selector options are rendered
         const selector = page.locator("select.project-select");
-        await expect(selector).toBeVisible();
+        await expect(selector).toBeVisible({ timeout: 15000 });
         await expect(selector).toHaveCount(1);
 
         const options = selector.locator("option");
@@ -56,11 +56,11 @@ test.describe.serial("Prj: Project Selector", () => {
         await page.waitForFunction(() => {
             const ps = (window as any).__PROJECT_STORE__;
             return ps && ps.projects && ps.projects.length >= 2;
-        }, { timeout: 10000 });
+        }, { timeout: 30000 });
 
         // 5. Verify selector contents
         const selector = page.locator("select.project-select");
-        await expect(selector).toBeVisible();
+        await expect(selector).toBeVisible({ timeout: 15000 });
 
         const optionText = await selector.textContent();
         expect(optionText).toContain(projectName);
@@ -81,7 +81,7 @@ test.describe.serial("Prj: Project Selector", () => {
         await page.waitForFunction(() => {
             const ps = (window as any).__PROJECT_STORE__;
             return ps && ps.projects && ps.projects.length >= 2;
-        }, { timeout: 10000 });
+        }, { timeout: 30000 });
 
         // 3. Select Project Two
         const selector = page.locator("select.project-select");

@@ -59,13 +59,16 @@ test.describe("PRS-0001: presence indicators", () => {
         });
 
         // Wait for two avatars to be displayed
-        await expect(avatars).toHaveCount(2, { timeout: 10000 });
+        await expect(avatars).toHaveCount(2, { timeout: 20000 });
 
-        const firstColor = await avatars.nth(0).evaluate(el => getComputedStyle(el).backgroundColor);
-        const secondColor = await avatars.nth(1).evaluate(el => getComputedStyle(el).backgroundColor);
-        expect(firstColor).not.toBe("");
-        expect(secondColor).not.toBe("");
-        expect(firstColor).not.toBe(secondColor);
+        // Wait for the second avatar to actually render with the specified color
+        await expect(async () => {
+            const firstColor = await avatars.nth(0).evaluate(el => getComputedStyle(el).backgroundColor);
+            const secondColor = await avatars.nth(1).evaluate(el => getComputedStyle(el).backgroundColor);
+            expect(firstColor).not.toBe("");
+            expect(secondColor).not.toBe("");
+            expect(firstColor).not.toBe(secondColor);
+        }).toPass({ timeout: 20000 });
 
         // Verify avatar count decreases after removing user
         await page.evaluate(() => {

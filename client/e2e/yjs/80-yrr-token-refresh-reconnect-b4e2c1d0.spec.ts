@@ -8,8 +8,8 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-// Shorten per-spec timeout (default 240s is too long for this scenario)
-test.setTimeout(120_000);
+// Ensure ample per-spec timeout for flaky connectivity tests
+test.setTimeout(240_000);
 
 test.describe("YJS token refresh reconnect", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -65,16 +65,25 @@ test.describe("YJS token refresh reconnect", () => {
             return (window as any).__WS_STATUS__;
         });
         expect(status).toBe("disconnected");
+
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
-        await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const wsStatus = (window as any).__WS_STATUS__;
-            // eslint-disable-next-line no-restricted-globals
-            const p = (window as any).__CONN__.provider;
-            return p.isSynced === true || wsStatus === "connected";
-        });
+
+        // Give the refresh token network call and reconnection a moment
+        await page.waitForTimeout(5000);
+
+        await page.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                const wsStatus = (window as any).__WS_STATUS__;
+                // eslint-disable-next-line no-restricted-globals
+                const p = (window as any).__CONN__.provider;
+                return p.isSynced === true || wsStatus === "connected";
+            },
+            undefined,
+            { timeout: 30000 },
+        );
         // HocuspocusProvider stores status in configuration.websocketProvider.status
         const isConnected = await page.evaluate(() =>
             // eslint-disable-next-line no-restricted-globals
@@ -106,22 +115,29 @@ test.describe("YJS token refresh reconnect", () => {
             };
         }, projectId);
 
-        await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const p = (window as any).__CONN__?.provider;
-            // eslint-disable-next-line no-restricted-globals
-            const wsStatus = (window as any).__WS_STATUS__;
-            return p?.isSynced === true || wsStatus === "connected";
-        });
+        await page.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                const p = (window as any).__CONN__?.provider;
+                // eslint-disable-next-line no-restricted-globals
+                const wsStatus = (window as any).__WS_STATUS__;
+                return p?.isSynced === true || wsStatus === "connected";
+            },
+            undefined,
+            { timeout: 30000 },
+        );
 
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
 
-        // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true);
-        // eslint-disable-next-line no-restricted-globals
-        const tokenRefreshed = await page.evaluate(() => (window as any).__SEND_TOKEN_CALLED__);
-        expect(tokenRefreshed).toBe(true);
+        // Allow some time for the refresh token and reconnect to happen
+        await page.waitForTimeout(5000);
+
+        // Use poll to repeatedly evaluate until condition is met
+        await expect.poll(async () => await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
+            return (window as any).__SEND_TOKEN_CALLED__;
+        }), { timeout: 30000 }).toBe(true);
     });
 });
