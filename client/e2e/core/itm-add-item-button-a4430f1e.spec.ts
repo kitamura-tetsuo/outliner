@@ -24,13 +24,13 @@ test.describe("ITM-0002: Add item via button", () => {
         // Click the add item button
         await page.click('button:has-text("Add Item")');
 
-        // Wait for the new item to be added and check that the item was added
-        await expect.poll(async () => {
-            const itemCountAfter = await page.locator(".outliner-item").count();
-            return itemCountAfter > itemCountBefore;
-        }, {
-            message: "New item was not appended",
-            timeout: 5000,
-        }).toBeTruthy();
+        // Wait for the new item to be added
+        await page.waitForTimeout(300);
+
+        // Get the number of items after adding
+        const itemCountAfter = await page.locator(".outliner-item").count();
+
+        // Check that the item was added
+        expect(itemCountAfter).toBeGreaterThan(itemCountBefore);
     });
 });
