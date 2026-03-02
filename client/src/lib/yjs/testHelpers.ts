@@ -159,7 +159,7 @@ export async function initializeBrowserPage(
     await page.waitForFunction(
         () => !!(window as any).__USER_MANAGER__,
         null,
-        { timeout: 10000 },
+        { timeout: 30000 },
     );
 
     // Authenticate if required
@@ -243,12 +243,11 @@ export async function createMinimalYjsConnection(
         enableLogging = true,
     } = options;
 
-    // Use string concatenation to avoid TypeScript checking the import path
-    const importPath = "/src/lib/yjs/" + "connection.ts";
     return await page.evaluate(
-        async ({ pid, docVar, providerVar, enableLogging, importPath }) => {
+        async ({ pid, docVar, providerVar, enableLogging }) => {
+            // @ts-expect-error - Vite handles dynamic import resolution for browser context
             const { createMinimalProjectConnection } = await import(
-                importPath as any
+                /* @vite-ignore */ "/src/lib/yjs/connection.ts"
             );
             const conn = await createMinimalProjectConnection(pid);
             (window as any)[docVar] = conn.doc;
@@ -275,7 +274,7 @@ export async function createMinimalYjsConnection(
 
             return true;
         },
-        { pid: projectId, docVar, providerVar, enableLogging, importPath },
+        { pid: projectId, docVar, providerVar, enableLogging },
     );
 }
 

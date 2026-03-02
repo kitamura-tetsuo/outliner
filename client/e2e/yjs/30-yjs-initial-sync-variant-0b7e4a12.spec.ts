@@ -74,7 +74,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
 
     const p2Connected = await p2.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite
-        const { createMinimalProjectConnection } = await import("/src/lib/yjs/connection.ts");
+        const { createMinimalProjectConnection } = await import(/* @vite-ignore */ "/src/lib/yjs/connection.ts");
         const conn = await createMinimalProjectConnection(pid);
         (window as any).__DOC2__ = conn.doc;
         (window as any).__PROVIDER2__ = conn.provider;
