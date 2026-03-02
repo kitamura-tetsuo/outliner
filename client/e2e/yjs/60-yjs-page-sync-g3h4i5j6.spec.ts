@@ -37,6 +37,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
         await page1.waitForFunction(
             () => {
+                // eslint-disable-next-line no-restricted-globals
                 return !!(window as any).__USER_MANAGER__;
             },
             null,
@@ -158,6 +159,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
         await page2.waitForFunction(
             () => {
+                // eslint-disable-next-line no-restricted-globals
                 return !!(window as any).__USER_MANAGER__;
             },
             null,
