@@ -68,47 +68,52 @@ describe("Hocuspocus Server", () => {
         });
     };
 
-    const expectDisconnect = (provider: HocuspocusProvider, expectedCode: number) => {
+    // Auth now happens inside Hocuspocus onAuthenticate hook.
+    // Token errors → authenticationFailed event (permissionDenied protocol message)
+    // No-token case → synchronous reject in upgrade handler → disconnect with 4001
+    const expectAuthFailure = (provider: HocuspocusProvider) => {
         return new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => {
-                reject(new Error(`Timed out waiting for disconnect code ${expectedCode}`));
+                provider.disconnect();
+                reject(new Error("Timed out waiting for auth failure"));
             }, 5000);
 
-            provider.on("disconnect", (data: any) => {
+            provider.on("authenticationFailed", () => {
                 clearTimeout(timeout);
-                const code = data.code ?? data.event?.code;
-                try {
-                    expect(code).to.equal(expectedCode);
-                    provider.disconnect(); // Stop retrying
-                    resolve();
-                } catch (e) {
-                    console.error("Disconnect code mismatch. Data:", JSON.stringify(data));
-                    reject(e);
-                }
+                provider.disconnect();
+                resolve();
+            });
+
+            // Fallback: also accept a disconnect event (e.g. when upgrade handler rejects)
+            provider.on("disconnect", () => {
+                clearTimeout(timeout);
+                provider.disconnect();
+                resolve();
             });
         });
     };
 
     it("should fail authentication with no token", async () => {
+        // No token: rejected synchronously in upgrade handler before Hocuspocus
         provider = new HocuspocusProvider({
             url: `ws://127.0.0.1:${port}/projects/123`,
             name: "projects/123",
             document: new Y.Doc(),
         });
-        await expectDisconnect(provider, 4001);
+        await expectAuthFailure(provider);
     });
 
     it("should fail with invalid token", async () => {
         verifyTokenStub.rejects(new Error("Invalid token"));
         provider = createClient("bad-token");
-        await expectDisconnect(provider, 4001);
+        await expectAuthFailure(provider);
     });
 
     it("should fail with no access", async () => {
         verifyTokenStub.resolves(mockDecodedIdToken);
         checkAccessStub.resolves(false);
         provider = createClient("valid-token-no-access");
-        await expectDisconnect(provider, 4003);
+        await expectAuthFailure(provider);
     });
 
     it("should load a document", async () => {

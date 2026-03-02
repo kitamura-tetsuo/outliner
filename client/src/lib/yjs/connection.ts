@@ -152,7 +152,8 @@ async function getFreshIdToken(): Promise<string> {
 
     try {
         console.log("[getFreshIdToken] Fetching ID token from Firebase Auth...");
-        const token = await auth.currentUser.getIdToken();
+        // Force refresh to ensure we don't start with a stale/expired token from cache
+        const token = await auth.currentUser.getIdToken(true);
         console.log(`[getFreshIdToken] Token fetched successfully (len=${token?.length ?? 0})`);
         if (!token) throw new Error("Token is empty");
         return token;
@@ -264,6 +265,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         }, 30000);
 
         const syncHandler = (data?: { state?: boolean; }) => {
+            console.log(`[createProjectConnection] syncHandler: room=${room}, state=${data?.state}`);
             if (!data || data.state !== false) {
                 clearTimeout(timer);
                 provider.off("synced", syncHandler);
@@ -276,12 +278,13 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
         const closeHandler = (event: { code?: number; reason?: string; }) => {
             const code = event.code;
-            if (code && [4003, 4006, 4008].includes(code)) {
+            console.log(`[createProjectConnection] closeHandler: room=${room}, code=${code}, reason=${event.reason}`);
+            if (code && [4003, 4006, 4008, 4001].includes(code)) {
                 clearTimeout(timer);
                 provider.off("synced", syncHandler);
                 provider.off("close", closeHandler);
                 console.error(
-                    `[createProjectConnection] Fatal close event ${code} received during initial sync for ${room}`,
+                    `[createProjectConnection] Fatal close event ${code} received during initial sync for ${room}: ${event.reason}`,
                 );
                 reject(new Error(`Access Denied: ${code}`));
             }

@@ -2,6 +2,8 @@
 set -e
 echo "Starting deployment to Firebase Hosting + Functions..."
 
+curl -sL https://firebase.tools | bash
+
 echo "1. Cleaning up old build files if they exist..."
 if [ -d "build" ]; then
   rm -rf build

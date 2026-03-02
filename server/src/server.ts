@@ -204,8 +204,58 @@ export async function startServer(
     const hocuspocus = new Hocuspocus({
         name: "hocuspocus-fluid-outliner",
         extensions: extensions as any[],
-        // Reduce debounce to 500ms to minimize data loss window on server crash
         debounce: 500,
+        async onConnect(data: any) {
+            console.log(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${data.request.socket.remoteAddress}`);
+        },
+        async onAuthenticate(data: any) {
+            // Perform async auth (token verification + access check) HERE inside the Hocuspocus hook.
+            // We cannot do this before handleConnection because the client immediately sends the Auth message
+            // after the WS handshake, and if we await async operations first the message would be lost
+            // (no listener registered yet), causing a 30-second timeout.
+            const request = data.request;
+            const token = extractAuthToken(request);
+            console.log(`[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${token ? "FOUND" : "MISSING"}`);
+
+            if (!token) {
+                throw Object.assign(new Error("Authentication failed: No token provided"), { code: 4001 });
+            }
+
+            let decoded;
+            try {
+                decoded = await verifyIdTokenCached(token);
+            } catch (err: any) {
+                // Re-throw so Hocuspocus sends 4001 Unauthorized to client
+                throw err;
+            }
+
+            const room = parseRoom(data.documentName);
+            if (!room?.project) {
+                throw Object.assign(new Error("Authentication failed: Invalid room format"), { code: 4001 });
+            }
+
+            const hasAccess = await checkContainerAccess(decoded.uid, room.project);
+            if (!hasAccess) {
+                throw Object.assign(new Error("Access denied"), { code: 4003, reason: "FORBIDDEN" });
+            }
+
+            console.log(`[Hocuspocus] onAuthenticate: Authorized uid=${decoded.uid} for room=${data.documentName}`);
+            // Return context additions — merged into connection context
+            return {
+                user: { uid: decoded.uid },
+                room,
+            };
+        },
+        async onAfterAuthenticate(data: any) {
+            console.log(`[Hocuspocus] onAfterAuthenticate: room=${data.documentName}`);
+        },
+        async onLoadDocument(data: any) {
+            console.log(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
+            return data.document;
+        },
+        async onDisconnect(data: any) {
+            console.log(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
+        },
     } as any);
 
     const wss = new WebSocketServer({ noServer: true });
@@ -265,13 +315,16 @@ export async function startServer(
     });
 
     // Explicitly handle upgrade requests to ensure Hocuspocus receives them
-    server.on("upgrade", async (request, socket, head) => {
-        // SECURITY: Apply authentication and validation to ALL WebSocket upgrades.
-        // Previously, only /projects/ paths were validated, allowing bypass via other paths.
-        wss.handleUpgrade(request, socket, head, async (ws: any) => {
-            (request as any).__ws = ws;
+    server.on("upgrade", (request: any, socket: any, head: any) => {
+        wss.handleUpgrade(request, socket, head, (ws: any) => {
+            // --- Synchronous pre-checks only ---
+            // IMPORTANT: Do NOT await async operations here before calling handleConnection!
+            // The client immediately sends a Hocuspocus Auth message after the WS handshake.
+            // If we await async ops (token verification, Firestore access check) first,
+            // the Auth message arrives before the Hocuspocus message listener is registered
+            // and gets silently dropped. Hocuspocus then waits forever → 30-second timeout.
+            // All async auth is performed inside the onAuthenticate Hocuspocus hook instead.
 
-            // --- Manual Connection Handling (Hooks Replacement) ---
             const ip = getClientIp(request);
             const origin = request.headers.origin || "";
             if (process.env.NODE_ENV === "production") {
@@ -279,122 +332,94 @@ export async function startServer(
                 console.log("[DEBUG] Detected IP:", ip);
             }
 
-            // Helper to close
-            const reject = (code: number, reason: string) => {
+            const rejectSync = (code: number, reason: string) => {
                 logger.warn({ event: "ws_connection_denied", reason, code, ip });
                 ws.close(code, reason);
             };
 
+            // 1. Rate Limiting (synchronous)
+            if (!checkRateLimit(ip)) {
+                return rejectSync(4004, "RATE_LIMIT_EXCEEDED");
+            }
+
+            // 2. CORS check (synchronous)
+            const isLocal = ip === "127.0.0.1" || ip === "::1";
+            if (!isLocal && allowedOrigins.size && !allowedOrigins.has(origin)) {
+                return rejectSync(4003, "ORIGIN_NOT_ALLOWED");
+            }
+
+            // 3. Socket limits (synchronous)
+            if (totalSockets >= config.MAX_SOCKETS_TOTAL) {
+                return rejectSync(4008, "MAX_SOCKETS_TOTAL");
+            }
+            if ((ipCounts.get(ip) ?? 0) >= config.MAX_SOCKETS_PER_IP) {
+                return rejectSync(4008, "MAX_SOCKETS_PER_IP");
+            }
+
+            // 4. Validate token presence and room format (synchronous, no network calls)
+            const token = extractAuthToken(request);
+            if (!token) {
+                return rejectSync(4001, "NO_TOKEN");
+            }
+            let documentName = "";
+            if (request.url) {
+                const urlPath = request.url.split("?")[0];
+                documentName = urlPath.replace(/^\/+/, "");
+            }
+            const room = parseRoom(documentName);
+            if (!room?.project) {
+                return rejectSync(4001, "INVALID_ROOM");
+            }
+
+            // 5. Check room connection limit (synchronous)
+            const currentRoomCount = roomCounts.get(documentName) ?? 0;
+            if (currentRoomCount >= config.MAX_SOCKETS_PER_ROOM) {
+                return rejectSync(4006, "MAX_SOCKETS_PER_ROOM");
+            }
+
+            // 6. Update counters and register WS event listeners
+            totalSockets++;
+            ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
+            roomCounts.set(documentName, (roomCounts.get(documentName) ?? 0) + 1);
+            logger.info({ event: "ws_connection_accepted", room: documentName });
+
+            ws.on("message", (data: any) => {
+                recordMessage();
+                const len = data.byteLength || data.length || 0;
+                if (len > config.MAX_MESSAGE_SIZE_BYTES) {
+                    logger.warn({
+                        event: "ws_connection_closed",
+                        reason: "message_too_large",
+                        size: len,
+                        documentName,
+                    });
+                    ws.close(4005, "MESSAGE_TOO_LARGE");
+                }
+            });
+
+            ws.on("close", () => {
+                totalSockets--;
+                if (totalSockets < 0) totalSockets = 0;
+                if (ip) {
+                    const count = (ipCounts.get(ip) ?? 1) - 1;
+                    if (count <= 0) ipCounts.delete(ip);
+                    else ipCounts.set(ip, count);
+                }
+                if (documentName) {
+                    const count = (roomCounts.get(documentName) ?? 1) - 1;
+                    if (count <= 0) roomCounts.delete(documentName);
+                    else roomCounts.set(documentName, count);
+                }
+            });
+
+            // 7. Immediately hand over to Hocuspocus with minimal initial context (ip only).
+            //    Async auth (token verification + access check) is done in onAuthenticate hook.
             try {
-                // 1. Rate Limiting
-                if (!checkRateLimit(ip)) {
-                    return reject(4004, "RATE_LIMIT_EXCEEDED");
-                }
-
-                // Allow localhost bypass for verification scripts inside container
-                const isLocal = ip === "127.0.0.1" || ip === "::1";
-                if (!isLocal && allowedOrigins.size && !allowedOrigins.has(origin)) {
-                    return reject(4003, "ORIGIN_NOT_ALLOWED");
-                }
-                if (totalSockets >= config.MAX_SOCKETS_TOTAL) {
-                    return reject(4008, "MAX_SOCKETS_TOTAL");
-                }
-                if ((ipCounts.get(ip) ?? 0) >= config.MAX_SOCKETS_PER_IP) {
-                    return reject(4008, "MAX_SOCKETS_PER_IP");
-                }
-
-                // 2. Room Parsing & Auth
-                const token = extractAuthToken(request);
-                // documentName extraction
-                let documentName = "";
-                if (request.url) {
-                    const path = request.url.split("?")[0];
-                    // Handle leading slash and double slashes gracefully
-                    documentName = path.replace(/^\/+/, "");
-                }
-
-                if (!token) throw new Error("Authentication failed: No token provided");
-
-                const room = parseRoom(documentName);
-                if (!room?.project) throw new Error("Authentication failed: Invalid room format");
-
-                let decoded;
-                try {
-                    decoded = await verifyIdTokenCached(token);
-                } catch (err) {
-                    ws.close(4001, "UNAUTHORIZED");
-                    return;
-                }
-
-                const hasAccess = await checkContainerAccess(decoded.uid, room.project);
-                if (!hasAccess) {
-                    ws.close(4003, "FORBIDDEN");
-                    return;
-                }
-
-                // 3. Room Limits
-                const currentRoomCount = roomCounts.get(documentName) ?? 0;
-                if (currentRoomCount >= config.MAX_SOCKETS_PER_ROOM) {
-                    return reject(4006, "MAX_SOCKETS_PER_ROOM");
-                }
-
-                // 4. Update Counters
-                totalSockets++;
-                ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
-                roomCounts.set(documentName, (roomCounts.get(documentName) ?? 0) + 1);
-
-                logger.info({ event: "ws_connection_accepted", room: documentName });
-
-                // 5. Setup Listeners
-                ws.on("message", (data: any) => {
-                    recordMessage();
-                    const len = data.byteLength || data.length || 0;
-                    if (len > config.MAX_MESSAGE_SIZE_BYTES) {
-                        logger.warn({
-                            event: "ws_connection_closed",
-                            reason: "message_too_large",
-                            size: len,
-                            documentName, // Add context
-                        });
-                        ws.close(4005, "MESSAGE_TOO_LARGE");
-                    }
-                });
-
-                ws.on("close", () => {
-                    totalSockets--;
-                    if (totalSockets < 0) totalSockets = 0;
-                    if (ip) {
-                        const count = (ipCounts.get(ip) ?? 1) - 1;
-                        if (count <= 0) ipCounts.delete(ip);
-                        else ipCounts.set(ip, count);
-                    }
-                    if (documentName) {
-                        const count = (roomCounts.get(documentName) ?? 1) - 1;
-                        if (count <= 0) roomCounts.delete(documentName);
-                        else roomCounts.set(documentName, count);
-                    }
-                });
-
-                // 6. Handover to Hocuspocus
-                try {
-                    // Pass auth context
-                    const context = {
-                        user: { uid: decoded.uid },
-                        room,
-                        ip,
-                    };
-                    hocuspocus.handleConnection(ws, request, context);
-                } catch (e) {
-                    console.error("Error handling Hocuspocus connection:", e);
-                    ws.close(1011);
-                }
-            } catch (e: any) {
-                if (e.code === "auth/id-token-expired" || e.message?.includes("expired")) {
-                    logger.warn({ event: "ws_setup_warn", reason: "token_expired", message: e.message });
-                } else {
-                    logger.error({ event: "ws_setup_error", error: e.message });
-                }
-                ws.close(4001, e.message || "Unauthorized");
+                console.log(`[server] Handover to Hocuspocus: room=${documentName}, ip=${ip}`);
+                hocuspocus.handleConnection(ws, request, { ip });
+            } catch (e) {
+                console.error("Error handling Hocuspocus connection:", e);
+                ws.close(1011);
             }
         });
     });
