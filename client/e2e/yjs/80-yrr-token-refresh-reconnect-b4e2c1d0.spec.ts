@@ -73,13 +73,17 @@ test.describe("YJS token refresh reconnect", () => {
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
-        await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const wsStatus = (window as any).__WS_STATUS__;
-            // eslint-disable-next-line no-restricted-globals
-            const p = (window as any).__CONN__.provider;
-            return p.isSynced === true || wsStatus === "connected";
-        }, undefined, { timeout: 60000 });
+        await page.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                const wsStatus = (window as any).__WS_STATUS__;
+                // eslint-disable-next-line no-restricted-globals
+                const p = (window as any).__CONN__.provider;
+                return p.isSynced === true || wsStatus === "connected";
+            },
+            undefined,
+            { timeout: 60000 },
+        );
         // HocuspocusProvider stores status in configuration.websocketProvider.status
         const isConnected = await page.evaluate(() =>
             // eslint-disable-next-line no-restricted-globals
