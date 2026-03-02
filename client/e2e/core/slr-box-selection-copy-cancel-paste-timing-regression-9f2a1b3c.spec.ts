@@ -186,8 +186,8 @@ test.describe("Box selection copy, cancel, and paste timing regression test", ()
 
         // Explicitly call cancelBoxSelection
         await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
             if (
+                // eslint-disable-next-line no-restricted-globals
                 (window as any).KeyEventHandler
                 // eslint-disable-next-line no-restricted-globals
                 && typeof (window as any).KeyEventHandler.cancelBoxSelection === "function"
