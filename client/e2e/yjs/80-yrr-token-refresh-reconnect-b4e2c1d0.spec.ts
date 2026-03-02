@@ -8,7 +8,8 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.setTimeout(240_000);
+// Shorten per-spec timeout (default 240s is too long for this scenario)
+test.setTimeout(120_000);
 
 test.describe("YJS token refresh reconnect", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -64,8 +65,6 @@ test.describe("YJS token refresh reconnect", () => {
             return (window as any).__WS_STATUS__;
         });
         expect(status).toBe("disconnected");
-        // Give connection a moment to fully settle before refreshing
-        await page.waitForTimeout(2000);
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
