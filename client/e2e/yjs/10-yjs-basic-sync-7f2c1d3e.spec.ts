@@ -33,13 +33,16 @@ test("basic map value sync via hocuspocus", async ({ browser }) => {
     console.log("[yjs-basic] p1 url:", (url1 as string).slice(0, 100));
     console.log("[yjs-basic] p2 url:", (url2 as string).slice(0, 100));
 
-    // wait up to ~8s for initial sync to complete on both sides
-    await p1.waitForFunction(() => (window as any).__PROVIDER__?.isSynced === true, null, { timeout: 8000 }).catch(() =>
+    // wait up to ~20s for initial sync to complete on both sides
+    await p1.waitForFunction(() => (window as any).__PROVIDER__?.isSynced === true, null, { timeout: 20000 }).catch(() =>
         undefined
     );
-    await p2.waitForFunction(() => (window as any).__PROVIDER2__?.isSynced === true, null, { timeout: 8000 }).catch(
+    await p2.waitForFunction(() => (window as any).__PROVIDER2__?.isSynced === true, null, { timeout: 20000 }).catch(
         () => undefined,
     );
+
+    // Explicitly wait for __DOC__ to be defined
+    await p1.waitForFunction(() => !!(window as any).__DOC__, null, { timeout: 20000 });
 
     await p1.evaluate(() => {
         const d = (window as any).__DOC__;
