@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * 矩形選択の視覚フィードバックがタイムアウト後に削除されることを確認する
+ * Verify that the visual feedback for box selection is removed after the timeout
  */
 
 test.describe("Box selection feedback", () => {
@@ -33,11 +33,11 @@ test.describe("Box selection feedback", () => {
         await page.locator(".outliner-item").first().click();
         await page.keyboard.type("First line of text");
 
-        // Enterキーを押して新しいアイテムを作成
+        // Press Enter key to create a new item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second line of text");
 
-        // Enterキーを押して新しいアイテムを作成
+        // Press Enter key to create a new item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Third line of text");
 
