@@ -65,6 +65,7 @@ test.describe("YJS token refresh reconnect", () => {
         });
         expect(status).toBe("disconnected");
 
+        // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(() => !!(window as any).__USER_MANAGER__);
         await page.waitForTimeout(2000);
 
@@ -117,6 +118,7 @@ test.describe("YJS token refresh reconnect", () => {
             return p?.isSynced === true || wsStatus === "connected";
         });
 
+        // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(() => !!(window as any).__USER_MANAGER__);
         await page.waitForTimeout(2000);
 
