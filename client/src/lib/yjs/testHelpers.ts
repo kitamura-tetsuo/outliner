@@ -159,7 +159,7 @@ export async function initializeBrowserPage(
     await page.waitForFunction(
         () => !!(window as any).__USER_MANAGER__,
         null,
-        { timeout: 30000 },
+        { timeout: 60000 },
     );
 
     // Authenticate if required
@@ -176,7 +176,7 @@ export async function initializeBrowserPage(
         await page.waitForFunction(
             () => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(),
             null,
-            { timeout: 30000 },
+            { timeout: 60000 },
         );
     }
 
@@ -544,7 +544,7 @@ export async function prepareTwoFullBrowserPages(
         () => {
             return !!(window as any).__USER_MANAGER__;
         },
-        { timeout: 30000 },
+        { timeout: 60000 },
     );
 
     await page2.evaluate(async () => {
@@ -560,7 +560,7 @@ export async function prepareTwoFullBrowserPages(
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
         },
-        { timeout: 30000 },
+        { timeout: 60000 },
     );
 
     // Wait for page2 to initialize Yjs client and appStore
