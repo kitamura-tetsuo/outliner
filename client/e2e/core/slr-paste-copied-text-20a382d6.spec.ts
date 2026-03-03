@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => {
+test.describe("SLR-20a382d6: Paste copied text", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed with default content to ensure items exist
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
@@ -16,26 +16,26 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
         await TestHelpers.waitForOutlinerItems(page, 4, 10000);
     });
 
-    test("コピーしたテキストを別の場所にペーストできる", async ({ page }) => {
-        // デバッグモードを有効化
+    test("Can paste copied text to another location", async ({ page }) => {
+        // Enable debug mode
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 
-        // 2つ目のアイテムを取得
+        // Get the second item
         const secondItem = page.locator(".outliner-item").nth(1);
 
-        // 2つ目のアイテムをクリックして選択
+        // Click to select the second item
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // 選択範囲を手動で作成
+        // Manually create selection
         await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
-            // 2つ目と3つ目のアイテムを選択
+            // Select the second and third items
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3) return;
 
@@ -44,7 +44,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
 
             if (!secondItemId || !thirdItemId) return;
 
-            // 選択範囲を設定
+            // Set selection range
             store.setSelection({
                 startItemId: secondItemId,
                 startOffset: 0,
@@ -57,24 +57,24 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
             console.log("Selection created manually");
         });
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait a little for selection to be reflected
         await page.waitForTimeout(300);
 
-        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
+        // Get selected text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // 選択範囲が存在することを確認
+        // Ensure selection exists
         console.log("Selection text:", selectionText);
         expect(selectionText).toBeTruthy();
 
-        // コピー操作を実行
+        // Execute copy operation
         await page.keyboard.press("Control+c");
 
-        // 手動でコピーイベントを発火させる
+        // Manually dispatch copy event
         const selectedText = await page.evaluate<string>(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
@@ -84,7 +84,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
             const selectedText = text;
             console.log(`Selected text for copy: "${selectedText}"`);
 
-            // クリップボードの内容を設定
+            // Set clipboard content
             const textarea = document.createElement("textarea");
             textarea.value = selectedText;
             document.body.appendChild(textarea);
@@ -92,21 +92,21 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
             document.execCommand("copy");
             document.body.removeChild(textarea);
 
-            // EditorOverlayのclipboardRefにも設定
+            // Also set in EditorOverlay's clipboardRef
             const clipboardRef = document.querySelector(".clipboard-textarea") as HTMLTextAreaElement;
             if (clipboardRef) {
                 clipboardRef.value = selectedText;
                 console.log(`clipboardRef value set to: "${selectedText}"`);
             }
 
-            // ClipboardEventを手動で作成
+            // Manually create ClipboardEvent
             const clipboardEvent = new ClipboardEvent("copy", {
                 clipboardData: new DataTransfer(),
                 bubbles: true,
                 cancelable: true,
             });
 
-            // DataTransferオブジェクトにテキストを設定
+            // Set text in DataTransfer object
             Object.defineProperty(clipboardEvent, "clipboardData", {
                 writable: false,
                 value: {
@@ -117,44 +117,44 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
                 },
             });
 
-            // エディタオーバーレイにイベントを発火
+            // Dispatch event to editor overlay
             const editorOverlay = document.querySelector(".editor-overlay");
             if (editorOverlay) {
                 editorOverlay.dispatchEvent(clipboardEvent);
                 console.log("Dispatched copy event to editor overlay");
             }
 
-            // グローバル変数に設定（テスト用）
+            // Set globally (for testing)
             (window as any).testClipboardText = selectedText;
             console.log("Stored test clipboard text:", selectedText);
         }, selectedText);
 
-        // 3つ目のアイテムをクリック
+        // Click the third item
         const thirdItem = page.locator(".outliner-item").nth(2);
         await thirdItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
 
-        // 末尾に移動
+        // Move to the end
         await page.keyboard.press("End");
 
-        // 新しいアイテムを追加
+        // Add a new item
         await page.keyboard.press("Enter");
 
-        // ペースト操作を実行
+        // Execute paste operation
         await page.keyboard.press("Control+v");
 
-        // KeyEventHandlerのhandlePasteを直接呼び出す
+        // Directly call handlePaste of KeyEventHandler
         await page.evaluate(async text => {
             console.log("Calling KeyEventHandler.handlePaste directly with text:", text);
 
-            // ClipboardEventを手動で作成
+            // Manually create ClipboardEvent
             const clipboardEvent = new ClipboardEvent("paste", {
                 clipboardData: new DataTransfer(),
                 bubbles: true,
                 cancelable: true,
             });
 
-            // DataTransferオブジェクトにテキストを設定
+            // Set text in DataTransfer object
             Object.defineProperty(clipboardEvent, "clipboardData", {
                 writable: false,
                 value: {
@@ -166,7 +166,7 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
                 },
             });
 
-            // KeyEventHandlerのhandlePasteを直接呼び出し
+            // Directly call KeyEventHandler's handlePaste
             const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
                 await KeyEventHandler.handlePaste(clipboardEvent);
@@ -176,32 +176,32 @@ test.describe("SLR-20a382d6: コピーしたテキストのペースト", () => 
             }
         }, selectedText);
 
-        // 少し待機してペーストが反映されるのを待つ
+        // Wait a little for paste to be reflected
         await page.waitForTimeout(300);
 
-        // ペーストされたアイテムのテキストを確認
+        // Check text of pasted item
         const items = page.locator(".outliner-item");
         const count = await items.count();
 
-        // 少なくとも4つのアイテムが存在することを確認（元の3つ + ペーストされた1つ以上）
+        // Ensure at least 4 items exist (original 3 + 1 or more pasted)
         expect(count).toBeGreaterThanOrEqual(4);
 
-        // ペーストされたアイテムのテキストを確認
-        // 直接テキストを取得するのではなく、アプリケーション内部の状態を確認
+        // Check text of pasted item
+        // Check application internal state instead of getting text directly
         const fourthItemText = await page.evaluate(() => {
-            // 4番目のアイテムのIDを取得
+            // Get ID of the fourth item
             const fourthItem = document.querySelectorAll(".outliner-item")[3];
             if (!fourthItem) return "";
 
             const itemId = fourthItem.getAttribute("data-item-id");
             if (!itemId) return "";
 
-            // アイテムのテキストを取得
+            // Get text of item
             const textEl = fourthItem.querySelector(".item-text");
             return textEl ? textEl.textContent : "";
         });
 
-        // テスト結果を確認
+        // Verify test result
         console.log(`Fourth item text: "${fourthItemText}"`);
         expect(fourthItemText).toBeTruthy();
     });
