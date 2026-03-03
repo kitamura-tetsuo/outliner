@@ -2,153 +2,156 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0004
- *  Title   : マウスドラッグによる選択
+ *  Title   : Selection by dragging mouse
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("SLR-0004: マウスドラッグによる選択", () => {
+test.describe("SLR-0004: Selection by dragging mouse", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed
         await TestHelpers.prepareTestEnvironment(page, testInfo, ["This is a test text for mouse drag selection"]);
         // Wait for Title + 1 item
         await TestHelpers.waitForOutlinerItems(page, 2, 10000);
 
-        // 最初のアイテムを選択
+        // Select the first item
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
 
         await page.waitForSelector("textarea.global-textarea:focus");
 
-        // カーソルが表示されるまで待機
+        // Wait for cursor to be visible
         await TestHelpers.waitForCursorVisible(page);
     });
 
-    test("マウスドラッグで単一アイテム内のテキストを選択できる", async ({ page }) => {
-        // カーソルが表示されるまで待機
+    test("Can select text within a single item by dragging the mouse", async ({ page }) => {
+        // Wait for cursor to be visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // アクティブなアイテムIDを取得
+        // Get the active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
         expect(activeItemId).not.toBeNull();
 
-        // アクティブなアイテムを取得
+        // Get the active item
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`).locator(".item-content");
         await activeItem.waitFor({ state: "visible" });
 
-        // キーボードで選択範囲を作成（マウスドラッグの代わりに）
+        // Create selection range using keyboard (instead of mouse drag)
         await page.keyboard.press("Home");
         await page.keyboard.down("Shift");
         await page.keyboard.press("End");
         await page.keyboard.up("Shift");
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait briefly for the selection to be reflected
         await page.waitForTimeout(500);
 
-        // 選択範囲が作成されたことを確認
+        // Verify that the selection range was created
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
-        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
+        // Get the text of the selection range (from the application's selection range management system)
         const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // 選択範囲が存在することを確認
+        // Verify that the selection range exists
         expect(selectionText.length).toBeGreaterThan(0);
     });
 
-    test("選択範囲が視覚的に表示される", async ({ page }) => {
-        // カーソルが表示されるまで待機
+    test("Selection range is visually displayed", async ({ page }) => {
+        // Wait for cursor to be visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // アクティブなアイテムIDを取得
+        // Get the active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
         expect(activeItemId).not.toBeNull();
 
-        // アクティブなアイテムを取得
+        // Get the active item
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`).locator(".item-content");
         await activeItem.waitFor({ state: "visible" });
 
-        // キーボードで選択範囲を作成（マウスドラッグの代わりに）
+        // Create selection range using keyboard (instead of mouse drag)
         await page.keyboard.press("Home");
         await page.keyboard.down("Shift");
         await page.keyboard.press("End");
         await page.keyboard.up("Shift");
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait briefly for the selection to be reflected
         await page.waitForTimeout(500);
 
-        // 選択範囲の要素が存在することを確認
+        // Verify that the selection range element exists
         const selectionElement = page.locator(".editor-overlay .selection");
         await expect(selectionElement).toBeVisible({ timeout: 5000 });
 
-        // 選択範囲の要素のスタイルを確認
+        // Check the style of the selection range element
         const backgroundColor = await selectionElement.evaluate(el => {
+            // eslint-disable-next-line no-restricted-globals
             return window.getComputedStyle(el).backgroundColor;
         });
 
-        // 背景色が設定されていることを確認（rgba形式の値）
+        // Verify that the background color is set (rgba format value)
         expect(backgroundColor).toMatch(/rgba\(.*\)/);
     });
 
-    test("選択範囲のテキストをコピーできる", async ({ page }) => {
-        // カーソルが表示されるまで待機
+    test("Can copy the text of the selection range", async ({ page }) => {
+        // Wait for cursor to be visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // アクティブなアイテムIDを取得
+        // Get the active item ID
         const activeItemId = await TestHelpers.getActiveItemId(page);
         expect(activeItemId).not.toBeNull();
 
-        // アクティブなアイテムを取得
+        // Get the active item
         const activeItem = page.locator(`.outliner-item[data-item-id="${activeItemId}"]`).locator(".item-content");
         await activeItem.waitFor({ state: "visible" });
 
-        // キーボードで選択範囲を作成（マウスドラッグの代わりに）
+        // Create selection range using keyboard (instead of mouse drag)
         await page.keyboard.press("Home");
         await page.keyboard.down("Shift");
         await page.keyboard.press("End");
         await page.keyboard.up("Shift");
 
-        // 少し待機して選択が反映されるのを待つ
+        // Wait briefly for the selection to be reflected
         await page.waitForTimeout(500);
 
-        // 選択範囲の要素が存在することを確認
+        // Verify that the selection range element exists
         await expect(page.locator(".editor-overlay .selection")).toBeVisible();
 
-        // 選択範囲のテキストを取得（アプリケーションの選択範囲管理システムから）
+        // Get the text of the selection range (from the application's selection range management system)
         const selectedText = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
 
-        // 選択範囲が存在することを確認
+        // Verify that the selection range exists
         expect(selectedText.length).toBeGreaterThan(0);
 
-        // コピー操作を実行
+        // Execute copy operation
         await page.keyboard.press("Control+c");
 
-        // 新しいアイテムを追加
+        // Add a new item
         await page.keyboard.press("Enter");
 
-        // ペースト操作を実行
+        // Execute paste operation
         await page.keyboard.press("Control+v");
 
-        // 少し待機してペーストが反映されるのを待つ
+        // Wait briefly for the paste to be reflected
         await page.waitForTimeout(500);
 
-        // 新しいアイテムのテキストを取得
+        // Get the text of the new item
         const newItem = page.locator(".outliner-item").nth(1);
         const newItemText = await newItem.locator(".item-text").textContent();
 
-        // ペーストされたテキストが存在することを確認
-        // 注: コピー＆ペーストが機能しない場合もあるため、テキストが存在するかどうかだけを確認
+        // Verify that the pasted text exists
+        // Note: Since copy & paste may not always work, just verify if the text exists
         expect(newItemText).not.toBeNull();
 
-        // 選択範囲のテキストとペーストされたテキストの両方が存在することを確認
+        // Verify that both the selection range text and the pasted text exist
         expect(selectedText.length).toBeGreaterThan(0);
         expect(newItemText).not.toBeNull();
     });
