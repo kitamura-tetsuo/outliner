@@ -2,47 +2,47 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature TST-0005
- *  Title   : テスト環境の初期化と準備
+ *  Title   : Test environment initialization and preparation
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 
 /**
  * @file port.spec.ts
- * @description テスト環境のポート設定検証テスト
- * アプリケーションが正しいポート(7080または7090)で動作していることを確認するためのテストです。
- * このテストはCIや開発環境で適切なポート設定が行われていることを検証します。
+ * @description Test environment port configuration verification test
+ * This is a test to verify that the application is running on the correct port (7080 or 7090).
+ * This test verifies that proper port configuration is done in CI and development environments.
  * @playwright
- * @title テスト環境ポート検証
+ * @title Test environment port verification
  */
 
-test.describe("テスト環境ポート検証", () => {
+test.describe("Test environment port verification", () => {
     /**
-     * @testcase アプリケーションがポート7080または7090で動作していること
-     * @description テスト環境でアプリケーションが正しいポート(7080または7090)で動作していることを確認するテスト
-     * @check baseURLが「http://localhost:7080」または「http://localhost:7090」であることを確認
-     * @check ページアクセス後のURLに「localhost:7080」または「localhost:7090」が含まれていることを確認
-     * @check アプリケーションのタイトル「Outliner App」が表示されることを確認
-     * @check スクリーンショットを撮影して視覚的に確認
+     * @testcase Application runs on port 7080 or 7090
+     * @description Test to verify that the application is running on the correct port (7080 or 7090) in the test environment
+     * @check Verify that the baseURL is "http://localhost:7080" or "http://localhost:7090"
+     * @check Verify that the URL after accessing the page contains "localhost:7080" or "localhost:7090"
+     * @check Verify that the application title "Outliner App" is displayed
+     * @check Take a screenshot for visual confirmation
      */
-    test("アプリケーションがポート7080または7090で動作していること", async ({ page, baseURL }) => {
-        // テスト環境の URL を確認
+    test("Application runs on port 7080 or 7090", async ({ page, baseURL }) => {
+        // Verify test environment URL
         expect(baseURL).toMatch(/(7080|7090)/);
 
-        // ページにアクセス
+        // Access the page
         await page.goto("/");
 
-        // URLから直接ポートを確認
+        // Verify port directly from URL
         const url = page.url();
         expect(url).toMatch(/(7080|7090)/);
 
-        // ポート番号をログに出力
-        console.log(`テスト実行時のURL: ${url}`);
+        // Output port number to log
+        console.log(`URL during test execution: ${url}`);
 
-        // ページが正しく表示されていることを確認
+        // Verify that the page is displayed correctly
         await expect(page.locator("h1")).toContainText("Outliner");
 
-        // スクリーンショットを撮影
+        // Take a screenshot
         await page.screenshot({ path: "test-results/test-port-confirmation.png" });
     });
 });
