@@ -2,67 +2,67 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature SLR-0100
- *  Title   : ボックス選択（矩形選択）機能 - キーボード
+ *  Title   : Box selection (rectangular selection) function - keyboard
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * SLR-0100: ボックス選択（矩形選択）機能のテスト
+ * SLR-0100: Box selection (rectangular selection) function test
  *
- * このテストでは、Alt+Shift+矢印キーによる矩形選択機能をテストします。
+ * This test verifies the rectangular selection function using Alt+Shift+Arrow keys.
  *
- * テスト内容:
- * 1. Alt+Shift+矢印キーで矩形選択を開始
- * 2. 矩形選択の範囲を拡張
- * 3. Escキーで矩形選択をキャンセル
+ * Test contents:
+ * 1. Start rectangular selection with Alt+Shift+Arrow keys
+ * 2. Expand rectangular selection range
+ * 3. Cancel rectangular selection with Esc key
  */
-test.describe("選択範囲管理テスト", () => {
+test.describe("Selection range management test", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
     test.afterEach(async () => {
-        // 必要に応じてクリーンアップ処理を実装
+        // Implement cleanup processing as needed
     });
 
-    test("ボックス選択（矩形選択）機能", async ({ page }) => {
-        // テストタイムアウトを延長
+    test("Box selection (rectangular selection) function", async ({ page }) => {
+        // Extend test timeout
 
-        // デバッグモードを有効化
+        // Enable debug mode
         try {
             await page.evaluate(() => {
                 (window as any).DEBUG_MODE = true;
             });
         } catch (error) {
-            console.log(`デバッグモード設定中にエラーが発生しました: ${error}`);
+            console.log(`Error occurred while setting debug mode: ${error}`);
         }
 
-        // 最初のアイテムが表示されるまで待機
+        // Wait for the first item to be displayed
         await page.waitForSelector(".outliner-item", { timeout: 5000 });
 
-        // 1. 初期状態の確認
-        // 最初のアイテムにテキストを入力
+        // 1. Initial state check
+        // Enter text into the first item
         await page.locator(".outliner-item").first().click();
         await page.keyboard.type("First line of text");
 
-        // Enterキーを押して新しいアイテムを作成
+        // Press Enter key to create a new item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Second line of text");
 
-        // Enterキーを押して新しいアイテムを作成
+        // Press Enter key to create a new item
         await page.keyboard.press("Enter");
         await page.keyboard.type("Third line of text");
 
-        // 最初のアイテムをクリック
+        // Click the first item
         await page.locator(".outliner-item").first().click();
 
-        // 2. Alt+Shift+矢印キーで矩形選択を開始
-        // Alt+Shift+Rightを押して矩形選択を開始
+        // 2. Start rectangular selection with Alt+Shift+Arrow keys
+        // Press Alt+Shift+Right to start rectangular selection
         await page.keyboard.press("Alt+Shift+ArrowRight");
 
-        // 矩形選択が作成されたことを確認
+        // Check that rectangular selection is created
         const boxSelectionCount1 = await page.evaluate(() => {
             if (!(window as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
@@ -72,9 +72,9 @@ test.describe("選択範囲管理テスト", () => {
             console.log("All selections:", selections);
             return selections.filter((s: any) => s.isBoxSelection).length;
         });
-        console.log(`矩形選択の数: ${boxSelectionCount1}`);
+        console.log(`Number of rectangular selections: ${boxSelectionCount1}`);
 
-        // 矩形選択機能が実装されていない場合は、通常の選択範囲が作成されることを確認
+        // Check that a normal selection range is created if the rectangular selection function is not implemented
         const normalSelectionCount = await page.evaluate(() => {
             if (!(window as any).editorOverlayStore) {
                 return 0;
@@ -82,16 +82,16 @@ test.describe("選択範囲管理テスト", () => {
             const selections = Object.values((window as any).editorOverlayStore.selections);
             return selections.length;
         });
-        console.log(`通常の選択範囲の数: ${normalSelectionCount}`);
+        console.log(`Number of normal selection ranges: ${normalSelectionCount}`);
 
-        // 何らかの選択範囲が作成されたことを確認（矩形選択または通常の選択）
+        // Check that some selection range is created (rectangular selection or normal selection)
         expect(boxSelectionCount1 + normalSelectionCount).toBeGreaterThanOrEqual(0);
 
-        // 3. 矩形選択の範囲を拡張
-        // Alt+Shift+Downを押して矩形選択を下に拡張
+        // 3. Expand rectangular selection range
+        // Press Alt+Shift+Down to expand rectangular selection downwards
         await page.keyboard.press("Alt+Shift+ArrowDown");
 
-        // 矩形選択の範囲が拡張されたことを確認
+        // Check that rectangular selection range is expanded
         const boxSelectionRanges = await page.evaluate(() => {
             if (!(window as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
@@ -99,18 +99,18 @@ test.describe("選択範囲管理テスト", () => {
             }
             const selections = Object.values((window as any).editorOverlayStore.selections);
             const boxSelection = selections.find((s: any) => s.isBoxSelection);
-            // 矩形選択が存在するかどうかを確認
+            // Check if rectangular selection exists
             return boxSelection ? 1 : selections.length;
         });
-        console.log(`矩形選択の範囲数: ${boxSelectionRanges}`);
+        console.log(`Number of rectangular selection ranges: ${boxSelectionRanges}`);
 
-        // 何らかの選択範囲が存在することを確認
+        // Check that some selection range exists
         expect(boxSelectionRanges).toBeGreaterThanOrEqual(0);
 
-        // 4. Escキーで矩形選択をキャンセル
+        // 4. Cancel rectangular selection with Esc key
         await page.keyboard.press("Escape");
 
-        // 明示的にcancelBoxSelectionを呼び出す
+        // Explicitly call cancelBoxSelection
         await page.evaluate(() => {
             if (
                 (window as any).KeyEventHandler
@@ -122,17 +122,17 @@ test.describe("選択範囲管理テスト", () => {
                 console.log("KeyEventHandler.cancelBoxSelection not available");
             }
 
-            // 選択範囲を強制的にクリア
+            // Forcibly clear selection range
             if ((window as any).editorOverlayStore) {
                 (window as any).editorOverlayStore.clearSelections();
                 console.log("Explicitly called editorOverlayStore.clearSelections()");
             }
         });
 
-        // 少し待機して選択範囲のクリアを確実にする
+        // Wait a bit to ensure selection range is cleared
         await page.waitForTimeout(100);
 
-        // 矩形選択がキャンセルされたことを確認
+        // Check that rectangular selection is cancelled
         const boxSelectionCount2 = await page.evaluate(() => {
             if (!(window as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
@@ -144,9 +144,9 @@ test.describe("選択範囲管理テスト", () => {
             console.log("Box selections after cancel:", boxSelections);
             return boxSelections.length;
         });
-        console.log(`キャンセル後の矩形選択の数: ${boxSelectionCount2}`);
+        console.log(`Number of rectangular selections after cancellation: ${boxSelectionCount2}`);
 
-        // 選択範囲がクリアされたことを確認（矩形選択機能が実装されていない場合は通常の選択もクリア）
+        // Check that selection range is cleared (normal selection is also cleared if rectangular selection function is not implemented)
         const totalSelectionsAfterCancel = await page.evaluate(() => {
             if (!(window as any).editorOverlayStore) {
                 return 0;
@@ -154,9 +154,9 @@ test.describe("選択範囲管理テスト", () => {
             const selections = Object.values((window as any).editorOverlayStore.selections);
             return selections.length;
         });
-        console.log(`キャンセル後の全選択範囲の数: ${totalSelectionsAfterCancel}`);
+        console.log(`Number of all selection ranges after cancellation: ${totalSelectionsAfterCancel}`);
 
-        // 選択範囲がクリアされたことを確認
+        // Check that selection range is cleared
         expect(totalSelectionsAfterCancel).toBe(0);
     });
 });
