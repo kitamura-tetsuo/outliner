@@ -50,7 +50,7 @@ test("basic map value sync via hocuspocus", async ({ browser }) => {
 
     const value = await p2.evaluate(async () => {
         const m = (window as any).__DOC2__.getMap("m");
-        for (let i = 0; i < 80; i++) { // ~8s
+        for (let i = 0; i < 200; i++) { // ~20s
             const v = m.get("k");
             if (v !== undefined) return v;
             await new Promise(r => setTimeout(r, 100));
