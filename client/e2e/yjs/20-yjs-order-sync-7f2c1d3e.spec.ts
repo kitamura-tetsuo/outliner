@@ -28,6 +28,9 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
         d.getMap("m").set("k", "v1");
     });
 
+    // Ensure p1 sync is settled before spawning p2
+    await p1.waitForTimeout(1000);
+
     // Initialize second page
     const { context: ctx2, page: p2 } = await initializeBrowserPage(browser, {
         requireAuth: true,
