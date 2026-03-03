@@ -34,14 +34,6 @@ function refresh() {
     snapshots = listSnapshots(project, page).sort((a, b) => b.timestamp - a.timestamp); // Ensure descending order
 }
 
-function getSnapshotDisplay(id: string): string {
-    if (id === "current") return "Current";
-    if (id === "previous") return "Previous";
-    const snap = getSnapshot(project, page, id);
-    if (snap) return new Date(snap.timestamp).toLocaleString();
-    return "Unknown";
-}
-
 function showDiff(id: string) {
     if (id) selectedId = id;
     if (!selectedId) return;
@@ -205,7 +197,7 @@ $effect(() => {
                         <option value="current">Current</option>
                         <option value="previous">Previous</option>
                         <optgroup label="Specific Snapshot">
-                            {#each snapshots as s}
+                            {#each snapshots as s (s.id)}
                                 {#if s.id !== selectedId}
                                     <option value={s.id}>{new Date(s.timestamp).toLocaleString()}</option>
                                 {/if}

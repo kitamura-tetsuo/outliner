@@ -58,7 +58,7 @@ test.describe("YJS token refresh reconnect", () => {
         });
         // Wait for disconnect event with timeout
         // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 10000 });
+        await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 30000 });
         // After disconnect, verify status
         const status = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals

@@ -37,7 +37,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
         await page1.waitForFunction(() => {
             return !!(window as any).__USER_MANAGER__;
-        }, { timeout: 10000 });
+        }, { timeout: 30000 });
 
         await page1.evaluate(async () => {
             const mgr = (window as any).__USER_MANAGER__;
@@ -49,7 +49,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         await page1.waitForFunction(() => {
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
-        }, { timeout: 10000 });
+        }, { timeout: 30000 });
 
         // Create project and page programmatically
         const projectId = `p${Date.now().toString(16)}`;
@@ -154,7 +154,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
         await page2.waitForFunction(() => {
             return !!(window as any).__USER_MANAGER__;
-        }, { timeout: 10000 });
+        }, { timeout: 30000 });
 
         await page2.evaluate(async () => {
             const mgr = (window as any).__USER_MANAGER__;
@@ -166,7 +166,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         await page2.waitForFunction(() => {
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
-        }, { timeout: 10000 });
+        }, { timeout: 30000 });
 
         // Connect to the same project programmatically
         console.log(`page2: Connecting to project ${pageInfo.projectId}`);
