@@ -34,9 +34,11 @@ test("basic map value sync via hocuspocus", async ({ browser }) => {
     console.log("[yjs-basic] p2 url:", (url2 as string).slice(0, 100));
 
     // wait up to ~30s for initial sync to complete on both sides
+    // eslint-disable-next-line no-restricted-globals
     await p1.waitForFunction(() => (window as any).__PROVIDER__?.isSynced === true, null, { timeout: 30000 }).catch(
         () => undefined,
     );
+    // eslint-disable-next-line no-restricted-globals
     await p2.waitForFunction(() => (window as any).__PROVIDER2__?.isSynced === true, null, { timeout: 30000 }).catch(
         () => undefined,
     );
