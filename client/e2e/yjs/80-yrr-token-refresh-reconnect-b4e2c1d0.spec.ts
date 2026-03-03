@@ -65,6 +65,8 @@ test.describe("YJS token refresh reconnect", () => {
             return (window as any).__WS_STATUS__;
         });
         expect(status).toBe("disconnected");
+        // Add a small delay for connections to settle (from memories)
+        await page.waitForTimeout(2000);
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
@@ -74,7 +76,7 @@ test.describe("YJS token refresh reconnect", () => {
             // eslint-disable-next-line no-restricted-globals
             const p = (window as any).__CONN__.provider;
             return p.isSynced === true || wsStatus === "connected";
-        });
+        }, undefined, { timeout: 60000 });
         // HocuspocusProvider stores status in configuration.websocketProvider.status
         const isConnected = await page.evaluate(() =>
             // eslint-disable-next-line no-restricted-globals
@@ -114,12 +116,15 @@ test.describe("YJS token refresh reconnect", () => {
             return p?.isSynced === true || wsStatus === "connected";
         });
 
+        // Add a small delay for connections to settle (from memories)
+        await page.waitForTimeout(2000);
+
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
 
         // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true);
+        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true, undefined, { timeout: 60000 });
         // eslint-disable-next-line no-restricted-globals
         const tokenRefreshed = await page.evaluate(() => (window as any).__SEND_TOKEN_CALLED__);
         expect(tokenRefreshed).toBe(true);

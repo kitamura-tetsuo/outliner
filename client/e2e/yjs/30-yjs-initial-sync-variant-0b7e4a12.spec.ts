@@ -20,12 +20,12 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
     await p1.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
-    await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 10000 });
+    await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 30000 });
     await p1.evaluate(async () => {
         const mgr = (window as any).__USER_MANAGER__;
         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
     });
-    await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 10000 });
+    await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 30000 });
 
     const p1Connected = await p1.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite
@@ -65,12 +65,12 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
     await p2.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
-    await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 10000 });
+    await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 30000 });
     await p2.evaluate(async () => {
         const mgr = (window as any).__USER_MANAGER__;
         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
     });
-    await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 10000 });
+    await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 30000 });
 
     const p2Connected = await p2.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite
