@@ -2,13 +2,13 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature LNK-0002
- *  Title   : 内部リンクの機能検証
+ *  Title   : Internal link functional verification
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "../fixtures/console-forward";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("LNK-0002: 内部リンクURL生成", () => {
+test.describe("LNK-0002: Internal link URL generation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "[simple-page]",
@@ -17,7 +17,7 @@ test.describe("LNK-0002: 内部リンクURL生成", () => {
         ]);
     });
 
-    test("内部リンクのURLが正しく生成される", async ({ page }) => {
+    test("Internal link URL is generated correctly", async ({ page }) => {
         // Wait for all seeded items to be present (Title + 3 lines = 4 items)
         await TestHelpers.waitForItemCount(page, 4);
 
