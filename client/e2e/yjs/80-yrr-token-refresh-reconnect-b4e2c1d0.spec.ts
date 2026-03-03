@@ -65,16 +65,26 @@ test.describe("YJS token refresh reconnect", () => {
             return (window as any).__WS_STATUS__;
         });
         expect(status).toBe("disconnected");
+
+        // Wait for connection to be ready before calling refreshToken
+        // eslint-disable-next-line no-restricted-globals
+        await page.waitForFunction(() => !!(window as any).__USER_MANAGER__, undefined, { timeout: 30000 });
+        await page.waitForTimeout(2000);
+
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
-        await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const wsStatus = (window as any).__WS_STATUS__;
-            // eslint-disable-next-line no-restricted-globals
-            const p = (window as any).__CONN__.provider;
-            return p.isSynced === true || wsStatus === "connected";
-        });
+        await page.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                const wsStatus = (window as any).__WS_STATUS__;
+                // eslint-disable-next-line no-restricted-globals
+                const p = (window as any).__CONN__.provider;
+                return p.isSynced === true || wsStatus === "connected";
+            },
+            undefined,
+            { timeout: 30000 },
+        );
         // HocuspocusProvider stores status in configuration.websocketProvider.status
         const isConnected = await page.evaluate(() =>
             // eslint-disable-next-line no-restricted-globals
@@ -114,12 +124,16 @@ test.describe("YJS token refresh reconnect", () => {
             return p?.isSynced === true || wsStatus === "connected";
         });
 
+        // eslint-disable-next-line no-restricted-globals
+        await page.waitForFunction(() => !!(window as any).__USER_MANAGER__, undefined, { timeout: 30000 });
+        await page.waitForTimeout(2000);
+
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
 
         // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true);
+        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true, undefined, { timeout: 30000 });
         // eslint-disable-next-line no-restricted-globals
         const tokenRefreshed = await page.evaluate(() => (window as any).__SEND_TOKEN_CALLED__);
         expect(tokenRefreshed).toBe(true);
