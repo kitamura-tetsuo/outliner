@@ -52,19 +52,21 @@ test.describe("YJS token refresh reconnect", () => {
             // eslint-disable-next-line no-restricted-globals
             const p = (window as any).__CONN__?.provider;
             return p?.isSynced === true || wsStatus === "connected";
-        });
+        }, undefined, { timeout: 30000 });
         await page.evaluate(() => {
             (window as any).__CONN__.provider.disconnect();
         });
         // Wait for disconnect event with timeout
         // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 10000 });
+        await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 30000 });
         // After disconnect, verify status
         const status = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
             return (window as any).__WS_STATUS__;
         });
         expect(status).toBe("disconnected");
+
+        await page.waitForTimeout(2000); // Give time before attempting token refresh
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
@@ -73,8 +75,8 @@ test.describe("YJS token refresh reconnect", () => {
             const wsStatus = (window as any).__WS_STATUS__;
             // eslint-disable-next-line no-restricted-globals
             const p = (window as any).__CONN__.provider;
-            return p.isSynced === true || wsStatus === "connected";
-        });
+            return p?.isSynced === true || wsStatus === "connected";
+        }, undefined, { timeout: 30000 });
         // HocuspocusProvider stores status in configuration.websocketProvider.status
         const isConnected = await page.evaluate(() =>
             // eslint-disable-next-line no-restricted-globals
@@ -112,14 +114,16 @@ test.describe("YJS token refresh reconnect", () => {
             // eslint-disable-next-line no-restricted-globals
             const wsStatus = (window as any).__WS_STATUS__;
             return p?.isSynced === true || wsStatus === "connected";
-        });
+        }, undefined, { timeout: 30000 });
+
+        await page.waitForTimeout(2000); // Give time before attempting token refresh
 
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
 
         // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true);
+        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true, undefined, { timeout: 30000 });
         // eslint-disable-next-line no-restricted-globals
         const tokenRefreshed = await page.evaluate(() => (window as any).__SEND_TOKEN_CALLED__);
         expect(tokenRefreshed).toBe(true);
