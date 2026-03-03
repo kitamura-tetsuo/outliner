@@ -19,7 +19,7 @@ test.describe("Schedule Management UI", () => {
     });
 
     test("create and cancel schedule", async ({ page }) => {
-        // コンソールログを監視
+        // Monitor console logs
         page.on("console", msg => {
             if (msg.text().includes("Schedule page:")) {
                 console.log("Browser console:", msg.text());
@@ -29,10 +29,10 @@ test.describe("Schedule Management UI", () => {
         await page.locator("text=Schedule").click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
 
-        // ページが完全に読み込まれるまで少し待つ
+        // Wait a moment for the page to fully load
         await page.waitForTimeout(500);
 
-        // ページの状態をログ出力
+        // Log page state
         const pageId = await page.evaluate(() => {
             return (window as any).appStore?.currentPage?.id || "undefined";
         });
@@ -45,10 +45,10 @@ test.describe("Schedule Management UI", () => {
         console.log("Test: Clicking Add button with datetime:", future);
         await page.locator('button:has-text("Add")').click();
 
-        // スケジュール追加後、少し待つ
+        // Wait a moment after adding schedule
         await page.waitForTimeout(500);
 
-        // スケジュール専用のセレクターを使用
+        // Use a dedicated selector for schedule
         const scheduleItems = page.locator('[data-testid="schedule-item"]');
         await expect(scheduleItems).toHaveCount(1);
 
