@@ -159,7 +159,7 @@ export async function initializeBrowserPage(
     await page.waitForFunction(
         () => !!(window as any).__USER_MANAGER__,
         null,
-        { timeout: 10000 },
+        { timeout: 30000 },
     );
 
     // Authenticate if required
@@ -176,7 +176,7 @@ export async function initializeBrowserPage(
         await page.waitForFunction(
             () => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(),
             null,
-            { timeout: 10000 },
+            { timeout: 30000 },
         );
     }
 
