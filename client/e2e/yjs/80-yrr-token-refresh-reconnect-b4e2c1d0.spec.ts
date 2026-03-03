@@ -23,6 +23,7 @@ test.describe("YJS token refresh reconnect", () => {
             // @ts-expect-error - resolved by Vite in browser
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
+            // eslint-disable-next-line no-restricted-globals
             (window as any).__CONN__ = conn;
 
             // Listen for status changes to detect disconnect
@@ -46,7 +47,6 @@ test.describe("YJS token refresh reconnect", () => {
             });
         }, projectId);
 
-        // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
@@ -59,6 +59,7 @@ test.describe("YJS token refresh reconnect", () => {
             { timeout: 60000 },
         );
         await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             (window as any).__CONN__.provider.disconnect();
         });
         // Wait for disconnect event with timeout
@@ -72,6 +73,7 @@ test.describe("YJS token refresh reconnect", () => {
         expect(status).toBe("disconnected");
 
         // Ensure userManager exists and is populated before refreshing token
+        // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(() => !!(window as any).__USER_MANAGER__, undefined, { timeout: 10000 });
         await page.waitForTimeout(1000); // Give auth state some time
         await page.evaluate(async () => {
@@ -79,7 +81,6 @@ test.describe("YJS token refresh reconnect", () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
 
-        // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
@@ -105,6 +106,7 @@ test.describe("YJS token refresh reconnect", () => {
             // @ts-expect-error - resolved by Vite in browser
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
+            // eslint-disable-next-line no-restricted-globals
             (window as any).__CONN__ = conn;
             // eslint-disable-next-line no-restricted-globals
             (window as any).__WS_STATUS__ = "unknown";
@@ -122,7 +124,6 @@ test.describe("YJS token refresh reconnect", () => {
             };
         }, projectId);
 
-        // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
@@ -136,6 +137,7 @@ test.describe("YJS token refresh reconnect", () => {
         );
 
         // Ensure userManager exists before calling refreshToken
+        // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(() => !!(window as any).__USER_MANAGER__, undefined, { timeout: 10000 });
         await page.waitForTimeout(1000); // Give auth state some time
         await page.evaluate(async () => {
