@@ -832,7 +832,7 @@ export class Cursor implements CursorEditingContext {
                     });
 
                     // Force update selection display
-                    if (typeof (store as any).forceUpdate === 'function') {
+                    if (typeof (store as any).forceUpdate === "function") {
                         (store as any).forceUpdate();
                     }
                 }
