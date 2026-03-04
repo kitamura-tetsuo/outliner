@@ -5,7 +5,7 @@ import {
     Items,
     Project,
 } from "../schema/app-schema";
-
+import PageListItem from "./PageListItem.svelte";
 
 interface Props {
     project: Project;
@@ -27,6 +27,7 @@ const dispatch = createEventDispatcher();
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
 let pageTitle = $state(isDev ? `New Page ${new Date().toLocaleTimeString()}` : "");
 let inputEl: HTMLInputElement | undefined = $state();
+let isGridView = $state(true); // Default to grid view
 
 function handleCreatePage() {
     if (!pageTitle.trim() && !isDev) {
@@ -63,100 +64,31 @@ function selectPage(page: Item) {
         pageName: page.text,
     });
 }
-
-
-function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: number = 3) {
-    const lines: string[] = [];
-    let image: string | null = null;
-    let nodeCount = 0;
-    const maxNodes = 50;
-
-    function traverse(item: Item, currentDepth: number) {
-        if (nodeCount >= maxNodes) return;
-        nodeCount++;
-
-        if (!image && item.attachments) {
-            try {
-                const arr = item.attachments.toArray();
-                if (arr && arr.length > 0) {
-                    const val = arr[0];
-                    if (typeof val === 'string') {
-                        image = val;
-                    } else if (val && typeof val === 'object') {
-                        // Assuming it might be a JSON object with url
-                        if ('url' in val) {
-                            image = (val as any).url;
-                        } else if (Array.isArray(val) && val.length > 0) {
-                            image = val[0];
-                        }
-                    }
-                }
-            } catch (e) {
-                console.warn("Failed to extract attachment", e);
-            }
-        }
-
-        let text = "";
-        try {
-            text = item.text ? item.text.trim() : "";
-        } catch (e) {
-             console.warn("Failed to extract text", e);
-        }
-
-        if (text && lines.length < maxLines && item !== pageItem) {
-            lines.push(text);
-        }
-
-        if (currentDepth >= maxDepth) return;
-
-        try {
-            if (item.items) {
-                let i = 0;
-                // iterateUnordered is safer if order array gets out of sync during render,
-                // but we will try normal iteration with try/catch.
-                const children = Array.from(item.items);
-                for (const child of children) {
-                    if (i++ > 10) break;
-                    traverse(child, currentDepth + 1);
-                    if (lines.length >= maxLines && image) return;
-                    if (nodeCount >= maxNodes) return;
-                }
-            }
-        } catch (e) {
-            console.warn("Failed to iterate children", e);
-        }
-    }
-
-    try {
-        if (pageItem.items) {
-            let i = 0;
-            const rootChildren = Array.from(pageItem.items);
-            for (const child of rootChildren) {
-                if (i++ > 20) break;
-                traverse(child, 1);
-                if (lines.length >= maxLines && image) break;
-            }
-        }
-    } catch (e) {
-        console.warn("Failed to iterate root children", e);
-    }
-
-    return { lines, image };
-}
-
-onMount(() => {
-    // Monitor changes if rootItems exists
-    if (rootItems) {
-        // 	const unsubscribe = Tree.on(rootItems, 'treeChanged', updatePageList);
-        // 	return () => {
-        // 		if (unsubscribe) unsubscribe();
-        // 	};
-    }
-});
 </script>
 
 <div class="mb-5 rounded-md border border-gray-200 bg-white p-4">
-    <h2 class="mb-4 mt-0 text-lg font-medium text-gray-800">Pages</h2>
+    <div class="mb-4 flex items-center justify-between">
+        <h2 class="m-0 text-lg font-medium text-gray-800">Pages</h2>
+
+        <div class="flex items-center gap-1 rounded-md bg-gray-100 p-1">
+            <button
+                type="button"
+                onclick={() => (isGridView = false)}
+                class="rounded px-2 py-1 text-sm font-medium transition-colors {isGridView ? 'text-gray-500 hover:text-gray-700' : 'bg-white text-blue-600 shadow-sm'}"
+                aria-label="List view"
+            >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            </button>
+            <button
+                type="button"
+                onclick={() => (isGridView = true)}
+                class="rounded px-2 py-1 text-sm font-medium transition-colors {isGridView ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}"
+                aria-label="Grid view"
+            >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            </button>
+        </div>
+    </div>
 
     <div class="mb-4 flex gap-2">
         <input
@@ -182,37 +114,9 @@ onMount(() => {
         </button>
     </div>
 
-    <ul class="m-0 list-none grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-0">
+    <ul class="m-0 list-none gap-4 p-0 {isGridView ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col'}">
         {#each rootItems as page (page.id)}
-            {@const preview = extractPagePreview(page)}
-            <li class="flex flex-col overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-                <button
-                    type="button"
-                    class="flex h-full w-full cursor-pointer flex-col text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-                    onclick={() => selectPage(page)}
-                >
-                    <div class="p-3 pb-2 w-full font-medium text-gray-900 border-b border-gray-100 bg-gray-50/50">
-                        {page.text || "Untitled Page"}
-                    </div>
-
-                    {#if preview.image}
-                        <img src={preview.image} alt="" class="h-32 w-full object-cover border-b border-gray-100" />
-                    {/if}
-
-                    <div class="p-3 text-sm text-gray-600 flex-grow">
-                        {#each preview.lines as line, i (i)}
-                            <p class="m-0 mb-1 line-clamp-1">{line}</p>
-                        {/each}
-                        {#if preview.lines.length === 0 && !preview.image}
-                            <p class="m-0 text-gray-400 italic">No content</p>
-                        {/if}
-                    </div>
-
-                    <div class="p-3 pt-0 mt-auto text-xs text-gray-400 text-right">
-                        {page.lastChanged ? new Date(page.lastChanged).toLocaleDateString() : ""}
-                    </div>
-                </button>
-            </li>
+            <PageListItem {page} {isGridView} onSelect={selectPage} />
         {/each}
 
         {#if rootItems.length === 0}
