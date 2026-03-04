@@ -88,7 +88,6 @@ test.describe("Network Connectivity Test", () => {
         });
 
         // Wait until UserManager is initialized
-        // eslint-disable-next-line no-restricted-globals
         await page.waitForFunction(
             () => (window as any).__USER_MANAGER__ !== undefined,
             { timeout: 30000 },
