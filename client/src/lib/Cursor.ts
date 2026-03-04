@@ -146,6 +146,25 @@ export class Cursor implements CursorEditingContext {
                 requestAnimationFrame(() => {
                     textarea.focus();
 
+                    // Ensure the current item is visible in the viewport
+                    if (typeof document !== "undefined" && this.itemId) {
+                        try {
+                            const activeItemElement = document.querySelector(
+                                `[data-item-id="${escapeId(this.itemId)}"]`,
+                            );
+                            if (activeItemElement) {
+                                const rect = activeItemElement.getBoundingClientRect();
+                                const isVisible = rect.top >= 0
+                                    && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight);
+                                if (!isVisible) {
+                                    activeItemElement.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                                }
+                            }
+                        } catch (e) {
+                            console.warn("Failed to scroll cursor item into view:", e);
+                        }
+                    }
+
                     // Use setTimeout as well for extra reliability
                     setTimeout(() => {
                         textarea.focus();
@@ -813,7 +832,9 @@ export class Cursor implements CursorEditingContext {
                     });
 
                     // Force update selection display
-                    store.forceUpdate();
+                    if (typeof (store as any).forceUpdate === 'function') {
+                        (store as any).forceUpdate();
+                    }
                 }
             }, 150); // Increase timeout to 150ms to allow more time for DOM updates
         }
