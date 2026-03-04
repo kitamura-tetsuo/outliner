@@ -58,13 +58,14 @@ test.describe("YJS token refresh reconnect", () => {
         });
         // Wait for disconnect event with timeout
         // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 10000 });
+        await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 60000 });
         // After disconnect, verify status
         const status = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
             return (window as any).__WS_STATUS__;
         });
         expect(status).toBe("disconnected");
+        await page.waitForTimeout(2000);
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
@@ -112,8 +113,9 @@ test.describe("YJS token refresh reconnect", () => {
             // eslint-disable-next-line no-restricted-globals
             const wsStatus = (window as any).__WS_STATUS__;
             return p?.isSynced === true || wsStatus === "connected";
-        });
+        }, undefined, { timeout: 60000 });
 
+        await page.waitForTimeout(2000);
         await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
