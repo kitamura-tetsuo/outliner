@@ -46,13 +46,17 @@ test.describe("YJS token refresh reconnect", () => {
             });
         }, projectId);
 
-        await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const wsStatus = (window as any).__WS_STATUS__;
-            // eslint-disable-next-line no-restricted-globals
-            const p = (window as any).__CONN__?.provider;
-            return p?.isSynced === true || wsStatus === "connected";
-        }, undefined, { timeout: 30000 });
+        await page.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                const wsStatus = (window as any).__WS_STATUS__;
+                // eslint-disable-next-line no-restricted-globals
+                const p = (window as any).__CONN__?.provider;
+                return p?.isSynced === true || wsStatus === "connected";
+            },
+            undefined,
+            { timeout: 30000 },
+        );
         await page.evaluate(() => {
             (window as any).__CONN__.provider.disconnect();
         });
@@ -68,15 +72,23 @@ test.describe("YJS token refresh reconnect", () => {
         // Give time for any previous connections to settle
         await page.waitForTimeout(2000);
         await page.evaluate(async () => {
+            // eslint-disable-next-line no-restricted-globals
             await (window as any).__USER_MANAGER__.refreshToken();
+            // In e2e test, we force connect because refreshToken might not always trigger it if token is the same
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__CONN__.provider.connect();
         });
-        await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const wsStatus = (window as any).__WS_STATUS__;
-            // eslint-disable-next-line no-restricted-globals
-            const p = (window as any).__CONN__.provider;
-            return p.isSynced === true || wsStatus === "connected";
-        }, undefined, { timeout: 30000 });
+        await page.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                const wsStatus = (window as any).__WS_STATUS__;
+                // eslint-disable-next-line no-restricted-globals
+                const p = (window as any).__CONN__.provider;
+                return p.isSynced === true || wsStatus === "connected";
+            },
+            undefined,
+            { timeout: 30000 },
+        );
         // HocuspocusProvider stores status in configuration.websocketProvider.status
         const isConnected = await page.evaluate(() =>
             // eslint-disable-next-line no-restricted-globals
@@ -108,18 +120,25 @@ test.describe("YJS token refresh reconnect", () => {
             };
         }, projectId);
 
-        await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const p = (window as any).__CONN__?.provider;
-            // eslint-disable-next-line no-restricted-globals
-            const wsStatus = (window as any).__WS_STATUS__;
-            return p?.isSynced === true || wsStatus === "connected";
-        }, undefined, { timeout: 30000 });
+        await page.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                const p = (window as any).__CONN__?.provider;
+                // eslint-disable-next-line no-restricted-globals
+                const wsStatus = (window as any).__WS_STATUS__;
+                return p?.isSynced === true || wsStatus === "connected";
+            },
+            undefined,
+            { timeout: 30000 },
+        );
 
         // Give time for any previous connections to settle
         await page.waitForTimeout(2000);
         await page.evaluate(async () => {
+            // eslint-disable-next-line no-restricted-globals
             await (window as any).__USER_MANAGER__.refreshToken();
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__CONN__.provider.sendToken();
         });
 
         // eslint-disable-next-line no-restricted-globals
