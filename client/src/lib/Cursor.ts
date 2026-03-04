@@ -832,7 +832,9 @@ export class Cursor implements CursorEditingContext {
                     });
 
                     // Force update selection display
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if (typeof (store as any).forceUpdate === "function") {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (store as any).forceUpdate();
                     }
                 }
