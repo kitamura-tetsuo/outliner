@@ -200,7 +200,7 @@ onMount(() => {
                     {/if}
 
                     <div class="p-3 text-sm text-gray-600 flex-grow">
-                        {#each preview.lines as line}
+                        {#each preview.lines as line, i (i)}
                             <p class="m-0 mb-1 line-clamp-1">{line}</p>
                         {/each}
                         {#if preview.lines.length === 0 && !preview.image}
