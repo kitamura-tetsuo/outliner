@@ -126,14 +126,21 @@ test.describe("snapshot diff viewer", () => {
         );
         await expect(page.locator(".bg-white.rounded.shadow-lg li")).toHaveCount(count);
 
-        // Click the button inside the first list item to show the diff
-        await page.locator(".bg-white.rounded.shadow-lg li button").first().click();
+        // Click the button inside the last list item (oldest snapshot) to show the diff
+        // Since snapshots are ordered descending, the first is identical to current, but the last is the oldest.
+        await page.locator(".bg-white.rounded.shadow-lg li button").last().click();
 
         // Wait for the diff to be calculated and rendered
         await page.waitForFunction(() => {
-            const diffElement = document.querySelector(".diff");
-            return diffElement && diffElement.innerHTML.trim().length > 0
-                && (diffElement.innerHTML.includes("<ins") || diffElement.innerHTML.includes("<del"));
+            const diffElements = document.querySelectorAll(".diff");
+            if (!diffElements || diffElements.length === 0) return false;
+            for (let i = 0; i < diffElements.length; i++) {
+                const html = diffElements[i].innerHTML;
+                if (html.includes("<ins") || html.includes("<del")) {
+                    return true;
+                }
+            }
+            return false;
         }, { timeout: 10000 });
 
         // Verify that at least one diff element is visible

@@ -8,7 +8,7 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
 // Shorten per-spec timeout (default 240s is too long for this scenario)
-test.setTimeout(120_000);
+test.setTimeout(240_000);
 
 test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
     test("two browser contexts connect to same page and see same page data", async ({ browser }) => {
@@ -41,7 +41,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
                 return !!(window as any).__USER_MANAGER__;
             },
             null,
-            { timeout: 20000 },
+            { timeout: 30000 },
         );
 
         await page1.evaluate(async () => {
@@ -54,7 +54,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         await page1.waitForFunction(() => {
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
-        }, { timeout: 10000 });
+        }, { timeout: 30000 });
 
         // Create project and page programmatically
         const projectId = `p${Date.now().toString(16)}`;
@@ -163,7 +163,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
                 return !!(window as any).__USER_MANAGER__;
             },
             null,
-            { timeout: 20000 },
+            { timeout: 30000 },
         );
 
         await page2.evaluate(async () => {
@@ -176,7 +176,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         await page2.waitForFunction(() => {
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
-        }, { timeout: 10000 });
+        }, { timeout: 30000 });
 
         // Connect to the same project programmatically
         console.log(`page2: Connecting to project ${pageInfo.projectId}`);

@@ -44,12 +44,15 @@ describe("SnapshotDiffModal A11y: focus & keyboard minimal regression", () => {
         await fireEvent.click(first);
 
         // HTML should be rendered in the diff area
-        const diff = document.querySelector(".diff-view") as HTMLElement;
-        expect(diff).toBeTruthy();
+        const diffs = document.querySelectorAll(".diff-view");
+        expect(diffs.length).toBeGreaterThan(0);
 
         // Wait for reactivity
         await new Promise(r => setTimeout(r, 100));
 
-        expect(diff.innerHTML).toContain("ins");
+        let htmlContent = "";
+        diffs.forEach(diff => htmlContent += diff.innerHTML);
+
+        expect(htmlContent).toContain("ins");
     });
 });
