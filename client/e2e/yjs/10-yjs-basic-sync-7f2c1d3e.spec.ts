@@ -46,6 +46,8 @@ test("basic map value sync via hocuspocus", async ({ browser }) => {
     // Explicitly wait for __DOC__ to be defined
     // eslint-disable-next-line no-restricted-globals
     await p1.waitForFunction(() => !!(window as any).__DOC__, null, { timeout: 20000 });
+    // eslint-disable-next-line no-restricted-globals
+    await p2.waitForFunction(() => !!(window as any).__DOC2__, null, { timeout: 20000 });
 
     await p1.evaluate(() => {
         // eslint-disable-next-line no-restricted-globals
