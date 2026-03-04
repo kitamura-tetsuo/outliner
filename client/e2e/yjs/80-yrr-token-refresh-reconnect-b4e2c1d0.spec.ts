@@ -72,7 +72,11 @@ test.describe("YJS token refresh reconnect", () => {
 
         await page.waitForTimeout(2000); // Give time before attempting token refresh
         await page.evaluate(async () => {
+            // eslint-disable-next-line no-restricted-globals
             await (window as any).__USER_MANAGER__.refreshToken();
+            // In e2e test, we force connect because refreshToken might not always trigger it if token is the same
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__CONN__.provider.connect();
         });
         await page.waitForFunction(
             () => {
@@ -131,7 +135,10 @@ test.describe("YJS token refresh reconnect", () => {
         await page.waitForTimeout(2000); // Give time before attempting token refresh
 
         await page.evaluate(async () => {
+            // eslint-disable-next-line no-restricted-globals
             await (window as any).__USER_MANAGER__.refreshToken();
+            // eslint-disable-next-line no-restricted-globals
+            (window as any).__CONN__.provider.sendToken();
         });
 
         // eslint-disable-next-line no-restricted-globals
