@@ -155,7 +155,6 @@ export async function initializeBrowserPage(
         waitUntil: "domcontentloaded",
     });
 
-    // Wait for UserManager to be available
     await page.waitForFunction(
         () => !!(window as any).__USER_MANAGER__,
         null,

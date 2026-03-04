@@ -35,9 +35,14 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Navigate to home and authenticate
         await page1.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
 
-        await page1.waitForFunction(() => {
-            return !!(window as any).__USER_MANAGER__;
-        }, { timeout: 30000 });
+        await page1.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                return !!(window as any).__USER_MANAGER__;
+            },
+            null,
+            { timeout: 30000 },
+        );
 
         await page1.evaluate(async () => {
             const mgr = (window as any).__USER_MANAGER__;
@@ -152,9 +157,14 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Navigate to home and authenticate
         await page2.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
 
-        await page2.waitForFunction(() => {
-            return !!(window as any).__USER_MANAGER__;
-        }, { timeout: 30000 });
+        await page2.waitForFunction(
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                return !!(window as any).__USER_MANAGER__;
+            },
+            null,
+            { timeout: 30000 },
+        );
 
         await page2.evaluate(async () => {
             const mgr = (window as any).__USER_MANAGER__;
