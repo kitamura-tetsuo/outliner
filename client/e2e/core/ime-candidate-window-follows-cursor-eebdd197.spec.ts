@@ -31,15 +31,15 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
         await textarea.waitFor({ state: "visible" });
         await textarea.focus();
 
-        // カーソルが表示されるのを待つ
+        // Wait for the cursor to be displayed
         const cursorVisible = await TestHelpers.waitForCursorVisible(page);
 
-        // カーソルが表示されない場合、手動でカーソルを設定
+        // If the cursor is not displayed, set the cursor manually
         if (!cursorVisible) {
             const itemId = await item.getAttribute("data-item-id");
             if (itemId) {
                 await page.evaluate(itemId => {
-                    // デバッグモードを有効にする
+                    // Enable debug mode
                     (window as any).DEBUG_MODE = true;
 
                     const store = (window as any).editorOverlayStore;
@@ -53,30 +53,30 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
                         });
                         console.log("Cursor set with ID:", cursorId);
 
-                        // アクティブアイテムも設定
+                        // Set the active item as well
                         store.setActiveItem(itemId);
                         console.log("Active item set to:", itemId);
                     }
                 }, itemId);
 
-                // 少し待機
+                // Wait briefly
                 await page.waitForTimeout(300);
             }
         } else {
-            // カーソルが表示されている場合もデバッグモードを有効にする
+            // Enable debug mode even if the cursor is displayed
             await page.evaluate(() => {
                 (window as any).DEBUG_MODE = true;
             });
         }
 
-        // カーソルが設定されていない場合は、強制的に設定
+        // If the cursor is not set, force it to be set
         let hasValidCursor = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             return store && store.getLastActiveCursor() !== null;
         });
 
         if (!hasValidCursor) {
-            // 最初のアイテムにカーソルを設定
+            // Set the cursor on the first item
             const firstItemId = await page.evaluate(() => {
                 const firstItem = document.querySelector(".outliner-item");
                 return firstItem ? firstItem.getAttribute("data-item-id") : null;
@@ -95,19 +95,19 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
                         });
                         console.log("Force cursor set with ID:", cursorId);
 
-                        // アクティブアイテムも設定
+                        // Set the active item as well
                         store.setActiveItem(itemId);
                         console.log("Force active item set to:", itemId);
 
-                        // カーソル点滅を開始
+                        // Start cursor blinking
                         store.startCursorBlink();
                     }
                 }, firstItemId);
 
-                // 少し待機
+                // Wait briefly
                 await page.waitForTimeout(300);
 
-                // カーソルが正しく設定されたかを再確認
+                // Reconfirm whether the cursor was set correctly
                 hasValidCursor = await page.evaluate(() => {
                     const store = (window as any).editorOverlayStore;
                     const cursor = store ? store.getLastActiveCursor() : null;
@@ -119,15 +119,15 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
             }
         }
 
-        // デバッグモードを有効にして$effectの動作を確認
+        // Enable debug mode and check the behavior of $effect
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
 
-        // 実装側でtextarea位置が自動更新されるのを待つ
+        // Wait for the textarea position to be automatically updated on the implementation side
         await page.waitForTimeout(300);
 
-        // $effectが動作しているかを確認
+        // Check if $effect is working
         const effectDebugInfo = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return { error: "store not found" };
