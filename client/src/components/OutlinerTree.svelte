@@ -810,41 +810,9 @@
 
         // Use first item if active item not found
         if (itemIndex < 0) {
-            if (displayItems.length > 0) {
-                const firstAvailableItemId = displayItems[0].model.id;
-                const firstAvailableIndex = 0;
-
-                if (
-                    typeof window !== "undefined" &&
-                    (window as any).DEBUG_MODE
-                ) {
-                    console.log(
-                        `Active item not found, using first available item: ${firstAvailableItemId}`,
-                    );
-                }
-
-                // Paste into first item
-                const items = pageItem.items as Items;
-                const baseOriginal =
-                    displayItems[firstAvailableIndex].model.original;
-                baseOriginal.updateText(lines[0] || "");
-
-                // Add remaining lines as new items
-                for (let i = 1; i < lines.length; i++) {
-                    const newIndex = firstAvailableIndex + i;
-                    let newItem = items.addNode(currentUser, newIndex);
-                    // Fallback if addNode doesn't return the item
-                    if (!newItem) {
-                         newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
-                    }
-                    if (newItem) {
-                        newItem.updateText(lines[i]);
-                    }
-                }
-
-                return;
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Active item not found, aborting paste`);
             }
-
             return;
         }
 
