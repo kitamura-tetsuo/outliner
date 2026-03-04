@@ -23,7 +23,6 @@ test.describe("YJS token refresh reconnect", () => {
             // @ts-expect-error - resolved by Vite in browser
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
-            // eslint-disable-next-line no-restricted-globals
             (window as any).__CONN__ = conn;
 
             // Listen for status changes to detect disconnect
@@ -47,19 +46,14 @@ test.describe("YJS token refresh reconnect", () => {
             });
         }, projectId);
 
-        await page.waitForFunction(
-            () => {
-                // eslint-disable-next-line no-restricted-globals
-                const wsStatus = (window as any).__WS_STATUS__;
-                // eslint-disable-next-line no-restricted-globals
-                const p = (window as any).__CONN__?.provider;
-                return p?.isSynced === true || wsStatus === "connected";
-            },
-            undefined,
-            { timeout: 60000 },
-        );
-        await page.evaluate(() => {
+        await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
+            const wsStatus = (window as any).__WS_STATUS__;
+            // eslint-disable-next-line no-restricted-globals
+            const p = (window as any).__CONN__?.provider;
+            return p?.isSynced === true || wsStatus === "connected";
+        });
+        await page.evaluate(() => {
             (window as any).__CONN__.provider.disconnect();
         });
         // Wait for disconnect event with timeout
@@ -71,27 +65,16 @@ test.describe("YJS token refresh reconnect", () => {
             return (window as any).__WS_STATUS__;
         });
         expect(status).toBe("disconnected");
-
-        // Ensure userManager exists and is populated before refreshing token
-        // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => !!(window as any).__USER_MANAGER__, undefined, { timeout: 10000 });
-        await page.waitForTimeout(1000); // Give auth state some time
         await page.evaluate(async () => {
-            // eslint-disable-next-line no-restricted-globals
             await (window as any).__USER_MANAGER__.refreshToken();
         });
-
-        await page.waitForFunction(
-            () => {
-                // eslint-disable-next-line no-restricted-globals
-                const wsStatus = (window as any).__WS_STATUS__;
-                // eslint-disable-next-line no-restricted-globals
-                const p = (window as any).__CONN__.provider;
-                return p.isSynced === true || wsStatus === "connected";
-            },
-            undefined,
-            { timeout: 60000 },
-        );
+        await page.waitForFunction(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const wsStatus = (window as any).__WS_STATUS__;
+            // eslint-disable-next-line no-restricted-globals
+            const p = (window as any).__CONN__.provider;
+            return p.isSynced === true || wsStatus === "connected";
+        });
         // HocuspocusProvider stores status in configuration.websocketProvider.status
         const isConnected = await page.evaluate(() =>
             // eslint-disable-next-line no-restricted-globals
@@ -106,7 +89,6 @@ test.describe("YJS token refresh reconnect", () => {
             // @ts-expect-error - resolved by Vite in browser
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
-            // eslint-disable-next-line no-restricted-globals
             (window as any).__CONN__ = conn;
             // eslint-disable-next-line no-restricted-globals
             (window as any).__WS_STATUS__ = "unknown";
@@ -124,29 +106,20 @@ test.describe("YJS token refresh reconnect", () => {
             };
         }, projectId);
 
-        await page.waitForFunction(
-            () => {
-                // eslint-disable-next-line no-restricted-globals
-                const p = (window as any).__CONN__?.provider;
-                // eslint-disable-next-line no-restricted-globals
-                const wsStatus = (window as any).__WS_STATUS__;
-                return p?.isSynced === true || wsStatus === "connected";
-            },
-            undefined,
-            { timeout: 60000 },
-        );
-
-        // Ensure userManager exists before calling refreshToken
-        // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => !!(window as any).__USER_MANAGER__, undefined, { timeout: 10000 });
-        await page.waitForTimeout(1000); // Give auth state some time
-        await page.evaluate(async () => {
+        await page.waitForFunction(() => {
             // eslint-disable-next-line no-restricted-globals
+            const p = (window as any).__CONN__?.provider;
+            // eslint-disable-next-line no-restricted-globals
+            const wsStatus = (window as any).__WS_STATUS__;
+            return p?.isSynced === true || wsStatus === "connected";
+        });
+
+        await page.evaluate(async () => {
             await (window as any).__USER_MANAGER__.refreshToken();
         });
 
         // eslint-disable-next-line no-restricted-globals
-        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true, undefined, { timeout: 60000 });
+        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true);
         // eslint-disable-next-line no-restricted-globals
         const tokenRefreshed = await page.evaluate(() => (window as any).__SEND_TOKEN_CALLED__);
         expect(tokenRefreshed).toBe(true);

@@ -41,11 +41,6 @@ test("basic map value sync via hocuspocus", async ({ browser }) => {
         () => undefined,
     );
 
-    // eslint-disable-next-line no-restricted-globals
-    await p1.waitForFunction(() => !!(window as any).__DOC__, null, { timeout: 10000 });
-    // eslint-disable-next-line no-restricted-globals
-    await p2.waitForFunction(() => !!(window as any).__DOC2__, null, { timeout: 10000 });
-
     await p1.evaluate(() => {
         const d = (window as any).__DOC__;
         d.getMap("m").set("k", "v1");
