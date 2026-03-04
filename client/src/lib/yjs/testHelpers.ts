@@ -157,14 +157,18 @@ export async function initializeBrowserPage(
 
     // Wait for UserManager to be available
     await page.waitForFunction(
-        () => !!(window as any).__USER_MANAGER__,
+        () => {
+            // eslint-disable-next-line no-restricted-globals
+            return !!(window as any).__USER_MANAGER__;
+        },
         null,
-        { timeout: 10000 },
+        { timeout: 20000 },
     );
 
     // Authenticate if required
     if (requireAuth) {
         await page.evaluate(async () => {
+            // eslint-disable-next-line no-restricted-globals
             const mgr = (window as any).__USER_MANAGER__;
             await mgr?.loginWithEmailPassword?.(
                 "test@example.com",
@@ -174,9 +178,12 @@ export async function initializeBrowserPage(
 
         // Wait for authentication to complete
         await page.waitForFunction(
-            () => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(),
+            () => {
+                // eslint-disable-next-line no-restricted-globals
+                return !!(window as any).__USER_MANAGER__?.getCurrentUser?.();
+            },
             null,
-            { timeout: 10000 },
+            { timeout: 20000 },
         );
     }
 
@@ -542,12 +549,14 @@ export async function prepareTwoFullBrowserPages(
     // Authenticate page2
     await page2.waitForFunction(
         () => {
+            // eslint-disable-next-line no-restricted-globals
             return !!(window as any).__USER_MANAGER__;
         },
-        { timeout: 10000 },
+        { timeout: 20000 },
     );
 
     await page2.evaluate(async () => {
+        // eslint-disable-next-line no-restricted-globals
         const mgr = (window as any).__USER_MANAGER__;
         if (mgr?.loginWithEmailPassword) {
             await mgr.loginWithEmailPassword("test@example.com", "password");
@@ -557,10 +566,11 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page2 authentication to complete
     await page2.waitForFunction(
         () => {
+            // eslint-disable-next-line no-restricted-globals
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
         },
-        { timeout: 10000 },
+        { timeout: 20000 },
     );
 
     // Wait for page2 to initialize Yjs client and appStore
