@@ -1491,7 +1491,7 @@
         const targetText = targetItem.text || "";
 
         // Split selected text into lines
-        const lines = selectedText.split("\n");
+        const lines = selectedText.split(/\r?\n/);
 
         // Insert selection into target item
         if (position === "top") {
@@ -1720,7 +1720,7 @@
         const targetText = targetItem.text || "";
 
         // Split text into lines
-        const lines = text.split("\n");
+        const lines = text.split(/\r?\n/);
 
         const items = pageItem.items as Items;
 
