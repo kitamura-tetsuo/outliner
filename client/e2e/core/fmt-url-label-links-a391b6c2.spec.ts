@@ -15,7 +15,7 @@ test.describe("URL label links", () => {
     });
 
     test("converts [URL label] to link with label text", async ({ page }) => {
-        // prepareTestEnvironment の lines パラメータでデータを作成
+        // Create data using the lines parameter of prepareTestEnvironment
         await TestHelpers.prepareTestEnvironment(page, test.info(), [
             "Please see [https://example.com Example Site]",
         ]);
