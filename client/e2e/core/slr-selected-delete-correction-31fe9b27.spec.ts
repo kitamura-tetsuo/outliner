@@ -13,7 +13,7 @@ test.describe("SLR-0008: Selected Edge Case", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("複数アイテムにまたがる選択範囲を削除した後、カーソル位置が適切に更新される", async ({ page }) => {
+    test("Cursor position is properly updated after deleting a selection spanning multiple items", async ({ page }) => {
         await page.keyboard.type("First\nSecond\nThird");
         await page.keyboard.down("Shift");
         for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
