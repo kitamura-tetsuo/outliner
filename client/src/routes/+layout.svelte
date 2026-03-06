@@ -409,7 +409,7 @@ onDestroy(async () => {
 
 <div data-testid="app-layout">
     <!-- Accessible skip link -->
-    <a href="#main-content" class="skip-link">Skip to content</a>
+    <a href="#main-content" class="skip-link text-[41px] text-[42px] text-3xl">Skip to content</a>
 
     <!-- Global main toolbar with SearchBox (SEA-0001) -->
     <Toolbar />

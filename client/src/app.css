@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/forms";
-@plugin "@tailwindcss/typography";
 
 @theme {
     --dark: class;
@@ -12,56 +10,27 @@ html {
 }
 
 html.dark {
-    background-color: var(--color-gray-900);
-    color: var(--color-gray-100);
+    background-color: var(--color-black);
+    color: var(--color-white);
 }
 
-/* Internal link styles */
-.internal-link {
-    color: #1a73e8;
-    text-decoration: none;
-    position: relative;
-    transition: color 0.2s;
+:root {
+    --color-brand: #3b82f6;
+    --color-brand-hover: #2563eb;
 }
 
-.internal-link:hover {
-    color: #0d47a1;
-    text-decoration: underline;
+@layer base {
+    *,
+    ::after,
+    ::before {
+        border-color: var(--color-gray-200);
+    }
 }
 
-/* Styles for links to non-existent pages */
-.internal-link.page-not-exists {
-    color: #d32f2f;
-    border-bottom: 1px dashed #d32f2f;
+.sidebar-transition {
+    transition: width 0.3s ease, transform 0.3s ease;
 }
 
-.internal-link.page-not-exists:hover {
-    color: #b71c1c;
-    border-bottom: 1px solid #b71c1c;
-}
-
-/* Project internal link styles */
-.internal-link.project-link {
-    color: #0288d1;
-}
-
-.internal-link.project-link:hover {
-    color: #01579b;
-}
-
-/* Styles for project internal links to non-existent pages */
-.internal-link.project-link.page-not-exists {
-    color: #d32f2f;
-    border-bottom: 1px dashed #d32f2f;
-}
-
-.internal-link.project-link.page-not-exists:hover {
-    color: #b71c1c;
-    border-bottom: 1px solid #b71c1c;
-}
-
-/* Link preview wrapper */
-.link-preview-wrapper {
-    display: inline-block;
-    position: relative;
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
