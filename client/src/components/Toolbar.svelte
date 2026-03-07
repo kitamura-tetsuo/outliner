@@ -224,7 +224,7 @@ if (typeof window !== "undefined") {
     opacity: 1 !important;
     pointer-events: auto;
     /* Ensure pointer events only work within the toolbar bounds */
-    overflow: hidden;
+    overflow: visible;
 }
 
 .main-toolbar-content {
