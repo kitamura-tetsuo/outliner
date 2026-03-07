@@ -1126,9 +1126,10 @@ function handleMouseDown(event: MouseEvent) {
 
         // Get current selection range
         const existingSelection = Object.values(editorOverlayStore.selections).find(s => s.userId === "local");
+        const lastCursor = editorOverlayStore.getLastActiveCursor();
 
-        if (!existingSelection) {
-            // Normal click processing if no selection range
+        if (!existingSelection && !lastCursor) {
+            // Normal click processing if no selection range and no cursor
             startEditing(event);
             return;
         }
@@ -1136,14 +1137,17 @@ function handleMouseDown(event: MouseEvent) {
         // Get click position
         const clickPosition = getClickPosition(event, textString);
 
+        const startItemId = existingSelection ? existingSelection.startItemId : lastCursor!.itemId;
+        const startOffset = existingSelection ? existingSelection.startOffset : lastCursor!.offset;
+
         // Extend selection
-        const isReversed = activeItemId === model.id ?
-            clickPosition < existingSelection.startOffset :
-            false;
+        const isReversed = existingSelection
+            ? (activeItemId === model.id ? clickPosition < existingSelection.startOffset : false)
+            : (activeItemId === model.id ? clickPosition < lastCursor!.offset : false);
 
         editorOverlayStore.setSelection({
-            startItemId: existingSelection.startItemId,
-            startOffset: existingSelection.startOffset,
+            startItemId: startItemId,
+            startOffset: startOffset,
             endItemId: model.id,
             endOffset: clickPosition,
             userId: "local",

@@ -1251,7 +1251,7 @@ function handlePaste(event: ClipboardEvent) {
     dispatch('paste-multi-item', {
       lines,
       selections,
-      activeItemId: localActiveItemId,
+      activeItemId: store.getActiveItem(),
     });
     return;
   }
@@ -1272,7 +1272,7 @@ function handlePaste(event: ClipboardEvent) {
     dispatch('paste-multi-item', {
       lines,
       selections,
-      activeItemId: localActiveItemId,
+      activeItemId: store.getActiveItem(),
     });
     return;
   }

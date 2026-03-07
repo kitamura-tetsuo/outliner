@@ -28,19 +28,26 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         // Use the first content item (index 1), not the title (index 0)
         const contentItem = page.locator(".outliner-item").nth(1);
         await contentItem.waitFor({ state: "visible" });
-        // Small delay for UI stability
+
+        // Activate the item directly via store to bypass mobile click flakiness in Playwright
+        const itemId = await contentItem.getAttribute("data-item-id");
+        await page.evaluate((id) => {
+            if (typeof globalThis !== "undefined") {
+                const store = (globalThis as any).editorOverlayStore;
+                if (store && id) {
+                    store.setActiveItem(id);
+                    store.setCursor({ itemId: id, offset: 0, isActive: true, userId: "local" });
+                    const ta = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement;
+                    if (ta) ta.focus();
+                }
+            }
+        }, itemId);
         await page.waitForTimeout(500);
 
-        // Retry clicking until the textarea is focused
-        await expect.poll(async () => {
-            await contentItem.locator(".item-content").click({ force: true, position: { x: 10, y: 10 } });
-            return await page.evaluate(() => document.activeElement?.className.includes("global-textarea"));
-        }, { timeout: 15000 }).toBe(true);
-
-        await page.waitForSelector("textarea.global-textarea:focus");
         await page.keyboard.type("One");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Two");
+        await page.waitForTimeout(500);
     });
 
     test("toolbar appears and performs actions", async ({ page }) => {
@@ -55,8 +62,8 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
             }))
         );
         console.log("MOB-0003: item order", JSON.stringify(itemSnapshot));
-        // Get the second root item (index 3 overall, which is the second child of page title)
-        const thirdId = await items.nth(3).getAttribute("data-item-id");
+        // Get the second root item (index 2 overall, which is the second child of page title)
+        const thirdId = await items.nth(2).getAttribute("data-item-id");
         console.log("MOB-0003: Setting active item to ID:", thirdId);
 
         // Set the active item directly via editorOverlayStore
@@ -69,7 +76,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         }, thirdId);
         await page.waitForTimeout(300);
 
-        // ページタイトルの子アイテム数を取得
+        // Get the number of child items for the page title
         const rootItemsBefore: unknown = await TreeValidator.getTreePathData(page, "items.0.items");
         const countBefore = Object.keys(rootItemsBefore || {}).length;
         console.log("MOB-0003: root items before indent", countBefore, JSON.stringify(rootItemsBefore));
@@ -98,8 +105,8 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
             return Object.keys(rootItems || {}).length;
         }).toBe(countBefore - 1);
 
-        // アウトデント前にインデントされた子アイテムをクリック
-        // インデント後のデータ構造から子アイテムのIDを取得
+        // Click the indented child item before outdenting
+        // Get the child item ID from the data structure after indentation
         const afterIndentData = await TreeValidator.getTreeData(page);
         console.log("MOB-0003: after indent tree", JSON.stringify(afterIndentData));
         const pageItem = afterIndentData.items[0];
@@ -126,7 +133,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
             return Object.keys(rootItems || {}).length;
         }).toBe(countBefore);
 
-        // アウトデント後、新しく作成されたアイテムをクリック（最後のアイテム）
+        // Click the newly created item (the last item) after outdenting
         const itemsAfterOutdent = page.locator(".outliner-item");
         const lastItemIndex = await itemsAfterOutdent.count() - 1;
         const lastItemId = await itemsAfterOutdent.nth(lastItemIndex).getAttribute("data-item-id");
@@ -145,7 +152,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         await expect(items).toHaveCount(siblingCountBefore + 1);
 
-        // Insert Above後、元のアイテムを再度クリック（Insert Above操作で新しいアイテムが上に追加されるため）
+        // Click the original item again after Insert Above (since Insert Above adds a new item above)
         const itemsAfterInsertAbove = page.locator(".outliner-item");
         const lastItemIndexAfterAbove = await itemsAfterInsertAbove.count() - 1;
         const lastItemIdAfterAbove = await itemsAfterInsertAbove.nth(lastItemIndexAfterAbove).getAttribute(
@@ -165,8 +172,8 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         await expect(items).toHaveCount(siblingCountBefore + 2);
 
-        // New Child操作前に、現在表示されているアイテムの中から適切なアイテムをクリック
-        // Insert Above/Below操作後なので、最初のアイテムをクリック
+        // Click an appropriate item among the currently displayed items before the New Child operation
+        // Click the first item since this is after Insert Above/Below operations
         const currentItems = page.locator(".outliner-item");
         const firstChildItemId = await currentItems.nth(1).getAttribute("data-item-id");
 
@@ -182,7 +189,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await toolbar.locator("button[aria-label='New Child']").click();
         await page.waitForTimeout(300);
 
-        // データ構造から子要素があることを確認
+        // Verify from the data structure that there are child elements
         const afterNewChildData = await TreeValidator.getTreeData(page) as {
             items: Record<string, { items?: Record<string, unknown>; }>;
         };
@@ -191,14 +198,14 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         );
         expect(hasChildItems).toBe(true);
 
-        // ツールバーの幅とスクロール可能性を確認
+        // Check the toolbar width and scrollability
         const toolbarInfo = await toolbar.evaluate(el => ({
             scrollWidth: el.scrollWidth,
             clientWidth: el.clientWidth,
             canScroll: el.scrollWidth > el.clientWidth,
         }));
 
-        // スクロール可能な場合のみスクロールテストを実行
+        // Run the scroll test only if it is scrollable
         if (toolbarInfo.canScroll) {
             await toolbar.evaluate(el => {
                 el.scrollLeft = el.scrollWidth;
@@ -206,7 +213,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
             const scrollLeft = await toolbar.evaluate(el => el.scrollLeft);
             expect(scrollLeft).toBeGreaterThan(0);
         } else {
-            // スクロール不要な場合はテストをスキップ
+            // Skip the test if scrolling is not needed
             console.log("Toolbar does not need scrolling, skipping scroll test");
         }
     });

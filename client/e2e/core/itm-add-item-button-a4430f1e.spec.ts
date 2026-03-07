@@ -2,7 +2,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature ITM-0002
- *  Title   : ボタンでアイテム追加
+ *  Title   : Add item via button
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
@@ -10,27 +10,27 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-0002: Add item via button", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // TestHelpersを使用してテスト環境を準備
+        // Prepare test environment using TestHelpers
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // アイテム追加ボタンが表示されるまで待機
+        // Wait for the add item button to be displayed
         await page.waitForSelector('button:has-text("Add Item")', { timeout: 10000 });
     });
 
     test("clicking add item button appends new item", async ({ page }) => {
-        // アイテム追加前のアイテム数を取得
+        // Get the number of items before adding
         const itemCountBefore = await page.locator(".outliner-item").count();
 
-        // アイテム追加ボタンをクリック
+        // Click the add item button
         await page.click('button:has-text("Add Item")');
 
-        // 新しいアイテムが追加されるまで待機
+        // Wait for the new item to be added
         await page.waitForTimeout(300);
 
-        // アイテム追加後のアイテム数を取得
+        // Get the number of items after adding
         const itemCountAfter = await page.locator(".outliner-item").count();
 
-        // アイテムが追加されたことを確認
+        // Confirm that the item has been added
         expect(itemCountAfter).toBeGreaterThan(itemCountBefore);
     });
 });

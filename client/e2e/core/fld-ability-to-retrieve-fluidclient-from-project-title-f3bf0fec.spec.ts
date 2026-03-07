@@ -2,19 +2,19 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature YJS-0001
- *  Title   : プロジェクトとページをYjsで取得・検証する
+ *  Title   : Retrieve and verify projects and pages with Yjs
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
- * YJS-0001: プロジェクトとページの取得・検証（Yjs）
+ * YJS-0001: Project and page retrieval and verification (Yjs)
  *
- * このテストでは、Yjs ベースのストアからプロジェクトを取得し、
- * 指定したタイトルのページを作成・検索できることを確認します。
+ * In this test, we retrieve a project from the Yjs-based store and
+ * verify that a page with a specified title can be created and searched.
  */
-test.describe("YJS-0001: プロジェクトとページの取得・検証", () => {
+test.describe("YJS-0001: Project and page retrieval and verification", () => {
     const testPageTitle = `test-page-${Date.now()}`;
 
     test.beforeEach(async ({ page }, testInfo) => {
@@ -22,17 +22,17 @@ test.describe("YJS-0001: プロジェクトとページの取得・検証", () =
         await TestHelpers.prepareTestEnvironment(page, testInfo);
     });
 
-    test("Yjsプロジェクトが存在しページを作成・検索できる", async ({ page }) => {
-        // プロジェクトにページを作成
+    test("Yjs project exists and pages can be created and searched", async ({ page }) => {
+        // Create a page in the project
         await page.evaluate((title) => {
             const gs: any = (window as any).generalStore;
             if (!gs?.project) throw new Error("generalStore.project not ready");
             const page = gs.project.addPage(title, "tester");
-            // 子アイテムを1つ追加
+            // Add 1 child item
             page.items.addNode("tester").updateText("child");
         }, testPageTitle);
 
-        // そのページが存在することを検証
+        // Verify that the page exists
         const found = await page.evaluate((title) => {
             const gs: any = (window as any).generalStore;
             const pages: any = gs?.project?.items;
@@ -47,7 +47,7 @@ test.describe("YJS-0001: プロジェクトとページの取得・検証", () =
         expect(found).toBe(true);
     });
 
-    test("空タイトルの検索は未検出（undefined想定）", async ({ page }) => {
+    test("Search for empty title is not detected (expected undefined)", async ({ page }) => {
         const result = await page.evaluate(() => {
             const gs: any = (window as any).generalStore;
             const pages: any = gs?.project?.items;
@@ -59,11 +59,11 @@ test.describe("YJS-0001: プロジェクトとページの取得・検証", () =
             }
             return undefined;
         });
-        // 空タイトルのページが無い前提の判定
+        // Judgment assuming there is no page with an empty title
         expect(result).toBeUndefined();
     });
 
-    test("存在しないタイトルは見つからない", async ({ page }) => {
+    test("Non-existent title is not found", async ({ page }) => {
         const result = await page.evaluate(() => {
             const title = "__not_exists__";
             const gs: any = (window as any).generalStore;
@@ -79,7 +79,7 @@ test.describe("YJS-0001: プロジェクトとページの取得・検証", () =
         expect(result).toBeUndefined();
     });
 
-    test("generalStore からプロジェクトデータへアクセスできる", async ({ page }) => {
+    test("Project data can be accessed from generalStore", async ({ page }) => {
         const info = await page.evaluate(async () => {
             const gs: any = (window as any).generalStore;
             // Wait for items to be populated

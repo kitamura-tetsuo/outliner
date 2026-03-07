@@ -1,11 +1,11 @@
 <script lang="ts">
-import { createEventDispatcher, onMount } from "svelte";
+import { createEventDispatcher } from "svelte";
 import {
     Item,
     Items,
     Project,
 } from "../schema/app-schema";
-
+import PageListItem from "./PageListItem.svelte";
 
 interface Props {
     project: Project;
@@ -27,6 +27,7 @@ const dispatch = createEventDispatcher();
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
 let pageTitle = $state(isDev ? `New Page ${new Date().toLocaleTimeString()}` : "");
 let inputEl: HTMLInputElement | undefined = $state();
+let isGridView = $state(true); // Default to grid view
 
 function handleCreatePage() {
     if (!pageTitle.trim() && !isDev) {
@@ -63,20 +64,31 @@ function selectPage(page: Item) {
         pageName: page.text,
     });
 }
-
-onMount(() => {
-    // Monitor changes if rootItems exists
-    if (rootItems) {
-        // 	const unsubscribe = Tree.on(rootItems, 'treeChanged', updatePageList);
-        // 	return () => {
-        // 		if (unsubscribe) unsubscribe();
-        // 	};
-    }
-});
 </script>
 
 <div class="mb-5 rounded-md border border-gray-200 bg-white p-4">
-    <h2 class="mb-4 mt-0 text-lg font-medium text-gray-800">Pages</h2>
+    <div class="mb-4 flex items-center justify-between">
+        <h2 class="m-0 text-lg font-medium text-gray-800">Pages</h2>
+
+        <div class="flex items-center gap-1 rounded-md bg-gray-100 p-1">
+            <button
+                type="button"
+                onclick={() => (isGridView = false)}
+                class="rounded px-2 py-1 text-sm font-medium transition-colors {isGridView ? 'text-gray-500 hover:text-gray-700' : 'bg-white text-blue-600 shadow-sm'}"
+                aria-label="List view"
+            >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            </button>
+            <button
+                type="button"
+                onclick={() => (isGridView = true)}
+                class="rounded px-2 py-1 text-sm font-medium transition-colors {isGridView ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}"
+                aria-label="Grid view"
+            >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            </button>
+        </div>
+    </div>
 
     <div class="mb-4 flex gap-2">
         <input
@@ -102,22 +114,13 @@ onMount(() => {
         </button>
     </div>
 
-    <ul class="m-0 list-none overflow-hidden rounded-md border border-gray-200 p-0">
+    <ul class="m-0 list-none gap-4 p-0 {isGridView ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col'}">
         {#each rootItems as page (page.id)}
-            <li class="border-b border-gray-200 last:border-b-0">
-                <button
-                    type="button"
-                    class="flex w-full cursor-pointer items-center justify-between bg-white px-3 py-2.5 text-left text-inherit text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-500"
-                    onclick={() => selectPage(page)}
-                >
-                    <span class="font-medium text-gray-900">{page.text || "Untitled Page"}</span>
-                    <span class="text-xs text-gray-400">{new Date(page.lastChanged).toLocaleDateString()}</span>
-                </button>
-            </li>
+            <PageListItem {page} {isGridView} onSelect={selectPage} />
         {/each}
 
         {#if rootItems.length === 0}
-            <li class="flex flex-col items-center gap-3 bg-gray-50 px-4 py-8 text-center text-gray-500">
+            <li class="col-span-full flex flex-col items-center gap-3 rounded-md bg-gray-50 px-4 py-8 text-center text-gray-500 border border-gray-200">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400" aria-hidden="true">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>

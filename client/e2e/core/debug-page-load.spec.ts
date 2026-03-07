@@ -13,7 +13,7 @@ test.describe("Debug Page Load", () => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
         console.log("Debug: Environment prepared");
 
-        // ページの最終状態を確認
+        // Check the final state of the page
         const finalState = await page.evaluate(() => {
             const generalStore = (window as any).generalStore;
             return {
@@ -42,7 +42,7 @@ test.describe("Debug Page Load", () => {
         expect(finalState.generalStore?.hasProject).toBe(true);
         expect(finalState.generalStore?.hasCurrentPage).toBe(true);
 
-        // スクリーンショットを保存
+        // Save screenshot
         await page.screenshot({ path: "test-results/debug-final-state.png" });
     });
 });

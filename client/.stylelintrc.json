@@ -1,0 +1,9 @@
+{
+    "rules": {
+        "at-rule-disallowed-list": [
+            "tailwind",
+            "apply",
+            "config"
+        ]
+    }
+}

@@ -690,7 +690,7 @@ export class ScrapboxFormatter {
         };
 
         // Split into lines and process
-        const lines = tempText.split("\n");
+        const lines = tempText.split(/\r?\n/);
         let result = processLines(lines);
 
         // Restore placeholders to actual underline tags

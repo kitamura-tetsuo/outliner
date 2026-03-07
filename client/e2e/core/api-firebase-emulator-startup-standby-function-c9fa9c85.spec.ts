@@ -2,7 +2,7 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature API-0002
- *  Title   : Firebase emulator起動待機機能
+ *  Title   : Firebase emulator startup standby function
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";

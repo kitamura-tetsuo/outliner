@@ -19,20 +19,108 @@ let { project, page, currentContent, author }: Props = $props();
 
 let snapshots = $state<Snapshot[]>([]);
 let selectedId = $state("");
-let diffHtml = $state("");
+let compareTargetId = $state("current"); // "current", "previous", or specific snapshot id
+let viewMode = $state<"inline" | "side-by-side">("side-by-side");
+
+let inlineDiffHtml = $state("");
+let leftDiffHtml = $state("");
+let rightDiffHtml = $state("");
+let leftPaneTitle = $state("");
+let rightPaneTitle = $state("");
+
 const dmp = new DiffMatchPatch();
 
 function refresh() {
-    snapshots = listSnapshots(project, page);
+    snapshots = listSnapshots(project, page).sort((a, b) => b.timestamp - a.timestamp); // Ensure descending order
 }
 
 function showDiff(id: string) {
-    selectedId = id;
-    const snapshot = getSnapshot(project, page, id);
+    if (id) selectedId = id;
+    if (!selectedId) return;
+
+    const snapshot = getSnapshot(project, page, selectedId);
     if (!snapshot) return;
-    const diff = dmp.diff_main(snapshot.content, currentContent);
+
+    let targetContent = currentContent;
+    let targetTitle = "Current";
+    let baseTitle = new Date(snapshot.timestamp).toLocaleString();
+
+    let isReversed = false;
+
+    if (compareTargetId === "current") {
+        targetContent = currentContent;
+        targetTitle = "Current";
+    } else if (compareTargetId === "previous") {
+        const sorted = [...snapshots].sort((a, b) => a.timestamp - b.timestamp);
+        const idx = sorted.findIndex(s => s.id === selectedId);
+        if (idx > 0) {
+            const prev = sorted[idx - 1];
+            targetContent = prev.content;
+            targetTitle = new Date(prev.timestamp).toLocaleString();
+        } else {
+            // No previous snapshot, compare with empty
+            targetContent = "";
+            targetTitle = "None (Oldest)";
+        }
+    } else {
+        const targetSnap = getSnapshot(project, page, compareTargetId);
+        if (targetSnap) {
+            targetContent = targetSnap.content;
+            targetTitle = new Date(targetSnap.timestamp).toLocaleString();
+
+            // If target snapshot is older than selected snapshot, swap to make left older, right newer
+            if (targetSnap.timestamp < snapshot.timestamp) {
+                isReversed = true;
+            }
+        }
+    }
+
+    let oldContent = snapshot.content;
+    let newContent = targetContent;
+
+    // Default: left = selected, right = target
+    leftPaneTitle = baseTitle;
+    rightPaneTitle = targetTitle;
+
+    if (isReversed) {
+        oldContent = targetContent;
+        newContent = snapshot.content;
+        leftPaneTitle = targetTitle;
+        rightPaneTitle = baseTitle;
+    } else if (compareTargetId === "current" || compareTargetId === "previous") {
+        // usually selected snapshot is older than "current"
+        // if comparing with "previous", selected snapshot is newer than "previous"
+        if (compareTargetId === "previous") {
+            oldContent = targetContent;
+            newContent = snapshot.content;
+            leftPaneTitle = targetTitle;
+            rightPaneTitle = baseTitle;
+        }
+    }
+
+    const diff = dmp.diff_main(oldContent, newContent);
     dmp.diff_cleanupSemantic(diff);
-    diffHtml = dmp.diff_prettyHtml(diff);
+
+    inlineDiffHtml = dmp.diff_prettyHtml(diff);
+
+    let leftHtml = "";
+    let rightHtml = "";
+
+    for (const [op, text] of diff) {
+        // Escape HTML
+        const escapedText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+        if (op === 0) {
+            leftHtml += `<span>${escapedText}</span>`;
+            rightHtml += `<span>${escapedText}</span>`;
+        } else if (op === -1) {
+            leftHtml += `<del>${escapedText}</del>`;
+        } else if (op === 1) {
+            rightHtml += `<ins>${escapedText}</ins>`;
+        }
+    }
+
+    leftDiffHtml = leftHtml;
+    rightDiffHtml = rightHtml;
 }
 
 function revert() {
@@ -52,12 +140,18 @@ onMount(() => {
 $effect(() => {
     if (project && page) refresh();
 });
+
+$effect(() => {
+    if (selectedId && compareTargetId) {
+        showDiff(selectedId);
+    }
+});
 </script>
 
-<div class="bg-white rounded shadow-lg p-4">
-    <h2 class="text-lg font-bold mb-2" id="diff-modal-title">History / Diff</h2>
+<div class="bg-white rounded shadow-lg p-4 flex flex-col h-[80vh]">
+    <h2 class="text-lg font-bold mb-2 flex-shrink-0" id="diff-modal-title">History / Diff</h2>
 
-    <div class="flex gap-4 h-96">
+    <div class="flex gap-4 flex-1 min-h-0">
         <div class="w-1/3 border-r overflow-hidden flex flex-col">
             <h3 class="visually-hidden" id="snapshot-list-label">Snapshots</h3>
             <ul
@@ -89,29 +183,98 @@ $effect(() => {
             </ul>
         </div>
 
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-hidden gap-2">
+            {#if selectedId}
+            <div class="flex justify-between items-center bg-gray-100 p-2 rounded text-sm flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <label for="compare-target" class="font-medium text-gray-700">Compare with:</label>
+                    <select
+                        id="compare-target"
+                        bind:value={compareTargetId}
+                        class="border-gray-300 rounded shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm py-1 px-2"
+                        disabled={!selectedId}
+                    >
+                        <option value="current">Current</option>
+                        <option value="previous">Previous</option>
+                        <optgroup label="Specific Snapshot">
+                            {#each snapshots as s (s.id)}
+                                {#if s.id !== selectedId}
+                                    <option value={s.id}>{new Date(s.timestamp).toLocaleString()}</option>
+                                {/if}
+                            {/each}
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label for="view-mode" class="font-medium text-gray-700">View mode:</label>
+                    <select
+                        id="view-mode"
+                        bind:value={viewMode}
+                        class="border-gray-300 rounded shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm py-1 px-2"
+                    >
+                        <option value="inline">Inline</option>
+                        <option value="side-by-side">Side-by-side</option>
+                    </select>
+                </div>
+            </div>
+            {/if}
+
             <h3 class="visually-hidden">Diff View</h3>
-            <!-- Added .diff class for backward compatibility with existing tests -->
-            <div
-                class="diff diff-view flex-1 overflow-auto bg-gray-50 p-3 rounded border border-gray-200 font-mono text-sm"
-                tabindex="0"
-                role="region"
-                aria-label="Diff content"
-            >
-                {#if diffHtml}
-                    <!-- XSS-safe: diffHtml is generated by trusted diff-match-patch library -->
-                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                    {@html diffHtml}
-                {:else}
-                    <div class="flex items-center justify-center h-full text-gray-400 italic">
+
+            <div class="flex-1 overflow-hidden flex flex-col diff-container min-h-0">
+                {#if !selectedId}
+                    <div class="flex items-center justify-center h-full text-gray-400 italic bg-gray-50 rounded border border-gray-200">
                         Select a snapshot to view differences
+                    </div>
+                {:else if viewMode === 'inline'}
+                    <!-- Added .diff class for backward compatibility with existing tests -->
+                    <div
+                        class="diff diff-view flex-1 overflow-auto bg-gray-50 p-3 rounded border border-gray-200 font-mono text-sm whitespace-pre-wrap break-words"
+                        tabindex="0"
+                        role="region"
+                        aria-label="Inline diff content"
+                    >
+                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                        {@html inlineDiffHtml}
+                    </div>
+                {:else}
+                    <div class="flex-1 flex gap-2 overflow-hidden h-full">
+                        <div class="flex-1 flex flex-col border border-gray-200 rounded overflow-hidden">
+                            <div class="bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 border-b border-gray-200 flex-shrink-0 truncate" title={leftPaneTitle}>
+                                {leftPaneTitle}
+                            </div>
+                            <div
+                                class="diff diff-view flex-1 overflow-auto bg-red-50 p-3 font-mono text-sm whitespace-pre-wrap break-words"
+                                tabindex="0"
+                                role="region"
+                                aria-label="Old diff content"
+                            >
+                                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                                {@html leftDiffHtml}
+                            </div>
+                        </div>
+                        <div class="flex-1 flex flex-col border border-gray-200 rounded overflow-hidden">
+                            <div class="bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 border-b border-gray-200 flex-shrink-0 truncate" title={rightPaneTitle}>
+                                {rightPaneTitle}
+                            </div>
+                            <div
+                                class="diff diff-view flex-1 overflow-auto bg-green-50 p-3 font-mono text-sm whitespace-pre-wrap break-words"
+                                tabindex="0"
+                                role="region"
+                                aria-label="New diff content"
+                            >
+                                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                                {@html rightDiffHtml}
+                            </div>
+                        </div>
                     </div>
                 {/if}
             </div>
         </div>
     </div>
 
-    <div class="mt-4 flex justify-end space-x-2">
+    <div class="mt-4 flex justify-end space-x-2 flex-shrink-0">
         <button
             class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors text-sm font-medium"
             onclick={() => {

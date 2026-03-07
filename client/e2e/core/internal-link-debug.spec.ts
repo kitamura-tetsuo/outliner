@@ -19,11 +19,11 @@ test("debug internal link html", async ({ page }, testInfo) => {
 
     await page.keyboard.press("Enter");
     await TestHelpers.waitForCursorVisible(page);
-    await page.keyboard.type("別のアイテム");
+    await page.keyboard.type("Another item");
 
     await page.keyboard.press("Enter");
     await TestHelpers.waitForCursorVisible(page);
-    await page.keyboard.type("3つ目のアイテム");
+    await page.keyboard.type("Third item");
 
     await page.waitForTimeout(500);
 
