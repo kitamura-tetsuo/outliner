@@ -12,7 +12,7 @@ test("Tailwind v3 configuration files must not exist", () => {
 
     for (const file of v3Files) {
         const filePath = path.join(rootDir, file);
-        // ファイルが存在したらエラーにする
+        // Error if the file exists
         expect(fs.existsSync(filePath)).toBe(false);
     }
 });
