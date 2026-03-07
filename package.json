@@ -2,6 +2,7 @@
     "type": "module",
     "devDependencies": {
         "patch-package": "^8.0.1",
-        "pm2": "^6.0.14"
+        "pm2": "^6.0.14",
+        "vitepress": "^1.6.4"
     }
 }
