@@ -51,7 +51,7 @@ function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: numb
              console.warn("Failed to extract text", e);
         }
 
-        if (text && lines.length < maxLines && item !== pageItem) {
+        if (text && lines.length < maxLines && item.id !== pageItem.id) {
             lines.push(text);
         }
 
@@ -60,10 +60,12 @@ function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: numb
         try {
             if (item.items) {
                 let i = 0;
-                const children = Array.from(item.items);
-                for (const child of children) {
+                const children = item.items;
+                const len = children.length;
+                for (let k = 0; k < len; k++) {
                     if (i++ > 10) break;
-                    traverse(child, currentDepth + 1);
+                    const child = children.at(k);
+                    if (child) traverse(child, currentDepth + 1);
                     if (lines.length >= maxLines && image) return;
                     if (nodeCount >= maxNodes) return;
                 }
@@ -76,10 +78,12 @@ function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: numb
     try {
         if (pageItem.items) {
             let i = 0;
-            const rootChildren = Array.from(pageItem.items);
-            for (const child of rootChildren) {
+            const rootChildren = pageItem.items;
+            const len = rootChildren.length;
+            for (let k = 0; k < len; k++) {
                 if (i++ > 20) break;
-                traverse(child, 1);
+                const child = rootChildren.at(k);
+                if (child) traverse(child, 1);
                 if (lines.length >= maxLines && image) break;
             }
         }
