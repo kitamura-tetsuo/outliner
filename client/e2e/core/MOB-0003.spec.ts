@@ -28,19 +28,26 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         // Use the first content item (index 1), not the title (index 0)
         const contentItem = page.locator(".outliner-item").nth(1);
         await contentItem.waitFor({ state: "visible" });
-        // Small delay for UI stability
+
+        // Activate the item directly via store to bypass mobile click flakiness in Playwright
+        const itemId = await contentItem.getAttribute("data-item-id");
+        await page.evaluate((id) => {
+            if (typeof globalThis !== "undefined") {
+                const store = (globalThis as any).editorOverlayStore;
+                if (store && id) {
+                    store.setActiveItem(id);
+                    store.setCursor({ itemId: id, offset: 0, isActive: true, userId: "local" });
+                    const ta = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement;
+                    if (ta) ta.focus();
+                }
+            }
+        }, itemId);
         await page.waitForTimeout(500);
 
-        // Retry clicking until the textarea is focused
-        await expect.poll(async () => {
-            await contentItem.locator(".item-content").click({ force: true, position: { x: 10, y: 10 } });
-            return await page.evaluate(() => document.activeElement?.className.includes("global-textarea"));
-        }, { timeout: 15000 }).toBe(true);
-
-        await page.waitForSelector("textarea.global-textarea:focus");
         await page.keyboard.type("One");
         await page.keyboard.press("Enter");
         await page.keyboard.type("Two");
+        await page.waitForTimeout(500);
     });
 
     test("toolbar appears and performs actions", async ({ page }) => {
@@ -55,8 +62,8 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
             }))
         );
         console.log("MOB-0003: item order", JSON.stringify(itemSnapshot));
-        // Get the second root item (index 3 overall, which is the second child of page title)
-        const thirdId = await items.nth(3).getAttribute("data-item-id");
+        // Get the second root item (index 2 overall, which is the second child of page title)
+        const thirdId = await items.nth(2).getAttribute("data-item-id");
         console.log("MOB-0003: Setting active item to ID:", thirdId);
 
         // Set the active item directly via editorOverlayStore

@@ -1,7 +1,6 @@
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { sentrySvelteKit } from "@sentry/sveltekit";
 import { sveltekit } from "@sveltejs/kit/vite";
-import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vite";
 
@@ -23,13 +22,12 @@ export default defineConfig(async ({ mode }) => {
 
     return {
         plugins: [
-            tailwindcss(),
             // Intercept removed endpoints early during dev to ensure expected 404
             {
                 name: "deny-fluid-token-endpoint",
                 configureServer(server) {
                     server.middlewares.use((req, res, next) => {
-                        if (req.method === "GET" && req.url?.startsWith("/api/fluid-token")) {
+                        if (req.url?.startsWith("/api/fluid-token")) {
                             res.statusCode = 404;
                             res.end("Not Found");
                             return;
@@ -38,7 +36,6 @@ export default defineConfig(async ({ mode }) => {
                     });
                 },
             },
-
             sentrySvelteKit({
                 sourceMapsUploadOptions: {
                     enabled: false,
@@ -139,6 +136,10 @@ export default defineConfig(async ({ mode }) => {
                     "src/vite-env.d.ts",
                     "src/global.d.ts",
                     "src/app.d.ts",
+                    "src/engine_test.css",
+                    "src/engine_result.css",
+                    "src/cli_test_2.css",
+                    "src/cli_result_2.css",
                 ],
                 clean: true,
             },
