@@ -21,7 +21,7 @@ test.describe("Debug Page Load", () => {
                 outlinerBase: !!document.querySelector('[data-testid="outliner-base"]'),
                 outlinerItems: document.querySelectorAll(".outliner-item").length,
                 addButton: !!Array.from(document.querySelectorAll("button")).find(btn =>
-                    btn.textContent?.includes("アイテム追加")
+                    btn.textContent?.includes("Add Item")
                 ),
                 generalStore: generalStore
                     ? {
