@@ -1,6 +1,7 @@
 {
     "type": "module",
     "devDependencies": {
-        "pm2": "^6.0.14"
+        "pm2": "^6.0.14",
+        "vitepress": "^1.6.4"
     }
 }
