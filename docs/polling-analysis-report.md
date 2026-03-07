@@ -47,13 +47,13 @@ These pollings may be safe to remove.
 ```
 if (aliasPickerStore.isVisible) {
     try {
-        // まずピッカー本体
+        // First, the picker body
         pickerElement?.focus();
-        // 次に検索入力へ（存在すれば）
+        // Next, to the search input (if it exists)
         setTimeout(() => {
             inputElement?.focus();
         }, 0);
-        // 外部ストアへ選択インデックスを同期
+        // Synchronize selection index to external store
         try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
     } catch {}
 ```
@@ -93,7 +93,7 @@ if (aliasPickerStore.isVisible) {
 ```
 let updatePositionMapTimer: number;
 
-// 位置マップをdebounce付きで更新
+// Update position map with debounce
 function debouncedUpdatePositionMap() {
     clearTimeout(updatePositionMapTimer);
     updatePositionMapTimer = setTimeout(() => {
@@ -101,7 +101,7 @@ function debouncedUpdatePositionMap() {
     }, 100) as unknown as number;
 }
 
-// store からのデータ反映は MutationObserver と onMount 初期化で担保
+// Data reflection from store is guaranteed by MutationObserver and onMount initialization
 ```
 
 ### EditorOverlay.svelte:649:setTimeout
@@ -118,7 +118,7 @@ function debouncedUpdatePositionMap() {
     }
 
 
-    // 初期状態でアクティブカーソルがある場合は、少し遅延してから点滅を開始
+    // If there is an active cursor in the initial state, start blinking after a short delay
     setTimeout(() => {
         if (cursorList.some(cursor => cursor.isActive)) {
             store.startCursorBlink();
@@ -141,7 +141,7 @@ function debouncedUpdatePositionMap() {
         // Intentionally empty - catch potential errors without further handling
     }
 });
-updatingFlags[key] = true; // デバッグ用の副作用（UIはこれに依存しない）
+updatingFlags[key] = true; // Debug side effect (UI does not depend on this)
 const timer = setTimeout(() => {
     mo?.disconnect();
     node.classList.remove('selection-box-updating');
@@ -164,7 +164,7 @@ const timer = setTimeout(() => {
         textareaRef.focus();
         console.log("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
 
-        // フォーカス確保のための追加試行
+        // Additional attempt to secure focus
         requestAnimationFrame(() => {
             if (textareaRef) {
                 textareaRef.focus();
@@ -210,12 +210,12 @@ const timer = setTimeout(() => {
         return;
     }
     if (activeItemId) {
-        // フォーカスを確実に設定するための複数の試行
+        // Multiple attempts to reliably set focus
         setTimeout(() => {
             if (textareaRef && !aliasPickerStore.isVisible) {
                 textareaRef.focus();
 
-                // デバッグ情報
+                // Debug information
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
 ```
 
@@ -231,15 +231,15 @@ const timer = setTimeout(() => {
 ```
         });
 
-        // ノードの位置が変更されたときにレイアウトを保存
+        // Save layout when node position is changed
         chart.on("finished", () => {
-            // レイアウト計算完了後に少し待ってから保存
+            // Wait a bit after layout calculation is completed, then save
             setTimeout(() => {
                 saveLayout();
             }, 100);
         });
 
-        // ドラッグ終了時にも保存
+        // Save also when drag ends
 ```
 
 ### LoginStatusIndicator.svelte:118:setTimeout
@@ -324,7 +324,7 @@ setTimeout(() => {
         document.activeElement === textareaEl,
     );
 
-    // フォーカス確保のための追加試行
+    // Additional attempt to secure focus
     requestAnimationFrame(() => {
         textareaEl.focus();
 
@@ -342,7 +342,7 @@ setTimeout(() => {
 **Context**:
 
 ```
-    // フォーカス確保のための追加試行
+    // Additional attempt to secure focus
     requestAnimationFrame(() => {
         textareaEl.focus();
 
@@ -351,7 +351,7 @@ setTimeout(() => {
 
         }, 10);
     });
-    // テキスト内容を同期
+    // Synchronize text content
 ```
 
 ### OutlinerItem.svelte:1032:requestAnimationFrame
@@ -365,14 +365,14 @@ setTimeout(() => {
 
 ```
         if (textarea) {
-            // フォーカスを確実に設定するための複数の試行
+            // Multiple attempts to reliably set focus
             textarea.focus();
 
-            // requestAnimationFrameを使用してフォーカスを設定
+            // Set focus using requestAnimationFrame
             requestAnimationFrame(() => {
                 textarea.focus();
 
-                // さらに確実にするためにsetTimeoutも併用
+                // Also use setTimeout to be more certain
                 setTimeout(() => {
                     textarea.focus();
 ```
@@ -387,15 +387,15 @@ setTimeout(() => {
 **Context**:
 
 ```
-            // requestAnimationFrameを使用してフォーカスを設定
+            // Set focus using requestAnimationFrame
             requestAnimationFrame(() => {
                 textarea.focus();
 
-                // さらに確実にするためにsetTimeoutも併用
+                // Also use setTimeout to be more certain
                 setTimeout(() => {
                     textarea.focus();
 
-                    // フォーカスが設定されたかチェック
+                    // Check if focus was set
                     if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                         // Intentionally empty: placeholder for debug logging
 ```
@@ -410,7 +410,7 @@ setTimeout(() => {
 **Context**:
 
 ```
-// 暫定フォールバック: lastConfirmed をポーリング
+// Provisional fallback: poll lastConfirmed
 let aliasLastConfirmedPulse: { itemId: string; targetId: string; at: number } | null = $state(null);
 
 onMount(() => {
@@ -459,10 +459,10 @@ onMount(() => {
                     );
                 }
 
-                // 確実に処理の順序を保つため、少し遅延させてから新しいアイテムにフォーカス
+                // Slightly delay before focusing on the new item to ensure processing order
                 setTimeout(focusNewItem, 10);
             } else {
-                // アクティブ要素が見つからない場合はすぐにフォーカス
+                // Focus immediately if active element is not found
                 focusNewItem();
             }
         } else {
@@ -482,7 +482,7 @@ onMount(() => {
                 );
                 logger.info("ProjectSelector - Login successful");
 
-                // ログイン成功後、少し待ってからFirestoreの同期を確認
+                // After successful login, wait a bit and check Firestore synchronization
                 setTimeout(() => {
                     const cnt = projectsFromUserProject(
                         firestoreStore.userProject,
@@ -592,14 +592,14 @@ if (typeof window !== "undefined") {
 
 ```
             if (textarea) {
-                // フォーカスを確実に設定するための複数の試行
+                // Multiple attempts to reliably set focus
                 textarea.focus();
 
-                // requestAnimationFrameを使用してフォーカスを設定
+                // Set focus using requestAnimationFrame
                 requestAnimationFrame(() => {
                     textarea.focus();
 
-                    // さらに確実にするためにsetTimeoutも併用
+                    // Also use setTimeout to be more certain
                     setTimeout(() => {
                         textarea.focus();
 ```
@@ -614,15 +614,15 @@ if (typeof window !== "undefined") {
 **Context**:
 
 ```
-                // requestAnimationFrameを使用してフォーカスを設定
+                // Set focus using requestAnimationFrame
                 requestAnimationFrame(() => {
                     textarea.focus();
 
-                    // さらに確実にするためにsetTimeoutも併用
+                    // Also use setTimeout to be more certain
                     setTimeout(() => {
                         textarea.focus();
 
-                        // デバッグ情報
+                        // Debug information
                         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                             console.log(
 ```
@@ -637,10 +637,10 @@ if (typeof window !== "undefined") {
 **Context**:
 
 ```
-        // グローバルテキストエリアの選択範囲を設定
+        // Set global textarea selection range
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
-        // 選択範囲が正しく作成されたことを確認するために、DOMに反映されるまで少し待つ
+        // Wait a bit until reflected in DOM to confirm selection range was created correctly
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
@@ -659,10 +659,10 @@ if (typeof window !== "undefined") {
 **Context**:
 
 ```
-        // グローバルテキストエリアの選択範囲を設定
+        // Set global textarea selection range
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
-        // 選択範囲が正しく作成されたことを確認するために、DOMに反映されるまで少し待つ
+        // Wait a bit until reflected in DOM to confirm selection range was created correctly
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
@@ -683,9 +683,9 @@ if (typeof window !== "undefined") {
 ```
                     store.forceUpdate();
                 }
-            }, 100); // タイムアウトを100msに増やして、DOMの更新を待つ時間を長くする
+            }, 100); // Increase timeout to 100ms to wait longer for DOM update
 
-            // 追加の確認と更新
+            // Additional confirmation and update
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
                 if (selectionElements.length === 0) {
@@ -704,8 +704,8 @@ if (typeof window !== "undefined") {
 **Context**:
 
 ```
-// ここでEnterの通常処理（改行/新規アイテム追加等）が完了しているはずなので、
-// 事前検出フラグに基づいてAliasPickerを後追いで開く
+// Since normal Enter processing (newline/new item addition, etc.) should be completed here,
+// Open AliasPicker subsequently based on pre-detection flag
 if (shouldOpenAliasPickerAfterDefault) {
     try {
         setTimeout(() => {
@@ -750,16 +750,16 @@ if (attempt < 10) {
 
 ```
             if (globalTextarea) {
-                // フォーカスを確実に設定するための複数の試行
+                // Multiple attempts to reliably set focus
                 globalTextarea.focus();
 
-                // requestAnimationFrameを使用してフォーカスを設定
+                // Set focus using requestAnimationFrame
                 requestAnimationFrame(() => {
                     globalTextarea.focus();
                 });
             }
 
-            // 通常処理（cursor.onKeyDown等）後にAliasPickerを開く後追い処理
+            // Subsequent processing to open AliasPicker after normal processing (cursor.onKeyDown, etc.)
 ```
 
 ### KeyEventHandler.ts:712:setTimeout
@@ -774,7 +774,7 @@ if (attempt < 10) {
 ```
             }
 
-            // 通常処理（cursor.onKeyDown等）後にAliasPickerを開く後追い処理
+            // Subsequent processing to open AliasPicker after normal processing (cursor.onKeyDown, etc.)
             if (shouldOpenAliasPickerAfterDefault) {
                 try {
                     setTimeout(() => {
@@ -819,14 +819,14 @@ if (attempt < 10) {
 
 ```
         if (textareaElement) {
-            // フォーカスを確実に設定するための複数の試行
+            // Multiple attempts to reliably set focus
             textareaElement.focus();
 
-            // requestAnimationFrameを使用してフォーカスを設定
+            // Set focus using requestAnimationFrame
             requestAnimationFrame(() => {
                 textareaElement.focus();
 
-                // さらに確実にするためにsetTimeoutも併用
+                // Also use setTimeout to be more certain
                 setTimeout(() => {
                     textareaElement.focus();
 ```
@@ -841,15 +841,15 @@ if (attempt < 10) {
 **Context**:
 
 ```
-            // requestAnimationFrameを使用してフォーカスを設定
+            // Set focus using requestAnimationFrame
             requestAnimationFrame(() => {
                 textareaElement.focus();
 
-                // さらに確実にするためにsetTimeoutも併用
+                // Also use setTimeout to be more certain
                 setTimeout(() => {
                     textareaElement.focus();
 
-                    // デバッグ情報
+                    // Debug information
                     if (
                         typeof window !== "undefined"
 ```
@@ -868,7 +868,7 @@ if (attempt < 10) {
                 `;
                 document.head.appendChild(styleEl);
 
-                // 一定時間後にスタイルを削除
+                // Remove style after a certain time
                 setTimeout(() => {
                     if (typeof document !== "undefined") {
                         const el = document.getElementById("box-selection-feedback");
@@ -891,7 +891,7 @@ if (attempt < 10) {
 
                         document.body.appendChild(hintEl);
 
-                        // 一定時間後にヒントをフェードアウト
+                        // Fade out hint after a certain time
                         setTimeout(() => {
                             hintEl.style.opacity = "0";
                             setTimeout(() => {
@@ -912,7 +912,7 @@ if (attempt < 10) {
 ```
                         document.body.appendChild(hintEl);
 
-                        // 一定時間後にヒントをフェードアウト
+                        // Fade out hint after a certain time
                         setTimeout(() => {
                             hintEl.style.opacity = "0";
                             setTimeout(() => {
@@ -956,10 +956,10 @@ if (attempt < 10) {
 **Context**:
 
 ```
-        // グローバルテキストエリアの選択範囲を設定
+        // Set global textarea selection range
         this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
-        // 選択範囲が正しく作成されたことを確認するために、DOMに反映されるまで少し待つ
+        // Wait a bit until reflected in DOM to confirm selection range was created correctly
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
@@ -978,10 +978,10 @@ if (attempt < 10) {
 **Context**:
 
 ```
-        // グローバルテキストエリアの選択範囲を設定
+        // Set global textarea selection range
         this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
-        // 選択範囲が正しく作成されたことを確認するために、DOMに反映されるまで少し待つ
+        // Wait a bit until reflected in DOM to confirm selection range was created correctly
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
@@ -1002,9 +1002,9 @@ if (attempt < 10) {
 ```
                     store.forceUpdate();
                 }
-            }, 100); // タイムアウトを100msに増やして、DOMの更新を待つ時間を長くする
+            }, 100); // Increase timeout to 100ms to wait longer for DOM update
 
-            // 追加の確認と更新
+            // Additional confirmation and update
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
                 if (selectionElements.length === 0) {
@@ -1027,9 +1027,9 @@ if (attempt < 10) {
         hideTimer = null;
     }
 
-    // 遅延してプレビューを表示（ユーザーが意図せずマウスオーバーした場合の表示を防ぐ）
+    // Show preview with delay (prevents showing when user accidentally mouses over)
     previewTimer = window.setTimeout(() => {
-        // 既存のプレビューを削除
+        // Remove existing preview
         if (currentPreview) {
             document.body.removeChild(currentPreview);
             currentPreview = null;
@@ -1050,10 +1050,10 @@ if (attempt < 10) {
         previewTimer = null;
     }
 
-    // 遅延して非表示（ユーザーがプレビューに移動する時間を確保）
+    // Hide with delay (secures time for user to move to preview)
     hideTimer = window.setTimeout(() => {
         hidePreview();
-    }, 200); // 200ms遅延
+    }, 200); // 200ms delay
 }
 
 /**
@@ -1102,7 +1102,7 @@ if (attempt < 10) {
 //         });
 //     }
 
-//     // 任意キーでもロック可能
+//     // Can also lock with arbitrary key
 ```
 
 ### lock.ts:102:setTimeout
@@ -1117,7 +1117,7 @@ if (attempt < 10) {
 ```
 //     service.methodB();
 
-//     // 任意のキーでのロック
+//     // Lock with arbitrary key
 //     service.runWithCustomLock('custom', async () => {
 //         console.log('custom lock start');
 //         await new Promise(r => setTimeout(r, 700));
@@ -1188,7 +1188,7 @@ if (attempt < 10) {
 
                 if (call.disabled) {
                     console.log(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);
-                    // ダミーのIDを返す
+                    // Return dummy ID
                     return id;
                 }
 
@@ -1593,12 +1593,12 @@ await new Promise<void>((resolve) => {
 ```
  */
 function schedulePeriodicLogRotation() {
-    // 定期的なログローテーション（12時間ごと）
+    // Periodic log rotation (every 12 hours)
     const ROTATION_INTERVAL = 12 * 60 * 60 * 1000;
 
     return setInterval(() => {
         if (import.meta.env.DEV) {
-            logger.info("定期的なログローテーションを実行します");
+            logger.info("Executing periodic log rotation");
         }
         rotateLogFiles();
     }, ROTATION_INTERVAL);
@@ -1618,13 +1618,13 @@ function schedulePeriodicLogRotation() {
         }
         lastLoadKey = key;
 
-        // 反応深度の問題を避けるため、イベントループに委ねる
+        // Delegate to event loop to avoid reactivity depth issues
         setTimeout(() => {
             if (!__loadingInProgress) loadProjectAndPage();
         }, 0);
     }
 
-    // 認証成功時の処理
+    // Processing upon successful authentication
 ```
 
 ### +page.svelte:176:setTimeout
@@ -1662,7 +1662,7 @@ for (let i = 0; i < maxRetries; i++) {
 ```
             );
             let retryCount = 0;
-            const maxRetries = 50; // 5秒間待機
+            const maxRetries = 50; // Wait for 5 seconds
 
             while (!currentUser && retryCount < maxRetries) {
                 await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1686,8 +1686,8 @@ for (let i = 0; i < maxRetries; i++) {
             };
         }
 
-        // ページ読み込み後にリンクプレビューハンドラーを設定
-        // DOMが完全に読み込まれるのを待つ
+        // Set up link preview handler after page load
+        // Wait for DOM to be fully loaded
         setTimeout(() => {
             setupLinkPreviewHandlers();
         }, 500);
@@ -1847,7 +1847,7 @@ catch (err) {
             initializeFluidClient();
         }
 
-        // 接続状態を定期的に更新（5秒ごと）
+        // Periodically update connection status (every 5 seconds)
         statusInterval = setInterval(() => {
             updateConnectionStatus();
         }, 5000);
@@ -1868,15 +1868,15 @@ catch (err) {
 ```
         yjsStore.yjsClient = newClient as any;
 
-        success = `新しいアウトライナーが作成されました！ (ID: ${createdContainerId})`;
+        success = `New outliner has been created! (ID: ${createdContainerId})`;
 
-        // 1.5秒後に作成したプロジェクトのページに移動
+        // Move to created project page after 1.5 seconds
         setTimeout(() => {
             goto("/" + containerName);
         }, 1500);
     }
     catch (err) {
-        logger.error("新規アウトライナー作成エラー:", err);
+        logger.error("New outliner creation error:", err);
 ```
 
 ### +page.svelte:76:setTimeout
@@ -1892,8 +1892,8 @@ catch (err) {
         }
 
         if (!error && deletedCount > 0) {
-            success = "選択したプロジェクトを削除しました";
-            // 削除後にプロジェクトリストを更新するため、少し待ってからページをリロード
+            success = "Selected project has been deleted";
+            // Reload page after a short wait to update project list after deletion
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
@@ -2161,7 +2161,7 @@ stopCursorBlink() {
 **Context**:
 
 ```
-        // 差分領域にHTMLが描画されていること
+        // HTML is rendered in the diff area
         const diff = document.querySelector(".diff-view") as HTMLElement;
         expect(diff).toBeTruthy();
 
