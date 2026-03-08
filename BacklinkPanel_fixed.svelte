@@ -19,13 +19,13 @@ interface Props {
 
 let { pageName, projectName }: Props = $props();
 
-// バックリンク情報
+// Backlink information
 let backlinks = $state<Backlink[]>([]);
 let isLoading = $state(false);
 let isOpen = $state(false);
 let error = $state<string | null>(null);
 
-// バックリンクを読み込む
+// Load backlinks
 async function loadBacklinks() {
     if (!pageName) return;
 
@@ -33,13 +33,13 @@ async function loadBacklinks() {
     error = null;
 
     try {
-        // バックリンクを収集
+        // Collect backlinks
         backlinks = collectBacklinks(pageName);
         logger.info(`Loaded ${backlinks.length} backlinks for page: ${pageName}`);
     }
     catch (err) {
         logger.error("Failed to load backlinks:", err);
-        error = "バックリンクの読み込みに失敗しました";
+        error = "Failed to load backlinks";
         backlinks = [];
     }
     finally {
@@ -47,7 +47,7 @@ async function loadBacklinks() {
     }
 }
 
-// パネルの開閉を切り替える
+// Toggle panel visibility
 function togglePanel() {
     isOpen = !isOpen;
 
@@ -56,10 +56,10 @@ function togglePanel() {
     }
 }
 
-// バックリンク先のページに移動する
+// Navigate to the linked page
 function navigateToPage(_pageId: string, pageName: string) {
     if (!projectName) {
-        // プロジェクト名が指定されていない場合は現在のプロジェクトを使用
+        // If no project name is specified, use the current project
         goto(`/${pageName}`);
     }
     else {
@@ -67,27 +67,27 @@ function navigateToPage(_pageId: string, pageName: string) {
     }
 }
 
-// バックリンクを再読み込みする
+// Refresh backlinks
 function refreshBacklinks() {
     loadBacklinks();
 }
 
-// コンポーネントがマウントされたときの処理
+// Handle component mount
 onMount(() => {
-    // 初期状態では閉じておく
+    // Keep closed by default
     isOpen = false;
 });
 
-// コンポーネントが破棄されるときの処理
+// Handle component destruction
 onDestroy(() => {
-    // クリーンアップ処理
+    // Cleanup
 });
 
-// コンテキスト内のリンクをハイライトする
+// Highlight links within the context
 function highlightLinkInContext(context: string, pageName: string): string {
     if (!context || !pageName) return context;
 
-    // HTMLエスケープ
+    // HTML escape
     const escapeHtml = (text: string): string => {
         return text
             .replace(/&/g, "&amp;")
@@ -97,14 +97,14 @@ function highlightLinkInContext(context: string, pageName: string): string {
             .replace(/'/g, "&#039;");
     };
 
-    // 内部リンクの正規表現パターン
+    // Internal link regex pattern
     const escapedPageName = escapeHtml(pageName);
     const internalLinkPattern = new RegExp(`\\\\[(${escapedPageName})\\\\]`, "gi");
 
-    // プロジェクト内部リンクの正規表現パターン
+    // Project internal link regex pattern
     const projectLinkPattern = new RegExp(`\\\\[\\\\/[^/]+\\\\/(${escapedPageName})\\\\]`, "gi");
 
-    // リンクをハイライト
+    // Highlight links
     let result = context
         .replace(internalLinkPattern, '<span class="highlight">[$1]</span>')
         .replace(projectLinkPattern, '<span class="highlight">[/project/$1]</span>');
@@ -120,15 +120,15 @@ function highlightLinkInContext(context: string, pageName: string): string {
         class:active={isOpen}
     >
         <span class="backlink-count">{backlinks.length}</span>
-        <span class="backlink-label">バックリンク</span>
+        <span class="backlink-label">Backlinks</span>
         <span class="toggle-icon">{isOpen ? "▼" : "▶"}</span>
     </button>
 
     {#if isOpen}
         <div class="backlink-content">
             <div class="backlink-header">
-                <h3>バックリンク</h3>
-                <button onclick={refreshBacklinks} class="refresh-button" title="再読み込み">
+                <h3>Backlinks</h3>
+                <button onclick={refreshBacklinks} class="refresh-button" title="Refresh">
                     ↻
                 </button>
             </div>
@@ -136,7 +136,7 @@ function highlightLinkInContext(context: string, pageName: string): string {
             {#if isLoading}
                 <div class="backlink-loading">
                     <div class="loader"></div>
-                    <p>読み込み中...</p>
+                    <p>Loading...</p>
                 </div>
             {:else if error}
                 <div class="backlink-error">
@@ -144,7 +144,7 @@ function highlightLinkInContext(context: string, pageName: string): string {
                 </div>
             {:else if backlinks.length === 0}
                 <div class="backlink-empty">
-                    <p>このページへのリンクはありません</p>
+                    <p>No links to this page</p>
                 </div>
             {:else}
                 <ul class="backlink-list">
