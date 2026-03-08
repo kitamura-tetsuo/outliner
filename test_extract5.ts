@@ -1,5 +1,5 @@
-import { Project, Item } from "./client/src/schema/app-schema.ts";
 import * as Y from "yjs";
+import { Item, Project } from "./client/src/schema/app-schema.ts";
 
 const proj = Project.createInstance("Test");
 const page = proj.addPage("Page Title", "author");

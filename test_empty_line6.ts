@@ -1,4 +1,4 @@
-import { Project, Items, Item } from "./client/src/schema/app-schema.ts";
+import { Item, Items, Project } from "./client/src/schema/app-schema.ts";
 
 const proj = Project.createInstance("Test");
 const page = proj.addPage("Page Title", "author");

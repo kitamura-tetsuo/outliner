@@ -1,4 +1,4 @@
-import { Project, Item } from "./client/src/schema/app-schema.ts";
+import { Item, Project } from "./client/src/schema/app-schema.ts";
 
 const proj = Project.createInstance("Test");
 const page = proj.addPage("Page Title", "author");
@@ -27,10 +27,19 @@ function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: numb
         try {
             text = item.text ? item.text.trim() : "";
         } catch (e) {
-             console.warn("Failed to extract text", e);
+            console.warn("Failed to extract text", e);
         }
 
-        console.log("traverse item id:", item.id, "text:", text, "pageItem.id:", pageItem.id, "diff?", item.id !== pageItem.id);
+        console.log(
+            "traverse item id:",
+            item.id,
+            "text:",
+            text,
+            "pageItem.id:",
+            pageItem.id,
+            "diff?",
+            item.id !== pageItem.id,
+        );
 
         if (text && lines.length < maxLines && item.id !== pageItem.id) {
             lines.push(text);

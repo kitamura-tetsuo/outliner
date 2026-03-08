@@ -24,7 +24,7 @@ function extractPagePreview(pageItem: any, maxLines: number = 3, maxDepth: numbe
         try {
             text = item.text ? item.text.trim() : "";
         } catch (e) {
-             console.warn("Failed to extract text", e);
+            console.warn("Failed to extract text", e);
         }
 
         if (text && lines.length < maxLines && item.id !== pageItem.id) {
