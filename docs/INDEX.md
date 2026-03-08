@@ -22,3 +22,4 @@ The Outliner project is a real-time collaborative application built with the fol
 - [**Yjs Migration / fluid_to_yjs.md**](fluid_to_yjs.md): Details the mapping between legacy Fluid data structures and the current Yjs implementation, along with migration status.
 - [**State Management / state_management.md**](state_management.md): Guidelines on how state is managed across the application, particularly interacting with Yjs.
 - [**Production Setup / PRODUCTION_SETUP.md**](PRODUCTION_SETUP.md): Instructions and configurations for the production cloud backend.
+- [**Documentation / Documentation.md**](Documentation.md): Instructions for the documentation.
