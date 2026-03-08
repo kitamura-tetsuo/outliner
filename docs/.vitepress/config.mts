@@ -7,6 +7,12 @@ export default defineConfig({
     themeConfig: {
         sidebar: [
             {
+                text: "User Manual",
+                items: [
+                    { text: "Outliner マニュアル", link: "/user-manual/index" },
+                ],
+            },
+            {
                 text: "Architecture",
                 items: [
                     { text: "State Management", link: "/state_management" },
