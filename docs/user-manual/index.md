@@ -18,10 +18,13 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 An overview of the basic interface and navigation.
 
 ### Switching to Edit Mode
+
 Click on any text to place your cursor there and enter edit mode.
 
 ### Moving Between Items
+
 Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cursor.
+
 - Move to the beginning of the line: `Home`
 - Move to the end of the line: `End`
 
@@ -32,7 +35,9 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 Outliner supports various text formatting options (e.g., bold, italic, code blocks).
 
 ### Applying Formatting
+
 Select text and use keyboard shortcuts to quickly apply formatting.
+
 - Bold: `Ctrl + B` (Mac: `Cmd + B`)
 - Italic: `Ctrl + I` (Mac: `Cmd + I`)
 - Code: Wrap the selection in \`\`\`
@@ -44,13 +49,16 @@ Select text and use keyboard shortcuts to quickly apply formatting.
 Powerful item manipulation features expected in an outliner.
 
 ### Adding New Items
+
 Press `Enter` to insert a new item below the current one.
 
 ### Indenting Items
+
 - Decrease indent: `Tab` at the beginning of a line
 - Increase indent: `Shift + Tab` at the beginning of a line
 
 ### Moving Items
+
 Easily reorder items using drag and drop.
 
 ---
@@ -60,9 +68,11 @@ Easily reorder items using drag and drop.
 Create links to other pages within Outliner or external websites.
 
 ### Internal Links
+
 Type `[` twice (`[[`), then enter a page name to create a link to another page.
 
 ### External Links
+
 Paste any URL to automatically create an external link.
 
 ---
@@ -72,12 +82,15 @@ Paste any URL to automatically create an external link.
 Efficiently select and copy multiple items or text ranges.
 
 ### Selecting Text
+
 - `Shift + Arrow keys`: Select character by character or line by line
 - `Shift + Home/End`: Select to the beginning or end of the line
 - `Ctrl + L`: Select the entire current line
 
 ### Box Selection (Rectangle Selection)
+
 Select a rectangular area spanning multiple lines.
+
 - Mouse: `Alt + Shift + Drag`
 - Keyboard: `Alt + Shift + Arrow keys`
 
@@ -85,13 +98,13 @@ Select a rectangular area spanning multiple lines.
 
 ## Keyboard Shortcuts
 
-| Action | Windows/Linux | Mac |
-|---|---|---|
-| Add new item | `Enter` | `Enter` |
-| Select entire line | `Ctrl + L` | `Cmd + L` |
-| Select to start of line | `Shift + Home` | `Shift + Home` |
-| Select to end of line | `Shift + End` | `Shift + End` |
-| Box selection (Mouse) | `Alt + Shift + Drag` | `Option + Shift + Drag` |
-| Box selection (Key) | `Alt + Shift + Arrow` | `Option + Shift + Arrow` |
-| Expand selection | `Shift + Alt + Right` | `Shift + Option + Right` |
-| Shrink selection | `Shift + Alt + Left` | `Shift + Option + Left` |
+| Action                  | Windows/Linux         | Mac                      |
+| ----------------------- | --------------------- | ------------------------ |
+| Add new item            | `Enter`               | `Enter`                  |
+| Select entire line      | `Ctrl + L`            | `Cmd + L`                |
+| Select to start of line | `Shift + Home`        | `Shift + Home`           |
+| Select to end of line   | `Shift + End`         | `Shift + End`            |
+| Box selection (Mouse)   | `Alt + Shift + Drag`  | `Option + Shift + Drag`  |
+| Box selection (Key)     | `Alt + Shift + Arrow` | `Option + Shift + Arrow` |
+| Expand selection        | `Shift + Alt + Right` | `Shift + Option + Right` |
+| Shrink selection        | `Shift + Alt + Left`  | `Shift + Option + Left`  |

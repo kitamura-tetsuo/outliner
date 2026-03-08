@@ -6,12 +6,12 @@ export default defineConfig({
     ignoreDeadLinks: true,
     locales: {
         root: {
-            label: 'English',
-            lang: 'en'
+            label: "English",
+            lang: "en",
         },
         ja: {
-            label: '日本語',
-            lang: 'ja',
+            label: "日本語",
+            lang: "ja",
             themeConfig: {
                 sidebar: [
                     {
@@ -40,8 +40,8 @@ export default defineConfig({
                         ],
                     },
                 ],
-            }
-        }
+            },
+        },
     },
     themeConfig: {
         sidebar: [
