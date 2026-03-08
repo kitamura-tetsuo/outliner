@@ -5,9 +5,9 @@
     "dockerComposeFile": "docker-compose.yml",
     "service": "app",
     "workspaceFolder": "/workspace",
-    // 必要に応じてコンテナ作成後にコマンドを実行
+    // Run commands after container creation if necessary
     // "postCreateCommand": "cd client && npm install && cd ../server && npm install",
-    // VS Code 機能をカスタマイズ
+    // Customize VS Code features
     "customizations": {
         "vscode": {
             "extensions": [
@@ -40,6 +40,6 @@
     //     57070
     // ],
     "postStartCommand": "bash /workspace/outliner/scripts/setup.sh",
-    // node ユーザーとして接続
+    // Connect as node user
     "remoteUser": "node"
 }
