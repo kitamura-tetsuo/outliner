@@ -26,13 +26,13 @@ let error = $state<string | null>(null);
 
 
 
-// 再描画トリガ（テスト環境のバックストップ用）
+// Redraw trigger (backstop for test environments)
 let redraw = $state(0);
 
-// containers を安定再計算（イベントレス: ucVersion、テストフォールバック: redraw）
+// Recompute containers stably (eventless: ucVersion, test fallback: redraw)
 let containers = $derived.by(() => {
-    void firestoreStore.ucVersion; // 依存のみ
-    void redraw; // 暫定依存（イベント駆動の互換）
+    void firestoreStore.ucVersion; // Dependency only
+    void redraw; // Temporary dependency (event-driven compatibility)
     return containersFromUserContainer(firestoreStore.userContainer);
 });
 $effect(() => {
@@ -42,23 +42,23 @@ $effect(() => {
 
 
 
-// 現在ロード中のコンテナIDを表示
+// Display currently loading container ID
 let currentContainerId = yjsStore.currentContainerId;
 
 
 
 onMount(() => {
     const cleanupTasks: Array<() => void> = [];
-    // 現在のコンテナIDがある場合はそれを選択済みに
+    // If there is a current container ID, select it
     if (currentContainerId) {
         selectedContainerId = currentContainerId;
     }
 
-    // 初期同期: マウント直後に一度だけ再計算を強制して、事前に投入済みの userContainer を反映
-    // （ucVersion の変化がマウント前に発生していた場合でもDOMに反映させる）
+    // Initial sync: Force recomputation once immediately after mount to reflect pre-populated userContainer
+    // (Ensure DOM is updated even if ucVersion changed before mount)
     try { redraw = (redraw + 1) | 0; } catch {}
 
-    // 認証状態を確認し、必要に応じてログインを試行（非同期で実行）
+    // Check authentication state and attempt login if necessary (executed asynchronously)
     ensureUserLoggedIn();
 
     if (typeof window !== "undefined") {
@@ -67,7 +67,7 @@ onMount(() => {
             || window.location.hostname === "localhost";
 
         if (isTestEnv) {
-            // テスト環境では ucVersion の変化に追従するバックストップを設ける
+            // In test environments, provide a backstop to track ucVersion changes
             let lastVersion = firestoreStore.ucVersion;
             const intervalId = window.setInterval(() => {
                 const currentVersion = firestoreStore.ucVersion;
@@ -80,14 +80,14 @@ onMount(() => {
                 window.clearInterval(intervalId);
             });
 
-            // 追加: テスト専用の同期イベントで即時再計算（seed直後の初期化競合を回避）
+            // Add: Immediate recomputation with test-specific sync event (avoid initialization race conditions immediately after seed)
             const onUcChanged = () => { try { redraw = (redraw + 1) | 0; } catch {} };
             window.addEventListener('firestore-uc-changed', onUcChanged);
             cleanupTasks.push(() => window.removeEventListener('firestore-uc-changed', onUcChanged));
         }
     }
 
-    // 認証状態の変化を監視
+    // Monitor changes in authentication state
     const userManagerInstance = (window as typeof window & { __USER_MANAGER__?: UserManager }).__USER_MANAGER__;
     if (userManagerInstance) {
         const unsubscribe = userManagerInstance.addEventListener((authResult: IAuthResult | null) => {
@@ -104,7 +104,7 @@ onMount(() => {
         }
     }
 
-    // クリーンアップ関数を返す
+    // Return cleanup function
     return () => {
         for (const clean of cleanupTasks) {
             try {
@@ -116,9 +116,9 @@ onMount(() => {
     };
 });
 
-// ユーザーのログイン状態を確認し、必要に応じてログインを試行する関数
+// Function to check user login state and attempt login if necessary
 async function ensureUserLoggedIn() {
-    // UserManagerのインスタンスを取得
+    // Get UserManager instance
     const userManagerInstance = (window as typeof window & { __USER_MANAGER__?: UserManager }).__USER_MANAGER__;
     if (!userManagerInstance) {
         logger.warn("ContainerSelector - UserManager not available");
@@ -137,7 +137,7 @@ async function ensureUserLoggedIn() {
             await userManagerInstance.loginWithEmailPassword('test@example.com', 'password');
             logger.info("ContainerSelector - Login successful");
 
-            // ログイン成功後、少し待ってからFirestoreの同期を確認
+            // After successful login, wait briefly before checking Firestore sync
             setTimeout(() => {
                 const cnt = containersFromUserContainer(firestoreStore.userContainer).length;
                 logger.info("ContainerSelector - Checking containers after login:", cnt);
@@ -148,7 +148,7 @@ async function ensureUserLoggedIn() {
     }
 }
 
-// コンテナ選択時の処理
+// Process for container selection
 async function handleContainerChange() {
     if (!selectedContainerId) return;
 
@@ -156,29 +156,29 @@ async function handleContainerChange() {
         isLoading = true;
         error = null;
 
-        // 選択したコンテナの情報を取得
+        // Get information of the selected container
         const selectedContainer = containersFromUserContainer(firestoreStore.userContainer).find(
             c => c.id === selectedContainerId,
         );
         if (!selectedContainer) {
-            throw new Error("選択されたコンテナが見つかりません");
+            throw new Error("Selected container not found");
         }
 
-        // 選択したコンテナIDとコンテナ名をイベントとして発行
+        // Emit the selected container ID and container name as an event
         onContainerSelected(selectedContainerId, selectedContainer.name);
     }
     catch (err) {
-        logger.error("コンテナ選択エラー:", err);
+        logger.error("Container selection error:", err);
         error = err instanceof Error
             ? err.message
-            : "コンテナの選択中にエラーが発生しました";
+            : "An error occurred while selecting the container";
     }
     finally {
         isLoading = false;
     }
 }
 
-// 現在のコンテナIDのリロード
+// Reload current container ID
 async function reloadCurrentContainer() {
     if (!currentContainerId) return;
 
@@ -186,15 +186,15 @@ async function reloadCurrentContainer() {
         isLoading = true;
         error = null;
 
-        // ファクトリーメソッドを使用して現在のコンテナを再ロード
+        // Reload the current container using the factory method
         const client = await createYjsClient(currentContainerId);
         yjsStore.yjsClient = client as YjsClient;
     }
     catch (err) {
-        logger.error("コンテナ再ロードエラー:", err);
+        logger.error("Container reload error:", err);
         error = err instanceof Error
             ? err.message
-            : "コンテナの再ロード中にエラーが発生しました";
+            : "An error occurred while reloading the container";
     }
     finally {
         isLoading = false;
@@ -204,9 +204,9 @@ async function reloadCurrentContainer() {
 
 <div class="container-selector">
     <div class="selector-header">
-        <h3 class="selector-title">アウトライナー選択</h3>
+        <h3 class="selector-title">Outliner Selection</h3>
         {#if isLoading}
-            <span class="loading-indicator">読み込み中...</span>
+            <span class="loading-indicator">Loading...</span>
         {/if}
     </div>
 
@@ -227,13 +227,13 @@ async function reloadCurrentContainer() {
                 class="container-select"
             >
                 {#if containers.length === 0}
-                    <option value="">利用可能なコンテナがありません</option>
+                    <option value="">No containers available</option>
                 {:else}
                     {#each containers as container (container.id)}
                         <option value={container.id}>
                             {container.name}
-                            {container.isDefault ? "(デフォルト)" : ""}
-                            {container.id === currentContainerId ? "(現在表示中)" : ""}
+                            {container.isDefault ? "(Default)" : ""}
+                            {container.id === currentContainerId ? "(Currently displaying)" : ""}
                         </option>
                     {/each}
                 {/if}
@@ -246,10 +246,10 @@ async function reloadCurrentContainer() {
                 disabled={isLoading || !currentContainerId}
                 class="reload-button"
             >
-                現在のコンテナを再読み込み
+                Reload current container
             </button>
 
-            <a href={resolveRoute("/containers")} class="new-container-link"> 新規作成 </a>
+            <a href={resolveRoute("/containers")} class="new-container-link"> Create New </a>
         </div>
     </div>
 </div>
