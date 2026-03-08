@@ -97,7 +97,7 @@
             "label": "clean-chrome-profile",
             "type": "shell",
             "command": "Remove-Item -Recurse -Force ${workspaceFolder}\\.vscode\\chrome-debug-profile"
-            // Windows の場合は PowerShell: "Remove-Item -Recurse -Force ${workspaceFolder}\\.vscode\\chrome-debug-profile"
+            // For Windows, use PowerShell: "Remove-Item -Recurse -Force ${workspaceFolder}\\.vscode\\chrome-debug-profile"
         },
         {
             "label": "npm: build - functions",
