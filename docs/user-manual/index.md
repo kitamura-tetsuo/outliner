@@ -1,97 +1,97 @@
-# Outliner マニュアル
+# Outliner User Manual
 
-Outliner のユーザーマニュアルへようこそ。このマニュアルでは、Outliner の基本的な使い方から高度な機能まで、人間向けにわかりやすく解説しています。
+Welcome to the Outliner user manual. This guide provides human-readable instructions on how to use Outliner, from basic navigation to advanced features.
 
-## 目次
+## Table of Contents
 
-1. [基本的な操作](#基本的な操作)
-2. [テキストの編集と装飾](#テキストの編集と装飾)
-3. [アイテムの操作](#アイテムの操作)
-4. [リンク機能](#リンク機能)
-5. [選択とコピー＆ペースト](#選択とコピー＆ペースト)
-6. [ショートカットキー一覧](#ショートカットキー一覧)
-
----
-
-## 基本的な操作
-
-Outlinerの基本的な画面構成と操作方法について説明します。
-
-### 編集モードへの切り替え
-テキストをクリックすると、その場所にカーソルが表示され、編集モードになります。
-
-### アイテムの移動
-キーボードの矢印キー (`↑` `↓` `←` `→`) を使って、カーソルを自由に移動できます。
-- 行の先頭へ移動: `Home`キー
-- 行の末尾へ移動: `End`キー
+1. [Basic Operations](#basic-operations)
+2. [Text Editing and Formatting](#text-editing-and-formatting)
+3. [Item Manipulation](#item-manipulation)
+4. [Links](#links)
+5. [Selection and Copy & Paste](#selection-and-copy-paste)
+6. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
-## テキストの編集と装飾
+## Basic Operations
 
-Outlinerでは、テキストに様々な装飾（太字、斜体、コードブロックなど）を適用できます。
+An overview of the basic interface and navigation.
 
-### テキストの装飾
-テキストを選択した状態でショートカットキーを使用することで、簡単に装飾を適用できます。
-- 太字: `Ctrl + B` (Mac: `Cmd + B`)
-- 斜体: `Ctrl + I` (Mac: `Cmd + I`)
-- コード: 選択範囲を \`\`\` で囲む
+### Switching to Edit Mode
+Click on any text to place your cursor there and enter edit mode.
 
----
-
-## アイテムの操作
-
-アウトライナーとしての強力なアイテム操作機能を提供します。
-
-### 新しいアイテムの追加
-`Enter`キーを押すと、現在のアイテムの下に新しいアイテムが追加されます。
-
-### アイテムの字下げ（インデント）
-- インデントを下げる: 行頭で`Tab`キー
-- インデントを上げる: 行頭で`Shift + Tab`キー
-
-### アイテムの移動
-ドラッグ＆ドロップでアイテムの順序を簡単に入れ替えることができます。
+### Moving Between Items
+Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cursor.
+- Move to the beginning of the line: `Home`
+- Move to the end of the line: `End`
 
 ---
 
-## リンク機能
+## Text Editing and Formatting
 
-Outliner内の他のページや、外部のウェブサイトへのリンクを作成できます。
+Outliner supports various text formatting options (e.g., bold, italic, code blocks).
 
-### 内部リンク
-`[` を2回続けて入力し（`[[`）、ページ名を入力することで、他のページへの内部リンクを作成できます。
-
-### 外部リンク
-URLをそのまま貼り付けると、自動的に外部リンクとして認識されます。
-
----
-
-## 選択とコピー＆ペースト
-
-複数のアイテムやテキストの範囲を効率的に選択・コピーできます。
-
-### テキストの選択
-- `Shift + 矢印キー`: 文字単位・行単位での選択
-- `Shift + Home/End`: 行の先頭・末尾までの選択
-- `Ctrl + L`: 現在の行全体を選択
-
-### 矩形選択（ボックス選択）
-複数の行にまたがる特定の範囲を四角く選択できます。
-- マウス操作: `Alt + Shift + ドラッグ`
-- キーボード操作: `Alt + Shift + 矢印キー`
+### Applying Formatting
+Select text and use keyboard shortcuts to quickly apply formatting.
+- Bold: `Ctrl + B` (Mac: `Cmd + B`)
+- Italic: `Ctrl + I` (Mac: `Cmd + I`)
+- Code: Wrap the selection in \`\`\`
 
 ---
 
-## ショートカットキー一覧
+## Item Manipulation
 
-| 操作 | Windows/Linux | Mac |
+Powerful item manipulation features expected in an outliner.
+
+### Adding New Items
+Press `Enter` to insert a new item below the current one.
+
+### Indenting Items
+- Decrease indent: `Tab` at the beginning of a line
+- Increase indent: `Shift + Tab` at the beginning of a line
+
+### Moving Items
+Easily reorder items using drag and drop.
+
+---
+
+## Links
+
+Create links to other pages within Outliner or external websites.
+
+### Internal Links
+Type `[` twice (`[[`), then enter a page name to create a link to another page.
+
+### External Links
+Paste any URL to automatically create an external link.
+
+---
+
+## Selection and Copy & Paste
+
+Efficiently select and copy multiple items or text ranges.
+
+### Selecting Text
+- `Shift + Arrow keys`: Select character by character or line by line
+- `Shift + Home/End`: Select to the beginning or end of the line
+- `Ctrl + L`: Select the entire current line
+
+### Box Selection (Rectangle Selection)
+Select a rectangular area spanning multiple lines.
+- Mouse: `Alt + Shift + Drag`
+- Keyboard: `Alt + Shift + Arrow keys`
+
+---
+
+## Keyboard Shortcuts
+
+| Action | Windows/Linux | Mac |
 |---|---|---|
-| 新規アイテム追加 | `Enter` | `Enter` |
-| 行の全選択 | `Ctrl + L` | `Cmd + L` |
-| 行の先頭まで選択 | `Shift + Home` | `Shift + Home` |
-| 行の末尾まで選択 | `Shift + End` | `Shift + End` |
-| 矩形選択 (マウス) | `Alt + Shift + ドラッグ` | `Option + Shift + ドラッグ` |
-| 矩形選択 (キー) | `Alt + Shift + 矢印` | `Option + Shift + 矢印` |
-| 選択範囲の拡大 | `Shift + Alt + Right` | `Shift + Option + Right` |
-| 選択範囲の縮小 | `Shift + Alt + Left` | `Shift + Option + Left` |
+| Add new item | `Enter` | `Enter` |
+| Select entire line | `Ctrl + L` | `Cmd + L` |
+| Select to start of line | `Shift + Home` | `Shift + Home` |
+| Select to end of line | `Shift + End` | `Shift + End` |
+| Box selection (Mouse) | `Alt + Shift + Drag` | `Option + Shift + Drag` |
+| Box selection (Key) | `Alt + Shift + Arrow` | `Option + Shift + Arrow` |
+| Expand selection | `Shift + Alt + Right` | `Shift + Option + Right` |
+| Shrink selection | `Shift + Alt + Left` | `Shift + Option + Left` |
