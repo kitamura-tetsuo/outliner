@@ -60,11 +60,8 @@ function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: numb
         try {
             if (item.items) {
                 let i = 0;
-                const children = item.items;
-                const len = children.length;
-                for (let k = 0; k < len; k++) {
+                for (const child of item.items) {
                     if (i++ > 10) break;
-                    const child = children.at(k);
                     if (child) traverse(child, currentDepth + 1);
                     if (lines.length >= maxLines && image) return;
                     if (nodeCount >= maxNodes) return;
@@ -78,11 +75,8 @@ function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: numb
     try {
         if (pageItem.items) {
             let i = 0;
-            const rootChildren = pageItem.items;
-            const len = rootChildren.length;
-            for (let k = 0; k < len; k++) {
+            for (const child of pageItem.items) {
                 if (i++ > 20) break;
-                const child = rootChildren.at(k);
                 if (child) traverse(child, 1);
                 if (lines.length >= maxLines && image) break;
             }
