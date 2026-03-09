@@ -8,7 +8,7 @@ if (process.env.E2E_DISABLE_AUTO_SNAPSHOT !== "1") {
         // Skip snapshot saving for API tests and non-UI tests that don't involve UI interactions
         // Check based on filename as well since API tests might not have "API" in the title
         const isNonUiTest = testInfo.file.includes("api-") || testInfo.title.includes("API-")
-            || testInfo.title.includes("管理者チェック") || testInfo.title.includes("admin")
+            || testInfo.title.includes("admin check") || testInfo.title.includes("admin")
             || testInfo.file.includes("log-rotate") || testInfo.file.includes("server-backup")
             || testInfo.file.includes("-script-") || testInfo.file.includes("-endpoint-");
 
