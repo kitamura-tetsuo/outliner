@@ -108,3 +108,9 @@ Select a rectangular area spanning multiple lines.
 | Box selection (Key)     | `Alt + Shift + Arrow` | `Option + Shift + Arrow` |
 | Expand selection        | `Shift + Alt + Right` | `Shift + Option + Right` |
 | Shrink selection        | `Shift + Alt + Left`  | `Shift + Option + Left`  |
+| Move line up            | `Ctrl + Up`           | `Cmd + Up`               |
+| Move line down          | `Ctrl + Down`         | `Cmd + Down`             |
+| Move line left          | `Ctrl + Left`         | `Cmd + Left`             |
+| Move line right         | `Ctrl + Right`        | `Cmd + Right`            |
+| Move block up           | `Alt + Up`            | `Option + Up`            |
+| Move block down         | `Alt + Down`          | `Option + Down`          |
