@@ -574,13 +574,13 @@ export class Cursor implements CursorEditingContext {
                     this.outdent();
                     break;
                 case "ArrowRight":
-                    this.moveWordRight();
+                    this.indent();
                     break;
                 case "ArrowUp":
-                    this.scrollUp();
+                    this.moveItemUp();
                     break;
                 case "ArrowDown":
-                    this.scrollDown();
+                    this.moveItemDown();
                     break;
                 case "Home":
                     this.moveToDocumentStart();
@@ -601,6 +601,17 @@ export class Cursor implements CursorEditingContext {
                     } else {
                         return false;
                     }
+                default:
+                    return false;
+            }
+        } else if (event.altKey && !event.shiftKey) {
+            switch (event.key) {
+                case "ArrowUp":
+                    this.moveSubtreeUp();
+                    break;
+                case "ArrowDown":
+                    this.moveSubtreeDown();
+                    break;
                 default:
                     return false;
             }
@@ -1198,6 +1209,30 @@ export class Cursor implements CursorEditingContext {
 
     altPageDown() {
         if (typeof window !== "undefined") window.scrollBy(0, window.innerHeight);
+    }
+
+    moveItemUp() {
+        if (generalStore.project) {
+            yjsService.moveItemUp(generalStore.project, this.itemId);
+        }
+    }
+
+    moveItemDown() {
+        if (generalStore.project) {
+            yjsService.moveItemDown(generalStore.project, this.itemId);
+        }
+    }
+
+    moveSubtreeUp() {
+        if (generalStore.project) {
+            yjsService.moveSubtreeUp(generalStore.project, this.itemId);
+        }
+    }
+
+    moveSubtreeDown() {
+        if (generalStore.project) {
+            yjsService.moveSubtreeDown(generalStore.project, this.itemId);
+        }
     }
 
     indent() {

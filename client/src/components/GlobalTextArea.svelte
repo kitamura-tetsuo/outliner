@@ -136,10 +136,12 @@ onMount(() => {
     try {
         const typingFallback = (ev: KeyboardEvent) => {
             try { console.log("typingFallback fired:", ev.key, "active=", !!store.getActiveItem()); } catch {}
-            // Ignore during IME composition or with modifier keys (except Alt+Shift+Arrow is allowed for rectangular selection)
+            // Ignore during IME composition or with modifier keys (except Alt+Shift+Arrow is allowed for rectangular selection, and Alt+Arrow is allowed for block move)
             const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
                 (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
-            if (ev.isComposing || (!isBoxSelectionKey && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
+            const isBlockMoveKey = ev.altKey && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey &&
+                (ev.key === "ArrowUp" || ev.key === "ArrowDown");
+            if (ev.isComposing || (!(isBoxSelectionKey || isBlockMoveKey) && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
             // Leave to existing forwarders while alias picker/command palette is visible
             if (aliasPickerStore.isVisible || window.commandPaletteStore?.isVisible) return;
 
@@ -259,10 +261,12 @@ onMount(() => {
         const globalKeyForwarder = (ev: KeyboardEvent) => {
             // Respect if already handled elsewhere
             if (ev.defaultPrevented) return;
-            // Ignore IME/modifier keys (except Alt+Shift+Arrow is allowed for rectangular selection)
+            // Ignore IME/modifier keys (except Alt+Shift+Arrow is allowed for rectangular selection, and Alt+Arrow is allowed for block move)
             const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
                 (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
-            if (ev.isComposing || (!isBoxSelectionKey && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
+            const isBlockMoveKey = ev.altKey && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey &&
+                (ev.key === "ArrowUp" || ev.key === "ArrowDown");
+            if (ev.isComposing || (!(isBoxSelectionKey || isBlockMoveKey) && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
             // Always delegate to KeyEventHandler (processed internally only when necessary)
             KeyEventHandler.handleKeyDown(ev);
         };
