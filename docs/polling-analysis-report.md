@@ -21,18 +21,18 @@ These pollings may be safe to remove.
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
-        } catch (error) {
-            // ... existing catch ...
-            // If invalid-api-key happens here, catch it?
-            // But I'm preventing it by checking isMockMode first.
-            logger.error({ error }, "Failed to initialize auth listener");
-            setTimeout(() => {
-                this.initAuthListenerAsync();
-            }, 1000);
-        }
-    }
 
+```
+    } catch (error) {
+        // ... existing catch ...
+        // If invalid-api-key happens here, catch it?
+        // But I'm preventing it by checking isMockMode first.
+        logger.error({ error }, "Failed to initialize auth listener");
+        setTimeout(() => {
+            this.initAuthListenerAsync();
+        }, 1000);
+    }
+}
 ```
 
 ### AliasPicker.svelte:99:setTimeout
@@ -43,18 +43,19 @@ These pollings may be safe to remove.
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
-    if (aliasPickerStore.isVisible) {
-        try {
-            // First, the picker body
-            pickerElement?.focus();
-            // Next, the search input (if it exists)
-            setTimeout(() => {
-                inputElement?.focus();
-            }, 0);
-            // Sync selected index to external store
-            try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
-        } catch {}
+if (aliasPickerStore.isVisible) {
+    try {
+        // First, the picker body
+        pickerElement?.focus();
+        // Next, the search input (if it exists)
+        setTimeout(() => {
+            inputElement?.focus();
+        }, 0);
+        // Sync selected index to external store
+        try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
+    } catch {}
 ```
 
 ### Checklist.svelte:29:setInterval
@@ -65,6 +66,7 @@ These pollings may be safe to remove.
 - **Code**: `const interval = setInterval(() => applyAutoReset(id), 1000);`
 
 **Context**:
+
 ```
     const id = createChecklist(title, mode, rrule);
     const unsubscribe = checklists.subscribe(arr => {
@@ -87,6 +89,7 @@ These pollings may be safe to remove.
 - **Code**: `updatePositionMapTimer = setTimeout(() => {`
 
 **Context**:
+
 ```
 let updatePositionMapTimer: number;
 
@@ -109,6 +112,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         treeContainer.addEventListener('scroll', debouncedUpdatePositionMap);
     }
@@ -131,18 +135,19 @@ function debouncedUpdatePositionMap() {
 - **Code**: `const timer = setTimeout(() => {`
 
 **Context**:
+
 ```
-            } catch {
-                // Intentionally empty - catch potential errors without further handling
-            }
-        });
-        updatingFlags[key] = true; // Side effect for debugging (UI does not depend on this)
-        const timer = setTimeout(() => {
-            mo?.disconnect();
-            node.classList.remove('selection-box-updating');
-            updatingFlags[key] = false;
-            try {
-                if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+    } catch {
+        // Intentionally empty - catch potential errors without further handling
+    }
+});
+updatingFlags[key] = true; // Side effect for debugging (UI does not depend on this)
+const timer = setTimeout(() => {
+    mo?.disconnect();
+    node.classList.remove('selection-box-updating');
+    updatingFlags[key] = false;
+    try {
+        if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
 ```
 
 ### GlobalTextArea.svelte:60:requestAnimationFrame
@@ -153,6 +158,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
     if (textareaRef) {
         textareaRef.focus();
@@ -175,6 +181,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         requestAnimationFrame(() => {
             if (textareaRef) {
@@ -197,6 +204,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
     if (aliasPickerStore.isVisible) {
         return;
@@ -219,6 +227,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         });
 
@@ -241,8 +250,8 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => signOutBtn?.focus(), 0);`
 
 **Context**:
-```
 
+```
 function openMenu() {
     if (!isAuthenticated) return;
     isMenuOpen = true;
@@ -263,18 +272,19 @@ function closeMenu() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
-                            patchSingle(origAt(i));
-                        }
-                    } catch {}
-                };
-                patchItems();
-                setTimeout(() => {
-                    try {
-                        patchItems();
-                    } catch {}
-                }, 0);
-                setTimeout(() => {
+            patchSingle(origAt(i));
+        }
+    } catch {}
+};
+patchItems();
+setTimeout(() => {
+    try {
+        patchItems();
+    } catch {}
+}, 0);
+setTimeout(() => {
 ```
 
 ### OutlinerBase.svelte:322:setTimeout
@@ -285,18 +295,19 @@ function closeMenu() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
-                setTimeout(() => {
-                    try {
-                        patchItems();
-                    } catch {}
-                }, 0);
-                setTimeout(() => {
-                    try {
-                        patchItems();
-                    } catch {}
-                }, 200);
-            }
+    setTimeout(() => {
+        try {
+            patchItems();
+        } catch {}
+    }, 0);
+    setTimeout(() => {
+        try {
+            patchItems();
+        } catch {}
+    }, 200);
+}
 ```
 
 ### OutlinerItem.svelte:795:requestAnimationFrame
@@ -307,6 +318,7 @@ function closeMenu() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
         "OutlinerItem startEditing: Focus set to global textarea, activeElement:",
         document.activeElement === textareaEl,
@@ -318,7 +330,6 @@ function closeMenu() {
 
         setTimeout(() => {
             textareaEl.focus();
-
 ```
 
 ### OutlinerItem.svelte:798:setTimeout
@@ -329,8 +340,8 @@ function closeMenu() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
 
+```
     // Additional attempts to ensure focus
     requestAnimationFrame(() => {
         textareaEl.focus();
@@ -351,6 +362,7 @@ function closeMenu() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
         if (textarea) {
             // Multiple attempts to ensure focus is set
@@ -373,6 +385,7 @@ function closeMenu() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             // requestAnimationFrame
             requestAnimationFrame(() => {
@@ -395,8 +408,8 @@ function closeMenu() {
 - **Code**: `const iv = setInterval(() => {`
 
 **Context**:
-```
 
+```
 // Temporary fallback: poll lastConfirmed
 let aliasLastConfirmedPulse: { itemId: string; targetId: string; at: number } | null = $state(null);
 
@@ -417,6 +430,7 @@ onMount(() => {
 - **Code**: `scrollTimeout = requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
     // Throttle scroll event to improve performance
     let scrollTimeout: number | null = null;
@@ -439,6 +453,7 @@ onMount(() => {
 - **Code**: `setTimeout(focusNewItem, 10);`
 
 **Context**:
+
 ```
                         `Sent finish-edit event to active item ${activeItem}`,
                     );
@@ -461,6 +476,7 @@ onMount(() => {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     "password",
                 );
@@ -483,18 +499,18 @@ onMount(() => {
 - **Code**: `const handler = setTimeout(() => {`
 
 **Context**:
-```
-    $effect(() => {
-        if (!query) {
-            debouncedQuery = "";
-            return;
-        }
-        const handler = setTimeout(() => {
-            debouncedQuery = query;
-        }, 200);
-        return () => clearTimeout(handler);
-    });
 
+```
+$effect(() => {
+    if (!query) {
+        debouncedQuery = "";
+        return;
+    }
+    const handler = setTimeout(() => {
+        debouncedQuery = query;
+    }, 200);
+    return () => clearTimeout(handler);
+});
 ```
 
 ### SearchBox.svelte:419:setTimeout
@@ -505,6 +521,7 @@ onMount(() => {
 - **Code**: `setTimeout(() => (refreshTick += 1), i * 50);`
 
 **Context**:
+
 ```
             ) as HTMLElement | null;
             console.info(logPrefix, "main-toolbar styles", styles(toolbar));
@@ -527,6 +544,7 @@ onMount(() => {
 - **Code**: `setTimeout(() => { dedupeToolbars(); dumpToolbarState("mount-setTimeout-0ms"); }, 0);`
 
 **Context**:
+
 ```
 onMount(() => {
     // Initial dedupe and dump
@@ -549,8 +567,8 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => { dedupeToolbars(); dumpToolbarState("afterNavigate-0ms"); }, 0);`
 
 **Context**:
-```
 
+```
 if (typeof window !== "undefined") {
     import("$app/navigation").then(({ afterNavigate }) => {
         try {
@@ -571,6 +589,7 @@ if (typeof window !== "undefined") {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
             if (textarea) {
                 // Multiple attempts to ensure focus is set
@@ -593,6 +612,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                             console.warn("Failed to scroll cursor item into view:", e);
                         }
@@ -615,6 +635,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // Set selection range for global textarea
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -637,18 +658,18 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
 
-            // Since Enter's normal processing (newline/new item addition etc.) should be complete here,
-            // open AliasPicker afterwards based on pre-detection flag
-            if (shouldOpenAliasPickerAfterDefault) {
-                try {
-                    setTimeout(() => {
-                        try {
-                            const w: any = typeof window !== "undefined" ? (window as any) : null;
-                            const tryOpen = (attempt = 0) => {
-                                try {
-                                    const activeId = store.getActiveItem?.();
+```
+// Since Enter's normal processing (newline/new item addition etc.) should be complete here,
+// open AliasPicker afterwards based on pre-detection flag
+if (shouldOpenAliasPickerAfterDefault) {
+    try {
+        setTimeout(() => {
+            try {
+                const w: any = typeof window !== "undefined" ? (window as any) : null;
+                const tryOpen = (attempt = 0) => {
+                    try {
+                        const activeId = store.getActiveItem?.();
 ```
 
 ### KeyEventHandler.ts:670:setTimeout
@@ -659,18 +680,19 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => tryOpen(attempt + 1), 10);`
 
 **Context**:
+
 ```
-                                            );
-                                        } catch {}
-                                        return;
-                                    }
-                                    if (attempt < 10) {
-                                        setTimeout(() => tryOpen(attempt + 1), 10);
-                                    } else {
-                                        console.warn(
-                                            "KeyEventHandler(Post): active item not found to open AliasPicker",
-                                        );
-                                    }
+        );
+    } catch {}
+    return;
+}
+if (attempt < 10) {
+    setTimeout(() => tryOpen(attempt + 1), 10);
+} else {
+    console.warn(
+        "KeyEventHandler(Post): active item not found to open AliasPicker",
+    );
+}
 ```
 
 ### KeyEventHandler.ts:719:requestAnimationFrame
@@ -681,6 +703,7 @@ if (typeof window !== "undefined") {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
             if (globalTextarea) {
                 // Multiple attempts to ensure focus is set
@@ -703,6 +726,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             }
 
@@ -725,18 +749,19 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => tryOpen(attempt + 1), 10);`
 
 **Context**:
+
 ```
-                                            );
-                                        } catch {}
-                                        return;
-                                    }
-                                    if (attempt < 10) {
-                                        setTimeout(() => tryOpen(attempt + 1), 10);
-                                    } else {
-                                        console.warn(
-                                            "KeyEventHandler(Post2): active item not found to open AliasPicker",
-                                        );
-                                    }
+        );
+    } catch {}
+    return;
+}
+if (attempt < 10) {
+    setTimeout(() => tryOpen(attempt + 1), 10);
+} else {
+    console.warn(
+        "KeyEventHandler(Post2): active item not found to open AliasPicker",
+    );
+}
 ```
 
 ### KeyEventHandler.ts:895:requestAnimationFrame
@@ -747,6 +772,7 @@ if (typeof window !== "undefined") {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
         if (textareaElement) {
             // Multiple attempts to ensure focus is set
@@ -769,6 +795,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             // Set focus using requestAnimationFrame
             requestAnimationFrame(() => {
@@ -791,6 +818,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     }
                 `;
@@ -813,6 +841,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                         hintEl.style.transition = "opacity 0.3s ease-in-out";
 
@@ -835,6 +864,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                         document.body.appendChild(hintEl);
 
@@ -857,6 +887,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             cursor.clearSelection();
             store.setActiveItem(cursor.itemId);
@@ -879,6 +910,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // Set global textarea selection
         this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -890,7 +922,6 @@ if (typeof window !== "undefined") {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
-
 ```
 
 ### CursorSelection.ts:763:setTimeout
@@ -901,6 +932,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // Set global textarea selection
         this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -912,7 +944,6 @@ if (typeof window !== "undefined") {
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(`Selection elements in DOM: ${selectionElements.length}`);
                 }
-
 ```
 
 ### CursorSelection.ts:786:setTimeout
@@ -923,6 +954,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     store.forceUpdate();
                 }
@@ -945,6 +977,7 @@ if (typeof window !== "undefined") {
 - **Code**: `previewTimer = window.setTimeout(() => {`
 
 **Context**:
+
 ```
         window.clearTimeout(hideTimer);
         hideTimer = null;
@@ -967,6 +1000,7 @@ if (typeof window !== "undefined") {
 - **Code**: `hideTimer = window.setTimeout(() => {`
 
 **Context**:
+
 ```
         window.clearTimeout(previewTimer);
         previewTimer = null;
@@ -989,6 +1023,7 @@ if (typeof window !== "undefined") {
 - **Code**: `//             await new Promise(r => setTimeout(r, 1000));`
 
 **Context**:
+
 ```
 //     }
 
@@ -1011,6 +1046,7 @@ if (typeof window !== "undefined") {
 - **Code**: `//             await new Promise(r => setTimeout(r, 500));`
 
 **Context**:
+
 ```
 //     }
 
@@ -1033,6 +1069,7 @@ if (typeof window !== "undefined") {
 - **Code**: `//         await new Promise(r => setTimeout(r, 700));`
 
 **Context**:
+
 ```
 //     service.methodB();
 
@@ -1055,6 +1092,7 @@ if (typeof window !== "undefined") {
 - **Code**: `//         await new Promise(r => setTimeout(r, 700));`
 
 **Context**:
+
 ```
 //         await new Promise(r => setTimeout(r, 700));
 //         console.log('custom lock end');
@@ -1065,7 +1103,6 @@ if (typeof window !== "undefined") {
 //         console.log('custom lock 2 end');
 //     });
 // })();
-
 ```
 
 ### metaDoc.test.ts:123:setTimeout
@@ -1076,6 +1113,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 10));`
 
 **Context**:
+
 ```
             setContainerTitleInMetaDoc(containerId, "Version 1");
             updateLastOpenedAt(containerId);
@@ -1098,6 +1136,7 @@ if (typeof window !== "undefined") {
 - **Code**: `console.log(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);`
 
 **Context**:
+
 ```
                 };
 
@@ -1120,6 +1159,7 @@ if (typeof window !== "undefined") {
 - **Code**: `console.log(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);`
 
 **Context**:
+
 ```
                 };
 
@@ -1142,6 +1182,7 @@ if (typeof window !== "undefined") {
 - **Code**: `console.log(`[PollingMonitor] Disabled requestAnimationFrame (id=${id})`);`
 
 **Context**:
+
 ```
             };
 
@@ -1164,6 +1205,7 @@ if (typeof window !== "undefined") {
 - **Code**: `const timer = setTimeout(() => {`
 
 **Context**:
+
 ```
             console.log(`[createProjectConnection] Initial tree.size=${treeSize}`);
             resolve();
@@ -1186,6 +1228,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise((r) => setTimeout(r, pollIntervalMs));`
 
 **Context**:
+
 ```
             if (debugEnabled) {
                 console.log(`[${label}] provider.isSynced=true after ${i * pollIntervalMs}ms`);
@@ -1208,6 +1251,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise((r) => setTimeout(r, pollIntervalMs));`
 
 **Context**:
+
 ```
             if (debugEnabled) {
                 console.log(`[${label}] data available after ${i * pollIntervalMs}ms from synced`);
@@ -1230,8 +1274,8 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
-```
 
+```
         try {
             // HocuspocusProvider handles token refresh via its token option (function)
             // But we can force a reconnect/token send if needed.
@@ -1252,6 +1296,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
             await provider.connect();
 
@@ -1274,6 +1319,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         yText.insert(0, "Hello, World!");
         const yArray = doc1.getArray("items");
@@ -1285,7 +1331,6 @@ if (typeof window !== "undefined") {
         // Dispose the first doc
         persistence1.destroy();
         doc1.destroy();
-
 ```
 
 ### yjsPersistence.test.ts:94:setTimeout
@@ -1296,6 +1341,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
+
 ```
         await waitForSync(persistence1);
 
@@ -1318,6 +1364,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
+
 ```
         const yText = doc1.getText("content");
         yText.insert(0, "First");
@@ -1340,8 +1387,8 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
-```
 
+```
         yText.insert(yText.length, " Second");
         await new Promise(resolve => setTimeout(resolve, 30));
 
@@ -1362,8 +1409,8 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
-```
 
+```
         // Verify the text is correct before persistence
         expect(yText.toString()).toBe("First Second Third");
 
@@ -1373,7 +1420,6 @@ if (typeof window !== "undefined") {
         // Dispose and recreate
         persistence1.destroy();
         doc1.destroy();
-
 ```
 
 ### yjsPersistence.test.ts:172:setTimeout
@@ -1384,6 +1430,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         const childArray = new Y.Array<string>();
         childArray.push(["item1", "item2"]);
@@ -1406,6 +1453,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 50));`
 
 **Context**:
+
 ```
         await waitForSync(persistence1);
 
@@ -1428,6 +1476,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 50));`
 
 **Context**:
+
 ```
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -1450,6 +1499,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -1472,18 +1522,19 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 500));`
 
 **Context**:
+
 ```
-                const saved = await saveProjectIdToServer(projectId, projectName);
-                if (saved) {
-                    console.log(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
-                    registrationSuccess = true;
-                    // Wait for Firestore propagation (important for subsequent reads)
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    break;
-                } else {
-                    console.warn(`[yjsService] saveProjectIdToServer returned false on attempt ${attempt}.`);
-                }
-            } catch (saveError) {
+    const saved = await saveProjectIdToServer(projectId, projectName);
+    if (saved) {
+        console.log(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
+        registrationSuccess = true;
+        // Wait for Firestore propagation (important for subsequent reads)
+        await new Promise(resolve => setTimeout(resolve, 500));
+        break;
+    } else {
+        console.warn(`[yjsService] saveProjectIdToServer returned false on attempt ${attempt}.`);
+    }
+} catch (saveError) {
 ```
 
 ### yjsService.svelte.ts:184:setTimeout
@@ -1494,6 +1545,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 1000 * attempt));`
 
 **Context**:
+
 ```
                 console.error(`[yjsService] Exception saving project ID (attempt ${attempt}):`, saveError);
             }
@@ -1516,18 +1568,19 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(check, 50);`
 
 **Context**:
+
 ```
-                        new Error(
-                            "Timeout waiting for project data from the server. Please check your network connection and reload the page.",
-                        ),
-                    );
-                } else {
-                    setTimeout(check, 50);
-                }
-            };
-            check();
-        });
-        console.log(`[getClientByProjectTitle] firestoreStore wait finished. isLoaded=${firestoreStore.isLoaded}`);
+                new Error(
+                    "Timeout waiting for project data from the server. Please check your network connection and reload the page.",
+                ),
+            );
+        } else {
+            setTimeout(check, 50);
+        }
+    };
+    check();
+});
+console.log(`[getClientByProjectTitle] firestoreStore wait finished. isLoaded=${firestoreStore.isLoaded}`);
 ```
 
 ### +page.svelte:80:setTimeout
@@ -1538,6 +1591,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             return;
         }
@@ -1560,18 +1614,19 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise((r) => setTimeout(r, 100));`
 
 **Context**:
+
 ```
-                    `loadProjectAndPage: Page "${pageName}" not found initially. Retrying...`,
-                );
-                // Wait up to 15 seconds (150 * 100ms) for Yjs to sync
-                const maxRetries = 150;
-                for (let i = 0; i < maxRetries; i++) {
-                    await new Promise((r) => setTimeout(r, 100));
-                    targetPage = findPage();
-                    if (targetPage) {
-                        logger.info(
-                            `loadProjectAndPage: Found page "${pageName}" after retry ${i + 1}`,
-                        );
+    `loadProjectAndPage: Page "${pageName}" not found initially. Retrying...`,
+);
+// Wait up to 15 seconds (150 * 100ms) for Yjs to sync
+const maxRetries = 150;
+for (let i = 0; i < maxRetries; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    targetPage = findPage();
+    if (targetPage) {
+        logger.info(
+            `loadProjectAndPage: Found page "${pageName}" after retry ${i + 1}`,
+        );
 ```
 
 ### +page.svelte:412:setTimeout
@@ -1582,6 +1637,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise((resolve) => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
             );
             let retryCount = 0;
@@ -1604,6 +1660,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             };
         }
@@ -1626,6 +1683,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
         for (let i = 0; i < 50; i++) {
             if (store.project?.items?.length > 0) {
@@ -1648,6 +1706,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
             break;
         }
@@ -1670,6 +1729,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         if (hasProject && !projectHasItems) {
             console.log("Schedule page: Project exists but has no items, triggering parent load");
@@ -1692,8 +1752,8 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
-```
 
+```
         if (foundPageRef) {
             break;
         }
@@ -1714,18 +1774,19 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
-                        if (itemCount > 0) {
-                            console.log("Schedule page: Page items found", { pageId, itemCount });
-                            break;
-                        }
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                if (itemCount > 0) {
+                    console.log("Schedule page: Page items found", { pageId, itemCount });
+                    break;
                 }
             }
-        } catch (e) {
-            console.warn("Schedule page: Error waiting for page items:", e);
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
+    }
+} catch (e) {
+    console.warn("Schedule page: Error waiting for page items:", e);
+}
 ```
 
 ### +page.svelte:566:setTimeout
@@ -1736,18 +1797,19 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => URL.revokeObjectURL(url), 0);`
 
 **Context**:
+
 ```
-        anchor.href = url;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 0);
-        console.log("Schedule page: Exported schedules to iCal", filename);
-    }
-    catch (err) {
-        console.error("Schedule page: Error exporting schedules:", err);
-    }
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    console.log("Schedule page: Exported schedules to iCal", filename);
+}
+catch (err) {
+    console.error("Schedule page: Error exporting schedules:", err);
+}
 ```
 
 ### +page.svelte:160:setInterval
@@ -1758,6 +1820,7 @@ if (typeof window !== "undefined") {
 - **Code**: `statusInterval = setInterval(() => {`
 
 **Context**:
+
 ```
         if (isAuthenticated) {
             initializeFluidClient();
@@ -1780,6 +1843,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         }
 
@@ -1802,6 +1866,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         yjsStore.yjsClient = newClient as any;
 
@@ -1824,8 +1889,8 @@ if (typeof window !== "undefined") {
 - **Code**: `const checkInterval = setInterval(() => {`
 
 **Context**:
-```
 
+```
                 // Maybe I should stay on the page and show "Saved!" until the store updates?
                 // Or just redirect and hope? Or show a spinner "Updating...".
 
@@ -1846,6 +1911,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                        goto(`/settings/${encodeURIComponent(newTitle)}`, { replaceState: true });
                    }
@@ -1857,7 +1923,6 @@ if (typeof window !== "undefined") {
                     // Fallback redirect
                     goto(`/settings/${encodeURIComponent(newTitle)}`, { replaceState: true });
                 }, 5000);
-
 ```
 
 ### +page.svelte:52:setTimeout
@@ -1868,6 +1933,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             }
 
@@ -1890,18 +1956,18 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
-        requestAnimationFrame(() => {
-            try {
-                window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-            } catch {}
-        });
-        setTimeout(() => {
-            try {
-                window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-            } catch {}
-        }, 0);
 
+```
+requestAnimationFrame(() => {
+    try {
+        window.dispatchEvent(new CustomEvent("outliner-items-changed"));
+    } catch {}
+});
+setTimeout(() => {
+    try {
+        window.dispatchEvent(new CustomEvent("outliner-items-changed"));
+    } catch {}
+}, 0);
 ```
 
 ### EditorOverlayStore.svelte.ts:226:requestAnimationFrame
@@ -1912,6 +1978,7 @@ if (typeof window !== "undefined") {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
             if (textarea) {
                 // Multiple attempts to ensure focus is set
@@ -1934,6 +2001,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                 // Set focus using requestAnimationFrame
                 requestAnimationFrame(() => {
@@ -1956,6 +2024,7 @@ if (typeof window !== "undefined") {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
         if (textarea) {
             // Multiple attempts to ensure focus is set
@@ -1978,6 +2047,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             // Set focus using requestAnimationFrame
             requestAnimationFrame(() => {
@@ -2000,6 +2070,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             console.log(`Box selection set with key: ${key}`);
             console.log(`Current selections:`, this.selections);
@@ -2022,8 +2093,8 @@ if (typeof window !== "undefined") {
 - **Code**: `this.timerId = setInterval(() => {`
 
 **Context**:
-```
 
+```
     startCursorBlink() {
         this.cursorVisible = true;
         clearInterval(this.timerId);
@@ -2044,6 +2115,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // Force update by temporarily clearing and resetting selection ranges
         const tempSelections = { ...this.selections };
@@ -2066,8 +2138,8 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
 
+```
         // Update cursors similarly
         const tempCursors = { ...this.cursors };
         this.cursors = {};
@@ -2088,18 +2160,19 @@ if (typeof window !== "undefined") {
 - **Code**: `this.timerId = setInterval(() => {`
 
 **Context**:
+
 ```
-        );
-    }
-    startCursorBlink() {
-        this.cursorVisible = true;
-        clearInterval(this.timerId);
-        this.timerId = setInterval(() => {
-            this.cursorVisible = !this.cursorVisible;
-        }, 530);
-    }
-    stopCursorBlink() {
-        clearInterval(this.timerId);
+    );
+}
+startCursorBlink() {
+    this.cursorVisible = true;
+    clearInterval(this.timerId);
+    this.timerId = setInterval(() => {
+        this.cursorVisible = !this.cursorVisible;
+    }, 530);
+}
+stopCursorBlink() {
+    clearInterval(this.timerId);
 ```
 
 ### snapshot-diff-modal-a11y-9f2d1c3a.integration.spec.ts:51:setTimeout
@@ -2110,6 +2183,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
         // HTML should be rendered in the diff area
         const diffs = document.querySelectorAll(".diff-view");
@@ -2132,18 +2206,19 @@ if (typeof window !== "undefined") {
 - **Code**: `else setTimeout(checkSync, 50);`
 
 **Context**:
+
 ```
-            const checkSync = () => {
-                if (c1.provider.isSynced && c2.provider.isSynced) {
-                    syncedCount++;
-                    // Check twice to ensure stable sync state
-                    if (syncedCount >= 2) resolve(undefined);
-                    else setTimeout(checkSync, 50);
-                } else {
-                    setTimeout(checkSync, 50);
-                }
-            };
-            checkSync();
+const checkSync = () => {
+    if (c1.provider.isSynced && c2.provider.isSynced) {
+        syncedCount++;
+        // Check twice to ensure stable sync state
+        if (syncedCount >= 2) resolve(undefined);
+        else setTimeout(checkSync, 50);
+    } else {
+        setTimeout(checkSync, 50);
+    }
+};
+checkSync();
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:21:setTimeout
@@ -2154,18 +2229,18 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(checkSync, 50);`
 
 **Context**:
-```
-                    syncedCount++;
-                    // Check twice to ensure stable sync state
-                    if (syncedCount >= 2) resolve(undefined);
-                    else setTimeout(checkSync, 50);
-                } else {
-                    setTimeout(checkSync, 50);
-                }
-            };
-            checkSync();
-        });
 
+```
+            syncedCount++;
+            // Check twice to ensure stable sync state
+            if (syncedCount >= 2) resolve(undefined);
+            else setTimeout(checkSync, 50);
+        } else {
+            setTimeout(checkSync, 50);
+        }
+    };
+    checkSync();
+});
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:53:setTimeout
@@ -2176,6 +2251,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
                 }
             }
@@ -2198,6 +2274,7 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(r => setTimeout(r, 0));`
 
 **Context**:
+
 ```
         console.log("Received:", received);
         expect(received).toBe(true);
@@ -2207,7 +2284,6 @@ if (typeof window !== "undefined") {
         await new Promise(r => setTimeout(r, 0));
     });
 });
-
 ```
 
 ### yjs-persistence.spec.ts:107:setTimeout
@@ -2218,6 +2294,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(callback, 10);`
 
 **Context**:
+
 ```
         it("should wait for sync event if not synced", async () => {
             const persistence: MockPersistence = {
@@ -2240,6 +2317,7 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(callback, 10);`
 
 **Context**:
+
 ```
         it("should handle multiple calls to waitForSync", async () => {
             const persistence: MockPersistence = {
