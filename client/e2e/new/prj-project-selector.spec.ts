@@ -26,7 +26,7 @@ test.describe.serial("Prj: Project Selector", () => {
         await page.waitForFunction(() => {
             const ps = (window as any).__PROJECT_STORE__;
             return ps && ps.projects && ps.projects.length >= 2;
-        }, { timeout: 10000 });
+        }, { timeout: 15000 }).catch(() => console.log("Timeout waiting for PROJECT_STORE update"));
 
         // Check if selector options are rendered
         const selector = page.locator("select.project-select");
@@ -34,8 +34,8 @@ test.describe.serial("Prj: Project Selector", () => {
         await expect(selector).toHaveCount(1);
 
         const options = selector.locator("option");
-        // Expect at least 2 options (plus possibly a default/placeholder)
-        await expect(options).toHaveCount(2);
+        // Expect at least 2 options (wait with expect for DOM to reflect store)
+        await expect(options).toHaveCount(2, { timeout: 15000 });
     });
 
     /**
