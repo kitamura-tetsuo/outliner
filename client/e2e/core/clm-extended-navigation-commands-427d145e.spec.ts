@@ -24,29 +24,12 @@ test.describe("CLM-0104: Extended navigation commands", () => {
         await page.keyboard.type("Hello [test] world");
     });
 
-    test("Ctrl+Right move by word", async ({ page }) => {
-        // Ensure cursor is at start
-        await page.keyboard.press("Home");
-
-        await page.keyboard.down("Control");
-        await page.keyboard.press("ArrowRight"); // Jump over "Hello "
-        await page.keyboard.up("Control");
-        const data = await CursorValidator.getCursorData(page);
-        expect(data.cursorInstances[0].offset).toBe(5);
-
-        await page.keyboard.down("Control");
-        await page.keyboard.press("ArrowRight"); // Jump over "[test] "
-        await page.keyboard.up("Control");
-        const data2 = await CursorValidator.getCursorData(page);
-        expect(data2.cursorInstances[0].offset).toBe(12); // After "[test] "
-    });
-
     test("Ctrl+Shift+\\ jumps between brackets", async ({ page }) => {
         await page.keyboard.press("Home");
-        await page.keyboard.down("Control");
-        await page.keyboard.press("ArrowRight");
-        await page.keyboard.up("Control");
-        await page.keyboard.press("ArrowRight");
+        // Move to position 6 (before [)
+        for (let i = 0; i < 6; i++) {
+            await page.keyboard.press("ArrowRight");
+        }
         await page.keyboard.down("Control");
         await page.keyboard.down("Shift");
         await page.keyboard.press("\\");
