@@ -51,6 +51,9 @@ let overlayRef: HTMLDivElement;
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureCtx: CanvasRenderingContext2D | null = null;
 
+let lastScrolledCursorId = '';
+let lastScrolledOffset = -1;
+
 // Alternative text measurement method for test environment (jsdom)
 function measureTextWidthFallback(itemId: string, text: string): number {
     const itemInfo = positionMap[itemId];
@@ -174,6 +177,26 @@ function updateTextareaPosition() {
         // Position the textarea using viewport coordinates
         textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left + window.scrollX}px`, 'important');
         textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top + window.scrollY}px`, 'important');
+
+        // Scroll the cursor into view if it moved
+        if (lastScrolledCursorId !== lastCursor.itemId || lastScrolledOffset !== lastCursor.offset) {
+            lastScrolledCursorId = lastCursor.itemId;
+            lastScrolledOffset = lastCursor.offset;
+
+            const viewportTop = treeContainerRect.top + pos.top;
+            const cursorHeight = itemInfo.lineHeight ? parseInt(itemInfo.lineHeight) : 20;
+            const viewportBottom = viewportTop + cursorHeight;
+
+            const stickyHeaderHeight = 80;
+            const margin = 20;
+            const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+
+            if (viewportTop < stickyHeaderHeight) {
+                window.scrollBy({ top: viewportTop - stickyHeaderHeight - margin, behavior: "smooth" });
+            } else if (viewportBottom > windowHeight) {
+                window.scrollBy({ top: viewportBottom - windowHeight + margin, behavior: "smooth" });
+            }
+        }
     } catch (e) {
         console.error("Error in updateTextareaPosition:", e);
     }

@@ -15,7 +15,7 @@ import {
 } from "./metaDoc.svelte";
 
 // Local memory cache for immediate title resolution (critical for post-creation redirect)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, svelte/prefer-svelte-reactivity
+// eslint-disable-next-line svelte/prefer-svelte-reactivity
 const localTitleMap = new Map<string, string>();
 
 function setProjectTitle(id: string, title: string) {
