@@ -3,6 +3,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
     base: "/outliner/",
     title: "Outliner Docs",
+    srcExclude: ["INDEX.md"],
     ignoreDeadLinks: true,
     locales: {
         root: {
