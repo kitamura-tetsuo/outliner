@@ -69,7 +69,7 @@ describe("domUtils", () => {
 
             it("should escape mixed quotes and backslashes", () => {
                 expect(escapeId('test"id\\abc')).toBe('test\\"id\\\\abc');
-                expect(escapeId('\\"\\"')).toBe('\\\\\\\"\\\\\\\"'); // \\"" -> \\\\\\"\\"
+                expect(escapeId('\\"\\"')).toBe('\\\\\\"\\\\\\"'); // \\"" -> \\\\\\"\\"
             });
         });
     });
