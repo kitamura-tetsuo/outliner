@@ -124,8 +124,8 @@ function categorizePolling(instances) {
             codeStr.includes("100") // 100ms interval
             || codeStr.includes("120") // 120ms interval
             || contextStr.includes("fallback")
-            || contextStr.includes("フォールバック")
-            || contextStr.includes("暫定")
+            || contextStr.includes("temporary")
+            || contextStr.includes("provisional")
         ) {
             suspicious.push(instance);
             continue;
