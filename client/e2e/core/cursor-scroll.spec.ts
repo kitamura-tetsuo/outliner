@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import { OutlinerPage } from "../utils/testHelpers"; // testHelpers exports everything we need usually, let's just use TestHelpers.createAndSeedProject
 
 test.describe("Cursor scrolling behavior", () => {
     test("Cursor stays visible when moving down through a very tall item", async ({ page }, testInfo) => {
