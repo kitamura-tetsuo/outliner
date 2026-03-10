@@ -9,7 +9,9 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 3. [Item Manipulation](#item-manipulation)
 4. [Links](#links)
 5. [Selection and Copy & Paste](#selection-and-copy-paste)
-6. [Keyboard Shortcuts](#keyboard-shortcuts)
+6. [Schedule Management](#schedule-management)
+7. [Graph View](#graph-view)
+8. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -93,6 +95,32 @@ Select a rectangular area spanning multiple lines.
 
 - Mouse: `Alt + Shift + Drag`
 - Keyboard: `Alt + Shift + Arrow keys`
+
+---
+
+## Schedule Management
+
+Schedule pages for automatic publishing at a specific time.
+
+### Managing Schedules
+
+You can open the schedule management screen from the page menu.
+
+- **Create a schedule**: Specify the desired publish time and strategy to create a new publishing task.
+- **View existing schedules**: Check the list of existing schedules for the current page.
+- **Edit or cancel**: You can modify or cancel schedules from this management screen.
+
+---
+
+## Graph View
+
+Visualize inter-page links as an interactive graph that updates in real time when pages change.
+
+### Navigating the Graph
+
+- **Interactive visualization**: View the structure and connections of your project's pages in a visual node graph.
+- **Navigate by clicking**: Click on any node in the graph to quickly navigate to that corresponding page.
+- **Real-time updates**: The graph structure automatically updates in real time whenever links or pages are modified.
 
 ---
 
