@@ -1,8 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
-
-registerCoverageHooks();
 
 test.describe("Cursor scrolling behavior", () => {
     test("Cursor stays visible when moving down through a very tall item", async ({ page }, testInfo) => {
@@ -29,7 +26,7 @@ test.describe("Cursor scrolling behavior", () => {
 
         // Move to the top
         for (let i = 0; i < 150; i++) {
-            await page.keyboard.press("ArrowUp");
+            await page.keyboard.press("ArrowUp", { delay: 1 });
         }
 
         // Wait for stability
@@ -40,9 +37,7 @@ test.describe("Cursor scrolling behavior", () => {
 
         // Move cursor down 100 times (should scroll the window down to follow the cursor)
         for (let i = 0; i < 100; i++) {
-            await page.keyboard.press("ArrowDown");
-            // Give it a tiny bit of time for each to ensure we don't batch it all together
-            await page.waitForTimeout(10);
+            await page.keyboard.press("ArrowDown", { delay: 1 });
         }
 
         // Wait a bit for smooth scroll to finish
