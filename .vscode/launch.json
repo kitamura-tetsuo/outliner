@@ -25,8 +25,8 @@
             ],
             "port": 9222,
             "justMyCode": false,
-            "console": "internalConsole", // Output to Debug Console
-            "trace": true // Used to investigate when it can't be picked up
+            "console": "internalConsole", // ← Output to Debug Console
+            "trace": true // For investigating unhandled exceptions
         },
         {
             "type": "chrome",
@@ -53,8 +53,8 @@
             ],
             "port": 9876,
             "justMyCode": false,
-            "console": "internalConsole", // Output to Debug Console
-            "trace": true // Used to investigate when it can't be picked up
+            "console": "internalConsole", // ← Output to Debug Console
+            "trace": true // For investigating unhandled exceptions
         },
         {
             "type": "chrome",
@@ -81,8 +81,8 @@
             ],
             "port": 9876,
             "justMyCode": false,
-            "console": "internalConsole", // Output to Debug Console
-            "trace": true // Used to investigate when it can't be picked up
+            "console": "internalConsole", // ← Output to Debug Console
+            "trace": true // For investigating unhandled exceptions
         },
         {
             "type": "chrome",
