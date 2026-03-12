@@ -24,10 +24,10 @@ test.describe("Cursor scrolling behavior", () => {
         // Insert text
         // Set clipboard and paste to make it much faster than typing
         await page.evaluate((text) => {
-            const ta = document.querySelector('textarea.global-textarea') as HTMLTextAreaElement;
+            const ta = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement;
             if (ta) {
                 ta.value = text;
-                ta.dispatchEvent(new Event('input', { bubbles: true }));
+                ta.dispatchEvent(new Event("input", { bubbles: true }));
             }
         }, longText);
 
