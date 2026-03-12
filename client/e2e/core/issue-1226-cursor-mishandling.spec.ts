@@ -12,12 +12,8 @@ test.describe("Cursor positioning on scroll", () => {
         // 2. Scroll down to the bottom of the page
         await page.evaluate(() => {
             const container = document.querySelector(".tree-container");
-            if (container && container.scrollHeight > container.clientHeight) {
+            if (container) {
                 container.scrollTop = container.scrollHeight;
-            } else if (document.documentElement) {
-                document.documentElement.scrollTo(0, document.documentElement.scrollHeight);
-            } else {
-                document.body.scrollTo(0, document.body.scrollHeight);
             }
         });
 
@@ -44,8 +40,8 @@ test.describe("Cursor positioning on scroll", () => {
         expect(cursorBox).not.toBeNull();
         expect(itemBox).not.toBeNull();
 
-        // Allow a slightly larger difference (e.g. 100px) to account for minor rendering variations or padding adjustments
+        // Allow a slightly larger difference (e.g. 50px) to account for minor rendering variations or padding adjustments
         // It could also be shifted because of the newly introduced exact viewport scrolling rules
-        expect(Math.abs(cursorBox!.y - itemBox!.y)).toBeLessThan(100);
+        expect(Math.abs(cursorBox!.y - itemBox!.y)).toBeLessThan(50);
     });
 });

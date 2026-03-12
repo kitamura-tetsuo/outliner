@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
@@ -34,13 +35,9 @@ test.describe("Cursor scrolling behavior", () => {
         // Wait for stability
         await page.waitForTimeout(500);
 
-        // Get initial scroll position from the scrollable container
-        // The container is usually `.tree-container`
+        // Get initial scroll position from the window
         const getScrollY = async () => {
-            return await page.evaluate(() => {
-                const container = document.querySelector(".tree-container");
-                return (container ? (container as HTMLElement).scrollTop : 0) || document.documentElement.scrollTop;
-            });
+            return await page.evaluate(() => window.scrollY);
         };
 
         const initialScrollY = await getScrollY();
@@ -48,7 +45,8 @@ test.describe("Cursor scrolling behavior", () => {
         // Move cursor down 60 times (should scroll the window down to follow the cursor)
         for (let i = 0; i < 60; i++) {
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(50);
+            // Give it a tiny bit of time for each to ensure we don't batch it all together
+            await page.waitForTimeout(10);
         }
 
         // Wait a bit for smooth scroll to finish
