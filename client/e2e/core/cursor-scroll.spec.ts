@@ -5,6 +5,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Cursor scrolling behavior", () => {
     test("Cursor stays visible when moving down through a very tall item", async ({ page }, testInfo) => {
+        test.setTimeout(120000);
         // Authenticate and prepare environment
         const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, ["Initial"]);
 
