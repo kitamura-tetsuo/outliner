@@ -39,7 +39,7 @@ test.describe("Cursor scrolling behavior", () => {
         const getScrollY = async () => {
             return await page.evaluate(() => {
                 const container = document.querySelector(".tree-container");
-                return container ? container.scrollTop : 0;
+                return (container ? (container as HTMLElement).scrollTop : 0) || document.documentElement.scrollTop;
             });
         };
 

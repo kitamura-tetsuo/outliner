@@ -12,8 +12,12 @@ test.describe("Cursor positioning on scroll", () => {
         // 2. Scroll down to the bottom of the page
         await page.evaluate(() => {
             const container = document.querySelector(".tree-container");
-            if (container) {
+            if (container && container.scrollHeight > container.clientHeight) {
                 container.scrollTop = container.scrollHeight;
+            } else if (document.documentElement) {
+                document.documentElement.scrollTo(0, document.documentElement.scrollHeight);
+            } else {
+                document.body.scrollTo(0, document.body.scrollHeight);
             }
         });
 
