@@ -25,7 +25,7 @@ test.describe("Cursor scrolling behavior", () => {
         await page.keyboard.press("Backspace");
 
         // Insert text
-        await page.keyboard.type(longText);
+        await page.keyboard.insertText(longText);
 
         // Move to the top
         for (let i = 0; i < 150; i++) {
