@@ -19,11 +19,11 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 // update-depth loops during E2E when alias picker and focus logic interact.
 // Focus management is handled in onMount and OutlinerItem.startEditing().
 
-// global textarea をストアに登録
+// Register global textarea to the store
 onMount(() => {
     // Initialize measurement canvas on client only
-    // Node.jsテスト環境ではCanvas APIがサポートされていない可能性があるため、
-    // 存在チェックをしてから初期化する
+    // Since Canvas API might not be supported in Node.js test environment,
+    // check for existence before initializing
     if (typeof document !== 'undefined' && typeof HTMLCanvasElement !== 'undefined') {
         try {
             measureCanvas = document.createElement("canvas");
