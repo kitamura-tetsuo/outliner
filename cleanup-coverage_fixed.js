@@ -25,11 +25,11 @@ const cleanupDirs = [
     },
     {
         name: "e2e/raw",
-        keepFile: null, // Deletes all JSON files
+        keepFile: null, // Delete all JSON files
     },
     {
         name: "merged",
-        keepFile: null, // Deletes all JSON files
+        keepFile: null, // Delete all JSON files
     },
 ];
 
