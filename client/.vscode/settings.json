@@ -16,8 +16,8 @@
     "playwright.env.TEST_ENV": "localhost",
     "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://localhost:7090",
     "playwright.use.dotenv": true
-    // Settings for 192.168.50.13 environment
-    // Uncomment the lines below and remove TEST_ENV to revert to testing in the 192.168.50.13 environment
+    // Settings for the 192.168.50.13 environment
+    // Uncomment the following and remove TEST_ENV to return to test execution in the 192.168.50.13 environment
     // "playwright.env.DOTENV_CONFIG_PATH": ".env.test",
     // "playwright.env.PLAYWRIGHT_TEST_BASE_URL": "http://192.168.50.13:7080",
     // // "playwright.env.TEST_ENV": "localhost", // Remove or disable this line

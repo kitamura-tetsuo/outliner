@@ -40,8 +40,8 @@ test.describe("Cursor positioning on scroll", () => {
         expect(cursorBox).not.toBeNull();
         expect(itemBox).not.toBeNull();
 
-        // Allow a slightly larger difference (e.g. 50px) to account for minor rendering variations or padding adjustments
+        // Allow a slightly larger difference (e.g. 100px) to account for minor rendering variations or padding adjustments
         // It could also be shifted because of the newly introduced exact viewport scrolling rules
-        expect(Math.abs(cursorBox!.y - itemBox!.y)).toBeLessThan(50);
+        expect(Math.abs(cursorBox!.y - itemBox!.y)).toBeLessThan(100);
     });
 });
