@@ -48,8 +48,7 @@ test.describe("Cursor scrolling behavior", () => {
         // Move cursor down 60 times (should scroll the window down to follow the cursor)
         for (let i = 0; i < 60; i++) {
             await page.keyboard.press("ArrowDown");
-            // Give it a tiny bit of time for each to ensure we don't batch it all together
-            await page.waitForTimeout(10);
+            await page.waitForTimeout(50);
         }
 
         // Wait a bit for smooth scroll to finish

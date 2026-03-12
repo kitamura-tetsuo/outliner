@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Delete old coverage JSON files so that fresh coverage data can be obtained for each test run.
- * - Delete all JSON files except coverage-final.json from unit_and_integration/
- * - Delete all JSON files from e2e/raw/
- * - Delete old merged coverage data from merged/
+ * Deletes old coverage JSON files so that fresh coverage data can be obtained in each test run.
+ * - Deletes JSON files other than coverage-final.json from unit_and_integration/
+ * - Deletes all JSON files from e2e/raw/
+ * - Deletes old merged coverage data from merged/
  */
 
 import fs from "fs";
@@ -59,7 +59,7 @@ function cleanupDirectory(dirPath, keepFile = null) {
                 continue;
             }
 
-            // Delete JSON files only
+            // Delete only JSON files
             if (entry.name.endsWith(".json")) {
                 fs.unlinkSync(filePath);
                 console.log(`[coverage:cleanup] deleted: ${path.relative(workspaceDir, filePath)}`);
@@ -83,7 +83,7 @@ function main() {
         const dirPath = path.join(coverageDir, dirConfig.name);
 
         if (!fs.existsSync(dirPath)) {
-            // If the directory does not exist, skip it without throwing an error
+            // Skip without error if directory does not exist
             continue;
         }
 
@@ -97,7 +97,7 @@ function main() {
 
     console.log("[coverage:cleanup] cleanup completed");
 
-    // Appropriate message when there's nothing to do
+    // Appropriate message if nothing was removed
     if (totalRemoved === 0) {
         console.log("[coverage:cleanup] no old coverage files found to delete");
     } else {
