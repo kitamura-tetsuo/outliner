@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 test.describe("Cursor scrolling behavior", () => {
     test("Cursor stays visible when moving down through a very tall item", async ({ page }, testInfo) => {
