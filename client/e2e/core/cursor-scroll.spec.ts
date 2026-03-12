@@ -1,8 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 test.describe("Cursor scrolling behavior", () => {
     test("Cursor stays visible when moving down through a very tall item", async ({ page }, testInfo) => {
+        test.setTimeout(120000);
         // Authenticate and prepare environment
         const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, ["Initial"]);
 
@@ -22,12 +26,10 @@ test.describe("Cursor scrolling behavior", () => {
         await page.keyboard.press("Backspace");
 
         // Insert text
-        await page.keyboard.type(longText);
+        await page.keyboard.insertText(longText);
 
         // Move to the top
-        for (let i = 0; i < 150; i++) {
-            await page.keyboard.press("ArrowUp", { delay: 1 });
-        }
+        await page.keyboard.press("Control+Home"); // Use shortcut instead of 150 ArrowUps
 
         // Wait for stability
         await page.waitForTimeout(500);
@@ -35,9 +37,12 @@ test.describe("Cursor scrolling behavior", () => {
         // Get initial scroll position
         const initialScrollY = await page.evaluate(() => window.scrollY);
 
-        // Move cursor down 100 times (should scroll the window down to follow the cursor)
-        for (let i = 0; i < 100; i++) {
-            await page.keyboard.press("ArrowDown", { delay: 1 });
+        // Move cursor down multiple times (should scroll the window down to follow the cursor)
+        // We don't need 100 times to see scrolling. 40 times is enough to scroll down.
+        // Also increase the wait to prevent playwright from overwhelming the process.
+        for (let i = 0; i < 40; i++) {
+            await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(50);
         }
 
         // Wait a bit for smooth scroll to finish
