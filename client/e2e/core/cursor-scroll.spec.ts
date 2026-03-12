@@ -1,10 +1,8 @@
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
-
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 test.describe("Cursor scrolling behavior", () => {
     test("Cursor stays visible when moving down through a very tall item", async ({ page }, testInfo) => {
@@ -37,11 +35,11 @@ test.describe("Cursor scrolling behavior", () => {
         await page.waitForTimeout(500);
 
         // Get initial scroll position from the scrollable container
-        // The container is usually `.tree-container` or `window`
+        // The container is usually `.tree-container`
         const getScrollY = async () => {
             return await page.evaluate(() => {
                 const container = document.querySelector(".tree-container");
-                return container ? container.scrollTop : window.scrollY;
+                return container ? container.scrollTop : 0;
             });
         };
 
@@ -63,15 +61,17 @@ test.describe("Cursor scrolling behavior", () => {
         // Expect the window to have scrolled down significantly
         expect(finalScrollY).toBeGreaterThan(initialScrollY);
 
+        const viewportHeight = page.viewportSize()?.height || 800;
+
         // Verify that the cursor element itself is visible in the viewport
-        const isCursorVisible = await page.evaluate(() => {
+        const isCursorVisible = await page.evaluate((vpHeight) => {
             const cursorEl = document.querySelector(".cursor.active");
             if (!cursorEl) return false;
             const rect = cursorEl.getBoundingClientRect();
             // Assuming sticky header is 80px high
             const stickyHeaderHeight = 80;
-            return rect.top >= stickyHeaderHeight && rect.bottom <= window.innerHeight;
-        });
+            return rect.top >= stickyHeaderHeight && rect.bottom <= vpHeight;
+        }, viewportHeight);
 
         expect(isCursorVisible).toBe(true);
     });
