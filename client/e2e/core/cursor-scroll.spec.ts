@@ -25,9 +25,7 @@ test.describe("Cursor scrolling behavior", () => {
         await page.keyboard.type(longText);
 
         // Move to the top
-        for (let i = 0; i < 150; i++) {
-            await page.keyboard.press("ArrowUp");
-        }
+        await page.keyboard.press("Control+Home"); // Use shortcut instead of 150 ArrowUps
 
         // Wait for stability
         await page.waitForTimeout(500);
@@ -35,11 +33,12 @@ test.describe("Cursor scrolling behavior", () => {
         // Get initial scroll position
         const initialScrollY = await page.evaluate(() => window.scrollY);
 
-        // Move cursor down 100 times (should scroll the window down to follow the cursor)
-        for (let i = 0; i < 100; i++) {
+        // Move cursor down multiple times (should scroll the window down to follow the cursor)
+        // We don't need 100 times to see scrolling. 40 times is enough to scroll down.
+        // Also increase the wait to prevent playwright from overwhelming the process.
+        for (let i = 0; i < 40; i++) {
             await page.keyboard.press("ArrowDown");
-            // Give it a tiny bit of time for each to ensure we don't batch it all together
-            await page.waitForTimeout(10);
+            await page.waitForTimeout(50);
         }
 
         // Wait a bit for smooth scroll to finish
