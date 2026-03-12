@@ -1,489 +1,489 @@
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "chrome",
-      "request": "attach",
-      "name": "Attach to Chrome",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*",
-        "http:/localhost:7070/src/*": "${webRoot}/src/*",
-        "http:/localhost:7090/src/*": "${webRoot}/src/*",
-        "webpack:///./*": "${webRoot}/*",
-        "/./*": "${webRoot}/*",
-        "/*": "*",
-        "/src/*": "${webRoot}/src/*",
-        "localhost꞉7070/src/*": "${webRoot}/src/*",
-        "localhost꞉7090/src/*": "${webRoot}/src/*"
-      },
-      "skipFiles": [
-        "**/lib/logger.*",
-        "**/lib/fluidTelemetryFilter.*",
-        "**/node_modules/**"
-      ],
-      "port": 9222,
-      "justMyCode": false,
-      "console": "internalConsole", // Output to Debug Console
-      "trace": true // For investigation when things cannot be caught
-    },
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Launch Chrome against Firebase host",
-      "url": "https://outliner-d57b0.web.app/",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*",
-        "http:/localhost:7070/src/*": "${webRoot}/src/*",
-        "http:/localhost:7090/src/*": "${webRoot}/src/*",
-        "webpack:///./*": "${webRoot}/*",
-        "/./*": "${webRoot}/*",
-        "/*": "*",
-        "/src/*": "${webRoot}/src/*",
-        "localhost꞉7070/src/*": "${webRoot}/src/*",
-        "localhost꞉7090/src/*": "${webRoot}/src/*"
-      },
-      "skipFiles": [
-        "**/lib/logger.*",
-        "**/lib/fluidTelemetryFilter.*",
-        "**/node_modules/**"
-      ],
-      "port": 9876,
-      "justMyCode": false,
-      "console": "internalConsole", // Output to Debug Console
-      "trace": true // For investigation when things cannot be caught
-    },
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Launch Chrome against localhost test server",
-      "url": "http://localhost:7090",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*",
-        "http:/localhost:7070/src/*": "${webRoot}/src/*",
-        "http:/localhost:7090/src/*": "${webRoot}/src/*",
-        "webpack:///./*": "${webRoot}/*",
-        "/./*": "${webRoot}/*",
-        "/*": "*",
-        "/src/*": "${webRoot}/src/*",
-        "localhost꞉7070/src/*": "${webRoot}/src/*",
-        "localhost꞉7090/src/*": "${webRoot}/src/*"
-      },
-      "skipFiles": [
-        "**/lib/logger.*",
-        "**/lib/fluidTelemetryFilter.*",
-        "**/node_modules/**"
-      ],
-      "port": 9876,
-      "justMyCode": false,
-      "console": "internalConsole", // Output to Debug Console
-      "trace": true // For investigation when things cannot be caught
-    },
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Launch Chrome against localhost production server",
-      "url": "http://localhost:7073",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*",
-        "http://localhost:7073/src/*": "${webRoot}/src/*",
-        "http://localhost:7080/src/*": "${webRoot}/src/*",
-        "webpack:///./*": "${webRoot}/*",
-        "/./*": "${webRoot}/*",
-        "/*": "*",
-        "/src/*": "${webRoot}/src/*",
-        "localhost꞉7073/src/*": "${webRoot}/src/*",
-        "localhost꞉7080/src/*": "${webRoot}/src/*"
-      },
-      "skipFiles": [
-        "**/lib/logger.*",
-        "**/lib/fluidTelemetryFilter.*",
-        "**/node_modules/**"
-      ],
-      "port": 9876,
-      "urlFilter": "*localhost:7070*"
-    },
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Launch Chrome against test server",
-      "url": "http://localhost:7080",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*",
-        "http://localhost:7070/src/*": "${webRoot}/src/*",
-        "http://localhost:7080/src/*": "${webRoot}/src/*",
-        "webpack:///./*": "${webRoot}/*",
-        "/./*": "${webRoot}/*",
-        "/*": "*",
-        "/src/*": "${webRoot}/src/*",
-        "localhost꞉7070/src/*": "${webRoot}/src/*",
-        "localhost꞉7080/src/*": "${webRoot}/src/*"
-      },
-      "skipFiles": [
-        "**/lib/logger.*",
-        "**/lib/fluidTelemetryFilter.*",
-        "**/node_modules/**"
-      ],
-      // "port": 9877,
-      "urlFilter": "*localhost:7080*"
-      // "runtimeExecutable": "powershell.exe",
-      // "runtimeArgs": [
-      //     "-NoProfile",
-      //     "-Command",
-      //     "Remove-Item -Recurse -Force $env:USERPROFILE\\.vscode\\chrome-debug-profile; ",
-      //     "New-Item -ItemType Directory -Path $env:USERPROFILE\\.vscode\\chrome-debug-profile | Out-Null; ",
-      //     "Start-Process 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' ",
-      //     "--remote-debugging-port=9877 --user-data-dir=$env:USERPROFILE\\.vscode\\chrome-debug-profile"
-      // ],
-      // "console": "integratedTerminal"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug SvelteKit Server",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "mkdir -p /workspace/server/logs && npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/svelte-kit.log"
-      ],
-      "localRoot": "${workspaceFolder}/client",
-      "env": {
-        "PORT": "7070"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
-      "restart": true
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Production Cloud Backend SvelteKit Server",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "mkdir -p ${workspaceFolder}/server/logs && NODE_ENV=production npx dotenvx run --env-file=.env.production -- npm run dev -- --host 0.0.0.0 --port 7073 --mode production 2>&1 | tee ${workspaceFolder}/server/logs/production-cloud-svelte-kit.log"
-      ],
-      "localRoot": "${workspaceFolder}/client",
-      "env": {
-        "PORT": "7073",
-        "NODE_ENV": "production",
-        "VITE_USE_FIREBASE_EMULATOR": "true",
-        "VITE_FIREBASE_EMULATOR_HOST": "localhost",
-        "VITE_FIRESTORE_EMULATOR_PORT": "58080",
-        "VITE_AUTH_EMULATOR_PORT": "59099"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
-      "restart": true
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Server",
-      "runtimeExecutable": "bash",
-      "localRoot": "${workspaceFolder}/server",
-      "runtimeArgs": [
-        "-c",
-        "npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/log-service-tee.log"
-      ],
-      "env": {
-        "PORT": "7071"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
-      "restart": true
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Production Cloud Backend Debug Server",
-      "runtimeExecutable": "bash",
-      "localRoot": "${workspaceFolder}/server",
-      "runtimeArgs": [
-        "-c",
-        "cd ${workspaceFolder}/server && mkdir -p ${workspaceFolder}/server/logs && NODE_ENV=production npx dotenvx run --env-file=.env.production -- npm run dev -- --host 0.0.0.0 --port 7074 2>&1 | tee ${workspaceFolder}/server/logs/production-cloud-log-service-tee.log"
-      ],
-      "env": {
-        "PORT": "7074",
-        "NODE_ENV": "production"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
-      "restart": true
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "For Test Debug Server",
-      "runtimeExecutable": "bash",
-      "localRoot": "${workspaceFolder}/server",
-      "runtimeArgs": [
-        "-c",
-        "cd ${workspaceFolder}/server && npx dotenvx run --env-file=.env.test -- npm run dev -- --host 0.0.0.0 --port 7081 2>&1 | tee /workspace/server/logs/test-log-service-tee.log"
-      ],
-      "env": {
-        "PORT": "7081"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
-      "restart": true
-    },
-    {
-      "name": "Launch Tinylicious",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/client",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["tinylicious"],
-      "env": {
-        "PORT": "7072"
-      },
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "For Test SvelteKit Server",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "npx dotenvx run --env-file=.env.test -- npm run dev -- --host 0.0.0.0 --port 7080 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
-      ],
-      "localRoot": "${workspaceFolder}/client",
-      "env": {
-        "PORT": "7080"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
-      "restart": true
-    },
-    {
-      "name": "For Test Launch Tinylicious",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/client",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["tinylicious"],
-      "env": {
-        "PORT": "7082"
-      },
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen"
-    },
-    {
-      "name": "For Test Launch test:e2e:ui",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/client",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "test:e2e:ui"],
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "For Localhost SvelteKit Server",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
-      ],
-      "localRoot": "${workspaceFolder}/client",
-      "env": {
-        "PORT": "7090"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
-      "restart": true,
-      "experimentalNetworking": "off"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "For Localhost Debug Server",
-      "runtimeExecutable": "bash",
-      "localRoot": "${workspaceFolder}/server",
-      "runtimeArgs": [
-        "-c",
-        "cd ${workspaceFolder}/server && npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-log-service-tee.log"
-      ],
-      "env": {
-        "PORT": "7091"
-      },
-      "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
-      "restart": true,
-      "experimentalNetworking": "off"
-    },
-    {
-      "name": "For Localhost Launch Tinylicious",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/client",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["tinylicious"],
-      "env": {
-        "PORT": "7092"
-      },
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "For Localhost Debug Firebase Functions",
-      "runtimeExecutable": "firebase",
-      "args": [
-        "emulators:start",
-        "--inspect-functions=9229",
-        "--project",
-        "outliner-d57b0"
-      ],
-      "env": {
-        "FIREBASE_DEBUG_MODE": "true"
-      },
-      "console": "integratedTerminal"
-    },
-    {
-      "type": "node",
-      "request": "attach",
-      "name": "Debug Firebase Functions",
-      "port": 9229,
-      "restart": true,
-      "skipFiles": ["<node_internals>/**"],
-      "postDebugTask": "Kill Firebase Emulator",
-      "outFiles": ["${workspaceFolder}/functions/**/*.js"]
-    },
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Launch Chrome against localhost test server",
-      "url": "http://localhost:7090",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*",
-        "http://localhost:7090/src/*": "${webRoot}/src/*",
-        "webpack:///./*": "${webRoot}/*",
-        "/./*": "${webRoot}/*",
-        "/*": "*",
-        "/src/*": "${webRoot}/src/*",
-        "localhost꞉7090/src/*": "${webRoot}/src/*"
-      },
-      "skipFiles": [
-        "**/lib/logger.*",
-        "**/lib/fluidTelemetryFilter.*",
-        "**/node_modules/**"
-      ],
-      "port": 9878,
-      "urlFilter": "*localhost:7090*"
-    },
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Launch Chrome against Production Cloud Backend",
-      "url": "http://localhost:7073",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/src/*",
-        "http://localhost:7073/src/*": "${webRoot}/src/*",
-        "webpack:///./*": "${webRoot}/*",
-        "/./*": "${webRoot}/*",
-        "/*": "*",
-        "/src/*": "${webRoot}/src/*",
-        "localhost꞉7073/src/*": "${webRoot}/src/*"
-      },
-      "skipFiles": [
-        "**/lib/logger.*",
-        "**/lib/fluidTelemetryFilter.*",
-        "**/node_modules/**"
-      ],
-      "port": 9879,
-      "urlFilter": "*localhost:7073*"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug Firestore Sequential",
-      "program": "${workspaceFolder}/server/firestore-sequential.js",
-      "skipFiles": ["<node_internals>/**"]
-    }
-  ],
-  "compounds": [
-    {
-      "name": "Servers",
-      "configurations": [
-        "Debug Server",
-        "Launch Tinylicious",
-        "Debug SvelteKit Server",
-        "For Test SvelteKit Server",
-        "For Test Debug Server",
-        "For Test Launch Tinylicious"
-        // "For Test Launch test:e2e:ui"
-        // "Launch Chrome against localhost"
-      ],
-      "stopAll": true,
-      "preLaunchTask": "Kill Tinylicious Process"
-    },
-    {
-      "name": "Production Cloud Backend Servers",
-      "configurations": [
-        "Production Cloud Backend SvelteKit Server",
-        "Production Cloud Backend Debug Server",
-        "Launch Chrome against localhost production server"
-      ],
-      "stopAll": true,
-      "preLaunchTask": "Restart Production Firebase Emulators"
-    },
-    {
-      "name": "Test Servers",
-      "configurations": [
-        "For Test SvelteKit Server",
-        "For Test Debug Server",
-        "For Test Launch Tinylicious"
-        // "For Test Launch test:e2e:ui"
-      ],
-      "stopAll": true,
-      "preLaunchTask": "Kill Tinylicious Process"
-    },
-    {
-      "name": "Localhost Test Servers",
-      "configurations": [
-        "For Localhost SvelteKit Server",
-        "For Localhost Debug Server",
-        "For Localhost Launch Tinylicious"
-      ],
-      "stopAll": true,
-      "preLaunchTask": "Kill Tinylicious Process"
-    },
-    {
-      "name": "Localhost Test Servers with Firebase Functions",
-      "configurations": [
-        "For Localhost SvelteKit Server",
-        "For Localhost Debug Server",
-        "For Localhost Launch Tinylicious",
-        "For Localhost Debug Firebase Functions"
-      ],
-      "stopAll": true,
-      "preLaunchTask": "Kill Tinylicious Process"
-    },
-    {
-      "name": "Debug Firebase Functions Only",
-      "configurations": ["Debug Firebase Functions"],
-      "stopAll": true,
-      "preLaunchTask": "Start Firebase Functions Emulator"
-    }
-  ]
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "chrome",
+            "request": "attach",
+            "name": "Attach to Chrome",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http:/localhost:7070/src/*": "${webRoot}/src/*",
+                "http:/localhost:7090/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7070/src/*": "${webRoot}/src/*",
+                "localhost꞉7090/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            "port": 9222,
+            "justMyCode": false,
+            "console": "internalConsole", // Output to Debug Console
+            "trace": true // For investigation when things cannot be caught
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against Firebase host",
+            "url": "https://outliner-d57b0.web.app/",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http:/localhost:7070/src/*": "${webRoot}/src/*",
+                "http:/localhost:7090/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7070/src/*": "${webRoot}/src/*",
+                "localhost꞉7090/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            "port": 9876,
+            "justMyCode": false,
+            "console": "internalConsole", // Output to Debug Console
+            "trace": true // For investigation when things cannot be caught
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost test server",
+            "url": "http://localhost:7090",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http:/localhost:7070/src/*": "${webRoot}/src/*",
+                "http:/localhost:7090/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7070/src/*": "${webRoot}/src/*",
+                "localhost꞉7090/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            "port": 9876,
+            "justMyCode": false,
+            "console": "internalConsole", // Output to Debug Console
+            "trace": true // For investigation when things cannot be caught
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost production server",
+            "url": "http://localhost:7073",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http://localhost:7073/src/*": "${webRoot}/src/*",
+                "http://localhost:7080/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7073/src/*": "${webRoot}/src/*",
+                "localhost꞉7080/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            "port": 9876,
+            "urlFilter": "*localhost:7070*"
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against test server",
+            "url": "http://localhost:7080",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http://localhost:7070/src/*": "${webRoot}/src/*",
+                "http://localhost:7080/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7070/src/*": "${webRoot}/src/*",
+                "localhost꞉7080/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            // "port": 9877,
+            "urlFilter": "*localhost:7080*"
+            // "runtimeExecutable": "powershell.exe",
+            // "runtimeArgs": [
+            //     "-NoProfile",
+            //     "-Command",
+            //     "Remove-Item -Recurse -Force $env:USERPROFILE\\.vscode\\chrome-debug-profile; ",
+            //     "New-Item -ItemType Directory -Path $env:USERPROFILE\\.vscode\\chrome-debug-profile | Out-Null; ",
+            //     "Start-Process 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' ",
+            //     "--remote-debugging-port=9877 --user-data-dir=$env:USERPROFILE\\.vscode\\chrome-debug-profile"
+            // ],
+            // "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug SvelteKit Server",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "mkdir -p /workspace/server/logs && npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/svelte-kit.log"
+            ],
+            "localRoot": "${workspaceFolder}/client",
+            "env": {
+                "PORT": "7070"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"],
+            "restart": true
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Production Cloud Backend SvelteKit Server",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "mkdir -p ${workspaceFolder}/server/logs && NODE_ENV=production npx dotenvx run --env-file=.env.production -- npm run dev -- --host 0.0.0.0 --port 7073 --mode production 2>&1 | tee ${workspaceFolder}/server/logs/production-cloud-svelte-kit.log"
+            ],
+            "localRoot": "${workspaceFolder}/client",
+            "env": {
+                "PORT": "7073",
+                "NODE_ENV": "production",
+                "VITE_USE_FIREBASE_EMULATOR": "true",
+                "VITE_FIREBASE_EMULATOR_HOST": "localhost",
+                "VITE_FIRESTORE_EMULATOR_PORT": "58080",
+                "VITE_AUTH_EMULATOR_PORT": "59099"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"],
+            "restart": true
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Server",
+            "runtimeExecutable": "bash",
+            "localRoot": "${workspaceFolder}/server",
+            "runtimeArgs": [
+                "-c",
+                "npm run dev -- --host 0.0.0.0 2>&1 | tee /workspace/server/logs/log-service-tee.log"
+            ],
+            "env": {
+                "PORT": "7071"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"],
+            "restart": true
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Production Cloud Backend Debug Server",
+            "runtimeExecutable": "bash",
+            "localRoot": "${workspaceFolder}/server",
+            "runtimeArgs": [
+                "-c",
+                "cd ${workspaceFolder}/server && mkdir -p ${workspaceFolder}/server/logs && NODE_ENV=production npx dotenvx run --env-file=.env.production -- npm run dev -- --host 0.0.0.0 --port 7074 2>&1 | tee ${workspaceFolder}/server/logs/production-cloud-log-service-tee.log"
+            ],
+            "env": {
+                "PORT": "7074",
+                "NODE_ENV": "production"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"],
+            "restart": true
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "For Test Debug Server",
+            "runtimeExecutable": "bash",
+            "localRoot": "${workspaceFolder}/server",
+            "runtimeArgs": [
+                "-c",
+                "cd ${workspaceFolder}/server && npx dotenvx run --env-file=.env.test -- npm run dev -- --host 0.0.0.0 --port 7081 2>&1 | tee /workspace/server/logs/test-log-service-tee.log"
+            ],
+            "env": {
+                "PORT": "7081"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"],
+            "restart": true
+        },
+        {
+            "name": "Launch Tinylicious",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/client",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": ["tinylicious"],
+            "env": {
+                "PORT": "7072"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "For Test SvelteKit Server",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "npx dotenvx run --env-file=.env.test -- npm run dev -- --host 0.0.0.0 --port 7080 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
+            ],
+            "localRoot": "${workspaceFolder}/client",
+            "env": {
+                "PORT": "7080"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"],
+            "restart": true
+        },
+        {
+            "name": "For Test Launch Tinylicious",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/client",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": ["tinylicious"],
+            "env": {
+                "PORT": "7082"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "For Test Launch test:e2e:ui",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/client",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "test:e2e:ui"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "For Localhost SvelteKit Server",
+            "runtimeExecutable": "bash",
+            "runtimeArgs": [
+                "-c",
+                "npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7090 2>&1 | tee /workspace/server/logs/test-svelte-kit.log"
+            ],
+            "localRoot": "${workspaceFolder}/client",
+            "env": {
+                "PORT": "7090"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"],
+            "restart": true,
+            "experimentalNetworking": "off"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "For Localhost Debug Server",
+            "runtimeExecutable": "bash",
+            "localRoot": "${workspaceFolder}/server",
+            "runtimeArgs": [
+                "-c",
+                "cd ${workspaceFolder}/server && npx dotenvx run --env-file=.env.test -- npm --experimental-network-inspection  run dev -- --host 0.0.0.0 --port 7091 2>&1 | tee /workspace/server/logs/test-log-service-tee.log"
+            ],
+            "env": {
+                "PORT": "7091"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"],
+            "restart": true,
+            "experimentalNetworking": "off"
+        },
+        {
+            "name": "For Localhost Launch Tinylicious",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/client",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": ["tinylicious"],
+            "env": {
+                "PORT": "7092"
+            },
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "For Localhost Debug Firebase Functions",
+            "runtimeExecutable": "firebase",
+            "args": [
+                "emulators:start",
+                "--inspect-functions=9229",
+                "--project",
+                "outliner-d57b0"
+            ],
+            "env": {
+                "FIREBASE_DEBUG_MODE": "true"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Debug Firebase Functions",
+            "port": 9229,
+            "restart": true,
+            "skipFiles": ["<node_internals>/**"],
+            "postDebugTask": "Kill Firebase Emulator",
+            "outFiles": ["${workspaceFolder}/functions/**/*.js"]
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost test server",
+            "url": "http://localhost:7090",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http://localhost:7090/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7090/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            "port": 9878,
+            "urlFilter": "*localhost:7090*"
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against Production Cloud Backend",
+            "url": "http://localhost:7073",
+            "webRoot": "${workspaceFolder}/client",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/src/*",
+                "http://localhost:7073/src/*": "${webRoot}/src/*",
+                "webpack:///./*": "${webRoot}/*",
+                "/./*": "${webRoot}/*",
+                "/*": "*",
+                "/src/*": "${webRoot}/src/*",
+                "localhost꞉7073/src/*": "${webRoot}/src/*"
+            },
+            "skipFiles": [
+                "**/lib/logger.*",
+                "**/lib/fluidTelemetryFilter.*",
+                "**/node_modules/**"
+            ],
+            "port": 9879,
+            "urlFilter": "*localhost:7073*"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Firestore Sequential",
+            "program": "${workspaceFolder}/server/firestore-sequential.js",
+            "skipFiles": ["<node_internals>/**"]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Servers",
+            "configurations": [
+                "Debug Server",
+                "Launch Tinylicious",
+                "Debug SvelteKit Server",
+                "For Test SvelteKit Server",
+                "For Test Debug Server",
+                "For Test Launch Tinylicious"
+                // "For Test Launch test:e2e:ui"
+                // "Launch Chrome against localhost"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Kill Tinylicious Process"
+        },
+        {
+            "name": "Production Cloud Backend Servers",
+            "configurations": [
+                "Production Cloud Backend SvelteKit Server",
+                "Production Cloud Backend Debug Server",
+                "Launch Chrome against localhost production server"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Restart Production Firebase Emulators"
+        },
+        {
+            "name": "Test Servers",
+            "configurations": [
+                "For Test SvelteKit Server",
+                "For Test Debug Server",
+                "For Test Launch Tinylicious"
+                // "For Test Launch test:e2e:ui"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Kill Tinylicious Process"
+        },
+        {
+            "name": "Localhost Test Servers",
+            "configurations": [
+                "For Localhost SvelteKit Server",
+                "For Localhost Debug Server",
+                "For Localhost Launch Tinylicious"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Kill Tinylicious Process"
+        },
+        {
+            "name": "Localhost Test Servers with Firebase Functions",
+            "configurations": [
+                "For Localhost SvelteKit Server",
+                "For Localhost Debug Server",
+                "For Localhost Launch Tinylicious",
+                "For Localhost Debug Firebase Functions"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "Kill Tinylicious Process"
+        },
+        {
+            "name": "Debug Firebase Functions Only",
+            "configurations": ["Debug Firebase Functions"],
+            "stopAll": true,
+            "preLaunchTask": "Start Firebase Functions Emulator"
+        }
+    ]
 }
