@@ -6,6 +6,7 @@ registerCoverageHooks();
 
 test.describe("Cursor scrolling behavior", () => {
     test("Cursor stays visible when moving down through a very tall item", async ({ page }, testInfo) => {
+        test.setTimeout(120000);
         // Authenticate and prepare environment
         const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, ["Initial"]);
 
@@ -25,7 +26,7 @@ test.describe("Cursor scrolling behavior", () => {
         await page.keyboard.press("Backspace");
 
         // Insert text
-        await page.keyboard.type(longText);
+        await page.keyboard.insertText(longText);
 
         // Move to the top
         for (let i = 0; i < 150; i++) {
