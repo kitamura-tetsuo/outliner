@@ -117,7 +117,7 @@ ensure_python_env() {
   # shellcheck disable=SC1090
   source "${ROOT_DIR}/.venv/bin/activate"
   if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
-    pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
+    python3 -m pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
   fi
 }
 
@@ -188,7 +188,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   ensure_python_env
 
   # Install pre-commit via pip
-  if pip install --no-cache-dir pre-commit; then
+  if python3 -m pip install --no-cache-dir pre-commit; then
     if [ -d "${ROOT_DIR}/.git" ]; then
       pre-commit install --hook-type pre-commit || echo "Warning: Failed to install pre-commit hook"
     else
@@ -248,6 +248,11 @@ else
   if ! command -v lsof >/dev/null 2>&1; then
     echo "lsof missing; installing OS utilities..."
     install_os_utilities
+  fi
+  if ! python3 -m pip --version >/dev/null 2>&1; then
+    echo "pip missing; ensuring python3-pip is installed..."
+    retry_apt_get update
+    retry_apt_get -y install python3-pip
   fi
   if [ ! -d "${ROOT_DIR}/client/node_modules" ] || [ ! -d "${ROOT_DIR}/scripts/tests/node_modules" ]; then
     install_all_dependencies
