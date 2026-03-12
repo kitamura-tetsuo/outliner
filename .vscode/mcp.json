@@ -3,7 +3,7 @@
         {
             "type": "promptString",
             "id": "example-key",
-            "description": "Values to enter if necessary (as an example here)",
+            "description": "必要に応じて入力する値（ここでは例として）",
             "password": false
         }
     ],

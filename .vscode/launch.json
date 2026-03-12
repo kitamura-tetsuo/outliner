@@ -25,8 +25,8 @@
             ],
             "port": 9222,
             "justMyCode": false,
-            "console": "internalConsole", // Output to Debug Console
-            "trace": true // For investigation when things cannot be caught
+            "console": "internalConsole", // ← Output to Debug Console
+            "trace": true // For investigation when breakpoints are not hit
         },
         {
             "type": "chrome",
@@ -53,8 +53,8 @@
             ],
             "port": 9876,
             "justMyCode": false,
-            "console": "internalConsole", // Output to Debug Console
-            "trace": true // For investigation when things cannot be caught
+            "console": "internalConsole", // ← Output to Debug Console
+            "trace": true // For investigation when breakpoints are not hit
         },
         {
             "type": "chrome",
@@ -81,8 +81,8 @@
             ],
             "port": 9876,
             "justMyCode": false,
-            "console": "internalConsole", // Output to Debug Console
-            "trace": true // For investigation when things cannot be caught
+            "console": "internalConsole", // ← Output to Debug Console
+            "trace": true // For investigation when breakpoints are not hit
         },
         {
             "type": "chrome",
@@ -160,7 +160,9 @@
                 "PORT": "7070"
             },
             "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "restart": true
         },
         {
@@ -182,7 +184,9 @@
                 "VITE_AUTH_EMULATOR_PORT": "59099"
             },
             "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "restart": true
         },
         {
@@ -199,7 +203,9 @@
                 "PORT": "7071"
             },
             "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "restart": true
         },
         {
@@ -217,7 +223,9 @@
                 "NODE_ENV": "production"
             },
             "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "restart": true
         },
         {
@@ -234,7 +242,9 @@
                 "PORT": "7081"
             },
             "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "restart": true
         },
         {
@@ -243,7 +253,9 @@
             "request": "launch",
             "cwd": "${workspaceFolder}/client",
             "runtimeExecutable": "npx",
-            "runtimeArgs": ["tinylicious"],
+            "runtimeArgs": [
+                "tinylicious"
+            ],
             "env": {
                 "PORT": "7072"
             },
@@ -264,7 +276,9 @@
                 "PORT": "7080"
             },
             "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "restart": true
         },
         {
@@ -273,7 +287,9 @@
             "request": "launch",
             "cwd": "${workspaceFolder}/client",
             "runtimeExecutable": "npx",
-            "runtimeArgs": ["tinylicious"],
+            "runtimeArgs": [
+                "tinylicious"
+            ],
             "env": {
                 "PORT": "7082"
             },
@@ -286,7 +302,10 @@
             "request": "launch",
             "cwd": "${workspaceFolder}/client",
             "runtimeExecutable": "npm",
-            "runtimeArgs": ["run", "test:e2e:ui"],
+            "runtimeArgs": [
+                "run",
+                "test:e2e:ui"
+            ],
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
         },
@@ -304,7 +323,9 @@
                 "PORT": "7090"
             },
             "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "restart": true,
             "experimentalNetworking": "off"
         },
@@ -322,7 +343,9 @@
                 "PORT": "7091"
             },
             "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "restart": true,
             "experimentalNetworking": "off"
         },
@@ -332,7 +355,9 @@
             "request": "launch",
             "cwd": "${workspaceFolder}/client",
             "runtimeExecutable": "npx",
-            "runtimeArgs": ["tinylicious"],
+            "runtimeArgs": [
+                "tinylicious"
+            ],
             "env": {
                 "PORT": "7092"
             },
@@ -361,9 +386,13 @@
             "name": "Debug Firebase Functions",
             "port": 9229,
             "restart": true,
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "postDebugTask": "Kill Firebase Emulator",
-            "outFiles": ["${workspaceFolder}/functions/**/*.js"]
+            "outFiles": [
+                "${workspaceFolder}/functions/**/*.js"
+            ]
         },
         {
             "type": "chrome",
@@ -418,7 +447,9 @@
             "request": "launch",
             "name": "Debug Firestore Sequential",
             "program": "${workspaceFolder}/server/firestore-sequential.js",
-            "skipFiles": ["<node_internals>/**"]
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
         }
     ],
     "compounds": [
@@ -481,7 +512,9 @@
         },
         {
             "name": "Debug Firebase Functions Only",
-            "configurations": ["Debug Firebase Functions"],
+            "configurations": [
+                "Debug Firebase Functions"
+            ],
             "stopAll": true,
             "preLaunchTask": "Start Firebase Functions Emulator"
         }
