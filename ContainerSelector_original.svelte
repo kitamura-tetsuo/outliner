@@ -161,17 +161,17 @@ async function handleContainerChange() {
             c => c.id === selectedContainerId,
         );
         if (!selectedContainer) {
-            throw new Error("選択されたコンテナが見つかりません");
+            throw new Error("Selected container not found");
         }
 
-        // 選択したコンテナIDとコンテナ名をイベントとして発行
+        // Emit the selected container ID and container name as an event
         onContainerSelected(selectedContainerId, selectedContainer.name);
     }
     catch (err) {
-        logger.error("コンテナ選択エラー:", err);
+        logger.error("Container selection error:", err);
         error = err instanceof Error
             ? err.message
-            : "コンテナの選択中にエラーが発生しました";
+            : "An error occurred while selecting the container";
     }
     finally {
         isLoading = false;
@@ -191,10 +191,10 @@ async function reloadCurrentContainer() {
         yjsStore.yjsClient = client as YjsClient;
     }
     catch (err) {
-        logger.error("コンテナ再ロードエラー:", err);
+        logger.error("Container reload error:", err);
         error = err instanceof Error
             ? err.message
-            : "コンテナの再ロード中にエラーが発生しました";
+            : "An error occurred while reloading the container";
     }
     finally {
         isLoading = false;
@@ -204,9 +204,9 @@ async function reloadCurrentContainer() {
 
 <div class="container-selector">
     <div class="selector-header">
-        <h3 class="selector-title">アウトライナー選択</h3>
+        <h3 class="selector-title">Outliner Selection</h3>
         {#if isLoading}
-            <span class="loading-indicator">読み込み中...</span>
+            <span class="loading-indicator">Loading...</span>
         {/if}
     </div>
 
@@ -227,13 +227,13 @@ async function reloadCurrentContainer() {
                 class="container-select"
             >
                 {#if containers.length === 0}
-                    <option value="">利用可能なコンテナがありません</option>
+                    <option value="">No containers available</option>
                 {:else}
                     {#each containers as container (container.id)}
                         <option value={container.id}>
                             {container.name}
-                            {container.isDefault ? "(デフォルト)" : ""}
-                            {container.id === currentContainerId ? "(現在表示中)" : ""}
+                            {container.isDefault ? "(Default)" : ""}
+                            {container.id === currentContainerId ? "(Currently showing)" : ""}
                         </option>
                     {/each}
                 {/if}
@@ -246,10 +246,10 @@ async function reloadCurrentContainer() {
                 disabled={isLoading || !currentContainerId}
                 class="reload-button"
             >
-                現在のコンテナを再読み込み
+                Reload Current Container
             </button>
 
-            <a href={resolveRoute("/containers")} class="new-container-link"> 新規作成 </a>
+            <a href={resolveRoute("/containers")} class="new-container-link"> Create New </a>
         </div>
     </div>
 </div>
