@@ -27,13 +27,13 @@ onMount(() => {
     if (typeof document !== 'undefined' && typeof HTMLCanvasElement !== 'undefined') {
         try {
             measureCanvas = document.createElement("canvas");
-            // テスト環境ではgetContextが実装されていない場合があるため、try-catchで対応
+            // Use try-catch because getContext may not be implemented in test environments
             measureCtx = measureCanvas.getContext("2d");
             if (!measureCtx) {
                 console.warn('GlobalTextArea: Canvas 2D context not available, text measurement may be affected');
             }
         } catch (error) {
-            // テスト環境や特定のブラウザではCanvas APIが利用できない場合がある
+            // Canvas API may not be available in test environments or specific browsers
             console.warn('GlobalTextArea: Canvas API not available, text measurement may be affected:', error);
             measureCtx = null;
         }
@@ -42,21 +42,21 @@ onMount(() => {
     }
 
     store.setTextareaRef(textareaRef);
-    // generalStore にも参照を保持（コマンドパレットのフォールバックで利用）
+    // Keep a reference in generalStore as well (used for command palette fallback)
     try { (generalStore as any).textareaRef = textareaRef; } catch {}
     console.log("GlobalTextArea: Textarea reference set in store");
 
-    // KeyEventHandler をグローバルに公開（テスト用）
+    // Expose KeyEventHandler globally (for testing)
     if (typeof window !== "undefined") {
         (window as any).KeyEventHandler = KeyEventHandler;
     }
 
-    // 初期フォーカスを設定
+    // Set initial focus
     if (textareaRef) {
         textareaRef.focus();
         console.log("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
 
-        // フォーカス確保のための追加試行
+        // Additional attempts to secure focus
         requestAnimationFrame(() => {
             if (textareaRef) {
                 textareaRef.focus();
@@ -73,14 +73,14 @@ onMount(() => {
         });
     }
 
-    // テスト用にKeyEventHandlerをグローバルに公開
+    // Expose KeyEventHandler globally for testing
     if (typeof window !== "undefined") {
         (window as any).__KEY_EVENT_HANDLER__ = KeyEventHandler;
         (window as any).Items = Items;
         (window as any).generalStore = generalStore;
     }
 
-    // エイリアスピッカー可視時のキーを常にピッカーへフォワード（フォーカスに依存しない）
+    // Always forward keys to alias picker when visible (independent of focus)
     try {
         const forward = (ev: KeyboardEvent) => {
             if (!aliasPickerStore.isVisible) return;
@@ -88,7 +88,7 @@ onMount(() => {
             if (k !== "ArrowDown" && k !== "ArrowUp" && k !== "Enter" && k !== "Escape") return;
             const picker = document.querySelector(".alias-picker") as HTMLElement | null;
             if (!picker) return;
-            // すでにエイリアスピッカー配下で発生したイベントは二重転送しない
+            // Do not double-forward events that already occurred under alias picker
             const t = ev.target as Node | null;
             if (t && picker.contains(t)) return;
             try { console.log("GlobalTextArea: forward key to alias-picker:", k); } catch {}
@@ -97,7 +97,7 @@ onMount(() => {
             ev.preventDefault();
         };
         window.addEventListener("keydown", forward, { capture: true });
-        // onDestroyで解除
+        // Unregister in onDestroy
         (window as any).__ALIAS_FWD__ = forward;
     } catch {}
 
