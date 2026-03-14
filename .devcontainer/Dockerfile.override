@@ -43,7 +43,7 @@ RUN git config --global pull.ff only
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-RUN pipx ensurepath   # 必要に応じてシェルを再起動/再ログイン
+RUN pipx ensurepath   # Restart shell/re-login if necessary
 # RUN pipx install git+https://github.com/kitamura-tetsuo/auto-coder.git
 
 RUN pipx install git+https://github.com/kitamura-tetsuo/github-sub-issue.git
