@@ -28,7 +28,7 @@ vite.config.ts.timestamp-*
 # Paraglide
 src/lib/paraglide
 
-# Tinylicious のデータファイル
+# Tinylicious data files
 tinylicious
 
 playwright-report
