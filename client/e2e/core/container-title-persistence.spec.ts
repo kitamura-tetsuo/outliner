@@ -75,6 +75,7 @@ test.describe("Container Title Persistence Tests", () => {
         // Set the container title in metaDoc (calling setContainerTitleInMetaDoc)
         await page.evaluate((projectName) => {
             // Call the metaDoc module function to set the title
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Custom Container Title");
@@ -83,6 +84,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify the title was set in metaDoc
         const storedTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -154,6 +156,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Set a custom title in metaDoc
         await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Reload Persistence Test Title");
@@ -162,6 +165,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify the set title can be retrieved
         let storedTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -177,6 +181,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify the title is retained after reloading
         storedTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -205,6 +210,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Retrieve the title from metaDoc (verify it's empty)
         const metaDocTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -251,6 +257,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Set the initial title
         await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Initial Title");
@@ -259,6 +266,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify the initial title was set
         let storedTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -269,6 +277,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Update the title
         await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Updated Title");
@@ -277,6 +286,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify the updated title is reflected
         storedTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -307,6 +317,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Set title for Container 1
         await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Container 1 Title");
@@ -315,6 +326,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify Container 1 title was set
         let storedTitle1 = await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -337,6 +349,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Set title for Container 2
         await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Container 2 Title");
@@ -345,6 +358,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify Container 2 title was set
         const storedTitle2 = await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -355,6 +369,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify Container 1 title was not affected
         storedTitle1 = await page.evaluate((projectName) => {
+            // eslint-disable-next-line no-restricted-globals
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
