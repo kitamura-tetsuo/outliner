@@ -3,85 +3,85 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /**
  * @file container-title-persistence.spec.ts
- * @description コンテナタイトルの永続化とホーム.dropdown表示のE2Eテスト
- * コンテナタイトルがmetaDocに永続化され、ページ再読み込み後もホーム.dropdownに表示されることを確認
+ * @description E2E test for container title persistence and home.dropdown display
+ * Verifies that container titles are persisted in metaDoc and displayed in home.dropdown even after page reloads
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @feature CNT-0001
- *  Title   : コンテナタイトルの永続化とホーム.dropdown表示
+ *  Title   : Container Title Persistence and Home.dropdown Display
  *  Source  : docs/client-features.yaml
  */
-test.describe("コンテナタイトルの永続化テスト", () => {
+test.describe("Container Title Persistence Tests", () => {
     /**
-     * @testcase コンテナ作成後にホーム.dropdownに表示される
-     * @description 新しいコンテナを作成し、作成直後にホーム.dropdownにコンテナ名が表示されることを確認
+     * @testcase Display in home.dropdown after container creation
+     * @description Creates a new container and verifies its name appears in home.dropdown immediately
      */
-    test("コンテナ作成後にホーム.dropdownに表示される", async ({ page }, testInfo) => {
+    test("Container appears in home.dropdown after creation", async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // プロジェクトとページを作成（コンテナが作成される）
+        // Create a project and a page (which creates a container)
         const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
-        // プロジェクトページに移動
+        // Navigate to the project page
         await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // プロジェクト名を取得（これはcontainer titleとして使用される）
+        // Get the project name (used as the container title)
         const projectTitle = projectName;
 
-        // ホームに遷移
+        // Navigate to home
         await page.goto("/", { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // ホーム.dropdownまたはコンテナ一覧が表示されるまで待機
+        // Wait for home.dropdown or container list to appear
         await page.waitForSelector('[data-testid="container-dropdown"], .container-list, .home-dropdown', {
             timeout: 10000,
         });
 
-        // 作成したコンテナがホーム.dropdownに表示されていることを確認
+        // Verify the created container appears in home.dropdown
         const containerElement = page.locator('[data-testid="container-dropdown"], .container-list, .home-dropdown');
         await expect(containerElement).toContainText(projectTitle);
 
-        // コンテナIDでも確認（フォールバック機能）
-        // フォールバック: プロジェクト名による検索でコンテナが見つからない場合はコンテナの存在を確認
+        // Verify by container ID (fallback functionality)
+        // Fallback: Check for container existence if the name search fails
         if (await containerElement.count() > 0) {
-            // コンテナが表示されていることを確認（具体的なテキストは環境によって異なる可能性あり）
+            // Verify that the container is displayed (actual text might vary by environment)
             const hasContent = await containerElement.evaluate((el) => el.textContent?.trim().length > 0);
             expect(hasContent).toBe(true);
         }
     });
 
     /**
-     * @testcase コンテナタイトルがmetaDocに永続化される
-     * @description コンテナにタイトルを設定し、そのタイトルがmetaDocに永続化されることを確認
+     * @testcase Container title is persisted in metaDoc
+     * @description Sets a container title and verifies it is persisted to metaDoc
      */
-    test("コンテナタイトルがmetaDocに永続化される", async ({ page }, testInfo) => {
+    test("Container title is persisted in metaDoc", async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // プロジェクトとページを作成
+        // Create a project and a page
         const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
-        // プロジェクトページに移動
+        // Navigate to the project page
         await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // metaDocにコンテナタイトルを設定（setContainerTitleInMetaDocを呼び出し）
+        // Set the container title in metaDoc (calling setContainerTitleInMetaDoc)
         await page.evaluate((projectName) => {
-            // metaDocモジュールの関数を呼び出してタイトルを設定
+            // Call the metaDoc module function to set the title
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "カスタムコンテナタイトル");
+                metaDocModule.setContainerTitleInMetaDoc(projectName, "Custom Container Title");
             }
         }, projectName);
 
-        // metaDocにタイトルが設定されたことを確認
+        // Verify the title was set in metaDoc
         const storedTitle = await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
@@ -90,46 +90,46 @@ test.describe("コンテナタイトルの永続化テスト", () => {
             return null;
         }, projectName);
 
-        expect(storedTitle).toBe("カスタムコンテナタイトル");
+        expect(storedTitle).toBe("Custom Container Title");
     });
 
     /**
-     * @testcase ページ再読み込み後もコンテナがホーム.dropdownに表示される
-     * @description コンテナを作成して 홈に移動し、ページを再読み込み後もコンテナが 여전히表示されることを確認
+     * @testcase Container appears in home.dropdown after page reload
+     * @description Creates a container, navigates home, and verifies it's still displayed after reloading
      */
-    test("ページ再読み込み後もコンテナがホーム.dropdownに表示される", async ({ page }, testInfo) => {
+    test("Container appears in home.dropdown after page reload", async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // プロジェクトとページを作成
+        // Create a project and a page
         const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
-        // プロジェクトページに移動
+        // Navigate to the project page
         await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // ホームに遷移
+        // Navigate to home
         await page.goto("/", { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // ホーム.dropdownが表示されるまで待機
+        // Wait for home.dropdown to appear
         await page.waitForSelector('[data-testid="container-dropdown"], .container-list, .home-dropdown', {
             timeout: 10000,
         });
 
-        // 再読み込み前にコンテナの表示状態を確認
+        // Check container display state before reloading
         const containerBeforeReload = page.locator(
             '[data-testid="container-dropdown"], .container-list, .home-dropdown',
         );
         const hasContainerBefore = (await containerBeforeReload.count()) > 0;
         expect(hasContainerBefore).toBe(true);
 
-        // ページを再読み込み
+        // Reload the page
         await page.reload({ waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // 再読み込み後もコンテナが表示されることを確認
+        // Verify the container is displayed after reloading
         const containerAfterReload = page.locator(
             '[data-testid="container-dropdown"], .container-list, .home-dropdown',
         );
@@ -137,30 +137,30 @@ test.describe("コンテナタイトルの永続化テスト", () => {
     });
 
     /**
-     * @testcase コンテナタイトルが再読み込み後も保持される
-     * @description コンテナにタイトルを設定し、ページを再読み込み後もタイトルが保持されることを確認
+     * @testcase Container title is retained after page reload
+     * @description Sets a container title and verifies it is retained even after reloading the page
      */
-    test("コンテナタイトルが再読み込み後も保持される", async ({ page }, testInfo) => {
+    test("Container title is retained after page reload", async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // プロジェクトとページを作成
+        // Create a project and a page
         const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
-        // プロジェクトページに移動
+        // Navigate to the project page
         await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // metaDocにカスタムタイトルを設定
+        // Set a custom title in metaDoc
         await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "再読み込み保持テストタイトル");
+                metaDocModule.setContainerTitleInMetaDoc(projectName, "Reload Persistence Test Title");
             }
         }, projectName);
 
-        // 設定したタイトルが取得できることを確認
+        // Verify the set title can be retrieved
         let storedTitle = await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
@@ -169,13 +169,13 @@ test.describe("コンテナタイトルの永続化テスト", () => {
             return null;
         }, projectName);
 
-        expect(storedTitle).toBe("再読み込み保持テストタイトル");
+        expect(storedTitle).toBe("Reload Persistence Test Title");
 
-        // ページを再読み込み
+        // Reload the page
         await page.reload({ waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(3000); // IndexedDBの読み込みを待つ
+        await page.waitForTimeout(3000); // Wait for IndexedDB to load
 
-        // 再読み込み後もタイトルが保持されていることを確認
+        // Verify the title is retained after reloading
         storedTitle = await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
@@ -184,26 +184,26 @@ test.describe("コンテナタイトルの永続化テスト", () => {
             return null;
         }, projectName);
 
-        expect(storedTitle).toBe("再読み込み保持テストタイトル");
+        expect(storedTitle).toBe("Reload Persistence Test Title");
     });
 
     /**
-     * @testcase タイトルが利用できない場合、コンテナIDが表示される（フォールバック）
-     * @description タイトルが設定されていないコンテナについて、コンテナのIDが代わりに表示されることを確認
+     * @testcase Container ID is displayed when title is unavailable (fallback)
+     * @description Verifies that the container's ID is displayed if no title is set
      */
-    test("タイトルが利用できない場合、コンテナIDが表示される（フォールバック）", async ({ page }, testInfo) => {
+    test("Container ID is displayed when title is unavailable (fallback)", async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // プロジェクトとページを作成（タイトルは設定しない）
+        // Create a project and a page (do not set a title)
         const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
-        // プロジェクトページに移動
+        // Navigate to the project page
         await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // metaDocからタイトルを取得（空であることを確認）
+        // Retrieve the title from metaDoc (verify it's empty)
         const metaDocTitle = await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
@@ -212,52 +212,52 @@ test.describe("コンテナタイトルの永続化テスト", () => {
             return "";
         }, projectName);
 
-        // タイトルが空であることを確認
+        // Verify the title is empty
         expect(metaDocTitle).toBe("");
 
-        // ホームに遷移
+        // Navigate to home
         await page.goto("/", { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // ホーム.dropdownが表示されるまで待機
+        // Wait for home.dropdown to appear
         await page.waitForSelector('[data-testid="container-dropdown"], .container-list, .home-dropdown', {
             timeout: 10000,
         });
 
-        // コンテナID（プロジェクト名）が代わりに表示されていることを確認
+        // Verify the container ID (project name) is displayed instead
         const containerElement = page.locator('[data-testid="container-dropdown"], .container-list, .home-dropdown');
 
-        // フォールバック動作：プロジェクト名（コンテナID）が表示されている
-        // 環境によってフォールバック実装が異なる可能性があるため、
-        // コンテナが存在することを確認（具体的な表示内容は環境依存）
+        // Fallback behavior: Project name (container ID) is displayed
+        // Fallback implementations may differ by environment,
+        // so verify the container exists (actual content depends on the environment)
         await expect(containerElement).toBeVisible();
     });
 
     /**
-     * @testcase metaDocでタイトルを更新するとホーム.dropdownのラベルが変更される
-     * @description metaDocでコンテナタイトルを更新した場合、ホーム.dropdownのラベルも更新されることを確認
+     * @testcase Updating title in metaDoc changes the home.dropdown label
+     * @description Verifies that updating the container title in metaDoc also updates the home.dropdown label
      */
-    test("metaDocでタイトルを更新するとホーム.dropdownのラベルが変更される", async ({ page }, testInfo) => {
+    test("Updating title in metaDoc changes the home.dropdown label", async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // プロジェクトとページを作成
+        // Create a project and a page
         const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
-        // プロジェクトページに移動
+        // Navigate to the project page
         await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // 初期タイトルを設定
+        // Set the initial title
         await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "初期タイトル");
+                metaDocModule.setContainerTitleInMetaDoc(projectName, "Initial Title");
             }
         }, projectName);
 
-        // 初期タイトルが設定されたことを確認
+        // Verify the initial title was set
         let storedTitle = await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
@@ -265,17 +265,17 @@ test.describe("コンテナタイトルの永続化テスト", () => {
             }
             return null;
         }, projectName);
-        expect(storedTitle).toBe("初期タイトル");
+        expect(storedTitle).toBe("Initial Title");
 
-        // タイトルを更新
+        // Update the title
         await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "更新されたタイトル");
+                metaDocModule.setContainerTitleInMetaDoc(projectName, "Updated Title");
             }
         }, projectName);
 
-        // 更新されたタイトルが反映されていることを確認
+        // Verify the updated title is reflected
         storedTitle = await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
@@ -283,17 +283,17 @@ test.describe("コンテナタイトルの永続化テスト", () => {
             }
             return null;
         }, projectName);
-        expect(storedTitle).toBe("更新されたタイトル");
+        expect(storedTitle).toBe("Updated Title");
     });
 
     /**
-     * @testcase 複数のコンテナでタイトル永続化が独立して動作する
-     * @description 複数のコンテナを作成し、それぞれ独立的タイトルが永続化されることを確認
+     * @testcase Title persistence works independently across multiple containers
+     * @description Creates multiple containers and verifies that each persists its title independently
      */
-    test("複数のコンテナでタイトル永続化が独立して動作する", async ({ page }, testInfo) => {
+    test("Title persistence works independently across multiple containers", async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // プロジェクトとページを作成（Container 1）
+        // Create a project and a page (Container 1)
         const { projectName: projectName1, pageName: pageName1 } = await TestHelpers.prepareTestEnvironment(
             page,
             testInfo,
@@ -301,19 +301,19 @@ test.describe("コンテナタイトルの永続化テスト", () => {
         const encodedProject1 = encodeURIComponent(projectName1);
         const encodedPage1 = encodeURIComponent(pageName1);
 
-        // プロジェクトページ1に移動
+        // Navigate to project page 1
         await page.goto(`/${encodedProject1}/${encodedPage1}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // Container 1にタイトルを設定
+        // Set title for Container 1
         await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "コンテナ1のタイトル");
+                metaDocModule.setContainerTitleInMetaDoc(projectName, "Container 1 Title");
             }
         }, projectName1);
 
-        // Container 1のタイトルが設定されたことを確認
+        // Verify Container 1 title was set
         let storedTitle1 = await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
@@ -321,9 +321,9 @@ test.describe("コンテナタイトルの永続化テスト", () => {
             }
             return null;
         }, projectName1);
-        expect(storedTitle1).toBe("コンテナ1のタイトル");
+        expect(storedTitle1).toBe("Container 1 Title");
 
-        // Container 2を作成
+        // Create Container 2
         const projectName2 = `TestProject2-${Date.now()}`;
         const pageName2 = `page-${Date.now()}`;
         await TestHelpers.createTestProjectAndPageViaAPI(page, projectName2, pageName2);
@@ -331,19 +331,19 @@ test.describe("コンテナタイトルの永続化テスト", () => {
         const encodedProject2 = encodeURIComponent(projectName2);
         const encodedPage2 = encodeURIComponent(pageName2);
 
-        // プロジェクトページ2に移動
+        // Navigate to project page 2
         await page.goto(`/${encodedProject2}/${encodedPage2}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // Container 2にタイトルを設定
+        // Set title for Container 2
         await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "コンテナ2のタイトル");
+                metaDocModule.setContainerTitleInMetaDoc(projectName, "Container 2 Title");
             }
         }, projectName2);
 
-        // Container 2のタイトルが設定されたことを確認
+        // Verify Container 2 title was set
         const storedTitle2 = await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
@@ -351,9 +351,9 @@ test.describe("コンテナタイトルの永続化テスト", () => {
             }
             return null;
         }, projectName2);
-        expect(storedTitle2).toBe("コンテナ2のタイトル");
+        expect(storedTitle2).toBe("Container 2 Title");
 
-        // Container 1のタイトルが影響を受けていないことを確認
+        // Verify Container 1 title was not affected
         storedTitle1 = await page.evaluate((projectName) => {
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
@@ -361,6 +361,6 @@ test.describe("コンテナタイトルの永続化テスト", () => {
             }
             return null;
         }, projectName1);
-        expect(storedTitle1).toBe("コンテナ1のタイトル");
+        expect(storedTitle1).toBe("Container 1 Title");
     });
 });
