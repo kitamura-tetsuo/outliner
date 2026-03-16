@@ -18,7 +18,7 @@
     "typescript.validate.all": true,
     "typescript.referencesCodeLens.enabled": true,
     "typescript.validate.experimental.enable": false,
-    // settings.json（ユーザーでも devcontainer の "settings" でも可）
+    // settings.json (can be user or devcontainer "settings")
     "debug.javascript.autoAttachFilter": "disabled",
     "terminal.integrated.shellIntegration.enabled": true
 }
