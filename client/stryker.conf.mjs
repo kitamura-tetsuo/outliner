@@ -10,6 +10,9 @@ export default {
     reporters: ["progress", "clear-text", "html", "json"],
     coverageAnalysis: "perTest",
     checkers: ["typescript"],
+    vitest: {
+        configFile: "vite.config.ts",
+    },
     tsconfigFile: "tsconfig.json",
     tempDirName: "node_modules/.cache/stryker",
     incremental: true,

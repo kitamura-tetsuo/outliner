@@ -1193,38 +1193,44 @@ export class Cursor implements CursorEditingContext {
     }
 
     moveItemUp() {
-        if (generalStore.project) {
-            yjsService.moveItemUp(generalStore.project, this.itemId);
+        const project = generalStore.project;
+        if (project) {
+            yjsService.moveItemUp(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
         }
     }
 
     moveItemDown() {
-        if (generalStore.project) {
-            yjsService.moveItemDown(generalStore.project, this.itemId);
+        const project = generalStore.project;
+        if (project) {
+            yjsService.moveItemDown(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
         }
     }
 
     moveSubtreeUp() {
-        if (generalStore.project) {
-            yjsService.moveSubtreeUp(generalStore.project, this.itemId);
+        const project = generalStore.project;
+        if (project) {
+            yjsService.moveSubtreeUp(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
         }
     }
 
     moveSubtreeDown() {
-        if (generalStore.project) {
-            yjsService.moveSubtreeDown(generalStore.project, this.itemId);
+        const project = generalStore.project;
+        if (project) {
+            yjsService.moveSubtreeDown(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
         }
     }
 
     indent() {
-        if (generalStore.project) {
-            yjsService.indentItem(generalStore.project, this.itemId);
+        const project = generalStore.project;
+        if (project) {
+            yjsService.indentItem(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
         }
     }
 
     outdent() {
-        if (generalStore.project) {
-            yjsService.outdentItem(generalStore.project, this.itemId);
+        const project = generalStore.project;
+        if (project) {
+            yjsService.outdentItem(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
         }
     }
 
