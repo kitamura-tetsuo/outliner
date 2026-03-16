@@ -542,6 +542,20 @@ export class Project {
         return wrapArrayLike(new Items(this.ydoc, this.tree, "root"));
     }
 
+    /**
+     * Find a page by ID
+     */
+    findPage(pageId: string): Item | undefined {
+        const len = this.items.length;
+        for (let i = 0; i < len; i++) {
+            const item = this.items.at(i);
+            if (item && item.id === pageId) {
+                return item;
+            }
+        }
+        return undefined;
+    }
+
     // Add page (top-level item) and set title in text
     addPage(title: string, author: string) {
         const page = (this.items as Items).addNode(author);

@@ -226,7 +226,7 @@ export function runQuery(sql: string) {
     });
     const rows = res.values.map(v => {
         const obj: Record<string, unknown> = {};
-        res.columns.forEach((c, i) => {
+        res.columns.forEach((c: string, i: number) => {
             obj[c] = v[i];
         });
         return obj;
