@@ -258,16 +258,16 @@ onMount(() => {
         (window as any).__PALETTE_FWD__ = paletteTypeForwarder;
     } catch {}
 
-    // グローバル: フォーカス位置に関わらず KeyEventHandler を呼ぶバックアップ
+    // Global: Backup to call KeyEventHandler regardless of focus position
     try {
         const globalKeyForwarder = (ev: KeyboardEvent) => {
-            // 既に他で処理済みは尊重
+            // Respect if already handled elsewhere
             if (ev.defaultPrevented) return;
-            // IME/修飾キーは無視（ただし Alt+Shift+Arrow は矩形選択のため許可）
+            // Ignore IME/modifier keys (except Alt+Shift+Arrow which is allowed for box selection)
             const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
                 (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
             if (ev.isComposing || (!isBoxSelectionKey && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
-            // 常に KeyEventHandler へ委譲（内部で必要時のみ処理される）
+            // Always delegate to KeyEventHandler (handled internally only when necessary)
             KeyEventHandler.handleKeyDown(ev);
         };
         window.addEventListener("keydown", globalKeyForwarder);
@@ -290,9 +290,9 @@ onDestroy(() => {
 
 function updateCompositionWidth(text: string) {
     if (!textareaRef || !measureCtx) {
-        // フォールバック：measureCtxが利用できない場合は固定幅を設定
+        // Fallback: Set fixed width if measureCtx is unavailable
         if (textareaRef) {
-            textareaRef.style.width = `${(text.length * 10) + 4}px`; // テキスト長に応じた適当な幅
+            textareaRef.style.width = `${(text.length * 10) + 4}px`; // Appropriate width according to text length
         }
         return;
     }
@@ -311,7 +311,7 @@ function handleCompositionStart(event: CompositionEvent) {
     KeyEventHandler.handleCompositionStart(event);
 }
 
-// キーダウンイベントを KeyEventHandler へ委譲
+// Delegate keydown event to KeyEventHandler
 function handleKeyDown(event: KeyboardEvent) {
     console.log("GlobalTextArea.handleKeyDown called with key:", event.key);
     console.log("GlobalTextArea.handleKeyDown: event.target:", event.target);
@@ -338,7 +338,7 @@ function handleKeyDown(event: KeyboardEvent) {
     } catch {}
 }
 
-// 入力イベントを KeyEventHandler へ委譲
+// Delegate input event to KeyEventHandler
 function handleInput(event: Event) {
     console.log("GlobalTextArea.handleInput called with event:", event);
     console.log("GlobalTextArea.handleInput: event.target:", event.target);
@@ -349,7 +349,7 @@ function handleInput(event: Event) {
     KeyEventHandler.handleInput(event);
 }
 
-// CompositionEnd イベントを KeyEventHandler へ委譲
+// Delegate CompositionEnd event to KeyEventHandler
 function handleCompositionEnd(event: CompositionEvent) {
     KeyEventHandler.handleCompositionEnd(event);
     isComposing = false;
@@ -359,46 +359,46 @@ function handleCompositionEnd(event: CompositionEvent) {
     textareaRef.style.width = "1px";
 }
 
-// CompositionUpdate イベントを KeyEventHandler へ委譲
+// Delegate CompositionUpdate event to KeyEventHandler
 function handleCompositionUpdate(event: CompositionEvent) {
     updateCompositionWidth(event.data || "");
     KeyEventHandler.handleCompositionUpdate(event);
 }
 
-// コピーイベントを KeyEventHandler へ委譲
+// Delegate copy event to KeyEventHandler
 function handleCopy(event: ClipboardEvent) {
     KeyEventHandler.handleCopy(event);
 }
 
-// カットイベントを KeyEventHandler へ委譲
+// Delegate cut event to KeyEventHandler
 function handleCut(event: ClipboardEvent) {
     KeyEventHandler.handleCut(event);
 }
 
 /**
- * ペーストイベントを KeyEventHandler に委譲する非同期ハンドラ。
- * `KeyEventHandler.handlePaste` は Promise を返すため `await` して
- * 権限拒否や読み取り失敗を捕捉し、`clipboard-permission-denied`
- * または `clipboard-read-error` を dispatch してユーザーにはペーストされない。
+ * Async handler to delegate paste event to KeyEventHandler.
+ * Since `KeyEventHandler.handlePaste` returns a Promise, `await` it
+ * to catch permission denial or read failure, and dispatch `clipboard-permission-denied`
+ * or `clipboard-read-error` so the paste does not occur for the user.
  */
 async function handlePaste(event: ClipboardEvent) {
     await KeyEventHandler.handlePaste(event);
 }
 
-// フォーカス喪失時の処理を追加
+// Add processing for focus loss
 function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-eslint/no-unused-vars
     const activeItemId = store.getActiveItem();
-    // エイリアスピッカー表示中はフォーカス復元しない
+    // Do not restore focus while alias picker is visible
     if (aliasPickerStore.isVisible) {
         return;
     }
     if (activeItemId) {
-        // フォーカスを確実に設定するための複数の試行
+        // Multiple attempts to ensure focus is set
         setTimeout(() => {
             if (textareaRef && !aliasPickerStore.isVisible) {
                 textareaRef.focus();
 
-                // デバッグ情報
+                // Debug information
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                     console.log(
                         `GlobalTextArea: focus restored after blur. Active element is textarea: ${
