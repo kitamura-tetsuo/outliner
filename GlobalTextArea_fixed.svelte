@@ -101,11 +101,11 @@ onMount(() => {
         (window as any).__ALIAS_FWD__ = forward;
     } catch {}
 
-    // フォールバック: スラッシュ押下で常にパレットを表示（内部リンク直後はKeyEventHandler側で抑止）
+    // Fallback: Always show palette on slash key press (suppressed by KeyEventHandler immediately after an internal link)
     try {
         const slashListener = (ev: KeyboardEvent) => {
             if (ev.key !== "/") return;
-            // 既に表示中なら何もしない
+            // Do nothing if already visible
             if ((window as any).commandPaletteStore?.isVisible) return;
             try {
                 const pos = commandPaletteStore.getCursorScreenPosition();
@@ -116,7 +116,7 @@ onMount(() => {
         (window as any).__SLASH_FWD__ = slashListener;
     } catch {}
 
-    // 直近のキー入力を常に記録（/ch のような連続入力を検出するため）
+    // Always record recent keystrokes (to detect continuous inputs like /ch)
     try {
         const recordKeys = (ev: KeyboardEvent) => {
             if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
@@ -132,50 +132,50 @@ onMount(() => {
         window.addEventListener("keydown", recordKeys, { capture: true });
         (window as any).__KEYSTREAM_FWD__ = recordKeys;
     } catch {}
-    // フォールバック: テキストエリアにフォーカスがない場合でも入力を反映
+    // Fallback: Reflect input even when the textarea is not focused
     try {
         const typingFallback = (ev: KeyboardEvent) => {
             try { console.log("typingFallback fired:", ev.key, "active=", !!store.getActiveItem()); } catch {}
-            // IME 合成中や修飾キー付きは無視（ただし Alt+Shift+Arrow は矩形選択のため許可）
+            // Ignore during IME composition or with modifier keys (allow Alt+Shift+Arrow for box selection)
             const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
                 (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
             if (ev.isComposing || (!isBoxSelectionKey && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
-            // エイリアスピッカー/コマンドパレット表示中は既存のフォワーダーに任せる
+            // Delegate to existing forwarders while alias picker/command palette is visible
             if (aliasPickerStore.isVisible || (window as any).commandPaletteStore?.isVisible) return;
 
             const activeId = store.getActiveItem();
             const ta = textareaRef;
-            // 既にtextareaがフォーカスされているなら通常の処理に任せる
+            // Delegate to normal processing if textarea is already focused
             if (document.activeElement === ta) return;
             if (!activeId) return;
 
-            // 単一文字の入力
+            // Single character input
             const k = ev.key;
             if (k.length === 1) {
                 const cursors = store.getCursorInstances();
                 try { console.log("typingFallback chars:", k, "cursors=", cursors.length); } catch {}
                 if (cursors.length > 0 && ta) {
                     ev.preventDefault();
-                    // まず直接モデルを更新（信頼性重視）
+                    // Update model directly first (priority on reliability)
                     try { cursors.forEach(c => c.insertText(k)); } catch {}
 
-                    // 併せてテキストエリアに実入力として反映し、InputEventを発火（通常フロー維持）
+                    // Reflect actual input to the textarea and dispatch InputEvent (maintain normal flow)
                     const prev = ta.value ?? "";
                     const selStart = typeof ta.selectionStart === "number" ? ta.selectionStart : prev.length;
                     const selEnd = typeof ta.selectionEnd === "number" ? ta.selectionEnd : selStart;
                     ta.value = prev.slice(0, selStart) + k + prev.slice(selEnd);
-                    // キャレットを1文字進める
+                    // Advance caret by 1 character
                     try { ta.selectionStart = ta.selectionEnd = selStart + 1; } catch {}
                     const ie = new InputEvent("input", { data: k, inputType: "insertText", bubbles: true, cancelable: true, composed: true });
                     ta.dispatchEvent(ie);
-                    // フォーカス外でも確実にモデル更新させる
+                    // Ensure model is updated even when out of focus
                     try { KeyEventHandler.handleInput(ie as unknown as Event); } catch {}
                     store.startCursorBlink();
                 }
                 return;
             }
 
-            // Enter / Backspace / Delete の簡易フォールバック
+            // Simple fallback for Enter / Backspace / Delete
             const cursors = store.getCursorInstances();
             if (cursors.length === 0) return;
             if (k === "Enter") {
@@ -199,14 +199,14 @@ onMount(() => {
     } catch {}
 
 
-    // フォールバック: パレット表示中はグローバルkeydownから直接文字入力/移動/確定を転送
+    // Fallback: Forward character input/navigation/confirmation directly from global keydown when palette is visible
     try {
         const paletteTypeForwarder = (ev: KeyboardEvent) => {
             const cps: any = (window as any).commandPaletteStore ?? commandPaletteStore;
             if (!cps?.isVisible) return;
             const k = ev.key;
             if (!ev.ctrlKey && !ev.metaKey && !ev.altKey && k.length === 1 && k !== "/") {
-                // 軽量入力でUIだけを即時更新（モデルは変更しない）
+                // Instantly update UI only with lightweight input (do not modify model)
                 cps.inputLight(k);
                 ev.preventDefault();
                 return;
@@ -214,14 +214,14 @@ onMount(() => {
             if (k === "Backspace") { cps.backspaceLight(); ev.preventDefault(); return; }
             if (k === "Enter") {
                 try {
-                    // フィルタ結果が単一で Alias の場合は直接 insert してから閉じる（確実にピッカーを出す）
+                    // If the filter result is a single Alias, insert it directly and then close (ensuring picker is shown)
                     const list = cps.filtered ?? [];
                     const sel = list?.[cps.selectedIndex ?? 0];
                     const q = String(cps.query || (cps.deriveQueryFromDoc?.() || "")).toLowerCase();
                     const isAliasOnly = Array.isArray(list) && list.length === 1 && (list[0]?.type === "alias");
                     const looksAlias = q === "alias" || /^(?:al|ali|alia|alias)$/.test(q);
 
-                    // 直接 textarea の値からも厳密に検出
+                    // Strictly detect from textarea value directly
                     let textSaysAlias = false;
                     try {
                         const ta: HTMLTextAreaElement | null | undefined = (window as any).generalStore?.textareaRef;
@@ -238,7 +238,7 @@ onMount(() => {
                         ev.preventDefault();
                         return;
                     }
-                    // それ以外は通常の確定
+                    // Normal confirmation otherwise
                     if (sel) {
                         try { console.log("GlobalTextArea: palette Enter confirming sel=", sel?.type); } catch {}
                         cps.confirm();
@@ -246,7 +246,7 @@ onMount(() => {
                         return;
                     }
                 } catch {}
-                // フォールバック
+                // Fallback
                 cps.confirm();
                 ev.preventDefault();
                 return;
