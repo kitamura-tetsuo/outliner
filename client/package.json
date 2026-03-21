@@ -1,8 +1,8 @@
 {
     "dependencies": {
-        "@dotenvx/dotenvx": "^1.54.1",
+        "@dotenvx/dotenvx": "^1.55.1",
         "@hocuspocus/provider": "^3.4.4",
-        "@sentry/sveltekit": "^10.42.0",
+        "@sentry/sveltekit": "^10.44.0",
         "@sinclair/typebox": "^0.34.48",
         "diff-match-patch": "^1.0.5",
         "echarts": "^5.6.0",
@@ -17,11 +17,11 @@
         "y-indexeddb": "^9.0.12",
         "y-protocols": "^1.0.6",
         "y-websocket": "^3.0.0",
-        "yjs": "^13.6.29",
+        "yjs": "^13.6.30",
         "yjs-orderedtree": "^1.0.1-beta.3"
     },
     "devDependencies": {
-        "@dotenvx/dotenvx": "^1.54.1",
+        "@dotenvx/dotenvx": "^1.55.1",
         "@eslint/compat": "^2.0.3",
         "@eslint/js": "^9.31.0",
         "@fluidframework/test-client-utils": "^1.4.0",
@@ -32,7 +32,7 @@
         "@inlang/message-lint-rule-valid-js-identifier": "^1.0.8",
         "@inlang/message-lint-rule-without-source": "^1.4.8",
         "@inlang/paraglide-js": "2.14.0",
-        "@inlang/plugin-m-function-matcher": "^2.2.1",
+        "@inlang/plugin-m-function-matcher": "^2.2.2",
         "@inlang/plugin-message-format": "^4.3.0",
         "@modelcontextprotocol/sdk": "^1.27.1",
         "@playwright/mcp": "^0.0.68",
@@ -54,7 +54,7 @@
         "@testing-library/user-event": "^14.6.1",
         "@types/diff-match-patch": "^1.0.36",
         "@types/dotenv": "^8.2.3",
-        "@types/node": "^25.0.10",
+        "@types/node": "^25.5.0",
         "@types/uuid": "^11.0.0",
         "@types/ws": "^8.18.1",
         "@vitest/coverage-v8": "^4.0.18",
