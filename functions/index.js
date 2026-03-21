@@ -2034,7 +2034,8 @@ exports.uploadAttachment = onRequest(
       let type = null;
       try {
         const fileTypeModule = await import("file-type");
-        const fileTypeFromBuffer = fileTypeModule.fileTypeFromBuffer || fileTypeModule.default?.fileTypeFromBuffer;
+        const fileTypeFromBuffer = fileTypeModule.fileTypeFromBuffer ||
+          fileTypeModule.default?.fileTypeFromBuffer;
         if (fileTypeFromBuffer) {
           type = await fileTypeFromBuffer(buffer);
         }
@@ -2057,12 +2058,14 @@ exports.uploadAttachment = onRequest(
         // If it claims to be an image, the magic number MUST match an image type
         // If type is null because the dynamic import failed in the test env, fallback to magic number checks
         if (type === null && process.env.NODE_ENV === "test") {
-            if (buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
-                type = { mime: "image/png" };
-            }
-            else if (buffer.toString('utf-8').includes('<html')) {
-                type = { mime: "text/html" };
-            }
+          if (
+            buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50 &&
+            buffer[2] === 0x4E && buffer[3] === 0x47
+          ) {
+            type = { mime: "image/png" };
+          } else if (buffer.toString("utf-8").includes("<html")) {
+            type = { mime: "text/html" };
+          }
         }
 
         if (!type || !type.mime.startsWith("image/")) {
