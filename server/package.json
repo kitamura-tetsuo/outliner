@@ -1,6 +1,6 @@
 {
     "dependencies": {
-        "@dotenvx/dotenvx": "^1.54.1",
+        "@dotenvx/dotenvx": "^1.57.2",
         "@google-cloud/secret-manager": "^6.1.1",
         "@hocuspocus/extension-logger": "^3.4.4",
         "@hocuspocus/extension-sqlite": "^3.4.4",
