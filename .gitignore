@@ -118,3 +118,4 @@ server/db
 server/.env.production
 .codex-setup-installed
 .agents/rules/docker.md
+.pnpm-store
