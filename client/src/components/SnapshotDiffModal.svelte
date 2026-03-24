@@ -15,7 +15,7 @@ interface Props {
     currentContent: string;
     author: string;
 }
-let { project, page, currentContent, author }: Props = $props();
+let { project, page, currentContent = $bindable(), author }: Props = $props();
 
 let snapshots = $state<Snapshot[]>([]);
 let selectedId = $state("");
