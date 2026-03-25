@@ -1,72 +1,24 @@
+import { test, expect } from "vitest";
+import { render } from "@testing-library/svelte";
+import PageListItem from "./client/src/components/PageListItem.svelte";
 import { Project } from "./client/src/schema/app-schema.ts";
 
-const proj = Project.createInstance("Test");
-const page = proj.addPage("Page Title", "author");
-const i1 = page.items.addNode("author");
-i1.updateText("Line 1");
-const i2 = page.items.addNode("author");
-i2.updateText("Line 2");
+test('PageListItem renders content test with tick', async () => {
+    const project = Project.createInstance("Test Project");
+    const page = project.addPage("Test Page", "user");
 
-const pageItem = proj.items.at(0)!;
+    const child1 = page.items.addNode("user");
+    child1.text = "This is child 1";
 
-function extractPagePreview(pageItem: any, maxLines: number = 3, maxDepth: number = 3) {
-    const lines: string[] = [];
-    let image: string | null = null;
-    let nodeCount = 0;
-    const maxNodes = 50;
+    const child2 = page.items.addNode("user");
+    child2.text = "This is child 2";
 
-    function traverse(item: any, currentDepth: number) {
-        if (nodeCount >= maxNodes) return;
-        nodeCount++;
+    const { container } = render(PageListItem as any, { props: { page, isGridView: true, onSelect: () => {} } });
 
-        let text = "";
-        try {
-            text = item.text ? item.text.trim() : "";
-        } catch (e) {
-            console.warn("Failed to extract text", e);
-        }
+    // We need to wait for tick or just check innerHTML directly because it updates on mount
+    await new Promise(r => setTimeout(r, 100));
 
-        if (text && lines.length < maxLines && item.id !== pageItem.id) {
-            lines.push(text);
-        }
-
-        if (currentDepth >= maxDepth) return;
-
-        try {
-            if (item.items) {
-                let i = 0;
-                const children = item.items;
-                const len = children.length;
-                for (let k = 0; k < len; k++) {
-                    if (i++ > 10) break;
-                    const child = children.at(k);
-                    if (child) traverse(child, currentDepth + 1);
-                    if (lines.length >= maxLines && image) return;
-                    if (nodeCount >= maxNodes) return;
-                }
-            }
-        } catch (e) {
-            console.warn("Failed to iterate children", e);
-        }
-    }
-
-    try {
-        if (pageItem.items) {
-            let i = 0;
-            const rootChildren = pageItem.items;
-            const len = rootChildren.length;
-            for (let k = 0; k < len; k++) {
-                if (i++ > 20) break;
-                const child = rootChildren.at(k);
-                if (child) traverse(child, 1);
-                if (lines.length >= maxLines && image) break;
-            }
-        }
-    } catch (e) {
-        console.warn("Failed to iterate root children", e);
-    }
-
-    return { lines, image };
-}
-
-console.log(extractPagePreview(pageItem));
+    console.log(container.innerHTML);
+    expect(container.innerHTML).toContain("This is child 1");
+    expect(container.innerHTML).not.toContain("No content");
+});
