@@ -1,7 +1,7 @@
-const fs = require('fs');
+const fs = require("fs");
 
-const path = 'client/src/lib/cursor/CursorEditor.ts';
-let code = fs.readFileSync(path, 'utf8');
+const path = "client/src/lib/cursor/CursorEditor.ts";
+let code = fs.readFileSync(path, "utf8");
 
 // The original block to replace
 const original = `
