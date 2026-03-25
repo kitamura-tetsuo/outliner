@@ -1,6 +1,6 @@
 {
     "dependencies": {
-        "@dotenvx/dotenvx": "^1.54.1",
+        "@dotenvx/dotenvx": "^1.57.2",
         "@hocuspocus/provider": "^3.4.4",
         "@sentry/sveltekit": "^10.45.0",
         "@sinclair/typebox": "^0.34.48",
@@ -21,7 +21,7 @@
         "yjs-orderedtree": "^1.0.1-beta.3"
     },
     "devDependencies": {
-        "@dotenvx/dotenvx": "^1.54.1",
+        "@dotenvx/dotenvx": "^1.57.2",
         "@eslint/compat": "^2.0.3",
         "@eslint/js": "^9.31.0",
         "@fluidframework/test-client-utils": "^1.4.0",
@@ -67,10 +67,10 @@
         "eslint-plugin-svelte": "^3.15.2",
         "fake-indexeddb": "^6.2.5",
         "find-process": "^2.1.0",
-        "fs-extra": "^11.3.2",
+        "fs-extra": "^11.3.4",
         "globals": "^17.4.0",
         "jsdom": "^29.0.1",
-        "knip": "^5.86.0",
+        "knip": "^6.0.5",
         "mcp-playwright": "^0.0.1",
         "mdsvex": "^0.12.7",
         "monocart-coverage-reports": "^2.12.9",
