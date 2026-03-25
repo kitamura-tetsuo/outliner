@@ -11,4 +11,3 @@ child2.text = "This is child 2";
 
 console.log(page.items);
 console.log(Symbol.iterator in page.items);
-

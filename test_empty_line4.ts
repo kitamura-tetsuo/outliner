@@ -1,9 +1,9 @@
-import { test, expect } from "vitest";
 import { render } from "@testing-library/svelte";
+import { expect, test } from "vitest";
 import PageListItem from "./client/src/components/PageListItem.svelte";
 import { Project } from "./client/src/schema/app-schema.ts";
 
-test('PageListItem renders content', () => {
+test("PageListItem renders content", () => {
     const project = Project.createInstance("Test Project");
     const page = project.addPage("Test Page", "user");
 

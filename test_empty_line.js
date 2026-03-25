@@ -12,7 +12,6 @@ child2.text = "This is child 2";
 const len = page.items.length;
 console.log("Length:", len);
 
-for(let i=0; i<len; i++) {
-  console.log("item", i, "id:", page.items.at(i)?.id);
+for (let i = 0; i < len; i++) {
+    console.log("item", i, "id:", page.items.at(i)?.id);
 }
-

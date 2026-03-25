@@ -1,7 +1,9 @@
-const fs = require('fs');
-const content = fs.readFileSync('client/src/components/PageListItem.svelte', 'utf-8');
+const fs = require("fs");
+
+// Patch PageListItem.svelte (from PR branch)
+const content = fs.readFileSync("client/src/components/PageListItem.svelte", "utf-8");
 const newContent = content.replace(
-`        try {
+    `        try {
             if (item.items) {
                 let i = 0;
                 for (const child of item.items) {
@@ -28,7 +30,7 @@ const newContent = content.replace(
     } catch (e) {
         console.warn("Failed to iterate root children", e);
     }`,
-`        try {
+    `        try {
             if (item.items) {
                 const len = item.items.length;
                 for (let i = 0; i < len; i++) {
@@ -56,5 +58,33 @@ const newContent = content.replace(
         }
     } catch (e) {
         console.warn("Failed to iterate root children", e);
-    }`);
-fs.writeFileSync('client/src/components/PageListItem.svelte', newContent);
+    }`,
+);
+fs.writeFileSync("client/src/components/PageListItem.svelte", newContent);
+
+// Patch CursorEditor.ts (from main branch)
+const path = "client/src/lib/cursor/CursorEditor.ts";
+let code = fs.readFileSync(path, "utf8");
+
+const original = `
+                const oldItemId = cursor.itemId;
+                const clearCursorAndSelection = (store as any).clearCursorAndSelection;
+                if (typeof clearCursorAndSelection === "function") {
+                    if (typeof clearCursorAndSelection.call === "function") {
+                        clearCursorAndSelection.call(store, cursor.userId);
+                    } else {
+                        clearCursorAndSelection(cursor.userId);
+                    }
+                } else {
+                    store.clearSelectionForUser?.(cursor.userId);
+                    store.clearCursorForItem?.(oldItemId);
+                }
+`;
+
+const clean = `
+                store.clearCursorAndSelection(cursor.userId);
+`;
+
+code = code.split(original).join(clean);
+fs.writeFileSync(path, code);
+console.log("Patched");

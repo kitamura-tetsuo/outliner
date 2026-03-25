@@ -1,6 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import { onDestroy, onMount } from "svelte";
+    import { onDestroy, onMount, untrack } from "svelte";
     import { store } from "../stores/store.svelte";
     import {
         buildRegExp,
@@ -385,7 +385,7 @@
         // React to page changes
         void store.pagesVersion;
         if (searchQuery) {
-            handleSearch();
+            untrack(() => handleSearch());
         }
     });
 
@@ -396,7 +396,9 @@
             searchQuery &&
             typeof requestAnimationFrame !== "undefined"
         ) {
-            requestAnimationFrame(() => handleSearch());
+            requestAnimationFrame(() => {
+                if (searchQuery) handleSearch();
+            });
         }
     });
 </script>
