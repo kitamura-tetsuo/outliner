@@ -88,7 +88,7 @@
         "typescript-eslint": "^8.57.2",
         "vite": "^7.3.1",
         "vitest": "^4.1.1",
-        "ws": "^8.19.0"
+        "ws": "^8.20.0"
     },
     "name": "outliner",
     "private": true,
