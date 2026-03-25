@@ -184,18 +184,7 @@ export class CursorEditor {
                 const newItem = target.items.addNode(cursor.userId, 0);
                 newItem.updateText(afterText);
 
-                const oldItemId = cursor.itemId;
-                const clearCursorAndSelection = (store as any).clearCursorAndSelection;
-                if (typeof clearCursorAndSelection === "function") {
-                    if (typeof clearCursorAndSelection.call === "function") {
-                        clearCursorAndSelection.call(store, cursor.userId);
-                    } else {
-                        clearCursorAndSelection(cursor.userId);
-                    }
-                } else {
-                    store.clearSelectionForUser?.(cursor.userId);
-                    store.clearCursorForItem?.(oldItemId);
-                }
+                store.clearCursorAndSelection(cursor.userId);
 
                 cursor.itemId = newItem.id;
                 cursor.offset = 0;
@@ -267,6 +256,88 @@ export class CursorEditor {
         }
 
         this.insertText("\n");
+    }
+
+    insertItemBelow() {
+        const cursor = this.cursor;
+        const target = cursor.findTarget();
+        if (!target) return;
+
+        const pageTitle = isPageItem(target);
+
+        if (pageTitle) {
+            if (target.items && target.items instanceof Items) {
+                const newItem = target.items.addNode(cursor.userId, 0);
+
+                store.clearCursorAndSelection(cursor.userId);
+
+                cursor.itemId = newItem.id;
+                cursor.offset = 0;
+
+                store.setActiveItem(cursor.itemId);
+                store.startCursorBlink();
+
+                if (typeof document !== "undefined") {
+                    const event = new CustomEvent("navigate-to-item", {
+                        bubbles: true,
+                        detail: { direction: "enter", fromItemId: target.id, toItemId: cursor.itemId },
+                    });
+                    document.dispatchEvent(event);
+                }
+
+                cursor.applyToStore();
+                return;
+            }
+        } else {
+            const parent = target.parent as any;
+            if (parent) {
+                const itemsCollection = typeof parent.indexOf === "function"
+                    ? parent
+                    : parent?.items;
+                const addNode = typeof parent.addNode === "function"
+                    ? parent.addNode.bind(parent)
+                    : typeof itemsCollection?.addNode === "function"
+                    ? itemsCollection.addNode.bind(itemsCollection)
+                    : undefined;
+
+                if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
+                    const currentIndex = itemsCollection.indexOf(target);
+                    // Add below without updating current text
+                    const newItem = addNode(cursor.userId, currentIndex + 1);
+                    if (!newItem) return;
+
+                    const oldItemId = cursor.itemId;
+                    const clearCursorAndSelection = (store as any).clearCursorAndSelection;
+                    if (typeof clearCursorAndSelection === "function") {
+                        if (typeof clearCursorAndSelection.call === "function") {
+                            clearCursorAndSelection.call(store, cursor.userId);
+                        } else {
+                            clearCursorAndSelection(cursor.userId);
+                        }
+                    } else {
+                        store.clearSelectionForUser?.(cursor.userId);
+                        store.clearCursorForItem?.(oldItemId);
+                    }
+
+                    cursor.itemId = newItem.id;
+                    cursor.offset = 0;
+
+                    store.setActiveItem(cursor.itemId);
+                    store.startCursorBlink();
+
+                    if (typeof document !== "undefined") {
+                        const event = new CustomEvent("navigate-to-item", {
+                            bubbles: true,
+                            detail: { direction: "enter", fromItemId: target.id, toItemId: cursor.itemId },
+                        });
+                        document.dispatchEvent(event);
+                    }
+
+                    cursor.applyToStore();
+                    return;
+                }
+            }
+        }
     }
 
     onInput(event: InputEvent) {

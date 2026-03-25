@@ -1981,6 +1981,32 @@
     >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
     </button>
+    <button
+        class="mobile-toolbar-btn"
+        aria-label="Insert Sibling Below"
+        title="Insert Sibling Below"
+        onclick={() => {
+            const activeItemId = resolveActiveItemId();
+            if (!activeItemId) return;
+            editorOverlayStore.setActiveItem(activeItemId);
+            // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
+            const activeCursor = editorOverlayStore.getCursorForItem(activeItemId);
+            if (activeCursor) {
+                // GlobalTextArea will handle key events, let's just dispatch to document
+                const event = new KeyboardEvent('keydown', {
+                    key: 'Enter',
+                    ctrlKey: true,
+                    bubbles: true
+                });
+                document.dispatchEvent(event);
+            }
+        }}
+    >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 10 4 15 9 20"></polyline>
+            <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
+        </svg>
+    </button>
 </div>
 
 <style>
