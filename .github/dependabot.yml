@@ -3,40 +3,118 @@ updates:
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
-      interval: 'daily'
+      interval: 'weekly'
       time: '13:00' # UTC. Equivalent to 22:00 JST
     open-pull-requests-limit: 10
     rebase-strategy: 'auto'
     labels:
       - 'dependencies'
       - 'npm'
+    groups:
+      typescript-and-lint:
+        patterns:
+          - "typescript"
+          - "*eslint*"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "*prettier*"
+
   - package-ecosystem: 'npm'
     directory: '/client'
     schedule:
-      interval: 'daily'
+      interval: 'weekly'
       time: '13:00' # UTC. Equivalent to 22:00 JST
     open-pull-requests-limit: 10
     rebase-strategy: 'auto'
     labels:
       - 'dependencies'
       - 'npm'
+    groups:
+      typescript-and-lint:
+        patterns:
+          - "typescript"
+          - "*eslint*"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "*prettier*"
+      svelte-core:
+        patterns:
+          - "svelte"
+          - "@sveltejs/*"
+          - "vite"
+
   - package-ecosystem: 'npm'
     directory: '/server'
     schedule:
-      interval: 'daily'
+      interval: 'weekly'
       time: '13:00' # UTC. Equivalent to 22:00 JST
     open-pull-requests-limit: 10
     rebase-strategy: 'auto'
     labels:
       - 'dependencies'
       - 'npm'
+    groups:
+      typescript-and-lint:
+        patterns:
+          - "typescript"
+          - "*eslint*"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "*prettier*"
+
   - package-ecosystem: 'npm'
     directory: '/functions'
     schedule:
-      interval: 'daily'
+      interval: 'weekly'
       time: '13:00' # UTC. Equivalent to 22:00 JST
     open-pull-requests-limit: 10
     rebase-strategy: 'auto'
     labels:
       - 'dependencies'
       - 'npm'
+    groups:
+      typescript-and-lint:
+        patterns:
+          - "typescript"
+          - "*eslint*"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "*prettier*"
+
+  - package-ecosystem: 'npm'
+    directory: '/scripts'
+    schedule:
+      interval: 'weekly'
+      time: '13:00' # UTC. Equivalent to 22:00 JST
+    open-pull-requests-limit: 10
+    rebase-strategy: 'auto'
+    labels:
+      - 'dependencies'
+      - 'npm'
+    groups:
+      typescript-and-lint:
+        patterns:
+          - "typescript"
+          - "*eslint*"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "*prettier*"
+
+  - package-ecosystem: 'npm'
+    directory: '/scripts/tests'
+    schedule:
+      interval: 'weekly'
+      time: '13:00' # UTC. Equivalent to 22:00 JST
+    open-pull-requests-limit: 10
+    rebase-strategy: 'auto'
+    labels:
+      - 'dependencies'
+      - 'npm'
+    groups:
+      typescript-and-lint:
+        patterns:
+          - "typescript"
+          - "*eslint*"
+          - "@typescript-eslint/*"
+          - "prettier"
+          - "*prettier*"
