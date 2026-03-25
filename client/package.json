@@ -23,7 +23,7 @@
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.57.2",
         "@eslint/compat": "^2.0.3",
-        "@eslint/js": "^9.31.0",
+        "@eslint/js": "^10.0.1",
         "@fluidframework/test-client-utils": "^1.4.0",
         "@fluidframework/tinylicious-client": "^2.91.0",
         "@inlang/message-lint-rule-empty-pattern": "^1.4.8",
@@ -62,9 +62,9 @@
         "chokidar-cli": "^3.0.0",
         "concurrently": "^9.2.0",
         "dprint": "^0.53.0",
-        "eslint": "^10.0.3",
+        "eslint": "^10.1.0",
         "eslint-formatter-unix": "^9.0.1",
-        "eslint-plugin-svelte": "^3.15.2",
+        "eslint-plugin-svelte": "^3.16.0",
         "fake-indexeddb": "^6.2.5",
         "find-process": "^2.1.0",
         "fs-extra": "^11.3.4",
@@ -84,7 +84,7 @@
         "tailwindcss": "^4.2.1",
         "tinylicious": "^6.0.0",
         "ts-prune": "^0.10.3",
-        "typescript": "^5.9.3",
+        "typescript": "^6.0.2",
         "typescript-eslint": "^8.57.2",
         "vite": "^7.3.1",
         "vitest": "^4.1.1",
@@ -137,5 +137,8 @@
         "coverage:cleanup": "node scripts/cleanup-coverage.js"
     },
     "type": "module",
-    "version": "0.0.1"
+    "version": "0.0.1",
+    "overrides": {
+        "typescript": "$typescript"
+    }
 }

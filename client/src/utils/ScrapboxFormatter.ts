@@ -360,6 +360,7 @@ export class ScrapboxFormatter {
                             const projectName = parts[0];
                             const pageName = parts.slice(1).join("/");
 
+                            // eslint-disable-next-line no-useless-assignment
                             let existsClassTokens = "page-not-exists"; // default for safety
                             try {
                                 existsClassTokens = this.checkPageExists(pageName, projectName)
@@ -568,6 +569,7 @@ export class ScrapboxFormatter {
                         const pageName = parts.slice(1).join("/");
 
                         // Add class for page existence check
+                        // eslint-disable-next-line no-useless-assignment
                         let existsClass = "page-not-exists"; // default for safety
                         try {
                             existsClass = this.checkPageExists(pageName, projectName)

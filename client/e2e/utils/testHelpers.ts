@@ -864,6 +864,7 @@ export class TestHelpers {
                 `Timeout waiting for item count to reach ${expectedCount}: ${
                     e instanceof Error ? e.message : String(e)
                 }`,
+                { cause: e },
             );
         }
     }
@@ -2250,7 +2251,7 @@ export class TestHelpers {
                             });
                             if (!retryResponse.ok) {
                                 const retryText = await retryResponse.text();
-                                throw new Error(`Auth retry failed: ${retryText}`);
+                                throw new Error(`Auth retry failed: ${retryText}`, { cause: e });
                             }
                             const retryData: any = await retryResponse.json();
                             return retryData.idToken;
@@ -2260,7 +2261,7 @@ export class TestHelpers {
                     }
                 } else {
                     console.error(`[TestHelpers] Auth failed: ${response.status} ${text}`);
-                    throw new Error(`Auth failed: ${text}`);
+                    throw new Error(`Auth failed: ${text}`, { cause: new Error(text) });
                 }
             }
 

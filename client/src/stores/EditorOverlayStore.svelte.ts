@@ -907,6 +907,7 @@ export class EditorOverlayStore {
 
         // Process each selection range
         for (const sel of selections) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-useless-assignment
             let selectionText = "";
 
             try {
