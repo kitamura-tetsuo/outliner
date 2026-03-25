@@ -11,11 +11,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install dprint
-        run: npm install -g dprint
       - name: Install dependencies
         working-directory: client
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: Run ESLint
         working-directory: client
         run: npm run lint -- --quiet
