@@ -1,10 +1,21 @@
-import { Item, Project } from "./client/src/schema/app-schema.ts";
+import { render } from "@testing-library/svelte";
+import { expect, test } from "vitest";
+import PageListItem from "./client/src/components/PageListItem.svelte";
+import { Project } from "./client/src/schema/app-schema.ts";
 
-const proj = Project.createInstance("Test");
-const page = proj.addPage("Page Title", "author");
-const i1 = page.items.addNode("author");
-i1.updateText("Line 1");
-const i2 = page.items.addNode("author");
-i2.updateText("Line 2");
+test("PageListItem renders content", () => {
+    const project = Project.createInstance("Test Project");
+    const page = project.addPage("Test Page", "user");
 
-console.log(Array.from({ length: page.items.length }, (_, k) => page.items[k]?.text));
+    const child1 = page.items.addNode("user");
+    child1.text = "This is child 1";
+
+    const child2 = page.items.addNode("user");
+    child2.text = "This is child 2";
+
+    const { container } = render(PageListItem as any, { props: { page, isGridView: true, onSelect: () => {} } });
+
+    console.log(container.innerHTML);
+    expect(container.innerHTML).toContain("This is child 1");
+    expect(container.innerHTML).not.toContain("No content");
+});

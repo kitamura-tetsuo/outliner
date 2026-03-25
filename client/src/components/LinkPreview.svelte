@@ -16,6 +16,8 @@ let { pageName = "", projectName }: Props = $props();
 // State for preview display
 let isVisible = $state(false);
 let previewContent = $state<Item | null>(null);
+let previewItems = $state<{ id: string; text: string }[]>([]);
+let hasMoreItems = $state(false);
 let isLoading = $state(false);
 let error = $state<string | null>(null);
 let previewPosition = $state({ top: 0, left: 0 });
@@ -88,6 +90,22 @@ async function loadPreviewContent() {
         const foundPage = findPageByName(pageName);
         if (foundPage) {
             previewContent = foundPage;
+
+            // Extract items using for...of to support Svelte 5 reactivity and YTree iteration properly
+            previewItems = [];
+            hasMoreItems = false;
+            if (foundPage.items) {
+                let count = 0;
+                for (const item of foundPage.items) {
+                    if (count < 5) {
+                        previewItems.push({ id: item.id, text: item.text });
+                    } else {
+                        hasMoreItems = true;
+                        break;
+                    }
+                    count++;
+                }
+            }
         } else {
             error = "Page not found";
         }
@@ -158,13 +176,13 @@ onDestroy(() => {
                 <div class="preview-content">
                     <h3 class="preview-title">{previewContent.text}</h3>
                     <div class="preview-items">
-                        {#if previewContent && previewContent.items && (previewContent.items as any).length > 0}
+                        {#if previewItems.length > 0}
                             <ul>
-                                {#each Array.from({ length: Math.min(5, (previewContent.items as any).length) }, (_, i) => (previewContent.items as any)[i]) as item (item.id)}
+                                {#each previewItems as item (item.id)}
                                     <li>{item.text}</li>
                                 {/each}
 
-                                {#if (previewContent.items as any).length > 5}
+                                {#if hasMoreItems}
                                     <li class="more-items">...</li>
                                 {/if}
                             </ul>
