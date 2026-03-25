@@ -202,7 +202,7 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0
       fs-extra:
-        specifier: ^11.3.2
+        specifier: ^11.3.4
         version: 11.3.4
       globals:
         specifier: ^17.4.0
