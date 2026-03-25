@@ -244,6 +244,7 @@
                 } catch {}
 
                 // Get text - handle both Yjs getter and plain property
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-useless-assignment
                 let pageName = "";
                 try {
                     pageName =
