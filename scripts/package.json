@@ -24,7 +24,7 @@
         "vitest": "^3.2.4"
     },
     "dependencies": {
-        "firebase-admin": "^13.4.0",
+        "firebase-admin": "^13.7.0",
         "uuid": "^13.0.0",
         "ws": "^8.18.3",
         "y-websocket": "^3.0.0",
