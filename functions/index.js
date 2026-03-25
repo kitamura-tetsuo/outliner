@@ -1422,7 +1422,7 @@ exports.createSchedule = onRequest(
           );
           uid = "emulator-test-user";
         } else {
-          throw new Error(`Authentication failed: ${tokenError.message}`);
+          throw new Error(`Authentication failed: ${tokenError.message}`, { cause: tokenError });
         }
       }
 
@@ -1564,7 +1564,7 @@ exports.updateSchedule = onRequest(
           );
           uid = "emulator-test-user";
         } else {
-          throw new Error(`Authentication failed: ${tokenError.message}`);
+          throw new Error(`Authentication failed: ${tokenError.message}`, { cause: tokenError });
         }
       }
       const scheduleRef = db
@@ -1662,7 +1662,7 @@ exports.listSchedules = onRequest(
             "listSchedules: Using fallback emulator token verification",
           );
         } else {
-          throw new Error(`Authentication failed: ${tokenError.message}`);
+          throw new Error(`Authentication failed: ${tokenError.message}`, { cause: tokenError });
         }
       }
       logger.info(`listSchedules: pageId=${pageId}`);
@@ -1740,7 +1740,7 @@ exports.exportSchedulesIcal = onRequest(
             "exportSchedulesIcal: Proceeding with emulator token fallback",
           );
         } else {
-          throw new Error(`Authentication failed: ${tokenError.message}`);
+          throw new Error(`Authentication failed: ${tokenError.message}`, { cause: tokenError });
         }
       }
 
@@ -1858,7 +1858,7 @@ exports.cancelSchedule = onRequest(
           );
           uid = "emulator-test-user";
         } else {
-          throw new Error(`Authentication failed: ${tokenError.message}`);
+          throw new Error(`Authentication failed: ${tokenError.message}`, { cause: tokenError });
         }
       }
       const scheduleRef = db
