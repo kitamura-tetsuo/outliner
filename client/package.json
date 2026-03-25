@@ -20,6 +20,11 @@
         "yjs": "^13.6.30",
         "yjs-orderedtree": "^1.0.1-beta.3"
     },
+    "overrides": {
+        "find-process": {
+            "commander": "^12.1.0"
+        }
+    },
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.57.2",
         "@eslint/compat": "^2.0.3",
