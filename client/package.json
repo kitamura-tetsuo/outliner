@@ -69,7 +69,7 @@
         "find-process": "^2.1.0",
         "fs-extra": "^11.3.2",
         "globals": "^17.4.0",
-        "jsdom": "^28.1.0",
+        "jsdom": "^29.0.1",
         "knip": "^5.86.0",
         "mcp-playwright": "^0.0.1",
         "mdsvex": "^0.12.7",
