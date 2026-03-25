@@ -91,10 +91,8 @@
             const items = (project as any)?.items;
             const arr: any[] = [];
             if (items) {
-                if (typeof items[Symbol.iterator] === "function") {
-                    for (const p of items as any) arr.push(p);
-                } else if (typeof (items as any).length === "number") {
-                    const len = (items as any).length;
+                const len = (items as any).length;
+                if (typeof len === "number" && len >= 0) {
                     for (let i = 0; i < len; i++) {
                         const v = (items as any).at
                             ? (items as any).at(i)
@@ -111,10 +109,8 @@
             const pages = gs?.pages?.current;
             const arr: any[] = [];
             if (pages) {
-                if (typeof pages[Symbol.iterator] === "function") {
-                    for (const p of pages as any) arr.push(p);
-                } else if (typeof (pages as any).length === "number") {
-                    const len = (pages as any).length;
+                const len = (pages as any).length;
+                if (typeof len === "number" && len >= 0) {
                     for (let i = 0; i < len; i++) {
                         const v = (pages as any).at
                             ? (pages as any).at(i)

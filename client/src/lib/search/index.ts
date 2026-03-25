@@ -48,19 +48,19 @@ function toStringSafe(text: any): string {
 function pushChildren<T>(stack: T[], children: any): void {
     if (!children) return;
     try {
+        const len = (children as any).length;
+        if (typeof len === "number" && len >= 0) {
+            for (let i = 0; i < len; i++) {
+                const v = (children as any).at ? (children as any).at(i) : children[i];
+                if (typeof v !== "undefined") stack.push(v as T);
+            }
+            return;
+        }
         if (typeof children[Symbol.iterator] === "function") {
             for (const ch of children as any) stack.push(ch as T);
             return;
         }
     } catch {}
-    const len = (children as any).length;
-    if (typeof len === "number" && len >= 0) {
-        for (let i = 0; i < len; i++) {
-            const v = (children as any).at ? (children as any).at(i) : children[i];
-            if (typeof v !== "undefined") stack.push(v as T);
-        }
-        return;
-    }
 }
 
 export function searchItems<T extends { text: any; items?: any; id: string; }>(
