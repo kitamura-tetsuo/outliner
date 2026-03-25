@@ -505,6 +505,10 @@ export class Cursor implements CursorEditingContext {
         this.editor.insertLineBreak();
     }
 
+    insertItemBelow() {
+        this.editor.insertItemBelow();
+    }
+
     onInput(event: InputEvent) {
         this.editor.onInput(event);
     }
@@ -574,6 +578,9 @@ export class Cursor implements CursorEditingContext {
                     break;
                 case "PageDown":
                     this.pageDown();
+                    break;
+                case "Enter":
+                    this.insertItemBelow();
                     break;
                 case "\\":
                     if (event.shiftKey) {
