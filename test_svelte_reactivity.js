@@ -1,11 +1,19 @@
-const content = `
-import { Project, Item } from "./client/src/schema/app-schema.ts";
+import { render } from "svelte/server";
+import PageListItem from "./client/src/components/PageListItem.svelte";
+import { Project } from "./client/src/schema/app-schema.ts";
 
-const proj = Project.createInstance("Test");
-const page = proj.addPage("Page Title", "author");
-const i1 = page.items.addNode("author");
-i1.updateText("Line 1");
-const i2 = page.items.addNode("author");
-i2.updateText("Line 2");
-console.log(page.items.length);
-`;
+const project = Project.createInstance("Test Project");
+const page = project.addPage("Test Page", "user");
+
+const child1 = page.items.addNode("user");
+child1.text = "This is child 1";
+
+const child2 = page.items.addNode("user");
+child2.text = "This is child 2";
+
+try {
+    const result = render(PageListItem, { props: { page, isGridView: true, onSelect: () => {} } });
+    console.log(result.html);
+} catch (e) {
+    console.error(e);
+}
