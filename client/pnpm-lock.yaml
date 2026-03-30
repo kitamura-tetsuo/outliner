@@ -18,8 +18,8 @@ importers:
         specifier: ^10.45.0
         version: 10.45.0(@sveltejs/kit@2.55.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@7.0.0(svelte@5.55.0)(vite@8.0.2(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(yaml@2.8.3)))(svelte@5.55.0)(typescript@6.0.2)(vite@8.0.2(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(yaml@2.8.3)))(rollup@4.59.0)(svelte@5.55.0)(vite@8.0.2(@types/node@25.5.0)(esbuild@0.27.4)(jiti@2.6.1)(yaml@2.8.3))
       '@sinclair/typebox':
-        specifier: ^0.34.48
-        version: 0.34.48
+        specifier: ^0.34.49
+        version: 0.34.49
       diff-match-patch:
         specifier: ^1.0.5
         version: 1.0.5
@@ -80,19 +80,19 @@ importers:
         version: 2.91.0
       '@inlang/message-lint-rule-empty-pattern':
         specifier: ^1.4.8
-        version: 1.4.8(@sinclair/typebox@0.34.48)
+        version: 1.4.8(@sinclair/typebox@0.34.49)
       '@inlang/message-lint-rule-identical-pattern':
         specifier: ^1.5.9
         version: 1.5.9
       '@inlang/message-lint-rule-missing-translation':
         specifier: ^1.4.8
-        version: 1.4.8(@sinclair/typebox@0.34.48)
+        version: 1.4.8(@sinclair/typebox@0.34.49)
       '@inlang/message-lint-rule-valid-js-identifier':
         specifier: ^1.0.8
-        version: 1.0.8(@sinclair/typebox@0.34.48)
+        version: 1.0.8(@sinclair/typebox@0.34.49)
       '@inlang/message-lint-rule-without-source':
         specifier: ^1.4.8
-        version: 1.4.8(@sinclair/typebox@0.34.48)
+        version: 1.4.8(@sinclair/typebox@0.34.49)
       '@inlang/paraglide-js':
         specifier: 2.15.1
         version: 2.15.1
@@ -2486,8 +2486,8 @@ packages:
   '@sinclair/typebox@0.31.28':
     resolution: {integrity: sha512-/s55Jujywdw/Jpan+vsy6JZs1z2ZTGxTmbZTPiuSL2wz9mfzA2gN1zzaqmvfi4pq+uOt7Du85fkiwv5ymW84aQ==}
 
-  '@sinclair/typebox@0.34.48':
-    resolution: {integrity: sha512-kKJTNuK3AQOrgjjotVxMrCn1sUJwM76wMszfq1kdU4uYVJjvEWuFQ6HgvLt4Xz3fSmZlTOxJ/Ie13KnIcWQXFA==}
+  '@sinclair/typebox@0.34.49':
+    resolution: {integrity: sha512-brySQQs7Jtn0joV8Xh9ZV/hZb9Ozb0pmazDIASBkYKCjXrXU3mpcFahmK/z4YDhGkQvP9mWJbVyahdtU5wQA+A==}
 
   '@sindresorhus/merge-streams@4.0.0':
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
@@ -8103,7 +8103,7 @@ snapshots:
       '@fluidframework/runtime-utils': 2.91.0
       '@fluidframework/shared-object-base': 2.91.0
       '@fluidframework/telemetry-utils': 2.91.0
-      '@sinclair/typebox': 0.34.48
+      '@sinclair/typebox': 0.34.49
       '@tylerbu/sorted-btree-es6': 2.1.1
       '@types/ungap__structured-clone': 1.2.0
       '@ungap/structured-clone': 1.3.0
@@ -8159,17 +8159,17 @@ snapshots:
     dependencies:
       '@sinclair/typebox': 0.31.28
 
-  '@inlang/json-types@1.1.0(@sinclair/typebox@0.34.48)':
+  '@inlang/json-types@1.1.0(@sinclair/typebox@0.34.49)':
     dependencies:
-      '@sinclair/typebox': 0.34.48
+      '@sinclair/typebox': 0.34.49
 
   '@inlang/language-tag@1.5.1':
     dependencies:
       '@sinclair/typebox': 0.31.28
 
-  '@inlang/message-lint-rule-empty-pattern@1.4.8(@sinclair/typebox@0.34.48)':
+  '@inlang/message-lint-rule-empty-pattern@1.4.8(@sinclair/typebox@0.34.49)':
     dependencies:
-      '@inlang/message-lint-rule': 1.4.7(@sinclair/typebox@0.34.48)
+      '@inlang/message-lint-rule': 1.4.7(@sinclair/typebox@0.34.49)
     transitivePeerDependencies:
       - '@sinclair/typebox'
 
@@ -8178,21 +8178,21 @@ snapshots:
       '@inlang/message-lint-rule': 1.4.7(@sinclair/typebox@0.31.28)
       '@sinclair/typebox': 0.31.28
 
-  '@inlang/message-lint-rule-missing-translation@1.4.8(@sinclair/typebox@0.34.48)':
+  '@inlang/message-lint-rule-missing-translation@1.4.8(@sinclair/typebox@0.34.49)':
     dependencies:
-      '@inlang/message-lint-rule': 1.4.7(@sinclair/typebox@0.34.48)
+      '@inlang/message-lint-rule': 1.4.7(@sinclair/typebox@0.34.49)
     transitivePeerDependencies:
       - '@sinclair/typebox'
 
-  '@inlang/message-lint-rule-valid-js-identifier@1.0.8(@sinclair/typebox@0.34.48)':
+  '@inlang/message-lint-rule-valid-js-identifier@1.0.8(@sinclair/typebox@0.34.49)':
     dependencies:
-      '@inlang/message-lint-rule': 1.4.7(@sinclair/typebox@0.34.48)
+      '@inlang/message-lint-rule': 1.4.7(@sinclair/typebox@0.34.49)
     transitivePeerDependencies:
       - '@sinclair/typebox'
 
-  '@inlang/message-lint-rule-without-source@1.4.8(@sinclair/typebox@0.34.48)':
+  '@inlang/message-lint-rule-without-source@1.4.8(@sinclair/typebox@0.34.49)':
     dependencies:
-      '@inlang/message-lint-rule': 1.4.7(@sinclair/typebox@0.34.48)
+      '@inlang/message-lint-rule': 1.4.7(@sinclair/typebox@0.34.49)
     transitivePeerDependencies:
       - '@sinclair/typebox'
 
@@ -8205,24 +8205,24 @@ snapshots:
       '@inlang/translatable': 1.3.1
       '@sinclair/typebox': 0.31.28
 
-  '@inlang/message-lint-rule@1.4.7(@sinclair/typebox@0.34.48)':
+  '@inlang/message-lint-rule@1.4.7(@sinclair/typebox@0.34.49)':
     dependencies:
-      '@inlang/json-types': 1.1.0(@sinclair/typebox@0.34.48)
+      '@inlang/json-types': 1.1.0(@sinclair/typebox@0.34.49)
       '@inlang/language-tag': 1.5.1
-      '@inlang/message': 2.1.0(@sinclair/typebox@0.34.48)
-      '@inlang/project-settings': 2.4.2(@sinclair/typebox@0.34.48)
+      '@inlang/message': 2.1.0(@sinclair/typebox@0.34.49)
+      '@inlang/project-settings': 2.4.2(@sinclair/typebox@0.34.49)
       '@inlang/translatable': 1.3.1
-      '@sinclair/typebox': 0.34.48
+      '@sinclair/typebox': 0.34.49
 
   '@inlang/message@2.1.0(@sinclair/typebox@0.31.28)':
     dependencies:
       '@inlang/language-tag': 1.5.1
       '@sinclair/typebox': 0.31.28
 
-  '@inlang/message@2.1.0(@sinclair/typebox@0.34.48)':
+  '@inlang/message@2.1.0(@sinclair/typebox@0.34.49)':
     dependencies:
       '@inlang/language-tag': 1.5.1
-      '@sinclair/typebox': 0.34.48
+      '@sinclair/typebox': 0.34.49
 
   '@inlang/paraglide-js@2.15.1':
     dependencies:
@@ -8252,11 +8252,11 @@ snapshots:
       '@inlang/language-tag': 1.5.1
       '@sinclair/typebox': 0.31.28
 
-  '@inlang/project-settings@2.4.2(@sinclair/typebox@0.34.48)':
+  '@inlang/project-settings@2.4.2(@sinclair/typebox@0.34.49)':
     dependencies:
-      '@inlang/json-types': 1.1.0(@sinclair/typebox@0.34.48)
+      '@inlang/json-types': 1.1.0(@sinclair/typebox@0.34.49)
       '@inlang/language-tag': 1.5.1
-      '@sinclair/typebox': 0.34.48
+      '@sinclair/typebox': 0.34.49
 
   '@inlang/recommend-sherlock@0.2.1':
     dependencies:
@@ -9327,7 +9327,7 @@ snapshots:
 
   '@sinclair/typebox@0.31.28': {}
 
-  '@sinclair/typebox@0.34.48': {}
+  '@sinclair/typebox@0.34.49': {}
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
