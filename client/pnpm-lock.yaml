@@ -163,7 +163,7 @@ importers:
         specifier: ^8.2.3
         version: 8.2.3
       '@types/node':
-        specifier: ^25.0.10
+        specifier: ^25.5.0
         version: 25.5.0
       '@types/uuid':
         specifier: ^11.0.0
