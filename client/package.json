@@ -30,7 +30,7 @@
         "@eslint/compat": "^2.0.4",
         "@eslint/js": "^10.0.1",
         "@fluidframework/test-client-utils": "^1.4.0",
-        "@fluidframework/tinylicious-client": "^2.91.0",
+        "@fluidframework/tinylicious-client": "^2.92.0",
         "@inlang/message-lint-rule-empty-pattern": "^1.4.8",
         "@inlang/message-lint-rule-identical-pattern": "^1.5.9",
         "@inlang/message-lint-rule-missing-translation": "^1.4.8",
