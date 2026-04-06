@@ -49,7 +49,7 @@
         "sinon": "^21.0.3",
         "supertest": "^7.2.2",
         "testdouble": "^3.20.2",
-        "ts-jest": "^29.4.6",
+        "ts-jest": "^29.4.9",
         "ts-node": "^10.9.2",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",
