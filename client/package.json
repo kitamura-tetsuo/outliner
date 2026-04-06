@@ -39,7 +39,7 @@
         "@inlang/paraglide-js": "2.15.1",
         "@inlang/plugin-m-function-matcher": "^2.2.4",
         "@inlang/plugin-message-format": "^4.4.0",
-        "@modelcontextprotocol/sdk": "^1.28.0",
+        "@modelcontextprotocol/sdk": "^1.29.0",
         "@playwright/mcp": "^0.0.70",
         "@playwright/test": "^1.59.1",
         "@stryker-mutator/core": "^9.6.0",
