@@ -41,7 +41,7 @@
         "@inlang/plugin-message-format": "^4.4.0",
         "@modelcontextprotocol/sdk": "^1.28.0",
         "@playwright/mcp": "^0.0.70",
-        "@playwright/test": "^1.58.2",
+        "@playwright/test": "^1.59.1",
         "@stryker-mutator/core": "^9.6.0",
         "@stryker-mutator/typescript-checker": "^9.6.0",
         "@stryker-mutator/vitest-runner": "^9.6.0",
