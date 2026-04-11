@@ -1085,6 +1085,19 @@ export class KeyEventHandler {
                     (window as any).lastCopiedIsBoxSelection = isBoxSelectionCopy;
                 }
 
+                // Write to navigator.clipboard for robust system clipboard access
+                if (
+                    typeof navigator !== "undefined" &&
+                    (navigator as any).clipboard &&
+                    (navigator as any).clipboard.writeText
+                ) {
+                    (navigator as any).clipboard.writeText(selectedText).catch((err: any) => {
+                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            console.error(`navigator.clipboard.writeText failed in handleCopy:`, err);
+                        }
+                    });
+                }
+
                 // Fallback: Copy using execCommand
                 const textarea = document.createElement("textarea");
                 textarea.value = selectedText;
@@ -1097,7 +1110,7 @@ export class KeyEventHandler {
 
                 // Debug info
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Clipboard updated with: "${selectedText}" (using execCommand fallback)`);
+                    console.log(`Clipboard updated with: "${selectedText}" (using navigator.clipboard & execCommand fallback)`);
                 }
             } catch (error) {
                 // Log if error occurs
@@ -1704,6 +1717,9 @@ export class KeyEventHandler {
             console.log(`KeyEventHandler.handlePaste called`);
         }
 
+        // Prevent browser default paste action to avoid native insertion before await completes
+        event.preventDefault();
+
         try {
             // Get plaintext
             let text = event.clipboardData?.getData("text/plain") || "";
@@ -1768,9 +1784,6 @@ export class KeyEventHandler {
             if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                 console.log(`Pasting text: "${text}"`);
             }
-
-            // Prevent browser default paste action
-            event.preventDefault();
 
             // Save to global variable (E2E test environment only)
             // Not used in production, but needed to verify pasted content in E2E tests
@@ -2092,6 +2105,19 @@ export class KeyEventHandler {
                     (window as any).lastCopiedIsBoxSelection = isBoxSelectionCut;
                 }
 
+                // Write to navigator.clipboard for robust system clipboard access
+                if (
+                    typeof navigator !== "undefined" &&
+                    (navigator as any).clipboard &&
+                    (navigator as any).clipboard.writeText
+                ) {
+                    (navigator as any).clipboard.writeText(selectedText).catch((err: any) => {
+                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                            console.error(`navigator.clipboard.writeText failed in handleCut:`, err);
+                        }
+                    });
+                }
+
                 // Fallback: Copy using execCommand
                 const textarea = document.createElement("textarea");
                 textarea.value = selectedText;
@@ -2104,7 +2130,7 @@ export class KeyEventHandler {
 
                 // Debug info
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Clipboard updated with: "${selectedText}" (using execCommand fallback)`);
+                    console.log(`Clipboard updated with: "${selectedText}" (using navigator.clipboard & execCommand fallback)`);
                 }
             } catch (error) {
                 // Log if error occurs
