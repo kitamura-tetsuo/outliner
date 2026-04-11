@@ -1088,10 +1088,14 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     && (navigator as any).clipboard
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     && (navigator as any).clipboard.writeText
                 ) {
-                    (navigator as any).clipboard.writeText(selectedText).catch((err: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (navigator as any).clipboard.writeText(selectedText).catch((err: unknown) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                             console.error(`navigator.clipboard.writeText failed in handleCopy:`, err);
                         }
@@ -1715,6 +1719,7 @@ export class KeyEventHandler {
      */
     static async handlePaste(event: ClipboardEvent): Promise<void> {
         // Debug info
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
             console.log(`KeyEventHandler.handlePaste called`);
         }
@@ -2103,17 +2108,23 @@ export class KeyEventHandler {
                 // Save to global variable (E2E test environment only)
                 // Not used in production, but needed to verify cut content in E2E tests
                 if (typeof window !== "undefined") {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).lastCopiedText = selectedText;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).lastCopiedIsBoxSelection = isBoxSelectionCut;
                 }
 
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     && (navigator as any).clipboard
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     && (navigator as any).clipboard.writeText
                 ) {
-                    (navigator as any).clipboard.writeText(selectedText).catch((err: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (navigator as any).clipboard.writeText(selectedText).catch((err: unknown) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
                             console.error(`navigator.clipboard.writeText failed in handleCut:`, err);
                         }

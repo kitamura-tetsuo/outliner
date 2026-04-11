@@ -49,7 +49,8 @@ test.describe("System clipboard paste", () => {
         await page.waitForTimeout(300);
 
         // Select all text using store directly for reliable E2E tests
-        await page.evaluate((text) => {
+        await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).editorOverlayStore;
             if (!store) return;
             const items = document.querySelectorAll("[data-item-id]");
@@ -69,7 +70,7 @@ test.describe("System clipboard paste", () => {
                 userId: "local",
                 isReversed: false,
             });
-        }, uniqueText);
+        });
         await page.waitForTimeout(100);
 
         // Copy to system clipboard
@@ -82,12 +83,14 @@ test.describe("System clipboard paste", () => {
         // Note: Playwright sometimes blocks actual system clipboard writes unless in specific contexts.
         // The app sets `lastCopiedText` globally during E2E tests, so we check both.
         const clipboardText = await page.evaluate(async () => {
+            // eslint-disable-next-line no-restricted-globals
             if ((window as any).lastCopiedText) {
+                // eslint-disable-next-line no-restricted-globals
                 return (window as any).lastCopiedText;
             }
             try {
                 return await navigator.clipboard.readText();
-            } catch (e) {
+            } catch {
                 return "";
             }
         });
