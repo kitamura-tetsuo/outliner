@@ -1837,6 +1837,8 @@ export class Cursor implements CursorEditingContext {
      * @param endOffset End offset
      */
     updateGlobalTextareaSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number) {
+        if (store.isComposing) return;
+
         // Get global textarea
         const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
         if (!textarea) return;

@@ -65,7 +65,7 @@ export class CursorEditor {
 
         // Ensure the global textarea is in sync with the Yjs document state
         const textarea = store.getTextareaRef();
-        if (textarea) {
+        if (textarea && !store.isComposing) {
             textarea.value = node.text?.toString?.() ?? "";
             textarea.setSelectionRange(cursor.offset, cursor.offset);
         }
@@ -110,7 +110,7 @@ export class CursorEditor {
         // Ensure the global textarea is in sync with the Yjs document state
         // before applying the cursor position and triggering edit
         const textarea = store.getTextareaRef();
-        if (textarea) {
+        if (textarea && !store.isComposing) {
             textarea.value = node.text?.toString?.() ?? "";
             textarea.setSelectionRange(cursor.offset, cursor.offset);
         }
@@ -162,7 +162,7 @@ export class CursorEditor {
         store.triggerOnEdit();
 
         const textarea = store.getTextareaRef();
-        if (textarea) {
+        if (textarea && !store.isComposing) {
             textarea.value = node.text?.toString?.() ?? "";
             textarea.setSelectionRange(cursor.offset, cursor.offset);
         }

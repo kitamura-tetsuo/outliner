@@ -201,7 +201,7 @@ export class CursorTextOperations {
 
         // Sync the global textarea value as well
         const textarea = store.getTextareaRef();
-        if (textarea) {
+        if (textarea && !store.isComposing) {
             textarea.value = node.text?.toString?.() ?? "";
             textarea.setSelectionRange(this.cursor.offset, this.cursor.offset);
             console.log(`deleteForward: Synced textarea value: "${textarea.value}"`);
