@@ -74,7 +74,7 @@ test.describe("System clipboard paste", () => {
 
         // Copy to system clipboard
         await page.evaluate(() => {
-            document.execCommand('copy');
+            document.execCommand("copy");
         });
         await page.waitForTimeout(300);
 

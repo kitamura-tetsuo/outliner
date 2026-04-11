@@ -1087,9 +1087,9 @@ export class KeyEventHandler {
 
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
-                    typeof navigator !== "undefined" &&
-                    (navigator as any).clipboard &&
-                    (navigator as any).clipboard.writeText
+                    typeof navigator !== "undefined"
+                    && (navigator as any).clipboard
+                    && (navigator as any).clipboard.writeText
                 ) {
                     (navigator as any).clipboard.writeText(selectedText).catch((err: any) => {
                         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -1110,7 +1110,9 @@ export class KeyEventHandler {
 
                 // Debug info
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Clipboard updated with: "${selectedText}" (using navigator.clipboard & execCommand fallback)`);
+                    console.log(
+                        `Clipboard updated with: "${selectedText}" (using navigator.clipboard & execCommand fallback)`,
+                    );
                 }
             } catch (error) {
                 // Log if error occurs
@@ -2107,9 +2109,9 @@ export class KeyEventHandler {
 
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
-                    typeof navigator !== "undefined" &&
-                    (navigator as any).clipboard &&
-                    (navigator as any).clipboard.writeText
+                    typeof navigator !== "undefined"
+                    && (navigator as any).clipboard
+                    && (navigator as any).clipboard.writeText
                 ) {
                     (navigator as any).clipboard.writeText(selectedText).catch((err: any) => {
                         if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
@@ -2130,7 +2132,9 @@ export class KeyEventHandler {
 
                 // Debug info
                 if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
-                    console.log(`Clipboard updated with: "${selectedText}" (using navigator.clipboard & execCommand fallback)`);
+                    console.log(
+                        `Clipboard updated with: "${selectedText}" (using navigator.clipboard & execCommand fallback)`,
+                    );
                 }
             } catch (error) {
                 // Log if error occurs
