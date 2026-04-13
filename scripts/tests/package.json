@@ -9,6 +9,6 @@
     },
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.61.0",
-        "vitest": "^4.1.2"
+        "vitest": "^4.1.4"
     }
 }
