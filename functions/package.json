@@ -19,7 +19,7 @@
   },
   "main": "index.js",
   "dependencies": {
-    "@dotenvx/dotenvx": "^1.60.0",
+    "@dotenvx/dotenvx": "^1.61.0",
     "@sentry/node": "^10.47.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
