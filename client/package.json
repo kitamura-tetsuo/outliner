@@ -79,7 +79,7 @@
         "knip": "^6.4.1",
         "mcp-playwright": "^0.0.1",
         "mdsvex": "^0.12.7",
-        "monocart-coverage-reports": "^2.12.9",
+        "monocart-coverage-reports": "^2.12.11",
         "patch-package": "^8.0.1",
         "playwright": "^1.58.2",
         "stylelint": "^17.6.0",
