@@ -94,8 +94,8 @@ importers:
         specifier: ^1.4.8
         version: 1.4.8(@sinclair/typebox@0.34.49)
       '@inlang/paraglide-js':
-        specifier: 2.15.3
-        version: 2.15.3
+        specifier: 2.16.0
+        version: 2.16.0
       '@inlang/plugin-m-function-matcher':
         specifier: ^2.2.4
         version: 2.2.4
@@ -1311,8 +1311,8 @@ packages:
     peerDependencies:
       '@sinclair/typebox': ^0.31.17
 
-  '@inlang/paraglide-js@2.15.3':
-    resolution: {integrity: sha512-gneANUhYEPnSjxbKp3QCwmMqQecG+1QWuJSAl3jiPprn2+LeaZu3BgnofRKpo8gkYzB6oE3AY2ecZBXu3UrpOw==}
+  '@inlang/paraglide-js@2.16.0':
+    resolution: {integrity: sha512-O7KKvVoTsGqPRt1VfSvd0UyfSjU2qHiABx968M2decgG7Af6TddW3dTJrTS3I78nOUgRAlYwCYfKefSGD4rGMA==}
     hasBin: true
 
   '@inlang/plugin-m-function-matcher@2.2.4':
@@ -8242,7 +8242,7 @@ snapshots:
       '@inlang/language-tag': 1.5.1
       '@sinclair/typebox': 0.34.49
 
-  '@inlang/paraglide-js@2.15.3':
+  '@inlang/paraglide-js@2.16.0':
     dependencies:
       '@inlang/recommend-sherlock': 0.2.1
       '@inlang/sdk': 2.9.1
