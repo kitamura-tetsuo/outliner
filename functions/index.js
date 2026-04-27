@@ -254,11 +254,7 @@ async function checkContainerAccess(userId, containerId) {
       }
     }
 
-    // 2. Check userProjects collection (New Architecture) - REMOVED for Security
-    // We strictly trust projectUsers (resource ACL) only.
-    // userProjects is writable by users and cannot be trusted for authorization.
-
-    // 3. Check containerUsers collection (Legacy)
+    // 2. Check containerUsers collection (Legacy)
     const containerUserDoc = await db.collection("containerUsers").doc(
       containerId,
     ).get();
@@ -273,9 +269,6 @@ async function checkContainerAccess(userId, containerId) {
         return true;
       }
     }
-
-    // 4. Check userContainers collection (Legacy) - REMOVED for Security
-    // Same reason as userProjects.
 
     logger.warn(`Access denied for user ${userId} to container ${containerId}`);
     return false;
