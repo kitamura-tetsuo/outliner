@@ -1,7 +1,7 @@
 {
     "dependencies": {
         "@dotenvx/dotenvx": "^1.64.0",
-        "@hocuspocus/provider": "^3.4.4",
+        "@hocuspocus/provider": "^4.0.0",
         "@sentry/sveltekit": "^10.50.0",
         "@sinclair/typebox": "^0.34.49",
         "diff-match-patch": "^1.0.5",
