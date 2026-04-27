@@ -387,9 +387,16 @@ exports.saveProject = onRequest(
               accessibleProjectIds.push(projectId);
             }
 
+            // Ensure projectTitles is treated as an object and merged properly
+            const projectTitles = userData.projectTitles &&
+                typeof userData.projectTitles === "object"
+              ? { ...userData.projectTitles }
+              : {};
+            projectTitles[projectId] = title || projectId;
+
             transaction.update(userDocRef, {
               accessibleProjectIds,
-              [`projectTitles.${projectId}`]: title || projectId, // Save title or ID as fallback
+              projectTitles,
               updatedAt: FieldValue.serverTimestamp(),
             });
           } else {
@@ -1068,10 +1075,24 @@ exports.acceptProjectShareLink = onRequest(
 
         if (userSnap.exists) {
           const userData = userSnap.data();
+
+          // Construct updated projectTitles
+          const projectTitles =
+            userData.projectTitles && typeof userData.projectTitles === "object"
+              ? { ...userData.projectTitles }
+              : {};
+          projectTitles[projectId] = projectData.title || projectId;
+
+          // Always update projectTitles when joining a project, even if already in accessibleProjectIds
           if (!userData.accessibleProjectIds?.includes(projectId)) {
             transaction.update(userRef, {
               accessibleProjectIds: FieldValue.arrayUnion(projectId),
-              [`projectTitles.${projectId}`]: projectData.title || projectId,
+              projectTitles,
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          } else {
+            transaction.update(userRef, {
+              projectTitles,
               updatedAt: FieldValue.serverTimestamp(),
             });
           }
