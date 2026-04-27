@@ -388,7 +388,8 @@ exports.saveProject = onRequest(
             }
 
             // Ensure projectTitles is treated as an object and merged properly
-            const projectTitles = userData.projectTitles && typeof userData.projectTitles === "object"
+            const projectTitles = userData.projectTitles &&
+                typeof userData.projectTitles === "object"
               ? { ...userData.projectTitles }
               : {};
             projectTitles[projectId] = title || projectId;
@@ -1076,9 +1077,10 @@ exports.acceptProjectShareLink = onRequest(
           const userData = userSnap.data();
 
           // Construct updated projectTitles
-          const projectTitles = userData.projectTitles && typeof userData.projectTitles === "object"
-            ? { ...userData.projectTitles }
-            : {};
+          const projectTitles =
+            userData.projectTitles && typeof userData.projectTitles === "object"
+              ? { ...userData.projectTitles }
+              : {};
           projectTitles[projectId] = projectData.title || projectId;
 
           // Always update projectTitles when joining a project, even if already in accessibleProjectIds
