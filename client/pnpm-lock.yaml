@@ -247,8 +247,8 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2
       tinylicious:
-        specifier: ^6.0.0
-        version: 6.0.0
+        specifier: ^7.0.1
+        version: 7.0.1
       ts-prune:
         specifier: ^0.10.3
         version: 0.10.3
@@ -1114,9 +1114,6 @@ packages:
   '@fluidframework/gitresources@0.1036.5002':
     resolution: {integrity: sha512-/xdmCca+arU9x9tDGdIl2CCk0DmpWlFjZdcTdWjLNiexKMVKDrHmSw9vCpUMlGmECq8EOO7fyzBnAGM+nu+i0g==}
 
-  '@fluidframework/gitresources@6.0.0':
-    resolution: {integrity: sha512-/GOi0mLrjsrzFCIbMcEK9E8f64e1NBee6eScMrPJMj2oVljF2bAryrQm0SuZzC6x/lG3Ot5OXnBWHu+jSFyQiw==}
-
   '@fluidframework/gitresources@7.0.1':
     resolution: {integrity: sha512-sFEdPL46Hz/xuP51nwT19JubSeb3fBBrNQXwnRLCcmaX+fXdxg7rkyVLTgue0swgdJ73Oh98eTYpxplkq+FSJA==}
 
@@ -1128,9 +1125,6 @@ packages:
 
   '@fluidframework/protocol-base@0.1036.5002':
     resolution: {integrity: sha512-mlI9okyLeSusGx7qU32NDJ4GJptSzVo3V6tPDhphPIOPtyOVTBuL4EQRFYdceoSLHlxEdVnQprwhyoRiMNw7Kw==}
-
-  '@fluidframework/protocol-base@6.0.0':
-    resolution: {integrity: sha512-sRdU9GGh+0nxhEsCkYhXNYxhmZd5DdTdgKnpfClq/R/MWlI9VCnfwMFg5ZiXBZ3NhNx+OP/ohgLq2XtPd2eTIg==}
 
   '@fluidframework/protocol-base@7.0.1':
     resolution: {integrity: sha512-WfMf+vN0OmUHl0xJIsY6jnnsF5p27apMRd38pC9TlMx1URt+3C2fV4WLEybn2wYEGepYcK03ZMqe6I+DXt7/6g==}
@@ -1162,41 +1156,38 @@ packages:
   '@fluidframework/runtime-utils@2.93.0':
     resolution: {integrity: sha512-CCKrM2zSJX7ub3Qjn3XM4kQmDfYia9ozPJPCWBqrpavZWW6TafzKbFHbjswfu88th2cRLK0Tl6vYv0xyLdKArg==}
 
-  '@fluidframework/server-lambdas-driver@6.0.0':
-    resolution: {integrity: sha512-xAHV4S/x88osQ6QYWRM13VKEl7T/vWp9sojAjmRCOl2WmJDhNUvcoXMDqx0dki3AgP7zsqHrE3YZteCyBkvR0Q==}
+  '@fluidframework/server-lambdas-driver@7.0.1':
+    resolution: {integrity: sha512-pzpPPCgnVdGu2qcCAXZbur/2tx5O1qp5n06+BdKq1aZsGs5vNfc9ds+KiueiXBFvvoSa3f+AXUjqWwPQopApZQ==}
 
-  '@fluidframework/server-lambdas@6.0.0':
-    resolution: {integrity: sha512-mtHNZ+JNBkKKjzbdzyI3XNoiMBUMC9/uZO6JKH5bv+YVL1mIzi6bkp52hvby+Bjn8cKyssvlX6Bk2poWiT/aZw==}
+  '@fluidframework/server-lambdas@7.0.1':
+    resolution: {integrity: sha512-FVFq1Gt3b+JYm8wg68QyxHluNkR6T8rGKwAlf1AJ1zCHy1E6DPsR0Gn86gAWYfKw/w/gzTBofoogIaozHHskbQ==}
 
-  '@fluidframework/server-local-server@6.0.0':
-    resolution: {integrity: sha512-lMCVqIRILvQDdC7fGeM1MZayX4HW0MMlbLQOrkk03CW/dqRTePMQSPF26nfEROrGEjbcSMEbynj2YBi8AHtYIg==}
+  '@fluidframework/server-local-server@7.0.1':
+    resolution: {integrity: sha512-MjszPW3Io2/wITc5qCxQlhocRssobDePYOicLccWKItIZ3XuN2wAp33+pOYte9ImYvlQlV4M2F6ratYppn/Nrg==}
 
-  '@fluidframework/server-memory-orderer@6.0.0':
-    resolution: {integrity: sha512-oUDdVcWT54xdxKPtIeb8h3bpP1icZfvAYcwBf4GeQx2WEjmykUQLbUYzVn8bAamEnw7QucR8IhrhHL8Do5XJ9w==}
+  '@fluidframework/server-memory-orderer@7.0.1':
+    resolution: {integrity: sha512-GHTtnyY7IwpA6BzNJO8VDX0SU3Bj8EXDOw86axPx2JkkDnuW5KFKpvGUugJ6cAkQcqFu/JWzFTm444VLYNOChQ==}
 
   '@fluidframework/server-services-client@0.1036.5002':
     resolution: {integrity: sha512-2d0RSUXvfNlFgHVLiehiU4LgJheqGXlspIgug6U6nvPdwFGtQSbButh2SysBDFilIJ9E6Bacdd0P0e+4HRpCaQ==}
 
-  '@fluidframework/server-services-client@6.0.0':
-    resolution: {integrity: sha512-NdrHLgA8LDk7XXEMWAXMWnGYgWAMwZDfHNzn6oIvR9Zp/X/r3FEgi+8XOpDKVyUODJfAsyPLjoQ6SxdLED/pAA==}
-
   '@fluidframework/server-services-client@7.0.1':
     resolution: {integrity: sha512-39T7SZba2JdrkkOYqcGr8ZEg+SqPtxVTsHM02CI1yrvZPL78jog0iGcNRe8BrPyTCH0Xw9QOqpJND4/QbV/l4Q==}
 
-  '@fluidframework/server-services-core@6.0.0':
-    resolution: {integrity: sha512-AIZ8QbT4BZOY21JvDZT9LT6vLdMiGsIXvD39C7EOuIfY4DwZSJ0Fmv083pvIJvBw3MQyUALqspCnrlzEfz2ibw==}
+  '@fluidframework/server-services-core@7.0.1':
+    resolution: {integrity: sha512-5LCpUKcEaV4bFf7SkqkHv8SpHNUWacXtKNzI5JLfkTUCPdiax4tDUjaTTkrMAibrt/3q3eCdb/ZnqY7Xc4qE6A==}
 
-  '@fluidframework/server-services-shared@6.0.0':
-    resolution: {integrity: sha512-Y5ihIvW4cyldaYaNnOQIYL2tsR0XEX7SDiNkE9PX66xzXNbKFiCeBC010pIoXLzQ+UxhIyNpXhzSJF2o1EErxg==}
+  '@fluidframework/server-services-shared@7.0.1':
+    resolution: {integrity: sha512-kVtPVXEHW2MXT0z/bhcj816Vd8D+TXY38XRja44cPWnNeigI1JYAXfZ+udWgN64B0h2gLygN+taMtOLVQ55Kkw==}
 
-  '@fluidframework/server-services-telemetry@6.0.0':
-    resolution: {integrity: sha512-A5DN7CSJmIWnq1Q2Svjj7r2K5IJRfgCocA/JsjWzIyMoSWTRnyKs22Liqr+F5qhQXXrcEbh9TaLSGAANDLCJ/A==}
+  '@fluidframework/server-services-telemetry@7.0.1':
+    resolution: {integrity: sha512-4lF+Vhs+YMctigdEFdQ1XisuY3FmUVskpUqNI60yMVKClKlWd10zJy0j+V1enaIYP5Q4kja/LXusNuzLDrS0Dw==}
 
-  '@fluidframework/server-services-utils@6.0.0':
-    resolution: {integrity: sha512-SPpre6V/umeg506PGjoQsUoVjYYxyHqnrOl6YMim9WyXhLlAp5EcbfRDjfU/meDAy8pYcQ1pfyAvG22PLLx8uQ==}
+  '@fluidframework/server-services-utils@7.0.1':
+    resolution: {integrity: sha512-sXT4VHDVu6xdrElWthjB4f5bE3sI0X9a5ZCfXBcaXuFCpIqYJIf5YiueJrK0TbFi2rN6JBVnGkSo4g1mkyYDyQ==}
 
-  '@fluidframework/server-test-utils@6.0.0':
-    resolution: {integrity: sha512-fbopMKb7t/Sp1YtEoIMFpD/cdy5nan/XCy54ouL27DavRCBLdgLBY9OH+5VBsLiEGCOT+vKCSq5/hqnaP8dpQQ==}
+  '@fluidframework/server-test-utils@7.0.1':
+    resolution: {integrity: sha512-x6WN7pJNfjFBzCHdQKheIbIDgIb3jsi9AMx30JWPVqciBUWptMGrQK7/0Qo2URdQhzJ0A1j8jmE5ghKbGpYFYA==}
 
   '@fluidframework/shared-object-base@2.93.0':
     resolution: {integrity: sha512-QgfLI9mkJ5gGlMzbvn1FGTsMImBKpkmS4+IMx6b60dBaCAZu2fVTrC4eKR4PD4xP6eVlipg/1cW67CJPomq2AQ==}
@@ -1478,6 +1469,9 @@ packages:
 
   '@ioredis/commands@1.5.1':
     resolution: {integrity: sha512-JH8ZL/ywcJyR9MmJ5BNqZllXNZQqQbnVZOqpPQqE1vHiFgAw4NHbvE0FOduNU8IX9babitBT46571OnPTT0Zcw==}
+
+  '@ioredis/commands@1.7.0':
+    resolution: {integrity: sha512-5E3KP12g1Po3xMdaym6N3VBibWAH/vv7XxGl8M20KQyPfZWB7sAhLb90+9IX/WJWFHuRFai5caz+DXKQbLI51g==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2790,8 +2784,8 @@ packages:
   '@types/cors@2.8.19':
     resolution: {integrity: sha512-mFNylyeyqN93lfe/9CSxOGREz8cpzAhH+E93xJ4xWQf62V8sQ/24reV2nyzUWM6H6Xji+GGHpkbLe7pVoUEskg==}
 
-  '@types/debug@4.1.12':
-    resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
+  '@types/debug@4.1.13':
+    resolution: {integrity: sha512-KSVgmQmzMwPlmtljOomayoR89W4FynCAi3E8PPs7vmDVPe84hT+vGPKkJfThkmXs0x0jAaa9U8uW8bbfyS2fWw==}
 
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
@@ -3134,11 +3128,8 @@ packages:
   axios@0.28.1:
     resolution: {integrity: sha512-iUcGA5a7p0mVb4Gm/sy+FSECNkPFT4y7wt6OM/CDpO/OnNCvSs3PoMG8ibrC9jRoGYU0gUK5pXVC4NPXq6lHRQ==}
 
-  axios@1.13.6:
-    resolution: {integrity: sha512-ChTCHMouEe2kn713WHbQGcuYrr6fXTBiu460OTwWrWob16g1bXn4vtz07Ope7ewMozJAnEquLk5lWQWtBig9DQ==}
-
-  axios@1.15.1:
-    resolution: {integrity: sha512-WOG+Jj8ZOvR0a3rAn+Tuf1UQJRxw5venr6DgdbJzngJE3qG7X0kL83CZGpdHMxEm+ZK3seAbvFsw4FfOfP9vxg==}
+  axios@1.15.2:
+    resolution: {integrity: sha512-wLrXxPtcrPTsNlJmKjkPnNPK2Ihe0hn0wGSaTEiHRPxwjvJwT3hKmXF4dpqxmPO9SoNb2FsYXj/xEo0gHN+D5A==}
 
   axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
@@ -3174,8 +3165,8 @@ packages:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
     engines: {node: '>=8'}
 
-  body-parser@1.20.4:
-    resolution: {integrity: sha512-ZTgYYLMOXY9qKU/57FAo8F+HA2dGX7bqGc71txDRC1rS4frdFI5R7NhluHxH6M0YItAP0sHB4uqAOcYKxO6uGA==}
+  body-parser@1.20.5:
+    resolution: {integrity: sha512-3grm+/2tUOvu2cjJkvsIxrv/wVpfXQW4PsQHYm7yk4vfpu7Ekl6nEsYBoJUL6qDwZUx8wUhQ8tR2qz+ad9c9OA==}
     engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
 
   body-parser@2.2.2:
@@ -3233,6 +3224,10 @@ packages:
 
   call-bind@1.0.8:
     resolution: {integrity: sha512-oKlSFMcMwpUg2ednkhQ454wfWiU/ul3CkJe/PEHcTKuiX6RpbehUiFMXu13HalGZxfUwCQzZG747YXBn1im9ww==}
+    engines: {node: '>= 0.4'}
+
+  call-bind@1.0.9:
+    resolution: {integrity: sha512-a/hy+pNsFUTR+Iz8TCJvXudKVLAnz/DyeSUo10I5yvFDQJBFU2s9uqQpoSrJlroHUKoKqzg+epxyP9lqFdzfBQ==}
     engines: {node: '>= 0.4'}
 
   call-bound@1.0.4:
@@ -3672,8 +3667,8 @@ packages:
     resolution: {integrity: sha512-HqD3yTBfnBxIrbnM1DoD6Pcq8NECnh8d4As1Qgh0z5Gg3jRRIqijury0CL3ghu/edArpUYiYqQiDUQBIs4np3Q==}
     engines: {node: '>=10.0.0'}
 
-  engine.io@6.6.6:
-    resolution: {integrity: sha512-U2SN0w3OpjFRVlrc17E6TMDmH58Xl9rai1MblNjAdwWp07Kk+llmzX0hjDpQdrDGzwmvOtgM5yI+meYX6iZ2xA==}
+  engine.io@6.6.7:
+    resolution: {integrity: sha512-DgOngfDKM2EviOH3Mr9m7ks1q8roetLy/IMmYthAYzbpInMbYc/GS+fWFA3rl1gvwKVsQrVV61fo5emD1y3OJQ==}
     engines: {node: '>=10.2.0'}
 
   enhanced-resolve@5.20.1:
@@ -3999,15 +3994,6 @@ packages:
   fn.name@1.1.0:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
 
-  follow-redirects@1.15.11:
-    resolution: {integrity: sha512-deG2P0JfjrTxl50XGCDyfI97ZGVCxIpfKYmfyrQ54n5FO/0gfIES8C/Psl6kWVDolizcaaxZJnTS0QSMxvnsBQ==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
-
   follow-redirects@1.16.0:
     resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
     engines: {node: '>=4.0'}
@@ -4179,8 +4165,8 @@ packages:
     resolution: {integrity: sha512-iZyKG96/JwPz1N55vj2Ie2vXbhu440zfUfJvSwEqEbeLluk7NnapfGqa7LH0mOsnDxTF85Mx8/dyR6HfqcbmbQ==}
     engines: {node: '>=20'}
 
-  hasown@2.0.2:
-    resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
+  hasown@2.0.3:
+    resolution: {integrity: sha512-ej4AhfhfL2Q2zpMmLo7U1Uv9+PyhIZpgQLGT1F9miIGmiCJIoCgSmczFdrc97mWT4kVY72KA+WnnhJ5pghSvSg==}
     engines: {node: '>= 0.4'}
 
   heap-js@2.7.1:
@@ -4295,8 +4281,8 @@ packages:
       '@types/ioredis-mock': ^8
       ioredis: ^5
 
-  ioredis@5.10.0:
-    resolution: {integrity: sha512-HVBe9OFuqs+Z6n64q09PQvP1/R4Bm+30PAyyD4wIEqssh3v9L21QjCVk4kRLucMBcDokJTcLjsGeVRlq/nH6DA==}
+  ioredis@5.10.1:
+    resolution: {integrity: sha512-HuEDBTI70aYdx1v6U97SbNx9F1+svQKBDo30o0b9fw055LMepzpOOd0Ccg9Q6tbqmBSJaMuY0fB7yw9/vjBYCA==}
     engines: {node: '>=12.22.0'}
 
   ip-address@10.1.0:
@@ -4417,8 +4403,8 @@ packages:
     resolution: {integrity: sha512-6B3tLtFqtQS4ekarvLVMZ+X+VlvQekbe4taUkf/rhVO3d/h0M2rfARm/pXLcPEsjjMsFgrFgSrhQIxcSVrBz8w==}
     engines: {node: '>=18'}
 
-  isomorphic-git@1.37.4:
-    resolution: {integrity: sha512-fNnCEJtI1refeVxysiuqGP9cubUoLibUS6UIDUWSy5Op6sVdFwGv/SpzfhMFiDkfgYoXKqurZ+LVxEeesy+T0Q==}
+  isomorphic-git@1.37.6:
+    resolution: {integrity: sha512-qr1NFCPsVTZ6YGqTXw0CzamnsHyH9QQ1OTEfeXIweSljRUMzuHFCJdUn0wc6OcjtTDns6knxjPb7N6LmJeftOA==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -4741,6 +4727,9 @@ packages:
 
   lodash@4.17.23:
     resolution: {integrity: sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w==}
+
+  lodash@4.18.1:
+    resolution: {integrity: sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==}
 
   logform@2.7.0:
     resolution: {integrity: sha512-TFYA4jnP7PVbmlBIfhlSe+WKxs9dklXMTEGcBCIvLhE/Tn3H6Gk1norupVW7m5Cnd4bLcr08AytbyV/xj7f/kQ==}
@@ -5172,8 +5161,8 @@ packages:
     resolution: {integrity: sha512-3O/iVVsJAPsOnpwWIeD+d6z/7PmqApyQePUtCndjatj/9I5LylHvt5qluFaBT3I5h3r1ejfR056c+FCv+NnNXg==}
     engines: {node: 18 || 20 || >=22}
 
-  path-to-regexp@0.1.12:
-    resolution: {integrity: sha512-RA1GjUVMnvYFxuqovrEqZoxxW5NUZqbwKtYz/Tt7nXerk0LbLblQmrsgdeOxV5SFHf0UDggjS/bSeOZwt1pmEQ==}
+  path-to-regexp@0.1.13:
+    resolution: {integrity: sha512-A/AGNMFN3c8bOlvV9RreMdrv7jsmF9XIfDeCd87+I8RNg6s78BhJxMu69NEMHBSJFxKidViTEdruRwEk/WIKqA==}
 
   path-to-regexp@8.4.2:
     resolution: {integrity: sha512-qRcuIdP69NPm4qbACK+aDogI5CBDMi1jKe0ry5rSQJz8JVLsC7jV8XpiJjGRLLol3N+R5ihGYcrPLTno6pAdBA==}
@@ -5415,6 +5404,10 @@ packages:
     resolution: {integrity: sha512-mAZTtNCeetKMH+pSjrb76NAM8V9a05I9aBZOHztWy/UqcJdQYNsf59vrRKWnojAT9Y+GbIvoTBC++CPHqpDBhQ==}
     engines: {node: '>=0.6'}
 
+  qs@6.15.1:
+    resolution: {integrity: sha512-6YHEFRL9mfgcAvql/XhwTvf5jKcOiiupt2FiJxHkiX1z4j7WL8J/jRHYLluORvc1XxB5rV20KoeK00gVJamspg==}
+    engines: {node: '>=0.6'}
+
   querystring@0.2.1:
     resolution: {integrity: sha512-wkvS7mL/JMugcup3/rMitHmd9ecIGd2lhFhK9N3UUQ450h66d1r3Y9nvXzQAW1Lq+wyx61k/1pfKS5KuKiyEbg==}
     engines: {node: '>=0.4.x'}
@@ -5629,8 +5622,8 @@ packages:
     resolution: {integrity: sha512-ObmnIF4hXNg1BqhnHmgbDETF8dLPCggZWBjkQfhZpbszZnYur5DUljTcCHii5LC3J5E0yeO/1LIMyH+UvHQgyw==}
     engines: {node: '>= 0.4'}
 
-  side-channel-list@1.0.0:
-    resolution: {integrity: sha512-FCLHtRD/gnpCiCHEiJLOwdmFP+wzCmDEkc9y7NsYxeF4u7Btsn1ZuwgwJGxImImHicJArLP4R0yX4c2KCrMrTA==}
+  side-channel-list@1.0.1:
+    resolution: {integrity: sha512-mjn/0bi/oUURjc5Xl7IaWi/OJJJumuoJFQJfDDyO46+hBWsfaVM65TBHq2eoZBhzl9EchxOijpkbRC8SVBQU0w==}
     engines: {node: '>= 0.4'}
 
   side-channel-map@1.0.1:
@@ -5689,10 +5682,6 @@ packages:
 
   socket.io-client@4.8.3:
     resolution: {integrity: sha512-uP0bpjWrjQmUt5DTHq9RuoCBdFJF10cdX9X+a368j/Ft0wmaVgxlrjvK3kjvgCODOMMOz9lcaRzxmso0bTWZ/g==}
-    engines: {node: '>=10.0.0'}
-
-  socket.io-parser@4.2.5:
-    resolution: {integrity: sha512-bPMmpy/5WWKHea5Y/jYAP6k74A+hvmRCQaJuJB6I/ML5JZq/KfNieUVo/3Mh7SAqn7TyFdIo6wqYHInG1MU1bQ==}
     engines: {node: '>=10.0.0'}
 
   socket.io-parser@4.2.6:
@@ -5940,8 +5929,8 @@ packages:
     resolution: {integrity: sha512-pn99VhoACYR8nFHhxqix+uvsbXineAasWm5ojXoN8xEwK5Kd3/TrhNn1wByuD52UxWRLy8pu+kRMniEi6Eq9Zg==}
     engines: {node: '>=12.0.0'}
 
-  tinylicious@6.0.0:
-    resolution: {integrity: sha512-E62tg0DA5tya85F+kIJd3SRjnwiXqME32IA4WmwcRxTm0dV+IgLGk3Gxs+ljJVcYxuh8OUmxFzrEgZwEHkl2xg==}
+  tinylicious@7.0.1:
+    resolution: {integrity: sha512-vJYqt/FaVscYTPoRypx5gKQ93mAkCw7+jaV9N1A8fuywlXtfS7EzloND5WHanF4n7fAgH77CxQ9NoCnhpSXd2g==}
     engines: {node: '>=14.0.0'}
     hasBin: true
 
@@ -7405,7 +7394,7 @@ snapshots:
       base64-js: 1.5.1
       buffer: 6.0.3
       events: 3.3.0
-      lodash: 4.17.23
+      lodash: 4.18.1
       sha.js: 2.4.12
 
   '@fluidframework/common-utils@3.1.0':
@@ -7415,7 +7404,7 @@ snapshots:
       base64-js: 1.5.1
       buffer: 6.0.3
       events: 3.3.0
-      lodash: 4.17.23
+      lodash: 4.18.1
       sha.js: 2.4.12
 
   '@fluidframework/container-definitions@1.4.0':
@@ -7622,8 +7611,6 @@ snapshots:
 
   '@fluidframework/gitresources@0.1036.5002': {}
 
-  '@fluidframework/gitresources@6.0.0': {}
-
   '@fluidframework/gitresources@7.0.1': {}
 
   '@fluidframework/id-compressor@2.93.0':
@@ -7658,14 +7645,7 @@ snapshots:
       '@fluidframework/common-utils': 0.32.2
       '@fluidframework/gitresources': 0.1036.5002
       '@fluidframework/protocol-definitions': 0.1028.2000
-      lodash: 4.17.23
-
-  '@fluidframework/protocol-base@6.0.0':
-    dependencies:
-      '@fluidframework/common-utils': 3.1.0
-      '@fluidframework/gitresources': 6.0.0
-      '@fluidframework/protocol-definitions': 3.2.0
-      events_pkg: events@3.3.0
+      lodash: 4.18.1
 
   '@fluidframework/protocol-base@7.0.1':
     dependencies:
@@ -7784,40 +7764,40 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@fluidframework/server-lambdas-driver@6.0.0':
+  '@fluidframework/server-lambdas-driver@7.0.1':
     dependencies:
       '@fluidframework/common-utils': 3.1.0
-      '@fluidframework/server-services-client': 6.0.0
-      '@fluidframework/server-services-core': 6.0.0
-      '@fluidframework/server-services-telemetry': 6.0.0
+      '@fluidframework/server-services-client': 7.0.1
+      '@fluidframework/server-services-core': 7.0.1
+      '@fluidframework/server-services-telemetry': 7.0.1
       assert: 2.1.0
       async: 3.2.6
       events: 3.3.0
-      lodash: 4.17.23
+      lodash: 4.18.1
       nconf: 0.12.1
       serialize-error: 8.1.0
     transitivePeerDependencies:
       - supports-color
 
-  '@fluidframework/server-lambdas@6.0.0(debug@4.4.3)':
+  '@fluidframework/server-lambdas@7.0.1(debug@4.4.3)':
     dependencies:
       '@fluidframework/common-utils': 3.1.0
-      '@fluidframework/gitresources': 6.0.0
-      '@fluidframework/protocol-base': 6.0.0
+      '@fluidframework/gitresources': 7.0.1
+      '@fluidframework/protocol-base': 7.0.1
       '@fluidframework/protocol-definitions': 3.2.0
-      '@fluidframework/server-lambdas-driver': 6.0.0
-      '@fluidframework/server-services-client': 6.0.0
-      '@fluidframework/server-services-core': 6.0.0
-      '@fluidframework/server-services-telemetry': 6.0.0
+      '@fluidframework/server-lambdas-driver': 7.0.1
+      '@fluidframework/server-services-client': 7.0.1
+      '@fluidframework/server-services-core': 7.0.1
+      '@fluidframework/server-services-telemetry': 7.0.1
       '@types/semver': 7.7.1
       assert: 2.1.0
       async: 3.2.6
-      axios: 1.13.6(debug@4.4.3)
+      axios: 1.15.2(debug@4.4.3)
       buffer: 6.0.3
       double-ended-queue: 2.1.0-0
       events: 3.3.0
       json-stringify-safe: 5.0.1
-      lodash: 4.17.23
+      lodash: 4.18.1
       nconf: 0.12.1
       opossum: 8.5.0
       semver: 7.7.4
@@ -7828,35 +7808,35 @@ snapshots:
       - debug
       - supports-color
 
-  '@fluidframework/server-local-server@6.0.0':
+  '@fluidframework/server-local-server@7.0.1':
     dependencies:
       '@fluidframework/common-utils': 3.1.0
       '@fluidframework/protocol-definitions': 3.2.0
-      '@fluidframework/server-lambdas': 6.0.0(debug@4.4.3)
-      '@fluidframework/server-memory-orderer': 6.0.0
-      '@fluidframework/server-services-client': 6.0.0
-      '@fluidframework/server-services-core': 6.0.0
-      '@fluidframework/server-services-telemetry': 6.0.0
-      '@fluidframework/server-test-utils': 6.0.0
+      '@fluidframework/server-lambdas': 7.0.1(debug@4.4.3)
+      '@fluidframework/server-memory-orderer': 7.0.1
+      '@fluidframework/server-services-client': 7.0.1
+      '@fluidframework/server-services-core': 7.0.1
+      '@fluidframework/server-services-telemetry': 7.0.1
+      '@fluidframework/server-test-utils': 7.0.1
       debug: 4.4.3
       events_pkg: events@3.3.0
-      jsrsasign: 11.1.1
+      jsrsasign: 11.1.3
       uuid: 11.1.0
     transitivePeerDependencies:
       - bufferutil
       - supports-color
       - utf-8-validate
 
-  '@fluidframework/server-memory-orderer@6.0.0':
+  '@fluidframework/server-memory-orderer@7.0.1':
     dependencies:
       '@fluidframework/common-utils': 3.1.0
-      '@fluidframework/protocol-base': 6.0.0
+      '@fluidframework/protocol-base': 7.0.1
       '@fluidframework/protocol-definitions': 3.2.0
-      '@fluidframework/server-lambdas': 6.0.0(debug@4.4.3)
-      '@fluidframework/server-services-client': 6.0.0
-      '@fluidframework/server-services-core': 6.0.0
-      '@fluidframework/server-services-telemetry': 6.0.0
-      '@types/debug': 4.1.12
+      '@fluidframework/server-lambdas': 7.0.1(debug@4.4.3)
+      '@fluidframework/server-services-client': 7.0.1
+      '@fluidframework/server-services-core': 7.0.1
+      '@fluidframework/server-services-telemetry': 7.0.1
+      '@types/debug': 4.1.13
       '@types/double-ended-queue': 2.1.7
       '@types/lodash': 4.17.24
       '@types/node': 18.19.130
@@ -7865,7 +7845,7 @@ snapshots:
       debug: 4.4.3
       double-ended-queue: 2.1.0-0
       events: 3.3.0
-      lodash: 4.17.23
+      lodash: 4.18.1
       sillyname: 0.1.0
       uuid: 11.1.0
       ws: 7.5.10
@@ -7892,30 +7872,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@fluidframework/server-services-client@6.0.0':
-    dependencies:
-      '@fluidframework/common-utils': 3.1.0
-      '@fluidframework/gitresources': 6.0.0
-      '@fluidframework/protocol-base': 6.0.0
-      '@fluidframework/protocol-definitions': 3.2.0
-      axios: 1.13.6(debug@4.4.3)
-      crc-32: 1.2.0
-      debug: 4.4.3
-      json-stringify-safe: 5.0.1
-      jsrsasign: 11.1.1
-      jwt-decode: 4.0.0
-      sillyname: 0.1.0
-      uuid: 11.1.0
-    transitivePeerDependencies:
-      - supports-color
-
   '@fluidframework/server-services-client@7.0.1':
     dependencies:
       '@fluidframework/common-utils': 3.1.0
       '@fluidframework/gitresources': 7.0.1
       '@fluidframework/protocol-base': 7.0.1
       '@fluidframework/protocol-definitions': 3.2.0
-      axios: 1.15.1(debug@4.4.3)
+      axios: 1.15.2(debug@4.4.3)
       crc-32: 1.2.0
       debug: 4.4.3
       json-stringify-safe: 5.0.1
@@ -7926,13 +7889,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@fluidframework/server-services-core@6.0.0':
+  '@fluidframework/server-services-core@7.0.1':
     dependencies:
       '@fluidframework/common-utils': 3.1.0
-      '@fluidframework/gitresources': 6.0.0
+      '@fluidframework/gitresources': 7.0.1
       '@fluidframework/protocol-definitions': 3.2.0
-      '@fluidframework/server-services-client': 6.0.0
-      '@fluidframework/server-services-telemetry': 6.0.0
+      '@fluidframework/server-services-client': 7.0.1
+      '@fluidframework/server-services-telemetry': 7.0.1
       '@types/nconf': 0.10.7
       '@types/node': 18.19.130
       debug: 4.4.3
@@ -7941,31 +7904,31 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@fluidframework/server-services-shared@6.0.0':
+  '@fluidframework/server-services-shared@7.0.1':
     dependencies:
       '@fluidframework/common-utils': 3.1.0
-      '@fluidframework/gitresources': 6.0.0
-      '@fluidframework/protocol-base': 6.0.0
+      '@fluidframework/gitresources': 7.0.1
+      '@fluidframework/protocol-base': 7.0.1
       '@fluidframework/protocol-definitions': 3.2.0
-      '@fluidframework/server-services-client': 6.0.0
-      '@fluidframework/server-services-core': 6.0.0
-      '@fluidframework/server-services-telemetry': 6.0.0
-      '@fluidframework/server-services-utils': 6.0.0
+      '@fluidframework/server-services-client': 7.0.1
+      '@fluidframework/server-services-core': 7.0.1
+      '@fluidframework/server-services-telemetry': 7.0.1
+      '@fluidframework/server-services-utils': 7.0.1
       '@socket.io/redis-adapter': 8.3.0(socket.io-adapter@2.5.6)
       '@socket.io/sticky': 1.0.4
-      body-parser: 1.20.4
+      body-parser: 1.20.5
       debug: 4.4.3
       events: 3.3.0
       express: 4.22.1
       fast-redact: 3.5.0
-      ioredis: 5.10.0
-      lodash: 4.17.23
+      ioredis: 5.10.1
+      lodash: 4.18.1
       nconf: 0.12.1
       notepack.io: 2.3.0
       serialize-error: 8.1.0
       socket.io: 4.8.3
       socket.io-adapter: 2.5.6
-      socket.io-parser: 4.2.5
+      socket.io-parser: 4.2.6
       uuid: 11.1.0
       winston: 3.19.0
     transitivePeerDependencies:
@@ -7973,7 +7936,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@fluidframework/server-services-telemetry@6.0.0':
+  '@fluidframework/server-services-telemetry@7.0.1':
     dependencies:
       '@fluidframework/common-utils': 3.1.0
       json-stringify-safe: 5.0.1
@@ -7981,15 +7944,15 @@ snapshots:
       serialize-error: 8.1.0
       uuid: 11.1.0
 
-  '@fluidframework/server-services-utils@6.0.0':
+  '@fluidframework/server-services-utils@7.0.1':
     dependencies:
       '@fluidframework/protocol-definitions': 3.2.0
-      '@fluidframework/server-services-client': 6.0.0
-      '@fluidframework/server-services-core': 6.0.0
-      '@fluidframework/server-services-telemetry': 6.0.0
+      '@fluidframework/server-services-client': 7.0.1
+      '@fluidframework/server-services-core': 7.0.1
+      '@fluidframework/server-services-telemetry': 7.0.1
       debug: 4.4.3
       express: 4.22.1
-      ioredis: 5.10.0
+      ioredis: 5.10.1
       json-stringify-safe: 5.0.1
       jsonwebtoken: 9.0.3
       morgan: 1.10.1
@@ -8003,22 +7966,22 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@fluidframework/server-test-utils@6.0.0':
+  '@fluidframework/server-test-utils@7.0.1':
     dependencies:
       '@fluidframework/common-utils': 3.1.0
-      '@fluidframework/gitresources': 6.0.0
-      '@fluidframework/protocol-base': 6.0.0
+      '@fluidframework/gitresources': 7.0.1
+      '@fluidframework/protocol-base': 7.0.1
       '@fluidframework/protocol-definitions': 3.2.0
-      '@fluidframework/server-services-client': 6.0.0
-      '@fluidframework/server-services-core': 6.0.0
-      '@fluidframework/server-services-telemetry': 6.0.0
-      '@types/ioredis-mock': 8.2.7(ioredis@5.10.0)
+      '@fluidframework/server-services-client': 7.0.1
+      '@fluidframework/server-services-core': 7.0.1
+      '@fluidframework/server-services-telemetry': 7.0.1
+      '@types/ioredis-mock': 8.2.7(ioredis@5.10.1)
       assert: 2.1.0
       debug: 4.4.3
       events: 3.3.0
-      ioredis: 5.10.0
-      ioredis-mock: 8.13.1(@types/ioredis-mock@8.2.7(ioredis@5.10.0))(ioredis@5.10.0)
-      lodash: 4.17.23
+      ioredis: 5.10.1
+      ioredis-mock: 8.13.1(@types/ioredis-mock@8.2.7(ioredis@5.10.1))(ioredis@5.10.1)
+      lodash: 4.18.1
       string-hash: 1.1.3
       uuid: 11.1.0
     transitivePeerDependencies:
@@ -8463,6 +8426,8 @@ snapshots:
   '@ioredis/as-callback@3.0.0': {}
 
   '@ioredis/commands@1.5.1': {}
+
+  '@ioredis/commands@1.7.0': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -9734,7 +9699,7 @@ snapshots:
     dependencies:
       '@types/node': 25.6.0
 
-  '@types/debug@4.1.12':
+  '@types/debug@4.1.13':
     dependencies:
       '@types/ms': 2.1.0
 
@@ -9754,9 +9719,9 @@ snapshots:
 
   '@types/events@3.0.3': {}
 
-  '@types/ioredis-mock@8.2.7(ioredis@5.10.0)':
+  '@types/ioredis-mock@8.2.7(ioredis@5.10.1)':
     dependencies:
-      ioredis: 5.10.0
+      ioredis: 5.10.1
 
   '@types/json-schema@7.0.15': {}
 
@@ -10088,7 +10053,7 @@ snapshots:
 
   assert@2.1.0:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       is-nan: 1.3.2
       object-is: 1.1.6
       object.assign: 4.1.7
@@ -10118,21 +10083,13 @@ snapshots:
 
   axios@0.28.1(debug@4.4.3):
     dependencies:
-      follow-redirects: 1.15.11(debug@4.4.3)
+      follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.5
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
 
-  axios@1.13.6(debug@4.4.3):
-    dependencies:
-      follow-redirects: 1.15.11(debug@4.4.3)
-      form-data: 4.0.5
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
-  axios@1.15.1(debug@4.4.3):
+  axios@1.15.2(debug@4.4.3):
     dependencies:
       follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.5
@@ -10162,7 +10119,7 @@ snapshots:
 
   binary-extensions@2.3.0: {}
 
-  body-parser@1.20.4:
+  body-parser@1.20.5:
     dependencies:
       bytes: 3.1.2
       content-type: 1.0.5
@@ -10172,7 +10129,7 @@ snapshots:
       http-errors: 2.0.1
       iconv-lite: 0.4.24
       on-finished: 2.4.1
-      qs: 6.14.2
+      qs: 6.15.1
       raw-body: 2.5.3
       type-is: 1.6.18
       unpipe: 1.0.0
@@ -10262,6 +10219,13 @@ snapshots:
       function-bind: 1.1.2
 
   call-bind@1.0.8:
+    dependencies:
+      call-bind-apply-helpers: 1.0.2
+      es-define-property: 1.0.1
+      get-intrinsic: 1.3.0
+      set-function-length: 1.2.2
+
+  call-bind@1.0.9:
     dependencies:
       call-bind-apply-helpers: 1.0.2
       es-define-property: 1.0.1
@@ -10668,7 +10632,7 @@ snapshots:
 
   engine.io-parser@5.2.3: {}
 
-  engine.io@6.6.6:
+  engine.io@6.6.7:
     dependencies:
       '@types/cors': 2.8.19
       '@types/node': 25.6.0
@@ -10717,7 +10681,7 @@ snapshots:
       es-errors: 1.3.0
       get-intrinsic: 1.3.0
       has-tostringtag: 1.0.2
-      hasown: 2.0.2
+      hasown: 2.0.3
 
   esbuild@0.27.4:
     optionalDependencies:
@@ -10920,7 +10884,7 @@ snapshots:
     dependencies:
       accepts: 1.3.8
       array-flatten: 1.1.1
-      body-parser: 1.20.4
+      body-parser: 1.20.5
       content-disposition: 0.5.4
       content-type: 1.0.5
       cookie: 0.7.2
@@ -10937,7 +10901,7 @@ snapshots:
       methods: 1.1.2
       on-finished: 2.4.1
       parseurl: 1.3.3
-      path-to-regexp: 0.1.12
+      path-to-regexp: 0.1.13
       proxy-addr: 2.0.7
       qs: 6.14.2
       range-parser: 1.2.1
@@ -11157,10 +11121,6 @@ snapshots:
 
   fn.name@1.1.0: {}
 
-  follow-redirects@1.15.11(debug@4.4.3):
-    optionalDependencies:
-      debug: 4.4.3
-
   follow-redirects@1.16.0(debug@4.4.3):
     optionalDependencies:
       debug: 4.4.3
@@ -11178,7 +11138,7 @@ snapshots:
       asynckit: 0.4.0
       combined-stream: 1.0.8
       es-set-tostringtag: 2.1.0
-      hasown: 2.0.2
+      hasown: 2.0.3
       mime-types: 2.1.35
 
   formatly@0.3.0:
@@ -11231,7 +11191,7 @@ snapshots:
       get-proto: 1.0.1
       gopd: 1.2.0
       has-symbols: 1.1.0
-      hasown: 2.0.2
+      hasown: 2.0.3
       math-intrinsics: 1.1.0
 
   get-proto@1.0.1:
@@ -11320,7 +11280,7 @@ snapshots:
     dependencies:
       hookified: 1.15.1
 
-  hasown@2.0.2:
+  hasown@2.0.3:
     dependencies:
       function-bind: 1.1.2
 
@@ -11416,17 +11376,17 @@ snapshots:
 
   ini@2.0.0: {}
 
-  ioredis-mock@8.13.1(@types/ioredis-mock@8.2.7(ioredis@5.10.0))(ioredis@5.10.0):
+  ioredis-mock@8.13.1(@types/ioredis-mock@8.2.7(ioredis@5.10.1))(ioredis@5.10.1):
     dependencies:
       '@ioredis/as-callback': 3.0.0
-      '@ioredis/commands': 1.5.1
-      '@types/ioredis-mock': 8.2.7(ioredis@5.10.0)
+      '@ioredis/commands': 1.7.0
+      '@types/ioredis-mock': 8.2.7(ioredis@5.10.1)
       fengari: 0.1.5
       fengari-interop: 0.1.4(fengari@0.1.5)
-      ioredis: 5.10.0
+      ioredis: 5.10.1
       semver: 7.7.4
 
-  ioredis@5.10.0:
+  ioredis@5.10.1:
     dependencies:
       '@ioredis/commands': 1.5.1
       cluster-key-slot: 1.1.2
@@ -11481,7 +11441,7 @@ snapshots:
 
   is-nan@1.3.2:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       define-properties: 1.2.1
 
   is-number@7.0.0: {}
@@ -11505,7 +11465,7 @@ snapshots:
       call-bound: 1.0.4
       gopd: 1.2.0
       has-tostringtag: 1.0.2
-      hasown: 2.0.2
+      hasown: 2.0.3
 
   is-stream@2.0.1: {}
 
@@ -11529,7 +11489,7 @@ snapshots:
 
   isexe@3.1.5: {}
 
-  isomorphic-git@1.37.4:
+  isomorphic-git@1.37.6:
     dependencies:
       async-lock: 1.4.1
       clean-git-ref: 2.0.1
@@ -11857,6 +11817,8 @@ snapshots:
 
   lodash@4.17.23: {}
 
+  lodash@4.18.1: {}
+
   logform@2.7.0:
     dependencies:
       '@colors/colors': 1.6.0
@@ -12110,7 +12072,7 @@ snapshots:
 
   object-is@1.1.6:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       define-properties: 1.2.1
 
   object-keys@1.1.1: {}
@@ -12119,7 +12081,7 @@ snapshots:
 
   object.assign@4.1.7:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       call-bound: 1.0.4
       define-properties: 1.2.1
       es-object-atoms: 1.1.1
@@ -12290,7 +12252,7 @@ snapshots:
       lru-cache: 11.3.5
       minipass: 7.1.3
 
-  path-to-regexp@0.1.12: {}
+  path-to-regexp@0.1.13: {}
 
   path-to-regexp@8.4.2: {}
 
@@ -12523,6 +12485,10 @@ snapshots:
       side-channel: 1.1.0
 
   qs@6.15.0:
+    dependencies:
+      side-channel: 1.1.0
+
+  qs@6.15.1:
     dependencies:
       side-channel: 1.1.0
 
@@ -12812,7 +12778,7 @@ snapshots:
 
   shell-quote@1.8.3: {}
 
-  side-channel-list@1.0.0:
+  side-channel-list@1.0.1:
     dependencies:
       es-errors: 1.3.0
       object-inspect: 1.13.4
@@ -12836,7 +12802,7 @@ snapshots:
     dependencies:
       es-errors: 1.3.0
       object-inspect: 1.13.4
-      side-channel-list: 1.0.0
+      side-channel-list: 1.0.1
       side-channel-map: 1.0.1
       side-channel-weakmap: 1.0.2
 
@@ -12894,13 +12860,6 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  socket.io-parser@4.2.5:
-    dependencies:
-      '@socket.io/component-emitter': 3.1.2
-      debug: 4.4.3
-    transitivePeerDependencies:
-      - supports-color
-
   socket.io-parser@4.2.6:
     dependencies:
       '@socket.io/component-emitter': 3.1.2
@@ -12914,9 +12873,9 @@ snapshots:
       base64id: 2.0.0
       cors: 2.8.6
       debug: 4.4.3
-      engine.io: 6.6.6
+      engine.io: 6.6.7
       socket.io-adapter: 2.5.6
-      socket.io-parser: 4.2.5
+      socket.io-parser: 4.2.6
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -13178,35 +13137,35 @@ snapshots:
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
 
-  tinylicious@6.0.0:
+  tinylicious@7.0.1:
     dependencies:
       '@fluidframework/common-utils': 3.1.0
-      '@fluidframework/gitresources': 6.0.0
-      '@fluidframework/protocol-base': 6.0.0
+      '@fluidframework/gitresources': 7.0.1
+      '@fluidframework/protocol-base': 7.0.1
       '@fluidframework/protocol-definitions': 3.2.0
-      '@fluidframework/server-lambdas': 6.0.0(debug@4.4.3)
-      '@fluidframework/server-local-server': 6.0.0
-      '@fluidframework/server-memory-orderer': 6.0.0
-      '@fluidframework/server-services-client': 6.0.0
-      '@fluidframework/server-services-core': 6.0.0
-      '@fluidframework/server-services-shared': 6.0.0
-      '@fluidframework/server-services-telemetry': 6.0.0
-      '@fluidframework/server-services-utils': 6.0.0
-      '@fluidframework/server-test-utils': 6.0.0
+      '@fluidframework/server-lambdas': 7.0.1(debug@4.4.3)
+      '@fluidframework/server-local-server': 7.0.1
+      '@fluidframework/server-memory-orderer': 7.0.1
+      '@fluidframework/server-services-client': 7.0.1
+      '@fluidframework/server-services-core': 7.0.1
+      '@fluidframework/server-services-shared': 7.0.1
+      '@fluidframework/server-services-telemetry': 7.0.1
+      '@fluidframework/server-services-utils': 7.0.1
+      '@fluidframework/server-test-utils': 7.0.1
       agentkeepalive: 4.6.0
-      axios: 1.13.6(debug@4.4.3)
-      body-parser: 1.20.4
+      axios: 1.15.2(debug@4.4.3)
+      body-parser: 1.20.5
       charwise: 3.0.1
       compression: 1.8.1
       cookie-parser: 1.4.7
       cors: 2.8.6
       detect-port: 1.6.1
       express: 4.22.1
-      isomorphic-git: 1.37.4
+      isomorphic-git: 1.37.6
       json-stringify-safe: 5.0.1
       level: 8.0.1
       level-sublevel: 6.6.4
-      lodash: 4.17.23
+      lodash: 4.18.1
       morgan: 1.10.1
       nconf: 0.12.1
       socket.io: 4.8.3
@@ -13519,7 +13478,7 @@ snapshots:
   which-typed-array@1.1.20:
     dependencies:
       available-typed-arrays: 1.0.7
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       call-bound: 1.0.4
       for-each: 0.3.5
       get-proto: 1.0.1
