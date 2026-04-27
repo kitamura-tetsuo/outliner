@@ -94,8 +94,8 @@ importers:
         specifier: ^1.4.8
         version: 1.4.8(@sinclair/typebox@0.34.49)
       '@inlang/paraglide-js':
-        specifier: 2.16.0
-        version: 2.16.0
+        specifier: 2.16.1
+        version: 2.16.1
       '@inlang/plugin-m-function-matcher':
         specifier: ^2.2.4
         version: 2.2.4
@@ -1305,8 +1305,8 @@ packages:
     peerDependencies:
       '@sinclair/typebox': ^0.31.17
 
-  '@inlang/paraglide-js@2.16.0':
-    resolution: {integrity: sha512-O7KKvVoTsGqPRt1VfSvd0UyfSjU2qHiABx968M2decgG7Af6TddW3dTJrTS3I78nOUgRAlYwCYfKefSGD4rGMA==}
+  '@inlang/paraglide-js@2.16.1':
+    resolution: {integrity: sha512-Ni1UgMt9UKnzmAnCaPvWw1+7hIJAdtoLRzPxbM+wRjT0ovNIys+A/EgiMX2IomLXNRmPj+dw3wSKHe1AGcMQEg==}
     hasBin: true
 
   '@inlang/plugin-m-function-matcher@2.2.4':
@@ -1325,6 +1325,10 @@ packages:
 
   '@inlang/sdk@2.9.1':
     resolution: {integrity: sha512-y0C3xaKo6pSGDr3p5OdreRVT3THJpgKVe1lLvG3BE4v9lskp3UfI9cPCbN8X2dpfLt/4ljtehMb5SykpMfJrMg==}
+    engines: {node: '>=20.0.0'}
+
+  '@inlang/sdk@2.9.2':
+    resolution: {integrity: sha512-H/iVZEcOtbowKaiq6yirnUR9eyffAOsXpgwWr4eAe45H7l1f1A1Wowb7hVkWQcAE62sL1g76qN4XkyOx2BkV2w==}
     engines: {node: '>=20.0.0'}
 
   '@inlang/translatable@1.3.1':
@@ -1498,6 +1502,10 @@ packages:
 
   '@lifeomic/attempt@3.1.0':
     resolution: {integrity: sha512-QZqem4QuAnAyzfz+Gj5/+SLxqwCAw2qmt7732ZXodr6VDWGeYLG6w1i/vYLa55JQM9wRuBKLmXmiZ2P0LtE5rw==}
+
+  '@lix-js/sdk@0.4.10':
+    resolution: {integrity: sha512-0dMInAJK/67guTG5rRZaCEhvzC5cCXENOjaePA5AqMXrCE97kaY7SRor9e2vnoGsFIiGqXKlT0MCIoZj36G0gg==}
+    engines: {node: '>=18'}
 
   '@lix-js/sdk@0.4.9':
     resolution: {integrity: sha512-30mDkXpx704359oRrJI42bjfCspCiaMItngVBbPkiTGypS7xX4jYbHWQkXI8XuJ7VDB69D0MsVU6xfrBAIrM4A==}
@@ -6142,6 +6150,10 @@ packages:
     resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==}
     hasBin: true
 
+  uuid@14.0.0:
+    resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
+    hasBin: true
+
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
@@ -8252,10 +8264,10 @@ snapshots:
       '@inlang/language-tag': 1.5.1
       '@sinclair/typebox': 0.34.49
 
-  '@inlang/paraglide-js@2.16.0':
+  '@inlang/paraglide-js@2.16.1':
     dependencies:
       '@inlang/recommend-sherlock': 0.2.1
-      '@inlang/sdk': 2.9.1
+      '@inlang/sdk': 2.9.2
       commander: 11.1.0
       consola: 3.4.0
       json5: 2.2.3
@@ -8297,6 +8309,16 @@ snapshots:
       kysely: 0.28.16
       sqlite-wasm-kysely: 0.3.0(kysely@0.28.16)
       uuid: 13.0.0
+    transitivePeerDependencies:
+      - babel-plugin-macros
+
+  '@inlang/sdk@2.9.2':
+    dependencies:
+      '@lix-js/sdk': 0.4.10
+      '@sinclair/typebox': 0.31.28
+      kysely: 0.28.16
+      sqlite-wasm-kysely: 0.3.0(kysely@0.28.16)
+      uuid: 14.0.0
     transitivePeerDependencies:
       - babel-plugin-macros
 
@@ -8455,6 +8477,18 @@ snapshots:
   '@keyv/serialize@1.1.1': {}
 
   '@lifeomic/attempt@3.1.0': {}
+
+  '@lix-js/sdk@0.4.10':
+    dependencies:
+      '@lix-js/server-protocol-schema': 0.1.1
+      dedent: 1.5.1
+      human-id: 4.1.3
+      js-sha256: 0.11.1
+      kysely: 0.28.16
+      sqlite-wasm-kysely: 0.3.0(kysely@0.28.16)
+      uuid: 14.0.0
+    transitivePeerDependencies:
+      - babel-plugin-macros
 
   '@lix-js/sdk@0.4.9':
     dependencies:
@@ -13359,6 +13393,8 @@ snapshots:
   uuid@11.1.0: {}
 
   uuid@13.0.0: {}
+
+  uuid@14.0.0: {}
 
   uuid@8.3.2: {}
 
