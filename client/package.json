@@ -12,7 +12,7 @@
         "pino": "^10.3.1",
         "rrule": "^2.8.1",
         "sql.js": "^1.14.1",
-        "uuid": "^13.0.0",
+        "uuid": "^14.0.0",
         "wx-svelte-grid": "^2.6.2",
         "y-indexeddb": "^9.0.12",
         "y-protocols": "^1.0.6",
