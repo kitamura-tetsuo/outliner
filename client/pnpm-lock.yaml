@@ -97,8 +97,8 @@ importers:
         specifier: 2.18.0
         version: 2.18.0(typescript@6.0.3)
       '@inlang/plugin-m-function-matcher':
-        specifier: ^2.2.4
-        version: 2.2.4
+        specifier: ^2.2.6
+        version: 2.2.6
       '@inlang/plugin-message-format':
         specifier: ^4.4.0
         version: 4.4.0
@@ -1315,8 +1315,8 @@ packages:
       typescript:
         optional: true
 
-  '@inlang/plugin-m-function-matcher@2.2.4':
-    resolution: {integrity: sha512-VA2O7XqUnyFIXY4aPQoygzwpGiV2vVyY8JiJMsPkNfor81m2wS89QMaDj+XCof7r5Wrkdh49He7RgsAX+19HfQ==}
+  '@inlang/plugin-m-function-matcher@2.2.6':
+    resolution: {integrity: sha512-sEDVWjY8WgDq0mkEy117IZwYuzZHUZsnCV0IiRfheAW03mbnWAK/eOlECjxncKxWdQOpT0QI7rebvZRZFu4t8w==}
 
   '@inlang/plugin-message-format@4.4.0':
     resolution: {integrity: sha512-n4aXt6XVg5kxhKoLAhi9nMgZtCA9iS0QOaXte56VqxWHcfj9O4c4gOkyVQZH7H9D8h7OZufCrO1sZGYOypPwEA==}
@@ -1328,10 +1328,6 @@ packages:
 
   '@inlang/recommend-sherlock@0.2.1':
     resolution: {integrity: sha512-ckv8HvHy/iTqaVAEKrr+gnl+p3XFNwe5D2+6w6wJk2ORV2XkcRkKOJ/XsTUJbPSiyi4PI+p+T3bqbmNx/rDUlg==}
-
-  '@inlang/sdk@2.9.1':
-    resolution: {integrity: sha512-y0C3xaKo6pSGDr3p5OdreRVT3THJpgKVe1lLvG3BE4v9lskp3UfI9cPCbN8X2dpfLt/4ljtehMb5SykpMfJrMg==}
-    engines: {node: '>=20.0.0'}
 
   '@inlang/sdk@2.9.3':
     resolution: {integrity: sha512-E/SxcSji8WIt4DqQG9APlOs6tVtJxrrOUS3dE4ho3pWRCLLIY0PIVzgNwSukuFT+m8LuJDFwpRY5VY3ryzyGWQ==}
@@ -1514,10 +1510,6 @@ packages:
 
   '@lix-js/sdk@0.4.10':
     resolution: {integrity: sha512-0dMInAJK/67guTG5rRZaCEhvzC5cCXENOjaePA5AqMXrCE97kaY7SRor9e2vnoGsFIiGqXKlT0MCIoZj36G0gg==}
-    engines: {node: '>=18'}
-
-  '@lix-js/sdk@0.4.9':
-    resolution: {integrity: sha512-30mDkXpx704359oRrJI42bjfCspCiaMItngVBbPkiTGypS7xX4jYbHWQkXI8XuJ7VDB69D0MsVU6xfrBAIrM4A==}
     engines: {node: '>=18'}
 
   '@lix-js/server-protocol-schema@0.1.1':
@@ -4641,10 +4633,6 @@ packages:
   kuler@2.0.0:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
 
-  kysely@0.28.16:
-    resolution: {integrity: sha512-3i5pmOiZvMDj00qhrIVbH0AnioVTx22DMP7Vn5At4yJO46iy+FM8Y/g61ltenLVSo3fiO8h8Q3QOFgf/gQ72ww==}
-    engines: {node: '>=20.0.0'}
-
   kysely@0.28.17:
     resolution: {integrity: sha512-nbD8lB9EB3wNdMhOCdx5Li8DxnLbvKByylRLcJ1h+4SkrowVeECAyZlyiKMThF7xFdRz0jSQ2MoJr+wXux2y0Q==}
     engines: {node: '>=20.0.0'}
@@ -6236,17 +6224,8 @@ packages:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
 
-  uuid@10.0.0:
-    resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
-    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
-    hasBin: true
-
   uuid@11.1.1:
     resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
-    hasBin: true
-
-  uuid@13.0.2:
-    resolution: {integrity: sha512-vzi9uRZ926x4XV73S/4qQaTwPXM2JBj6/6lI/byHH1jOpCzb0zDbfytgA9LcN/hzb2l7WQSQnxITOVx5un/wGw==}
     hasBin: true
 
   uuid@14.0.0:
@@ -8367,9 +8346,9 @@ snapshots:
     transitivePeerDependencies:
       - babel-plugin-macros
 
-  '@inlang/plugin-m-function-matcher@2.2.4':
+  '@inlang/plugin-m-function-matcher@2.2.6':
     dependencies:
-      '@inlang/sdk': 2.9.1
+      '@inlang/sdk': 2.9.3
     transitivePeerDependencies:
       - babel-plugin-macros
 
@@ -8392,16 +8371,6 @@ snapshots:
   '@inlang/recommend-sherlock@0.2.1':
     dependencies:
       comment-json: 4.6.2
-
-  '@inlang/sdk@2.9.1':
-    dependencies:
-      '@lix-js/sdk': 0.4.9
-      '@sinclair/typebox': 0.31.28
-      kysely: 0.28.16
-      sqlite-wasm-kysely: 0.3.0(kysely@0.28.16)
-      uuid: 13.0.2
-    transitivePeerDependencies:
-      - babel-plugin-macros
 
   '@inlang/sdk@2.9.3':
     dependencies:
@@ -8580,18 +8549,6 @@ snapshots:
       kysely: 0.28.17
       sqlite-wasm-kysely: 0.3.0(kysely@0.28.17)
       uuid: 14.0.0
-    transitivePeerDependencies:
-      - babel-plugin-macros
-
-  '@lix-js/sdk@0.4.9':
-    dependencies:
-      '@lix-js/server-protocol-schema': 0.1.1
-      dedent: 1.5.1
-      human-id: 4.1.3
-      js-sha256: 0.11.1
-      kysely: 0.28.16
-      sqlite-wasm-kysely: 0.3.0(kysely@0.28.16)
-      uuid: 10.0.0
     transitivePeerDependencies:
       - babel-plugin-macros
 
@@ -11842,8 +11799,6 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  kysely@0.28.16: {}
-
   kysely@0.28.17: {}
 
   level-codec@9.0.2:
@@ -13075,11 +13030,6 @@ snapshots:
 
   sql.js@1.14.1: {}
 
-  sqlite-wasm-kysely@0.3.0(kysely@0.28.16):
-    dependencies:
-      '@sqlite.org/sqlite-wasm': 3.48.0-build4
-      kysely: 0.28.16
-
   sqlite-wasm-kysely@0.3.0(kysely@0.28.17):
     dependencies:
       '@sqlite.org/sqlite-wasm': 3.48.0-build4
@@ -13548,11 +13498,7 @@ snapshots:
 
   utils-merge@1.0.1: {}
 
-  uuid@10.0.0: {}
-
   uuid@11.1.1: {}
-
-  uuid@13.0.2: {}
 
   uuid@14.0.0: {}
 
