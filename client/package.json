@@ -68,7 +68,7 @@
         "chokidar-cli": "^3.0.0",
         "concurrently": "^9.2.0",
         "dprint": "^0.54.0",
-        "eslint": "^10.2.1",
+        "eslint": "^10.3.0",
         "eslint-formatter-unix": "^9.0.1",
         "eslint-plugin-svelte": "^3.17.1",
         "fake-indexeddb": "^6.2.5",
@@ -91,7 +91,7 @@
         "tinylicious": "^7.0.1",
         "ts-prune": "^0.10.3",
         "typescript": "^6.0.3",
-        "typescript-eslint": "^8.59.0",
+        "typescript-eslint": "^8.59.2",
         "vite": "^8.0.10",
         "vitest": "^4.1.1",
         "ws": "^8.20.0"
