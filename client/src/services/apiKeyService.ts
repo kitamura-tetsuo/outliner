@@ -14,6 +14,7 @@ interface CreateApiKeyResponse {
     createdAt: number;
 }
 
+/* global RequestInit */
 async function callApi(path: string, options: RequestInit = {}) {
     const idToken = await userManager.auth.currentUser?.getIdToken();
     if (!idToken) throw new Error("No auth token");

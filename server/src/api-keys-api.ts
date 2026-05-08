@@ -1,8 +1,8 @@
 import crypto from "crypto";
 import express, { NextFunction, Request, Response } from "express";
 import admin from "firebase-admin";
-import { requireAuth } from "./auth-middleware.js";
 import { logger } from "./logger.js";
+import { requireAuth } from "./auth-middleware.js";
 
 const router = express.Router();
 
