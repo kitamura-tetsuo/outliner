@@ -3,10 +3,10 @@ import admin from "firebase-admin";
 import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
-import { logger } from "./logger.js";
-import { Project, Items } from "./schema/app-schema.js";
-import { validateApiKey } from "./api-keys-api.js";
 import { checkContainerAccess } from "./access-control.js";
+import { validateApiKey } from "./api-keys-api.js";
+import { logger } from "./logger.js";
+import { Items, Project } from "./schema/app-schema.js";
 
 // Use 'any' type for Hocuspocus to avoid ESM import issues
 type HocuspocusInstance = any;
@@ -38,7 +38,9 @@ export function createImageUploadRouter(hocuspocus: HocuspocusInstance) {
                 }
 
                 if (!pageTitle && !insertAfter && !insertBefore) {
-                    res.status(400).json({ error: "Missing insertion target (pageTitle, insertAfter, or insertBefore)" });
+                    res.status(400).json({
+                        error: "Missing insertion target (pageTitle, insertAfter, or insertBefore)",
+                    });
                     return;
                 }
 
@@ -171,7 +173,7 @@ export function createImageUploadRouter(hocuspocus: HocuspocusInstance) {
                 logger.error({ event: "image_upload_error", error: error.message });
                 res.status(500).json({ error: error.message || "Failed to upload image" });
             }
-        }
+        },
     );
 
     return router;
