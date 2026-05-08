@@ -1,14 +1,14 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { listApiKeys, createApiKey, revokeApiKey } from "../services/apiKeyService";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createApiKey, listApiKeys, revokeApiKey } from "../services/apiKeyService";
 
 vi.mock("../auth/UserManager", () => ({
     userManager: {
         auth: {
             currentUser: {
                 getIdToken: vi.fn().mockResolvedValue("test-token"),
-            }
-        }
-    }
+            },
+        },
+    },
 }));
 
 describe("apiKeyService", () => {
@@ -50,6 +50,9 @@ describe("apiKeyService", () => {
         } as any);
 
         await revokeApiKey("1");
-        expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api-keys/1"), expect.objectContaining({ method: "DELETE" }));
+        expect(fetch).toHaveBeenCalledWith(
+            expect.stringContaining("/api-keys/1"),
+            expect.objectContaining({ method: "DELETE" }),
+        );
     });
 });

@@ -1,11 +1,11 @@
-import { describe, expect, it, jest, beforeEach } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 import express from "express";
-import request from "supertest";
-import { createImageUploadRouter } from "../src/image-upload-api.js";
 import admin from "firebase-admin";
+import request from "supertest";
 import * as Y from "yjs";
-import { Project, Items } from "../src/schema/app-schema.js";
+import { createImageUploadRouter } from "../src/image-upload-api.js";
+import { Items, Project } from "../src/schema/app-schema.js";
 
 jest.mock("../src/access-control.js", () => ({
     checkContainerAccess: jest.fn<any>().mockResolvedValue(true),
@@ -39,14 +39,14 @@ describe("Image Upload API", () => {
         mockProject = {
             items: {
                 length: 0,
-                [Symbol.iterator]: function* () {},
-                addNode: jest.fn().mockReturnValue({ updateText: jest.fn(), id: "mock-new-id" })
+                [Symbol.iterator]: function*() {},
+                addNode: jest.fn().mockReturnValue({ updateText: jest.fn(), id: "mock-new-id" }),
             },
             addPage: jest.fn().mockReturnValue({
                 items: {
-                    addNode: jest.fn().mockReturnValue({ updateText: jest.fn(), id: "mock-new-id" })
-                }
-            })
+                    addNode: jest.fn().mockReturnValue({ updateText: jest.fn(), id: "mock-new-id" }),
+                },
+            }),
         };
         (Project.fromDoc as any) = jest.fn().mockReturnValue(mockProject);
 
@@ -75,7 +75,7 @@ describe("Image Upload API", () => {
 
         // Find the route and replace the middleware
         router.stack.forEach((layer: any) => {
-            if (layer.route && layer.route.path === '/projects/:projectId/upload-image') {
+            if (layer.route && layer.route.path === "/projects/:projectId/upload-image") {
                 layer.route.stack[0].handle = function(req: any, res: any, next: any) {
                     req.user = { uid: "test-user-id" };
                     next();
