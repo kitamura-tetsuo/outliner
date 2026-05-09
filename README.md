@@ -3,6 +3,7 @@
 Outliner is a real-time collaborative application built on Yjs.
 
 ## User Manual
+
 https://kitamura-tetsuo.github.io/outliner/
 
 ## Yjs migration
