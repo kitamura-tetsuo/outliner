@@ -10,6 +10,7 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 4. [Links](#links)
 5. [Selection and Copy & Paste](#selection-and-copy-paste)
 6. [Keyboard Shortcuts](#keyboard-shortcuts)
+7. [Images](#images)
 
 ---
 
@@ -93,6 +94,16 @@ Select a rectangular area spanning multiple lines.
 
 - Mouse: `Alt + Shift + Drag`
 - Keyboard: `Alt + Shift + Arrow keys`
+
+---
+
+## Images
+
+You can easily add images to your items.
+
+### Uploading Images
+
+You can upload images by dragging and dropping an image file directly onto the editor.
 
 ---
 
