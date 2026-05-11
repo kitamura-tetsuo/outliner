@@ -8,7 +8,7 @@
         "test:watch": "vitest *.spec.ts"
     },
     "devDependencies": {
-        "@dotenvx/dotenvx": "^1.64.0",
+        "@dotenvx/dotenvx": "^1.65.0",
         "vitest": "^4.1.5"
     }
 }
