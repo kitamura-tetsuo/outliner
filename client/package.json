@@ -28,7 +28,7 @@
     },
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.64.0",
-        "@eslint/compat": "^2.0.5",
+        "@eslint/compat": "^2.1.0",
         "@eslint/js": "^10.0.1",
         "@fluidframework/test-client-utils": "^1.4.0",
         "@fluidframework/tinylicious-client": "^2.93.0",
@@ -91,7 +91,7 @@
         "tinylicious": "^7.0.1",
         "ts-prune": "^0.10.3",
         "typescript": "^6.0.3",
-        "typescript-eslint": "^8.59.2",
+        "typescript-eslint": "^8.59.3",
         "vite": "^8.0.12",
         "vitest": "^4.1.1",
         "ws": "^8.20.0"
