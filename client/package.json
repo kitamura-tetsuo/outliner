@@ -1,6 +1,6 @@
 {
     "dependencies": {
-        "@dotenvx/dotenvx": "^1.64.0",
+        "@dotenvx/dotenvx": "^1.65.0",
         "@hocuspocus/provider": "^4.0.0",
         "@sentry/sveltekit": "^10.51.0",
         "@sinclair/typebox": "^0.34.49",
@@ -27,7 +27,7 @@
         "typescript": "$typescript"
     },
     "devDependencies": {
-        "@dotenvx/dotenvx": "^1.64.0",
+        "@dotenvx/dotenvx": "^1.65.0",
         "@eslint/compat": "^2.1.0",
         "@eslint/js": "^10.0.1",
         "@fluidframework/test-client-utils": "^1.4.0",
@@ -76,7 +76,7 @@
         "fs-extra": "^11.3.5",
         "globals": "^17.6.0",
         "jsdom": "^29.1.0",
-        "knip": "^6.7.0",
+        "knip": "^6.12.2",
         "mcp-playwright": "^0.0.1",
         "mdsvex": "^0.12.7",
         "monocart-coverage-reports": "^2.12.11",
