@@ -2,7 +2,17 @@
  * Interface representing a format token
  */
 interface FormatToken {
-    type: "text" | "bold" | "italic" | "strikethrough" | "underline" | "code" | "link" | "internalLink" | "quote" | "image";
+    type:
+        | "text"
+        | "bold"
+        | "italic"
+        | "strikethrough"
+        | "underline"
+        | "code"
+        | "link"
+        | "internalLink"
+        | "quote"
+        | "image";
     content: string;
     children?: FormatToken[];
     start: number;
@@ -645,9 +655,7 @@ export class ScrapboxFormatter {
                     }
 
                     const text = trimmedLabel ? processFormat(trimmedLabel) : escapedUrl;
-                    const html = `<a href="${
-                        escapedUrl
-                    }" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                    const html = `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
                     return createPlaceholder(html);
                 });
             }
