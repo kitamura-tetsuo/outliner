@@ -160,6 +160,38 @@ describe("ScrapboxFormatter", () => {
             });
         });
 
+        describe("images", () => {
+            it("should identify image URLs correctly", () => {
+                expect(ScrapboxFormatter.isImageUrl("https://example.com/image.png")).toBe(true);
+                expect(ScrapboxFormatter.isImageUrl("https://example.com/image.jpg")).toBe(true);
+                expect(ScrapboxFormatter.isImageUrl("https://example.com/image.JPEG")).toBe(true);
+                expect(ScrapboxFormatter.isImageUrl("https://example.com/image.svg")).toBe(true);
+                expect(ScrapboxFormatter.isImageUrl("https://example.com/image.webp")).toBe(true);
+                expect(ScrapboxFormatter.isImageUrl("https://example.com/image.gif")).toBe(true);
+
+                expect(ScrapboxFormatter.isImageUrl("https://example.com/page.html")).toBe(false);
+                expect(ScrapboxFormatter.isImageUrl("https://example.com/image.png/page")).toBe(false);
+            });
+
+            it("should render img tag for image URLs without label", () => {
+                const input = "[https://example.com/image.png]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toContain(
+                    '<img src="https://example.com/image.png" alt="https://example.com/image.png" class="scrapbox-image" />',
+                );
+            });
+
+            it("should render img tag with alt text when label is provided", () => {
+                const input = "[https://example.com/image.png Custom Alt Text]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toContain(
+                    '<img src="https://example.com/image.png" alt="Custom Alt Text" class="scrapbox-image" />',
+                );
+            });
+        });
+
         describe("external links", () => {
             it("should render URL when no label is provided", () => {
                 const input = "[https://example.com]";

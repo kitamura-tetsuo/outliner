@@ -2,7 +2,7 @@
  * Interface representing a format token
  */
 interface FormatToken {
-    type: "text" | "bold" | "italic" | "strikethrough" | "underline" | "code" | "link" | "internalLink" | "quote";
+    type: "text" | "bold" | "italic" | "strikethrough" | "underline" | "code" | "link" | "internalLink" | "quote" | "image";
     content: string;
     children?: FormatToken[];
     start: number;
@@ -406,6 +406,20 @@ export class ScrapboxFormatter {
      * @param text Text to convert
      * @returns Text converted to HTML
      */
+    /**
+     * Checks if a URL is an image
+     * @param url URL to check
+     * @returns Returns true if it's an image URL
+     */
+    static isImageUrl(url: string): boolean {
+        return /\.(jpeg|jpg|gif|png|svg|webp|bmp)$/i.test(url);
+    }
+
+    /**
+     * Converts Scrapbox syntax text to HTML
+     * @param text Text to convert
+     * @returns Text converted to HTML
+     */
     static formatToHtml(text: string): string {
         if (!text) return "";
 
@@ -621,10 +635,18 @@ export class ScrapboxFormatter {
             if (input.includes("[http")) {
                 input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
                     const trimmedLabel = label?.trim();
-                    const text = trimmedLabel ? processFormat(trimmedLabel) : this.escapeHtml(url);
                     const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
+                    const escapedUrl = this.escapeHtml(safeUrl);
+
+                    if (ScrapboxFormatter.isImageUrl(safeUrl)) {
+                        const altText = trimmedLabel ? this.escapeHtml(trimmedLabel) : escapedUrl;
+                        const html = `<img src="${escapedUrl}" alt="${altText}" class="scrapbox-image" />`;
+                        return createPlaceholder(html);
+                    }
+
+                    const text = trimmedLabel ? processFormat(trimmedLabel) : escapedUrl;
                     const html = `<a href="${
-                        this.escapeHtml(safeUrl)
+                        escapedUrl
                     }" target="_blank" rel="noopener noreferrer">${text}</a>`;
                     return createPlaceholder(html);
                 });
