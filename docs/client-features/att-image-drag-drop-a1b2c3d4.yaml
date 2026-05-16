@@ -1,0 +1,18 @@
+id: ATT-a1b2c3d4
+title: Image Drag and Drop
+title-ja: 画像のドラッグ&ドロップ
+description: Support dragging and dropping images from external applications into the outliner, with positional insertion (top/middle/bottom) and robust base64 conversion.
+category: attachments
+status: implemented
+components:
+- src/components/OutlinerItem.svelte
+- src/components/OutlinerTree.svelte
+- src/services/attachmentService.ts
+tests:
+- client/e2e/core/att-image-drag-drop-a1b2c3d4.spec.ts
+acceptance:
+- Dropping an image on the empty tree area creates a new item at the end of the page.
+- Dropping an image on the middle of an item attaches it to that item.
+- Dropping an image on the top or bottom edge of an item creates a new item with the attachment.
+- High-resolution images can be uploaded without stack overflow errors.
+- Visual line-based drop targeting (top/middle/bottom) works correctly.

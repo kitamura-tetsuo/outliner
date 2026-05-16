@@ -546,36 +546,54 @@ const aliasTargetIdEffective = $derived.by(() => {
 
 
 // Identify drop target outliner-item from DOM and add attachment to that Item (top-level definition)
-function addAttachmentToDomTargetOrModel(ev: DragEvent, url: string) {
-    try {
-        const w: any = (typeof window !== 'undefined') ? (window as any) : null;
+    function addAttachmentToDomTargetOrModel(ev: DragEvent | null, url: string) {
+        // Resolve target item from event or fallback to current model
         const targetEl: any = (ev?.target as any)?.closest?.('.outliner-item') || null;
         const targetId: string | null = targetEl?.getAttribute?.('data-item-id') ?? null;
-        let targetItem: any = null;
-        if (w && targetId && w.generalStore?.currentPage?.items) {
-            const items: any = w.generalStore.currentPage.items;
-            // Use efficient iterator to avoid O(N^2) complexity
-            // Use iterateUnordered if available for O(N) instead of O(N log N)
-            const iter = items.iterateUnordered ? items.iterateUnordered() : items;
-            for (const cand of iter) {
-                if (String(cand?.id) === String(targetId)) { targetItem = cand; break; }
+
+        if (targetId && String(targetId) === String(model.id)) {
+            // Target is this item
+            try {
+                model.original.addAttachment(url);
+            } catch (e) {
+                // Fallback for cases where addAttachment is not available
+                try { (model.original as any).attachments.push([url]); } catch {}
+            }
+        } else if (targetId) {
+            // Target is another item, find it in the global state (E2E fallback)
+            try {
+                const w: any = (typeof window !== 'undefined') ? (window as any) : null;
+                const map = w?.__ITEM_ID_MAP__;
+                const mappedId = map ? map[String(targetId)] : undefined;
+                const curPage: any = w?.generalStore?.currentPage;
+                if (mappedId && curPage?.items) {
+                    for (const cand of curPage.items) {
+                        if (String(cand?.id) === String(mappedId)) {
+                            try { cand.addAttachment(url); } catch { try { (cand as any).attachments.push([url]); } catch {} }
+                            try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {}
+                            break;
+                        }
+                    }
+                }
+            } catch {}
+        } else {
+            // No target found in DOM, default to current model
+            try {
+                model.original.addAttachment(url);
+            } catch (e) {
+                try { (model.original as any).attachments.push([url]); } catch {}
             }
         }
-        const itm: any = targetItem || (model?.original as any);
-        // First try official API, fallback to push directly to Y.Array if failed/undefined
-        // Prevent duplicates
+
+        // Always trigger change event for test environment stabilization
         try {
-            const exists = !!(itm?.attachments?.toArray?.()?.includes?.(url));
-            if (!exists) {
-                try { itm?.addAttachment?.(url); } catch { try { itm?.attachments?.push?.([url]); } catch {} }
+            if (IS_TEST) {
+                window.dispatchEvent(new CustomEvent('item-attachments-changed', {
+                    detail: { id: String(targetId || model.id) }
+                }));
             }
-        } catch {
-            try { itm?.addAttachment?.(url); } catch { try { itm?.attachments?.push?.([url]); } catch {} }
-        }
-        // Fire event in test environment
-        try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(itm?.id || model.id) } })); } } catch {}
-    } catch {}
-}
+        } catch {}
+    }
 
 
 
@@ -1650,18 +1668,36 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                 for (const file of files) {
                     try {
                         const url = await uploadAttachment(containerId, model.id, file);
-                        addAttachmentToDomTargetOrModel(event, url);
-                        // Reflect to Doc after connection
-                        try { mirrorAttachment(url); } catch {}
+                        
+                        if (!dropTargetPosition || dropTargetPosition === "middle") {
+                            addAttachmentToDomTargetOrModel(event, url);
+                            // Reflect to Doc after connection
+                            try { mirrorAttachment(url); } catch {}
+                        } else {
+                            // Dispatch event for top/bottom insertion
+                            dispatch("drop", {
+                                targetItemId: model.id,
+                                position: dropTargetPosition,
+                                attachmentUrl: url
+                            });
+                        }
 
                     } catch (e) {
                         // Fallback with local preview even if upload fails (E2E stabilization)
                         try {
                             const localUrl = URL.createObjectURL(file);
-                            try { model.original.addAttachment(localUrl); } catch { try { (model.original as any)?.attachments?.push?.([localUrl]); } catch {} }
-                            try { mirrorAttachment(localUrl); } catch {}
-                            // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
-                            try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
+                            if (!dropTargetPosition || dropTargetPosition === "middle") {
+                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as any)?.attachments?.push?.([localUrl]); } catch {} }
+                                try { mirrorAttachment(localUrl); } catch {}
+                                // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
+                                try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
+                            } else {
+                                dispatch("drop", {
+                                    targetItemId: model.id,
+                                    position: dropTargetPosition,
+                                    attachmentUrl: localUrl
+                                });
+                            }
                             // Auxiliary reflection to Doc after connection (via ID map)
                             try {
                                 const w:any = (typeof window !== 'undefined') ? (window as any) : null;
@@ -1702,19 +1738,8 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
-            addAttachmentToDomTargetOrModel(event, localUrl);
-
-            try {
-                const w:any = (typeof window !== 'undefined') ? (window as any) : null;
-                const map = w?.__ITEM_ID_MAP__;
-                const mappedId = map ? map[String(model.id)] : undefined;
-                const curPage:any = w?.generalStore?.currentPage;
-                if (mappedId && curPage?.items) {
-                    for (const cand of curPage.items) {
-                        if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch {} try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
-                    }
-                }
-            } catch {}
+            addAttachmentToDomTargetOrModel(event as DragEvent, localUrl);
+            try { mirrorAttachment(localUrl); } catch {}
         } catch {}
         dropTargetPosition = null;
         return;

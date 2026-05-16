@@ -19,7 +19,14 @@ async function callApi(path: string, body: ApiRequestBody) {
 
 export async function uploadAttachment(containerId: string, itemId: string, file: File): Promise<string> {
     const arrayBuffer = await file.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    // Convert ArrayBuffer to base64 safely (avoiding stack overflow with large files)
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let binary = "";
+    const chunkSize = 8192; // Process in chunks to avoid stack limits
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+        binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
+    }
+    const base64 = btoa(binary);
     const data = await callApi("api/upload-attachment", { containerId, itemId, fileName: file.name, fileData: base64 });
     return data.url as string;
 }

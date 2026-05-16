@@ -1225,7 +1225,7 @@
 
     // Item drop event handler
     function handleItemDrop(event: CustomEvent) {
-        const { targetItemId, position, text, selection, sourceItemId } =
+        const { targetItemId, position, text, selection, sourceItemId, attachmentUrl } =
             event.detail;
 
         try {
@@ -1277,6 +1277,9 @@
         } else if (sourceItemId) {
             // Drag & drop of entire single item
             handleItemMoveDrop(sourceItemId, targetItemId, position);
+        } else if (attachmentUrl) {
+            // External attachment drop
+            handleExternalAttachmentDrop(targetItemId, position, attachmentUrl);
         } else {
             // External text drop
             handleExternalTextDrop(targetItemId, position, text);
@@ -1688,6 +1691,52 @@
     }
 
     // Drop text from external source
+    /**
+     * Handle attachment drop from external application
+     */
+    function handleExternalAttachmentDrop(
+        targetItemId: string,
+        position: string,
+        url: string
+    ) {
+        // Resolve target index
+        const targetIndex = displayItems.findIndex(
+            (d) => d.model.id === targetItemId
+        );
+
+        if (targetIndex < 0) return;
+
+        const items = pageItem.items as Items;
+        
+        if (position === "middle") {
+            // Add to existing item
+            const targetItem = displayItems[targetIndex].model.original;
+            try {
+                targetItem.addAttachment(url);
+            } catch {
+                try { (targetItem as any).attachments.push([url]); } catch {}
+            }
+        } else {
+            // Create new item at top or bottom
+            let insertIndex = targetIndex;
+            if (position === "bottom") {
+                insertIndex++;
+            }
+            
+            const newItem = items.insert(insertIndex, "");
+            if (newItem) {
+                try {
+                    newItem.addAttachment(url);
+                } catch {
+                    try { (newItem as any).attachments.push([url]); } catch {}
+                }
+            }
+        }
+        
+        // Refresh display items
+        refreshDisplayItems();
+    }
+
     function handleExternalTextDrop(
         targetItemId: string,
         position: string,
@@ -1792,6 +1841,66 @@
         // Clear selection
         editorOverlayStore.clearSelections();
     }
+    function handleTreeDragOver(event: DragEvent) {
+        if (isReadOnly) return;
+        
+        const dt = event.dataTransfer;
+        if (dt) {
+            const hasFiles = dt.types.includes("Files");
+            const hasText = dt.types.includes("text/plain");
+            if (hasFiles || hasText) {
+                event.preventDefault();
+                dt.dropEffect = "copy";
+            }
+        }
+    }
+
+    async function handleTreeDrop(event: DragEvent) {
+        if (isReadOnly) return;
+        
+        const dt = event.dataTransfer;
+        if (!dt) return;
+
+        // Check if we already handled this in an item
+        if (event.defaultPrevented) return;
+        
+        event.preventDefault();
+        event.stopPropagation();
+
+        const hasFiles = dt.files && dt.files.length > 0;
+        const items = pageItem.items as Items;
+
+        if (hasFiles) {
+            let containerId: string | undefined = undefined;
+            try { containerId = await getDefaultContainerId(); } catch {}
+            containerId = containerId || "test-container";
+
+            for (const file of Array.from(dt.files)) {
+                try {
+                    // Create new item at the end
+                    const newItem = items.insert(items.length, "");
+                    if (newItem) {
+                        const url = await uploadAttachment(containerId, newItem.id, file);
+                        try {
+                            newItem.addAttachment(url);
+                        } catch {
+                            try { (newItem as any).attachments.push([url]); } catch {}
+                        }
+                    }
+                } catch (e) {
+                    logger.error("Failed to upload file to tree bottom", e);
+                }
+            }
+            refreshDisplayItems();
+        } else {
+            const text = dt.getData("text/plain");
+            if (text) {
+                // Insert as new item at the end
+                items.insert(items.length, text);
+                refreshDisplayItems();
+            }
+        }
+    }
 </script>
 
 {#key outlinerKey}
@@ -1818,6 +1927,8 @@
             role="region"
             aria-label="Outliner Tree"
             bind:this={treeContainer}
+            ondrop={handleTreeDrop}
+            ondragover={handleTreeDragOver}
         >
             <!-- Flat display items (static placement) -->
             {#each displayItems as display, index (display.model.id)}
