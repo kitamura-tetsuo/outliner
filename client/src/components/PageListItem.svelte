@@ -1,5 +1,4 @@
 <script lang="ts">
-import { onMount } from "svelte";
 import type { Item } from "../schema/app-schema";
 
 interface Props {
@@ -11,8 +10,8 @@ interface Props {
 let { page, isGridView, onSelect }: Props = $props();
 
 let preview = $state<{ lines: string[]; image: string | null }>({ lines: [], image: null });
-let pageTitle = $state(page.text || "Untitled Page");
-let lastChanged = $state(page.lastChanged);
+let pageTitle = $state("");
+let lastChanged = $state<number | undefined>();
 
 function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: number = 3) {
     const lines: string[] = [];
@@ -34,7 +33,7 @@ function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: numb
                     } else if (val && typeof val === "object") {
                         if ("url" in val) {
                             image = (val as any).url;
-                        } else if (Array.isArray(val) && val.length > 0) {
+                        } else if (Array.isArray(val) && (val as any[]).length > 0) {
                             image = val[0];
                         }
                     }
