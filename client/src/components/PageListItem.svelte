@@ -94,14 +94,17 @@ function updatePreview() {
     lastChanged = page.lastChanged;
 }
 
-onMount(() => {
+$effect(() => {
+    // Initial update
     updatePreview();
 
     // Listen for Yjs updates to reactively update the preview
-    if (page.ydoc) {
-        page.ydoc.on("update", updatePreview);
+    // This effect will re-run and clean up the old listener if 'page' or 'page.ydoc' changes
+    const currentDoc = page.ydoc;
+    if (currentDoc) {
+        currentDoc.on("update", updatePreview);
         return () => {
-            page.ydoc.off("update", updatePreview);
+            currentDoc.off("update", updatePreview);
         };
     }
 });
