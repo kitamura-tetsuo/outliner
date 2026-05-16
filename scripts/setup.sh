@@ -102,6 +102,12 @@ fix_permissions() {
       fi
     fi
   done
+
+  # Fix Docker socket permissions if it exists
+  if [ -S /var/run/docker.sock ]; then
+    echo "Fixing Docker socket permissions..."
+    sudo chmod 666 /var/run/docker.sock || true
+  fi
 }
 
 # Fix permissions before proceeding

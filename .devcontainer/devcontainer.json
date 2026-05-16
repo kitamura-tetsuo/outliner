@@ -39,7 +39,7 @@
     //     59200,
     //     57070
     // ],
-    "postStartCommand": "bash /workspace/outliner/scripts/setup.sh",
+    "postStartCommand": "bash /workspace/scripts/setup.sh; bash /workspace/outliner/scripts/setup.sh;",
     // Connect as node user
     "remoteUser": "node"
 }
