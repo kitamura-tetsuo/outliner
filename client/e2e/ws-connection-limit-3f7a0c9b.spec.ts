@@ -6,7 +6,7 @@ import { TestHelpers } from "./utils/testHelpers";
 registerCoverageHooks();
 
 test.beforeEach(async ({ page }, testInfo) => {
-    await TestHelpers.prepareTestEnvironment(page, testInfo);
+    await TestHelpers.seedProjectAndNavigate(page, testInfo);
 });
 
 test("oversized websocket message closes connection", async () => {

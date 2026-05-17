@@ -40,7 +40,7 @@ export class TestHelpers {
     }
 
     /**
-     * Prepare test environment
+     * Prepare test environment by seeding a project and navigating to it.
      * Call before each test to ensure a consistent test environment
      * @param page Playwright page object
      * @param testInfo Test info
@@ -50,7 +50,7 @@ export class TestHelpers {
      * @param options.ws WebSocket settings ("force" | "disable" | "default")
      * @returns Created project name and page name
      */
-    public static async prepareTestEnvironment(
+    public static async seedProjectAndNavigate(
         page: Page,
         testInfo?: { workerIndex?: number; } | null,
         lines: string[] = [],
@@ -114,10 +114,10 @@ export class TestHelpers {
                 const seeder = new SeedClient(projectName, authToken);
                 await seeder.seedPage(pageName, lines);
                 TestHelpers.slog(
-                    `prepareTestEnvironment: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
+                    `seedProjectAndNavigate: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
                 );
             } catch (e) {
-                TestHelpers.slog(`prepareTestEnvironment: SeedClient seeding failed: ${e}`);
+                TestHelpers.slog(`seedProjectAndNavigate: SeedClient seeding failed: ${e}`);
             }
         }
 
@@ -302,10 +302,10 @@ export class TestHelpers {
     }
 
     /**
-     * Creates a project and page using SeedClient for HTTP-based seeding.
+     * Creates a project and page using SeedClient for HTTP-based seeding (data setup only).
      * This replaces the legacy browser-based seeding logic.
      */
-    public static async createAndSeedProject(
+    public static async seedProjectDataOnly(
         page: Page,
         testInfo: { workerIndex?: number; } | null,
         lines: string[],
@@ -344,7 +344,7 @@ export class TestHelpers {
                     } catch {}
                 });
             } catch (e) {
-                TestHelpers.slog(`createAndSeedProject: Failed to set localStorage flags via addInitScript: ${e}`);
+                TestHelpers.slog(`seedProjectDataOnly: Failed to set localStorage flags via addInitScript: ${e}`);
             }
         }
 
@@ -356,10 +356,10 @@ export class TestHelpers {
                 const seeder = new SeedClient(projectName, authToken);
                 await seeder.seedPage(pageName, lines);
                 TestHelpers.slog(
-                    `createAndSeedProject: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
+                    `seedProjectDataOnly: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
                 );
             } catch (e) {
-                TestHelpers.slog(`createAndSeedProject: SeedClient seeding failed: ${e}`);
+                TestHelpers.slog(`seedProjectDataOnly: SeedClient seeding failed: ${e}`);
                 throw e; // Fail the test immediately if seeding fails
             }
         }
@@ -506,7 +506,7 @@ export class TestHelpers {
      * @param options Option settings (projectName, pageName, skipSync, skipAppReady)
      * @returns Project name and page name
      */
-    public static async prepareTestEnvironmentForProject(
+    public static async seedProjectAndNavigateForProject(
         page: Page,
         testInfo?: { workerIndex?: number; } | null,
         lines: string[] = [],
@@ -532,7 +532,7 @@ export class TestHelpers {
             });
         } catch {}
 
-        // Set WebSocket flag and E2E flag before navigation (consistency with prepareTestEnvironment)
+        // Set WebSocket flag and E2E flag before navigation (consistency with seedProjectAndNavigate)
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
@@ -555,10 +555,10 @@ export class TestHelpers {
                 const seeder = new SeedClient(projectName, authToken);
                 await seeder.seedPage(pageName, lines);
                 TestHelpers.slog(
-                    `prepareTestEnvironmentForProject: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
+                    `seedProjectAndNavigateForProject: Seeded page "${pageName}" with ${lines.length} lines via SeedClient`,
                 );
             } catch (e) {
-                TestHelpers.slog(`prepareTestEnvironmentForProject: SeedClient seeding failed: ${e}`);
+                TestHelpers.slog(`seedProjectAndNavigateForProject: SeedClient seeding failed: ${e}`);
             }
         }
 

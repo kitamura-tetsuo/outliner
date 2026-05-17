@@ -27,7 +27,7 @@ async function pressShiftTab(page) {
 test.describe("IND: Yjs Tab/Shift+Tab indent/outdent", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(300000); // Wait up to 5m for slow environment setup
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Create a few test items to work with
         // Ensure items are visible before clicking

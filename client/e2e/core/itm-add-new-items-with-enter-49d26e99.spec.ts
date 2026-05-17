@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("ITM-0001: Add new item with Enter", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed with the text we expect to manipulate
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First part of text. Second part of text."]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["First part of text. Second part of text."]);
 
         // Wait for items to be rendered
         await TestHelpers.waitForOutlinerItems(page);

@@ -27,7 +27,7 @@ test.describe("Multi-Page Schedule Management", () => {
         });
 
         // Create project with both pages upfront using createAndSeedProject
-        testProject = await TestHelpers.createAndSeedProject(page, testInfo, [
+        testProject = await TestHelpers.seedProjectDataOnly(page, testInfo, [
             "This is a test page. 1",
             "This is a test page. 2",
             "This is a test page. 3",

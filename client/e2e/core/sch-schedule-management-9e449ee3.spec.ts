@@ -10,11 +10,11 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Schedule Management", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("shows newly created schedule", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, []);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
         const pageId = await TestHelpers.getItemIdByIndex(page, 0);
         const idToken = await page.evaluate(async () => {
             const userManager = (window as any).__USER_MANAGER__;

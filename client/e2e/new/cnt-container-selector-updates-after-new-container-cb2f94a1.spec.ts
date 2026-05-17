@@ -18,7 +18,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
     test("dropdown list updates when new container is added", async ({ page }, testInfo) => {
         // ContainerSelector is on the home page, not project pages
         // Use skipSync to avoid navigating to a project page
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
+        await TestHelpers.seedProjectAndNavigateForProject(page, testInfo, [], undefined, { skipSync: true });
 
         // Navigate to home page where ContainerSelector is rendered
         await page.goto("/", { waitUntil: "domcontentloaded" });

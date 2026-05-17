@@ -14,7 +14,7 @@ test.describe("NAV-0002: Navigation Link Functionality to Project Page", () => {
 
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(90000); // Increase timeout for CI environment
-        const result = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const result = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         projectName = result.projectName;
         pageName = result.pageName;
     });

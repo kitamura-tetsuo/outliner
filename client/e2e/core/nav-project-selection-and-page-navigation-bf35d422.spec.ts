@@ -18,7 +18,7 @@ test.describe("NAV-0001: Project selection and page navigation", () => {
      */
     test("Confirmation of project selection and page navigation functionality", async ({ page }, testInfo) => {
         // Prepare the test environment by creating the project and page programmatically
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo, []);
+        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
 
         // 1. Confirm transition to the project page
         await page.goto(`/${projectName}`, { waitUntil: "load" });

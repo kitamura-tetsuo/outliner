@@ -8,7 +8,7 @@ test.describe("Page Creation and Reload Persistence", () => {
     test("should persist a new page and its content after reload", async ({ page }, testInfo) => {
         // 1. Setup project (creates a project and navigates to its root indirectly via createAndSeedProject)
         // We seed an empty project to start with.
-        const { projectName } = await TestHelpers.createAndSeedProject(page, testInfo, []);
+        const { projectName } = await TestHelpers.seedProjectDataOnly(page, testInfo, []);
 
         // 2. Go to project root (Project Index Page)
         // Ensure we properly encode the project name

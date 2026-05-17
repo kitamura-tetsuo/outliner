@@ -17,7 +17,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("LNK-0007: Backlink Functionality", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         page.on("console", msg => console.log(`[BROWSER] ${msg.text()}`));
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     /**

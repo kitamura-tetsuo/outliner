@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("COL-bedbc307: remote cursor display", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["first"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["first"]);
     });
 
     test("shows remote cursor", async ({ page }) => {

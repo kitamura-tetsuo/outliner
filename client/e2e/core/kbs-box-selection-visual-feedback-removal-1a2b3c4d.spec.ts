@@ -25,7 +25,7 @@ test.describe("Box selection feedback", () => {
             }
         });
 
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("selection-box-updating class removed after timeout", async ({ page }) => {

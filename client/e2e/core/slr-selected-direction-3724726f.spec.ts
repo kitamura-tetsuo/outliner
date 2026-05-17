@@ -7,7 +7,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-3724726f: Switch selection direction", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First item text", "Second item text"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["First item text", "Second item text"]);
         await TestHelpers.waitForOutlinerItems(page, 3, 10000);
     });
 

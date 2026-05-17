@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("PRS-4d2e1b6a: cursor presence", () => {
     test("propagates cursor between clients", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const projectId = `p-${Date.now()}`;
 
         // Test the basic infrastructure for cursor presence sync functionality.

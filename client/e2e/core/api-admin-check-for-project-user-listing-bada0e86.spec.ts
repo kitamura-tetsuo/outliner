@@ -13,7 +13,7 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("Admin Check (API-0003)", () => {
-    // API test only, so TestHelpers.prepareTestEnvironment is not needed
+    // API test only, so TestHelpers.seedProjectAndNavigate is not needed
 
     test("Returns authentication error with invalid token", async ({ page }) => {
         // Health check for Firebase Hosting emulator

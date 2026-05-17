@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0003: Move to the right", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Test data", "Second item"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Test data", "Second item"]);
         await TestHelpers.waitForOutlinerItems(page, 3, 10000); // Title + 2 seeded items
     });
 

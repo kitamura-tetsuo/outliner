@@ -14,7 +14,7 @@ test.describe("TreeValidator: SharedTree Data Validation Utility", () => {
 
     test.beforeEach(async ({ page }, testInfo) => {
         // Setup test page
-        const result = await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        const result = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "First item",
             "Second item",
             "Third item",

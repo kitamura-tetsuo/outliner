@@ -15,7 +15,7 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
             (window as any).DEBUG_MODE = true;
         });
 
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Select the first item
         const item = page.locator(".outliner-item").first();

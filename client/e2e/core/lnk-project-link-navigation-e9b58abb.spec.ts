@@ -16,7 +16,7 @@ test.describe("LNK-0003: Internal link navigation function", () => {
     test(
         "Clicking an internal project link correctly displays the destination page content",
         async ({ page }, testInfo) => {
-            await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
+            await TestHelpers.seedProjectAndNavigate(page, testInfo, [""]);
             // Generate project name and page name for testing
             const targetProjectName = "target-project-" + Date.now().toString().slice(-6);
             const targetPageName = "target-page-" + Date.now().toString().slice(-6);

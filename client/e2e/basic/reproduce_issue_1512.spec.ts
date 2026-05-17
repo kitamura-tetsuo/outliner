@@ -6,7 +6,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Issue #1512: Shift + Right Arrow selection duplication", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Select the first item
         const item = page.locator(".outliner-item").first();

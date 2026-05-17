@@ -14,7 +14,7 @@ test.describe("CLM-0004: Move Up", () => {
         // Seed test data directly to avoid slow keyboard input
         const longText =
             "This is a very long text designed to test cursor movement across multiple visual lines. It should wrap automatically based on the item width. We need enough text to ensure at least two lines are rendered on standard screen widths. This sentence is added to extend the length further and guarantee that the cursor can move up from the second line to the first line correctly.";
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [longText]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [longText]);
 
         // Click on the first item (the seeded page title) to focus it
         const item = page.locator(".outliner-item.page-title");

@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 
 test.describe("GRV-0001: Graph View real-time updates", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(
+        await TestHelpers.seedProjectAndNavigate(
             page,
             testInfo,
             [

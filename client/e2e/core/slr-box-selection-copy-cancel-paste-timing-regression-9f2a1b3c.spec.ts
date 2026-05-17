@@ -21,7 +21,7 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 test.describe("Box selection (rectangular selection) copy, cancel, and paste timing regression test", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "First line of text",
             "Second line of text",
             "Third line of text",

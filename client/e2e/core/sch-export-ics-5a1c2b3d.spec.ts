@@ -33,7 +33,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
             console.log("[BROWSER-PAGEERROR]", err?.message || String(err));
         });
 
-        const env = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const env = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         projectName = env.projectName;
         pageName = env.pageName;
         // pageId will be retrieved later from the schedule page debug element (to match the ID after connection)

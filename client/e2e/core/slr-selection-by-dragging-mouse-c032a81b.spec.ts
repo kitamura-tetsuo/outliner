@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SLR-0004: Selection by dragging mouse", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["This is a test text for mouse drag selection"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["This is a test text for mouse drag selection"]);
         // Wait for Title + 1 item
         await TestHelpers.waitForOutlinerItems(page, 2, 10000);
 

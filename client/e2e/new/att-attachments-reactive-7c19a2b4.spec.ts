@@ -14,7 +14,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
     test("add/remove attachment updates preview list", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "PAGE TITLE",
             "ITEM with attachments",
         ]);

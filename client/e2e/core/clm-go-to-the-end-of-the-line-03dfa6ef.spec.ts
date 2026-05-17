@@ -14,7 +14,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("CLM-0008: Move to the end of the line", () => {
     test.setTimeout(60000); // Increase test timeout to 60 seconds
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Click the first item
         const item = page.locator(".outliner-item").first();

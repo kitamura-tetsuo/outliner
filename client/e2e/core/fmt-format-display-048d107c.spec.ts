@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Format Display", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("Formatted content is displayed in items without cursor", async ({ page }) => {
@@ -96,7 +96,7 @@ test.describe("Format Display", () => {
 
     test("Italic format ([/ text]) is visually displayed as italic", async ({ page }) => {
         // Create data with prepareTestEnvironment
-        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             "This is [/ italic] text",
         ]);
 

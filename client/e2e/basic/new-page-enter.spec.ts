@@ -6,7 +6,7 @@ registerCoverageHooks();
 test.describe("New Page Creation with Enter", () => {
     test("should navigate to the new page after pressing Enter", async ({ page }, testInfo) => {
         // Setup project
-        const { projectName } = await TestHelpers.createAndSeedProject(page, testInfo, []);
+        const { projectName } = await TestHelpers.seedProjectDataOnly(page, testInfo, []);
 
         // Go to project root (Project Index Page)
         await page.goto(`/${encodeURIComponent(projectName)}`);

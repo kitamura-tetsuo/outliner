@@ -18,7 +18,7 @@ test.describe("SLR-0010: Change selection format", () => {
         });
 
         // Seed with data
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "This is a test text for formatting",
             "This is another line for multi-item selection",
         ]);

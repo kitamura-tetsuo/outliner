@@ -8,7 +8,7 @@ test.describe("New Page Navigation", () => {
         // Setup project
         // createProjectOnly was not available, using createAndSeedProject which navigates to the project
         // We will seed an empty project to start with
-        const { projectName } = await TestHelpers.createAndSeedProject(page, testInfo, []);
+        const { projectName } = await TestHelpers.seedProjectDataOnly(page, testInfo, []);
 
         // Go to project root (Project Index Page)
         // Ensure we properly encode the project name

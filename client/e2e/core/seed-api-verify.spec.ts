@@ -9,7 +9,7 @@ test.describe("Server-side Seeding Verification", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Use standard setup but SKIP SEEDING in TestHelpers
         // We will seed MANUALLY in the test to verify SeedClient
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined, {
             skipSeed: true,
             doNotNavigate: true,
         });

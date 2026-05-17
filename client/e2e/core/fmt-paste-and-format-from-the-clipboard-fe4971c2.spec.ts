@@ -12,7 +12,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Input and display of formatted strings", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("Plain text input works correctly", async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe("Input and display of formatted strings", () => {
     test("Input of text containing format syntax works correctly", async ({ page }) => {
         // Create data with lines parameter of prepareTestEnvironment
         const formattedText = "[[Bold]]and[/ Italic]and[-Strikethrough]and`Code`and[https://example.com]";
-        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             formattedText,
         ]);
 

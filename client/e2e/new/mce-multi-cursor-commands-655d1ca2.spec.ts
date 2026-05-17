@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("MCE-0002: multi-cursor commands", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["first", "second"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["first", "second"]);
     });
 
     test("add cursor below and undo", async ({ page }) => {

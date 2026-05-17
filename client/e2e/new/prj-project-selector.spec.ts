@@ -43,7 +43,7 @@ test.describe.serial("Prj: Project Selector", () => {
      */
     test("project selector lists projects from store", async ({ page }, testInfo) => {
         // 1. Prepare environment with known project
-        const { projectName } = await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, ["Data line 1"]);
+        const { projectName } = await TestHelpers.seedProjectAndNavigateForProject(page, testInfo, ["Data line 1"]);
 
         // 2. Navigate away to root to see the selector
         await page.goto("/");

@@ -15,7 +15,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         test.setTimeout(240000); // Allow extra time for heavy seeding (creating 4 pages)
         // Prepare test environment with multiple pages for search test
         // Reduced initial seed to improve setup speed
-        const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "search target",
         ]);
 
@@ -23,7 +23,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         console.log("Creating additional pages for search test using Yjs generalStore...");
         // Second page: Only create ONE extra page to minimize setup time and timeouts
         // The functionality of "search across multiple pages" is verified with 2 pages total (initial + this one)
-        await TestHelpers.createAndSeedProject(page, null, ["Second page line"], {
+        await TestHelpers.seedProjectDataOnly(page, null, ["Second page line"], {
             projectName: projectName,
             pageName: "second-page",
         });

@@ -8,7 +8,7 @@ registerCoverageHooks();
 
 test.beforeEach(async ({ page }, testInfo) => {
     test.setTimeout(90000); // Increase timeout for CI environment
-    await TestHelpers.prepareTestEnvironment(page, testInfo);
+    await TestHelpers.seedProjectAndNavigate(page, testInfo);
 });
 
 test("OutlinerBase anchor and main toolbar are visible; no WS '/projects/' 404 handshake", async ({ page }) => {

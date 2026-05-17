@@ -13,7 +13,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Cursor manipulation within format strings", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Item 1", "Item 2"]);
         // Wait for outliner items to be rendered after seeding (wait for specific content)
         // Wait for outliner items to be rendered after seeding (robust wait)
         await page.locator(".outliner-item[data-item-id]").first().waitFor({ timeout: 60000 });

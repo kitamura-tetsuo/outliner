@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-0003: Delete empty item", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Item 1", "Item 2"]);
     });
 
     test("pressing Delete on empty item removes it", async ({ page }) => {

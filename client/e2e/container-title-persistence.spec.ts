@@ -20,10 +20,10 @@ test.describe("Container Title Persistence Tests", () => {
      * @description Verify that the container name is displayed in the home dropdown immediately after creating a new container
      */
     test("Displayed in home dropdown after container creation", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Create project and page (container is created)
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
@@ -61,10 +61,10 @@ test.describe("Container Title Persistence Tests", () => {
      * @description Verify that setting a title for a container persists it in metaDoc
      */
     test("Container title is persisted in metaDoc", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Create project and page
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
@@ -98,10 +98,10 @@ test.describe("Container Title Persistence Tests", () => {
      * @description Create a container, move to home, reload page, and verify container is still displayed
      */
     test("Container is displayed in home dropdown after page reload", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Create project and page
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
@@ -141,10 +141,10 @@ test.describe("Container Title Persistence Tests", () => {
      * @description Set a title for a container and verify it is preserved after page reload
      */
     test("Container title is preserved after reload", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Create project and page
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
@@ -192,10 +192,10 @@ test.describe("Container Title Persistence Tests", () => {
      * @description Verify that container ID is displayed instead when no title is set for the container
      */
     test("Container ID is displayed if title is unavailable (fallback)", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Create project and page (do not set title)
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
@@ -238,10 +238,10 @@ test.describe("Container Title Persistence Tests", () => {
      * @description Verify that updating container title in metaDoc also updates the home dropdown label
      */
     test("Updating title in metaDoc changes home dropdown label", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Create project and page
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);
 
@@ -291,10 +291,10 @@ test.describe("Container Title Persistence Tests", () => {
      * @description Create multiple containers and verify that title persistence works independently for each
      */
     test("Title persistence works independently for multiple containers", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Create project and page (Container 1)
-        const { projectName: projectName1, pageName: pageName1 } = await TestHelpers.prepareTestEnvironment(
+        const { projectName: projectName1, pageName: pageName1 } = await TestHelpers.seedProjectAndNavigate(
             page,
             testInfo,
         );
@@ -326,7 +326,7 @@ test.describe("Container Title Persistence Tests", () => {
         // Create Container 2
         const projectName2 = `TestProject2-${Date.now()}`;
         const pageName2 = `page-${Date.now()}`;
-        await TestHelpers.createAndSeedProject(page, null, [], { projectName: projectName2, pageName: pageName2 });
+        await TestHelpers.seedProjectDataOnly(page, null, [], { projectName: projectName2, pageName: pageName2 });
 
         const encodedProject2 = encodeURIComponent(projectName2);
         const encodedPage2 = encodeURIComponent(pageName2);

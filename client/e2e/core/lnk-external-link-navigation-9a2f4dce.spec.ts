@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 (test.describe)("External link navigation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("clicking bracketed URL opens the target", async ({ page }) => {

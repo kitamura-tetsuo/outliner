@@ -11,7 +11,7 @@ registerCoverageHooks();
 test.describe("snapshot comparison", () => {
     test("generate yjs snapshot for current mode", async ({ page }, testInfo) => {
         // Use standard test environment initialization
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         const name = `${testInfo.title.replace(/[^a-z0-9_-]+/gi, "-")}-auto-${Date.now()}`;
         await DataValidationHelpers.saveSnapshotsAndCompare(page, name);

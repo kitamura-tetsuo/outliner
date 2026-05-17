@@ -7,7 +7,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("Item Component Type Selector Test", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         const seedLines = ["Test Item"];
-        const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, seedLines);
+        const { projectName, pageName } = await TestHelpers.seedProjectDataOnly(page, testInfo, seedLines);
         await TestHelpers.navigateToProjectPage(page, projectName, pageName, seedLines);
     });
 

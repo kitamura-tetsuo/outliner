@@ -10,7 +10,7 @@ registerCoverageHooks();
 
 test.describe("Yjs connection", () => {
     test("store exposes connection state", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const isDefined = await page.evaluate(() => {
             return typeof (window as any).__YJS_STORE__ !== "undefined";
         });

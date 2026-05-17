@@ -12,7 +12,7 @@ test.describe("LNK-0002: Basic internal link function", () => {
     let projectName: string;
 
     test.beforeEach(async ({ page }, testInfo) => {
-        const result = await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        const result = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "[test-page]",
             "Another item",
             "Third item",

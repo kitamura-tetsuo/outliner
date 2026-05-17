@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-auto-add-sibling-item-on-edit-84442697: auto add sibling item", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["First"]);
         await TestHelpers.waitForOutlinerItems(page);
     });
 

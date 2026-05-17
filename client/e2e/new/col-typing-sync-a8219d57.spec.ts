@@ -26,7 +26,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
 
     // Prepare the environment with initial content to ensure both contexts connect to the same document
     // Capture the generated project/page names
-    const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(
+    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(
         page1,
         testInfo,
         [
@@ -79,7 +79,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     // Prepare the second page environment (flags etc) - pass the project/page names from page1
     // so page2 joins the same project instead of creating a new one
     // Use _ to ignore the return value since we already have the project/page names from page1
-    await TestHelpers.prepareTestEnvironment(
+    await TestHelpers.seedProjectAndNavigate(
         page2,
         testInfo,
         [],

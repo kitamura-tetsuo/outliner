@@ -44,7 +44,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
     test.beforeEach(async ({ page }, testInfo) => {
         // Use standard test environment initialization with 4 items (title + 3 items)
         // Then add 1 more item via page.evaluate to get 5 total items
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "Initial Item 1",
             "Initial Item 2",
             "Initial Item 3",

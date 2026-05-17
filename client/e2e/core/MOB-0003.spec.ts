@@ -12,7 +12,7 @@ import { TreeValidator } from "../utils/treeValidation";
 test.describe("MOB-0003: Mobile action toolbar", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await page.setViewportSize({ width: 375, height: 700 });
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [""]);
 
         // Close sidebar on mobile to avoid layout issues
         const sidebarToggle = page.locator('button[aria-label*="sidebar"]').first();

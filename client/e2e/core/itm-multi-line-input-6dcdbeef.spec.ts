@@ -11,12 +11,12 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("ITM-multi-line-input-6dcdbeef: Multi-line text input", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // start with an empty page so item indices are predictable
-        await TestHelpers.prepareTestEnvironment(page, testInfo, []);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
     });
 
     test("Three lines of items are added by pressing the Enter key", async ({ page }, testInfo) => {
         // Prepare environment with initial seeded items as if user typed them
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Line 1", "Line 2", "Line 3"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Line 1", "Line 2", "Line 3"]);
         await TestHelpers.waitForOutlinerItems(page, 4, 10000); // Title + 3 seeded items
 
         const items = page.locator(".outliner-item");
@@ -38,7 +38,7 @@ test.describe("ITM-multi-line-input-6dcdbeef: Multi-line text input", () => {
     test("Input after Backspace is correctly reflected", async ({ page }, testInfo) => {
         // Seed items: Title (Index 0) + Item 1 (Index 1) + Item 2 (Index 2)
         // We need an item at Index 2 to type into.
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Item 1", "Item 2"]);
         await TestHelpers.waitForOutlinerItems(page, 3, 10000);
 
         const newId = await TestHelpers.getItemIdByIndex(page, 2);

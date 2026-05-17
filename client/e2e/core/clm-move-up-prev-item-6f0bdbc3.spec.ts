@@ -13,7 +13,7 @@ type CursorInstance = {
 
 test.describe("CLM-6f0bdbc3: Move up at the top line", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("When on the top line, it moves to the last line of the previous item", async ({ page }) => {

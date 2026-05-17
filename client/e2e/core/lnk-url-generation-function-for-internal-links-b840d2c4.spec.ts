@@ -34,7 +34,7 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
      * @description Verifies that text input is reflected correctly
      */
     test("Text input is reflected correctly", async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [""]);
         // Wait for outliner items to appear (minimum 2: page title + first item)
         await TestHelpers.waitForItemCount(page, 2, 30000);
 
@@ -111,7 +111,7 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
     test("Internal link URLs are generated correctly", async ({ page }, testInfo) => {
         // Create test data including project internal links via API
         // Page name is auto-generated, so retrieve it later
-        const { pageName: currentPageName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        const { pageName: currentPageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "First line: Test",
             `[PLACEHOLDER_PAGE_NAME]`, // To be replaced later
             "[/project-name/page-name]", // This will be formatted as a project internal link
@@ -321,7 +321,7 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
      * @description Verifies that internal link HTML is generated correctly
      */
     test("Internal link HTML is generated correctly", async ({ page }, testInfo) => {
-        const { pageName } = await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        const { pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "[placeholder]",
             "[/project-name/page-name]",
             "Third item",

@@ -21,7 +21,7 @@ test.describe("FTR-2c8c4a5b: Project Creation", () => {
 
         // However, the page checks for `userManager.getCurrentUser()`.
         // Let's use TestHelpers to inject a user.
-        await TestHelpers.prepareTestEnvironment(page, testInfo, []);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
 
         // Reload to ensure Svelte component sees the authenticated state if needed
         // but prepareTestEnvironment typically handles hydration.

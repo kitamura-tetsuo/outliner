@@ -8,7 +8,7 @@ registerCoverageHooks();
 test.describe("CLM-b8389849: Click outside text on the last line", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         const longText = "A".repeat(80);
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [longText]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [longText]);
         await TestHelpers.waitForOutlinerItems(page, 2, 30000); // Title + 1 seeded item
 
         // Additional wait for items to be fully rendered with data-item-id
