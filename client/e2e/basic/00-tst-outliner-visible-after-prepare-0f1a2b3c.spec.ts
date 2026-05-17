@@ -23,7 +23,7 @@ test.describe("Outliner page is displayed after environment preparation", () => 
         await TestHelpers.cleanup(page);
     });
 
-    test("Outliner UI is visible after PrepareTestEnvironment", async ({ page }) => {
+    test("Outliner UI is visible after SeedProjectAndNavigate", async ({ page }) => {
         test.setTimeout(120000);
         // Debug: Current URL
         console.log("E2E: current URL after prepare:", page.url());

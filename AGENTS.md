@@ -87,9 +87,9 @@ Mocks are generally forbidden. Limited exceptions:
 - Use `scripts/test.sh` to run tests; it automatically runs `scripts/setup.sh` to start emulators if needed.
 - Execute E2E tests one file at a time with `scripts/test.sh` or `scripts/run-e2e-progress.sh`.
 - The cloud environment is prone to timeouts. Keep each Playwright spec short and split larger flows across multiple files. Document any timeouts; tests will be rerun elsewhere.
-- Use `TestHelpers.prepareTestEnvironment(page)` in `test.beforeEach` and Playwright's `expect(locator).toBeVisible()` assertions.
-- **Test Data Creation**: For display/rendering tests, create test data using `TestHelpers.prepareTestEnvironment(page, test.info(), lines)` where `lines` is an array of strings representing item text. This ensures proper Yjs synchronization and avoids keyboard input issues with special characters like `[/` that may trigger command palettes or shortcuts.
-  - Example: `await TestHelpers.prepareTestEnvironment(page, test.info(), ["This is a combination of [[bold and [/italic]]]"]);`
+- Use `TestHelpers.seedProjectAndNavigate(page)` in `test.beforeEach` and Playwright's `expect(locator).toBeVisible()` assertions.
+- **Test Data Creation**: For display/rendering tests, create test data using `TestHelpers.seedProjectAndNavigate(page, test.info(), lines)` where `lines` is an array of strings representing item text. This ensures proper Yjs synchronization and avoids keyboard input issues with special characters like `[/` that may trigger command palettes or shortcuts.
+  - Example: `await TestHelpers.seedProjectAndNavigate(page, test.info(), ["This is a combination of [[bold and [/italic]]]"]);`
   - Do NOT manually type text with `page.keyboard.type()` for display tests, as it may conflict with keyboard shortcuts.
 - Create projects and pages programmatically via `fluidClient` rather than via the UI.
 - Simulate user input with `page.keyboard.type()` and manage cursors with `editorStore.setCursor()` and `cursor.insertText()` followed by a 500 ms wait and `waitForCursorVisible()`.
