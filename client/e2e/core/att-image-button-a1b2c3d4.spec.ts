@@ -3,8 +3,8 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
 import { expect, test } from "@playwright/test";
-import fs from "fs";
 import { TestHelpers } from "../utils/testHelpers";
+import fs from "fs";
 
 test.describe("Image Addition Button (att-image-button-a1b2c3d4)", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -19,21 +19,24 @@ test.describe("Image Addition Button (att-image-button-a1b2c3d4)", () => {
         // Initial count is 3
         await expect(page.locator(".outliner-item")).toHaveCount(3);
 
-        const addImageButton = page.locator(".outliner .toolbar .actions button", { hasText: "Add Image" });
+        const addImageButton = page.locator('.outliner .toolbar .actions button', { hasText: 'Add Image' });
         await expect(addImageButton).toBeVisible();
 
         const pngHeader = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
-        const testFilePath = "/tmp/test-button.png";
+        const testFilePath = '/tmp/test-button.png';
         fs.writeFileSync(testFilePath, pngHeader);
 
         // Wait for file chooser
-        const fileChooserPromise = page.waitForEvent("filechooser");
+        const fileChooserPromise = page.waitForEvent('filechooser');
         await addImageButton.click();
         const fileChooser = await fileChooserPromise;
         await fileChooser.setFiles(testFilePath);
 
         // Should have 4 items now
         await expect(page.locator(".outliner-item")).toHaveCount(4, { timeout: 15000 });
+
+        // Wait a bit for the attachment to render
+        await page.waitForTimeout(1000);
 
         // The new item should be at the end
         const newItemId = await TestHelpers.getItemIdByIndex(page, 3);
