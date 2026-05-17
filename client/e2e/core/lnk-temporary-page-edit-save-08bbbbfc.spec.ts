@@ -14,7 +14,7 @@ test.describe("LNK-0004: Temporary Page Edit and Save", () => {
     });
 
     test("When a temporary page is edited, it is saved as an actual page", async ({ page }, testInfo) => {
-        const { projectName } = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const sourceUrl = `/${encodeURIComponent(projectName)}/`;
         const nonExistentPage = "edit-temp-page-" + Date.now().toString().slice(-6);
         await page.goto(`${sourceUrl}${nonExistentPage}?isTest=true`);

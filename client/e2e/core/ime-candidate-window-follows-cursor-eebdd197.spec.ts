@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("IME-0002: IME candidate window follows active cursor", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("hidden textarea is positioned at cursor", async ({ page }) => {

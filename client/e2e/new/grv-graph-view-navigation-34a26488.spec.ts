@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("GRV-0001: Graph View navigation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(90000);
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "Page1",
             "Page2",
         ]);

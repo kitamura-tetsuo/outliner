@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0105: Dictionary-based key handler", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["first", "second"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["first", "second"]);
         const first = page.locator(`.outliner-item[data-item-id]`).filter({ hasText: "first" });
         await first.waitFor();
         await first.locator(".item-content").click({ force: true });

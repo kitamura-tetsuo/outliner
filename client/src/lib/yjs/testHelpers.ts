@@ -446,7 +446,7 @@ export interface TwoFullBrowserPagesResult {
  *
  * ⚠️ TEST ENVIRONMENT ONLY
  * This helper creates two browser contexts with full test environment setup
- * using TestHelpers.prepareTestEnvironment for testing collaboration features.
+ * using TestHelpers.seedProjectAndNavigate for testing collaboration features.
  *
  * Note: This function requires TestHelpers from e2e/utils/testHelpers.ts.
  * It should only be used in E2E test files, not in this library file directly.
@@ -480,7 +480,7 @@ export async function prepareTwoFullBrowserPages(
     });
 
     // Prepare test environment for page1
-    const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(
+    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(
         page1,
         testInfo,
         initialItems,

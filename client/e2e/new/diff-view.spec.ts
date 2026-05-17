@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("snapshot diff viewer", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("display diff and revert", async ({ page }) => {

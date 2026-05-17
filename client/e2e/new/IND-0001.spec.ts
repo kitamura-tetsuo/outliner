@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("IND-0001: Advanced indentation and selection", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         const first = page.locator(".outliner-item").first();
         await first.locator(".item-content").click({ force: true });

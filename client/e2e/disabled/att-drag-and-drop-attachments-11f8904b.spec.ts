@@ -11,7 +11,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
         page.on("console", msg => console.log("PAGE LOG:", msg.text()));
         page.on("pageerror", error => console.log("PAGE ERROR:", error.message));
 
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const first = page.locator(".outliner-item").first();
         await first.locator(".item-content").click({ force: true });
         await page.keyboard.type("Drop here");

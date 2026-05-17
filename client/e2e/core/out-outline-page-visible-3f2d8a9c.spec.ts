@@ -9,7 +9,7 @@ let page: Page;
 
 test.beforeEach(async ({ page: initialPage, browser }, testInfo) => {
     test.setTimeout(120000);
-    const result = await TestHelpers.prepareTestEnvironment(initialPage, testInfo, [], browser);
+    const result = await TestHelpers.seedProjectAndNavigate(initialPage, testInfo, [], browser);
     ids = { projectName: result.projectName, pageName: result.pageName };
     page = initialPage;
 });

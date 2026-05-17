@@ -19,7 +19,7 @@ test.describe("Yjs data is reflected in UI", () => {
 
     test.beforeEach(async ({ page }, testInfo) => {
         // Use HTTP-based seeding via SeedClient instead of legacy browser-based seeding
-        const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, lines);
+        const { projectName, pageName } = await TestHelpers.seedProjectDataOnly(page, testInfo, lines);
         // Navigate to the seeded page
         await TestHelpers.navigateToProjectPage(page, projectName, pageName, lines);
     });

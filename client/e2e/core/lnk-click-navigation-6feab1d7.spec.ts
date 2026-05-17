@@ -13,7 +13,7 @@ test.describe("LNK-0003: Internal link navigation function", () => {
 
     test.beforeEach(async ({ page }, testInfo) => {
         // Create a page with an internal link pointing to another page
-        const result = await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        const result = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "[target-page]",
             "Another item",
             "Third item",
@@ -25,7 +25,7 @@ test.describe("LNK-0003: Internal link navigation function", () => {
         await page.waitForTimeout(500);
 
         // Create the target page that the internal link points to
-        await TestHelpers.createAndSeedProject(page, null, ["This is the target page"], {
+        await TestHelpers.seedProjectDataOnly(page, null, ["This is the target page"], {
             projectName,
             pageName: "target-page",
         });

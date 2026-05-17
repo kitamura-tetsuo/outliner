@@ -7,7 +7,7 @@ test.describe("Cursor positioning on scroll", () => {
     test("should correctly position the cursor after vertical scrolling", async ({ page }) => {
         // 1. Prepare the test environment and add enough content to make the page scrollable
         const lines = Array.from({ length: 50 }, (_, i) => `Line ${i + 1}`);
-        await TestHelpers.prepareTestEnvironment(page, test.info(), lines);
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), lines);
 
         // 2. Scroll down to the bottom of the page
         await page.evaluate(() => {

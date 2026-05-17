@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("IME-0004: IME candidate window remains fixed during composition", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("textarea position stays constant while composing", async ({ page }) => {

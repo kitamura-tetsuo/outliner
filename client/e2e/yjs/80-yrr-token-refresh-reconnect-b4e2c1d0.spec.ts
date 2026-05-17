@@ -14,7 +14,7 @@ test.setTimeout(240_000);
 test.describe("YJS token refresh reconnect", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Force Yjs WS for this spec (TestHelpers defaults to WS disabled)
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, { ws: "force" });
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined, { ws: "force" });
     });
 
     test("reconnects after token refresh", async ({ page }) => {

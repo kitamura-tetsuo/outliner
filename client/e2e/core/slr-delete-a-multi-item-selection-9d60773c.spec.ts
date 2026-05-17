@@ -16,7 +16,7 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
         });
 
         // Seed with 4 lines
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "First item text",
             "Second item text",
             "Third item text",

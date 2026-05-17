@@ -11,7 +11,7 @@ import { TreeValidator } from "../utils/treeValidation";
 
 test.describe("ITM-0001: Add new item with Enter", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First part of text. Second part of text."]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["First part of text. Second part of text."]);
         await TestHelpers.setupTreeDebugger(page);
 
         // Click on the first non-page-title item containing the test text

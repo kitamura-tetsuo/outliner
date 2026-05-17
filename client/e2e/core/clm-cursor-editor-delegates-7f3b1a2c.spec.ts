@@ -65,7 +65,7 @@ async function performCursorAction(
 
 test.describe("CLM-7f3b1a2c: Cursor editing flows through CursorEditor", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
         await TestHelpers.waitForOutlinerItems(page);
     });
 

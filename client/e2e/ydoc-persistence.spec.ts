@@ -68,7 +68,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
     test.describe("Basic persistence", () => {
         test.beforeEach(async ({ page }, testInfo) => {
             // Prepare test environment with sample data
-            await TestHelpers.prepareTestEnvironment(page, testInfo, [
+            await TestHelpers.seedProjectAndNavigate(page, testInfo, [
                 "Initial content line 1",
                 "Initial content line 2",
                 "Initial content line 3",
@@ -218,7 +218,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
     test.describe("Multiple containers", () => {
         test("should handle multiple containers independently", async ({ page }) => {
             // Create first container with unique content
-            const containerAInfo = await TestHelpers.prepareTestEnvironment(page, null, [
+            const containerAInfo = await TestHelpers.seedProjectAndNavigate(page, null, [
                 "Container A - Line 1",
                 "Container A - Line 2",
             ]);
@@ -318,7 +318,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
     test.describe("Complex offline scenarios", () => {
         test("should handle offline edits and online sync transitions", async ({ page, context }) => {
-            await TestHelpers.prepareTestEnvironment(page, null, [
+            await TestHelpers.seedProjectAndNavigate(page, null, [
                 "Pre-offline content",
             ]);
 
@@ -380,7 +380,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
     test.describe("Cache isolation", () => {
         test("should maintain independent cache for each container", async ({ page }) => {
             // Create first container
-            const container1Info = await TestHelpers.prepareTestEnvironment(page, null, [
+            const container1Info = await TestHelpers.seedProjectAndNavigate(page, null, [
                 "Container 1 specific data",
             ]);
 

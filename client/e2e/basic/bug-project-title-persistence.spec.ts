@@ -31,7 +31,7 @@ test.describe("Bug Fix Verification: Project title persistence", () => {
         // Prepare environment (creates page, seeds data, navigates to project page)
         // This navigation is crucial because it triggers the client-side code that
         // saves the Project ID -> Title mapping into the local MetaDoc (IndexedDB).
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, {
+        await TestHelpers.seedProjectAndNavigateForProject(page, testInfo, [], undefined, {
             projectName,
             skipAppReady: false,
         });

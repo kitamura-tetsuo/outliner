@@ -20,7 +20,7 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 test.describe("Selection management test", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test.afterEach(async () => {

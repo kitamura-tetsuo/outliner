@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SLR-0003: Select to the end of the line", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed with 3 lines
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line", "Third line"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["First line", "Second line", "Third line"]);
         // Wait for Title + 3 items
         await TestHelpers.waitForOutlinerItems(page, 4, 10000);
 

@@ -8,7 +8,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SLR-20a382d6: Paste copied text", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed with default content to ensure items exist
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "First item",
             "Second item",
             "Third item text",

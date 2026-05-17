@@ -20,7 +20,7 @@ test.describe("Cursor sync between tabs", () => {
         const page1 = await context1.newPage();
 
         // Prepare the environment after enabling WS
-        await TestHelpers.prepareTestEnvironment(
+        await TestHelpers.seedProjectAndNavigate(
             page1,
             testInfo,
             [

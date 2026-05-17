@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0005: Selection spanning multiple items", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Select the first item
         const item = page.locator(".outliner-item").first();

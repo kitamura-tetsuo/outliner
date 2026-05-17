@@ -7,7 +7,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("Reproduction of double-input bug", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Prepare test environment with one empty line
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [""]);
     });
 
     test("typing 'abc' results in 'abc' and not 'aabbcc'", async ({ page }) => {

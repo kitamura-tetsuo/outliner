@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 test.describe("WebSocket connection limits", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Server-side test: skip page navigation entirely as we only need WebSocket connections
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined, {
             doNotNavigate: true,
             skipSeed: true,
         });

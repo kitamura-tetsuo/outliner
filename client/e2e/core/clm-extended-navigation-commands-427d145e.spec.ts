@@ -13,7 +13,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0104: Extended navigation commands", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [""]);
         const first = page.locator(".outliner-item").first();
         await first.locator(".item-content").click({ force: true });
         await page.keyboard.press("Enter");

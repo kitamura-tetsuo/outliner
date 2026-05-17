@@ -9,7 +9,7 @@ test.describe("Debug Page Health Check", () => {
         // 1. Setup environment and login
         await page.goto("/");
         // Prepare environment (logs in, seeds data)
-        await TestHelpers.prepareTestEnvironment(page, test.info(), ["Debug Health Test"], undefined, {
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), ["Debug Health Test"], undefined, {
             skipAppReady: true,
         });
 

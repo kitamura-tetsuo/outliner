@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("ITM-0002: Add item via button", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Prepare test environment using TestHelpers
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Wait for the add item button to be displayed
         await page.waitForSelector('button:has-text("Add Item")', { timeout: 10000 });

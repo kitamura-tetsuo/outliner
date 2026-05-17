@@ -40,7 +40,7 @@ const getSidebarHelpers = (page: Page) => {
 test.describe("Sidebar Navigation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         page.on("console", msg => console.log(`[Browser]: ${msg.text()}`));
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "First line of test page",
             "Second line of test page",
             "Third line of test page",
@@ -381,14 +381,14 @@ test.describe("Sidebar Navigation", () => {
 
         // Create the first project on the backend without navigating to it.
         // This ensures it will be in the project list when we load the second project.
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined, {
             projectName: firstProjectName,
             pageName: "default-page",
             doNotNavigate: true,
         });
 
         // Create the second project and navigate to it. This will be the active project.
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined, {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined, {
             projectName: secondProjectName,
             pageName: "default-page",
         });

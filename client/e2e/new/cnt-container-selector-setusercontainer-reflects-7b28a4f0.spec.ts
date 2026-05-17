@@ -19,7 +19,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
     test("option list updates after createNewProject + setUserContainer replacement", async ({ page }, testInfo) => {
         // ContainerSelector is on the home page, not project pages
         // Use skipSync to avoid navigating to a project page
-        await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined, { skipSync: true });
+        await TestHelpers.seedProjectAndNavigateForProject(page, testInfo, [], undefined, { skipSync: true });
 
         // Navigate to home page where ContainerSelector is rendered
         // prepareTestEnvironmentForProject already navigates to "/" with skipSync

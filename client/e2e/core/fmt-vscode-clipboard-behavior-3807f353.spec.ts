@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("VS Code clipboard behavior", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["first line", "second line"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["first line", "second line"]);
     });
 
     test("paste multicursor text via vscode metadata", async ({ page }) => {

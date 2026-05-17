@@ -11,12 +11,12 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("URL label links", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("converts [URL label] to link with label text", async ({ page }) => {
         // Create data using the lines parameter of prepareTestEnvironment
-        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             "Please see [https://example.com Example Site]",
         ]);
 

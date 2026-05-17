@@ -15,7 +15,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("ALS-8a1f2c30: alias fallback shows path within 2s", () => {
     test("lastConfirmedTargetId fallback renders alias path text", async ({ page }, testInfo) => {
         // Initialize page with specific items (for target and alias)
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "PAGE TITLE",
             "TARGET AAA",
             "ALIAS PLACEHOLDER",

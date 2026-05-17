@@ -6,14 +6,14 @@ import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * Verification items
- * - Verify that the outliner page is displayed after executing TestHelpers.createAndSeedProject() + navigateToProjectPage()
+ * - Verify that the outliner page is displayed after executing TestHelpers.seedProjectDataOnly() + navigateToProjectPage()
  * - Verify that the anchor element of OutlinerBase and the "Add Item" button are displayed
  */
 
 test.describe("Outliner page is displayed after environment preparation", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Use HTTP-based seeding via SeedClient instead of legacy browser-based seeding
-        const { projectName, pageName } = await TestHelpers.createAndSeedProject(page, testInfo, []);
+        const { projectName, pageName } = await TestHelpers.seedProjectDataOnly(page, testInfo, []);
         // Navigate to the seeded page
         await TestHelpers.navigateToProjectPage(page, projectName, pageName, []);
     });

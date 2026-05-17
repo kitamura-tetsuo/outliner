@@ -12,7 +12,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0005: Move Down", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First line", "Second line"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["First line", "Second line"]);
 
         // Move cursor to the first line ("First line")
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);

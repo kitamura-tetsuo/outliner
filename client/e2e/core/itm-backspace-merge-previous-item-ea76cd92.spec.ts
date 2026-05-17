@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-ea76cd92: Backspace merge previous item", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["First", "Second"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["First", "Second"]);
     });
 
     test("pressing Backspace at line start merges with previous item", async ({ page }) => {

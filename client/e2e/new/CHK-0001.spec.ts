@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("CHK-0001: Universal Checklist", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(90000);
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("add and archive item in shopping mode", async ({ page }) => {

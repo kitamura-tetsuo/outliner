@@ -7,7 +7,7 @@ registerCoverageHooks();
 // Not intended to be committed; used for local diagnosis
 
 test("debug: create and list schedules before UI", async ({ page }, testInfo) => {
-    const env = await TestHelpers.prepareTestEnvironment(page, testInfo);
+    const env = await TestHelpers.seedProjectAndNavigate(page, testInfo);
     const projectName = env.projectName;
     const pageName = env.pageName;
     const pageId = (await TestHelpers.getItemIdByIndex(page, 0)) ?? "";

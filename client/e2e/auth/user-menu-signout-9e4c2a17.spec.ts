@@ -7,7 +7,7 @@ registerCoverageHooks();
 
 test("opens user menu and signs out from toolbar indicator", async ({ page }, testInfo) => {
     // Prepare minimal environment and navigate to home (toolbar is global)
-    await TestHelpers.prepareTestEnvironmentForProject(page, testInfo);
+    await TestHelpers.seedProjectAndNavigateForProject(page, testInfo);
 
     const indicator = page.getByTestId("login-status-indicator");
     await expect(indicator).toBeVisible();

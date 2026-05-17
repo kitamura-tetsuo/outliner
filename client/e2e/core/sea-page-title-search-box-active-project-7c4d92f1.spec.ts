@@ -14,12 +14,12 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(360000);
         // Prepare environment (creates Project and Page 1)
-        const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const ids = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         projectName = ids.projectName;
 
         // Seed Page 2 via API
         // This relies on the server-side seeding fix (shared schema)
-        await TestHelpers.createAndSeedProject(page, null, ["search target"], {
+        await TestHelpers.seedProjectDataOnly(page, null, ["search target"], {
             projectName: ids.projectName,
             pageName: "Page2",
         });

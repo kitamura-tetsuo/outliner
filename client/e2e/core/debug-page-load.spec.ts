@@ -10,7 +10,7 @@ test.describe("Debug Page Load", () => {
         console.log("Debug: Starting page load test with standard initialization");
 
         // Use standard test environment initialization
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
         console.log("Debug: Environment prepared");
 
         // Check the final state of the page

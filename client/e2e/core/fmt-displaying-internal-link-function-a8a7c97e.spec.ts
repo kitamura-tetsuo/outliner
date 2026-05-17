@@ -94,7 +94,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
     };
 
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     /**

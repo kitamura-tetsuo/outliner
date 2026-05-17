@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-1cef29b1: Cursor count remains stable after drag", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item A", "Item B", "Item C"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Item A", "Item B", "Item C"]);
     });
 
     test("Cursor count does not change even after dragging and moving an item", async ({ page }) => {

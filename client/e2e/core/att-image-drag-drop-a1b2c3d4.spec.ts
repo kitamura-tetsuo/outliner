@@ -7,7 +7,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "ITEM 1",
             "ITEM 2",
         ]);

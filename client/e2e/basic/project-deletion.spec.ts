@@ -13,8 +13,8 @@ test.describe("Project Deletion", () => {
         const targetName = `Target Project ${timestamp}`;
 
         // Seed both projects
-        await TestHelpers.createAndSeedProject(page, testInfo, [], { projectName: keeperName });
-        await TestHelpers.createAndSeedProject(page, testInfo, [], { projectName: targetName });
+        await TestHelpers.seedProjectDataOnly(page, testInfo, [], { projectName: keeperName });
+        await TestHelpers.seedProjectDataOnly(page, testInfo, [], { projectName: targetName });
 
         const keeperId = SeedClient.stableIdFromTitle(keeperName);
         const targetId = SeedClient.stableIdFromTitle(targetName);

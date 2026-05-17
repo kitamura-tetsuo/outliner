@@ -11,12 +11,12 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Formatting combinations", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("Bold and italic combination is displayed correctly", async ({ page }) => {
         // Create data with lines parameter of prepareTestEnvironment
-        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             "This is [[a combination of bold and [/ italic]]].",
         ]);
 
@@ -40,7 +40,7 @@ test.describe("Formatting combinations", () => {
 
     test("Bold and strikethrough combination is displayed correctly", async ({ page }) => {
         // Create data with lines parameter of prepareTestEnvironment
-        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             "This is [[a combination of bold and [-strikethrough]]].",
         ]);
 
@@ -63,7 +63,7 @@ test.describe("Formatting combinations", () => {
 
     test("Italic and code combination is displayed correctly", async ({ page }) => {
         // Create data with lines parameter of prepareTestEnvironment
-        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             "This is [/ a combination of italic and `code`].",
         ]);
 
@@ -89,7 +89,7 @@ test.describe("Formatting combinations", () => {
 
     test("Correctly displayed even when multiple formats are nested", async ({ page }) => {
         // Create data with lines parameter of prepareTestEnvironment
-        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             "This is [[bold and [/ italic and [-strikethrough] and `code`]]].",
         ]);
 
@@ -116,7 +116,7 @@ test.describe("Formatting combinations", () => {
 
     test("Combined formatting is displayed as plain text in the item with the cursor", async ({ page }) => {
         // Create data with lines parameter of prepareTestEnvironment
-        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             "This is [[bold and [/ italic and [-strikethrough] and `code`]]].",
         ]);
 

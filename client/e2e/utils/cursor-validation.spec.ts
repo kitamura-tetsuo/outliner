@@ -13,7 +13,7 @@ import { TestHelpers } from "./testHelpers";
 test.describe("CursorValidator: Cursor Information Validation Utility", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Set up the test page
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "First item",
             "Second item",
             "Third item",

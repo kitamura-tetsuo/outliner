@@ -19,7 +19,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("Authentication Functionality Test", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Prepare test environment (navigate to page where auth component is displayed)
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Wait for auth component to be displayed
         await page.waitForSelector(".auth-container", { timeout: 10000 });

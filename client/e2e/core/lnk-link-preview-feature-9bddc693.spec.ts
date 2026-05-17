@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("LNK-9bddc693: link preview", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["[[Page]]"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["[[Page]]"]);
     });
 
     test("page loads", async ({ page }) => {

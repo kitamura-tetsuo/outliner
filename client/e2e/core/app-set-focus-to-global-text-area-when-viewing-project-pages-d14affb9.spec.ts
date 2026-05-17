@@ -17,7 +17,7 @@ import { TestHelpers } from "../utils/testHelpers";
  */
 test.describe("Focus settings when viewing project page", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("Focus is set to global text area when viewing project page", async ({ page }) => {

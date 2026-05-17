@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0002: Move Left", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Use page title preferentially
         const item = page.locator(".outliner-item.page-title[data-item-id]");

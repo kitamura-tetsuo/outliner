@@ -10,8 +10,8 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SBD-ebaa03c1: search dropdown visibility", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        const ids = await TestHelpers.prepareTestEnvironment(page, testInfo);
-        await TestHelpers.createAndSeedProject(page, null, ["another page text"], {
+        const ids = await TestHelpers.seedProjectAndNavigate(page, testInfo);
+        await TestHelpers.seedProjectDataOnly(page, null, ["another page text"], {
             projectName: ids.projectName,
             pageName: "another-page",
         });

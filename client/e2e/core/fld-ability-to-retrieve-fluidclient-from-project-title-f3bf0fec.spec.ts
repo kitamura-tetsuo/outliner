@@ -19,7 +19,7 @@ test.describe("YJS-0001: Project and page retrieval and verification", () => {
 
     test.beforeEach(async ({ page }, testInfo) => {
         // Use standard test environment initialization
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("Yjs project exists and pages can be created and searched", async ({ page }) => {

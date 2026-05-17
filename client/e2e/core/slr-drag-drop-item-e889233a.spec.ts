@@ -13,7 +13,7 @@ test.describe("SLR-0009: Item Drag and Drop", () => {
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
         });

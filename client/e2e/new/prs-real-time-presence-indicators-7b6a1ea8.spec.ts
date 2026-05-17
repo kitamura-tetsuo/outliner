@@ -14,7 +14,7 @@ let pageName: string;
 
 test.describe("PRS-0001: presence indicators", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        const ids = await TestHelpers.prepareTestEnvironment(page, testInfo, ["first line"]);
+        const ids = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["first line"]);
         projectName = ids.projectName;
         pageName = ids.pageName;
     });

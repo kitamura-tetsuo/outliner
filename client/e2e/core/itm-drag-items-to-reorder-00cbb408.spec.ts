@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-00cbb408: Move items by dragging", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["Item 1", "Item 2", "Item 3"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Item 1", "Item 2", "Item 3"]);
         await TestHelpers.waitForOutlinerItems(page, 4, 10000); // Title + 3 seeded items
     });
 

@@ -12,7 +12,7 @@ test.describe("SLR-356b853a: Long text selection range", () => {
             "This is a very long text that contains many characters and should be long enough to test the selection range functionality with long texts. "
             + "We want to make sure that the selection range works correctly with long texts and that the text is properly selected and copied.";
 
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [longText, "Second item text"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [longText, "Second item text"]);
         await TestHelpers.waitForOutlinerItems(page, 3, 10000);
     });
 

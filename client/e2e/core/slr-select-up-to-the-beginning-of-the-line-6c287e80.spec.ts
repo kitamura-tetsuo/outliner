@@ -13,7 +13,7 @@ test.describe("SLR-0002: Select up to the beginning of the line", () => {
     // Set test timeout to 120 seconds
 
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Select the first item
         const item = page.locator(".outliner-item").first();

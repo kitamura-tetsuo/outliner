@@ -18,7 +18,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("LNK-0005: Link Preview Functionality", () => {
     let testPageName: string;
     test.beforeEach(async ({ page }, testInfo) => {
-        const ret = await TestHelpers.prepareTestEnvironment(page, testInfo);
+        const ret = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         testPageName = ret.pageName;
     });
 

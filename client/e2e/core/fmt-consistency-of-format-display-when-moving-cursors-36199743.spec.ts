@@ -12,7 +12,7 @@ import { TreeValidator } from "../utils/treeValidation";
 
 test.describe("Consistency of format display when moving cursors", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("Control characters display/hide appropriately when moving cursor", async ({ page }) => {

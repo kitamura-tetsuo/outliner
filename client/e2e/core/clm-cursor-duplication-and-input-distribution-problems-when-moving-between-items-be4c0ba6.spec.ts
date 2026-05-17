@@ -12,7 +12,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Verify cursor duplication issue", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["", ""]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["", ""]);
     });
 
     test("Fixed: Verify only one cursor exists even when clicking between items", async ({ page }) => {

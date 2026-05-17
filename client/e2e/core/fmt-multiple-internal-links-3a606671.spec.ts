@@ -16,12 +16,12 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FMT-0008: multiple internal links", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("multiple internal links are displayed", async ({ page }) => {
         // create data using the lines parameter of prepareTestEnvironment
-        await TestHelpers.prepareTestEnvironment(page, test.info(), [
+        await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             "This is [test-page] and [/project/other-page]",
         ]);
 

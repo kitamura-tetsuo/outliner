@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("MCE-37b78b62: multi-cursor editing", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["a", "b"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["a", "b"]);
     });
 
     test("two cursors can edit", async ({ page }) => {

@@ -26,7 +26,7 @@ test.describe("ENV-POLL-0001: Polling Removability Test", () => {
 
     test.beforeEach(async ({ page }) => {
         await initPollingMonitor(page);
-        await TestHelpers.prepareTestEnvironment(page, test.info());
+        await TestHelpers.seedProjectAndNavigate(page, test.info());
         await startPollingMonitor(page);
     });
 

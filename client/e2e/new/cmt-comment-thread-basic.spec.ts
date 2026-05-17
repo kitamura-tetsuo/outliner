@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CMT-0001: comment threads", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "first line",
         ]);
 
@@ -114,7 +114,7 @@ test.describe("CMT-0001: comment threads", () => {
 
     test("add, edit and remove comment", async ({ page }) => {
         test.setTimeout(120000); // Increase timeout for this specific test under load
-        // Using TestHelpers.prepareTestEnvironment from beforeEach ensures we have a fresh page for this test
+        // Using TestHelpers.seedProjectAndNavigate from beforeEach ensures we have a fresh page for this test
         // Wait for thread to be fully interactive (avoid waitForUIStable)
         await page.waitForTimeout(500);
         await TestHelpers.waitForOutlinerItems(page);

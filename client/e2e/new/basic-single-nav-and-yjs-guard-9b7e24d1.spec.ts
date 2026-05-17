@@ -72,7 +72,7 @@ test.describe("Basic: single navigation & Yjs guard", () => {
         });
 
         // Single navigation target (skip initial home transition, navigate to target only once)
-        await TestHelpers.prepareTestEnvironment(page, testInfo, [], undefined);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined);
 
         // Install write probe when generalStore becomes available
         await page.waitForFunction(() => {

@@ -13,7 +13,7 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("Cursor movement on empty text items", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed with two empty items so we don't have to create them with flaky keys
-        await TestHelpers.prepareTestEnvironment(page, testInfo, ["", ""]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["", ""]);
     });
 
     test("Cursor movement and multiple keyboard operations on empty text items", async ({ page }) => {

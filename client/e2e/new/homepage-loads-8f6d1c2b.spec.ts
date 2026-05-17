@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test("project page is reachable", async ({ page }, testInfo) => {
-    const { projectName, pageName } = await TestHelpers.prepareTestEnvironmentForProject(page, testInfo, [], undefined);
+    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigateForProject(page, testInfo, [], undefined);
     // On a project page, the heading shows the project and page title
     await expect(page.getByRole("heading", { name: `${projectName} / ${pageName}` })).toBeVisible();
 });

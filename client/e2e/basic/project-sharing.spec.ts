@@ -23,7 +23,7 @@ test.describe("Project Sharing E2E", () => {
         const baseProjectName = `Test Share Project ${timestamp}`;
 
         // Prepare environment with the base name
-        const { projectName, pageName } = await TestHelpers.prepareTestEnvironment(page, test.info(), [], undefined, {
+        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, test.info(), [], undefined, {
             projectName: baseProjectName,
         });
 
