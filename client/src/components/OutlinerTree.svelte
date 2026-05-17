@@ -216,6 +216,50 @@
         }
     }
 
+    let fileInput: HTMLInputElement | null = $state(null);
+
+    function triggerFileSelect() {
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+
+    async function handleFileSelect(event: Event) {
+        if (isReadOnly) return;
+
+        const target = event.target as HTMLInputElement;
+        const files: File[] = target.files ? Array.from(target.files) : [];
+
+        if (files.length === 0) return;
+
+        let containerId: string | undefined = undefined;
+        try { containerId = await getDefaultContainerId(); } catch {}
+        containerId = containerId || "test-container";
+
+        const items = pageItem.items as Items;
+
+        for (const file of files) {
+            try {
+                // Create new item at the end
+                const newItem = items.addNode(currentUser, items.length);
+                if (newItem) {
+                    try {
+                        const url = await uploadAttachment(containerId, newItem.id, file);
+                        newItem.addAttachment(url);
+                    } catch (uploadErr) {
+                        logger.error("Upload failed via file select");
+                    }
+                }
+            } catch (e) {
+                logger.error("Failed to process selected file");
+            }
+        }
+
+        if (target) {
+            target.value = ''; // Reset input
+        }
+    }
+
     // Add empty sibling item while editing the bottom item
     function handleEdit() {
         // Call external onEdit if available
@@ -1962,6 +2006,15 @@
         <div class="toolbar">
             <div class="actions">
                 <button onclick={handleAddItem}>Add Item</button>
+                <button onclick={triggerFileSelect} aria-label="Add Image" title="Add Image">Add Image</button>
+                <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    bind:this={fileInput}
+                    onchange={handleFileSelect}
+                    style="display: none;"
+                />
                 <button
                     onclick={() => goto(`/${projectName}/${pageName}/diff`)}
                 >
