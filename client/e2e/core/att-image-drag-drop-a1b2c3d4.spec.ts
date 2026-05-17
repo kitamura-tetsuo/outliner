@@ -8,7 +8,6 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.prepareTestEnvironment(page, testInfo, [
-            "PAGE TITLE",
             "ITEM 1",
             "ITEM 2",
         ]);
@@ -32,19 +31,32 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
             const target = document.querySelector(sel);
             if (!target) throw new Error(`Target ${sel} not found`);
 
+            const clientX = target.getBoundingClientRect().left + 10;
+            const clientY = target.getBoundingClientRect().top
+                + (pos === "top"
+                    ? 2
+                    : pos === "bottom"
+                    ? target.getBoundingClientRect().height - 2
+                    : target.getBoundingClientRect().height / 2);
+
+            // Simulate dragover to let Svelte component calculate dropTargetPosition
+            const dragOverEvent = new MouseEvent("dragover", {
+                bubbles: true,
+                cancelable: true,
+                clientX,
+                clientY,
+            });
+            (dragOverEvent as any).dataTransfer = dt;
+            target.dispatchEvent(dragOverEvent);
+
+            // Dispatch drop event
             const event = new MouseEvent("drop", {
                 bubbles: true,
                 cancelable: true,
-                clientX: target.getBoundingClientRect().left + 10,
-                clientY: target.getBoundingClientRect().top
-                    + (pos === "top"
-                        ? 2
-                        : pos === "bottom"
-                        ? target.getBoundingClientRect().height - 2
-                        : target.getBoundingClientRect().height / 2),
+                clientX,
+                clientY,
             });
             (event as any).dataTransfer = dt;
-
             target.dispatchEvent(event);
         }, { sel: selector, name: fileName, pos: position });
     }
