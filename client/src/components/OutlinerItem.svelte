@@ -555,7 +555,7 @@ const aliasTargetIdEffective = $derived.by(() => {
             // Target is this item
             try {
                 model.original.addAttachment(url);
-            } catch (e) {
+            } catch {
                 // Fallback for cases where addAttachment is not available
                 try { (model.original as any).attachments.push([url]); } catch {}
             }
@@ -580,7 +580,7 @@ const aliasTargetIdEffective = $derived.by(() => {
             // No target found in DOM, default to current model
             try {
                 model.original.addAttachment(url);
-            } catch (e) {
+            } catch {
                 try { (model.original as any).attachments.push([url]); } catch {}
             }
         }

@@ -9,6 +9,7 @@
     import { OutlinerViewModel } from "../stores/OutlinerViewModel";
     import { userManager } from "../auth/UserManager";
     import { uploadAttachment } from "../services/attachmentService";
+    import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
     import EditorOverlay from "./EditorOverlay.svelte";
     import OutlinerItem from "./OutlinerItem.svelte";
 
