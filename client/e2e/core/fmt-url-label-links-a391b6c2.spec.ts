@@ -15,7 +15,7 @@ test.describe("URL label links", () => {
     });
 
     test("converts [URL label] to link with label text", async ({ page }) => {
-        // Create data using the lines parameter of prepareTestEnvironment
+        // Create data using the lines parameter of seedProjectAndNavigate
         await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             "Please see [https://example.com Example Site]",
         ]);

@@ -16,7 +16,7 @@ test.describe("Outliner No Auth Test", () => {
         const network = TestHelpersNoAuth.setupNetworkMonitoring(page);
 
         // Prepare environment (no auth)
-        const envResult = await TestHelpersNoAuth.prepareTestEnvironmentNoAuth(page, testInfo);
+        const envResult = await TestHelpersNoAuth.seedProjectAndNavigateNoAuth(page, testInfo);
         console.log("Debug: Environment preparation result:", envResult);
 
         expect(envResult.success).toBe(true);
@@ -58,7 +58,7 @@ test.describe("Outliner No Auth Test", () => {
         console.log("Debug: Testing application state without authentication");
 
         // Prepare environment
-        const envResult = await TestHelpersNoAuth.prepareTestEnvironmentNoAuth(page, testInfo);
+        const envResult = await TestHelpersNoAuth.seedProjectAndNavigateNoAuth(page, testInfo);
         expect(envResult.success).toBe(true);
 
         // Check application state
@@ -106,7 +106,7 @@ test.describe("Outliner No Auth Test", () => {
         console.log("Debug: Testing basic DOM interactions without authentication");
 
         // Prepare environment
-        const envResult = await TestHelpersNoAuth.prepareTestEnvironmentNoAuth(page, testInfo);
+        const envResult = await TestHelpersNoAuth.seedProjectAndNavigateNoAuth(page, testInfo);
         expect(envResult.success).toBe(true);
 
         // Basic click interaction

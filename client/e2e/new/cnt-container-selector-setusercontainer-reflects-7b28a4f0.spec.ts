@@ -22,7 +22,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
         await TestHelpers.seedProjectAndNavigateForProject(page, testInfo, [], undefined, { skipSync: true });
 
         // Navigate to home page where ContainerSelector is rendered
-        // prepareTestEnvironmentForProject already navigates to "/" with skipSync
+        // seedProjectAndNavigateForProject already navigates to "/" with skipSync
         await page.waitForFunction(() => {
             return (window as any).__E2E__ === true && !!(window as any).__FIRESTORE_STORE__
                 && !!(window as any).__USER_MANAGER__;

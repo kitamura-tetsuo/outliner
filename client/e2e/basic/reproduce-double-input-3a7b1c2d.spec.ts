@@ -12,7 +12,7 @@ test.describe("Reproduction of double-input bug", () => {
 
     test("typing 'abc' results in 'abc' and not 'aabbcc'", async ({ page }) => {
         // Wait for the item to be visible and editable
-        // prepareTestEnvironment creates page title + lines.
+        // seedProjectAndNavigate creates page title + lines.
         // We pass [""] so we expect 2 items (title + empty item).
         await TestHelpers.waitForOutlinerItems(page, 2);
 

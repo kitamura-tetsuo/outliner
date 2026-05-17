@@ -30,7 +30,7 @@ test.describe("Input and display of formatted strings", () => {
     });
 
     test("Input of text containing format syntax works correctly", async ({ page }) => {
-        // Create data with lines parameter of prepareTestEnvironment
+        // Create data with lines parameter of seedProjectAndNavigate
         const formattedText = "[[Bold]]and[/ Italic]and[-Strikethrough]and`Code`and[https://example.com]";
         await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             formattedText,

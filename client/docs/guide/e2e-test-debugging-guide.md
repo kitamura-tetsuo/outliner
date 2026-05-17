@@ -29,7 +29,7 @@ match /userProjects/{userId} {
 
 **Solution**:
 
-1. **Navigate FIRST, then Seed**: Navigate to the target page, _then_ call `setAccessibleProjects` or `prepareTestEnvironment`. This updates the _active_ in-memory store of the running page, guaranteeing immediate availability without relying on persistence.
+1. **Navigate FIRST, then Seed**: Navigate to the target page, _then_ call `setAccessibleProjects` or `seedProjectAndNavigate`. This updates the _active_ in-memory store of the running page, guaranteeing immediate availability without relying on persistence.
 2. If you must navigate after seeding, ensure data is explicitly persisted to Firestore (see example below), but method #1 is more robust.
 
 ```typescript
@@ -67,7 +67,7 @@ const userId = um?.auth?.currentUser?.uid || "test-user-id";
 
 **Symptom**: `E2E_ATTACH_BROWSER_CONSOLE=1` doesn't show browser logs for some tests
 
-**Root Cause**: `prepareTestEnvironmentForProject` lacks console event listeners
+**Root Cause**: `seedProjectAndNavigateForProject` lacks console event listeners
 
 **Solution**: Add console listeners to all test environment setup functions:
 
@@ -147,7 +147,7 @@ await TestHelpers.waitForItemCount(page, expectedCount);
 
 **Root Cause**: Server requires authentication (`VITE_YJS_REQUIRE_AUTH=true` or similar server-side check) but the test client is connecting anonymously or without the flag.
 
-**Solution**: Ensure `VITE_YJS_REQUIRE_AUTH` is set to "true" in `localStorage` in the test setup (via `addInitScript` or `prepareTestEnvironment`), so clients verify their auth token during the Yjs handshake.
+**Solution**: Ensure `VITE_YJS_REQUIRE_AUTH` is set to "true" in `localStorage` in the test setup (via `addInitScript` or `seedProjectAndNavigate`), so clients verify their auth token during the Yjs handshake.
 
 ```typescript
 await page.addInitScript(() => {
@@ -172,7 +172,7 @@ const project = await page.evaluate(() => (window as any).generalStore.project);
 
 ### 10. Premature Interaction with List Items
 
-**Symptom**: Test fails at `locator.click()` or `innerHTML` check on outliner items, often with a timeout, even after `prepareTestEnvironment`.
+**Symptom**: Test fails at `locator.click()` or `innerHTML` check on outliner items, often with a timeout, even after `seedProjectAndNavigate`.
 
 **Root Cause**: The test attempts to assert or interact with items immediately after navigation or seeding, but the list rendering (Svelte/Yjs) hasn't completed or hydrated. `getItemIdByIndex` may temporarily return null during initial render.
 
@@ -271,23 +271,23 @@ test("heavy operation", async ({ page }) => {
 
 **Symptom**: `beforeEach` hook timeouts or weird race conditions where the page is blank or "Not Found" during the test.
 
-**Root Cause**: Calling `prepareTestEnvironment` in both `beforeEach` AND the test body. This triggers two navigations. If the second starts before the first one settles (or while Yjs is connecting), it can cause navigation loops or initialization failures.
+**Root Cause**: Calling `seedProjectAndNavigate` in both `beforeEach` AND the test body. This triggers two navigations. If the second starts before the first one settles (or while Yjs is connecting), it can cause navigation loops or initialization failures.
 
-**Solution**: Use ONE `prepareTestEnvironment` call per test execution. If most tests share a setup, keep it in `beforeEach`. If tests need specific data (lines), remove it from `beforeEach` and call it explicitly inside each test.
+**Solution**: Use ONE `seedProjectAndNavigate` call per test execution. If most tests share a setup, keep it in `beforeEach`. If tests need specific data (lines), remove it from `beforeEach` and call it explicitly inside each test.
 
 ```typescript
 // ❌ Redundant setup leads to race conditions
 test.beforeEach(async ({ page }, testInfo) => {
-    await TestHelpers.prepareTestEnvironment(page, testInfo);
+    await TestHelpers.seedProjectAndNavigate(page, testInfo);
 });
 test("my test", async ({ page }, testInfo) => {
-    await TestHelpers.prepareTestEnvironment(page, testInfo, ["data"]);
+    await TestHelpers.seedProjectAndNavigate(page, testInfo, ["data"]);
     // ...
 });
 
 // ✅ Better: Isolate setup if data varies
 test("my test with data", async ({ page }, testInfo) => {
-    await TestHelpers.prepareTestEnvironment(page, testInfo, ["specific data"]);
+    await TestHelpers.seedProjectAndNavigate(page, testInfo, ["specific data"]);
     // ...
 });
 ```
@@ -296,13 +296,13 @@ test("my test with data", async ({ page }, testInfo) => {
 
 **Symptom**: `TestHelpers.waitForItemCount(page, 2)` timeouts even if the page seems to load.
 
-**Root Cause**: By default, `prepareTestEnvironment` (with no lines) only creates the **page title** (Index 0). Accessing `nth(1)` or waiting for 2 items will fail if no content lines were seeded.
+**Root Cause**: By default, `seedProjectAndNavigate` (with no lines) only creates the **page title** (Index 0). Accessing `nth(1)` or waiting for 2 items will fail if no content lines were seeded.
 
 **Solution**: If your test interacts with "the first content line", seed at least one blank line to ensure the item exists.
 
 ```typescript
 // Seed an empty string to ensure Title + 1st body line exist
-await TestHelpers.prepareTestEnvironment(page, testInfo, [""]);
+await TestHelpers.seedProjectAndNavigate(page, testInfo, [""]);
 await TestHelpers.waitForItemCount(page, 2); // Title(0) + Body(1)
 ```
 

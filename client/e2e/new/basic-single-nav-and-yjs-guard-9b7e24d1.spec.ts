@@ -7,7 +7,7 @@ registerCoverageHooks();
 /**
  * Basic verification (single navigation and Yjs write guard)
  * - Ensure only one main frame navigation occurs before the outline page is fully displayed.
- * - Ensure no Yjs writes (specifically: project.addPage) occur before display completion, other than those by prepareTestEnvironment.
+ * - Ensure no Yjs writes (specifically: project.addPage) occur before display completion, other than those by seedProjectAndNavigate.
  */
 
 test.describe("Basic: single navigation & Yjs guard", () => {
@@ -98,7 +98,7 @@ test.describe("Basic: single navigation & Yjs guard", () => {
         // Verification 1: Only 1 URL (path) navigation in main frame (ignoring about:blank / trailing slash differences)
         expect(mainPaths.size).toBe(1);
 
-        // Verification 2: No Yjs writes other than prepareTestEnvironment before display completion
+        // Verification 2: No Yjs writes other than seedProjectAndNavigate before display completion
         // eslint-disable-next-line no-restricted-globals
         const writes = await page.evaluate(() => (window as any).__E2E_WRITES as Array<any>);
         expect(Array.isArray(writes)).toBe(true);

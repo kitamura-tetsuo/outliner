@@ -6,7 +6,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * Purpose:
- * - Verify that the array given to createAndSeedProject lines is rendered in the UI in the same order.
+ * - Verify that the array given to seedProjectDataOnly lines is rendered in the UI in the same order.
  * - Verify DOM based on data-item-id, excluding Page Title items.
  */
 

@@ -7,7 +7,7 @@ import { TestHelpers } from "../utils/testHelpers";
 /**
  * Purpose:
  * - Verify that the Yjs project is correctly attached and seeded lines are reflected in the UI.
- * - Use createAndSeedProject to create initial data via HTTP.
+ * - Use seedProjectDataOnly to create initial data via HTTP.
  */
 
 test.describe("Yjs client attach and DOM reflect", () => {

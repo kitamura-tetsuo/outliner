@@ -6,7 +6,7 @@ registerCoverageHooks();
 test.describe("New Page Navigation", () => {
     test("should navigate to the new page after creation", async ({ page }, testInfo) => {
         // Setup project
-        // createProjectOnly was not available, using createAndSeedProject which navigates to the project
+        // createProjectOnly was not available, using seedProjectDataOnly which navigates to the project
         // We will seed an empty project to start with
         const { projectName } = await TestHelpers.seedProjectDataOnly(page, testInfo, []);
 

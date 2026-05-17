@@ -31,7 +31,7 @@ test.describe("Cursor sync between tabs", () => {
             undefined,
             { projectName, pageName, ws: "force" },
         );
-        // page1 is already navigated to the project page by prepareTestEnvironment
+        // page1 is already navigated to the project page by seedProjectAndNavigate
 
         // Wait for Yjs connection to be established
         try {

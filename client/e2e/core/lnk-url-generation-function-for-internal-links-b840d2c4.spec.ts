@@ -123,7 +123,7 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
         // Verify that items are displayed
         await TestHelpers.waitForItemCount(page, 7, 30000); // Title + 6 seeded lines
 
-        // Replace PLACEHOLDER with actual page name (after page name is determined in prepareTestEnvironment)
+        // Replace PLACEHOLDER with actual page name (after page name is determined in seedProjectAndNavigate)
         await page.evaluate(() => {
             const items = document.querySelectorAll(".outliner-item");
             for (const item of items) {
@@ -133,11 +133,11 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
                     // but here we simulate text replacement of already displayed items.
                     // Since Yjs update is needed, actually performing input operation is best,
                     // but for test stability, waiting for DOM manipulation + Yjs reflection or reseeding is better.
-                    // Since prepareTestEnvironment's return value couldn't be used in this structure,
+                    // Since seedProjectAndNavigate's return value couldn't be used in this structure,
                     // there is a constraint that page name cannot be specified when seeding via API here.
                     // Therefore, we update the item text to match existing logic.
 
-                    // However, prepareTestEnvironment returns the page name, so using that
+                    // However, seedProjectAndNavigate returns the page name, so using that
                     // to execute an action to update the text of the 2nd line is reliable.
                 }
             }

@@ -24,9 +24,9 @@ test.describe("FTR-2c8c4a5b: Project Creation", () => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
 
         // Reload to ensure Svelte component sees the authenticated state if needed
-        // but prepareTestEnvironment typically handles hydration.
+        // but seedProjectAndNavigate typically handles hydration.
 
-        // Go back to the creation page because prepareTestEnvironment might redirect
+        // Go back to the creation page because seedProjectAndNavigate might redirect
         await page.goto("/projects/new");
 
         // 3. Fill in the project name

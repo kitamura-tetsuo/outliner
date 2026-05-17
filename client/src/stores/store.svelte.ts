@@ -60,7 +60,7 @@ export class GeneralStore {
                         }
                     }
                 }
-                // REMOVED: Legacy browser-based auto-creation. Tests should use TestHelpers.createAndSeedProject for data seeding.
+                // REMOVED: Legacy browser-based auto-creation. Tests should use TestHelpers.seedProjectDataOnly for data seeding.
                 // If page doesn't exist, do not auto-create it here - let tests fail if seeding was missed.
 
                 // Porting child rows (reflecting preceding seed)

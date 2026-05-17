@@ -9,7 +9,7 @@ export class TestHelpersNoAuth {
      * @param page Playwright page object
      * @returns Basic environment information
      */
-    public static async prepareTestEnvironmentNoAuth(
+    public static async seedProjectAndNavigateNoAuth(
         page: Page,
         _testInfo: any,
     ): Promise<{ success: boolean; message: string; }> {

@@ -95,7 +95,7 @@ test.describe("Format Display", () => {
     });
 
     test("Italic format ([/ text]) is visually displayed as italic", async ({ page }) => {
-        // Create data with prepareTestEnvironment
+        // Create data with seedProjectAndNavigate
         await TestHelpers.seedProjectAndNavigate(page, test.info(), [
             "This is [/ italic] text",
         ]);
