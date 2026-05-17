@@ -247,11 +247,11 @@
                         const url = await uploadAttachment(containerId, newItem.id, file);
                         newItem.addAttachment(url);
                     } catch (uploadErr) {
-                        logger.error("Upload failed via file select");
+                        console.error("Upload failed via file select", uploadErr);
                     }
                 }
             } catch (e) {
-                logger.error("Failed to process selected file");
+                console.error("Failed to process selected file", e);
             }
         }
 
