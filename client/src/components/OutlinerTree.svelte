@@ -2175,7 +2175,7 @@
         bottom: 0;
         left: 0;
         right: 0;
-        display: none; /* Hidden by default */
+        display: flex; /* Always visible */
         background: white;
         border-top: 1px solid #ddd;
         padding: 8px;
@@ -2203,12 +2203,6 @@
         background: #e0e0e0;
     }
 
-    /* Show mobile toolbar only on small screens */
-    @media (max-width: 768px) {
-        .mobile-action-toolbar {
-            display: flex;
-        }
-    }
 
     .outliner {
         background: white;
