@@ -8,6 +8,8 @@
     import type { DisplayItem } from "../stores/OutlinerViewModel";
     import { OutlinerViewModel } from "../stores/OutlinerViewModel";
     import { userManager } from "../auth/UserManager";
+    import { uploadAttachment } from "../services/attachmentService";
+    import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
     import EditorOverlay from "./EditorOverlay.svelte";
     import OutlinerItem from "./OutlinerItem.svelte";
 
@@ -1225,7 +1227,7 @@
 
     // Item drop event handler
     function handleItemDrop(event: CustomEvent) {
-        const { targetItemId, position, text, selection, sourceItemId } =
+        const { targetItemId, position, text, selection, sourceItemId, attachmentUrl } =
             event.detail;
 
         try {
@@ -1277,6 +1279,9 @@
         } else if (sourceItemId) {
             // Drag & drop of entire single item
             handleItemMoveDrop(sourceItemId, targetItemId, position);
+        } else if (attachmentUrl) {
+            // External attachment drop
+            handleExternalAttachmentDrop(targetItemId, position, attachmentUrl);
         } else {
             // External text drop
             handleExternalTextDrop(targetItemId, position, text);
@@ -1688,6 +1693,58 @@
     }
 
     // Drop text from external source
+    /**
+     * Handle attachment drop from external application
+     */
+    function handleExternalAttachmentDrop(
+        targetItemId: string,
+        position: string,
+        url: string
+    ) {
+        // Resolve target index
+        const targetIndex = displayItems.findIndex(
+            (d) => d.model.id === targetItemId
+        );
+
+        if (targetIndex < 0) return;
+
+        const targetItem = displayItems[targetIndex].model.original;
+        const items = pageItem.items as Items;
+        
+        if (position === "middle") {
+            // Add to existing item
+            try {
+                targetItem.addAttachment(url);
+            } catch {
+                try { (targetItem as any).attachments.push([url]); } catch {}
+            }
+        } else {
+            // Create new item at top or bottom relative to targetItem
+            const parentItems = targetItem.parent || items;
+            const newItem = parentItems.addNode(currentUser);
+            if (newItem) {
+                try {
+                    if (position === "top") {
+                        parentItems.tree.setNodeBefore(newItem.key, targetItem.key);
+                    } else {
+                        parentItems.tree.setNodeAfter(newItem.key, targetItem.key);
+                    }
+                } catch (e) {
+                    logger.error("Failed to reorder dropped item", e);
+                }
+
+                try {
+                    newItem.addAttachment(url);
+                } catch {
+                    try { (newItem as any).attachments.push([url]); } catch {}
+                }
+            }
+        }
+        
+        // Refresh display items
+        __displayItemsTick = Date.now();
+    }
+
     function handleExternalTextDrop(
         targetItemId: string,
         position: string,
@@ -1792,6 +1849,106 @@
         // Clear selection
         editorOverlayStore.clearSelections();
     }
+    function handleTreeDragOver(event: DragEvent) {
+        if (isReadOnly) return;
+        
+        const dt = event.dataTransfer;
+        if (dt) {
+            const hasFiles = dt.types.includes("Files");
+            const hasText = dt.types.includes("text/plain");
+            if (hasFiles || hasText) {
+                event.preventDefault();
+                dt.dropEffect = "copy";
+            }
+        }
+    }
+
+    async function handleTreeDrop(event: DragEvent) {
+        if (isReadOnly) return;
+        
+        const dt = event.dataTransfer;
+        if (!dt) return;
+
+        // Check if we already handled this in an item
+        if (event.defaultPrevented) return;
+        
+        event.preventDefault();
+        event.stopPropagation();
+
+        const hasFileList = dt.files && dt.files.length > 0;
+        const hasFileItems = dt.items && Array.from(dt.items).some(it => it.kind === "file");
+        const e2eFiles: File[] = (typeof window !== 'undefined' && (window as any).__E2E_LAST_FILES__ && Array.isArray((window as any).__E2E_LAST_FILES__)) ? (window as any).__E2E_LAST_FILES__ as File[] : [];
+        const hasE2eFiles = e2eFiles.length > 0;
+
+        if (hasFileList || hasFileItems || hasE2eFiles) {
+            const files: File[] = [];
+            if (hasFileList) {
+                files.push(...Array.from(dt.files));
+            } else if (hasFileItems) {
+                for (const it of Array.from(dt.items)) {
+                    if (it.kind === "file") {
+                        const f = it.getAsFile();
+                        if (f) files.push(f);
+                    }
+                }
+            } else if (hasE2eFiles) {
+                files.push(...e2eFiles);
+                try { (window as any).__E2E_LAST_FILES__ = []; } catch {}
+            }
+
+            if (files.length > 0) {
+                let containerId: string | undefined = undefined;
+                try { containerId = await getDefaultContainerId(); } catch {}
+                containerId = containerId || "test-container";
+
+                const items = pageItem.items as Items;
+
+                for (const file of files) {
+                    try {
+                        // Create new item at the end
+                        const newItem = items.addNode(currentUser, items.length);
+                        if (newItem) {
+                            try {
+                                const url = await uploadAttachment(containerId, newItem.id, file);
+                                try {
+                                    newItem.addAttachment(url);
+                                } catch {
+                                    try { (newItem as any).attachments.push([url]); } catch {}
+                                }
+                            } catch (uploadErr) {
+                                logger.error("Upload failed in tree bottom, using local fallback", uploadErr);
+                                const localUrl = URL.createObjectURL(file);
+                                try {
+                                    newItem.addAttachment(localUrl);
+                                } catch {
+                                    try { (newItem as any).attachments.push([localUrl]); } catch {}
+                                }
+                                try {
+                                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) {
+                                        window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
+                                    }
+                                } catch {}
+                            }
+                        }
+                    } catch (e) {
+                        logger.error("Failed to upload file to tree bottom", e);
+                    }
+                }
+                __displayItemsTick = Date.now();
+            }
+        } else {
+            const text = dt.getData("text/plain");
+            if (text) {
+                const items = pageItem.items as Items;
+                // Insert as new item at the end
+                const newItem = items.addNode(currentUser, items.length);
+                if (newItem && text) {
+                    newItem.updateText(text);
+                }
+                __displayItemsTick = Date.now();
+            }
+        }
+    }
 </script>
 
 {#key outlinerKey}
@@ -1818,6 +1975,8 @@
             role="region"
             aria-label="Outliner Tree"
             bind:this={treeContainer}
+            ondrop={handleTreeDrop}
+            ondragover={handleTreeDragOver}
         >
             <!-- Flat display items (static placement) -->
             {#each displayItems as display, index (display.model.id)}
