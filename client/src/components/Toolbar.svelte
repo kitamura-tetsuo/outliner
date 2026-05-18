@@ -4,6 +4,7 @@ import SearchBox from "./SearchBox.svelte";
 import { store } from "../stores/store.svelte";
 import { onMount } from "svelte";
 import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
+import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 interface Props {
     project?: Project | null;
@@ -203,6 +204,9 @@ if (typeof window !== "undefined") {
             </div>
         </div>
         <div class="toolbar-right">
+            <button class="add-database-btn" data-testid="add-database-btn" onclick={() => commandPaletteStore.insert("table")}>
+                Add Database
+            </button>
             <LoginStatusIndicator />
         </div>
     </div>
@@ -295,4 +299,17 @@ if (typeof window !== "undefined") {
 /* .main-toolbar-placeholder { */
     /* height: 2.5rem; Ensure same height as SearchBox */
 /* } */
+
+.add-database-btn {
+    margin-right: 1rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    background: white;
+    cursor: pointer;
+}
+
+.add-database-btn:hover {
+    background: #f9fafb;
+}
 </style>
