@@ -1,0 +1,5 @@
+version: "2.0"
+agent:
+  execution:
+    runtime: "devcontainer"
+    config_path: ".devcontainer/devcontainer.json"
