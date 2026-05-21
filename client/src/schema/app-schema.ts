@@ -194,6 +194,15 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    // cached page preview stored in Y.Map
+    get preview(): { lines: string[]; image: string | null; } | undefined {
+        return this.value.get("preview") as { lines: string[]; image: string | null; } | undefined;
+    }
+    set preview(v: { lines: string[]; image: string | null; } | undefined) {
+        this.value.set("preview", v as any);
+        this.value.set("lastChanged", Date.now());
+    }
+
     updateText(text: string) {
         const t = this.value.get("text") as Y.Text;
         t.delete(0, t.length);

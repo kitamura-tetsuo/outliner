@@ -104,6 +104,18 @@ export class Item {
         }
     }
 
+    get preview(): { lines: string[]; image: string | null; } | undefined {
+        return this.value.get("preview") as { lines: string[]; image: string | null; } | undefined;
+    }
+
+    set preview(value: { lines: string[]; image: string | null; } | undefined) {
+        if (value === undefined) {
+            this.value.delete("preview");
+        } else {
+            this.value.set("preview", value);
+        }
+    }
+
     updateText(text: string) {
         const t = this.text;
         if (t) {
