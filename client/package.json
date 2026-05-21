@@ -94,7 +94,7 @@
         "typescript-eslint": "^8.59.3",
         "vite": "^8.0.12",
         "vitest": "^4.1.1",
-        "ws": "^8.20.0"
+        "ws": "^8.20.1"
     },
     "name": "outliner",
     "private": true,
