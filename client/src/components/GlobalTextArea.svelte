@@ -386,16 +386,50 @@ async function handlePaste(event: ClipboardEvent) {
 }
 
 // Add processing for focus loss
-function handleBlur(_event: FocusEvent) { // eslint-disable-line @typescript-eslint/no-unused-vars
+function handleBlur(event: FocusEvent) {
     const activeItemId = store.getActiveItem();
     // Do not restore focus while alias picker is visible
     if (aliasPickerStore.isVisible) {
         return;
     }
+
+    // Check where the focus is moving
+    const relatedTarget = event.relatedTarget as HTMLElement | null;
+    if (relatedTarget) {
+        const tagName = relatedTarget.tagName.toLowerCase();
+        // Do not steal focus if moving to an input/button or search-related containers
+        if (
+            tagName === "input" ||
+            tagName === "textarea" ||
+            tagName === "select" ||
+            tagName === "button" ||
+            relatedTarget.closest(".page-search-box") ||
+            relatedTarget.closest("[data-testid='search-panel']")
+        ) {
+            return;
+        }
+    }
+
     if (activeItemId) {
         // Multiple attempts to ensure focus is set
         setTimeout(() => {
             if (textareaRef && !aliasPickerStore.isVisible) {
+                // Double check current active element is not an interactive input/button
+                const activeEl = document.activeElement;
+                if (activeEl) {
+                    const activeTag = activeEl.tagName.toLowerCase();
+                    if (
+                        activeTag === "input" ||
+                        activeTag === "textarea" ||
+                        activeTag === "select" ||
+                        activeTag === "button" ||
+                        activeEl.closest(".page-search-box") ||
+                        activeEl.closest("[data-testid='search-panel']")
+                    ) {
+                        return;
+                    }
+                }
+
                 textareaRef.focus();
 
                 // Debug information

@@ -462,15 +462,6 @@
         oninput={() => {
             shouldRefocus = true;
         }}
-        onblur={() => {
-            // Keep focus while user is interacting with the search suggestions in tests
-            // Outliner may steal focus to the global textarea; when query is non-empty,
-            // immediately restore focus to this input so Arrow keys/Enter work as expected.
-            if (query && query.length > 0) {
-                shouldRefocus = true;
-                queueMicrotask(() => inputEl?.focus());
-            }
-        }}
     />
     {#if query.length > 0}
         <button
