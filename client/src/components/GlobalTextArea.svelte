@@ -305,8 +305,24 @@ function updateCompositionWidth(text: string) {
 function handleCompositionStart(event: CompositionEvent) {
     isComposing = true;
     store.setIsComposing(true);
-    textareaRef.classList.add("ime-input");
-    textareaRef.style.opacity = "1";
+    if (textareaRef) {
+        textareaRef.classList.add("ime-input");
+        textareaRef.style.opacity = "1";
+
+        // Retrieve active item style details from store/overlay
+        const activeId = store.getActiveItem();
+        if (activeId) {
+            const itemEl = document.querySelector(`[data-item-id="${activeId}"] .item-text`);
+            if (itemEl) {
+                const style = window.getComputedStyle(itemEl);
+                textareaRef.style.fontFamily = style.fontFamily;
+                textareaRef.style.fontSize = style.fontSize;
+                textareaRef.style.fontWeight = style.fontWeight;
+                textareaRef.style.lineHeight = style.lineHeight;
+                textareaRef.style.height = style.lineHeight; // Sets height to ~20-24px instead of 1px
+            }
+        }
+    }
     updateCompositionWidth(event.data || "");
     KeyEventHandler.handleCompositionStart(event);
 }
@@ -354,9 +370,12 @@ function handleCompositionEnd(event: CompositionEvent) {
     KeyEventHandler.handleCompositionEnd(event);
     isComposing = false;
     store.setIsComposing(false);
-    textareaRef.classList.remove("ime-input");
-    textareaRef.style.opacity = "0";
-    textareaRef.style.width = "1px";
+    if (textareaRef) {
+        textareaRef.classList.remove("ime-input");
+        textareaRef.style.opacity = "0";
+        textareaRef.style.width = "1px";
+        textareaRef.style.height = "1px"; // Restore tiny size
+    }
 }
 
 // Delegate CompositionUpdate event to KeyEventHandler

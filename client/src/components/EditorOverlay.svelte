@@ -148,8 +148,8 @@ function updateTextareaPosition() {
     try {
         if (aliasPickerStore.isVisible) return; // avoid churn while alias picker open
         const textareaRef = store.getTextareaRef();
-        const isComposing = store.isComposing;
-        if (!textareaRef || !overlayRef || isComposing) return;
+        // Allow dynamic position update even during composition
+        if (!textareaRef || !overlayRef) return;
         const lastCursor = store.getLastActiveCursor();
         if (!lastCursor) return;
 
