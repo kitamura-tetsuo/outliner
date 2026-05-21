@@ -34,7 +34,7 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
         try {
             text = item.text ? item.text.trim() : "";
         } catch (e) {
-             console.warn("Failed to extract text", e);
+            console.warn("Failed to extract text", e);
         }
 
         if (text && lines.length < maxLines && item.id !== pageItem.id) {
