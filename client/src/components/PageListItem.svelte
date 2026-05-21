@@ -1,5 +1,6 @@
 <script lang="ts">
 import type { Item } from "../schema/app-schema";
+import { extractPagePreview } from "../lib/pagePreview";
 
 interface Props {
     page: Item;
@@ -13,82 +14,8 @@ let preview = $state<{ lines: string[]; image: string | null }>({ lines: [], ima
 let pageTitle = $state("");
 let lastChanged = $state<number | undefined>();
 
-function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: number = 3) {
-    const lines: string[] = [];
-    let image: string | null = null;
-    let nodeCount = 0;
-    const maxNodes = 50;
-
-    function traverse(item: Item, currentDepth: number) {
-        if (nodeCount >= maxNodes) return;
-        nodeCount++;
-
-        if (!image && item.attachments) {
-            try {
-                const arr = item.attachments.toArray();
-                if (arr && arr.length > 0) {
-                    const val = arr[0];
-                    if (typeof val === "string") {
-                        image = val;
-                    } else if (val && typeof val === "object") {
-                        if ("url" in val) {
-                            image = (val as any).url;
-                        } else if (Array.isArray(val) && (val as any[]).length > 0) {
-                            image = val[0];
-                        }
-                    }
-                }
-            } catch (e) {
-                console.warn("Failed to extract attachment", e);
-            }
-        }
-
-        let text = "";
-        try {
-            text = item.text ? item.text.trim() : "";
-        } catch (e) {
-             console.warn("Failed to extract text", e);
-        }
-
-        if (text && lines.length < maxLines && item.id !== pageItem.id) {
-            lines.push(text);
-        }
-
-        if (currentDepth >= maxDepth) return;
-
-        try {
-            if (item.items) {
-                let i = 0;
-                for (const child of item.items) {
-                    if (i++ > 10) break;
-                    if (child) traverse(child, currentDepth + 1);
-                    if (lines.length >= maxLines && image) return;
-                    if (nodeCount >= maxNodes) return;
-                }
-            }
-        } catch (e) {
-            console.warn("Failed to iterate children", e);
-        }
-    }
-
-    try {
-        if (pageItem.items) {
-            let i = 0;
-            for (const child of pageItem.items) {
-                if (i++ > 20) break;
-                if (child) traverse(child, 1);
-                if (lines.length >= maxLines && image) break;
-            }
-        }
-    } catch (e) {
-        console.warn("Failed to iterate root children", e);
-    }
-
-    return { lines, image };
-}
-
 function updatePreview() {
-    preview = extractPagePreview(page);
+    preview = page.preview || extractPagePreview(page);
     pageTitle = page.text || "Untitled Page";
     lastChanged = page.lastChanged;
 }
@@ -129,7 +56,9 @@ $effect(() => {
                     <p class="m-0 mb-1 line-clamp-1">{line}</p>
                 {/each}
                 {#if preview.lines.length === 0 && !preview.image}
-                    <p class="m-0 text-gray-400 italic">No content</p>
+                    <div class="flex items-center justify-center h-full min-h-[3rem] rounded border border-dashed border-gray-200 bg-gray-50/50">
+                        <span class="text-xs text-gray-400 font-medium">Empty page - Click to start writing</span>
+                    </div>
                 {/if}
             </div>
 
@@ -161,7 +90,7 @@ $effect(() => {
                         {#if preview.lines.length > 0}
                             {preview.lines[0]}
                         {:else}
-                            <span class="italic">No text content</span>
+                            <span class="italic text-gray-400">Empty page - Click to start writing</span>
                         {/if}
                     </span>
                 </div>

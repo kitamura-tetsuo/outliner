@@ -5,6 +5,7 @@
     import * as Y from "yjs";
     import { store as generalStore } from "../stores/store.svelte";
     import { onMount } from "svelte";
+    import { extractPagePreview } from "../lib/pagePreview";
     import GlobalTextArea from "./GlobalTextArea.svelte";
     import OutlinerTree from "./OutlinerTree.svelte";
     import PresenceAvatars from "./PresenceAvatars.svelte";
@@ -37,6 +38,37 @@
         const byProp = pageItem as Item | undefined;
         if (byProp) return byProp;
         return (generalStore.currentPage as Item | undefined) ?? undefined;
+    });
+
+    let previewUpdateTimeout: ReturnType<typeof setTimeout>;
+
+    $effect(() => {
+        if (!effectivePageItem) return;
+
+        const currentDoc = effectivePageItem.ydoc;
+        if (!currentDoc) return;
+
+        const updatePreviewDebounced = () => {
+            clearTimeout(previewUpdateTimeout);
+            previewUpdateTimeout = setTimeout(() => {
+                if (!effectivePageItem) return;
+                try {
+                    const newPreview = extractPagePreview(effectivePageItem);
+                    const oldPreview = effectivePageItem.preview;
+                    if (JSON.stringify(newPreview) !== JSON.stringify(oldPreview)) {
+                        effectivePageItem.preview = newPreview;
+                    }
+                } catch (e) {
+                    console.warn("Failed to update page preview:", e);
+                }
+            }, 1000);
+        };
+
+        currentDoc.on("update", updatePreviewDebounced);
+        return () => {
+            clearTimeout(previewUpdateTimeout);
+            currentDoc.off("update", updatePreviewDebounced);
+        };
     });
 
     // Ensure a minimal currentPage on mount (effectivePageItem follows thereafter)
