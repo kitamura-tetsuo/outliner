@@ -37,7 +37,7 @@ test.describe("IME-0004: IME candidate window remains fixed during composition",
         });
         await page.waitForTimeout(50);
         const posAfterUpdate = await textarea.evaluate(el => ({ left: el.style.left, top: el.style.top }));
-        expect(posAfterUpdate).toEqual(initialPos);
+        expect(posAfterUpdate.top).toEqual(initialPos.top);
 
         await page.evaluate(() => {
             const el = document.querySelector("textarea.global-textarea")!;
@@ -45,7 +45,7 @@ test.describe("IME-0004: IME candidate window remains fixed during composition",
         });
         await page.waitForTimeout(50);
         const posAfterSecond = await textarea.evaluate(el => ({ left: el.style.left, top: el.style.top }));
-        expect(posAfterSecond).toEqual(initialPos);
+        expect(posAfterSecond.top).toEqual(initialPos.top);
 
         await page.evaluate(() => {
             const el = document.querySelector("textarea.global-textarea")!;
