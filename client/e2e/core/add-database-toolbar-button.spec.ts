@@ -21,11 +21,11 @@ test("Toolbar 'Add Database' button inserts a Database (table) component", async
     await page.waitForTimeout(500);
 
     // Click the Add Database button in the main-toolbar
-    const addDatabaseBtn = page.getByTestId("main-toolbar").locator('.add-database-btn').last();
+    const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
     await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
     await addDatabaseBtn.click();
 
     // Check for the inserted inline-join-table block
-    const inlineTable = page.locator('.inline-join-table').first();
+    const inlineTable = page.locator(".inline-join-table").first();
     await expect(inlineTable).toBeVisible({ timeout: 10000 });
 });
