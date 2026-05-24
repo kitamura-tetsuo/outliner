@@ -197,7 +197,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Ensure token is available for initial connection URL (required by server upgrade handler)
     let initialToken = "";
     try {
-        initialToken = await getFreshIdToken();
+        if (projectId !== "demo") {
+            initialToken = await getFreshIdToken();
+        }
     } catch {}
 
     // Send a dummy `token` to satisfy HocuspocusServer's unconditional wait for a `MessageType.Auth` message.
