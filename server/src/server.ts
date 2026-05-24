@@ -10,12 +10,12 @@ import * as Y from "yjs";
 import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
 import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
+import { createDemoRouter } from "./demo-api.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { createSeedRouter } from "./seed-api.js";
-import { createDemoRouter } from "./demo-api.js";
 import { getClientIp } from "./utils/ip.js";
 import {
     refreshClientLogStream,

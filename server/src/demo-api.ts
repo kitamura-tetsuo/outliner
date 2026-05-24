@@ -1,7 +1,7 @@
 import express from "express";
-import * as Y from "yjs";
 import fs from "fs";
 import path from "path";
+import * as Y from "yjs";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 
@@ -55,7 +55,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         logger.warn({ event: "seed_demo_template_not_found", error: String(e) });
                         templateLines = [
                             "Welcome to the Outliner Demo!",
-                            "This demo resets every 24 hours."
+                            "This demo resets every 24 hours.",
                         ];
                     }
 
@@ -92,12 +92,10 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 }
 
                 res.json({ success: true, reset: shouldReset });
-
             } finally {
                 // Must disconnect to prevent memory leak
                 await directConnection.disconnect();
             }
-
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error({ event: "seed_demo_error", error: errorMessage });
