@@ -1,6 +1,7 @@
 import express from "express";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import * as Y from "yjs";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
@@ -47,6 +48,8 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                     let templateLines: string[] = [];
                     try {
                         // Find docs relative to current file to be more robust
+                        const __filename = fileURLToPath(import.meta.url);
+                        const __dirname = path.dirname(__filename);
                         const docsDir = path.resolve(__dirname, "../../docs");
                         const templatePath = path.resolve(docsDir, "demo-template.txt");
                         const templateContent = fs.readFileSync(templatePath, "utf-8");
