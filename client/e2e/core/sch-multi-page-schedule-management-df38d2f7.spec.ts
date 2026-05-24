@@ -209,7 +209,7 @@ test.describe("Multi-Page Schedule Management", () => {
         const input = page.locator('input[type="datetime-local"]');
         const firstTime = new Date(Date.now() + 60000).toISOString().slice(0, 16);
         await input.fill(firstTime);
-        await page.locator('button:has-text("Add")').click();
+        await page.locator("button", { hasText: /^Add$/ }).click();
 
         // Wait for the schedule to be added
         const items = page.locator('[data-testid="schedule-item"]');
