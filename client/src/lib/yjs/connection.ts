@@ -347,7 +347,9 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     // Ensure token is available for initial connection URL (required by server upgrade handler)
     let initialToken = "";
     try {
-        initialToken = await getFreshIdToken();
+        if (projectId !== "demo") {
+            initialToken = await getFreshIdToken();
+        }
     } catch (e) {
         console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
     }
@@ -405,7 +407,9 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     // Ensure token is available for initial connection URL (required by server upgrade handler)
     let initialToken = "";
     try {
-        initialToken = await getFreshIdToken();
+        if (projectId !== "demo") {
+            initialToken = await getFreshIdToken();
+        }
     } catch {}
 
     // Send a dummy `token` for the same reason as in createProjectConnection
