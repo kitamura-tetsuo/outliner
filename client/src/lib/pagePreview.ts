@@ -45,9 +45,10 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
 
         try {
             if (item.items) {
-                let i = 0;
-                for (const child of item.items) {
-                    if (i++ > 10) break;
+                const len = item.items.length;
+                for (let i = 0; i < len; i++) {
+                    if (i > 10) break;
+                    const child = item.items.at(i);
                     if (child) traverse(child, currentDepth + 1);
                     if (lines.length >= maxLines && image) return;
                     if (nodeCount >= maxNodes) return;
@@ -60,9 +61,10 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
 
     try {
         if (pageItem.items) {
-            let i = 0;
-            for (const child of pageItem.items) {
-                if (i++ > 20) break;
+            const len = pageItem.items.length;
+            for (let i = 0; i < len; i++) {
+                if (i > 20) break;
+                const child = pageItem.items.at(i);
                 if (child) traverse(child, 1);
                 if (lines.length >= maxLines && image) break;
             }
