@@ -85,7 +85,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         // The pageId is already stable after the navigation flow in onMount.
 
         // Create a schedule with the retrieved pageId
-        const resp = await page.request.post("http://127.0.0.1:57000/api/create-schedule", {
+        const resp = await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/createSchedule", {
             data: {
                 idToken,
                 pageId: resolvedPageId,
@@ -94,8 +94,8 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         });
         const status = resp.status();
         const bodyText = await resp.text();
-        console.log(`[E2E] create-schedule status=${status} body=${bodyText}`);
-        expect(status, `create-schedule failed: ${bodyText}`).toBe(200);
+        console.log(`[E2E] createSchedule status=${status} body=${bodyText}`);
+        expect(status, `createSchedule failed: ${bodyText}`).toBe(200);
 
         // Refresh the page after creating a schedule to get the new schedule
         console.log(`[E2E] Refreshing schedules after creating schedule...`);
