@@ -10,6 +10,7 @@ import * as Y from "yjs";
 import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
 import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
+import { createDemoRouter } from "./demo-api.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
@@ -217,6 +218,19 @@ export async function startServer(
             const token = extractAuthToken(request);
             console.log(`[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${token ? "FOUND" : "MISSING"}`);
 
+            const room = parseRoom(data.documentName);
+            if (!room?.project) {
+                throw Object.assign(new Error("Authentication failed: Invalid room format"), { code: 4001 });
+            }
+
+            if (room.project === "demo") {
+                console.log(`[Hocuspocus] onAuthenticate: Anonymous demo access for room=${data.documentName}`);
+                return {
+                    user: { uid: "anonymous-demo" },
+                    room,
+                };
+            }
+
             if (!token) {
                 throw Object.assign(new Error("Authentication failed: No token provided"), { code: 4001 });
             }
@@ -227,11 +241,6 @@ export async function startServer(
             } catch (err: any) {
                 // Re-throw so Hocuspocus sends 4001 Unauthorized to client
                 throw err;
-            }
-
-            const room = parseRoom(data.documentName);
-            if (!room?.project) {
-                throw Object.assign(new Error("Authentication failed: Invalid room format"), { code: 4001 });
             }
 
             const hasAccess = await checkContainerAccess(decoded.uid, room.project);
@@ -271,6 +280,9 @@ export async function startServer(
 
     // Seed API - use Hocuspocus's openDirectConnection for proper document lifecycle
     app.use("/api", createSeedRouter(hocuspocus));
+
+    // Demo API - anonymous access for the public demo page
+    app.use("/api", createDemoRouter(hocuspocus));
 
     // Log rotation endpoint
     app.post("/api/rotate-logs", requireAuth, async (req: any, res: any) => {
@@ -356,11 +368,6 @@ export async function startServer(
                 return rejectSync(4008, "MAX_SOCKETS_PER_IP");
             }
 
-            // 4. Validate token presence and room format (synchronous, no network calls)
-            const token = extractAuthToken(request);
-            if (!token) {
-                return rejectSync(4001, "NO_TOKEN");
-            }
             let documentName = "";
             if (request.url) {
                 const urlPath = request.url.split("?")[0];
@@ -369,6 +376,14 @@ export async function startServer(
             const room = parseRoom(documentName);
             if (!room?.project) {
                 return rejectSync(4001, "INVALID_ROOM");
+            }
+
+            const isDemoRoom = room.project === "demo";
+
+            // 4. Validate token presence (synchronous, no network calls)
+            const token = extractAuthToken(request);
+            if (!token && !isDemoRoom) {
+                return rejectSync(4001, "NO_TOKEN");
             }
 
             // 5. Check room connection limit (synchronous)

@@ -220,6 +220,22 @@ export async function createNewProject(projectName: string, existingProjectId?: 
 export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
     console.log(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
 
+    // Special bypass for demo project
+    if (projectTitle === "demo") {
+        const userId = userManager.getCurrentUser()?.id || "anonymous-demo";
+        const projectId = "demo";
+
+        if (registry.has(keyFor(userId, projectId))) {
+            const [c] = registry.get(keyFor(userId, projectId))!;
+            if (c) return c;
+        }
+
+        const project = Project.createInstance("Demo");
+        const client = await YjsClient.connect(projectId, project);
+        registry.set(keyFor(userId, projectId), [client, project]);
+        return client;
+    }
+
     // First, check the registry for a matching client
     for (const [, [client, project]] of registry.entries()) {
         if (project?.title === projectTitle && client) {
