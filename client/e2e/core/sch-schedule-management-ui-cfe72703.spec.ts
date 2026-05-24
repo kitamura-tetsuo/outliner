@@ -43,7 +43,7 @@ test.describe("Schedule Management UI", () => {
         await input.fill(future);
 
         console.log("Test: Clicking Add button with datetime:", future);
-        await page.locator('button', { hasText: /^Add$/ }).click();
+        await page.locator("button", { hasText: /^Add$/ }).click();
 
         // Wait a moment after adding the schedule
         await page.waitForTimeout(500);
