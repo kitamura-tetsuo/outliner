@@ -76,6 +76,9 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
 
                         // Create project wrapper and root page
+                        const tempProject = Project.createInstance("Demo Project");
+                        Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(tempProject.ydoc));
+
                         const project = Project.fromDoc(ydoc);
                         const page = project.addPage("Demo", "seed-server");
 
