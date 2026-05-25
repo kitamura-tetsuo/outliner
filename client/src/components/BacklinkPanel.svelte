@@ -2,6 +2,7 @@
 import { goto } from "$app/navigation";
 import { resolve } from "$app/paths";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 const resolvePath = resolve as any;
 import {
