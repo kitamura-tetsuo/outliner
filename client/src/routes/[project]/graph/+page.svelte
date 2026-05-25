@@ -1,13 +1,16 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
 import { resolve } from "$app/paths";
+
+// @ts-ignore
+const resolvePath = resolve as any;
 import GraphView from "../../../components/GraphView.svelte";
 
 let { data } = $props<{ data: { project: string; }; }>();
 const projectName = $derived(data.project);
 
 async function goBack() {
-    await goto(resolve(`/${projectName}`));
+    await goto(resolvePath(`/${projectName}`));
 }
 </script>
 

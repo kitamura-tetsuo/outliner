@@ -1,6 +1,9 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
 import { resolve } from "$app/paths";
+
+// @ts-ignore
+const resolvePath = resolve as any;
 import { page } from "$app/stores";
 import { onMount } from "svelte";
 import {
@@ -98,7 +101,7 @@ onMount(async () => {
         // Navigate to main page to trigger loadProjectAndPage
         const mainPageUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}`;
         console.log("Schedule page: Navigating to main page:", mainPageUrl);
-        await goto(mainPageUrl, { waitUntil: "networkidle" });
+        await goto(mainPageUrl);
         console.log("Schedule page: Back from main page, waiting for store.project to be populated...");
 
         // Wait for store.project to be populated after navigation
@@ -114,7 +117,7 @@ onMount(async () => {
         // Navigate back to schedule page
         const scheduleUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}/schedule`;
         console.log("Schedule page: Navigating back to schedule:", scheduleUrl);
-        await goto(scheduleUrl, { waitUntil: "networkidle" });
+        await goto(scheduleUrl);
         console.log("Schedule page: Back on schedule page, store.project?.items?.length =", store.project?.items?.length ?? 0);
     } else {
         console.log("Schedule page: Using saved pageId, no navigation needed");
@@ -545,7 +548,7 @@ async function saveEdit() {
 }
 
 async function back() {
-    await goto(resolve(`/${project}/${pageTitle}`));
+    await goto(resolvePath(`/${project}/${pageTitle}`));
 }
 
 async function downloadIcs() {

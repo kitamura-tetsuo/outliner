@@ -205,14 +205,14 @@ onMount(async () => {
 
         if (isAuthenticated) {
             // Initialize debug functions
-            setupGlobalDebugFunctions(yjsService?.yjsHighService);
+            setupGlobalDebugFunctions();
         }
         else {
             // Monitor authentication state changes
             userManager?.addEventListener((authResult: any) => {
                 isAuthenticated = authResult !== null;
                 if (isAuthenticated && browser) {
-                    setupGlobalDebugFunctions(yjsService?.yjsHighService);
+                    setupGlobalDebugFunctions();
                 }
             });
         }

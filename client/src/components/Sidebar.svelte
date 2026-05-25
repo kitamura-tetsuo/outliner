@@ -2,6 +2,9 @@
     import { projectStore } from "../stores/projectStore.svelte";
     import { store } from "../stores/store.svelte";
     import { resolve } from "$app/paths";
+
+// @ts-ignore
+const resolvePath = resolve as any;
     import { page as pageStore } from "$app/stores";
 
     let { isOpen = $bindable(true) } = $props();
@@ -134,7 +137,7 @@
                         <li class="sidebar-placeholder">No pages available</li>
                     {:else}
                         {#each pages as page (page.id)}
-                            {@const pageHref = resolve(
+                            {@const pageHref = resolvePath(
                                 `/${encodeURIComponent(store.project?.title || "Untitled Project")}/${encodeURIComponent(page.text)}`,
                             )}
                             <li>
@@ -173,9 +176,9 @@
             <h3 class="sidebar-section-title">Settings</h3>
             <a
                 class="settings-link"
-                href={resolve("/settings")}
-                aria-current={$pageStore.url.pathname === resolve("/settings") ? "page" : undefined}
-                class:active={$pageStore.url.pathname === resolve("/settings")}
+                href={resolvePath("/settings")}
+                aria-current={$pageStore.url.pathname === resolvePath("/settings") ? "page" : undefined}
+                class:active={$pageStore.url.pathname === resolvePath("/settings")}
             >
                 <span class="item-content-wrapper">
                     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
