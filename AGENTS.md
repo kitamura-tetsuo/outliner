@@ -43,6 +43,15 @@ This document consolidates the key development policies for this repository. Fol
 - Record test specs in `docs/client-features/<slug>-<title>-<uuid>.yaml` and match the file name pattern in the `client/e2e` directory.
 - Retrieve SharedTree and cursor data with `treeValidation.ts` and `cursorValidation.ts` instead of mocks.
 
+### Backend Test Runners (Server vs. Functions)
+
+- **`server/` directory**: Uses **Mocha** as the primary test runner.
+  - All tests in `server/tests/` must be written for the Mocha runner environment.
+  - **Do NOT import from `@jest/globals` or use Jest utilities (like `jest.mock()`, `jest.fn()`)** in server tests, as this will crash the ESM/Mocha runner.
+  - Use **Chai** (`expect` from `"chai"`) for assertions and **Sinon.js** (`sinon`) for mocking/stubbing.
+- **`functions/` directory**: Uses **Jest** as the primary test runner.
+  - Tests in `functions/test/` are executed via Jest and may use `@jest/globals` and standard Jest mocking/assertion utilities.
+
 ### Unit Test Mocking
 
 Mocks are generally forbidden. Limited exceptions:
