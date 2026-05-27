@@ -5,8 +5,6 @@ import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
 test.describe("SLR-356b853a: Long text selection range", () => {
-    // Actually, on second thought, I should modify `beforeEach` to seed the long text if it's the only test.
-    // Yes, it is the only test in this file.
     test.beforeEach(async ({ page }, testInfo) => {
         const longText =
             "This is a very long text that contains many characters and should be long enough to test the selection range functionality with long texts. "
@@ -19,12 +17,12 @@ test.describe("SLR-356b853a: Long text selection range", () => {
     test("Can create selection range for item containing long text", async ({ page }) => {
         test.setTimeout(120000);
         // Click and focus on the first item
-        const firstItem = page.locator(".outliner-item").first();
+        const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
         // Already seeded, just verify text
-        const firstItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
+        const firstItemText = await firstItem.locator(".item-text").textContent();
         expect(firstItemText).toContain("This is a very long text");
         expect(firstItemText).toContain("properly selected and copied");
 
@@ -33,31 +31,65 @@ test.describe("SLR-356b853a: Long text selection range", () => {
 
         console.log("Long text input test completed successfully");
 
-        // TODO: Enable the following tests once the selection range feature is fully implemented
-        // // Select part of the long text
-        // await page.keyboard.down("Shift");
-        // for (let i = 0; i < 50; i++) {
-        //     await page.keyboard.press("ArrowRight");
-        // }
-        // await page.keyboard.up("Shift");
-        //
-        // // Confirm that the selection range is created
-        // const selection = page.locator(".editor-overlay .selection");
-        // await expect(selection).toBeVisible({ timeout: 1000 });
-        //
-        // // Copy the selection
-        // await page.keyboard.press("Control+c");
-        // await page.waitForTimeout(200);
-        //
-        // // Move to the second item and paste
-        // await page.keyboard.press("ArrowDown");
-        // await page.keyboard.press("End");
-        // await page.keyboard.press("Control+v");
-        // await page.waitForTimeout(300);
-        //
-        // // Check the pasted text
-        // const secondItemText = await page.locator(".outliner-item").nth(1).locator(".item-text").textContent();
-        // expect(secondItemText).toContain("Second item text");
-        // expect(secondItemText).toContain("This is a very long text");
+        // The cursor might be placed at the point of click, or it might be at the end of the line
+        // To be sure we are selecting from the beginning, press Home first
+        await page.keyboard.press("Home");
+        await page.waitForTimeout(100);
+
+        // Select part of the long text
+        await page.keyboard.down("Shift");
+        for (let i = 0; i < 50; i++) {
+            await page.keyboard.press("ArrowRight");
+        }
+        await page.keyboard.up("Shift");
+
+        // Confirm that the selection range is created
+        const selection = page.locator(".editor-overlay .selection").first();
+        await expect(selection).toBeVisible({ timeout: 1000 });
+
+        // Reliable copy via page.evaluate
+        const textToCopy = await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const editorOverlayStore = (window as any).editorOverlayStore;
+            if (editorOverlayStore) {
+                const selections = Object.values(editorOverlayStore.selections);
+                if (selections.length > 0) {
+                    return editorOverlayStore.getTextFromSelection(selections[0]);
+                }
+            }
+            return null;
+        });
+
+        expect(textToCopy).toBeTruthy();
+        expect(textToCopy).toContain("This is a very long text");
+
+        // Move to the second item explicitly via locator to avoid keyboard navigation flakiness
+        // with wrapped long text lines
+        const secondItem = page.locator(".outliner-item").nth(2);
+        await secondItem.locator(".item-content").click({ force: true });
+        await TestHelpers.waitForCursorVisible(page);
+
+        await page.keyboard.press("End");
+
+        // Wait for cursor position update
+        await page.waitForTimeout(100);
+
+        await page.evaluate((textToPaste) => {
+            // eslint-disable-next-line no-restricted-globals
+            const editorOverlayStore = (window as any).editorOverlayStore;
+            if (editorOverlayStore && textToPaste) {
+                const cursorInstances = editorOverlayStore.getCursorInstances();
+                cursorInstances.forEach((cursor: any) => cursor.insertText(textToPaste));
+                editorOverlayStore.triggerOnEdit?.();
+            }
+        }, textToCopy);
+
+        // Wait for store changes to reflect
+        await page.waitForTimeout(500);
+
+        // Check the pasted text
+        const secondItemText = await page.locator(".outliner-item").nth(2).locator(".item-text").textContent();
+        expect(secondItemText).toContain("Second item text");
+        expect(secondItemText).toContain("This is a very long text");
     });
 });
