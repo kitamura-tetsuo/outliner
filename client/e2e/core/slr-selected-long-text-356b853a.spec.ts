@@ -14,7 +14,7 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         await TestHelpers.waitForOutlinerItems(page, 3, 10000);
     });
 
-    test("Can create selection range for item containing long text", async ({ page, browserName }) => {
+    test("Can create selection range for item containing long text", async ({ page }) => {
         test.setTimeout(120000);
         // Click and focus on the first item
         const firstItem = page.locator(".outliner-item").nth(1);
@@ -33,6 +33,7 @@ test.describe("SLR-356b853a: Long text selection range", () => {
 
         // Select part of the long text programmatically as UI keyboard selection is flaky in Playwright
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (editorOverlayStore) {
                 const cursorInstances = editorOverlayStore.getCursorInstances();
@@ -57,11 +58,13 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         // Reliable copy via page.evaluate by reading what the app evaluates as selected
         // to bypass the execCommand issues on the runner container
         const textToCopy = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (editorOverlayStore) {
                 const selections = Object.values(editorOverlayStore.selections);
                 if (selections.length > 0) {
                     const text = editorOverlayStore.getTextFromSelection(selections[0]);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).lastCopiedText = text;
                     return text;
                 }
@@ -81,9 +84,11 @@ test.describe("SLR-356b853a: Long text selection range", () => {
 
         // Simulate pasting by explicitly injecting the copied text
         await page.evaluate((textToPaste) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (editorOverlayStore && textToPaste) {
                 const cursorInstances = editorOverlayStore.getCursorInstances();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 cursorInstances.forEach((cursor: any) => cursor.insertText(textToPaste));
                 editorOverlayStore.triggerOnEdit();
             }
