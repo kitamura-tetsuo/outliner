@@ -8,8 +8,8 @@ import {
     localizeHref,
 } from "$lib/paraglide/runtime";
 
-function switchToLanguage(newLanguage: string) {
-    const localisedPath = localizeHref(page.url.pathname, { locale: newLanguage });
+function switchToLanguage(newLanguage: "en" | "ja") {
+    const localisedPath = localizeHref($page.url.pathname, { locale: newLanguage });
     goto(localisedPath);
 }
 </script>

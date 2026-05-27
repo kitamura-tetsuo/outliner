@@ -1,6 +1,10 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     import { resolve } from "$app/paths";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+const resolvePath = resolve as any;
     import * as echarts from "echarts";
     import type { ECElementEvent, GraphSeriesOption } from "echarts";
     import { onMount } from "svelte";
@@ -226,9 +230,9 @@
 
                 const projectName = store.project?.title;
                 if (projectName) {
-                    goto(resolve(`/${projectName}/${pageName}`));
+                    goto(resolvePath(`/${projectName}/${pageName}`));
                 } else {
-                    goto(resolve(`/${pageName}`));
+                    goto(resolvePath(`/${pageName}`));
                 }
             }
         });

@@ -1,6 +1,10 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
 import { resolve } from "$app/paths";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+const resolvePath = resolve as any;
 import {
     type Backlink,
     collectBacklinks,
@@ -62,10 +66,10 @@ function togglePanel() {
 async function navigateToPage(_pageId: string, pageName: string) {
     if (!projectName) {
         // Use current project if not specified
-        await goto(resolve(`/${pageName}`));
+        await goto(resolvePath(`/${pageName}`));
     }
     else {
-        await goto(resolve(`/${projectName}/${pageName}`));
+        await goto(resolvePath(`/${projectName}/${pageName}`));
     }
 }
 

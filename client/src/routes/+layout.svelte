@@ -162,10 +162,8 @@ onMount(async () => {
         } catch {}
         // Dynamically import browser-only modules
         let userManager: any;
-        let yjsService: any;
         try {
             ({ userManager } = await import("../auth/UserManager"));
-            yjsService = await import("../lib/yjsService.svelte");
             // Initialize metadata Y.Doc with IndexedDB persistence
             await import("../lib/metaDoc.svelte");
             await import("../services");
@@ -205,14 +203,14 @@ onMount(async () => {
 
         if (isAuthenticated) {
             // Initialize debug functions
-            setupGlobalDebugFunctions(yjsService?.yjsHighService);
+            setupGlobalDebugFunctions();
         }
         else {
             // Monitor authentication state changes
             userManager?.addEventListener((authResult: any) => {
                 isAuthenticated = authResult !== null;
                 if (isAuthenticated && browser) {
-                    setupGlobalDebugFunctions(yjsService?.yjsHighService);
+                    setupGlobalDebugFunctions();
                 }
             });
         }
