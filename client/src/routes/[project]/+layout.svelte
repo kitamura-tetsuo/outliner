@@ -1,7 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import { goto } from "$app/navigation";
-import { page as pageStore } from "$app/stores";
 import { userManager } from "../../auth/UserManager";
 import { getYjsClientByProjectTitle } from "../../services";
 import { yjsStore } from "../../stores/yjsStore.svelte";
@@ -22,8 +21,7 @@ $effect(() => {
 
 // Retrieve project name from URL parameters
 $effect(() => {
-    // Prefer explicit param over optional data prop
-    const projectParam = ($pageStore?.params?.project as string) || (data as any)?.project;
+    const projectParam = (data as any)?.project;
     if (!projectParam) return;
 
     if (!yjsStore.yjsClient) {
@@ -63,7 +61,7 @@ onMount(() => {
     try {
         userManager.addEventListener(() => {
             // If project not yet loaded but param exists, try again when auth flips
-            const projectParam = ($pageStore?.params?.project as string) || (data as any)?.project;
+            const projectParam = (data as any)?.project;
             if (projectParam && !yjsStore.yjsClient) {
                 loadProject(projectParam);
             }

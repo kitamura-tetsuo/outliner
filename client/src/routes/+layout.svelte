@@ -114,7 +114,9 @@ async function rotateLogFiles() {
         }
     }
     catch (error) {
-        logger.error({ error }, "An error occurred during log rotation");
+        logger.error("An error occurred during log rotation", {
+            error,
+        });
     }
 }
 
@@ -166,7 +168,7 @@ onMount(async () => {
             await import("../lib/metaDoc.svelte");
             await import("../services");
         } catch (e) {
-            logger.error({ error: e }, "Failed to load client-only modules");
+            logger.error("Failed to load client-only modules", e);
         }
         // Application initialization log
         if (import.meta.env.DEV) {
@@ -193,7 +195,7 @@ onMount(async () => {
                         if (import.meta.env.DEV) logger.info("Service worker update found");
                     });
                 })
-                .catch(err => { logger.error({ error: err }, "Service worker registration failed:"); });
+                .catch(err => { logger.error("Service worker registration failed:", err); });
         }
 
         // Check authentication status
