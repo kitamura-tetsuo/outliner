@@ -72,7 +72,7 @@ async function createNewContainer() {
         }, 1500);
     }
     catch (err) {
-        logger.error("Error creating new outliner:", err);
+        logger.error({ error: err }, "Error creating new outliner:");
         error = err instanceof Error
             ? err.message
             : "An error occurred while creating the new outliner.";
