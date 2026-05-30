@@ -74,7 +74,7 @@ export class Cursor implements CursorEditingContext {
         try {
             const proj: { items?: Iterable<Item>; } | undefined = (generalStore as any).project;
             const pages: Iterable<Item> | undefined = proj?.items;
-            if (pages && typeof (pages as any).length === 'number') {
+            if (pages && typeof (pages as any).length === "number") {
                 const len = (pages as any).length;
                 for (let i = 0; i < len; i++) {
                     const p = (pages as any).at(i);
