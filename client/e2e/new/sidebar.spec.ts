@@ -409,7 +409,7 @@ test.describe("Sidebar Navigation", () => {
         await page.evaluate(() => {
             const projectStore = (window as any).__PROJECT_STORE__;
             if (projectStore && projectStore.syncFromFirestore) {
-                 projectStore.syncFromFirestore();
+                projectStore.syncFromFirestore();
             }
         });
 
@@ -422,7 +422,7 @@ test.describe("Sidebar Navigation", () => {
         await projectLink.waitFor({ state: "visible", timeout: 15000 });
         await expect(projectLink).toBeVisible();
 
-        const projectNameFromLink = await projectLink.locator('.project-name').textContent();
+        const projectNameFromLink = await projectLink.locator(".project-name").textContent();
         expect(projectNameFromLink).not.toBeNull();
         expect(projectNameFromLink!.trim()).toBe(firstProjectName);
 
