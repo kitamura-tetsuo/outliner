@@ -22,7 +22,7 @@ let isAuthenticated = $state(false);
 let createdContainerId: string | undefined = $state(undefined);
 
 // Handle successful authentication
-async function handleAuthSuccess(authResult) {
+async function handleAuthSuccess(authResult: any) {
     logger.info("Authentication success:", authResult);
     isAuthenticated = true;
 }
@@ -72,7 +72,7 @@ async function createNewContainer() {
         }, 1500);
     }
     catch (err) {
-        logger.error("Error creating new outliner:", err);
+        logger.error({ err }, "Error creating new outliner:");
         error = err instanceof Error
             ? err.message
             : "An error occurred while creating the new outliner.";

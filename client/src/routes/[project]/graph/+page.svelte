@@ -7,7 +7,7 @@ let { data } = $props<{ data: { project: string; }; }>();
 const projectName = $derived(data.project);
 
 async function goBack() {
-    await goto(resolve(`/${projectName}`));
+    await goto(resolve(`/${projectName}`) || "/");
 }
 </script>
 

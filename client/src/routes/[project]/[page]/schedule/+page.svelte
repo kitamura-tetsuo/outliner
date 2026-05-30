@@ -69,7 +69,7 @@ onMount(async () => {
     // IMPORTANT: Also check if the loaded project has the correct title (handles store reset during navigation)
     const currentProjectTitle = store.project?.title ?? "";
     const isCorrectProject = currentProjectTitle === project;
-    const hasProjectData = store.project?.items?.length > 0 && isCorrectProject;
+    const hasProjectData = (store.project?.items?.length ?? 0) > 0 && isCorrectProject;
 
     // Check if we have a saved pageId in session storage
     const sessionKey = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
@@ -98,12 +98,12 @@ onMount(async () => {
         // Navigate to main page to trigger loadProjectAndPage
         const mainPageUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}`;
         console.log("Schedule page: Navigating to main page:", mainPageUrl);
-        await goto(mainPageUrl, { waitUntil: "networkidle" });
+        await goto(mainPageUrl);
         console.log("Schedule page: Back from main page, waiting for store.project to be populated...");
 
         // Wait for store.project to be populated after navigation
         for (let i = 0; i < 50; i++) {
-            if (store.project?.items?.length > 0) {
+            if ((store.project?.items?.length ?? 0) > 0) {
                 console.log("Schedule page: store.project populated after", i * 100, "ms");
                 break;
             }
@@ -114,7 +114,7 @@ onMount(async () => {
         // Navigate back to schedule page
         const scheduleUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}/schedule`;
         console.log("Schedule page: Navigating back to schedule:", scheduleUrl);
-        await goto(scheduleUrl, { waitUntil: "networkidle" });
+        await goto(scheduleUrl);
         console.log("Schedule page: Back on schedule page, store.project?.items?.length =", store.project?.items?.length ?? 0);
     } else {
         console.log("Schedule page: Using saved pageId, no navigation needed");
@@ -545,7 +545,7 @@ async function saveEdit() {
 }
 
 async function back() {
-    await goto(resolve(`/${project}/${pageTitle}`));
+    await goto(resolve(`/${project}/${pageTitle}`) || "/");
 }
 
 async function downloadIcs() {
