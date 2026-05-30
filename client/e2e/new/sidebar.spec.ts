@@ -410,7 +410,7 @@ test.describe("Sidebar Navigation", () => {
             // eslint-disable-next-line no-restricted-globals
             const ps = (window as any).__PROJECT_STORE__;
             if (ps && ps.syncFromFirestore) {
-                 ps.syncFromFirestore();
+                ps.syncFromFirestore();
             }
         });
 
@@ -423,7 +423,7 @@ test.describe("Sidebar Navigation", () => {
         await projectLink.waitFor({ state: "visible", timeout: 15000 });
         await expect(projectLink).toBeVisible();
 
-        const projectNameFromLink = await projectLink.locator('.project-name').textContent();
+        const projectNameFromLink = await projectLink.locator(".project-name").textContent();
         expect(projectNameFromLink).not.toBeNull();
         expect(projectNameFromLink!.trim()).toBe(firstProjectName);
 
