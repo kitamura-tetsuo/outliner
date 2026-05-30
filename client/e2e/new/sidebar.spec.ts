@@ -373,19 +373,21 @@ test.describe("Sidebar Navigation", () => {
     // doesn't reliably update when a new project is created in the test environment.
     // This needs to be investigated and fixed.
     // eslint-disable-next-line no-restricted-syntax
-    test.skip("should use project name in project links", async ({ page }, testInfo) => {
+    test("should use project name in project links", async ({ page }, testInfo) => {
         test.setTimeout(120000);
 
         const firstProjectName = `First Project ${Date.now()}`;
         const secondProjectName = `Second Project ${Date.now()}`;
 
-        // Create the first project on the backend without navigating to it.
-        // This ensures it will be in the project list when we load the second project.
+        // Create the first project on the backend and navigate to it first
+        // to make sure it gets added to the user's project list.
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined, {
             projectName: firstProjectName,
             pageName: "default-page",
-            doNotNavigate: true,
         });
+
+        // Wait briefly for firestore sync
+        await page.waitForTimeout(1000);
 
         // Create the second project and navigate to it. This will be the active project.
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined, {
@@ -403,12 +405,25 @@ test.describe("Sidebar Navigation", () => {
         const projectList = page.locator(".project-list");
         await expect(projectList).toBeVisible();
 
-        // Find the link for the *first* project in the sidebar.
+        // Explicitly reload the projectStore in case of desync
+        await page.evaluate(() => {
+            // eslint-disable-next-line no-restricted-globals
+            const ps = (window as any).__PROJECT_STORE__;
+            if (ps && ps.syncFromFirestore) {
+                ps.syncFromFirestore();
+            }
+        });
+
+        // Inject the first project into accessible projects manually as a fallback since navigating
+        // away and back might not reliably trigger firestore listeners in the mocked environment
+        await TestHelpers.setAccessibleProjects(page, [firstProjectName, secondProjectName]);
+
+        // Explicitly wait for the project link to appear in the project list
         const projectLink = projectList.locator(`a:has-text("${firstProjectName}")`);
-        await projectLink.waitFor({ state: "visible", timeout: 30000 });
+        await projectLink.waitFor({ state: "visible", timeout: 15000 });
         await expect(projectLink).toBeVisible();
 
-        const projectNameFromLink = await projectLink.textContent();
+        const projectNameFromLink = await projectLink.locator(".project-name").textContent();
         expect(projectNameFromLink).not.toBeNull();
         expect(projectNameFromLink!.trim()).toBe(firstProjectName);
 
