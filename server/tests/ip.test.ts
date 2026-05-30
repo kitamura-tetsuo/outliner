@@ -1,8 +1,8 @@
-import { jest } from "@jest/globals";
+import { expect } from "chai";
+import { describe, it } from "mocha";
 import { getClientIp } from "../src/utils/ip.js";
 
 describe("getClientIp", () => {
-    // Helper to create mock request
     const createReq = (headers: Record<string, string | string[] | undefined>, remoteAddress?: string) => {
         return {
             headers,
@@ -15,7 +15,7 @@ describe("getClientIp", () => {
             "cf-connecting-ip": "1.1.1.1",
             "x-forwarded-for": "2.2.2.2",
         });
-        expect(getClientIp(req)).toBe("1.1.1.1");
+        expect(getClientIp(req)).to.equal("1.1.1.1");
     });
 
     it("should return Fly.io IP if fly-client-ip is present", () => {
@@ -23,7 +23,7 @@ describe("getClientIp", () => {
             "fly-client-ip": "3.3.3.3",
             "x-forwarded-for": "2.2.2.2",
         });
-        expect(getClientIp(req)).toBe("3.3.3.3");
+        expect(getClientIp(req)).to.equal("3.3.3.3");
     });
 
     it("should return Fastly IP if fastly-client-ip is present", () => {
@@ -31,7 +31,7 @@ describe("getClientIp", () => {
             "fastly-client-ip": "4.4.4.4",
             "x-forwarded-for": "2.2.2.2",
         });
-        expect(getClientIp(req)).toBe("4.4.4.4");
+        expect(getClientIp(req)).to.equal("4.4.4.4");
     });
 
     it("should prioritize Cloudflare over Fly.io", () => {
@@ -39,30 +39,30 @@ describe("getClientIp", () => {
             "cf-connecting-ip": "1.1.1.1",
             "fly-client-ip": "3.3.3.3",
         });
-        expect(getClientIp(req)).toBe("1.1.1.1");
+        expect(getClientIp(req)).to.equal("1.1.1.1");
     });
 
     it("should fallback to X-Forwarded-For (first IP) if no platform headers", () => {
         const req = createReq({
             "x-forwarded-for": "10.0.0.1, 10.0.0.2",
         });
-        expect(getClientIp(req)).toBe("10.0.0.1");
+        expect(getClientIp(req)).to.equal("10.0.0.1");
     });
 
     it("should handle X-Forwarded-For as array", () => {
         const req = createReq({
             "x-forwarded-for": ["10.0.0.1", "10.0.0.2"],
         });
-        expect(getClientIp(req)).toBe("10.0.0.1");
+        expect(getClientIp(req)).to.equal("10.0.0.1");
     });
 
     it("should fallback to remoteAddress if no headers", () => {
         const req = createReq({}, "127.0.0.1");
-        expect(getClientIp(req)).toBe("127.0.0.1");
+        expect(getClientIp(req)).to.equal("127.0.0.1");
     });
 
     it("should return empty string if nothing available", () => {
         const req = createReq({});
-        expect(getClientIp(req)).toBe("");
+        expect(getClientIp(req)).to.equal("");
     });
 });
