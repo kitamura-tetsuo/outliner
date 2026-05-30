@@ -1,6 +1,6 @@
-import { describe, it } from "mocha";
 import { expect } from "chai";
 import crypto from "crypto";
+import { describe, it } from "mocha";
 import { hashApiKey } from "../src/api-keys-api.js";
 
 describe("API Keys Logic", () => {
