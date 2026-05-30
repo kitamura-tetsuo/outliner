@@ -35,7 +35,7 @@ test.describe("Chart Component E2E", () => {
         expect(options).toContain("Chart");
     });
 
-    test.fixme("should show chart editor and panel when chart component is selected", async ({ page }) => {
+    test("should show chart editor and panel when chart component is selected", async ({ page }) => {
         const projectName = page.url().split("/")[3];
         const pageName = page.url().split("/")[4];
         await page.goto(`/${projectName}/${pageName}`);
