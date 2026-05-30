@@ -74,8 +74,11 @@ export class Cursor implements CursorEditingContext {
         try {
             const proj: { items?: Iterable<Item>; } | undefined = (generalStore as any).project;
             const pages: Iterable<Item> | undefined = proj?.items;
-            if (pages && pages[Symbol.iterator]) {
-                for (const p of pages) {
+            if (pages && typeof (pages as any).length === 'number') {
+                const len = (pages as any).length;
+                for (let i = 0; i < len; i++) {
+                    const p = (pages as any).at(i);
+                    if (!p) continue;
                     const f = searchItem(p as any, this.itemId) as Item | undefined;
                     if (f) return f;
                 }
@@ -1142,11 +1145,8 @@ export class Cursor implements CursorEditingContext {
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;
-        while (item.items && (item.items as Iterable<Item>)[Symbol.iterator]) {
-            const iter = (item.items as Iterable<Item>)[Symbol.iterator]();
-            const first = iter.next();
-            if (first.done) break;
-            item = first.value;
+        while (item.items && (item.items as any).length > 0) {
+            item = (item.items as any).at(0);
         }
         this.itemId = item.id;
         this.offset = 0;
@@ -1159,13 +1159,8 @@ export class Cursor implements CursorEditingContext {
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;
-        while (item.items && (item.items as Iterable<Item>)[Symbol.iterator]) {
-            let last: Item | undefined;
-            for (const child of item.items as Iterable<Item>) {
-                last = child;
-            }
-            if (!last) break;
-            item = last;
+        while (item.items && (item.items as any).length > 0) {
+            item = (item.items as any).at((item.items as any).length - 1);
         }
         this.itemId = item.id;
         this.offset = (item.text || "").length;
@@ -2020,9 +2015,13 @@ export class Cursor implements CursorEditingContext {
         }
 
         // Check if node has items that are iterable
-        if (node.items && typeof (node.items as any)[Symbol.iterator] === "function") {
-            for (const child of node.items as Iterable<any>) {
-                this.collectAllItemIds(child, ids);
+        if (node.items && typeof (node.items as any).length === "number") {
+            const items = node.items as any;
+            for (let i = 0; i < items.length; i++) {
+                const child = items.at(i);
+                if (child) {
+                    this.collectAllItemIds(child, ids);
+                }
             }
         }
 
