@@ -1,4 +1,5 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, it } from "mocha";
+import { expect } from "chai";
 import crypto from "crypto";
 import { hashApiKey } from "../src/api-keys-api.js";
 
@@ -9,8 +10,8 @@ describe("API Keys Logic", () => {
 
         const actualHash = hashApiKey(rawKey);
 
-        expect(actualHash).toBe(expectedHash);
-        expect(actualHash).toHaveLength(64); // SHA-256 hex string is 64 chars
+        expect(actualHash).to.equal(expectedHash);
+        expect(actualHash).to.have.lengthOf(64); // SHA-256 hex string is 64 chars
     });
 
     it("should produce different hashes for different keys", () => {
@@ -20,6 +21,6 @@ describe("API Keys Logic", () => {
         const hash1 = hashApiKey(key1);
         const hash2 = hashApiKey(key2);
 
-        expect(hash1).not.toBe(hash2);
+        expect(hash1).to.not.equal(hash2);
     });
 });
