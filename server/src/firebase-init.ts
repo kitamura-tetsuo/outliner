@@ -172,7 +172,9 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
                     delay = Math.min(delay * 1.5, maxDelay);
                 }
             } else {
-                logger.error({ error: new Error(`Firebase emulator connection failed with non-connection error: ${error.message}`) }, `Firebase emulator connection failed with non-connection error: ${error.message}`);
+                logger.error({
+                    error: new Error(`Firebase emulator connection failed with non-connection error: ${error.message}`),
+                }, `Firebase emulator connection failed with non-connection error: ${error.message}`);
                 throw error;
             }
         }
@@ -218,7 +220,10 @@ async function clearFirestoreEmulatorData() {
             return false;
         }
     } catch (error: any) {
-        logger.error({ error: new Error(`An error occurred while clearing Firestore emulator data: ${error.message}`) }, `An error occurred while clearing Firestore emulator data: ${error.message}`);
+        logger.error(
+            { error: new Error(`An error occurred while clearing Firestore emulator data: ${error.message}`) },
+            `An error occurred while clearing Firestore emulator data: ${error.message}`,
+        );
         // Continue process even if an error occurs
         return false;
     }
@@ -283,7 +288,9 @@ export async function initializeFirebase() {
                 await waitForFirebaseEmulator();
                 logger.info("Firebase emulator connection established successfully");
             } catch (error: any) {
-                logger.error({ error: new Error(`Firebase emulator connection failed after retries: ${error.message}`) }, `Firebase emulator connection failed after retries: ${error.message}`);
+                logger.error({
+                    error: new Error(`Firebase emulator connection failed after retries: ${error.message}`),
+                }, `Firebase emulator connection failed after retries: ${error.message}`);
             }
         }
         if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
@@ -302,7 +309,10 @@ export async function initializeFirebase() {
                             logger.info("Cleared development Firestore emulator data");
                         }
                     } catch (error: any) {
-                        logger.error({ error: new Error(`Failed to clear Firestore emulator data: ${error.message}`) }, `Failed to clear Firestore emulator data: ${error.message}`);
+                        logger.error(
+                            { error: new Error(`Failed to clear Firestore emulator data: ${error.message}`) },
+                            `Failed to clear Firestore emulator data: ${error.message}`,
+                        );
                         // Continue process even if an error occurs
                         logger.info("Firestore data clearing failed, but continuing process");
                     }
@@ -312,7 +322,10 @@ export async function initializeFirebase() {
             }
         }
     } catch (error: any) {
-        logger.error({ error: new Error(`Firebase initialization error: ${error.message}`) }, `Firebase initialization error: ${error.message}`);
+        logger.error(
+            { error: new Error(`Firebase initialization error: ${error.message}`) },
+            `Firebase initialization error: ${error.message}`,
+        );
         throw error;
     }
 }

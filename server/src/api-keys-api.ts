@@ -133,7 +133,10 @@ export async function validateApiKey(req: Request, res: Response, next: NextFunc
 
         // Optional: Update lastUsedAt asynchronously
         doc.ref.update({ lastUsedAt: Date.now() }).catch((err) => {
-            logger.error({ error: new Error(err.message), event: "api_key_update_lastused_error" }, "An error occurred");
+            logger.error(
+                { error: new Error(err.message), event: "api_key_update_lastused_error" },
+                "An error occurred",
+            );
         });
 
         // Set user context
