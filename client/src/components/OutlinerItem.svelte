@@ -335,7 +335,7 @@ function syncCommentCountFromItem() {
             }
         }
     } catch (err) {
-        logger.error("[OutlinerItem][syncCommentCountFromItem] Error:", err);
+        logger.error({ error: err }, "[OutlinerItem][syncCommentCountFromItem] Error:");
     }
 }
 
@@ -795,7 +795,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     if (!textareaEl) {
         textareaEl = document.querySelector(".global-textarea") as HTMLTextAreaElement | null;
         if (!textareaEl) {
-            logger.error("Global textarea not found");
+            logger.error({ error: new Error("Global textarea not found") }, "Global textarea not found");
             return;
         }
         // Re-register to store
@@ -1095,7 +1095,7 @@ function handleClick(event: MouseEvent) {
             });
         }
         else {
-            logger.error("Global textarea not found");
+            logger.error({ error: new Error("Global textarea not found") }, "Global textarea not found");
         }
 
         // Start cursor blinking
@@ -1711,7 +1711,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                 }
                             } catch {}
                         } catch {}
-                        logger.error("attachment upload failed", e as any);
+                        logger.error({ error: e as Error }, "attachment upload failed");
                     }
                 }
             } else {

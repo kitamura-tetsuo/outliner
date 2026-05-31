@@ -218,7 +218,7 @@ const resolvePath = resolve as any;
             const client = await createYjsClient(currentProjectId);
             yjsStore.yjsClient = client as YjsClient;
         } catch (err) {
-            logger.error("Project reload error:", err);
+            logger.error({ error: err as Error }, "Project reload error");
             error =
                 err instanceof Error
                     ? err.message

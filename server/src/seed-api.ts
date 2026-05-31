@@ -119,10 +119,7 @@ export function createSeedRouter(
                     }
                 }
             } catch (authError) {
-                logger.error({
-                    event: "seed_auth_check_error",
-                    error: authError instanceof Error ? authError.message : String(authError),
-                });
+                logger.error({ error: authError as Error, event: "seed_auth_check_error" }, "seed_auth_check_error");
                 res.status(500).json({ error: "Internal Server Error during authorization check" });
                 return;
             }
@@ -197,7 +194,7 @@ export function createSeedRouter(
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             const errorStack = error instanceof Error ? error.stack : undefined;
-            logger.error({ event: "seed_error", error: errorMessage, stack: errorStack });
+            logger.error({ error: new Error(errorMessage), stack: errorStack, event: "seed_error" }, "seed_error");
             res.status(500).json({ error: "Seeding failed", message: errorMessage });
         }
     });

@@ -156,7 +156,10 @@ export class UserManager {
                 } else {
                     // If emulator connection fails
                     const error = new Error("Failed to connect to Firebase Auth emulator");
-                    logger.error({ error }, "Failed to connect to Auth emulator, authentication may not work");
+                    logger.error(
+                        { error: error as Error },
+                        "Failed to connect to Auth emulator, authentication may not work",
+                    );
 
                     // Do not throw error in SSR environment (allow client-side retry)
                     if (!isSSR) {
@@ -174,7 +177,7 @@ export class UserManager {
                 }
             } catch (err) {
                 // If unable to connect to emulator
-                logger.error({ error: err }, "Failed to connect to Auth emulator");
+                logger.error({ error: err as Error }, "Failed to connect to Auth emulator");
 
                 // Do not throw error in SSR environment
                 if (!isSSR) {
@@ -209,7 +212,7 @@ export class UserManager {
             logger.info(`Successfully connected to Firebase Auth emulator at ${host}:${port}`);
             return true;
         } catch (err) {
-            logger.error({ error: err }, "Error connecting to Firebase Auth emulator");
+            logger.error({ error: err as Error }, "Error connecting to Firebase Auth emulator");
             return false;
         }
     }
@@ -234,7 +237,7 @@ export class UserManager {
                 await signInWithEmailAndPassword(this.auth, "test@example.com", "password");
                 logger.info("[UserManager] Test user login successful");
             } catch (error) {
-                logger.error({ error }, "[UserManager] Test user login failed");
+                logger.error({ error: error as Error }, "[UserManager] Test user login failed");
 
                 // Attempt to create user if not exists
                 try {
@@ -242,7 +245,7 @@ export class UserManager {
                     await createUserWithEmailAndPassword(this.auth, "test@example.com", "password");
                     logger.info("[UserManager] Test user created and logged in successfully");
                 } catch (createError) {
-                    logger.error({ error: createError }, "[UserManager] Failed to create test user");
+                    logger.error({ error: createError as Error }, "[UserManager] Failed to create test user");
                 }
             }
         } else if (isProduction) {
@@ -283,7 +286,7 @@ export class UserManager {
 
             logger.debug("handleUserSignedIn completed successfully");
         } catch (error) {
-            logger.error({ error }, "Error handling user sign in");
+            logger.error({ error: error as Error }, "Error handling user sign in");
             // Treat as authentication failure if error occurs
             this.notifyListeners(null);
         }
@@ -367,7 +370,7 @@ export class UserManager {
             // ... existing catch ...
             // If invalid-api-key happens here, catch it?
             // But I'm preventing it by checking isMockMode first.
-            logger.error({ error }, "Failed to initialize auth listener");
+            logger.error({ error: error as Error }, "Failed to initialize auth listener");
             setTimeout(() => {
                 this.initAuthListenerAsync();
             }, 1000);
@@ -381,7 +384,7 @@ export class UserManager {
             await signInWithPopup(this.auth, provider);
             // Auth state changes are detected by onAuthStateChanged
         } catch (error) {
-            logger.error({ error }, "[UserManager] Google login error");
+            logger.error({ error: error as Error }, "[UserManager] Google login error");
             throw error;
         }
     }
@@ -424,7 +427,7 @@ export class UserManager {
                             });
                             return;
                         } catch (createError) {
-                            logger.error({ error: createError }, "[UserManager] Failed to create new user");
+                            logger.error({ error: createError as Error }, "[UserManager] Failed to create new user");
                         }
                     }
                     // Throw original error if all methods fail
@@ -436,7 +439,7 @@ export class UserManager {
                 await signInWithEmailAndPassword(this.auth, email, password);
             }
         } catch (error) {
-            logger.error({ error }, "[UserManager] Email/password login error");
+            logger.error({ error: error as Error }, "[UserManager] Email/password login error");
             throw error;
         }
     }
@@ -451,7 +454,7 @@ export class UserManager {
             await signOut(this.auth);
             // Logout process is detected by onAuthStateChanged
         } catch (error) {
-            logger.error({ error }, "[UserManager] Logout error");
+            logger.error({ error: error as Error }, "[UserManager] Logout error");
             throw error;
         }
     }
@@ -525,7 +528,7 @@ export class UserManager {
                 this.notifyListeners({ user });
             }
         } catch (err) {
-            logger.error({ error: err }, "[UserManager] refreshToken failed");
+            logger.error({ error: err as Error }, "[UserManager] refreshToken failed");
         }
     }
 }

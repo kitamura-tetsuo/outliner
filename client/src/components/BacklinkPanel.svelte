@@ -44,7 +44,7 @@ async function loadBacklinks() {
         logger.info(`Loaded ${backlinks.length} backlinks for page: ${pageName}`);
     }
     catch (err) {
-        logger.error("Failed to load backlinks:", err);
+        logger.error({ error: err as Error }, "Failed to load backlinks");
         error = "Failed to load backlinks";
         backlinks = [];
     }

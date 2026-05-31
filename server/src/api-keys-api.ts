@@ -47,7 +47,7 @@ router.post("/api-keys", requireAuth, async (req: Request, res: Response): Promi
             createdAt: apiKeyData.createdAt,
         });
     } catch (error: any) {
-        logger.error({ event: "api_key_create_error", error: error.message });
+        logger.error({ error: new Error(error.message), event: "api_key_create_error" }, "An error occurred");
         res.status(500).json({ error: "Failed to create API key" });
     }
 });
@@ -67,7 +67,7 @@ router.get("/api-keys", requireAuth, async (req: Request, res: Response): Promis
 
         res.status(200).json(keys);
     } catch (error: any) {
-        logger.error({ event: "api_key_list_error", error: error.message });
+        logger.error({ error: new Error(error.message), event: "api_key_list_error" }, "An error occurred");
         res.status(500).json({ error: "Failed to list API keys" });
     }
 });
@@ -96,7 +96,7 @@ router.delete("/api-keys/:id", requireAuth, async (req: Request, res: Response):
 
         res.status(200).json({ success: true });
     } catch (error: any) {
-        logger.error({ event: "api_key_delete_error", error: error.message });
+        logger.error({ error: new Error(error.message), event: "api_key_delete_error" }, "An error occurred");
         res.status(500).json({ error: "Failed to delete API key" });
     }
 });
@@ -133,14 +133,14 @@ export async function validateApiKey(req: Request, res: Response, next: NextFunc
 
         // Optional: Update lastUsedAt asynchronously
         doc.ref.update({ lastUsedAt: Date.now() }).catch((err) => {
-            logger.error({ event: "api_key_update_lastused_error", error: err.message });
+            logger.error({ error: new Error(err.message), event: "api_key_update_lastused_error" }, "An error occurred");
         });
 
         // Set user context
         (req as any).user = { uid: data.userId };
         next();
     } catch (error: any) {
-        logger.error({ event: "api_key_validation_error", error: error.message });
+        logger.error({ error: new Error(error.message), event: "api_key_validation_error" }, "An error occurred");
         res.status(500).json({ error: "Internal Server Error during API Key validation" });
     }
 }

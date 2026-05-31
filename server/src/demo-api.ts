@@ -101,7 +101,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error({ event: "seed_demo_error", error: errorMessage });
+            logger.error({ error: new Error(errorMessage), event: "seed_demo_error" }, "An error occurred");
             res.status(500).json({ error: "Demo seeding failed", message: errorMessage });
         }
     });

@@ -18,7 +18,7 @@
             logger.info(`Navigating to project page: /${projectName}`);
             goto(`/${projectName}`);
         } catch (error) {
-            logger.error("Failed to switch project:", error);
+            logger.error({ error: error as Error }, "Failed to switch project");
         }
     }
 </script>

@@ -318,7 +318,7 @@ export async function startServer(
                 })
             }`);
         } catch (error: any) {
-            logger.error(`Log rotation error: ${error.message}`);
+            logger.error({ error: new Error(`Log rotation error: ${error.message}`) }, `Log rotation error: ${error.message}`);
             res.status(500).json({
                 success: false,
                 error: error.message,

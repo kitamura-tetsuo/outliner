@@ -30,7 +30,7 @@ export async function initializeFirebase() {
 
         return admin;
     } catch (error) {
-        logger.error({ err: error }, "Firebase initialization error");
+        logger.error({ error: error }, "Firebase initialization error");
         throw error;
     }
 }
@@ -76,7 +76,7 @@ export async function setupTestUser(): Promise<UserRecord> {
             return userRecord;
         }
     } catch (error) {
-        logger.error({ err: error }, "Error setting up test user");
+        logger.error({ error: error }, "Error setting up test user");
         throw error;
     }
 }

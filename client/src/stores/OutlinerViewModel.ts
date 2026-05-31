@@ -321,7 +321,10 @@ export class OutlinerViewModel {
             .map(id => {
                 const model = this.viewModels.get(id);
                 if (!model) {
-                    logger.error({ id }, "View model not found for ID");
+                    logger.error(
+                        { error: new Error("View model not found for ID"), id },
+                        "View model not found for ID",
+                    );
                     return null;
                 }
 
