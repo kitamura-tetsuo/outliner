@@ -217,7 +217,8 @@
                 // If creation failed, etc.
                 pageNotFound = true;
                 logger.error(
-                    `loadProjectAndPage: Failed to find or create page "${pageName}"`,
+                    { error: new Error(`Failed to find or create page "${pageName}"`) },
+                    "loadProjectAndPage: Failed to find or create page",
                 );
             }
         } catch (err) {

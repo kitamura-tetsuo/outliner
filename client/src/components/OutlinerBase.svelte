@@ -151,7 +151,7 @@
                             const map: any = (this as any)?.value;
                             const arr = map?.get?.("comments");
                             if (!arr) {
-                                const fallback = new Y.Array();
+                                const fallback = new Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>>();
                                 // Do not write to map in getter to avoid infinite loops in Observers
                                 return new Comments(fallback);
                             }
@@ -253,7 +253,7 @@
                                                 ensureCommentsArrayOn(this);
                                             if (!arr) {
                                                 const fallbackArr =
-                                                    new Y.Array();
+                                                    new Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>>();
                                                 // Do not write to map in getter to avoid infinite loops in Observers
                                                 return new Comments(
                                                     fallbackArr,

@@ -110,7 +110,7 @@ async function loadPreviewContent() {
             error = "Page not found";
         }
     } catch (err) {
-        logger.error("Failed to load preview content:", err);
+            logger.error({ error: err as Error }, "Failed to load preview content:");
         error = "Failed to load preview";
     } finally {
         isLoading = false;

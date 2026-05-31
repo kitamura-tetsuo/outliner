@@ -160,7 +160,10 @@ class GeneralStore {
         try {
             // Get reference to document (/userProjects/{userId})
             if (!db) {
-                logger.error("Firestore db is not initialized in initFirestoreSync");
+                logger.error(
+                    { error: new Error("Firestore db is not initialized in initFirestoreSync") },
+                    "Firestore db is not initialized in initFirestoreSync",
+                );
                 return () => {};
             }
             const userProjectRef = doc(db, "userProjects", userId);
@@ -213,7 +216,7 @@ class GeneralStore {
                         return;
                     }
                     const err = error instanceof Error ? error : new Error(String(error));
-                    logger.error({ err }, "Firestore listening error");
+                    logger.error({ error: err as Error }, "Firestore listening error");
                 },
             );
 
@@ -226,7 +229,7 @@ class GeneralStore {
             };
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
-            logger.error({ err }, "Firestore observation setup error");
+            logger.error({ error: err as Error }, "Firestore observation setup error");
             return () => {}; // Return cleanup function
         }
     }
@@ -314,7 +317,7 @@ try {
             logger.info("Successfully connected to Firestore emulator");
         } catch (err) {
             const error = err instanceof Error ? err : new Error(String(err));
-            logger.error({ err: error }, "Failed to connect to Firestore emulator");
+            logger.error({ error: error as Error }, "Failed to connect to Firestore emulator");
 
             // Notify that we continue in offline mode if connection fails
             logger.warn("Continuing in offline mode. Data operations will be cached until connection is restored.");
@@ -322,7 +325,7 @@ try {
     }
 } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    logger.error({ err }, "Critical error initializing Firestore");
+    logger.error({ error: err as Error }, "Critical error initializing Firestore");
     // Ensure app continues to run even if database connection fails
     // Do nothing if app is undefined (handled properly in subsequent processing)
     if (!db && app) {
@@ -370,7 +373,7 @@ export async function saveProjectId(projectId: string): Promise<boolean> {
         return result.success === true;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Error saving container ID");
+        logger.error({ error: err as Error }, "Error saving container ID");
         return false;
     }
 }
@@ -398,7 +401,10 @@ export async function getDefaultProjectId(): Promise<string | undefined> {
 
             // Check Firestore import
             if (!db) {
-                logger.error("Firestore db is not initialized");
+                logger.error(
+                    { error: new Error("Firestore db is not initialized") },
+                    "Firestore db is not initialized",
+                );
                 return undefined;
             }
 
@@ -415,7 +421,7 @@ export async function getDefaultProjectId(): Promise<string | undefined> {
             }
         } catch (firestoreError) {
             const err = firestoreError instanceof Error ? firestoreError : new Error(String(firestoreError));
-            logger.error({ err }, "Firestore access error");
+            logger.error({ error: err as Error }, "Firestore access error");
             // Firestore error is not fatal, so continue
         }
 
@@ -423,7 +429,7 @@ export async function getDefaultProjectId(): Promise<string | undefined> {
         return undefined;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Error getting default container ID");
+        logger.error({ error: err as Error }, "Error getting default container ID");
         return undefined;
     }
 }
@@ -528,7 +534,7 @@ export async function saveProjectIdToServer(projectId: string, title?: string): 
         return result.success === true;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Error saving project ID to server");
+        logger.error({ error: err as Error }, "Error saving project ID to server");
         return false;
     }
 }

@@ -381,8 +381,8 @@
                 // The Y.Tree implementation throws when reordering with a stale parent reference.
                 // Swallow the error so mobile indent tests do not fail and log for follow-up.
                 logger.error(
-                    { itemId, targetParentKey, error },
-                    "Indent failed; skipping reparent",
+                    { error },
+                    `Indent failed; skipping reparent. itemId: ${itemId}, targetParentKey: ${targetParentKey}`,
                 );
                 return;
             }
@@ -1787,7 +1787,7 @@
                         parentItems.tree.setNodeAfter(newItem.key, targetItem.key);
                     }
                 } catch (e) {
-                    logger.error("Failed to reorder dropped item", e);
+                    logger.error({ error: e as Error }, "Failed to reorder dropped item");
                 }
 
                 try {
@@ -1973,7 +1973,7 @@
                                     try { (newItem as any).attachments.push([url]); } catch {}
                                 }
                             } catch (uploadErr) {
-                                logger.error("Upload failed in tree bottom, using local fallback", uploadErr);
+                                logger.error({ error: uploadErr as Error }, "Upload failed in tree bottom, using local fallback");
                                 const localUrl = URL.createObjectURL(file);
                                 try {
                                     newItem.addAttachment(localUrl);
@@ -1988,7 +1988,7 @@
                             }
                         }
                     } catch (e) {
-                        logger.error("Failed to upload file to tree bottom", e);
+                        logger.error({ error: e as Error }, "Failed to upload file to tree bottom");
                     }
                 }
                 __displayItemsTick = Date.now();

@@ -19,7 +19,7 @@ function validateFirebaseConfig() {
 
     if (missingVars.length > 0) {
         const errorMessage = `Missing required Firebase environment variables: ${missingVars.join(", ")}`;
-        logger.error(errorMessage);
+        logger.error({ error: new Error(errorMessage) }, errorMessage);
         throw new Error(errorMessage);
     }
 }
@@ -89,7 +89,7 @@ export function getFirebaseApp(): FirebaseApp {
         return app;
     } catch (error: unknown) {
         const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ err }, "Firebase app initialization error");
+        logger.error({ error: err as Error }, "Firebase app initialization error");
 
         // Use existing app in case of duplicate app error
         if (

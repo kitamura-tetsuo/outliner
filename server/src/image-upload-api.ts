@@ -170,7 +170,7 @@ export function createImageUploadRouter(hocuspocus: HocuspocusInstance) {
                 await directConnection.disconnect();
                 res.status(200).json({ success: true, url, insertedId });
             } catch (error: any) {
-                logger.error({ event: "image_upload_error", error: error.message });
+                logger.error({ error: new Error(error.message), event: "image_upload_error" }, "An error occurred");
                 res.status(500).json({ error: error.message || "Failed to upload image" });
             }
         },

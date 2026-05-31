@@ -107,7 +107,7 @@ onMount(() => {
                         renderCommentsState = plainComments;
                     }
                 } catch (e) {
-                    logger.error("Error in observe handler", e);
+                    logger.error({ error: e as Error }, "Error in observe handler");
                 }
             };
             yarr.observeDeep(handler);
@@ -252,7 +252,7 @@ function add() {
         id = res?.id || `local-${time}-${Math.random().toString(36).slice(2)}`;
         logger.debug('[CommentThread] comment added to Yjs, id=', id);
     } else {
-        logger.error('[CommentThread] comments object is invalid or missing addComment; falling back to local DOM only');
+        logger.error({ error: new Error("invalid or missing addComment") }, '[CommentThread] comments object is invalid or missing addComment; falling back to local DOM only');
         id = `local-${time}-${Math.random().toString(36).slice(2)}`;
     }
 
@@ -313,7 +313,7 @@ function add() {
             }
         } catch {}
     } catch (e) {
-        logger.error('[CommentThread] failed to sync after add', e);
+        logger.error({ error: e as Error }, '[CommentThread] failed to sync after add');
     }
 
 
@@ -349,8 +349,8 @@ function remove(id: string) {
             logger.warn('[CommentThread] failed to ensure comments for remove', e);
         }
     }
-    try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error('[CommentThread] deleteComment error', e); }
-    try { /* Yjs  derived updates; no direct assignment to commentsList */ } catch (e) { logger.error('[CommentThread] toPlain after delete error', e); }
+    try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error({ error: e as Error }, '[CommentThread] deleteComment error'); }
+    try { /* Yjs  derived updates; no direct assignment to commentsList */ } catch (e) { logger.error({ error: e as Error }, '[CommentThread] toPlain after delete error'); }
     localComments = localComments.filter(c => c.id !== id);
 
     const countNow = renderCommentsState.length;
@@ -399,10 +399,10 @@ function saveEdit(id: string) {
         commentsObj?.updateComment?.(id, editText);
         logger.debug('[CommentThread] updateComment called');
     } catch (e) {
-        logger.error('[CommentThread] updateComment error', e);
+        logger.error({ error: e as Error }, '[CommentThread] updateComment error');
     }
 
-    try { /* Yjs derived updates; no direct assignment to commentsList */ logger.debug('[CommentThread] updateComment applied'); } catch (e) { logger.error('[CommentThread] toPlain after update error', e); }
+    try { /* Yjs derived updates; no direct assignment to commentsList */ logger.debug('[CommentThread] updateComment applied'); } catch (e) { logger.error({ error: e as Error }, '[CommentThread] toPlain after update error'); }
 
     // Update local state to immediately reflect the change while we wait for Yjs observer
     localComments = localComments.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } : c);
@@ -417,7 +417,7 @@ function saveEdit(id: string) {
     try { 
         threadRef?.dispatchEvent(new CustomEvent('comment-edited', { bubbles: true, detail: { id, text: editText } })); 
     } catch (e) { 
-        logger.error('[CommentThread] failed to dispatch comment-edited event', e); 
+        logger.error({ error: e as Error }, '[CommentThread] failed to dispatch comment-edited event');
     }
 }
 
@@ -448,7 +448,7 @@ onMount(() => {
             {/if}
         </div>
     {/each}
-    <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error('[CommentThread] submit add error', err); } }} data-testid="comment-form">
+    <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }} data-testid="comment-form">
         <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" oninput={(e) => { try { e2eLog({ tag: 'input', value: (e.target as HTMLInputElement).value }); } catch {} }} />
         <button type="submit" data-testid="add-comment-btn" aria-label="Add comment">Add</button>
     </form>
