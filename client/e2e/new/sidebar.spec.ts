@@ -369,10 +369,6 @@ test.describe("Sidebar Navigation", () => {
         expect(currentUrl).toMatch(/settings/i);
     });
 
-    // TODO: This test is skipped because it's flaky. The project list in the sidebar
-    // doesn't reliably update when a new project is created in the test environment.
-    // This needs to be investigated and fixed.
-
     test("should use project name in project links", async ({ page }, testInfo) => {
         test.setTimeout(120000);
 
@@ -418,8 +414,10 @@ test.describe("Sidebar Navigation", () => {
         // away and back might not reliably trigger firestore listeners in the mocked environment
         await TestHelpers.setAccessibleProjects(page, [firstProjectName, secondProjectName]);
 
+        await page.waitForFunction(() => document.querySelectorAll('.project-item').length >= 2, { timeout: 15000 });
+
         // Explicitly wait for the project link to appear in the project list
-        const projectLink = projectList.locator(`a:has-text("${firstProjectName}")`);
+        const projectLink = projectList.locator(".project-item", { hasText: firstProjectName });
         await projectLink.waitFor({ state: "visible", timeout: 15000 });
         await expect(projectLink).toBeVisible();
 
