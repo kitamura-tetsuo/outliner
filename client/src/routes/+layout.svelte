@@ -184,14 +184,17 @@ onMount(async () => {
             navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
                 .then(reg => {
                     if (import.meta.env.DEV) logger.info("Service worker registered successfully");
+                    reg.addEventListener("updatefound", () => {
+                        if (import.meta.env.DEV) logger.info("Service worker update found");
+                    });
+                    return navigator.serviceWorker.ready;
+                })
+                .then(reg => {
                     if ("sync" in reg) {
                         (reg as any).sync.register("sync-ops").catch((err: any) => {
                             logger.warn("Failed to register background sync:", err);
                         });
                     }
-                    reg.addEventListener("updatefound", () => {
-                        if (import.meta.env.DEV) logger.info("Service worker update found");
-                    });
                 })
                 .catch(err => { logger.error({ error: err as Error }, "Service worker registration failed:"); });
         }
