@@ -414,7 +414,7 @@ test.describe("Sidebar Navigation", () => {
         // away and back might not reliably trigger firestore listeners in the mocked environment
         await TestHelpers.setAccessibleProjects(page, [firstProjectName, secondProjectName]);
 
-        await page.waitForFunction(() => document.querySelectorAll('.project-item').length >= 2, { timeout: 15000 });
+        await page.waitForFunction(() => document.querySelectorAll(".project-item").length >= 2, { timeout: 15000 });
 
         // Explicitly wait for the project link to appear in the project list
         const projectLink = projectList.locator(".project-item", { hasText: firstProjectName });
