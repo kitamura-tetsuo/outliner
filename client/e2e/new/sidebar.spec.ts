@@ -369,9 +369,6 @@ test.describe("Sidebar Navigation", () => {
         expect(currentUrl).toMatch(/settings/i);
     });
 
-    // TODO: This test is skipped because it's flaky. The project list in the sidebar
-    // doesn't reliably update when a new project is created in the test environment.
-    // This needs to be investigated and fixed.
     // eslint-disable-next-line no-restricted-syntax
     test("should use project name in project links", async ({ page }, testInfo) => {
         test.setTimeout(120000);
@@ -419,7 +416,10 @@ test.describe("Sidebar Navigation", () => {
         await TestHelpers.setAccessibleProjects(page, [firstProjectName, secondProjectName]);
 
         // Explicitly wait for the project link to appear in the project list
-        const projectLink = projectList.locator(`a:has-text("${firstProjectName}")`);
+        // Explicitly wait for the project link to appear in the project list by looking for the specific text element
+        const projectLink = projectList.locator("a", {
+            has: page.locator(".project-name", { hasText: firstProjectName }),
+        }).first();
         await projectLink.waitFor({ state: "visible", timeout: 15000 });
         await expect(projectLink).toBeVisible();
 

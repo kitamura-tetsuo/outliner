@@ -47,8 +47,9 @@ class GeneralStore {
         const prevDefault = this.userProject?.defaultProjectId;
 
         const nextProject = value ? this.wrapUserProject(value) : null;
-        this.userProject = nextProject;
 
+        // Force a new reference to trigger reactivity
+        this.userProject = nextProject ? { ...nextProject } : null;
         this.ucVersion = prevVersion + 1;
         // Additional notification (test environment only)
         try {
