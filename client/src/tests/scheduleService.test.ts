@@ -138,7 +138,6 @@ it("calls updateSchedule API", async () => {
 });
 
 it("calls exportSchedulesIcal API", async () => {
-
     (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         headers: {
