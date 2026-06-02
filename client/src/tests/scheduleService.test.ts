@@ -138,6 +138,7 @@ it("calls updateSchedule API", async () => {
 });
 
 it("calls exportSchedulesIcal API", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         headers: {
