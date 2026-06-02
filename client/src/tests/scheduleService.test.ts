@@ -136,3 +136,33 @@ it("calls updateSchedule API", async () => {
         },
     );
 });
+
+it("calls exportSchedulesIcal API", async () => {
+
+    (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        headers: {
+            get: (key: string) => key === "Content-Disposition" ? 'attachment; filename="test.ics"' : null,
+        },
+        text: () => Promise.resolve("test calendar content"),
+    });
+
+    const { exportSchedulesIcal } = await import("../services/scheduleService");
+    const result = await exportSchedulesIcal("page1");
+
+    expect(result).toBeDefined();
+    expect(result.filename).toBe("test.ics");
+    expect(result.blob).toBeInstanceOf(Blob);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+        "http://127.0.0.1:57070/outliner-d57b0/us-central1/exportSchedulesIcal",
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                idToken: "test-id-token",
+                pageId: "page1",
+            }),
+        },
+    );
+});
