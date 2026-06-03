@@ -187,14 +187,6 @@ onMount(async () => {
                     reg.addEventListener("updatefound", () => {
                         if (import.meta.env.DEV) logger.info("Service worker update found");
                     });
-                    return navigator.serviceWorker.ready;
-                })
-                .then(reg => {
-                    if ("sync" in reg) {
-                        (reg as any).sync.register("sync-ops").catch((err: any) => {
-                            logger.warn("Failed to register background sync:", err);
-                        });
-                    }
                 })
                 .catch(err => { logger.error({ error: err as Error }, "Service worker registration failed:"); });
         }
