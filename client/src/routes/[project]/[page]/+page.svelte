@@ -1,5 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     // Use SvelteKit page store from $app/stores (not $app/state)
     import { page } from "$app/stores";
     import { onDestroy, onMount } from "svelte";
@@ -314,20 +315,20 @@
 
     // Return to Home
     function goHome() {
-        goto("/");
+        goto(resolve("/"));
     }
 
     // Return to Project Page
     function goToProject() {
-        goto(`/${projectName}`);
+        goto(resolve(`/${projectName}`));
     }
 
     function goToSchedule() {
-        goto(`/${projectName}/${pageName}/schedule`);
+        goto(resolve(`/${projectName}/${pageName}/schedule`));
     }
 
     function goToGraphView() {
-        goto(`/${projectName}/graph`);
+        goto(resolve(`/${projectName}/graph`));
     }
 
     // Auxiliary button to add items from top of screen (for E2E stabilization)

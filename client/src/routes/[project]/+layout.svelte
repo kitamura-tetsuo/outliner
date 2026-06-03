@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
 import { userManager } from "../../auth/UserManager";
 import { getYjsClientByProjectTitle } from "../../services";
 import { yjsStore } from "../../stores/yjsStore.svelte";
@@ -45,13 +46,13 @@ async function loadProject(projectNameFromParam?: string) {
             // Only redirect if user is authenticated (to avoid redirecting during initial load)
             // If user is not authenticated, the onMount listener will retry once auth settles.
             if (userManager.getCurrentUser()) {
-                goto("/error/project-unavailable");
+                goto(resolve("/error/project-unavailable"));
             }
         }
     } catch (err) {
         console.error("Failed to load project:", err);
         if (err instanceof Error && err.message.includes("Access Denied")) {
-            goto("/error/project-unavailable");
+            goto(resolve("/error/project-unavailable"));
         }
     }
 }

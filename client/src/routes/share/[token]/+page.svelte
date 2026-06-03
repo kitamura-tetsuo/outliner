@@ -4,6 +4,7 @@
     import { authStore } from "$stores/authStore.svelte";
     import { userManager } from "../../../auth/UserManager";
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
 
     let token = $derived($page.params.token);
     let status = $state<"loading" | "success" | "error" | "unauthenticated">("loading");
@@ -50,7 +51,7 @@
             status = "success";
             message = "Successfully joined! Redirecting to project...";
             setTimeout(() => {
-                goto(`/${data.projectId}`);
+                goto(resolve(`/${data.projectId}`));
             }, 1500);
         } catch (e: any) {
             status = "error";
@@ -68,13 +69,13 @@
         
         {#if status === 'unauthenticated'}
             <div class="actions">
-                <a href="/" class="login-btn">Go to Login</a>
+                <a href={resolve("/")} class="login-btn">Go to Login</a>
             </div>
         {/if}
 
         {#if status === 'error'}
             <div class="actions">
-                <a href="/" class="home-btn">Go Home</a>
+                <a href={resolve("/")} class="home-btn">Go Home</a>
             </div>
         {/if}
         

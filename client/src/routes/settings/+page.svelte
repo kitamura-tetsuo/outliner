@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { resolve } from "$app/paths";
     import { projectStore } from "../../stores/projectStore.svelte";
     import { userPreferencesStore } from "../../stores/UserPreferencesStore.svelte";
 </script>
@@ -15,7 +16,7 @@
                 {#each projectStore.projects as project (project.id)}
                     <li>
                         <a
-                            href="/settings/{encodeURIComponent(project.name)}"
+                            href={resolve(`/settings/${encodeURIComponent(project.name)}`)}
                             class="text-blue-600 hover:text-blue-800 hover:underline text-lg"
                         >
                             {project.name || project.id}
