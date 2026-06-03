@@ -1,0 +1,9 @@
+--- scripts/test-data-seeder.ts
++++ scripts/test-data-seeder.ts
+@@ -57,6 +57,7 @@
+
+     async clearAll() {
+         console.log("Clearing all test data");
+         // TODO: Implement data clearing logic
++        console.log("Not implemented yet.");
+     }

@@ -1,0 +1,18 @@
+--- global.d.ts
++++ global.d.ts
+@@ -28,5 +28,15 @@
+     interface Window {
+         __PROJECT_STORE__: any;
+         DEBUG_MODE?: boolean;
++        generalStore?: any;
++        appStore?: any;
++        aliasPickerStore?: any;
++        __KEY_EVENT_HANDLER__?: any;
++        lastCopiedText?: string;
++        lastCopiedIsBoxSelection?: boolean;
++    }
++
++    interface Navigator {
++        clipboard?: Clipboard;
+     }
+ }
