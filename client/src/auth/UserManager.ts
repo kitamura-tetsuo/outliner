@@ -15,7 +15,7 @@ import { getEnv } from "../lib/env";
 import { getFirebaseApp } from "../lib/firebase-app";
 import { getLogger } from "../lib/logger"; // Import log function
 
-const logger = getLogger() as any;
+const logger = getLogger();
 
 // User information type definition
 export interface IUser {
@@ -112,7 +112,8 @@ export class UserManager {
             || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
             || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            || (typeof window !== "undefined" && (window as any).__E2E__ === true);
+            || (typeof window !== "undefined"
+                && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
 
         // Never use emulator in production environment
         const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
@@ -223,7 +224,8 @@ export class UserManager {
             || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
             || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            || (typeof window !== "undefined" && (window as any).__E2E__ === true);
+            || (typeof window !== "undefined"
+                && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
         const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
             && (typeof import.meta !== "undefined" && import.meta.env?.MODE) === "production";
 
