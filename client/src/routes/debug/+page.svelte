@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { resolve } from "$app/paths";
 import { browser } from "$app/environment";
 import {
     onDestroy,
@@ -280,7 +281,7 @@ onDestroy(() => {
     </div>
 
     <div class="back-link">
-        <a href="/">Return to Main Page</a>
+        <a href={resolve("/")}>Return to Main Page</a>
     </div>
 </main>
 

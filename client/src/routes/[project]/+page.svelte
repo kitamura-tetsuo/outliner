@@ -1,5 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import { page } from "$app/stores";
     import { onDestroy, onMount } from "svelte";
     import { userManager } from "../../auth/UserManager";
@@ -80,13 +81,13 @@
         const pageName = event.detail.pageName;
 
         if (pageName) {
-            goto(`/${projectName}/${pageName}`);
+            goto(resolve(`/${projectName}/${pageName}`));
         }
     }
 
     // Return to home
     function goHome() {
-        goto("/");
+        goto(resolve("/"));
     }
 
     $effect(() => {
