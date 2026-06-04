@@ -31,8 +31,9 @@ describe("GeneralStore Page Existence", () => {
         // We can manually update the item text.
         // Find the item
         let itemA;
-        for (const item of project.items) {
-            if (item.text === "Page A") {
+        for (let i = 0; i < project.items.length; i++) {
+            const item = project.items.at(i);
+            if (item?.text === "Page A") {
                 itemA = item;
                 break;
             }

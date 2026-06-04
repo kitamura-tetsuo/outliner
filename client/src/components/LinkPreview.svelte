@@ -96,14 +96,17 @@ async function loadPreviewContent() {
             hasMoreItems = false;
             if (foundPage.items) {
                 let count = 0;
-                for (const item of foundPage.items) {
-                    if (count < 5) {
-                        previewItems.push({ id: item.id, text: item.text });
-                    } else {
-                        hasMoreItems = true;
-                        break;
+                for (let i = 0; i < foundPage.items.length; i++) {
+                    const item = foundPage.items.at(i);
+                    if (item) {
+                        if (count < 5) {
+                            previewItems.push({ id: item.id, text: item.text });
+                        } else {
+                            hasMoreItems = true;
+                            break;
+                        }
+                        count++;
                     }
-                    count++;
                 }
             }
         } else {
