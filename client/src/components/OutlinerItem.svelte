@@ -567,7 +567,8 @@ const aliasTargetIdEffective = $derived.by(() => {
                 const mappedId = map ? map[String(targetId)] : undefined;
                 const curPage: any = w?.generalStore?.currentPage;
                 if (mappedId && curPage?.items) {
-                    for (const cand of curPage.items) {
+                    for (let i = 0; i < curPage.items.length; i++) {
+                        const cand = curPage.items.at(i);
                         if (String(cand?.id) === String(mappedId)) {
                             try { cand.addAttachment(url); } catch { try { (cand as any).attachments.push([url]); } catch {} }
                             try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {}
@@ -1705,7 +1706,8 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                 const mappedId = map ? map[String(model.id)] : undefined;
                                 const curPage:any = w?.generalStore?.currentPage;
                                 if (mappedId && curPage?.items) {
-                                    for (const cand of curPage.items) {
+                                    for (let i = 0; i < curPage.items.length; i++) {
+                                        const cand = curPage.items.at(i);
                                         if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as any)?.attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                                     }
                                 }

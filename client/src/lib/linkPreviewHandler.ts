@@ -133,7 +133,8 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
         ul.style.padding = "0 0 0 20px";
 
         if (foundPage.items) {
-            for (const item of foundPage.items) {
+            for (let i = 0; i < foundPage.items.length; i++) {
+                const item = foundPage.items.at(i);
                 hasItems = true;
                 if (count < 5) {
                     if (item) {
