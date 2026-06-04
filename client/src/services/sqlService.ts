@@ -37,6 +37,7 @@ if (typeof window !== "undefined") {
 export async function initDb() {
     if (db) return;
 
+
     // Load WASM from appropriate path in test or production environment
     if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
         const fs = await import("fs");
@@ -64,6 +65,7 @@ export async function initDb() {
         if (!wasmBinary) {
             throw new Error("Could not find sql-wasm.wasm file in any expected location");
         }
+
 
         SQL = await initSqlJs({
             wasmBinary: wasmBinary,
@@ -96,6 +98,7 @@ export async function initDb() {
 }
 
 function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: Record<string, string>; } {
+
     // Process only the last SELECT statement
     const lastSelectIndex = sql.toUpperCase().lastIndexOf("SELECT");
     if (lastSelectIndex === -1) {
@@ -228,6 +231,5 @@ export function applyEdit(info: EditInfo, value: unknown) {
     if (currentSelect) {
         rawExec(currentSelect);
         runQuery(currentSelect);
-    } else {
     }
 }
