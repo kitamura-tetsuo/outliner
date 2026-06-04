@@ -37,8 +37,6 @@ if (typeof window !== "undefined") {
 export async function initDb() {
     if (db) return;
 
-    console.log("Initializing SQL.js database...");
-
     // Load WASM from appropriate path in test or production environment
     if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
         const fs = await import("fs");
@@ -66,8 +64,6 @@ export async function initDb() {
         if (!wasmBinary) {
             throw new Error("Could not find sql-wasm.wasm file in any expected location");
         }
-
-        console.log(`Loading WASM from: ${wasmPath}`);
 
         SQL = await initSqlJs({
             wasmBinary: wasmBinary,
@@ -97,23 +93,17 @@ export async function initDb() {
 
     db = new SQL.Database();
     worker = new SyncWorker(db as unknown as SqlJsDatabase);
-    console.log("SQL.js database initialized successfully");
 }
 
 function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: Record<string, string>; } {
-    console.log("extendQuery called with:", sql);
-
     // Process only the last SELECT statement
     const lastSelectIndex = sql.toUpperCase().lastIndexOf("SELECT");
-    console.log("lastSelectIndex:", lastSelectIndex);
     if (lastSelectIndex === -1) {
-        console.log("No SELECT found, returning original");
         return { sql, aliases: [], tableMap: {} };
     }
 
     const selectPart = sql.slice(lastSelectIndex);
     const beforeSelect = sql.slice(0, lastSelectIndex);
-    console.log("selectPart:", selectPart);
 
     // Process FROM and JOIN separately
     const fromRegex =
@@ -122,46 +112,35 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
         /\bjoin\s+([a-zA-Z0-9_]+)(?:\s+(?:as\s+)?([a-zA-Z0-9_]+))?(?=\s+(?:on|join|where|group|order|limit|;|$)|\s*;|\s*$)/gi;
     const tableMap: Record<string, string> = {};
     let match;
-    console.log("Testing regex against:", selectPart);
     // Process FROM clause
     while ((match = fromRegex.exec(selectPart)) !== null) {
-        console.log("FROM match:", match);
         const table = match[1];
         const alias = match[2] || table;
-        console.log("FROM Table:", table, "Alias:", alias);
         tableMap[alias] = table;
     }
 
     // Process JOIN clause
     while ((match = joinRegex.exec(selectPart)) !== null) {
-        console.log("JOIN match:", match);
         const table = match[1];
         const alias = match[2] || table;
-        console.log("JOIN Table:", table, "Alias:", alias);
         tableMap[alias] = table;
     }
     if (Object.keys(tableMap).length === 0) {
-        console.log("No aliases found, returning original");
         return { sql, aliases: [], tableMap };
     }
 
     const selectMatch = selectPart.match(/select\s+([\s\S]+?)\s+from/i);
-    console.log("selectMatch:", selectMatch);
     if (!selectMatch) {
-        console.log("No select match found, returning original");
         const aliases = Object.keys(tableMap);
         return { sql, aliases, tableMap };
     }
 
     const selectClause = selectMatch[1];
-    console.log("selectClause:", selectClause);
     const aliasesInSelect = Object.keys(tableMap);
     const additions = aliasesInSelect
         .filter(a => !new RegExp(`${a}.id`, "i").test(selectClause))
         .map(a => `${a}.id AS ${a}_pk`);
-    console.log("additions:", additions);
     if (additions.length === 0) {
-        console.log("No additions needed, returning original");
         return { sql, aliases: aliasesInSelect, tableMap };
     }
 
@@ -172,15 +151,12 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
     const modifiedSelectPart = selectPart.replace(selectMatch[0], `SELECT ${newSelect} FROM`);
     const modified = beforeSelect + modifiedSelectPart;
 
-    console.log("Extended query result:", { original: sql, modified, aliases, tableMap });
     return { sql: modified, aliases, tableMap };
 }
 
 export function runQuery(sql: string) {
-    console.log("Running query:", sql);
     if (!db) throw new Error("DB not initialized");
     const { sql: extended, tableMap } = extendQuery(sql);
-    console.log("Extended query:", extended);
     const idx = extended.toUpperCase().lastIndexOf("SELECT");
     currentSelect = idx >= 0 ? extended.slice(idx) : extended;
     const results = db.exec(extended);
@@ -244,19 +220,13 @@ export function rawExec(sql: string) {
 }
 
 export function applyEdit(info: EditInfo, value: unknown) {
-    console.log("Applying edit:", info, "value:", value);
     if (!worker) {
-        console.log("No worker available");
         return;
     }
     const op: Op = { table: info.table, pk: info.pk, column: info.column, value };
     worker.applyOp(op);
-    console.log("Applied operation:", op);
     if (currentSelect) {
-        console.log("Re-running query:", currentSelect);
         rawExec(currentSelect);
         runQuery(currentSelect);
-    } else {
-        console.log("No currentSelect to re-run");
     }
 }
