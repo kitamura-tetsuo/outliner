@@ -1,5 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import type { Project } from "../schema/app-schema";
     import type { ItemLike } from "../types/yjs-types";
     import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
@@ -281,10 +282,10 @@
             }
             // Encode path segments to ensure correct routing for titles with spaces/special characters
             goto(
-                `/${encodeURIComponent(projTitle)}/${encodeURIComponent(title)}`,
+                resolve(`/${encodeURIComponent(projTitle)}/${encodeURIComponent(title)}`),
             );
         } else if (query) {
-            goto(`/search?query=${encodeURIComponent(query)}`);
+            goto(resolve(`/search?query=${encodeURIComponent(query)}`));
         }
     }
 
