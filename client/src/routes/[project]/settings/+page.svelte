@@ -1,5 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
+    import { resolve } from "$app/paths";
     import { page } from "$app/stores";
     import { onMount } from "svelte";
     import {
@@ -262,7 +263,7 @@
                     console.log(
                         `doImport: Navigating to /${encodedProject}/${encodedPage}`,
                     );
-                    await goto(`/${encodedProject}/${encodedPage}`);
+                    await goto(resolve(`/${encodedProject}/${encodedPage}`));
                 } else {
                     console.log(
                         "doImport: First page has no title, cannot navigate",
