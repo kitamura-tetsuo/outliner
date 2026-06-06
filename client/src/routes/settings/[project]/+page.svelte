@@ -1,6 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import { resolve } from "$app/paths";
+    import { resolvePath } from "../../../utils/pathUtils";
     import { page } from "$app/stores";
 
     import {
@@ -86,7 +86,7 @@
                    const updated = projectStore.projects.find(p => p.name === newTitle);
                    if (updated) {
                        clearInterval(checkInterval);
-                       goto(resolve(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
+                       goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
                    }
                 }, 100);
 
@@ -94,7 +94,7 @@
                 setTimeout(() => {
                     clearInterval(checkInterval);
                     // Fallback redirect
-                    goto(resolve(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
+                    goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
                 }, 5000);
 
             } else {
@@ -161,7 +161,7 @@
 
 <div class="container mx-auto px-4 py-8">
     <div class="mb-4">
-        <a href={resolve("/settings")} class="text-blue-600 hover:underline">&larr; Back to Settings</a>
+        <a href={resolvePath("/settings")} class="text-blue-600 hover:underline">&larr; Back to Settings</a>
     </div>
 
     {#if isLoading}

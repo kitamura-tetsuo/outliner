@@ -1,6 +1,6 @@
 <script>
     import { goto } from "$app/navigation";
-    import { resolve } from "$app/paths";
+    import { resolvePath } from "../../../utils/pathUtils";
 </script>
 
 <div class="flex flex-col items-center justify-center min-h-screen text-center p-4">
@@ -10,7 +10,7 @@
     </p>
     <button
         class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        on:click={() => goto(resolve("/"))}
+        onclick={() => goto(resolvePath("/"))}
     >
         Go Home
     </button>

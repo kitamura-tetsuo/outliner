@@ -1,10 +1,10 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { resolve } from "$app/paths";
+    import { resolvePath } from "../utils/pathUtils";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-const resolvePath = resolve as any;
+
     import { createYjsClient } from "../services";
     import { getLogger } from "../lib/logger";
     import { metaDocState } from "../lib/metaDoc.svelte";
