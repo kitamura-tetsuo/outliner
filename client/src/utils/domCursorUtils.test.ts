@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+/**
+ * @vitest-environment jsdom
+ */
 import { calculateGlobalOffset } from "./domCursorUtils";
 
 describe("calculateGlobalOffset", () => {
