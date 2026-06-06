@@ -1,6 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import { resolve } from "$app/paths";
+    import { resolvePath } from "../utils/pathUtils";
     import ProjectSelector from "../components/ProjectSelector.svelte";
     import { getLogger } from "../lib/logger";
     import { yjsStore } from "../stores/yjsStore.svelte";
@@ -17,7 +17,7 @@
             yjsStore.yjsClient = client as any;
 
             logger.info(`Navigating to project page: /${projectName}`);
-            goto(resolve(`/${projectName}`));
+            goto(resolvePath(`/${projectName}`));
         } catch (error) {
             logger.error({ error: error as Error }, "Failed to switch project");
         }
@@ -44,7 +44,7 @@
 
     <!-- Create New Project Link -->
     <div class="action-buttons">
-        <a href={resolve("/projects/new")} class="new-project-button">
+        <a href={resolvePath("/projects/new")} class="new-project-button">
             <span class="icon">+</span> Create New Outliner
         </a>
     </div>

@@ -90,7 +90,7 @@ const aliasTarget = $derived.by(() => {
             return findItem(page, targetId);
         }
     } catch (e) {
-        logger.warn("OutlinerItemAlias: alias target resolve error", e);
+        logger.warn({ error: e as Error }, "OutlinerItemAlias: alias target resolve error");
     }
     return undefined;
 });
@@ -112,7 +112,7 @@ const aliasPath = $derived.by(() => {
             if (fallbackTarget) return [fallbackTarget];
         }
     } catch (e) {
-        logger.warn("OutlinerItemAlias: alias path resolve error", e);
+        logger.warn({ error: e as Error }, "OutlinerItemAlias: alias path resolve error");
     }
     return [] as Item[];
 });

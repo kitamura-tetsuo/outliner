@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { resolve } from "$app/paths";
+    import { resolvePath } from "../../utils/pathUtils";
     import { onMount, onDestroy } from "svelte";
     import OutlinerBase from "../../components/OutlinerBase.svelte";
     import { getLogger } from "../../lib/logger";
@@ -105,7 +105,7 @@
     <div class="mb-4">
         <!-- Breadcrumb Navigation -->
         <nav class="mb-2 flex items-center text-sm text-gray-600">
-            <a href={resolve("/")} class="text-blue-600 hover:text-blue-800 hover:underline">
+            <a href={resolvePath("/")} class="text-blue-600 hover:text-blue-800 hover:underline">
                 Home
             </a>
             <span class="mx-2">/</span>

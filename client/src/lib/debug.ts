@@ -1,5 +1,5 @@
 import { goto } from "$app/navigation";
-import { resolve } from "$app/paths";
+import { resolvePath } from "../utils/pathUtils";
 import { userManager } from "../auth/UserManager";
 import * as yjsHighService from "../lib/yjsService.svelte";
 import { Items } from "../schema/app-schema";
@@ -25,7 +25,7 @@ export function setupGlobalDebugFunctions() {
                 },
             ) => {
                 await Promise.resolve();
-                return goto(resolve(url), opts);
+                return goto(resolvePath(url), opts);
             };
         } else {
             try {

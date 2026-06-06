@@ -1,6 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import { resolve } from "$app/paths";
+    import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, onMount, untrack } from "svelte";
     import { store } from "../stores/store.svelte";
     import {
@@ -375,7 +375,7 @@
                 String((match.page as any).text ?? "")) as string,
         );
         const projectTitle = encodeURIComponent(project.title);
-        goto(resolve(`/${projectTitle}/${pageName}`));
+        goto(resolvePath(`/${projectTitle}/${pageName}`));
     }
 
     onDestroy(() => {

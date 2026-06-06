@@ -1,6 +1,6 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
-    import { resolve } from "$app/paths";
+    import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, onMount } from "svelte";
     import { fade } from "svelte/transition";
     import { getLogger } from "../lib/logger";
@@ -2030,7 +2030,7 @@
                     style="display: none;"
                 />
                 <button
-                    onclick={() => goto(resolve(`/${projectName}/${pageName}/diff`))}
+                    onclick={() => goto(resolvePath(`/${projectName}/${pageName}/diff`))}
                 >
                     History / Diff
                 </button>
