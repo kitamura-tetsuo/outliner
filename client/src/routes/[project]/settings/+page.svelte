@@ -257,7 +257,7 @@
                 }
 
                 if (pageName) {
-                    const encodedProject = encodeURIComponent(projectName);
+                    const encodedProject = encodeURIComponent(projectName as string);
                     const encodedPage = encodeURIComponent(pageName);
                     console.log(
                         `doImport: Navigating to /${encodedProject}/${encodedPage}`,

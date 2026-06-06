@@ -258,9 +258,9 @@ onMount(async () => {
                     };
 
                     // Patch both EventTarget and Element to maximize coverage
-                    // @ts-expect-error - Need to patch prototype for E2E drag/drop testing
-                    EventTarget.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchEventTarget, event); };
-                    Element.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchElement, event); };
+                    // @ts-ignore - Need to patch prototype for E2E drag/drop testing
+                    EventTarget.prototype.dispatchEvent = function(this: EventTarget, event: Event): boolean { return wrap.call(this, origDispatchEventTarget, event); };
+                    Element.prototype.dispatchEvent = function(this: Element, event: Event): boolean { return wrap.call(this, origDispatchElement, event); };
 
                     console.log('[E2E] Patched EventTarget.prototype.dispatchEvent and Element.prototype.dispatchEvent for drop events');
                     try {
@@ -301,7 +301,7 @@ onMount(async () => {
                                         try {
                                             if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
                                                 const orig = list.add;
-                                                list.add = function(data: any, _type?: string) {
+                                                list.add = function(this: DataTransferItemList, data: any, _type?: string) {
                                                     try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
                                                     return orig.apply(this, [data, _type]);
                                                 } as any;
@@ -328,7 +328,7 @@ onMount(async () => {
                                         return f;
                                     }
                                 });
-                                // @ts-expect-error - Need to replace window.File for E2E attachment testing
+                                // @ts-ignore - Need to replace window.File for E2E attachment testing
                                 (window as any).File = Wrapped;
                             }
                         }
@@ -345,7 +345,7 @@ onMount(async () => {
                                             const list: any = (dt as any).items;
                                             if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
                                                 const origAdd = list.add;
-                                                list.add = function(data: any, _type?: string) {
+                                                list.add = function(this: DataTransferItemList, data: any, _type?: string) {
                                                     try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
                                                     try { console.log('[E2E] DT(instance).items.add called'); } catch {}
                                                     return origAdd.apply(this, [data, _type]);
@@ -356,7 +356,7 @@ onMount(async () => {
                                         return dt;
                                     }
                                 });
-                                // @ts-expect-error - Need to replace window.DataTransfer for E2E drag/drop testing
+                                // @ts-ignore - Need to replace window.DataTransfer for E2E drag/drop testing
                                 (window as any).DataTransfer = WrappedDT;
                             }
                         }

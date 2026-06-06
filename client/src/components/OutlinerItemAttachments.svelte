@@ -25,7 +25,7 @@ onMount(() => {
             try {
                 const arr: any[] = (yArr?.toArray?.() ?? []);
                 attachmentsMirror = arr.map((u: any) => Array.isArray(u) ? u[0] : u);
-                logger.debug('[OutlinerItemAttachments][Yjs] attachments observe ->', attachmentsMirror.length, 'id=', modelId);
+                logger.debug({ length: attachmentsMirror.length, id: modelId } as any, '[OutlinerItemAttachments][Yjs] attachments observe ->');
             } catch {}
         };
         if (yArr && typeof yArr.observe === 'function' && typeof yArr.unobserve === 'function') {
@@ -45,14 +45,14 @@ onMount(() => {
     const onAtt = (_e: any) => {
         try {
             const eid = String((_e && (_e as any).detail && (_e as any).detail.id) ?? '');
-            logger.debug('[OutlinerItemAttachments][TEST] item-attachments-changed received eid=', eid, 'selfId=', modelId);
+            logger.debug({ eid, selfId: modelId } as any, '[OutlinerItemAttachments][TEST] item-attachments-changed received');
             if (eid && String(modelId) !== eid) return;
             const yArr: any = (item as any)?.attachments;
             const arr: any[] = (yArr?.toArray?.() ?? []);
             if (arr.length > 0) {
                 attachmentsMirror = arr.map((u: any) => Array.isArray(u) ? u[0] : u);
             }
-            logger.debug('[OutlinerItemAttachments][TEST] mirror updated ->', attachmentsMirror.length, 'id=', modelId);
+            logger.debug({ length: attachmentsMirror.length, id: modelId } as any, '[OutlinerItemAttachments][TEST] mirror updated ->');
         } catch {}
     };
     try {

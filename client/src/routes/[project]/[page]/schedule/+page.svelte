@@ -73,7 +73,7 @@ onMount(async () => {
     // IMPORTANT: Also check if the loaded project has the correct title (handles store reset during navigation)
     const currentProjectTitle = store.project?.title ?? "";
     const isCorrectProject = currentProjectTitle === project;
-    const hasProjectData = store.project?.items?.length > 0 && isCorrectProject;
+    const hasProjectData = (store.project?.items?.length ?? 0) > 0 && isCorrectProject;
 
     // Check if we have a saved pageId in session storage
     const sessionKey = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
@@ -107,7 +107,7 @@ onMount(async () => {
 
         // Wait for store.project to be populated after navigation
         for (let i = 0; i < 50; i++) {
-            if (store.project?.items?.length > 0) {
+            if ((store.project?.items?.length ?? 0) > 0) {
                 console.log("Schedule page: store.project populated after", i * 100, "ms");
                 break;
             }

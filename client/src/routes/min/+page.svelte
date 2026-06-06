@@ -54,7 +54,7 @@ async function signIn() {
         idToken = await result.user.getIdToken(true);
         console.log("Retrieved ID Token:", idToken);
 
-        const verifyUrl = import.meta.env.VITE_TOKEN_VERIFY_URL;
+        const verifyUrl = import.meta.env.VITE_TOKEN_VERIFY_URL as string;
         const response = await fetch(verifyUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

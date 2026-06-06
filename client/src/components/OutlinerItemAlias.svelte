@@ -31,7 +31,7 @@ onMount(() => {
                         const newValue = ymap.get?.('aliasTargetId');
                         if (newValue !== aliasTargetId) {
                             aliasTargetId = newValue;
-                            logger.debug("OutlinerItemAlias: aliasTargetId updated via observe", { itemId: modelId, newValue });
+                            logger.debug({ itemId: modelId, newValue } as any, "OutlinerItemAlias: aliasTargetId updated via observe");
                         }
                     }
                 } catch {}
@@ -90,7 +90,7 @@ const aliasTarget = $derived.by(() => {
             return findItem(page, targetId);
         }
     } catch (e) {
-        logger.warn("OutlinerItemAlias: alias target resolve error", e);
+        logger.warn({ error: e } as any, "OutlinerItemAlias: alias target resolve error");
     }
     return undefined;
 });
@@ -112,7 +112,7 @@ const aliasPath = $derived.by(() => {
             if (fallbackTarget) return [fallbackTarget];
         }
     } catch (e) {
-        logger.warn("OutlinerItemAlias: alias path resolve error", e);
+        logger.warn({ error: e } as any, "OutlinerItemAlias: alias path resolve error");
     }
     return [] as Item[];
 });

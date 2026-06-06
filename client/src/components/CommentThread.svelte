@@ -32,7 +32,7 @@ interface Props {
     item?: ItemLike; // Outliner Item (for late-binding comments getter)
 }
 
-let props: Props = $props();
+let props: any = $props();
 let comments = $derived.by(() => props.comments ?? props.item?.comments);
 let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");
@@ -67,7 +67,7 @@ onMount(() => {
     let unobserve: (() => void) | undefined;
     try {
         // 1) Get internal yArray if Comments wrapper exists (private but accessible in JS)
-        let yarr: Y.Array<Y.Map<unknown>> | undefined = (comments as Comments | undefined)?.yArray;
+        let yarr: any = (comments as any)?.yArray as any;
         // 2) If not, ensure "comments" via item Y.Map
         if (!yarr && props.item) {
             const item = props.item as ItemLike;
@@ -98,7 +98,7 @@ onMount(() => {
                     // This prevents the observer from overwriting UI changes when they're more recent
                     const currentRenderState = renderCommentsState;
                     const needsUpdate = plainComments.length !== currentRenderState.length ||
-                        plainComments.some((yjsComment, index) => {
+                        plainComments.some((yjsComment: any, index: number) => {
                             const currentComment = currentRenderState[index];
                             return !currentComment || currentComment.id !== yjsComment.id || currentComment.text !== yjsComment.text;
                         });
@@ -137,7 +137,7 @@ onMount(() => {
 // Count notification is delegated to the parent (OutlinerItem) Yjs-derived subscription.
 // Do not perform direct DOM manipulation or side effects here ($effect removed).
 
-    try { logger.debug('[CommentThread] mount props', { hasComments: !!props?.comments, hasDoc: !!props?.doc }); } catch {}
+    try { logger.debug({ hasComments: !!props?.comments, hasDoc: !!props?.doc } as any, '[CommentThread] mount props'); } catch {}
 
 // Fallback removal: Remove onMount click delegation/auto-add/global delegation
 
@@ -218,7 +218,7 @@ function add() {
         } catch {}
     }
     if (!text) return;
-    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
+    let commentsObj: any = props.comments ?? (props.item as any)?.comments;
     if (!commentsObj && props.item) {
         try {
             const item = props.item as ItemLike;
@@ -236,13 +236,13 @@ function add() {
                 logger.debug('[CommentThread] initialized comments via tree/key fallback');
             }
         } catch (e) {
-            logger.warn('[CommentThread] failed to ensure comments via fallback', e);
+            logger.warn({ error: e } as any, '[CommentThread] failed to ensure comments via fallback');
         }
     }
     const user = props.currentUser;
 
-    logger.debug('[CommentThread] add comment, newText=', newText);
-    logger.debug('[CommentThread] comments object:', commentsObj, 'props.item?', !!props.item, 'item?.comments?', !!props.item?.comments);
+    logger.debug({ newText } as any, '[CommentThread] add comment');
+    logger.debug({ commentsObj } as any, '[CommentThread] comments object:');
 
     // Proceed with UI even if comments object is invalid (ensure reflection via DOM/events)
     const time = Date.now();
@@ -250,7 +250,7 @@ function add() {
     if (commentsObj && typeof commentsObj.addComment === 'function') {
         const res = commentsObj.addComment(user, newText);
         id = res?.id || `local-${time}-${Math.random().toString(36).slice(2)}`;
-        logger.debug('[CommentThread] comment added to Yjs, id=', id);
+        logger.debug({ id } as any, '[CommentThread] comment added to Yjs');
     } else {
         logger.error({ error: new Error("invalid or missing addComment") }, '[CommentThread] comments object is invalid or missing addComment; falling back to local DOM only');
         id = `local-${time}-${Math.random().toString(36).slice(2)}`;
@@ -288,8 +288,8 @@ function add() {
         } else {
             // Fallback: try to get the length from the item's comments
             try {
-                if (props.item && typeof props.item.comments !== 'undefined') {
-                    const itemComments = props.item.comments;
+                if (props.item && typeof (props.item as any).comments !== 'undefined') {
+                    const itemComments = (props.item as any).comments;
                     if (typeof itemComments.length === 'number') {
                         countNow = itemComments.length;
                     }
@@ -332,7 +332,7 @@ function add() {
     newText = '';
 }
 function remove(id: string) {
-    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
+    let commentsObj: any = props.comments ?? (props.item as any)?.comments;
     if (!commentsObj && props.item) {
         try {
             const item = props.item as ItemLike;
@@ -375,8 +375,8 @@ function startEdit(c: Comment) {
 }
 
 function saveEdit(id: string) {
-    try { logger.debug('[CommentThread] saveEdit start id=', id, 'editText=', editText); } catch {}
-    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
+    try { logger.debug({ id, editText } as any, '[CommentThread] saveEdit start'); } catch {}
+    let commentsObj: any = props.comments ?? (props.item as any)?.comments;
     if (!commentsObj && props.item) {
         try {
             const item = props.item as ItemLike;

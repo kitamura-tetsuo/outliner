@@ -22,8 +22,8 @@ let isAuthenticated = $state(false);
 let createdContainerId: string | undefined = $state(undefined);
 
 // Handle successful authentication
-async function handleAuthSuccess(authResult) {
-    logger.info("Authentication success:", authResult);
+async function handleAuthSuccess(authResult: unknown) {
+    logger.info({ authResult } as unknown as Error, "Authentication success:");
     isAuthenticated = true;
 }
 

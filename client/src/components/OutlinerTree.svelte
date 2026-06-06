@@ -2215,7 +2215,7 @@
             if (!activeItemId) return;
             editorOverlayStore.setActiveItem(activeItemId);
             // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
-            const activeCursor = editorOverlayStore.getCursorForItem(activeItemId);
+            const activeCursor = Object.values(editorOverlayStore.cursors).find(c => c.itemId === activeItemId);
             if (activeCursor) {
                 // GlobalTextArea will handle key events, let's just dispatch to document
                 const event = new KeyboardEvent('keydown', {

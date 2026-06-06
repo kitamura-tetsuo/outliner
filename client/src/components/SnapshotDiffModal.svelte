@@ -231,9 +231,9 @@ $effect(() => {
                     <!-- Added .diff class for backward compatibility with existing tests -->
                     <div
                         class="diff diff-view flex-1 overflow-auto bg-gray-50 p-3 rounded border border-gray-200 font-mono text-sm whitespace-pre-wrap break-words"
-                        tabindex="0"
-                        role="region"
-                        aria-label="Inline diff content"
+
+
+
                     >
                         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                         {@html inlineDiffHtml}
@@ -246,9 +246,9 @@ $effect(() => {
                             </div>
                             <div
                                 class="diff diff-view flex-1 overflow-auto bg-red-50 p-3 font-mono text-sm whitespace-pre-wrap break-words"
-                                tabindex="0"
-                                role="region"
-                                aria-label="Old diff content"
+
+
+
                             >
                                 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                                 {@html leftDiffHtml}
@@ -260,9 +260,9 @@ $effect(() => {
                             </div>
                             <div
                                 class="diff diff-view flex-1 overflow-auto bg-green-50 p-3 font-mono text-sm whitespace-pre-wrap break-words"
-                                tabindex="0"
-                                role="region"
-                                aria-label="New diff content"
+
+
+
                             >
                                 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                                 {@html rightDiffHtml}

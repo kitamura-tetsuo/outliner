@@ -87,17 +87,17 @@ onMount(() => {
             const W:any = window as any;
             if (isTest && !W.__E2E_GETATTR_PATCHED) {
                 const origGetAttr = Element.prototype.getAttribute;
-                Element.prototype.getAttribute = function(name: string): string | null {
+                Element.prototype.getAttribute = function(this: Element, name: string): string | null {
                     try {
                         if (name === 'data-alias-target-id') {
                             const ap:any = (window as any).aliasPickerStore;
-                            const itemId = (this as HTMLElement).getAttribute('data-item-id');
+                            const itemId = (this as any).getAttribute('data-item-id');
                             if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
                                 return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
                             }
                         }
                     } catch {}
-                    return origGetAttr.call(this, name) as any;
+                    return origGetAttr.call(this as any, name) as any;
                 } as any;
                 W.__E2E_GETATTR_PATCHED = true;
             }
@@ -111,7 +111,7 @@ onMount(() => {
         const gs: any = generalStore as any;
         if (!isPageTitle && index === 0 && (gs.openCommentItemId == null)) {
             gs.openCommentItemId = model.id;
-            logger.debug('[OutlinerItem] auto-open comment thread for id=', model.id);
+            logger.debug({ id: model.id }, '[OutlinerItem] auto-open comment thread for id=');
         }
     } catch {}
 });
@@ -140,7 +140,7 @@ onMount(() => {
             if (!exists) {
                 gs.openCommentItemId = model.id;
                 gs.openCommentItemIndex = index;
-                try { logger.debug('[OutlinerItem] auto-reopen comment thread by index, id=', model.id, 'index=', index); } catch {}
+                try { logger.debug({ id: model.id, index }, '[OutlinerItem] auto-reopen comment thread by index'); } catch {}
             }
         }
     } catch {}
@@ -804,10 +804,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
 
     // Set focus to global textarea (highest priority)
     textareaEl.focus();
-    logger.debug(
-        "OutlinerItem startEditing: Focus set to global textarea, activeElement:",
-        document.activeElement === textareaEl,
-    );
+    logger.debug({ focus: document.activeElement === textareaEl }, 'OutlinerItem startEditing: Focus set to global textarea');
 
     // Additional attempts to ensure focus
     requestAnimationFrame(() => {
@@ -823,8 +820,8 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     textareaEl.focus();
     logger.debug(
         "OutlinerItem startEditing: focus called, activeElement:",
-        document.activeElement?.tagName,
-        document.activeElement?.className,
+        document.activeElement?.tagName as any,
+        document.activeElement?.className as any,
     );
 
     let cursorPosition = initialCursorPosition;
@@ -1005,11 +1002,11 @@ function toggleComments() {
     if (gs.openCommentItemId === model.id) {
         gs.openCommentItemId = null;
         gs.openCommentItemIndex = null;
-        try { logger.debug('[OutlinerItem] toggleComments id=', model.id, '->', false); } catch {}
+        try { logger.debug({ id: model.id }, '[OutlinerItem] toggleComments id= -> false'); } catch {}
     } else {
         gs.openCommentItemId = model.id;
         gs.openCommentItemIndex = index;
-        try { logger.debug('[OutlinerItem] toggleComments id=', model.id, '->', true, 'index=', index); } catch {}
+        try { logger.debug({ id: model.id, index }, '[OutlinerItem] toggleComments id= -> true'); } catch {}
     }
 }
 
@@ -1026,7 +1023,7 @@ function handleContentClick(e: MouseEvent) {
 
     const btn = el.closest('button.comment-button');
     if (btn) {
-        try { logger.debug('[OutlinerItem] handleContentClick toggling comments for id=', model.id); } catch {}
+        try { logger.debug({ id: model.id }, '[OutlinerItem] handleContentClick toggling comments for id='); } catch {}
         e.stopPropagation();
         toggleComments();
     }
@@ -1618,7 +1615,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         return;
     }
 
-    logger.debug("OutlinerItem handleDrop: event received", event);
+    logger.debug({ event }, "OutlinerItem handleDrop: event received");
     // Prevent default action
     event.preventDefault();
     try { event.stopPropagation(); (event as any).stopImmediatePropagation?.(); } catch {}
@@ -1629,7 +1626,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
 
     // Get drop data (provide fallback for missing event.dataTransfer in Playwright isolated world)
-    const dt = event.dataTransfer as DataTransfer | null;
+    const dt = (event as unknown as DragEvent).dataTransfer as DataTransfer | null;
 
     // File drop (Support both DataTransfer.files and DataTransfer.items(kind=file), or E2E fallback)
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
@@ -1670,7 +1667,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         const url = await uploadAttachment(containerId, model.id, file);
                         
                         if (!dropTargetPosition || dropTargetPosition === "middle") {
-                            addAttachmentToDomTargetOrModel(event, url);
+                            addAttachmentToDomTargetOrModel(event as unknown as DragEvent, url);
                             // Reflect to Doc after connection
                             try { mirrorAttachment(url); } catch {}
                         } else {
@@ -1721,7 +1718,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
-                        addAttachmentToDomTargetOrModel(event, localUrl);
+                        addAttachmentToDomTargetOrModel(event as unknown as DragEvent, localUrl);
                         try { mirrorAttachment(localUrl); } catch {}
 
                     } catch {}
@@ -1747,9 +1744,9 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
     // Non-file drop (text or in-app data)
     try {
-        const plainText = (event.dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
-        const selectionData = (event.dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
-        const itemId = (event.dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
+        const plainText = ((event as unknown as DragEvent).dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
+        const selectionData = ((event as unknown as DragEvent).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
+        const itemId = ((event as unknown as DragEvent).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
 
         // Fire drop event
         dispatch("drop", {
@@ -1942,7 +1939,7 @@ onMount(() => {
     const handler = (e: Event) => {
         try {
             const t = e.target as Node | null;
-            logger.debug("[doc-capture] drop captured at document", { tag: (t as HTMLElement | null)?.tagName, class: (t as HTMLElement | null)?.className });
+            logger.debug({ tag: (t as HTMLElement | null)?.tagName, class: (t as HTMLElement | null)?.className } as unknown as Error, "[doc-capture] drop captured at document");
             const displayMatch = displayRef && t && (displayRef === t || displayRef.contains(t));
             const containerMatch = itemRef && t && (itemRef === t || itemRef.contains(t));
             if (displayMatch || containerMatch) {
@@ -2004,7 +2001,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     onmousedown={handleMouseDown}
     onmousemove={handleMouseMove}
     onmouseup={handleMouseUp}
-    oncomment-count-changed={handleCommentCountChanged}
+    {...{ "oncomment-count-changed": handleCommentCountChanged } as Record<string, any>}
     bind:this={itemRef}
     data-item-id={model.id}
     data-active={isItemActive}

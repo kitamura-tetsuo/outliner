@@ -68,7 +68,7 @@ const resolvePath = resolve as any;
         const firstSeries = series[0] as GraphSeriesWithData | undefined;
         const data = firstSeries?.data;
         if (!Array.isArray(data)) return [];
-        return data.filter((node): node is GraphNodeWithLayout =>
+        return data.filter((node: any): node is GraphNodeWithLayout =>
             Boolean(node?.id),
         );
     };
@@ -116,7 +116,7 @@ const resolvePath = resolve as any;
                     };
                 })
                 .filter(
-                    (node): node is GraphLayout["nodes"][number] =>
+                    (node: any): node is GraphLayout["nodes"][number] =>
                         typeof node.x === "number" &&
                         typeof node.y === "number",
                 ); // Only save nodes with defined positions
@@ -125,8 +125,8 @@ const resolvePath = resolve as any;
 
             // Merge: Start with existing nodes that are NOT in current, then add current
             const mergedNodes = existingNodes
-                .filter((n) => !currentNodesMap.has(n.id))
-                .concat(currentNodes);
+                .filter((n: any) => !currentNodesMap.has(n.id))
+                .concat(currentNodes as any) as any;
 
             const layoutData = { nodes: mergedNodes };
 
@@ -285,7 +285,7 @@ const resolvePath = resolve as any;
                 ymap.observeDeep(handler);
                 detachDocListener = () => {
                     try {
-                        ymap.unobserveDeep(handler);
+                        if (ymap && typeof ymap.unobserveDeep === "function") ymap.unobserveDeep(handler);
                     } catch {}
                 };
             }
