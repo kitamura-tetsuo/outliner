@@ -1,4 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
+/**
+ * @vitest-environment jsdom
+ */
 import { ScrapboxFormatter } from "./ScrapboxFormatter";
 
 describe("ScrapboxFormatter", () => {
