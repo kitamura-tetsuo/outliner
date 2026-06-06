@@ -1,10 +1,10 @@
 import { goto } from "$app/navigation";
-import { resolvePath } from "../utils/pathUtils";
 import { userManager } from "../auth/UserManager";
 import * as yjsHighService from "../lib/yjsService.svelte";
 import { Items } from "../schema/app-schema";
 import * as snapshotService from "../services/snapshotService";
 import { yjsStore } from "../stores/yjsStore.svelte";
+import { resolvePath } from "../utils/pathUtils";
 import { getLogger } from "./logger";
 
 const logger = getLogger();
