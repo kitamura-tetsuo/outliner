@@ -209,7 +209,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
-        token: "1",
+        token: projectId === "demo" ? undefined : "1",
     });
     console.log(
         `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}`,
@@ -311,14 +311,17 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     const unbind = yjsService.bindProjectPresence(awareness as Awareness);
 
     // Refresh auth param on token refresh
-    const unsub = attachTokenRefresh(provider as TokenRefreshableProvider);
+    let unsub: (() => void) | undefined;
+    if (projectId !== "demo") {
+        unsub = attachTokenRefresh(provider as TokenRefreshableProvider);
+    }
 
     const dispose = () => {
         try {
             unbind();
         } catch {}
         try {
-            unsub();
+            if (unsub) unsub();
         } catch {}
         try {
             provider.destroy();
@@ -358,7 +361,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
-        token: "1",
+        token: projectId === "demo" ? undefined : "1",
     });
     const awareness = provider.awareness;
 
@@ -383,7 +386,9 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         });
     }
     // Refresh auth param on token refresh
-    attachTokenRefresh(provider as TokenRefreshableProvider);
+    if (projectId !== "demo") {
+        attachTokenRefresh(provider as TokenRefreshableProvider);
+    }
     return { provider, awareness };
 }
 
@@ -417,7 +422,7 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
-        token: "1",
+        token: projectId === "demo" ? undefined : "1",
     });
     // HocuspocusProvider connects automatically, no need to call connect()
 
