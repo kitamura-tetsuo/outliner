@@ -1,13 +1,13 @@
 ---
 tags: [jules, recurrent]
-name: ["auto improvement with TODO comments"]
+name: ["auto improvement with demo site"]
 ---
 
 # Target Resources
 - Demo Environment (for testing): https://outliner-d57b0.web.app/demo
 
 ## 1. Observe and Understand the Current State
-- Check the latest commit history, issues, or "TODO" comments in the code within the repository to find hints for tasks to address now.
+- Access the demo environment (URL) and verify that key functions (adding/editing outlines, manipulating the hierarchical structure, etc.) are working correctly and that there are no errors in the developer tools console.
 
 ## 2. Developing an Improvement Plan (Plan)
 - Select only one improvement point per run from the following perspectives (to keep the scope small):
