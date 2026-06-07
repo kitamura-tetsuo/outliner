@@ -55,9 +55,21 @@ class TestDataSeeder {
         });
     }
 
-    async clearAll() {
-        console.log("Clearing all test data");
-        // TODO: Implement data clearing logic
+    async clearAll(projectId: string) {
+        console.log(`Clearing all test data for project: ${projectId}`);
+        await this._withProject(projectId, (project) => {
+            const ydoc = project.ydoc;
+
+            // Clear orderedTree completely
+            const orderedTree = ydoc.getMap("orderedTree");
+            Array.from(orderedTree.keys()).forEach(key => orderedTree.delete(key));
+
+            // Clear items map completely
+            const itemsMap = ydoc.getMap("items");
+            Array.from(itemsMap.keys()).forEach(key => itemsMap.delete(key));
+
+            console.log(`Project "${projectId}" data cleared successfully.`);
+        });
     }
 
     private async _withProject(projectId: string, action: (project: Project) => Promise<void> | void) {
@@ -146,13 +158,19 @@ async function main() {
             await seeder.addTextNode(projectId, pageId, text);
             break;
         }
-        case "clear-all":
-            await seeder.clearAll();
+        case "clear-all": {
+            const clearProjectId = args[1];
+            if (!clearProjectId) {
+                console.error("Usage: clear-all <projectId>");
+                process.exit(1);
+            }
+            await seeder.clearAll(clearProjectId);
             break;
+        }
         default:
             console.error(`Unknown command: ${command}`);
             console.log(
-                "Available commands: create-project <name> <pages...>, add-page <projectId> <title>, add-text-node <projectId> <pageId> <text>, clear-all",
+                "Available commands: create-project <name> <pages...>, add-page <projectId> <title>, add-text-node <projectId> <pageId> <text>, clear-all <projectId>",
             );
             process.exit(1);
     }
