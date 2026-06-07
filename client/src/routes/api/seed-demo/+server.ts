@@ -3,7 +3,18 @@ import type { RequestHandler } from "./$types";
 
 export const POST: RequestHandler = async () => {
     try {
-        const apiBaseUrl = process.env.VITE_API_SERVER_URL || "http://127.0.0.1:7091";
+        let apiBaseUrl = process.env.VITE_YJS_API_URL;
+
+        // Fallback to deriving the API URL from the WebSocket URL if available
+        if (!apiBaseUrl && process.env.VITE_YJS_WS_URL) {
+            apiBaseUrl = process.env.VITE_YJS_WS_URL.replace(/^ws(s)?:\/\//, "http$1://");
+        }
+
+        // Final fallback to the default API server URL
+        if (!apiBaseUrl) {
+            apiBaseUrl = process.env.VITE_API_SERVER_URL || "http://127.0.0.1:7091";
+        }
+
         const response = await fetch(`${apiBaseUrl}/api/seed-demo`, {
             method: "POST",
             headers: {
