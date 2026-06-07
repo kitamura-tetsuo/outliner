@@ -24,7 +24,7 @@ let createdContainerId: string | undefined = $state(undefined);
 
 // Handle successful authentication
 async function handleAuthSuccess(authResult: unknown) {
-    logger.info("Authentication success:", authResult);
+    logger.info({ authResult }, "Authentication success:");
     isAuthenticated = true;
 }
 
@@ -47,7 +47,7 @@ async function createNewContainer() {
 
     try {
         // Dispose and reset the current client
-        const client = yjsStore.yjsClient as any;
+        const client = yjsStore.yjsClient;
         if (client) {
             client.dispose?.();
             yjsStore.yjsClient = undefined;
@@ -63,7 +63,7 @@ async function createNewContainer() {
         const newClient = await yjsHighService.createNewProject(containerName, newProjectId);
 
         // Update the store
-        yjsStore.yjsClient = newClient as any;
+        yjsStore.yjsClient = newClient;
 
         success = `New outliner created! (ID: ${createdContainerId})`;
 
