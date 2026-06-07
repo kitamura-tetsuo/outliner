@@ -243,6 +243,7 @@ export class UserManager {
 
                 // Attempt to create user if not exists
                 try {
+                    // Attempt to create a mock test user for local environment
                     logger.info("[UserManager] Attempting to create test user");
                     await createUserWithEmailAndPassword(this.auth, "test@example.com", "password");
                     logger.info("[UserManager] Test user created and logged in successfully");
