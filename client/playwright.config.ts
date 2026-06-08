@@ -96,7 +96,7 @@ export default defineConfig({
         ...(process.env.PLAYWRIGHT_JSON_OUTPUT_NAME
             ? [["json", { outputFile: process.env.PLAYWRIGHT_JSON_OUTPUT_NAME }]]
             : []),
-    ] as any,
+    ] as import("@playwright/test").ReporterDescription[],
     // Extend test execution timeout (to accommodate environment initialization fluctuations)
     // Extended to 120 seconds because connection to Hocuspocus and Yjs synchronization may take time
     timeout: 120 * 1000,
