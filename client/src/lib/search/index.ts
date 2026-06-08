@@ -40,7 +40,7 @@ function toStringSafe(text: unknown): string {
     if (text == null) return "";
     if (typeof text === "string") return text;
     try {
-        const t = text as { toString?: () => string };
+        const t = text as { toString?: () => string; };
         if (typeof t.toString === "function") return t.toString();
     } catch {}
     return String(text);
@@ -49,13 +49,13 @@ function toStringSafe(text: unknown): string {
 function pushChildren<T>(stack: T[], children: unknown): void {
     if (!children) return;
     try {
-        const iterChildren = children as { [Symbol.iterator]?: () => Iterator<unknown> };
+        const iterChildren = children as { [Symbol.iterator]?: () => Iterator<unknown>; };
         if (typeof iterChildren[Symbol.iterator] === "function") {
             for (const ch of (children as Iterable<unknown>)) stack.push(ch as T);
             return;
         }
     } catch {}
-    const arrChildren = children as { length?: unknown; at?: (i: number) => unknown } & Record<number, unknown>;
+    const arrChildren = children as { length?: unknown; at?: (i: number) => unknown; } & Record<number, unknown>;
     const len = arrChildren.length;
     if (typeof len === "number" && len >= 0) {
         for (let i = 0; i < len; i++) {
@@ -102,7 +102,7 @@ export function replaceFirst<T extends { text: unknown; updateText?: (t: string)
             if (item.updateText) {
                 item.updateText(newText);
             } else {
-                (item as { text: unknown }).text = newText;
+                (item as { text: unknown; }).text = newText;
             }
             return true;
         }
@@ -133,7 +133,7 @@ export function replaceAll<T extends { text: unknown; updateText?: (t: string) =
             if (item.updateText) {
                 item.updateText(newText);
             } else {
-                (item as { text: unknown }).text = newText;
+                (item as { text: unknown; }).text = newText;
             }
             count += replaced;
         }
