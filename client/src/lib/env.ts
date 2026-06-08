@@ -12,7 +12,8 @@ export function getEnv(key: string, defaultValue: string = ""): string {
     const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
         || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true);
+        || (typeof window !== "undefined"
+            && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
 
     // Processing specific to the test environment
     if (isTestEnv) {
