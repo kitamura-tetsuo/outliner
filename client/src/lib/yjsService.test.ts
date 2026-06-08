@@ -28,13 +28,7 @@ vi.mock("../yjs/YjsClient", () => ({
 
         static async connect(projectId: string, project: Project) {
             // Return a mock client instance that satisfies the test's assertions.
-            return Promise.resolve({
-                doc: {
-                    guid: projectId,
-                },
-                project,
-                getProject: () => project,
-            } as any);
+            return Promise.resolve(new this(projectId, project));
         }
     },
 }));
@@ -73,11 +67,13 @@ describe("yjsService", () => {
 
             // 4. Assert client is returned and has correct ID.
             expect(reloadedClient).toBeDefined();
-            expect((reloadedClient as any).doc.guid).toBe((originalClient as any).doc.guid);
+            // We use structural assertions to match the mock instance.
+            type MockClient = { doc: { guid: string; }; };
+            expect((reloadedClient as unknown as MockClient).doc.guid).toBe((originalClient as unknown as MockClient).doc.guid);
 
             // Verify the stable ID matches what's expected
             const expectedId = stableIdFromTitle("TestProject");
-            expect((reloadedClient as any).doc.guid.startsWith(expectedId)).toBe(true);
+            expect((reloadedClient as unknown as MockClient).doc.guid.startsWith(expectedId)).toBe(true);
         });
     });
 

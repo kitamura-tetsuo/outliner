@@ -18,10 +18,10 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
                     if (typeof val === "string") {
                         image = val;
                     } else if (val && typeof val === "object") {
-                        if ("url" in val) {
-                            image = (val as any).url;
-                        } else if (Array.isArray(val) && (val as any[]).length > 0) {
-                            image = val[0];
+                        if ("url" in val && typeof (val as Record<string, unknown>).url === "string") {
+                            image = (val as Record<string, unknown>).url as string;
+                        } else if (Array.isArray(val) && (val as unknown[]).length > 0 && typeof (val as unknown[])[0] === "string") {
+                            image = (val as unknown[])[0] as string;
                         }
                     }
                 }

@@ -64,7 +64,7 @@ export class UserPreferencesStore {
 export const userPreferencesStore = $state(new UserPreferencesStore());
 
 if (typeof window !== "undefined") {
-    (window as any).userPreferencesStore = userPreferencesStore;
+    window.userPreferencesStore = userPreferencesStore;
     // Ensure initial theme is applied on startup
     userPreferencesStore.applyDocumentTheme();
 }

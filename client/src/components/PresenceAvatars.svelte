@@ -9,7 +9,7 @@ let users = $state<PresenceUser[]>([]);
 
 function readUsers(): PresenceUser[] {
   try {
-    const store = (globalThis as any).presenceStore;
+    const store = (window as Window).presenceStore;
     return store ? Object.values(store.users || {}) : [];
   } catch { return []; }
 }
