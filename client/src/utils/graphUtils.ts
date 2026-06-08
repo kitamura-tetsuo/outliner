@@ -11,34 +11,42 @@ function containsLink(text: string, target: string, project: string): boolean {
     return text.includes(`[${target}]`) || text.includes(`[/${project}/${target}]`);
 }
 
-function toArray(p: any): any[] {
+function toArray(p: unknown): unknown[] {
     try {
         if (Array.isArray(p)) return p;
-        if (p && typeof p[Symbol.iterator] === "function") return Array.from(p);
-        const len = p?.length;
+        if (p && typeof (p as Iterable<unknown>)[Symbol.iterator] === "function") {
+            return Array.from(p as Iterable<unknown>);
+        }
+        const len = (p as { length?: number; })?.length;
         if (typeof len === "number" && len >= 0) {
-            const r: any[] = [];
-            for (let i = 0; i < len; i++) r.push(p.at ? p.at(i) : p[i]);
+            const r: unknown[] = [];
+            for (let i = 0; i < len; i++) {
+                const item = p as { at?: (idx: number) => unknown; [key: number]: unknown; };
+                r.push(item.at ? item.at(i) : item[i]);
+            }
             return r;
         }
     } catch {}
-    return [] as any[];
+    return [] as unknown[];
 }
 
-function getText(v: any): string {
+function getText(v: unknown): string {
     try {
         if (typeof v === "string") return v;
-        if (v?.text !== undefined) {
-            const t = v.text;
+        const obj = v as { text?: unknown; toString?: () => string; };
+        if (obj?.text !== undefined) {
+            const t = obj.text;
             if (typeof t === "string") return t;
-            if (t && typeof t.toString === "function") return t.toString();
+            if (t && typeof (t as { toString?: () => string; }).toString === "function") {
+                return (t as { toString: () => string; }).toString();
+            }
         }
-        if (v && typeof v.toString === "function") return v.toString();
+        if (obj && typeof obj.toString === "function") return obj.toString();
     } catch {}
     return String(v ?? "");
 }
 
-export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
+export function buildGraph(pagesMaybe: unknown, projectTitle: string): GraphData {
     const pages = toArray(pagesMaybe);
     const normalizedProjectTitle = (projectTitle || "").toLowerCase();
 
@@ -58,8 +66,8 @@ export function buildGraph(pagesMaybe: any, projectTitle: string): GraphData {
 
     for (const src of pages) {
         const srcText = getText(src).toLowerCase();
-        const childArr = toArray((src as any).items || []);
-        const childTexts = childArr.map((i: any) => getText(i).toLowerCase());
+        const childArr = toArray((src as { items?: unknown; }).items || []);
+        const childTexts = childArr.map((i: unknown) => getText(i).toLowerCase());
         const texts = [srcText, ...childTexts];
 
         for (const dst of pageNodes) {
