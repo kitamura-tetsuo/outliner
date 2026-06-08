@@ -60,13 +60,15 @@ class TestDataSeeder {
         await this._withProject(projectId, (project) => {
             const ydoc = project.ydoc;
 
-            // Clear orderedTree completely
-            const orderedTree = ydoc.getMap("orderedTree");
-            Array.from(orderedTree.keys()).forEach(key => orderedTree.delete(key));
+            ydoc.transact(() => {
+                // Clear orderedTree completely
+                const orderedTree = ydoc.getMap("orderedTree");
+                Array.from(orderedTree.keys()).forEach(key => orderedTree.delete(key));
 
-            // Clear items map completely
-            const itemsMap = ydoc.getMap("items");
-            Array.from(itemsMap.keys()).forEach(key => itemsMap.delete(key));
+                // Clear items map completely
+                const itemsMap = ydoc.getMap("items");
+                Array.from(itemsMap.keys()).forEach(key => itemsMap.delete(key));
+            });
 
             console.log(`Project "${projectId}" data cleared successfully.`);
         });
