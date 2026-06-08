@@ -9,8 +9,8 @@ import { firestoreStore } from "../../stores/firestoreStore.svelte";
 describe("PRJ: ProjectSelector option count reflects accessibleProjectIds", () => {
     beforeEach(() => {
         // Minimal stub for object referenced by ensureUserLoggedIn in ProjectSelector
-        (globalThis as unknown as { window: typeof window }).window ||= globalThis as unknown as typeof window;
-        (globalThis as unknown as { window: { __USER_MANAGER__: unknown } }).window.__USER_MANAGER__ = {
+        (globalThis as unknown as { window: typeof window; }).window ||= globalThis as unknown as typeof window;
+        (globalThis as unknown as { window: { __USER_MANAGER__: unknown; }; }).window.__USER_MANAGER__ = {
             addEventListener: vi.fn(() => vi.fn()),
             getCurrentUser: vi.fn(() => ({ id: "test-user" })),
             auth: { currentUser: { uid: "test-user" } },
