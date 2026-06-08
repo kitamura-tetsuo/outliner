@@ -25,6 +25,7 @@ export function setupGlobalDebugFunctions() {
                 },
             ) => {
                 await Promise.resolve();
+                // eslint-disable-next-line svelte/no-navigation-without-resolve
                 return goto(resolvePath(url), opts);
             };
         } else {
