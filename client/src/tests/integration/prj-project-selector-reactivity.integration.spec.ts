@@ -9,8 +9,8 @@ import { firestoreStore } from "../../stores/firestoreStore.svelte";
 describe("PRJ: ProjectSelector option count reflects accessibleProjectIds", () => {
     beforeEach(() => {
         // Minimal stub for object referenced by ensureUserLoggedIn in ProjectSelector
-        (globalThis as any).window ||= globalThis as any;
-        (globalThis as any).window.__USER_MANAGER__ = {
+        (globalThis as unknown as { window: typeof window; }).window ||= globalThis as unknown as typeof window;
+        (globalThis as unknown as { window: { __USER_MANAGER__: unknown; }; }).window.__USER_MANAGER__ = {
             addEventListener: vi.fn(() => vi.fn()),
             getCurrentUser: vi.fn(() => ({ id: "test-user" })),
             auth: { currentUser: { uid: "test-user" } },
@@ -24,7 +24,7 @@ describe("PRJ: ProjectSelector option count reflects accessibleProjectIds", () =
             defaultProjectId: "p-1",
             createdAt: new Date(),
             updatedAt: new Date(),
-        } as any);
+        } as unknown as NonNullable<typeof firestoreStore.userProject>);
     });
 
     it("Option count changes according to accessibleProjectIds increase/decrease", async () => {
@@ -35,7 +35,7 @@ describe("PRJ: ProjectSelector option count reflects accessibleProjectIds", () =
         expect(within(select).getAllByRole("option").length).toBe(1);
 
         // Increase to 2 items (destructive array change -> setUserProject via Proxy + ucVersion increment)
-        (firestoreStore.userProject!.accessibleProjectIds as any).push("p-2");
+        firestoreStore.userProject!.accessibleProjectIds!.push("p-2");
         // store integrity check
         expect(firestoreStore.userProject?.accessibleProjectIds?.length ?? 0).toBe(2);
         await waitFor(() => {
@@ -43,7 +43,7 @@ describe("PRJ: ProjectSelector option count reflects accessibleProjectIds", () =
         });
 
         // Revert to 1 item (pop -> setUserProject via Proxy + ucVersion increment)
-        (firestoreStore.userProject!.accessibleProjectIds as any).pop();
+        firestoreStore.userProject!.accessibleProjectIds!.pop();
         await waitFor(() => {
             expect(within(select).getAllByRole("option").length).toBe(1);
         });
@@ -57,7 +57,7 @@ firestoreStore.setUserProject({
     defaultProjectId: "p-1",
     createdAt: new Date(),
     updatedAt: new Date(),
-} as any);
+} as unknown as NonNullable<typeof firestoreStore.userProject>);
 
 it("Option count is immediately reflected even when replaced by setUserProject", async () => {
     render(ProjectSelector);
@@ -72,7 +72,7 @@ it("Option count is immediately reflected even when replaced by setUserProject",
         defaultProjectId: "p-1",
         createdAt: new Date(),
         updatedAt: new Date(),
-    } as any);
+    } as unknown as NonNullable<typeof firestoreStore.userProject>);
     expect(firestoreStore.userProject?.accessibleProjectIds?.length ?? 0).toBe(2);
     await waitFor(() => {
         expect(within(select).getAllByRole("option").length).toBe(2);
@@ -85,7 +85,7 @@ it("Option count is immediately reflected even when replaced by setUserProject",
         defaultProjectId: "p-1",
         createdAt: new Date(),
         updatedAt: new Date(),
-    } as any);
+    } as unknown as NonNullable<typeof firestoreStore.userProject>);
     await waitFor(() => {
         expect(within(select).getAllByRole("option").length).toBe(1);
     });

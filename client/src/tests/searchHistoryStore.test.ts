@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-let store: any;
+import type { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
+
+let store: typeof searchHistoryStore;
 
 function getHistory() {
     return store.history;

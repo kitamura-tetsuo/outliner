@@ -14,9 +14,11 @@ class ResizeObserver {
     unobserve() {}
     disconnect() {}
 }
-(globalThis as any).ResizeObserver = ResizeObserver;
-(globalThis as any).requestAnimationFrame = (cb: FrameRequestCallback) => setTimeout(cb, 0);
-(globalThis as any).YTree = YTree;
+(globalThis as unknown as { ResizeObserver: typeof ResizeObserver; }).ResizeObserver = ResizeObserver;
+(globalThis as unknown as { requestAnimationFrame: typeof requestAnimationFrame; }).requestAnimationFrame = (
+    cb: FrameRequestCallback,
+) => setTimeout(cb, 0) as unknown as number;
+(globalThis as unknown as { YTree: typeof YTree; }).YTree = YTree;
 
 describe("ITM-0001: Add new item with Enter", () => {
     it("splits the item at the cursor position", () => {

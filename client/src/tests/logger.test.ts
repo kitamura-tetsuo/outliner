@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 // Mock logger module first to mock useConsoleAPI
-vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
+vi.mock("../lib/logger", async (importOriginal: () => Promise<unknown>) => {
     const actual = await importOriginal();
 
     // Define logger as custom type
@@ -12,7 +12,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
         warn: Mock;
         error: Mock;
         fatal: Mock;
-        [key: string]: any;
+        [key: string]: unknown;
     };
 
     return {
@@ -30,7 +30,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<any>) => {
 
             // Set up to call console when logger method is called
             (["trace", "debug", "info", "warn", "error", "fatal"] as const).forEach(level => {
-                logger[level].mockImplementation((...args: any[]) => {
+                logger[level].mockImplementation((...args: unknown[]) => {
                     const consoleMethod = level === "trace" || level === "debug"
                         ? "log"
                         : level === "fatal"
@@ -98,7 +98,7 @@ import { getLogger } from "../lib/logger";
 // Set global mock for window object (required when testing without jsdom)
 global.window = {
     console: console,
-} as any;
+} as unknown as Window;
 
 // Mock fetch
 global.fetch = vi.fn(() =>
@@ -106,7 +106,7 @@ global.fetch = vi.fn(() =>
         ok: true,
         json: () => Promise.resolve({}),
     })
-) as any;
+) as unknown as typeof fetch;
 
 describe("Logger", () => {
     // Set console mock
@@ -121,8 +121,8 @@ describe("Logger", () => {
 
     beforeEach(() => {
         // Replace console with mock
-        global.console = mockConsole as any;
-        global.window.console = mockConsole as any;
+        global.console = mockConsole as unknown as typeof console;
+        global.window.console = mockConsole as unknown as typeof console;
 
         // Reset mocks
         vi.clearAllMocks();

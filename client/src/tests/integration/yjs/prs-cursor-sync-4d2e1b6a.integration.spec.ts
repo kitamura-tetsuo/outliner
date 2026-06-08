@@ -55,7 +55,7 @@ describe("yjs presence", () => {
         const states = c2.awareness!.getStates() as Map<number, AwarenessState>;
         console.log("States size:", states.size);
         console.log("States values:", Array.from(states.values()));
-        const received = Array.from(states.values()).some(s => (s as any).presence?.cursor?.itemId === "root");
+        const received = Array.from(states.values()).some(s => s.presence?.cursor?.itemId === "root");
         console.log("Received:", received);
         expect(received).toBe(true);
 
