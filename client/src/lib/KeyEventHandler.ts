@@ -1017,7 +1017,7 @@ export class KeyEventHandler {
         const boxSelection = selections.find(sel => sel.isBoxSelection);
 
         // Get text of selection range
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-useless-assignment
+        // eslint-disable-next-line no-useless-assignment
         let selectedText = "";
         let isBoxSelectionCopy = false;
 
@@ -2044,7 +2044,7 @@ export class KeyEventHandler {
         const boxSelection = selections.find(sel => sel.isBoxSelection);
 
         // Get text of selection range
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-useless-assignment
+        // eslint-disable-next-line no-useless-assignment
         let selectedText = "";
         let isBoxSelectionCut = false;
 

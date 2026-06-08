@@ -150,9 +150,9 @@
                 throw new Error("No URL returned from server");
             }
 
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error("Generate link error:", e);
-            shareError = e.message || "Failed to generate invitation link";
+            shareError = e instanceof Error ? e.message : "Failed to generate invitation link";
         } finally {
             isGeneratingLink = false;
         }
