@@ -36,34 +36,37 @@ export function findMatches(text: string, query: string, options: SearchOptions 
     return matches;
 }
 
-function toStringSafe(text: any): string {
+function toStringSafe(text: unknown): string {
     if (text == null) return "";
     if (typeof text === "string") return text;
     try {
-        if (typeof text.toString === "function") return text.toString();
+        const t = text as { toString?: () => string };
+        if (typeof t.toString === "function") return t.toString();
     } catch {}
     return String(text);
 }
 
-function pushChildren<T>(stack: T[], children: any): void {
+function pushChildren<T>(stack: T[], children: unknown): void {
     if (!children) return;
     try {
-        if (typeof children[Symbol.iterator] === "function") {
-            for (const ch of children as any) stack.push(ch as T);
+        const iterChildren = children as { [Symbol.iterator]?: () => Iterator<unknown> };
+        if (typeof iterChildren[Symbol.iterator] === "function") {
+            for (const ch of (children as Iterable<unknown>)) stack.push(ch as T);
             return;
         }
     } catch {}
-    const len = (children as any).length;
+    const arrChildren = children as { length?: unknown; at?: (i: number) => unknown } & Record<number, unknown>;
+    const len = arrChildren.length;
     if (typeof len === "number" && len >= 0) {
         for (let i = 0; i < len; i++) {
-            const v = (children as any).at ? (children as any).at(i) : children[i];
+            const v = typeof arrChildren.at === "function" ? arrChildren.at(i) : arrChildren[i];
             if (typeof v !== "undefined") stack.push(v as T);
         }
         return;
     }
 }
 
-export function searchItems<T extends { text: any; items?: any; id: string; }>(
+export function searchItems<T extends { text: unknown; items?: unknown; id: string; }>(
     root: T,
     query: string,
     options: SearchOptions = {},
@@ -72,18 +75,18 @@ export function searchItems<T extends { text: any; items?: any; id: string; }>(
     const stack: T[] = [root];
     while (stack.length) {
         const item = stack.shift() as T;
-        const text = toStringSafe((item as any).text);
+        const text = toStringSafe(item.text);
         const matches = findMatches(text, query, options);
         if (matches.length) {
             results.push({ item, matches });
         }
-        const children = (item as any).items;
+        const children = item.items;
         pushChildren<T>(stack, children);
     }
     return results;
 }
 
-export function replaceFirst<T extends { text: any; updateText?: (t: string) => void; items?: any; }>(
+export function replaceFirst<T extends { text: unknown; updateText?: (t: string) => void; items?: unknown; }>(
     root: T,
     query: string,
     replacement: string,
@@ -93,23 +96,23 @@ export function replaceFirst<T extends { text: any; updateText?: (t: string) => 
     const stack: T[] = [root];
     while (stack.length) {
         const item = stack.shift() as T;
-        const text = toStringSafe((item as any).text);
+        const text = toStringSafe(item.text);
         const newText = text.replace(regex, replacement);
         if (newText !== text) {
-            if ((item as any).updateText) {
-                (item as any).updateText(newText);
+            if (item.updateText) {
+                item.updateText(newText);
             } else {
-                (item as any).text = newText;
+                (item as { text: unknown }).text = newText;
             }
             return true;
         }
-        const children = (item as any).items;
+        const children = item.items;
         pushChildren<T>(stack, children);
     }
     return false;
 }
 
-export function replaceAll<T extends { text: any; updateText?: (t: string) => void; items?: any; }>(
+export function replaceAll<T extends { text: unknown; updateText?: (t: string) => void; items?: unknown; }>(
     root: T,
     query: string,
     replacement: string,
@@ -120,21 +123,21 @@ export function replaceAll<T extends { text: any; updateText?: (t: string) => vo
     const stack: T[] = [root];
     while (stack.length) {
         const item = stack.shift() as T;
-        const text = toStringSafe((item as any).text);
+        const text = toStringSafe(item.text);
         let replaced = 0;
         const newText = text.replace(regex, () => {
             replaced++;
             return replacement;
         });
         if (replaced > 0) {
-            if ((item as any).updateText) {
-                (item as any).updateText(newText);
+            if (item.updateText) {
+                item.updateText(newText);
             } else {
-                (item as any).text = newText;
+                (item as { text: unknown }).text = newText;
             }
             count += replaced;
         }
-        const children = (item as any).items;
+        const children = item.items;
         pushChildren<T>(stack, children);
     }
     return count;
