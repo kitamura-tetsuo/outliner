@@ -1,6 +1,6 @@
 import { userManager } from "../auth/UserManager";
 
-interface ApiKey {
+export interface ApiKey {
     id: string;
     description: string;
     createdAt: number;

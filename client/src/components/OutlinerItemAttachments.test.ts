@@ -22,7 +22,7 @@ describe("OutlinerItemAttachments", () => {
 
         render(OutlinerItemAttachments, {
             modelId: "test-id",
-            item: item as any,
+            item: item as unknown as import("../schema/app-schema").Item,
         });
 
         // Check if link exists with accessible name
@@ -51,7 +51,7 @@ describe("OutlinerItemAttachments", () => {
 
         render(OutlinerItemAttachments, {
             modelId: "test-id",
-            item: item as any,
+            item: item as unknown as import("../schema/app-schema").Item,
         });
 
         const link = screen.getByRole("link", { name: /^View attachment$/i });

@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { listApiKeys, createApiKey, revokeApiKey } from "../services/apiKeyService";
+    import { listApiKeys, createApiKey, revokeApiKey, type ApiKey } from "../services/apiKeyService";
 
-    let apiKeys: any[] = $state([]);
+    let apiKeys: ApiKey[] = $state([]);
     let loading = $state(true);
     let error = $state<string | null>(null);
 
@@ -19,8 +19,8 @@
         error = null;
         try {
             apiKeys = await listApiKeys();
-        } catch (err: any) {
-            error = err.message || "Failed to load API keys";
+        } catch (err: unknown) {
+            error = err instanceof Error ? err.message : "Failed to load API keys";
         } finally {
             loading = false;
         }
@@ -39,8 +39,8 @@
             newlyGeneratedKey = result.apiKey;
             newKeyDescription = "";
             await loadKeys(); // Refresh list
-        } catch (err: any) {
-            error = err.message || "Failed to create API key";
+        } catch (err: unknown) {
+            error = err instanceof Error ? err.message : "Failed to create API key";
         } finally {
             isGenerating = false;
         }
@@ -52,8 +52,8 @@
         try {
             await revokeApiKey(id);
             apiKeys = apiKeys.filter(key => key.id !== id);
-        } catch (err: any) {
-            error = err.message || "Failed to revoke API key";
+        } catch (err: unknown) {
+            error = err instanceof Error ? err.message : "Failed to revoke API key";
         }
     }
 

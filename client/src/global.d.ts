@@ -50,4 +50,6 @@ interface Window {
     __PALETTE_FWD__?: (ev: KeyboardEvent) => void;
     __GLOBAL_KEY_FWD__?: (ev: KeyboardEvent) => void;
     DEBUG_MODE?: string | boolean;
+    presenceStore?: typeof import("./stores/PresenceStore.svelte").presenceStore;
+    userPreferencesStore?: typeof import("./stores/UserPreferencesStore.svelte").userPreferencesStore;
 }
