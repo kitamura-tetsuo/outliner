@@ -75,12 +75,9 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("title", "Demo Project");
                         meta.set("lastReset", now);
 
-                        // Create project wrapper and root page
+                        // Create project wrapper and root page in a temporary valid instance first
                         const tempProject = Project.createInstance("Demo Project");
-                        Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(tempProject.ydoc));
-
-                        const project = Project.fromDoc(ydoc);
-                        const page = project.addPage("Demo", "seed-server");
+                        const page = tempProject.addPage("Demo", "seed-server");
 
                         if (templateLines.length > 0) {
                             const pageItems = page.items;
@@ -89,6 +86,9 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                                 item.text = line;
                             }
                         }
+
+                        // Apply the properly initialized project document into the real shared document
+                        Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(tempProject.ydoc));
                     });
                 } else {
                     logger.info({ event: "seed_demo_no_reset_needed", lastReset, now });
