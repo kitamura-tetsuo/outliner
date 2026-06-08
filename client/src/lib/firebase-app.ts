@@ -14,7 +14,10 @@ function validateFirebaseConfig() {
         "VITE_FIREBASE_APP_ID",
     ];
 
-    const metaEnv = ((typeof import.meta !== "undefined" && import.meta.env) || {}) as any;
+    const metaEnv = ((typeof import.meta !== "undefined" && import.meta.env) || {}) as Record<
+        string,
+        string | undefined
+    >;
     const missingVars = requiredEnvVars.filter(varName => !metaEnv[varName]);
 
     if (missingVars.length > 0) {
@@ -28,7 +31,10 @@ function validateFirebaseConfig() {
 function getFirebaseConfig() {
     validateFirebaseConfig();
 
-    const metaEnv = ((typeof import.meta !== "undefined" && import.meta.env) || {}) as any;
+    const metaEnv = ((typeof import.meta !== "undefined" && import.meta.env) || {}) as Record<
+        string,
+        string | undefined
+    >;
 
     const getProjectId = () => {
         if (typeof window !== "undefined") {
