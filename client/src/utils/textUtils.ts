@@ -1,18 +1,28 @@
 // Utility functions for text measuring and cursor positioning
 
+interface CaretPosition {
+    offsetNode: Node;
+    offset: number;
+}
+
+interface DocumentWithCaret extends Document {
+    caretPositionFromPoint?: (x: number, y: number) => CaretPosition | null;
+}
+
 // getClickPosition: Receives Text Element, MouseEvent, and content, returning the offset.
 export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content: string): number {
     const x = event.clientX;
     const y = event.clientY;
     // Try using Caret API
-    if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
+    const doc = document as DocumentWithCaret;
+    if (textEl && (doc.caretRangeFromPoint || doc.caretPositionFromPoint)) {
         let range: Range | null = null;
-        if (document.caretRangeFromPoint) {
-            range = document.caretRangeFromPoint(x, y);
-        } else {
-            const posInfo = (document as any).caretPositionFromPoint(x, y);
+        if (doc.caretRangeFromPoint) {
+            range = doc.caretRangeFromPoint(x, y);
+        } else if (doc.caretPositionFromPoint) {
+            const posInfo = doc.caretPositionFromPoint(x, y);
             if (posInfo) {
-                range = document.createRange();
+                range = doc.createRange();
                 range.setStart(posInfo.offsetNode, posInfo.offset);
                 range.collapse(true);
             }

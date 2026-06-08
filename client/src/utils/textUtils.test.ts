@@ -3,17 +3,24 @@ import { JSDOM } from "jsdom";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getClickPosition, pixelPositionToTextPosition } from "./textUtils";
 
-let originalGetBoundingClientRect: any;
-let originalGetComputedStyle: any;
+let originalGetBoundingClientRect: typeof Element.prototype.getBoundingClientRect;
+let originalGetComputedStyle: typeof window.getComputedStyle;
 
 beforeAll(() => {
     // Set DOM globally
     const dom = new JSDOM("<!DOCTYPE html><body></body>");
-    (global as any).window = dom.window;
-    (global as any).document = dom.window.document;
-    (global as any).Element = dom.window.Element;
-    (global as any).HTMLElement = dom.window.HTMLElement;
-    (global as any).Node = dom.window.Node;
+    const globalAny = global as typeof globalThis & {
+        window?: Window;
+        document?: Document;
+        Element?: typeof Element;
+        HTMLElement?: typeof HTMLElement;
+        Node?: typeof Node;
+    };
+    globalAny.window = dom.window as unknown as Window;
+    globalAny.document = dom.window.document;
+    globalAny.Element = dom.window.Element;
+    globalAny.HTMLElement = dom.window.HTMLElement;
+    globalAny.Node = dom.window.Node;
     // Mock getBoundingClientRect: textContent length * 10px
     originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
     Element.prototype.getBoundingClientRect = function() {
@@ -27,7 +34,7 @@ beforeAll(() => {
         fontSize: "",
         fontWeight: "",
         letterSpacing: "",
-    } as any);
+    } as unknown as CSSStyleDeclaration);
 });
 
 afterAll(() => {
