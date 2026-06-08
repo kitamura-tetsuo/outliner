@@ -14,12 +14,14 @@ function containsLink(text: string, target: string, project: string): boolean {
 function toArray(p: unknown): unknown[] {
     try {
         if (Array.isArray(p)) return p;
-        if (p && typeof (p as Iterable<unknown>)[Symbol.iterator] === "function") return Array.from(p as Iterable<unknown>);
-        const len = (p as { length?: number })?.length;
+        if (p && typeof (p as Iterable<unknown>)[Symbol.iterator] === "function") {
+            return Array.from(p as Iterable<unknown>);
+        }
+        const len = (p as { length?: number; })?.length;
         if (typeof len === "number" && len >= 0) {
             const r: unknown[] = [];
             for (let i = 0; i < len; i++) {
-                const item = (p as { at?: (idx: number) => unknown, [key: number]: unknown });
+                const item = p as { at?: (idx: number) => unknown; [key: number]: unknown; };
                 r.push(item.at ? item.at(i) : item[i]);
             }
             return r;
@@ -31,11 +33,13 @@ function toArray(p: unknown): unknown[] {
 function getText(v: unknown): string {
     try {
         if (typeof v === "string") return v;
-        const obj = v as { text?: unknown, toString?: () => string };
+        const obj = v as { text?: unknown; toString?: () => string; };
         if (obj?.text !== undefined) {
             const t = obj.text;
             if (typeof t === "string") return t;
-            if (t && typeof (t as { toString?: () => string }).toString === "function") return (t as { toString: () => string }).toString();
+            if (t && typeof (t as { toString?: () => string; }).toString === "function") {
+                return (t as { toString: () => string; }).toString();
+            }
         }
         if (obj && typeof obj.toString === "function") return obj.toString();
     } catch {}
@@ -62,7 +66,7 @@ export function buildGraph(pagesMaybe: unknown, projectTitle: string): GraphData
 
     for (const src of pages) {
         const srcText = getText(src).toLowerCase();
-        const childArr = toArray((src as { items?: unknown }).items || []);
+        const childArr = toArray((src as { items?: unknown; }).items || []);
         const childTexts = childArr.map((i: unknown) => getText(i).toLowerCase());
         const texts = [srcText, ...childTexts];
 
