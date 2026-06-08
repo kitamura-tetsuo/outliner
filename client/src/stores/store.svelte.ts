@@ -281,7 +281,11 @@ export class GeneralStore {
         // Monitor both the orderedTree (content) and items (page list) for changes
         try {
             ymap?.observeDeep?.(handler);
-            (project?.items as any)?.observeDeep?.(handler);
+            if (project?.items && "observeDeep" in project.items) {
+                (project.items as {
+                    observeDeep?: (fn: (events: Y.YEvent<Y.AbstractType<unknown>>[]) => void) => void;
+                }).observeDeep?.(handler as any);
+            }
         } catch {
             // Ignore errors during observation setup
         }

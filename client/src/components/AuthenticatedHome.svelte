@@ -14,7 +14,7 @@
         try {
             const { createYjsClient } = await import("../services");
             const client = await createYjsClient(selectedProjectId);
-            yjsStore.yjsClient = client as any;
+            yjsStore.yjsClient = client;
 
             logger.info(`Navigating to project page: /${projectName}`);
             goto(resolvePath(`/${projectName}`));

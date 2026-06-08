@@ -53,9 +53,9 @@
             setTimeout(() => {
                 goto(resolvePath(`/${data.projectId}`));
             }, 1500);
-        } catch (e: any) {
+        } catch (e: unknown) {
             status = "error";
-            message = e.message;
+            message = e instanceof Error ? e.message : String(e);
         }
     }
 </script>

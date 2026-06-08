@@ -199,7 +199,8 @@ export class Item {
         return this.value.get("preview") as { lines: string[]; image: string | null; } | undefined;
     }
     set preview(v: { lines: string[]; image: string | null; } | undefined) {
-        this.value.set("preview", v as any);
+        if (v === undefined) this.value.delete("preview");
+        else this.value.set("preview", v as unknown);
         this.value.set("lastChanged", Date.now());
     }
 

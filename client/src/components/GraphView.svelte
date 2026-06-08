@@ -259,7 +259,7 @@
             getYjsClientByProjectTitle(projectName)
                 .then((client) => {
                     if (client) {
-                        yjsStore.yjsClient = client as any;
+                        yjsStore.yjsClient = client;
                     }
                 })
                 .catch((err) =>
