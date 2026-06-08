@@ -9,7 +9,7 @@ class MockHocuspocusProvider {
     public awareness: Awareness;
     public isSynced: boolean = false;
     public name: string;
-    public configuration: any;
+    public configuration: Record<string, unknown>;
 
     // Registry of all providers by room
     static rooms: Map<string, Set<MockHocuspocusProvider>> = new Map();
