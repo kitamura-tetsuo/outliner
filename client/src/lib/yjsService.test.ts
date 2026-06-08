@@ -69,7 +69,9 @@ describe("yjsService", () => {
             expect(reloadedClient).toBeDefined();
             // We use structural assertions to match the mock instance.
             type MockClient = { doc: { guid: string; }; };
-            expect((reloadedClient as unknown as MockClient).doc.guid).toBe((originalClient as unknown as MockClient).doc.guid);
+            expect((reloadedClient as unknown as MockClient).doc.guid).toBe(
+                (originalClient as unknown as MockClient).doc.guid,
+            );
 
             // Verify the stable ID matches what's expected
             const expectedId = stableIdFromTitle("TestProject");
