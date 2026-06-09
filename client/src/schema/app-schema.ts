@@ -39,17 +39,23 @@ export class Comments {
     }
 
     deleteComment(commentId: string) {
-        const idx = this.yArray.toArray().findIndex((m) => m.get("id") === commentId);
-        if (idx >= 0) {
-            this.yArray.delete(idx, 1);
+        let idx = 0;
+        for (const m of this.yArray) {
+            if (m.get("id") === commentId) {
+                this.yArray.delete(idx, 1);
+                return;
+            }
+            idx++;
         }
     }
 
     updateComment(commentId: string, text: string) {
-        const m = this.yArray.toArray().find((m) => m.get("id") === commentId);
-        if (m) {
-            m.set("text", text);
-            m.set("lastChanged", Date.now());
+        for (const m of this.yArray) {
+            if (m.get("id") === commentId) {
+                m.set("text", text);
+                m.set("lastChanged", Date.now());
+                return;
+            }
         }
     }
 
