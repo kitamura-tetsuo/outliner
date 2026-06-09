@@ -79,8 +79,8 @@
         try {
             window.addEventListener("item-comment-count", (e: Event) => {
                 try {
-                    const ce = e as CustomEvent<any>;
-                    const W: any = window as any;
+                    const ce = e as CustomEvent<unknown>;
+                    const W = window as Window & typeof globalThis & { E2E_LOGS?: unknown[] };
                     if (Array.isArray(W.E2E_LOGS))
                         W.E2E_LOGS.push({
                             tag: "item-comment-count",
@@ -93,8 +93,7 @@
 
         // Item comments patching - wrapped in try for safety
         try {
-            const W: any =
-                typeof window !== "undefined" ? (window as any) : null;
+            const W = typeof window !== "undefined" ? (window as Window & typeof globalThis & { __itemCommentPatched?: boolean, commentCountsByItemId?: Map<string, number> }) : null;
             if (W && !W.__itemCommentPatched) {
                 W.__itemCommentPatched = true;
 
@@ -118,11 +117,11 @@
                     console.log("OutlinerBase script completed successfully");
                 } catch {}
 
-                const ItemCls: any = Item;
+                const ItemCls = Item as unknown as Record<string, unknown> & { prototype: Record<string, unknown> };
 
-                const ensureCommentsArrayOn = (target: any) => {
+                const ensureCommentsArrayOn = (target: unknown) => {
                     try {
-                        const map: any = target?.value;
+                        const map = (target as Record<string, unknown>)?.value as Y.Map<unknown> | undefined;
                         if (
                             !map ||
                             typeof map.get !== "function" ||
@@ -148,7 +147,7 @@
                 ) {
                     Object.defineProperty(ItemCls.prototype, "comments", {
                         get() {
-                            const map: any = (this as any)?.value;
+                            const map = (this as Record<string, unknown>)?.value as Y.Map<unknown> | undefined;
                             const arr = map?.get?.("comments");
                             if (!arr) {
                                 const fallback = new Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>>();
@@ -160,7 +159,7 @@
                     });
                 }
 
-                const broadcastCommentCount = (ctx: any) => {
+                const broadcastCommentCount = (ctx: unknown) => {
                     const arr = ensureCommentsArrayOn(ctx);
                     const len = arr?.length ?? 0;
                     W.commentCountsByItemId =
@@ -192,7 +191,7 @@
                     author: string,
                     text: string,
                 ) {
-                    let result: any;
+                    let result: unknown;
                     if (origAdd) {
                         result = origAdd.call(this, author, text);
                     } else {
@@ -209,7 +208,7 @@
                         ? ItemCls.prototype.deleteComment
                         : null;
                 ItemCls.prototype.deleteComment = function (commentId: string) {
-                    let result: any;
+                    let result: unknown;
                     if (origDel) {
                         result = origDel.call(this, commentId);
                     } else {
@@ -225,19 +224,18 @@
                 // Temporarily inject add/deleteComment hooks into the Item returned from Items.at()
                 const patchItems = () => {
                     try {
-                        const gs: any =
-                            (typeof window !== "undefined" &&
-                                (window as any).generalStore) ||
+                        const gs =
+                            (typeof window !== "undefined" && (window as Window & typeof globalThis & { generalStore?: unknown }).generalStore) ||
                             generalStore;
-                        const pageAny: any = gs?.currentPage;
-                        const items: any = pageAny?.items;
-                        if (!items || (items as any).__commentPatchApplied)
+                        const pageAny = (gs as { currentPage?: unknown })?.currentPage;
+                        const items = (pageAny as { items?: unknown })?.items;
+                        if (!items || (items as { __commentPatchApplied?: boolean }).__commentPatchApplied)
                             return;
-                        const origAt = items.at?.bind(items);
+                        const origAt = (items as { at?: (index: number) => unknown }).at?.bind(items);
                         if (typeof origAt !== "function") return;
-                        const patchSingle = (node: any) => {
-                            if (!node || node.__commentPatched) return node;
-                            node.__commentPatched = true;
+                        const patchSingle = (node: unknown) => {
+                            if (!node || (node as { __commentPatched?: boolean }).__commentPatched) return node;
+                            (node as { __commentPatched?: boolean }).__commentPatched = true;
                             try {
                                 const proto = Object.getPrototypeOf(node);
                                 if (
@@ -333,13 +331,13 @@
                             return node;
                         };
 
-                        (items as any).__commentPatchApplied = true;
-                        items.at = function (index: number) {
-                            const it: any = origAt(index);
+                        (items as { __commentPatchApplied?: boolean }).__commentPatchApplied = true;
+                        (items as { at?: (index: number) => unknown }).at = function (index: number) {
+                            const it = origAt(index);
                             return patchSingle(it);
                         };
 
-                        const length = items.length ?? 0;
+                        const length = (items as { length?: number }).length ?? 0;
                         for (let i = 0; i < length; i++) {
                             patchSingle(origAt(i));
                         }
@@ -363,7 +361,7 @@
 
 <div class="outliner-base" data-testid="outliner-base">
     {#if effectivePageItem}
-        {#key effectivePageItem?.ydoc ? ((effectivePageItem.ydoc as any).guid ?? effectivePageItem.id) : effectivePageItem.id}
+        {#key effectivePageItem?.ydoc ? ((effectivePageItem.ydoc as unknown as { guid?: string }).guid ?? effectivePageItem.id) : effectivePageItem.id}
             <OutlinerTree
                 pageItem={effectivePageItem}
                 {projectName}
