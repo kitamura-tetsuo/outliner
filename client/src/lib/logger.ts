@@ -136,7 +136,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
     levels.forEach(level => {
         const originalMethod = logger[level].bind(logger);
         // Type assertion to match pino's LogFn signature
-        (enhancedLogger as any)[level] = (...args: unknown[]) => {
+        (enhancedLogger as unknown as Record<string, (...args: unknown[]) => void>)[level] = (...args: unknown[]) => {
             // Get location information when log is called
             const file = getCallerFile();
 
@@ -149,7 +149,7 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
             }
 
             // Call original log method
-            return (originalMethod as any)(...args);
+            return (originalMethod as (...args: unknown[]) => void)(...args);
         };
     });
 
@@ -206,7 +206,9 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
                     return function(...args: unknown[]) {
                         // Call original logger method
-                        ((target as any)[prop as string] as (...args: unknown[]) => void)(...args);
+                        ((target as unknown as Record<string, (...args: unknown[]) => void>)[prop as string] as (
+                            ...args: unknown[]
+                        ) => void)(...args);
 
                         // Output to console as well (at the same level)
                         const consoleMethod = prop === "trace" || prop === "debug"

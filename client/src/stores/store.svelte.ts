@@ -284,7 +284,7 @@ export class GeneralStore {
             if (project?.items && "observeDeep" in project.items) {
                 (project.items as {
                     observeDeep?: (fn: (events: Y.YEvent<Y.AbstractType<unknown>>[]) => void) => void;
-                }).observeDeep?.(handler as any);
+                }).observeDeep?.(handler as Parameters<Y.Map<unknown>["observeDeep"]>[0]);
             }
         } catch {
             // Ignore errors during observation setup

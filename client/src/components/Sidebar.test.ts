@@ -110,7 +110,7 @@ describe("Sidebar", () => {
         // Reset store state
         store.project = {
             title: "Test Project",
-        } as any;
+        } as unknown as Project;
         store.pages = {
             current: [
                 {
@@ -126,7 +126,7 @@ describe("Sidebar", () => {
                     items: { length: 0 },
                 },
             ],
-        } as any;
+        } as unknown as typeof store.pages;
         store.pagesVersion = 0;
     });
 
@@ -212,8 +212,8 @@ describe("Sidebar", () => {
             const originalProject = store.project;
             const originalPages = store.pages;
 
-            store.project = Project.createInstance("Empty Project") as any;
-            store.pages = { current: [] } as any;
+            store.project = Project.createInstance("Empty Project") as unknown as Project;
+            store.pages = { current: [] } as unknown as typeof store.pages;
 
             const { rerender } = render(Sidebar, { isOpen: true });
 
