@@ -44,8 +44,10 @@ class CommandPaletteStore {
 
     private deriveQueryFromDoc(): string {
         try {
-            const w: any = typeof window !== "undefined" ? (window as any) : null;
-            const gs: any = w?.generalStore ?? null;
+            const w = typeof window !== "undefined"
+                ? (window as Window & typeof globalThis & { generalStore?: { __lastInputStream?: string; }; })
+                : null;
+            const gs = w?.generalStore ?? null;
 
             // 1) Infer from recent input stream
             const stream: string = typeof gs?.__lastInputStream === "string" ? gs.__lastInputStream : "";
@@ -75,7 +77,9 @@ class CommandPaletteStore {
 
             // 3) Fallback from window keystream
             try {
-                const wAny: any = typeof window !== "undefined" ? (window as any) : null;
+                const wAny = typeof window !== "undefined"
+                    ? (window as Window & typeof globalThis & { __KEYSTREAM__?: string; })
+                    : null;
                 const ks: string = typeof wAny?.__KEYSTREAM__ === "string" ? wAny.__KEYSTREAM__ : "";
                 if (ks) {
                     const lastSlash = ks.lastIndexOf("/");
@@ -101,7 +105,7 @@ class CommandPaletteStore {
                 console.log("[deriveQueryFromDoc] No node found");
                 return "";
             }
-            const text = (node as any).text ?? "";
+            const text = (node as unknown as { text?: unknown; }).text ?? "";
             const s = Math.max(0, this.commandStartOffset + 1);
             const e = Math.max(
                 s,
@@ -347,8 +351,10 @@ class CommandPaletteStore {
         if (this.commandCursorItemId) {
             const node = cursor.findTarget();
             if (node) {
-                const raw = (node as any).text ?? "";
-                const text = typeof raw === "string" ? raw : (raw?.toString?.() ?? "");
+                const raw = (node as unknown as { text?: unknown; }).text ?? "";
+                const text = typeof raw === "string"
+                    ? raw
+                    : ((raw as { toString?: () => string; })?.toString?.() ?? "");
                 const beforeSlash = text.slice(0, this.commandStartOffset);
                 const afterCursor = text.slice(cursor.offset);
 
@@ -363,7 +369,9 @@ class CommandPaletteStore {
         }
 
         // Always add to item list of page content
-        const generalStore = (window as any).generalStore;
+        const generalStore = (window as Window & typeof globalThis & {
+            generalStore?: { currentPage?: { items?: import("../schema/app-schema").Items; }; };
+        }).generalStore;
         if (!generalStore?.currentPage?.items) {
             return;
         }
@@ -377,14 +385,23 @@ class CommandPaletteStore {
 
         // Empty text and set component type
         // Use updateText to work with both yjs-schema / app-schema
-        if (typeof (newItem as any).updateText === "function") (newItem as any).updateText("");
-        else (newItem as any).text = "";
+        const n = newItem as unknown as {
+            updateText?: (t: string) => void;
+            text?: string;
+            id?: string;
+            aliasTargetId?: unknown;
+            componentType?: string;
+        };
+        if (typeof n.updateText === "function") n.updateText("");
+        else n.text = "";
 
-        const setMapField = (it: any, key: string, value: any) => {
+        const setMapField = (it: unknown, key: string, value: unknown) => {
             try {
-                const tree = it?.tree;
-                const nodeKey = it?.key;
-                const m = tree?.getNodeValueFromKey?.(nodeKey);
+                const tree = (it as {
+                    tree?: { getNodeValueFromKey?: (k: string) => { set?: (k: string, v: unknown) => void; }; };
+                })?.tree;
+                const nodeKey = (it as { key?: string; })?.key;
+                const m = nodeKey ? tree?.getNodeValueFromKey?.(nodeKey) : null;
                 if (m && typeof m.set === "function") {
                     m.set(key, value);
                     if (key !== "lastChanged") m.set("lastChanged", Date.now());
@@ -396,16 +413,16 @@ class CommandPaletteStore {
 
         if (type === "alias") {
             if (!setMapField(newItem, "aliasTargetId", undefined)) {
-                (newItem as any).aliasTargetId = undefined;
+                n.aliasTargetId = undefined;
             }
             try {
-                console.log("[CommandPaletteStore.insert] showing AliasPicker for new item:", newItem.id);
+                console.log("[CommandPaletteStore.insert] showing AliasPicker for new item:", n.id);
             } catch {}
-            aliasPickerStore.show(newItem.id);
+            if (n.id) aliasPickerStore.show(n.id);
         } else {
             // Set componentType safely
             if (!setMapField(newItem, "componentType", type)) {
-                (newItem as any).componentType = type;
+                n.componentType = type;
             }
         }
         editorOverlayStore.clearCursorAndSelection(cursor.userId);
@@ -439,5 +456,6 @@ export const commandPaletteStore = $state(new CommandPaletteStore());
 
 // expose for debugging and test access without importing .svelte.ts
 if (typeof window !== "undefined") {
-    (window as any).commandPaletteStore = commandPaletteStore;
+    (window as Window & typeof globalThis & { commandPaletteStore?: typeof commandPaletteStore; }).commandPaletteStore =
+        commandPaletteStore;
 }

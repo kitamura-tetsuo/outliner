@@ -25,10 +25,11 @@
         if (!current) return [];
         if (Array.isArray(current)) return current;
         // For Y.Array/Items, iterate and collect
-        const result: any[] = [];
-        const len = (current as any).length ?? 0;
+        const result: import("../schema/app-schema").Item[] = [];
+        const currentItems = current as unknown as { length: number; at: (idx: number) => import("../schema/app-schema").Item | undefined };
+        const len = currentItems.length ?? 0;
         for (let i = 0; i < len; i++) {
-            const item = (current as any).at?.(i);
+            const item = currentItems.at?.(i);
             if (item) result.push(item);
         }
         return result;
