@@ -173,7 +173,8 @@ export async function initializeBrowserPage(
 
         // Wait for authentication to complete
         await page.waitForFunction(
-            () => !!(window as Window & typeof globalThis & Record<string, unknown>).__USER_MANAGER__?.getCurrentUser?.(),
+            () =>
+                !!(window as Window & typeof globalThis & Record<string, unknown>).__USER_MANAGER__?.getCurrentUser?.(),
             null,
             { timeout: 60000 },
         );
@@ -255,7 +256,7 @@ export async function createMinimalYjsConnection(
             (window as Window & typeof globalThis & Record<string, unknown>)[providerVar] = provider;
 
             if (enableLogging) {
-                provider.on("status", (e: { status: string }) => console.log(`[${providerVar}] status`, e.status));
+                provider.on("status", (e: { status: string; }) => console.log(`[${providerVar}] status`, e.status));
                 provider.on(
                     "synced",
                     (data: { state: boolean; }) => console.log(`[${providerVar}] synced`, data.state),
@@ -264,7 +265,7 @@ export async function createMinimalYjsConnection(
                     `[${providerVar}] init isSynced=`,
                     provider.isSynced,
                     "url=",
-                    (provider as unknown as { configuration?: { url: string } }).configuration?.url,
+                    (provider as unknown as { configuration?: { url: string; }; }).configuration?.url,
                 );
             }
             try {
@@ -459,9 +460,9 @@ export interface TwoFullBrowserPagesResult {
  */
 export async function prepareTwoFullBrowserPages(
     browser: Browser,
-    testInfo: { title: string },
+    testInfo: { title: string; },
     initialItems: string[],
-    TestHelpers: { expectEmptyOutliner: (page: Page) => Promise<void> },
+    TestHelpers: { expectEmptyOutliner: (page: Page) => Promise<void>; },
 ): Promise<TwoFullBrowserPagesResult> {
     // Create first browser context
     const context1 = await browser.newContext();
@@ -504,7 +505,7 @@ export async function prepareTwoFullBrowserPages(
                 console.log("page1: project not found");
                 return false;
             }
-            const items = project.items as unknown as { length: number };
+            const items = project.items as unknown as { length: number; };
             const pageCount = items?.length ?? 0;
             console.log(`page1: Yjs client initialized, pageCount=${pageCount}`);
             return !!(project && items);
