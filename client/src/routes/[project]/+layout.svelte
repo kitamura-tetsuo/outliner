@@ -11,7 +11,10 @@ import { store } from "../../stores/store.svelte";
 // This layout applies to both /[project] and /[project]/[page]
 let { data, children } = $props();
 
-let project: any = $state(null);
+import type { Project } from "../../schema/app-schema";
+import type { YjsClient } from "../../yjs/YjsClient";
+
+let project: Project | null = $state(null);
 
 // Retrieve project from the store
 $effect(() => {
@@ -22,7 +25,7 @@ $effect(() => {
 
 // Retrieve project name from URL parameters
 $effect(() => {
-    const projectParam = (data as any)?.project;
+    const projectParam = (data as { project?: string })?.project;
     if (!projectParam) return;
 
     if (!yjsStore.yjsClient) {
@@ -32,13 +35,13 @@ $effect(() => {
 
 async function loadProject(projectNameFromParam?: string) {
     try {
-        const projectName = projectNameFromParam ?? (data as any).project;
+        const projectName = projectNameFromParam ?? (data as { project: string }).project;
 
         // Retrieve Yjs client from project name
         let client = await getYjsClientByProjectTitle(projectName);
 
         if (client) {
-            yjsStore.yjsClient = client as any;
+            yjsStore.yjsClient = client as YjsClient;
             project = client.getProject();
             // expose project to the global store so pages become available immediately
             store.project = project;
@@ -62,7 +65,7 @@ onMount(() => {
     try {
         userManager.addEventListener(() => {
             // If project not yet loaded but param exists, try again when auth flips
-            const projectParam = (data as any)?.project;
+            const projectParam = (data as { project?: string })?.project;
             if (projectParam && !yjsStore.yjsClient) {
                 loadProject(projectParam);
             }
