@@ -38,9 +38,9 @@
                 throw new Error("Failed to connect to the demo project.");
             }
 
-            yjsStore.yjsClient = client as any;
+            yjsStore.yjsClient = client as import("../../yjs/YjsClient").YjsClient;
             const project = client.getProject();
-            store.project = project as any;
+            store.project = project;
 
             // Wait for sync or timeout
             let retries = 0;
@@ -73,7 +73,7 @@
                 logger.warn("Timeout waiting for Demo page to sync");
             }
 
-            store.currentPage = demoPage as any;
+            store.currentPage = demoPage as import("../../schema/app-schema").Item;
 
         } catch (err) {
             console.error("Failed to initialize demo:", err);
@@ -91,7 +91,7 @@
         try {
             yjsStore.yjsClient?.dispose();
             yjsStore.yjsClient = undefined;
-            store.project = undefined as any;
+            store.project = undefined;
             store.currentPage = undefined;
         } catch {}
     });

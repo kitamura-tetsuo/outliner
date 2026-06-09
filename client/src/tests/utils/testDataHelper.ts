@@ -27,7 +27,9 @@ export function createTestUserData(): TestUserProject {
     };
 
     // Set test data in firestoreStore using public API to ensure reactivity wrapping
-    (firestoreStore as any).setUserProject(testUserProject as any);
+    (firestoreStore as unknown as {
+        setUserProject: (project: import("../../stores/firestoreStore.svelte").UserProject) => void;
+    }).setUserProject(testUserProject as import("../../stores/firestoreStore.svelte").UserProject);
 
     return testUserProject;
 }
@@ -58,7 +60,9 @@ export function setupTestEnvironment(): TestUserProject {
  */
 export async function performTestLogin(): Promise<void> {
     try {
-        const userManager = (window as any).__USER_MANAGER__;
+        const userManager = (window as unknown as {
+            __USER_MANAGER__: { loginWithEmailPassword: (e: string, p: string) => Promise<void>; };
+        }).__USER_MANAGER__;
         if (userManager && userManager.loginWithEmailPassword) {
             await userManager.loginWithEmailPassword("test@example.com", "password");
             console.log("Manual test login successful");
@@ -77,8 +81,16 @@ export async function performTestLogin(): Promise<void> {
  */
 export function logDebugInfo(): void {
     console.log("=== Test Debug Info ===");
-    console.log("Current user:", (window as any).__USER_MANAGER__?.getCurrentUser());
-    console.log("Auth state:", (window as any).__USER_MANAGER__?.auth?.currentUser);
+    console.log(
+        "Current user:",
+        (window as unknown as { __USER_MANAGER__?: { getCurrentUser: () => unknown; }; }).__USER_MANAGER__
+            ?.getCurrentUser(),
+    );
+    console.log(
+        "Auth state:",
+        (window as unknown as { __USER_MANAGER__?: { auth?: { currentUser: unknown; }; }; }).__USER_MANAGER__?.auth
+            ?.currentUser,
+    );
     console.log("Firestore userProject:", firestoreStore.userProject);
     console.log("======================");
 }
