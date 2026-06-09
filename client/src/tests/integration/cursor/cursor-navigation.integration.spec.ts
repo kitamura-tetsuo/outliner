@@ -76,7 +76,7 @@ describe("Cursor Integration", () => {
         (mockItem as unknown as { parent: Item | null; }).parent = mockParentItem;
 
         // Mock the general store
-        (generalStore as unknown as { currentPage: Item }).currentPage = mockParentItem;
+        (generalStore as unknown as { currentPage: Item; }).currentPage = mockParentItem;
 
         // Setup editor overlay store mocks
         (editorOverlayStore.setCursor as unknown as ReturnType<typeof vi.fn>).mockReturnValue("new-cursor-id");
@@ -158,7 +158,7 @@ describe("Cursor Integration", () => {
             mockItem.updateText = vi.fn();
 
             // Mock a selection
-            (editorOverlayStore as unknown as { selections: Record<string, unknown> }).selections = {
+            (editorOverlayStore as unknown as { selections: Record<string, unknown>; }).selections = {
                 "selection-1": {
                     userId: "user-1",
                     startItemId: "test-item-1",
@@ -188,16 +188,17 @@ describe("Cursor Integration", () => {
 
             // Ensure parent has indexOf and addNode methods
             if (mockItem.parent) {
-                (mockItem.parent as unknown as { indexOf: (item: Item) => number }).indexOf = (item: Item) => {
+                (mockItem.parent as unknown as { indexOf: (item: Item) => number; }).indexOf = (item: Item) => {
                     if (item === mockItem) return 0;
                     return -1;
                 };
-                (mockItem.parent as unknown as { addNode: ReturnType<typeof vi.fn> }).addNode = vi.fn().mockReturnValue({
-                    id: "new-item-1",
-                    text: "World",
-                    updateText: vi.fn(),
-                    delete: vi.fn(),
-                });
+                (mockItem.parent as unknown as { addNode: ReturnType<typeof vi.fn>; }).addNode = vi.fn()
+                    .mockReturnValue({
+                        id: "new-item-1",
+                        text: "World",
+                        updateText: vi.fn(),
+                        delete: vi.fn(),
+                    });
             }
 
             mockParentItem.items.addNode = vi.fn().mockReturnValue({
@@ -220,7 +221,8 @@ describe("Cursor Integration", () => {
             expect(mockItem.updateText).toHaveBeenCalledWith("Hello");
             // Check if either parent.addNode or mockParentItem.items.addNode was called
             expect(
-                (mockItem.parent as unknown as { addNode: ReturnType<typeof vi.fn> })?.addNode || mockParentItem.items.addNode,
+                (mockItem.parent as unknown as { addNode: ReturnType<typeof vi.fn>; })?.addNode
+                    || mockParentItem.items.addNode,
             ).toHaveBeenCalled();
         });
     });
