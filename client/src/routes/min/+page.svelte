@@ -40,9 +40,9 @@ let verificationResult = $state("");
 onMount(() => {
     if (typeof window !== "undefined") {
         (window as Window & typeof globalThis & { testEnvVars?: Record<string, string> }).testEnvVars = {
-            VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
-            VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-            VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL,
+            VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY ?? "",
+            VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "",
+            VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL ?? "",
         };
     }
 });
@@ -54,7 +54,7 @@ async function signIn() {
         idToken = await result.user.getIdToken(true);
         console.log("Retrieved ID Token:", idToken);
 
-        const verifyUrl = import.meta.env.VITE_TOKEN_VERIFY_URL;
+        const verifyUrl = import.meta.env.VITE_TOKEN_VERIFY_URL ?? "";
         const response = await fetch(verifyUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

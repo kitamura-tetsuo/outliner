@@ -13,7 +13,7 @@ onMount(async () => {
     // and we're on a child route like /schedule, trigger the project loading
     // The main page's +page.svelte might not be mounted for child routes
     if (typeof window !== "undefined") {
-        const win = window as Window & typeof globalThis & { __YJS_STORE__?: unknown; __E2E__?: boolean };
+        const win = window as Window & typeof globalThis & { __YJS_STORE__?: unknown; __E2E__?: boolean; loadProjectAndPage?: () => Promise<void>; __loadingInProgress?: boolean };
         // Check if this is a child route (not the main page)
         const path = win.location?.pathname ?? "";
         const isChildRoute = path.includes("/schedule") || path.includes("/graph");
