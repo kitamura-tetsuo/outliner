@@ -97,7 +97,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
             process.exit(0);
         })
         .catch(error => {
-            console.error("Failed to setup test user:", error);
+            /* eslint-disable-next-line no-console */ console.error("Failed to setup test user:", error);
             process.exit(1);
         });
 }

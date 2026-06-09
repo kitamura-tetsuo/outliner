@@ -436,7 +436,7 @@ export async function startServer(
                 console.log(`[server] Handover to Hocuspocus: room=${documentName}, ip=${ip}`);
                 hocuspocus.handleConnection(ws, request, { ip });
             } catch (e) {
-                console.error("Error handling Hocuspocus connection:", e);
+                /* eslint-disable-next-line no-console */ console.error("Error handling Hocuspocus connection:", e);
                 ws.close(1011);
             }
         });

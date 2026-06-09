@@ -12,7 +12,7 @@ async function run() {
         runQuery(sql);
     }
     catch (error) {
-        console.error("Error running query:", error);
+        /* eslint-disable-next-line no-console */ console.error("Error running query:", error);
     }
 }
 </script>
