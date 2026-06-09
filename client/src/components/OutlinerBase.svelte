@@ -231,7 +231,7 @@
                         const items = (pageAny as { items?: unknown })?.items;
                         if (!items || (items as { __commentPatchApplied?: boolean }).__commentPatchApplied)
                             return;
-                        const origAt = (items as { at?: Function }).at?.bind(items);
+                        const origAt = (items as { at?: (index: number) => unknown }).at?.bind(items);
                         if (typeof origAt !== "function") return;
                         const patchSingle = (node: unknown) => {
                             if (!node || (node as { __commentPatched?: boolean }).__commentPatched) return node;
@@ -332,7 +332,7 @@
                         };
 
                         (items as { __commentPatchApplied?: boolean }).__commentPatchApplied = true;
-                        (items as { at?: Function }).at = function (index: number) {
+                        (items as { at?: (index: number) => unknown }).at = function (index: number) {
                             const it = origAt(index);
                             return patchSingle(it);
                         };
