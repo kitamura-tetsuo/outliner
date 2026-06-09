@@ -37,8 +37,8 @@
     let currentUser = $state("anonymous");
     // Remount key to eliminate any possibility of Y.Doc switching within a mounted instance
     const outlinerKey = $derived.by(() => {
-        const ydocGuid = (pageItem as any)?.ydoc?.guid as string | undefined;
-        const id = (pageItem as any)?.id as string | undefined;
+        const ydocGuid = (pageItem as unknown as import("../schema/app-schema").Item)?.ydoc?.guid as string | undefined;
+        const id = (pageItem as unknown as import("../schema/app-schema").Item)?.id as string | undefined;
         return ydocGuid ?? id ?? `${projectName}:${pageName}`;
     });
 
@@ -127,13 +127,13 @@
     let __displayItemsTick = $state(0);
     onMount(() => {
         try {
-            const ymap: any = (pageItem as any)?.ydoc?.getMap?.("orderedTree");
-            if (ymap && typeof ymap.observeDeep === "function") {
-                const handler = (events: any[]) => {
+            const ymap = (pageItem as unknown as import("../schema/app-schema").Item)?.ydoc?.getMap?.("orderedTree");
+            if (ymap && typeof (ymap as { observeDeep?: unknown }).observeDeep === "function") {
+                const handler = (events: unknown[]) => {
                     try {
                         if (
                             typeof window !== "undefined" &&
-                            (window as any).__E2E__
+                            (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__
                         ) {
                             console.log("OutlinerTree: observeDeep tick");
                             events.forEach((e) => {
@@ -162,7 +162,7 @@
     // Fallback for E2E environment: Ensure DOM updates in environments where observe rarely arrives
     onMount(() => {
         try {
-            if (typeof window !== "undefined" && (window as any).__E2E__) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__) {
                 const timer = setInterval(() => {
                     __displayItemsTick = Date.now();
                 }, 200);
@@ -211,9 +211,9 @@
     });
 
     function handleAddItem() {
-        if (pageItem && !isReadOnly && (pageItem as any).items) {
+        if (pageItem && !isReadOnly && (pageItem as unknown as import("../schema/app-schema").Item).items) {
             // Add item to end
-            (pageItem as any).items.addNode(currentUser);
+            (pageItem as unknown as import("../schema/app-schema").Item).items.addNode(currentUser);
         }
     }
 
@@ -237,7 +237,7 @@
         try { containerId = await getDefaultContainerId(); } catch {}
 
         // Ensure containerId exists, skip fallback logic if unavailable in production
-        if (!containerId && !(typeof window !== 'undefined' && (window as any).__E2E__)) {
+        if (!containerId && !(typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) {
             console.error("No valid container ID found for file upload");
             return;
         }
@@ -257,7 +257,7 @@
                     } catch (uploadErr) {
                         console.error("Upload failed via file select", uploadErr);
                         // E2E fallback local URL for test environment (mocking network)
-                        if (typeof window !== 'undefined' && (window as any).__E2E__) {
+                        if (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__) {
                             const localUrl = URL.createObjectURL(file);
                             newItem.addAttachment(localUrl);
                             window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
@@ -287,7 +287,7 @@
         if (!activeId || activeId !== last.model.id) return;
 
         // Add only if the bottom item is not empty
-        const lastText = (last.model.original.text as any)?.toString?.() ?? "";
+        const lastText = (last.model.original.text as { toString?: () => string })?.toString?.() ?? "";
         if (lastText.trim().length === 0) return;
 
         const parent = last.model.original.parent;
@@ -295,8 +295,8 @@
             const idx = parent.indexOf(last.model.original);
             parent.addNode(currentUser, idx + 1);
         } else if (pageItem.items) {
-            const idx = (pageItem.items as any).indexOf(last.model.original);
-            (pageItem.items as any).addNode(currentUser, idx + 1);
+            const idx = (pageItem.items as unknown as import("../schema/app-schema").Items).indexOf(last.model.original);
+            (pageItem.items as unknown as import("../schema/app-schema").Items).addNode(currentUser, idx + 1);
         }
     }
 
@@ -314,10 +314,10 @@
         const itemViewModel = viewModel.getViewModel(itemId);
         if (!itemViewModel) return;
 
-        const item = itemViewModel.original as any;
-        const tree = item?.tree as any;
-        const doc = item?.ydoc as any;
-        const key = item?.key as string | undefined;
+        const item = itemViewModel.original as unknown as { tree?: unknown; ydoc?: unknown; key?: string };
+        const tree = item?.tree;
+        const doc = item?.ydoc;
+        const key = item?.key;
 
         try {
             console.log("handleIndent debug", {
@@ -325,7 +325,7 @@
                 hasTree: Boolean(tree),
                 hasDoc: Boolean(doc),
                 key,
-                treeType: tree?.constructor?.name,
+                treeType: (tree as { constructor?: { name?: string } })?.constructor?.name,
             });
         } catch {}
 
@@ -419,10 +419,10 @@
         const itemViewModel = viewModel.getViewModel(itemId);
         if (!itemViewModel) return;
 
-        const item = itemViewModel.original as any;
-        const tree = item?.tree as any;
-        const doc = item?.ydoc as any;
-        const key = item?.key as string | undefined;
+        const item = itemViewModel.original as unknown as { tree?: unknown; ydoc?: unknown; key?: string };
+        const tree = item?.tree;
+        const doc = item?.ydoc;
+        const key = item?.key;
 
         if (
             !tree ||
@@ -519,7 +519,7 @@
         try {
             const flag = localStorage.getItem("DEBUG_MODE");
             if (flag === "1" || flag === "true") {
-                (window as any).DEBUG_MODE = true;
+                (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE = true;
             }
         } catch {}
     }
@@ -534,7 +534,7 @@
             editorOverlayStore.clearSelections();
         }
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(
                 `Navigation event received: direction=${direction}, fromItemId=${fromItemId}, toItemId=${toItemId}, cursorScreenX=${cursorScreenX}`,
             );
@@ -688,7 +688,7 @@
             targetIndex = currentIndex + 1;
         }
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(
                 `Navigation calculation: currentIndex=${currentIndex}, targetIndex=${targetIndex}, items count=${displayItems.length}`,
             );
@@ -713,7 +713,7 @@
         shiftKey = false,
         direction?: string,
     ) {
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(
                 `Focusing item ${itemId} with cursor X: ${cursorScreenX}px, shift=${shiftKey}, direction=${direction}`,
             );
@@ -751,7 +751,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as any).DEBUG_MODE
+                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                 ) {
                     console.log(
                         `Dispatched focus-item event to ${itemId} with X: ${cursorXValue}px, shift=${shiftKey}`,
@@ -777,7 +777,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as any).DEBUG_MODE
+                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                 ) {
                     console.log(
                         `Sent finish-edit event to active item ${activeItem}`,
@@ -813,7 +813,7 @@
                 parent.addNode(currentUser, itemIndex + 1);
             } else {
                 // Add as root level item
-                const items = pageItem.items as any;
+                const items = pageItem.items as unknown as import("../schema/app-schema").Items;
                 if (items) {
                     const itemIndex = items.indexOf(currentItem.model.original);
                     items.addNode(currentUser, itemIndex + 1);
@@ -827,7 +827,7 @@
         const { lines, selections, activeItemId } = event.detail;
 
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`handlePasteMultiItem called with lines:`, lines);
             console.log(`Selections:`, selections);
             console.log(`Active item ID: ${activeItemId}`);
@@ -835,16 +835,21 @@
 
         // Set global variables for testing
         if (typeof window !== "undefined") {
-            (window as any).lastPasteLines = lines;
-            (window as any).lastPasteSelections = selections;
-            (window as any).lastPasteActiveItemId = activeItemId;
+            const win = window as Window & typeof globalThis & {
+                lastPasteLines?: unknown;
+                lastPasteSelections?: unknown;
+                lastPasteActiveItemId?: unknown;
+            };
+            win.lastPasteLines = lines;
+            win.lastPasteSelections = selections;
+            win.lastPasteActiveItemId = activeItemId;
         }
 
         // If selections exist, delete selections then paste
         if (selections && selections.length > 0) {
             // Handle selection spanning multiple items
             const multiItemSelection = selections.find(
-                (sel: any) => sel.startItemId !== sel.endItemId,
+                (sel: { startItemId?: string, endItemId?: string }) => sel.startItemId !== sel.endItemId,
             );
 
             if (multiItemSelection) {
@@ -870,7 +875,7 @@
 
         // Use first item if active item not found
         if (itemIndex < 0) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(`Active item not found, aborting paste`);
             }
             return;
@@ -887,7 +892,7 @@
             const newIndex = itemIndex + i;
             let newItem = items.addNode(currentUser, newIndex);
             if (!newItem) {
-                newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
+                newItem = items.at ? items.at(newIndex) : items[newIndex];
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
@@ -896,9 +901,9 @@
     }
 
     // Paste into selection spanning multiple items
-    function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
+    function handleMultiItemSelectionPaste(selection: { startItemId: string, endItemId: string, startOffset?: number, endOffset?: number }, lines: string[]) {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(
                 `handleMultiItemSelectionPaste called with selection:`,
                 selection,
@@ -919,7 +924,7 @@
         );
 
         if (startIndex < 0 || endIndex < 0) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(
                     `Start or end item not found: startIndex=${startIndex}, endIndex=${endIndex}`,
                 );
@@ -932,7 +937,7 @@
         const actualStartIndex = Math.min(startIndex, endIndex);
         const actualEndIndex = Math.max(startIndex, endIndex);
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Selection direction: isReversed=${isReversed}`);
             console.log(
                 `Actual indices: start=${actualStartIndex}, end=${actualEndIndex}`,
@@ -950,7 +955,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as any).DEBUG_MODE
+                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                 ) {
                     console.log(
                         `Updated first item text to: "${lines[0] || ""}"`,
@@ -960,7 +965,7 @@
                 // Delete other items
                 if (
                     typeof window !== "undefined" &&
-                    (window as any).DEBUG_MODE
+                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                 ) {
                     console.log(`Removing item at index ${i}`);
                 }
@@ -971,14 +976,14 @@
         // Add remaining lines as new items
         for (let i = 1; i < lines.length; i++) {
             const newIndex = actualStartIndex + i;
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(
                     `Adding new item at index ${newIndex} with text: "${lines[i]}"`,
                 );
             }
             let newItem = items.addNode(currentUser, newIndex);
             if (!newItem) {
-                newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
+                newItem = items.at ? items.at(newIndex) : items[newIndex];
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
@@ -988,7 +993,7 @@
         // Update cursor position
         const newCursorItemId = displayItems[actualStartIndex]?.model.id;
         if (newCursorItemId) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(
                     `Setting cursor to item ${newCursorItemId} at offset ${(lines[0] || "").length}`,
                 );
@@ -1007,7 +1012,7 @@
             // Clear selection
             editorOverlayStore.clearSelections();
         } else {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(
                     `Could not find cursor item at index ${actualStartIndex}`,
                 );
@@ -1016,9 +1021,9 @@
     }
 
     // Paste into selection within single item
-    function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
+    function handleSingleItemSelectionPaste(selection: { startItemId: string, startOffset: number, endOffset: number }, lines: string[]) {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(
                 `handleSingleItemSelectionPaste called with selection:`,
                 selection,
@@ -1036,7 +1041,7 @@
         // Get item index
         const itemIndex = displayItems.findIndex((d) => d.model.id === itemId);
         if (itemIndex < 0) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(
                     `Item not found: itemId=${itemId}, itemIndex=${itemIndex}`,
                 );
@@ -1046,9 +1051,9 @@
 
         const items = pageItem.items as Items;
         const item = displayItems[itemIndex].model.original;
-        const text: string = (item.text as any)?.toString?.() ?? "";
+        const text: string = (item.text as { toString?: () => string })?.toString?.() ?? "";
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Original text: "${text}"`);
             console.log(
                 `Selection range: start=${startOffset}, end=${endOffset}`,
@@ -1063,7 +1068,7 @@
                 text.substring(endOffset);
             item.updateText(newText);
 
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(`Updated text to: "${newText}"`);
             }
 
@@ -1083,7 +1088,7 @@
             const newFirstText = text.substring(0, startOffset) + lines[0];
             item.updateText(newFirstText);
 
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(`Updated first item text to: "${newFirstText}"`);
             }
 
@@ -1093,14 +1098,14 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as any).DEBUG_MODE
+                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                 ) {
                     console.log(`Adding new item at index ${newIndex}`);
                 }
 
                 let newItem = items.addNode(currentUser, newIndex);
                 if (!newItem) {
-                    newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
+                    newItem = items.at ? items.at(newIndex) : items[newIndex];
                 }
                 if (newItem) {
                     if (i === lines.length - 1) {
@@ -1111,7 +1116,7 @@
 
                         if (
                             typeof window !== "undefined" &&
-                            (window as any).DEBUG_MODE
+                            (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                         ) {
                             console.log(
                                 `Last item text set to: "${lastItemText}"`,
@@ -1122,7 +1127,7 @@
 
                         if (
                             typeof window !== "undefined" &&
-                            (window as any).DEBUG_MODE
+                            (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                         ) {
                             console.log(`Item ${i} text set to: "${lines[i]}"`);
                         }
@@ -1139,7 +1144,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as any).DEBUG_MODE
+                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                 ) {
                     console.log(
                         `Setting cursor to last item ${lastItemId} at offset ${newOffset}`,
@@ -1161,7 +1166,7 @@
             } else {
                 if (
                     typeof window !== "undefined" &&
-                    (window as any).DEBUG_MODE
+                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                 ) {
                     console.log(
                         `Could not find last item at index ${lastItemIndex}`,
@@ -1211,7 +1216,7 @@
         dragCurrentItemId = itemId;
         dragCurrentOffset = offset;
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Drag start: itemId=${itemId}, offset=${offset}`);
         }
     }
@@ -1230,7 +1235,7 @@
         // Update selection range
         updateDragSelection();
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Dragging: itemId=${itemId}, offset=${offset}`);
         }
     }
@@ -1289,8 +1294,9 @@
             event.detail;
 
         try {
-            const w: any =
-                typeof window !== "undefined" ? (window as any) : null;
+            const w = typeof window !== "undefined"
+                ? (window as Window & typeof globalThis & { E2E_LOGS?: unknown[] })
+                : null;
             if (w && Array.isArray(w.E2E_LOGS)) {
                 w.E2E_LOGS.push({
                     tag: "handleItemDrop",
@@ -1303,7 +1309,7 @@
             }
         } catch {}
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(
                 `Drop event: targetItemId=${targetItemId}, position=${position}, sourceItemId=${sourceItemId}`,
             );
@@ -1355,7 +1361,7 @@
     function handleItemDragEnd(event: CustomEvent) {
         const { itemId } = event.detail;
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Drag end: itemId=${itemId}`);
         }
 
@@ -1367,13 +1373,13 @@
 
     // Drop selection within single item
     function handleSingleItemSelectionDrop(
-        selection: any,
+        selection: { startItemId: string, startOffset: number, endOffset: number },
         targetItemId: string,
         position: string,
         _dropEffect: string, // eslint-disable-line @typescript-eslint/no-unused-vars
     ) {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(
                 `handleSingleItemSelectionDrop called with selection:`,
                 selection,
@@ -1397,7 +1403,7 @@
         );
 
         if (sourceIndex < 0 || targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(
                     `Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`,
                 );
@@ -1407,16 +1413,16 @@
 
         // Get source item text
         const sourceItem = displayItems[sourceIndex].model.original;
-        const sourceText: string = (sourceItem.text as any)?.toString?.() ?? "";
+        const sourceText: string = (sourceItem.text as { toString?: () => string })?.toString?.() ?? "";
 
         // Get target item text
         const targetItem = displayItems[targetIndex].model.original;
-        const targetText: string = (targetItem.text as any)?.toString?.() ?? "";
+        const targetText: string = (targetItem.text as { toString?: () => string })?.toString?.() ?? "";
 
         // Get selected text
         const selectedText = sourceText.substring(startOffset, endOffset);
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Selected text: "${selectedText}"`);
         }
 
@@ -1426,7 +1432,7 @@
             sourceText.substring(endOffset);
         sourceItem.updateText(newSourceText);
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Updated source text: "${newSourceText}"`);
         }
 
@@ -1447,7 +1453,7 @@
             );
         }
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Updated target text: "${targetItem.text}"`);
         }
 
@@ -1473,13 +1479,13 @@
 
     // Drop selection spanning multiple items
     function handleMultiItemSelectionDrop(
-        selection: any,
+        selection: { startItemId: string, endItemId: string, startOffset?: number, endOffset?: number },
         targetItemId: string,
         position: string,
         text: string,
     ) {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(
                 `handleMultiItemSelectionDrop called with selection:`,
                 selection,
@@ -1503,7 +1509,7 @@
         );
 
         if (startIndex < 0 || endIndex < 0 || targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(
                     `Start, end, or target item not found: startIndex=${startIndex}, endIndex=${endIndex}, targetIndex=${targetIndex}`,
                 );
@@ -1518,7 +1524,7 @@
         // Get text within selection
         const selectedText = text;
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Selected text: "${selectedText}"`);
         }
 
@@ -1533,7 +1539,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as any).DEBUG_MODE
+                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                 ) {
                     console.log(`Cleared first item text`);
                 }
@@ -1541,7 +1547,7 @@
                 // Delete other items
                 if (
                     typeof window !== "undefined" &&
-                    (window as any).DEBUG_MODE
+                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
                 ) {
                     console.log(`Removing item at index ${i}`);
                 }
@@ -1565,7 +1571,7 @@
             for (let i = 1; i < lines.length; i++) {
                 let newItem = items.addNode(currentUser, targetIndex + i);
                 if (!newItem) {
-                    newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
+                    newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
                 }
                 if (newItem) {
                     newItem.updateText(lines[i]);
@@ -1578,7 +1584,7 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = (items as any).at(targetIndex + i);
+                const newItem = items.at(targetIndex + i);
                 if (newItem) {
                     newItem.updateText(lines[i]);
                 }
@@ -1595,14 +1601,14 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = (items as any).at(targetIndex + i);
+                const newItem = items.at(targetIndex + i);
                 if (newItem) {
                     newItem.updateText(lines[i]);
                 }
             }
         }
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Updated target text: "${targetItem.text}"`);
         }
 
@@ -1633,7 +1639,7 @@
         position: string,
     ) {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(
                 `handleItemMoveDrop called with sourceItemId=${sourceItemId}, targetItemId=${targetItemId}, position=${position}`,
             );
@@ -1648,7 +1654,7 @@
         );
 
         if (sourceIndex < 0 || targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(
                     `Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`,
                 );
@@ -1658,7 +1664,7 @@
 
         // Do nothing if source and target are the same item
         if (sourceIndex === targetIndex) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(
                     `Source and target are the same item, no action needed`,
                 );
@@ -1674,8 +1680,9 @@
         const targetKey = targetItem.key!;
 
         try {
-            const w: any =
-                typeof window !== "undefined" ? (window as any) : null;
+            const w = typeof window !== "undefined"
+                ? (window as Window & typeof globalThis & { E2E_LOGS?: unknown[] })
+                : null;
             if (w && Array.isArray(w.E2E_LOGS)) {
                 w.E2E_LOGS.push({
                     tag: "handleItemMoveDrop",
@@ -1688,8 +1695,8 @@
         } catch {}
 
         try {
-            const tree: any = items.tree;
-            const doc: any = pageItem?.ydoc;
+            const tree = items.tree as unknown as import("../schema/app-schema").YTree & { getNodeParentFromKey?: (k: string) => string };
+            const doc = pageItem?.ydoc;
             const sourceParent = tree.getNodeParentFromKey?.(sourceKey);
             const targetParent = tree.getNodeParentFromKey?.(targetKey);
 
@@ -1774,7 +1781,7 @@
             try {
                 targetItem.addAttachment(url);
             } catch {
-                try { (targetItem as any).attachments.push([url]); } catch {}
+                try { (targetItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
             }
         } else {
             // Create new item at top or bottom relative to targetItem
@@ -1794,7 +1801,7 @@
                 try {
                     newItem.addAttachment(url);
                 } catch {
-                    try { (newItem as any).attachments.push([url]); } catch {}
+                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
                 }
             }
         }
@@ -1809,7 +1816,7 @@
         text: string,
     ) {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(
                 `handleExternalTextDrop called with targetItemId=${targetItemId}, position=${position}`,
             );
@@ -1822,7 +1829,7 @@
         );
 
         if (targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
                 console.log(
                     `Target item not found: targetIndex=${targetIndex}`,
                 );
@@ -1848,7 +1855,7 @@
             for (let i = 1; i < lines.length; i++) {
                 let newItem = items.addNode(currentUser, targetIndex + i);
                 if (!newItem) {
-                    newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
+                    newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
                 }
                 if (newItem) {
                     newItem.text = lines[i];
@@ -1861,7 +1868,7 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
+                const newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -1877,14 +1884,14 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = (items as any).at ? (items as any).at(targetIndex + i) : (items as any)[targetIndex + i];
+                const newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
                 if (newItem) {
                     newItem.text = lines[i];
                 }
             }
         }
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
             console.log(`Updated target text: "${targetItem.text}"`);
         }
 
@@ -1935,7 +1942,7 @@
 
         const hasFileList = dt.files && dt.files.length > 0;
         const hasFileItems = dt.items && Array.from(dt.items).some(it => it.kind === "file");
-        const e2eFiles: File[] = (typeof window !== 'undefined' && (window as any).__E2E_LAST_FILES__ && Array.isArray((window as any).__E2E_LAST_FILES__)) ? (window as any).__E2E_LAST_FILES__ as File[] : [];
+        const e2eFiles: File[] = (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__ && Array.isArray((window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__)) ? (window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__ as File[] : [];
         const hasE2eFiles = e2eFiles.length > 0;
 
         if (hasFileList || hasFileItems || hasE2eFiles) {
@@ -1951,7 +1958,7 @@
                 }
             } else if (hasE2eFiles) {
                 files.push(...e2eFiles);
-                try { (window as any).__E2E_LAST_FILES__ = []; } catch {}
+                try { (window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__ = []; } catch {}
             }
 
             if (files.length > 0) {
@@ -1971,7 +1978,7 @@
                                 try {
                                     newItem.addAttachment(url);
                                 } catch {
-                                    try { (newItem as any).attachments.push([url]); } catch {}
+                                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
                                 }
                             } catch (uploadErr) {
                                 logger.error({ error: uploadErr as Error }, "Upload failed in tree bottom, using local fallback");
@@ -1979,10 +1986,10 @@
                                 try {
                                     newItem.addAttachment(localUrl);
                                 } catch {
-                                    try { (newItem as any).attachments.push([localUrl]); } catch {}
+                                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([localUrl]); } catch {}
                                 }
                                 try {
-                                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) {
+                                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) {
                                         window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
                                     }
                                 } catch {}

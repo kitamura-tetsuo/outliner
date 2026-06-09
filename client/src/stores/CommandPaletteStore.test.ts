@@ -2,25 +2,28 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock module
 // Provide a local mock instead of importing .svelte.ts in tests
-const mockCursor: any = {
+const mockCursor: import("./editorOverlayStore.svelte.ts").CursorModel = {
     itemId: "test-item",
     offset: 5,
     findTarget: vi.fn(() => ({ text: "hello/", updateText: vi.fn() })),
     applyToStore: vi.fn(),
 };
-const mockEditorOverlayStore = { getCursorInstances: vi.fn(() => [mockCursor]) } as any;
+const mockEditorOverlayStore = { getCursorInstances: vi.fn(() => [mockCursor]) } as unknown as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
 vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 
 // Access global store if available; otherwise provide a local minimal implementation
 const commandPaletteStore = (() => {
-    const g = globalThis as any;
-    if (g.commandPaletteStore) return g.commandPaletteStore;
+    const g = globalThis as typeof globalThis & { commandPaletteStore?: unknown };
+    if (g.commandPaletteStore) return g.commandPaletteStore as { hide: () => void, show: (pos: unknown) => void, handleCommandInput: (c: string) => void, handleCommandBackspace: () => void, isVisible: boolean, position: unknown, query: string, selectedIndex: number, filtered: { label: string }[] };
     // Minimal replica sufficient for this test
-    const state: any = {
+    const state = {
         isVisible: false,
-        position: { top: 0, left: 0 },
+        position: { top: 0, left: 0 } as unknown,
         query: "",
         selectedIndex: 0,
+        _cmdItemId: null as string | null,
+        _cmdOffset: 0,
+        _cmdStart: 0,
         commands: [
             { label: "Table", type: "table" },
             { label: "Chart", type: "chart" },
@@ -28,9 +31,9 @@ const commandPaletteStore = (() => {
         ],
         get filtered() {
             const q = state.query.toLowerCase();
-            return state.commands.filter((c: any) => c.label.toLowerCase().includes(q));
+            return state.commands.filter((c: { label: string }) => c.label.toLowerCase().includes(q));
         },
-        show(pos: any) {
+        show(pos: unknown) {
             state.position = pos;
             state.query = "";
             state.selectedIndex = 0;
