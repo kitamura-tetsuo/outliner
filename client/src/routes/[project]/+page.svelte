@@ -62,11 +62,11 @@
             }
 
             // Update store
-            yjsStore.yjsClient = client as any;
+            yjsStore.yjsClient = client as unknown as NonNullable<typeof yjsStore.yjsClient>;
             const project = client.getProject?.();
             if (project) {
-                store.project = project as any;
-                logger.info(`loadProject: Project loaded: "${project.title}", GUID: ${(project as any).ydoc?.guid}`);
+                store.project = project as unknown as NonNullable<typeof store.project>;
+                logger.info(`loadProject: Project loaded: "${project.title}", GUID: ${(project as unknown as { ydoc?: { guid?: string } }).ydoc?.guid}`);
             }
         } catch (err) {
             console.error("Failed to load project:", err);

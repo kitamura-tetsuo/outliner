@@ -25,7 +25,7 @@ describe("apiKeyService", () => {
         vi.mocked(fetch).mockResolvedValueOnce({
             ok: true,
             json: () => Promise.resolve(mockKeys),
-        } as any);
+        } as unknown as Response);
 
         const result = await listApiKeys();
         expect(result).toEqual(mockKeys);
@@ -37,7 +37,7 @@ describe("apiKeyService", () => {
         vi.mocked(fetch).mockResolvedValueOnce({
             ok: true,
             json: () => Promise.resolve(mockResponse),
-        } as any);
+        } as unknown as Response);
 
         const result = await createApiKey("Test");
         expect(result).toEqual(mockResponse);
@@ -47,7 +47,7 @@ describe("apiKeyService", () => {
         vi.mocked(fetch).mockResolvedValueOnce({
             ok: true,
             json: () => Promise.resolve({ success: true }),
-        } as any);
+        } as unknown as Response);
 
         await revokeApiKey("1");
         expect(fetch).toHaveBeenCalledWith(

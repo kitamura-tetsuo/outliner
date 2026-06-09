@@ -16,7 +16,7 @@
 
     // Eventless: Recalculate dependent on $state/$derived
     let userProject = $derived.by(() => {
-        void (firestoreStore as any).ucVersion; // Dependency
+        void (firestoreStore as unknown as { ucVersion: unknown }).ucVersion; // Dependency
         return firestoreStore.userProject;
     });
 
