@@ -416,20 +416,42 @@ async function deleteAllTestProjects(persistence: Persistence) {
     // We can do this in parallel or bulk, but sequential is safer for sqlite locking
     console.log(chalk.blue("Deleting..."));
 
-    for (const docName of docNamesToDelete) {
-        await new Promise<void>((resolve) => {
-            persistence.db!.run('DELETE FROM "documents" WHERE name = ?', [docName], (err) => {
-                if (err) {
-                    console.error(chalk.red(`Failed to delete ${docName}: ${err.message}`));
-                } else {
-                    deletedCount++;
-                }
+    await new Promise<void>((resolve, reject) => {
+        persistence.db!.run("BEGIN TRANSACTION", (err) => {
+            if (err) return reject(err);
+            resolve();
+        });
+    });
+
+    try {
+        for (const docName of docNamesToDelete) {
+            await new Promise<void>((resolve, reject) => {
+                persistence.db!.run('DELETE FROM "documents" WHERE name = ?', [docName], (err) => {
+                    if (err) {
+                        console.error(chalk.red(`Failed to delete ${docName}: ${err.message}`));
+                        reject(err);
+                    } else {
+                        deletedCount++;
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        await new Promise<void>((resolve, reject) => {
+            persistence.db!.run("COMMIT", (err) => {
+                if (err) return reject(err);
                 resolve();
             });
         });
-    }
 
-    console.log(chalk.green(`Successfully deleted ${deletedCount} documents.`));
+        console.log(chalk.green(`Successfully deleted ${deletedCount} documents.`));
+    } catch (e) {
+        await new Promise<void>((resolve) => {
+            persistence.db!.run("ROLLBACK", () => resolve());
+        });
+        console.error(chalk.red("Deletion failed, transaction rolled back."));
+    }
 }
 
 async function deleteOrphanedFirebaseProjects(persistence: Persistence) {
