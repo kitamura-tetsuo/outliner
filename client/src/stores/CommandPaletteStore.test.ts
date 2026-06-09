@@ -8,13 +8,27 @@ const mockCursor: import("./editorOverlayStore.svelte.ts").CursorModel = {
     findTarget: vi.fn(() => ({ text: "hello/", updateText: vi.fn() })),
     applyToStore: vi.fn(),
 };
-const mockEditorOverlayStore = { getCursorInstances: vi.fn(() => [mockCursor]) } as unknown as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
+const mockEditorOverlayStore = {
+    getCursorInstances: vi.fn(() => [mockCursor]),
+} as unknown as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
 vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 
 // Access global store if available; otherwise provide a local minimal implementation
 const commandPaletteStore = (() => {
-    const g = globalThis as typeof globalThis & { commandPaletteStore?: unknown };
-    if (g.commandPaletteStore) return g.commandPaletteStore as { hide: () => void, show: (pos: unknown) => void, handleCommandInput: (c: string) => void, handleCommandBackspace: () => void, isVisible: boolean, position: unknown, query: string, selectedIndex: number, filtered: { label: string }[] };
+    const g = globalThis as typeof globalThis & { commandPaletteStore?: unknown; };
+    if (g.commandPaletteStore) {
+        return g.commandPaletteStore as {
+            hide: () => void;
+            show: (pos: unknown) => void;
+            handleCommandInput: (c: string) => void;
+            handleCommandBackspace: () => void;
+            isVisible: boolean;
+            position: unknown;
+            query: string;
+            selectedIndex: number;
+            filtered: { label: string; }[];
+        };
+    }
     // Minimal replica sufficient for this test
     const state = {
         isVisible: false,
@@ -31,7 +45,7 @@ const commandPaletteStore = (() => {
         ],
         get filtered() {
             const q = state.query.toLowerCase();
-            return state.commands.filter((c: { label: string }) => c.label.toLowerCase().includes(q));
+            return state.commands.filter((c: { label: string; }) => c.label.toLowerCase().includes(q));
         },
         show(pos: unknown) {
             state.position = pos;

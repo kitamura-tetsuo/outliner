@@ -24,7 +24,8 @@ export function projectsFromUserProject(
         || (typeof window !== "undefined" && window.mockFluidClient === false)
         || (typeof window !== "undefined" && window.location.hostname === "localhost")
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true);
+        || (typeof window !== "undefined"
+            && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
 
     // Deduplicate IDs for stabilization
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
@@ -102,16 +103,20 @@ if (typeof window !== "undefined") {
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
-        || (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true;
+        || (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true;
     if (isTestEnv) {
-        (window as Window & typeof globalThis & { __PROJECT_STORE__?: typeof projectStore }).__PROJECT_STORE__ = projectStore;
+        (window as Window & typeof globalThis & { __PROJECT_STORE__?: typeof projectStore; }).__PROJECT_STORE__ =
+            projectStore;
     }
 }
 
 // Hook into firestoreStore updates to keep projects mirrored without polling
-const originalSetUserProject = (firestoreStore as unknown as { setUserProject?: (v: UserProject | null) => void }).setUserProject?.bind(firestoreStore);
+const originalSetUserProject = (firestoreStore as unknown as { setUserProject?: (v: UserProject | null) => void; })
+    .setUserProject?.bind(firestoreStore);
 if (typeof originalSetUserProject === "function") {
-    (firestoreStore as unknown as { setUserProject: (v: UserProject | null) => void }).setUserProject = (value: UserProject | null) => {
+    (firestoreStore as unknown as { setUserProject: (v: UserProject | null) => void; }).setUserProject = (
+        value: UserProject | null,
+    ) => {
         originalSetUserProject(value);
         try {
             projectStore.syncFromFirestore();

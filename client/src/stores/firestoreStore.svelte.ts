@@ -56,7 +56,8 @@ class GeneralStore {
                 || process.env.NODE_ENV === "test"
                 || import.meta.env.VITE_IS_TEST === "true"
                 || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                || (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true);
+                || (typeof window !== "undefined"
+                    && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
             if (typeof window !== "undefined" && __isTestEnv) {
                 window.dispatchEvent(new CustomEvent("firestore-uc-changed"));
             }
@@ -190,7 +191,8 @@ class GeneralStore {
                             || import.meta.env.VITE_IS_TEST === "true"
                             || (typeof window !== "undefined"
                                 && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                            || (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true);
+                            || (typeof window !== "undefined"
+                                && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
                         const hasSeeded = !!(firestoreStore.userProject?.accessibleProjectIds?.length);
                         const incomingEmpty = !(projectData.accessibleProjectIds?.length);
                         if (isTestEnv && hasSeeded && incomingEmpty) {
@@ -247,13 +249,13 @@ class GeneralStore {
 // $state is always available because the file has .svelte.ts extension
 const __tmpStore = $state(new GeneralStore());
 const existingCandidate = typeof window !== "undefined"
-    ? (window as Window & typeof globalThis & { __FIRESTORE_STORE__?: unknown }).__FIRESTORE_STORE__
-    : (globalThis as typeof globalThis & { __FIRESTORE_STORE__?: unknown }).__FIRESTORE_STORE__;
+    ? (window as Window & typeof globalThis & { __FIRESTORE_STORE__?: unknown; }).__FIRESTORE_STORE__
+    : (globalThis as typeof globalThis & { __FIRESTORE_STORE__?: unknown; }).__FIRESTORE_STORE__;
 const shouldReuseExisting = typeof existingCandidate === "object"
     && existingCandidate !== null
-    && (existingCandidate as { __isRealFirestoreStore?: boolean }).__isRealFirestoreStore === true;
+    && (existingCandidate as { __isRealFirestoreStore?: boolean; }).__isRealFirestoreStore === true;
 export const firestoreStore = (shouldReuseExisting ? existingCandidate : __tmpStore) as typeof __tmpStore;
-(firestoreStore as unknown as { __isRealFirestoreStore: boolean }).__isRealFirestoreStore = true;
+(firestoreStore as unknown as { __isRealFirestoreStore: boolean; }).__isRealFirestoreStore = true;
 
 // Expose globally in test environment to allow control from E2E
 if (typeof window !== "undefined") {
@@ -262,9 +264,10 @@ if (typeof window !== "undefined") {
         || import.meta.env.VITE_IS_TEST === "true"
         || window.location.hostname === "localhost"
         || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
-        || (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true;
+        || (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true;
     if (isTestEnv) {
-        (window as Window & typeof globalThis & { __FIRESTORE_STORE__?: typeof firestoreStore }).__FIRESTORE_STORE__ = firestoreStore;
+        (window as Window & typeof globalThis & { __FIRESTORE_STORE__?: typeof firestoreStore; }).__FIRESTORE_STORE__ =
+            firestoreStore;
     }
 }
 
@@ -287,7 +290,8 @@ try {
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.mockFluidClient === false)
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true);
+        || (typeof window !== "undefined"
+            && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
 
     // Never use emulator in production environment
     const isProduction = process.env.NODE_ENV === "production"
@@ -549,7 +553,8 @@ if (typeof window !== "undefined") {
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            || (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true);
+        || (typeof window !== "undefined"
+            && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
 
     const isProd = import.meta.env.MODE === "production" || process.env.NODE_ENV === "production";
 
@@ -558,7 +563,8 @@ if (typeof window !== "undefined") {
     // 2) OR it's not a test environment
     // 3) OR it's an E2E test
     const shouldAutoSync = isProd || !__isTestEnv
-        || (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true);
+        || (typeof window !== "undefined"
+            && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
 
     if (shouldAutoSync) {
         let cleanup: (() => void) | null = null;
