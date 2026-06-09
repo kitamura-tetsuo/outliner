@@ -6,7 +6,7 @@ interface CaretPosition {
 }
 
 interface DocumentWithCaret extends Document {
-    caretPositionFromPoint?: (x: number, y: number) => CaretPosition | null;
+    caretPositionFromPoint?: (x: number, y: number, options?: unknown) => CaretPosition | null;
 }
 
 // getClickPosition: Receives Text Element, MouseEvent, and content, returning the offset.

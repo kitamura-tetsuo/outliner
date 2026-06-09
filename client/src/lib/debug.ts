@@ -99,17 +99,21 @@ if (process.env.NODE_ENV === "test") {
             const toPlain = (
                 item: { id: string; text?: { toString: () => string; }; key: string; },
             ): { id: string; text: string; items: unknown[]; } => {
-                const children = new Items(project.ydoc as any, project.tree as any, item.key);
+                const children = new Items(
+                    project.ydoc as import("yjs").Doc,
+                    project.tree as import("../schema/YTree").YTree,
+                    item.key,
+                );
                 return {
                     id: item.id,
                     text: item.text?.toString() ?? "",
-                    items: [...children].map(child => toPlain(child as any)),
+                    items: [...children].map(child => toPlain(child as import("../schema/app-schema").Item)),
                 };
             };
             const rootItems = project.items as Items;
             return {
                 itemCount: rootItems.length,
-                items: [...rootItems].map(item => toPlain(item as any)),
+                items: [...rootItems].map(item => toPlain(item as import("../schema/app-schema").Item)),
             };
         };
 

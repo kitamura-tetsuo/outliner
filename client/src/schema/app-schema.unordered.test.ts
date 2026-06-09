@@ -4,7 +4,7 @@ import { Item, Project } from "./app-schema";
 describe("Items.iterateUnordered", () => {
     it("yields all items without guaranteeing order", () => {
         const project = Project.createInstance("unordered-test");
-        const rootItems: unknown = (project as unknown as { items: unknown; }).items;
+        const rootItems = (project as import("./app-schema").Project).items;
 
         const a = rootItems.addNode("user");
         a.updateText("A");

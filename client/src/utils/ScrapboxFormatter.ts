@@ -306,7 +306,7 @@ export class ScrapboxFormatter {
                 content: match.content,
                 start: match.start,
                 end: match.end,
-                url: (match as any).url,
+                url: (match as unknown as { url: string; }).url,
                 isProjectLink: match.isProjectLink,
             });
 
@@ -940,7 +940,10 @@ export class ScrapboxFormatter {
      */
     private static getProjectPrefix(): string {
         if (typeof window !== "undefined") {
-            const store = (window as any).appStore || (window as any).generalStore;
+            const store = (window as Window & typeof globalThis & { appStore?: unknown; }).appStore
+                || (window as Window & typeof globalThis & {
+                    generalStore?: typeof import("../stores/store.svelte").store;
+                }).generalStore;
             if (store?.project?.title) {
                 return "/" + encodeURIComponent(store.project.title);
             }
@@ -969,7 +972,7 @@ export class ScrapboxFormatter {
 
         try {
             // Get page info from global store
-            const store = (window as any).appStore;
+            const store = (window as Window & typeof globalThis & { appStore?: unknown; }).appStore;
             if (!store || !store.pages) return false;
 
             // Get current project
@@ -1009,5 +1012,6 @@ export class ScrapboxFormatter {
 
 // Make globally accessible (for access in test environment)
 if (typeof window !== "undefined") {
-    (window as any).ScrapboxFormatter = ScrapboxFormatter;
+    (window as Window & typeof globalThis & { ScrapboxFormatter?: typeof ScrapboxFormatter; }).ScrapboxFormatter =
+        ScrapboxFormatter;
 }

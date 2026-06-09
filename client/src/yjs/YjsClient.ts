@@ -61,7 +61,7 @@ export class YjsClient {
             const title = project?.title ?? "";
             connectedProject = Project.fromDoc(doc);
             try {
-                const meta = doc.getMap("metadata") as any;
+                const meta = doc.getMap("metadata") as import("yjs").Map<unknown>;
                 if (title && !meta.get("title")) meta.set("title", title);
             } catch {}
         } catch {}
@@ -85,7 +85,12 @@ export class YjsClient {
         return this.project.items as Items;
     }
 
-    public updatePresence(state: { cursor?: { itemId: string; offset: number; }; selection?: any; } | null) {
+    public updatePresence(
+        state: {
+            cursor?: { itemId: string; offset: number; };
+            selection?: import("../stores/EditorOverlayStore.svelte").SelectionRange;
+        } | null,
+    ) {
         if (!this._awareness) return;
         yjsService.setPresence(this._awareness, state);
     }
@@ -103,8 +108,9 @@ export class YjsClient {
             const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
             // HocuspocusProvider doesn't have .status directly, check websocketProvider
-            return p.isSynced || (p as any).status === "connected"
-                || (p as any).websocketProvider?.status === "connected";
+            return p.isSynced || (p as unknown as { status?: string; }).status === "connected"
+                || (p as unknown as { websocketProvider?: { status?: string; }; }).websocketProvider?.status
+                    === "connected";
         } catch {
             return true;
         }
@@ -121,22 +127,24 @@ export class YjsClient {
     // Debug helpers similar to FluidClient
     getAllData() {
         const items = this.project.items as Items;
-        const collect = (it: Items | any): any => {
-            const arr: any[] = [];
-            const len = (it as any).length ?? 0;
+        const collect = (it: unknown): Record<string, unknown>[] => {
+            const arr: Record<string, unknown>[] = [];
+            const len = (it as { length?: number; }).length ?? 0;
             for (let i = 0; i < len; i++) {
-                const item = (it as any).at ? (it as any).at(i) : (it as any)[i];
+                const item = (it as { at?: (i: number) => unknown; }).at
+                    ? (it as { at: (i: number) => unknown; }).at(i)
+                    : (it as Record<number, unknown>)[i];
                 if (!item) continue;
-                const node: any = {
+                const node: Record<string, unknown> = {
                     id: item.id,
                     text: item.text?.toString?.() ?? "",
-                    author: (item as any).author,
-                    votes: [...((item as any).votes ?? [])],
-                    created: (item as any).created,
-                    lastChanged: (item as any).lastChanged,
+                    author: (item as { author?: string; }).author,
+                    votes: [...((item as { votes?: string[]; }).votes ?? [])],
+                    created: (item as { created?: number; }).created,
+                    lastChanged: (item as { lastChanged?: number; }).lastChanged,
                 };
                 const children = item.items as Items;
-                if (children && ((children as any).length ?? 0) > 0) {
+                if (children && ((children as { length?: number; }).length ?? 0) > 0) {
                     node.items = collect(children);
                 }
                 arr.push(node);
@@ -150,7 +158,7 @@ export class YjsClient {
         const treeData = this.getAllData();
         if (!path) return treeData;
         const parts = path.split(".");
-        let result: any = treeData;
+        let result: unknown = treeData;
         for (const part of parts) {
             if (result === undefined || result === null) return null;
             result = result[part];
@@ -160,17 +168,19 @@ export class YjsClient {
 
     public async createPage(pageName: string, lines: string[]): Promise<void> {
         const pageItem = (this.project.items as Items).addNode("user");
-        (pageItem.text as any).insert?.(0, pageName);
+        (pageItem.text as import("yjs").Text).insert?.(0, pageName);
         const pageChildren = pageItem.items as Items;
         for (const line of lines) {
             const item = pageChildren.addNode("user");
-            (item.text as any).insert?.(0, line);
+            (item.text as import("yjs").Text).insert?.(0, line);
         }
     }
 
     public getDebugInfo() {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const provider = this._provider as any;
+        const provider = this._provider as unknown as {
+            disconnect?: () => void;
+            configuration?: { token: string | (() => string | Promise<string>); };
+        };
         const config = provider?.configuration;
         const wsProvider = config?.websocketProvider;
 
@@ -198,10 +208,10 @@ export class YjsClient {
 
     public dispose() {
         try {
-            (this._provider as any)?.destroy?.();
+            (this._provider as unknown as { destroy?: () => void; })?.destroy?.();
         } catch {}
         try {
-            (this._doc as any)?.destroy?.();
+            (this._doc as unknown as { destroy?: () => void; })?.destroy?.();
         } catch {}
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));

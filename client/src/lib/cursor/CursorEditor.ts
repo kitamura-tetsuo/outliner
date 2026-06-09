@@ -204,7 +204,7 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as any;
+            const parent = target.parent as import("../../schema/app-schema").Items;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
@@ -290,7 +290,7 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as any;
+            const parent = target.parent as import("../../schema/app-schema").Items;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
@@ -637,7 +637,7 @@ export class CursorEditor {
         const parent = (firstItem as import("../../schema/app-schema").Item).parent;
         if (!parent || parent !== (lastItem as import("../../schema/app-schema").Item).parent) return;
 
-        const items = parent as any as Items;
+        const items = parent as unknown as Items;
         const firstIndex = items.indexOf(firstItem);
         const lastIndex = items.indexOf(lastItem);
         if (firstIndex === -1 || lastIndex === -1) return;
@@ -779,7 +779,7 @@ export class CursorEditor {
         while (walker.currentNode) {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
-            const item = searchItem(generalStore.currentPage as any, itemId);
+            const item = searchItem(generalStore.currentPage as import("../../schema/app-schema").Page, itemId);
             if (!item) continue;
 
             const text = (item as import("../../schema/app-schema").Item).text || "";
