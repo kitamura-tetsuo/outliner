@@ -10,16 +10,21 @@ function childrenKeys(tree: import("../../schema/YTree").YTree, parentKey: strin
 }
 
 function resolveOverlayStore(): typeof editorOverlayStore | undefined {
-    return (globalThis as typeof globalThis & { editorOverlayStore?: typeof import("../../stores/EditorOverlayStore.svelte").editorOverlayStore }).editorOverlayStore ?? editorOverlayStore;
+    return (globalThis as typeof globalThis & {
+        editorOverlayStore?: typeof import("../../stores/EditorOverlayStore.svelte").editorOverlayStore;
+    }).editorOverlayStore ?? editorOverlayStore;
 }
 
 function resolvePresenceStore(): typeof presenceStore | undefined {
-    return (globalThis as typeof globalThis & { presenceStore?: typeof import("../../stores/PresenceStore.svelte").presenceStore }).presenceStore ?? presenceStore;
+    return (globalThis as typeof globalThis & {
+        presenceStore?: typeof import("../../stores/PresenceStore.svelte").presenceStore;
+    }).presenceStore ?? presenceStore;
 }
 
 function resolveUserColor(userId: string, provided?: string): string {
     if (provided) return provided;
-    const globalColorForUser = (globalThis as typeof globalThis & { colorForUser?: (id: string) => string }).colorForUser as ((id: string) => string) | undefined;
+    const globalColorForUser = (globalThis as typeof globalThis & { colorForUser?: (id: string) => string; })
+        .colorForUser as ((id: string) => string) | undefined;
     if (typeof globalColorForUser === "function") {
         try {
             return globalColorForUser(userId);
@@ -31,7 +36,13 @@ function resolveUserColor(userId: string, provided?: string): string {
 function applyPresenceToOverlay(
     overlay: typeof editorOverlayStore | undefined,
     user: { userId: string; name?: string; color?: string; },
-    presence: { cursor?: { itemId: string; offset: number; }; selection?: import("../../stores/EditorOverlayStore.svelte").SelectionRange; } | null | undefined,
+    presence:
+        | {
+            cursor?: { itemId: string; offset: number; };
+            selection?: import("../../stores/EditorOverlayStore.svelte").SelectionRange;
+        }
+        | null
+        | undefined,
 ) {
     if (!overlay || !user) return;
     const color = resolveUserColor(user.userId, user.color);
@@ -131,16 +142,25 @@ export const yjsService = {
         item.updateText(text);
     },
 
-    setPresence(awareness: Awareness, state: { cursor?: import("../../stores/EditorOverlayStore.svelte").CursorPosition; selection?: import("../../stores/EditorOverlayStore.svelte").SelectionRange; } | null) {
+    setPresence(
+        awareness: Awareness,
+        state: {
+            cursor?: import("../../stores/EditorOverlayStore.svelte").CursorPosition;
+            selection?: import("../../stores/EditorOverlayStore.svelte").SelectionRange;
+        } | null,
+    ) {
         awareness.setLocalStateField("presence", state ?? null);
     },
 
     getPresence(awareness: Awareness) {
-        return awareness.getLocalState()?.presence as { cursor?: import("../../stores/EditorOverlayStore.svelte").CursorPosition; selection?: import("../../stores/EditorOverlayStore.svelte").SelectionRange; } | undefined;
+        return awareness.getLocalState()?.presence as {
+            cursor?: import("../../stores/EditorOverlayStore.svelte").CursorPosition;
+            selection?: import("../../stores/EditorOverlayStore.svelte").SelectionRange;
+        } | undefined;
     },
 
     bindProjectPresence(awareness: Awareness) {
-        const update = ({ added, updated, removed }: { added: number[], updated: number[], removed: number[] }) => {
+        const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
             // Prefer the globally-registered store when running in the browser.
             const target = resolvePresenceStore();
             if (!target) return;
@@ -178,7 +198,7 @@ export const yjsService = {
     },
 
     bindPagePresence(awareness: Awareness) {
-        const update = ({ added, updated, removed }: { added: number[], updated: number[], removed: number[] }) => {
+        const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
             const overlay = resolveOverlayStore();
             if (!overlay) return; // no-op when overlay store not present
             const states = awareness.getStates();
@@ -205,7 +225,6 @@ export const yjsService = {
     },
 
     promoteChildren(project: Project, itemKey: string) {
-
         const tree = project.tree;
         const children = childrenKeys(tree, itemKey);
         if (children.length === 0) return;
@@ -222,7 +241,6 @@ export const yjsService = {
     },
 
     moveSubtreeUp(project: Project, itemKey: string) {
-
         const tree = project.tree;
         const parentKey = tree.getNodeParentFromKey(itemKey);
         if (!parentKey) return;
@@ -234,7 +252,6 @@ export const yjsService = {
     },
 
     moveSubtreeDown(project: Project, itemKey: string) {
-
         const tree = project.tree;
         const parentKey = tree.getNodeParentFromKey(itemKey);
         if (!parentKey) return;

@@ -99,7 +99,11 @@ if (process.env.NODE_ENV === "test") {
             const toPlain = (
                 item: { id: string; text?: { toString: () => string; }; key: string; },
             ): { id: string; text: string; items: unknown[]; } => {
-                const children = new Items(project.ydoc as import("yjs").Doc, project.tree as import("../schema/YTree").YTree, item.key);
+                const children = new Items(
+                    project.ydoc as import("yjs").Doc,
+                    project.tree as import("../schema/YTree").YTree,
+                    item.key,
+                );
                 return {
                     id: item.id,
                     text: item.text?.toString() ?? "",

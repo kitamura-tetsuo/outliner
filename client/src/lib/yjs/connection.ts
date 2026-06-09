@@ -111,7 +111,8 @@ async function getFreshIdToken(): Promise<string> {
     const auth = userManager.auth;
     const isTestEnv = import.meta.env.MODE === "test"
         || (typeof window !== "undefined"
-            && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true" || (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true));
+            && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
+                || (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true));
     console.log(`[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth.currentUser}`);
 
     const generateMockToken = () => {
@@ -217,7 +218,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     provider.on("status", (event: { status: string; }) => {
         console.log(`[yjs-conn] ${room} status: ${event.status}`);
         if (event.status === "connected") {
-            const config = provider.configuration as { token: string | (() => string | Promise<string>) };
+            const config = provider.configuration as { token: string | (() => string | Promise<string>); };
             const hasWsHandshakeToken = config.url?.includes("token=");
             console.log(`[yjs-conn] status:connected current-url-has-token=${hasWsHandshakeToken}`);
         }
@@ -239,7 +240,10 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 
     // Detailed event logging for sync debugging
     provider.on("authenticated", () => console.log(`[yjs-conn] ${room} authenticated`));
-    provider.on("authenticationFailed", (data: unknown) => console.error(`[yjs-conn] ${room} authenticationFailed`, data));
+    provider.on(
+        "authenticationFailed",
+        (data: unknown) => console.error(`[yjs-conn] ${room} authenticationFailed`, data),
+    );
     provider.on("stateless", (data: unknown) => console.log(`[yjs-conn] ${room} stateless event`, data));
     provider.on("reconnect", () => console.log(`[yjs-conn] ${room} reconnecting...`));
     provider.on("disconnect", (event: { code: number; reason: string; }) => {
