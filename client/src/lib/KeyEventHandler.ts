@@ -1135,7 +1135,10 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                             ) {
-                                /* eslint-disable-next-line no-console */ console.error(`Failed to set VS Code metadata:`, error);
+                                /* eslint-disable-next-line no-console */ console.error(
+                                    `Failed to set VS Code metadata:`,
+                                    error,
+                                );
                             }
                         }
                     }
@@ -1163,7 +1166,10 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                             ) {
-                                /* eslint-disable-next-line no-console */ console.error(`navigator.clipboard.writeText failed in handleCopy:`, err);
+                                /* eslint-disable-next-line no-console */ console.error(
+                                    `navigator.clipboard.writeText failed in handleCopy:`,
+                                    err,
+                                );
                             }
                         });
                 }
@@ -1875,7 +1881,10 @@ export class KeyEventHandler {
                         if ((error as Error)?.name === "NotAllowedError") {
                             console.warn("Clipboard permission denied", error);
                         } else {
-                            /* eslint-disable-next-line no-console */ console.error("navigator.clipboard.readText failed", error);
+                            /* eslint-disable-next-line no-console */ console.error(
+                                "navigator.clipboard.readText failed",
+                                error,
+                            );
                         }
                     }
 
@@ -2301,7 +2310,10 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                             ) {
-                                /* eslint-disable-next-line no-console */ console.error(`Failed to set VS Code metadata:`, error);
+                                /* eslint-disable-next-line no-console */ console.error(
+                                    `Failed to set VS Code metadata:`,
+                                    error,
+                                );
                             }
                         }
                     }
@@ -2330,7 +2342,10 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                             ) {
-                                /* eslint-disable-next-line no-console */ console.error(`navigator.clipboard.writeText failed in handleCut:`, err);
+                                /* eslint-disable-next-line no-console */ console.error(
+                                    `navigator.clipboard.writeText failed in handleCut:`,
+                                    err,
+                                );
                             }
                         });
                 }

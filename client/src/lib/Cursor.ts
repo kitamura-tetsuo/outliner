@@ -177,7 +177,9 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    /* eslint-disable-next-line no-console */ console.error(`Cursor.applyToStore: Global textarea not found`);
+                    /* eslint-disable-next-line no-console */ console.error(
+                        `Cursor.applyToStore: Global textarea not found`,
+                    );
                 }
             }
         }
