@@ -208,7 +208,9 @@ export class KeyEventHandler {
                             const picker = (w.aliasPickerStore ?? aliasPickerStore) as unknown;
                             const aliasId: string | null = picker?.itemId ?? null;
                             const firstContent: unknown = root?.items && (root.items as unknown).length > 0
-                                ? ((root.items as unknown).at ? (root.items as unknown).at(0) : (root.items as unknown)[0])
+                                ? ((root.items as unknown).at
+                                    ? (root.items as unknown).at(0)
+                                    : (root.items as unknown)[0])
                                 : null;
                             if (root && aliasId && firstContent?.id) {
                                 const find = (node: unknown, id: string): unknown => {
@@ -321,10 +323,10 @@ export class KeyEventHandler {
         const tgt = (event.target as unknown)?.tagName || typeof (event.target as unknown)?.nodeName === "string"
             ? (event.target as unknown).nodeName
             : typeof event.target;
-        const ae =
-            (document.activeElement as unknown)?.tagName || typeof (document.activeElement as unknown)?.nodeName === "string"
-                ? (document.activeElement as unknown).nodeName
-                : typeof document.activeElement;
+        const ae = (document.activeElement as unknown)?.tagName
+                || typeof (document.activeElement as unknown)?.nodeName === "string"
+            ? (document.activeElement as unknown).nodeName
+            : typeof document.activeElement;
         console.log(`KeyEventHandler.handleKeyDown: target=${tgt}, active=${ae}`);
         console.log(`Current cursor instances: ${cursorInstances.length}`);
 

@@ -173,7 +173,7 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const text: string = (target.text as unknown as { toString?: () => string })?.toString?.() ?? "";
+        const text: string = (target.text as unknown as { toString?: () => string; })?.toString?.() ?? "";
         const beforeText = text.slice(0, cursor.offset);
         const afterText = text.slice(cursor.offset);
         const pageTitle = isPageItem(target);
@@ -223,7 +223,8 @@ export class CursorEditor {
                     newItem.updateText(afterText);
 
                     const oldItemId = cursor.itemId;
-                    const clearCursorAndSelection = (store as { clearCursorAndSelection?: (userId: string) => void }).clearCursorAndSelection;
+                    const clearCursorAndSelection =
+                        (store as { clearCursorAndSelection?: (userId: string) => void; }).clearCursorAndSelection;
                     if (typeof clearCursorAndSelection === "function") {
                         if (typeof clearCursorAndSelection.call === "function") {
                             clearCursorAndSelection.call(store, cursor.userId);
@@ -307,7 +308,8 @@ export class CursorEditor {
                     if (!newItem) return;
 
                     const oldItemId = cursor.itemId;
-                    const clearCursorAndSelection = (store as { clearCursorAndSelection?: (userId: string) => void }).clearCursorAndSelection;
+                    const clearCursorAndSelection =
+                        (store as { clearCursorAndSelection?: (userId: string) => void; }).clearCursorAndSelection;
                     if (typeof clearCursorAndSelection === "function") {
                         if (typeof clearCursorAndSelection.call === "function") {
                             clearCursorAndSelection.call(store, cursor.userId);
@@ -492,7 +494,8 @@ export class CursorEditor {
         }
 
         const tree = (item as import("../../schema/app-schema").Item)?.tree;
-        const key = (item as import("../../schema/app-schema").Item)?.key ?? (item as import("../../schema/app-schema").Item)?.id;
+        const key = (item as import("../../schema/app-schema").Item)?.key
+            ?? (item as import("../../schema/app-schema").Item)?.id;
         if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
 
         const value = tree.getNodeValueFromKey(key);
@@ -517,13 +520,14 @@ export class CursorEditor {
             return;
         }
 
-        const key = (item as import("../../schema/app-schema").Item)?.key ?? (item as import("../../schema/app-schema").Item)?.id;
+        const key = (item as import("../../schema/app-schema").Item)?.key
+            ?? (item as import("../../schema/app-schema").Item)?.id;
         if (!key) return;
 
         const treeCandidates = [
             (item as import("../../schema/app-schema").Item)?.tree,
             (item as import("../../schema/app-schema").Item)?.parent?.tree,
-            (generalStore as { project?: { tree?: unknown } })?.project?.tree,
+            (generalStore as { project?: { tree?: unknown; }; })?.project?.tree,
         ];
 
         for (const tree of treeCandidates) {
