@@ -37,16 +37,16 @@ interface Window {
     getYjsTreePathData?: (path?: string) => unknown;
 
     // GlobalTextArea properties
-    KeyEventHandler?: any;
-    __KEY_EVENT_HANDLER__?: any;
-    Items?: any;
-    generalStore?: any;
+    KeyEventHandler?: unknown;
+    __KEY_EVENT_HANDLER__?: unknown;
+    Items?: unknown;
+    generalStore?: typeof import("./stores/store.svelte").store;
     __ALIAS_FWD__?: (ev: KeyboardEvent) => void;
     __SLASH_FWD__?: (ev: KeyboardEvent) => void;
     __KEYSTREAM__?: string;
     __KEYSTREAM_FWD__?: (ev: KeyboardEvent) => void;
     __TYPING_FWD__?: (ev: KeyboardEvent) => void;
-    commandPaletteStore?: any;
+    commandPaletteStore?: typeof import("./stores/CommandPaletteStore.svelte").commandPaletteStore;
     __PALETTE_FWD__?: (ev: KeyboardEvent) => void;
     __GLOBAL_KEY_FWD__?: (ev: KeyboardEvent) => void;
     DEBUG_MODE?: string | boolean;

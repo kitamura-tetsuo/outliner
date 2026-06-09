@@ -80,8 +80,8 @@ export class Item {
         public readonly key: string,
     ) {}
 
-    private get value(): Y.Map<any> {
-        return this.tree.getNodeValueFromKey(this.key) as Y.Map<any>;
+    private get value(): Y.Map<unknown> {
+        return this.tree.getNodeValueFromKey(this.key) as Y.Map<unknown>;
     }
 
     get id(): string {
@@ -200,7 +200,7 @@ export class Item {
     }
 
     get parent(): Items | null {
-        const parentKey = (this.tree as any).getNodeParentFromKey(this.key);
+        const parentKey = this.tree.getNodeParentFromKey(this.key);
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree, parentKey);
     }
@@ -239,7 +239,7 @@ export class Items {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
 
-        const value = new Y.Map<any>();
+        const value = new Y.Map<unknown>();
         value.set("id", nodeKey);
         value.set("author", author);
         value.set("created", now);
@@ -249,7 +249,7 @@ export class Items {
         value.set("text", new Y.Text());
         value.set("votes", new Y.Array<string>());
         value.set("attachments", new Y.Array<string>());
-        value.set("comments", new Y.Array<Y.Map<any>>());
+        value.set("comments", new Y.Array<Y.Map<unknown>>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 
@@ -328,7 +328,7 @@ export class Project {
 
     get title(): string {
         try {
-            const meta = this.ydoc.getMap("metadata") as Y.Map<any>;
+            const meta = this.ydoc.getMap("metadata") as Y.Map<unknown>;
             return String(meta.get("title") ?? "");
         } catch {
             return "";

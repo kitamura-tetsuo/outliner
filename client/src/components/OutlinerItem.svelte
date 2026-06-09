@@ -860,7 +860,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     const preserveAltClick = event?.altKey === true;
 
     // Debug info
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         // Intentionally empty: placeholder for debug logging
     }
 
@@ -1054,7 +1054,7 @@ function handleClick(event: MouseEvent) {
         const pos = getClickPosition(event, textString);
 
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             // Intentionally empty: placeholder for debug logging
         }
 
@@ -1067,7 +1067,7 @@ function handleClick(event: MouseEvent) {
         });
 
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             // Intentionally empty: placeholder for debug logging
         }
 
@@ -1089,7 +1089,7 @@ function handleClick(event: MouseEvent) {
                     textarea.focus();
 
                     // Check if focus was set
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
                         // Intentionally empty: placeholder for debug logging
                     }
                 }, 10);
@@ -1273,7 +1273,7 @@ function handleMouseMove(event: MouseEvent) {
  */
 function handleBoxSelection(event: MouseEvent, currentPosition: number) {
     // Debug info
-    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
         // Intentionally empty: placeholder for debug logging
     }
 

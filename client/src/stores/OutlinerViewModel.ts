@@ -6,11 +6,11 @@ const logger = getLogger();
 const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     || import.meta.env.MODE === "test"
     || import.meta.env.VITE_IS_TEST === "true";
-const debugLog = (...args: any[]) => {
+const debugLog = (...args: unknown[]) => {
     if (!__IS_E2E__) console.log(...args);
 };
 
-const isItemLike = (obj: any): boolean => {
+const isItemLike = (obj: unknown): boolean => {
     try {
         const id = obj?.id;
         const txt = obj?.text;
@@ -84,7 +84,7 @@ export class OutlinerViewModel {
             );
             debugLog(
                 "OutlinerViewModel: pageItem.items length:",
-                (pageItem.items as any)?.length || 0,
+                (pageItem.items as unknown as { length?: number })?.length || 0,
             );
 
             // Update or add existing view models
@@ -123,7 +123,7 @@ export class OutlinerViewModel {
 
         // Use iterateUnordered if available to avoid O(N log N) sorting
         // Order doesn't matter here as we're just populating the map
-        const iter = (items as any).iterateUnordered ? (items as any).iterateUnordered() : items;
+        const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function" ? items.iterateUnordered() : items;
         for (const child of iter) {
             this.ensureViewModelsItemExist(child, parentId);
         }
@@ -175,11 +175,11 @@ export class OutlinerViewModel {
                 id: item.id,
                 original: item,
                 text: item.text.toString(),
-                votes: [...((item as any).votes || [])],
-                author: (item as any).author,
-                created: (item as any).created,
-                lastChanged: (item as any).lastChanged,
-                commentCount: (item as any).comments?.length ?? 0,
+                votes: [...((item as unknown as { votes?: string[] }).votes || [])],
+                author: (item as unknown as { author?: string }).author,
+                created: (item as unknown as { created?: number }).created,
+                lastChanged: (item as unknown as { lastChanged?: number }).lastChanged,
+                commentCount: (item as unknown as { comments?: { length?: number } }).comments?.length ?? 0,
             });
             debugLog(
                 `OutlinerViewModel: Created new view model for "${item.text}"`,
@@ -190,7 +190,7 @@ export class OutlinerViewModel {
         this.parentMap.set(item.id, parentId);
 
         // Process child items too
-        if (((it: any) => (it && typeof it.length === "number" && typeof it.at === "function"))((item as any).items)) {
+        if (((it: unknown) => (it && typeof (it as { length?: number }).length === "number" && typeof (it as { at?: unknown }).at === "function"))((item as unknown as { items?: unknown }).items)) {
             const children = item.items;
             debugLog(
                 `OutlinerViewModel: Processing ${children.length} children for "${item.text.toString()}"`,
@@ -245,12 +245,12 @@ export class OutlinerViewModel {
         this.depthMap.set(item.id, depth);
         const vm = this.viewModels.get(item.id);
         if (vm) {
-            vm.commentCount = (item as any).comments?.length ?? 0;
+            vm.commentCount = (item as unknown as { comments?: { length?: number } }).comments?.length ?? 0;
         }
 
         // Process child items (only if not collapsed)
         const isCollapsed = this.collapsedMap.get(item.id);
-        const ch: any = (item as any).items;
+        const ch = (item as unknown as { items?: unknown }).items as { length?: number; at: (i: number) => import("../schema/app-schema").Item | undefined };
         const hasChildren = !!(ch && typeof ch.length === "number" && typeof ch.at === "function" && ch.length > 0);
 
         debugLog(
@@ -287,8 +287,8 @@ export class OutlinerViewModel {
         const rootItem = this.findRootItem(itemId);
         if (!rootItem) return;
         if (
-            ((it: any) => (it && typeof it.length === "number" && typeof it.at === "function"))(
-                (rootItem as any)?.items,
+            ((it: unknown) => (it && typeof (it as { length?: number }).length === "number" && typeof (it as { at?: unknown }).at === "function"))(
+                (rootItem as unknown as { items?: unknown })?.items,
             )
         ) {
             this.recalculateOrderAndDepth(rootItem.items);
@@ -350,7 +350,7 @@ export class OutlinerViewModel {
     hasChildren(itemId: string): boolean {
         const model = this.viewModels.get(itemId);
         if (!model || !model.original || !model.original.items) return false;
-        const ch: any = (model.original as any).items;
+        const ch = (model.original as unknown as { items?: unknown }).items as { length?: number; at: (i: number) => import("../schema/app-schema").Item | undefined };
         return !!(ch && typeof ch.length === "number" && typeof ch.at === "function" && ch.length > 0);
     }
 
