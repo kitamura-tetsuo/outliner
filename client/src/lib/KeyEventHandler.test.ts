@@ -24,7 +24,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
     let selections: Record<string, unknown> = {};
 
     // Store mocks in global for test access
-    (globalThis as any).__testMocks = {
+    (globalThis as Window & typeof globalThis & { __testMocks: Record<string, unknown>; }).__testMocks = {
         mockInsertText,
         mockClearSelections,
         mockStartCursorBlink,
@@ -47,15 +47,16 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
 
 describe("KeyEventHandler.handlePaste", () => {
     // Get mocked functions from global
-    const { mockInsertText } = (globalThis as any).__testMocks;
+    const { mockInsertText } =
+        (globalThis as Window & typeof globalThis & { __testMocks: Record<string, unknown>; }).__testMocks;
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (window as any).lastCopiedText = undefined;
+        (window as Window & typeof globalThis & { lastCopiedText?: string; }).lastCopiedText = undefined;
     });
 
     afterEach(() => {
-        delete (navigator as any).clipboard;
+        delete (navigator as Navigator & { clipboard?: unknown; }).clipboard;
     });
 
     const createEvent = (text: string): ClipboardEvent => {
@@ -105,7 +106,7 @@ describe("KeyEventHandler.handlePaste", () => {
 
     it("falls back to global lastCopiedText when clipboard empty", async () => {
         const event = createEvent("");
-        (window as any).lastCopiedText = "fallback";
+        (window as Window & typeof globalThis & { lastCopiedText?: string; }).lastCopiedText = "fallback";
         Object.defineProperty(navigator, "clipboard", {
             value: { readText: () => Promise.resolve("") },
             configurable: true,
