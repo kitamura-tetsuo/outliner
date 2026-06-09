@@ -16,14 +16,14 @@ describe("Import/Export Service", () => {
             importMarkdownIntoProject(markdown, project);
 
             // There should be 1 page created in the project
-            expect((project.items as any).length).toBe(1);
+            expect(project.items.length).toBe(1);
 
-            const page = (project.items as any)[0];
+            const page = project.items.at(0)!;
             expect(page.text).toBe("ImportedPage");
 
             // There should be 1 child item in the page
-            expect((page.items as any).length).toBe(1);
-            expect((page.items as any)[0].text).toBe("Child");
+            expect(page.items.length).toBe(1);
+            expect(page.items.at(0)!.text).toBe("Child");
         });
 
         it("should import nested markdown with multiple levels", () => {
@@ -33,19 +33,19 @@ describe("Import/Export Service", () => {
             importMarkdownIntoProject(markdown, project);
 
             // There should be 1 page created in the project
-            expect((project.items as any).length).toBe(1);
+            expect(project.items.length).toBe(1);
 
-            const page = (project.items as any)[0];
+            const page = project.items.at(0)!;
             expect(page.text).toBe("Parent");
 
             // There should be 1 child item in the page
-            expect((page.items as any).length).toBe(1);
-            const child = (page.items as any)[0];
+            expect(page.items.length).toBe(1);
+            const child = page.items.at(0)!;
             expect(child.text).toBe("Child");
 
             // There should be 1 grandchild item in the child item
-            expect((child.items as any).length).toBe(1);
-            expect((child.items as any)[0].text).toBe("Grand");
+            expect(child.items.length).toBe(1);
+            expect(child.items.at(0)!.text).toBe("Grand");
         });
 
         it("should import multiple root items correctly", () => {
@@ -56,19 +56,19 @@ describe("Import/Export Service", () => {
 
             // In the current implementation, only the first indent 0 item is created as a page,
             // and subsequent indent 0 items are created as children of the first page
-            expect((project.items as any).length).toBe(1);
+            expect(project.items.length).toBe(1);
 
-            const page = (project.items as any)[0];
+            const page = project.items.at(0)!;
             expect(page.text).toBe("FirstPage");
 
             // There should be 2 child items in the page (Child1 and SecondItem)
-            expect((page.items as any).length).toBe(2);
-            expect((page.items as any)[0].text).toBe("Child1");
-            expect((page.items as any)[1].text).toBe("SecondItem");
+            expect(page.items.length).toBe(2);
+            expect(page.items.at(0)!.text).toBe("Child1");
+            expect(page.items.at(1)!.text).toBe("SecondItem");
 
             // There should be 1 child item in SecondItem
-            expect((page.items as any)[1].items.length).toBe(1);
-            expect((page.items as any)[1].items[0].text).toBe("Child2");
+            expect(page.items.at(1)!.items.length).toBe(1);
+            expect(page.items.at(1)!.items[0].text).toBe("Child2");
         });
     });
 
@@ -80,14 +80,14 @@ describe("Import/Export Service", () => {
             importOpmlIntoProject(opml, project);
 
             // There should be 1 page created in the project
-            expect((project.items as any).length).toBe(1);
+            expect(project.items.length).toBe(1);
 
-            const page = (project.items as any)[0];
+            const page = project.items.at(0)!;
             expect(page.text).toBe("Imported");
 
             // There should be 1 child item in the page
-            expect((page.items as any).length).toBe(1);
-            expect((page.items as any)[0].text).toBe("Child");
+            expect(page.items.length).toBe(1);
+            expect(page.items.at(0)!.text).toBe("Child");
         });
     });
 
@@ -95,7 +95,7 @@ describe("Import/Export Service", () => {
         it("should export project to markdown", () => {
             const project = Project.createInstance("Test Project");
             const page = project.addPage("TestPage", "test");
-            const child = (page.items as any).addNode("test");
+            const child = page.items.addNode("test");
             child.updateText("Child Item");
 
             const markdown = exportProjectToMarkdown(project);
@@ -106,7 +106,7 @@ describe("Import/Export Service", () => {
         it("should export project to OPML", () => {
             const project = Project.createInstance("Test Project");
             const page = project.addPage("TestPage", "test");
-            const child = (page.items as any).addNode("test");
+            const child = page.items.addNode("test");
             child.updateText("Child Item");
 
             const opml = exportProjectToOpml(project);

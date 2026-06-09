@@ -16,7 +16,7 @@ describe("GeneralStore Page Existence", () => {
 
         // Force manual cache rebuild if observers are not firing in test env
         // Accessing private method via any casting for testing
-        (store as any)._rebuildPageNamesCache();
+        (store as unknown as { _rebuildPageNamesCache: () => void })._rebuildPageNamesCache();
 
         expect(store.pageExists("Page A")).toBe(true);
         expect(store.pageExists("page a")).toBe(true); // Case insensitive
@@ -24,7 +24,7 @@ describe("GeneralStore Page Existence", () => {
 
         // Add another page
         project.addPage("Page B", "user1");
-        (store as any)._rebuildPageNamesCache();
+        (store as unknown as { _rebuildPageNamesCache: () => void })._rebuildPageNamesCache();
         expect(store.pageExists("Page B")).toBe(true);
 
         // Rename logic is harder to simulate via Project helper as it doesn't expose renamePage.
@@ -42,7 +42,7 @@ describe("GeneralStore Page Existence", () => {
         expect(itemA).toBeDefined();
         if (itemA) {
             itemA.updateText("Page A Renamed");
-            (store as any)._rebuildPageNamesCache();
+            (store as unknown as { _rebuildPageNamesCache: () => void })._rebuildPageNamesCache();
             // Check if cache updates
             expect(store.pageExists("Page A")).toBe(false);
             expect(store.pageExists("Page A Renamed")).toBe(true);
@@ -51,7 +51,7 @@ describe("GeneralStore Page Existence", () => {
         // Delete page
         if (itemA) {
             itemA.delete();
-            (store as any)._rebuildPageNamesCache();
+            (store as unknown as { _rebuildPageNamesCache: () => void })._rebuildPageNamesCache();
             expect(store.pageExists("Page A Renamed")).toBe(false);
         }
     });
