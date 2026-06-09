@@ -200,6 +200,8 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     try {
         if (projectId !== "demo") {
             initialToken = await getFreshIdToken();
+        } else {
+            initialToken = "1"; // Send dummy token in URL to satisfy strict routing on older servers
         }
     } catch {}
 
@@ -356,6 +358,8 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     try {
         if (projectId !== "demo") {
             initialToken = await getFreshIdToken();
+        } else {
+            initialToken = "1"; // Send dummy token in URL to satisfy strict routing on older servers
         }
     } catch (e) {
         console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
@@ -418,6 +422,8 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     try {
         if (projectId !== "demo") {
             initialToken = await getFreshIdToken();
+        } else {
+            initialToken = "1"; // Send dummy token in URL to satisfy strict routing on older servers
         }
     } catch {}
 
