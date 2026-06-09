@@ -206,7 +206,9 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
                     return function(...args: unknown[]) {
                         // Call original logger method
-                        ((target as unknown as Record<string, (...args: unknown[]) => void>)[prop as string] as (...args: unknown[]) => void)(...args);
+                        ((target as unknown as Record<string, (...args: unknown[]) => void>)[prop as string] as (
+                            ...args: unknown[]
+                        ) => void)(...args);
 
                         // Output to console as well (at the same level)
                         const consoleMethod = prop === "trace" || prop === "debug"
