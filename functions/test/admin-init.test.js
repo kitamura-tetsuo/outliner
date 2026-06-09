@@ -1,4 +1,6 @@
-const { describe, it, expect, beforeEach, afterEach } = require("@jest/globals");
+const { describe, it, expect, beforeEach, afterEach } = require(
+  "@jest/globals",
+);
 const admin = require("firebase-admin");
 
 describe("admin.initializeApp try-catch tests", () => {
