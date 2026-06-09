@@ -198,7 +198,7 @@ function updateTextareaPosition() {
             }
         }
     } catch (e) {
-        console.error("Error in updateTextareaPosition:", e);
+        /* eslint-disable-next-line no-console */ console.error("Error in updateTextareaPosition:", e);
     }
 }
 
@@ -449,7 +449,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         }
         return { left: relativeLeft, top: relativeTop };
     } catch (error) {
-        console.error('Error calculating cursor position:', error);
+        /* eslint-disable-next-line no-console */ console.error('Error calculating cursor position:', error);
         return null;
     }
 }
@@ -545,7 +545,7 @@ function calculateSelectionPixelRange(
             height
         };
     } catch (error) {
-        console.error('Error calculating selection range:', error);
+        /* eslint-disable-next-line no-console */ console.error('Error calculating selection range:', error);
         return null;
     }
 }

@@ -199,7 +199,7 @@ export async function rotateLogFile(logFilePath: string, maxBackups = 2): Promis
 
         return true;
     } catch (error) {
-        console.error("Error occurred during log rotation:", error);
+        /* eslint-disable-next-line no-console */ console.error("Error occurred during log rotation:", error);
         return false;
     }
 }
@@ -286,7 +286,7 @@ export function refreshClientLogStream(): fs.WriteStream {
         console.log("Updated client log stream");
         return newClientLogStream;
     } catch (error) {
-        console.error("Client log stream update error:", error);
+        /* eslint-disable-next-line no-console */ console.error("Client log stream update error:", error);
         // Even if error occurs, create and return new stream
         return fs.createWriteStream(clientLogPath, { flags: "a" });
     }
@@ -329,7 +329,7 @@ export function refreshTelemetryLogStream(): fs.WriteStream {
         console.log("Updated telemetry log stream");
         return newTelemetryLogStream;
     } catch (error) {
-        console.error("Telemetry log stream update error:", error);
+        /* eslint-disable-next-line no-console */ console.error("Telemetry log stream update error:", error);
         // Even if error occurs, create and return new stream
         return fs.createWriteStream(telemetryLogPath, { flags: "a" });
     }
@@ -381,7 +381,7 @@ export function refreshServerLogStream(): fs.WriteStream {
         console.log("Updated server log stream");
         return newServerLogStream;
     } catch (error) {
-        console.error("Server log stream update error:", error);
+        /* eslint-disable-next-line no-console */ console.error("Server log stream update error:", error);
         // Even if error occurs, create and return new stream
         return fs.createWriteStream(serverLogPath, { flags: "a" });
     }

@@ -67,7 +67,7 @@ async function main() {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
     main().catch((err) => {
-        console.error(err);
+        /* eslint-disable-next-line no-console */ console.error(err);
         process.exit(1);
     });
 }

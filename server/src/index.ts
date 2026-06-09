@@ -34,7 +34,7 @@ if (config.SENTRY_DSN) {
         process.on("SIGINT", () => shutdown().then(() => process.exit(0)));
         process.on("SIGTERM", () => shutdown().then(() => process.exit(0)));
     } catch (err) {
-        console.error("Failed to start server:", err);
+        /* eslint-disable-next-line no-console */ console.error("Failed to start server:", err);
         process.exit(1);
     }
 })();

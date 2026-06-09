@@ -47,7 +47,7 @@ export function extractAuthToken(req: IncomingMessage): string | undefined {
         console.log(`[Auth] req.url=${sanitizeUrl(req.url)}, token=${token ? "FOUND" : "MISSING"}`);
         return token || undefined;
     } catch {
-        console.error("[Auth] URL parse error");
+        /* eslint-disable-next-line no-console */ console.error("[Auth] URL parse error");
         return undefined;
     }
 }
@@ -126,16 +126,16 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
             if (parts.length === 3) {
                 const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
                 const nowSec = Math.floor(Date.now() / 1000);
-                console.error(
+                /* eslint-disable-next-line no-console */ console.error(
                     `[Auth] Verification failed. Token debug: exp=${payload.exp}, iat=${payload.iat}, now=${nowSec}, diff=${
                         payload.exp - nowSec
                     }, uid=${payload.uid || payload.user_id}`,
                 );
             }
         } catch (parseErr) {
-            console.error("[Auth] Failed to parse failed token for debug");
+            /* eslint-disable-next-line no-console */ console.error("[Auth] Failed to parse failed token for debug");
         }
-        console.error(`[Auth] Token verification failed: ${e.message}`);
+        /* eslint-disable-next-line no-console */ console.error(`[Auth] Token verification failed: ${e.message}`);
         throw e;
     }
 }
