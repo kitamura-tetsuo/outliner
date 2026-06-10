@@ -5,9 +5,7 @@ import { escapeId } from "../../utils/domUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
 export class CursorFormatting {
-
     private cursor: import("../Cursor").Cursor;
-
 
     constructor(cursor: import("../Cursor").Cursor) {
         this.cursor = cursor;
@@ -115,7 +113,6 @@ export class CursorFormatting {
      * Apply Scrapbox syntax formatting to selection spanning multiple items
      */
     private applyScrapboxFormattingToMultipleItems(
-
         selection: import("../stores/EditorOverlayStore.svelte").SelectionState,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {

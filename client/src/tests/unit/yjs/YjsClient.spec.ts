@@ -39,7 +39,13 @@ describe("YjsClient", () => {
         // Dynamically import HocuspocusProvider to use the mocked version
         const { HocuspocusProvider } = await import("@hocuspocus/provider");
 
-        provider = new HocuspocusProvider({ name: "mock-provider", document: doc, url: "ws://mock" } as import("@hocuspocus/provider").HocuspocusProviderConfiguration);
+        provider = new HocuspocusProvider(
+            {
+                name: "mock-provider",
+                document: doc,
+                url: "ws://mock",
+            } as import("@hocuspocus/provider").HocuspocusProviderConfiguration,
+        );
 
         // Create a simple mock for Project since we don't need its full logic for this test
         project = {

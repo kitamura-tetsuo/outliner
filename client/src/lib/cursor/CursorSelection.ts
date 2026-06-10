@@ -4,9 +4,7 @@ import { escapeId } from "../../utils/domUtils";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
 
 export class CursorSelection {
-
     private cursor: import("../Cursor").Cursor;
-
 
     constructor(cursor: import("../Cursor").Cursor) {
         this.cursor = cursor;
