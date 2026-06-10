@@ -431,8 +431,9 @@ const voterNames = $derived.by(() => {
 
 
 // Observe aliasTargetId Y.Map with fine granularity
-let aliasTargetId = $state<string | undefined>(item.aliasTargetId);
+let aliasTargetId = $state<string | undefined>();
 onMount(() => {
+    aliasTargetId = item.aliasTargetId;
     try {
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
         const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as { observe?: (f: (e: unknown) => void) => void, unobserve?: (f: (e: unknown) => void) => void } | undefined;
