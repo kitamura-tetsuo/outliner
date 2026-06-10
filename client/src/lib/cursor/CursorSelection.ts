@@ -4,11 +4,9 @@ import { escapeId } from "../../utils/domUtils";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
 
 export class CursorSelection {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private cursor: any; // Holds the instance of the Cursor class
+    private cursor: import("../Cursor").Cursor;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(cursor: any) {
+    constructor(cursor: import("../Cursor").Cursor) {
         this.cursor = cursor;
     }
 

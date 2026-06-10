@@ -43,8 +43,8 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
             }
             // Update the URL with the new token so that future reconnections (which rely on the URL for handshake) pass
             // HocuspocusProvider re-uses the initial URL string, so if we don't update it, it sends the old/expired token.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const config = provider.configuration as any;
+
+            const config = provider.configuration as { url?: string; websocketProvider?: { status?: string; }; };
             if (config?.url && typeof config.url === "string") {
                 const urlObj = new URL(config.url);
                 if (t) {
