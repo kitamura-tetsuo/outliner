@@ -18,6 +18,11 @@ type Console = typeof console;
 // Window extension for test environment globals
 declare global {
     interface Window {
+        __CURRENT_PROJECT_TITLE__?: string;
+        __E2E__?: boolean;
+        __YJS_CLIENT_REGISTRY__?: import("../lib/yjsService.svelte").Registry;
+        __FLUID_CLIENT_REGISTRY__?: import("../lib/yjsService.svelte").Registry;
+        __FIRESTORE_STORE__?: unknown;
         __CURRENT_PROJECT__?: Project;
         generalStore?: GeneralStore;
         __YJS_SERVICE__?: unknown;

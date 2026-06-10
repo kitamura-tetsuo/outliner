@@ -13,7 +13,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => ({
         update: vi.fn(),
         set: vi.fn(),
         updateCursor: vi.fn(),
-        setCursor: vi.fn((opts: any) => `cursor-${opts.itemId}-${Math.random()}`),
+        setCursor: vi.fn((opts: import("../stores/EditorOverlayStore.svelte").CursorPosition) => `cursor-${opts.itemId}-${Math.random()}`),
         setActiveItem: vi.fn(),
         getTextareaRef: vi.fn(() => ({
             focus: vi.fn(),
@@ -50,7 +50,7 @@ vi.mock("../stores/store.svelte", () => ({
 
 // Mock cursor utility functions
 vi.mock("./cursor", async (importOriginal) => {
-    const actual: any = await importOriginal();
+    const actual = await importOriginal() as Record<string, unknown>;
     return {
         ...actual,
         findNextItem: (itemId: string) => {
@@ -65,7 +65,7 @@ vi.mock("./cursor", async (importOriginal) => {
         },
         getSelectionForUser: () => mockSelection,
         hasSelection: () => !!mockSelection,
-        searchItem: (root: any, itemId: string) => {
+        searchItem: (root: import("../schema/app-schema").Item, itemId: string) => {
             if (itemId === "item1") return { id: "item1", text: "Hello" };
             if (itemId === "item2") return { id: "item2", text: "World" };
             if (itemId === "item3") return { id: "item3", text: "Test" };
@@ -120,12 +120,12 @@ describe("Cursor Selection Reproduction", () => {
         });
 
         // Spy on findTarget to return mock items
-        vi.spyOn(cursor as any, "findTarget").mockImplementation(() => {
+        vi.spyOn(cursor as unknown as { findTarget: () => import("../schema/app-schema").Item | undefined }, "findTarget").mockImplementation(() => {
             return mockItems.find(i => i.id === cursor.itemId);
         });
 
         // Ensure getTargetText works
-        vi.spyOn(cursor as any, "getTargetText").mockImplementation((target: any) => target?.text || "");
+        vi.spyOn(cursor as unknown as { getTargetText: (target: import("../schema/app-schema").Item | undefined) => string }, "getTargetText").mockImplementation((target: import("../schema/app-schema").Item | undefined) => target?.text || "");
     });
 
     afterEach(() => {
