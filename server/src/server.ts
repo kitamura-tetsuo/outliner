@@ -223,16 +223,17 @@ export async function startServer(
             );
 
             const room = parseRoom(data.documentName);
-            if (!room?.project) {
-                throw Object.assign(new Error("Authentication failed: Invalid room format"), { code: 4001 });
-            }
 
-            if (room.project === "demo") {
+            if (room?.project === "demo") {
                 console.log(`[Hocuspocus] onAuthenticate: Anonymous demo access for room=${data.documentName}`);
                 return {
                     user: { uid: "anonymous-demo" },
                     room,
                 };
+            }
+
+            if (!room?.project) {
+                throw Object.assign(new Error("Authentication failed: Invalid room format"), { code: 4001 });
             }
 
             if (!token) {
