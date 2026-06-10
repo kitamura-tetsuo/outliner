@@ -36,7 +36,7 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
         let text = "";
         try {
             const val = item.text;
-            text = val ? (typeof val === 'string' ? val.trim() : String(val).trim()) : "";
+            text = val ? (typeof val === "string" ? val.trim() : String(val).trim()) : "";
         } catch (e) {
             console.warn("Failed to extract text", e);
         }
