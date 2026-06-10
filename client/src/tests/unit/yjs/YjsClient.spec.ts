@@ -25,10 +25,10 @@ describe("YjsClient", () => {
     const clientId = "test-client-id";
     const projectId = "test-project-id";
     let doc: Y.Doc;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let provider: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let project: any;
+
+    let provider: import("@hocuspocus/provider").HocuspocusProvider;
+
+    let project: { metadata: unknown; rootFolder: unknown; items: unknown; dispose: unknown; };
 
     beforeEach(async () => {
         // Reset mocks
@@ -38,8 +38,8 @@ describe("YjsClient", () => {
 
         // Dynamically import HocuspocusProvider to use the mocked version
         const { HocuspocusProvider } = await import("@hocuspocus/provider");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        provider = new HocuspocusProvider({} as any);
+
+        provider = new HocuspocusProvider({ name: "mock-provider", document: doc, url: "ws://mock" } as import("@hocuspocus/provider").HocuspocusProviderConfiguration);
 
         // Create a simple mock for Project since we don't need its full logic for this test
         project = {

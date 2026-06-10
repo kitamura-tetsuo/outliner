@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Item } from "../schema/app-schema";
 import { Cursor } from "./Cursor";
 
 // Helper to manage mock selection state
-let mockSelection: any = undefined;
+let mockSelection: import("../stores/EditorOverlayStore.svelte").SelectionState | undefined = undefined;
 
 // Mocks for stores
 vi.mock("../stores/EditorOverlayStore.svelte", () => ({

@@ -5,11 +5,11 @@ import { escapeId } from "../../utils/domUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 
 export class CursorFormatting {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private cursor: any; // Holds an instance of the Cursor class
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(cursor: any) {
+    private cursor: import("../Cursor").Cursor;
+
+
+    constructor(cursor: import("../Cursor").Cursor) {
         this.cursor = cursor;
     }
 
@@ -115,8 +115,8 @@ export class CursorFormatting {
      * Apply Scrapbox syntax formatting to selection spanning multiple items
      */
     private applyScrapboxFormattingToMultipleItems(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        selection: any,
+
+        selection: import("../stores/EditorOverlayStore.svelte").SelectionState,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
         // Get start and end item IDs
