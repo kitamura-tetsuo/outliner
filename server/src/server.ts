@@ -216,7 +216,11 @@ export async function startServer(
             // (no listener registered yet), causing a 30-second timeout.
             const request = data.request;
             const token = data.token || extractAuthToken(request);
-            console.log(`[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${token ? "FOUND" : "MISSING"}, data.token=${data.token}`);
+            console.log(
+                `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${
+                    token ? "FOUND" : "MISSING"
+                }, data.token=${data.token}`,
+            );
 
             const room = parseRoom(data.documentName);
             if (!room?.project) {
