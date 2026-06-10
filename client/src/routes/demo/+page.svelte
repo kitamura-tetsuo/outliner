@@ -51,6 +51,7 @@
 
             yjsStore.yjsClient = client as import("../../yjs/YjsClient").YjsClient;
             const project = client.getProject();
+            // @ts-expect-error - Project types from app-schema and yjs-schema differ in private properties
             store.project = project;
 
             // Wait for sync or timeout
@@ -62,7 +63,7 @@
 
                 for (let i = 0; i < pages; i++) {
                     const item = store.project?.items?.at?.(i);
-                    if (item && item.text === "Demo") {
+                    if (item && String(item.text) === "Demo") {
                         demoPage = item;
                         break;
                     }
@@ -84,7 +85,7 @@
                 logger.warn("Timeout waiting for Demo page to sync");
             }
 
-            store.currentPage = demoPage as import("../../schema/app-schema").Item;
+            store.currentPage = demoPage;
 
         } catch (err) {
             console.error("Failed to initialize demo:", err);
