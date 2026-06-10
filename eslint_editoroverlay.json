@@ -1,0 +1,75 @@
+[
+    {
+        "filePath": "/app/client/src/stores/EditorOverlayStore.svelte.ts",
+        "messages": [],
+        "suppressedMessages": [
+            {
+                "ruleId": "svelte/prefer-svelte-reactivity",
+                "severity": 2,
+                "message": "Found a mutable instance of the built-in Map class. Use SvelteMap instead.",
+                "line": 62,
+                "column": 23,
+                "messageId": "mutableMapUsed",
+                "endLine": 62,
+                "endColumn": 48,
+                "suppressions": [
+                    { "kind": "directive", "justification": "Internal instance cache, not reactive state" }
+                ]
+            },
+            {
+                "ruleId": "svelte/prefer-svelte-reactivity",
+                "severity": 2,
+                "message": "Found a mutable instance of the built-in Set class. Use SvelteSet instead.",
+                "line": 79,
+                "column": 25,
+                "messageId": "mutableSetUsed",
+                "endLine": 79,
+                "endColumn": 46,
+                "suppressions": [{ "kind": "directive", "justification": "Internal listener set, not reactive state" }]
+            },
+            {
+                "ruleId": "no-useless-assignment",
+                "severity": 2,
+                "message": "The value assigned to 'selectionText' is not used in subsequent statements.",
+                "line": 911,
+                "column": 17,
+                "messageId": "unnecessaryAssignment",
+                "endLine": 911,
+                "endColumn": 30,
+                "suppressions": [{ "kind": "directive", "justification": "" }]
+            },
+            {
+                "ruleId": "svelte/prefer-svelte-reactivity",
+                "severity": 2,
+                "message": "Found a mutable instance of the built-in Map class. Use SvelteMap instead.",
+                "line": 1339,
+                "column": 31,
+                "messageId": "mutableMapUsed",
+                "endLine": 1339,
+                "endColumn": 56,
+                "suppressions": [
+                    { "kind": "directive", "justification": "Temporary local map for calculation, not reactive state" }
+                ]
+            },
+            {
+                "ruleId": "svelte/prefer-svelte-reactivity",
+                "severity": 2,
+                "message": "Found a mutable instance of the built-in Map class. Use SvelteMap instead.",
+                "line": 1339,
+                "column": 31,
+                "messageId": "mutableMapUsed",
+                "endLine": 1339,
+                "endColumn": 56,
+                "suppressions": [
+                    { "kind": "directive", "justification": "Temporary local map for calculation, not reactive state" }
+                ]
+            }
+        ],
+        "errorCount": 0,
+        "fatalErrorCount": 0,
+        "warningCount": 0,
+        "fixableErrorCount": 0,
+        "fixableWarningCount": 0,
+        "usedDeprecatedRules": []
+    }
+]

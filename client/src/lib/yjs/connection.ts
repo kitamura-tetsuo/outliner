@@ -200,6 +200,8 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     try {
         if (projectId !== "demo") {
             initialToken = await getFreshIdToken();
+        } else {
+            initialToken = "1"; // Send dummy token in URL to satisfy strict routing on older servers
         }
     } catch {}
 
@@ -210,7 +212,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
-        token: "1", // HocuspocusProvider requires a truthy token to send the Auth message, even for unauthenticated rooms like demo.
+        token: initialToken || "1", // HocuspocusProvider requires a truthy token to send the Auth message, even for unauthenticated rooms like demo.
     });
     console.log(
         `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}`,
@@ -356,6 +358,8 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     try {
         if (projectId !== "demo") {
             initialToken = await getFreshIdToken();
+        } else {
+            initialToken = "1"; // Send dummy token in URL to satisfy strict routing on older servers
         }
     } catch (e) {
         console.error("[connectProjectDoc] getFreshIdToken FAILED:", e);
@@ -365,7 +369,7 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
-        token: "1", // HocuspocusProvider requires a truthy token to send the Auth message, even for unauthenticated rooms like demo.
+        token: initialToken || "1", // HocuspocusProvider requires a truthy token to send the Auth message, even for unauthenticated rooms like demo.
     });
     const awareness = provider.awareness;
 
@@ -418,6 +422,8 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     try {
         if (projectId !== "demo") {
             initialToken = await getFreshIdToken();
+        } else {
+            initialToken = "1"; // Send dummy token in URL to satisfy strict routing on older servers
         }
     } catch {}
 
@@ -426,7 +432,7 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         url: constructWsUrl(wsBase, room, initialToken),
         name: room,
         document: doc,
-        token: "1", // HocuspocusProvider requires a truthy token to send the Auth message, even for unauthenticated rooms like demo.
+        token: initialToken || "1", // HocuspocusProvider requires a truthy token to send the Auth message, even for unauthenticated rooms like demo.
     });
     // HocuspocusProvider connects automatically, no need to call connect()
 

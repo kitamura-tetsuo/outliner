@@ -39,13 +39,13 @@ export class Comments {
     }
 
     deleteComment(commentId: string) {
-        let i = 0;
+        let idx = 0;
         for (const m of this.yArray) {
             if (m.get("id") === commentId) {
-                this.yArray.delete(i, 1);
+                this.yArray.delete(idx, 1);
                 return;
             }
-            i++;
+            idx++;
         }
     }
 

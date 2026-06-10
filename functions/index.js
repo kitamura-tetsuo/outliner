@@ -176,7 +176,11 @@ if (!admin.apps.length) {
     logger.info(`📋 Project ID: ${projectId}`);
   }
 
-  admin.initializeApp(config);
+  try {
+    admin.initializeApp(config);
+  } catch (e) {
+    // catch error when initializing more than once
+  }
 
   // Confirmation of Admin SDK instance
   try {

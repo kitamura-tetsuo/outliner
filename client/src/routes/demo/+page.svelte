@@ -19,7 +19,18 @@
 
             // Seed demo document via API
             try {
-                const response = await fetch('/api/seed-demo', {
+                let apiBaseUrl = import.meta.env.VITE_YJS_API_URL;
+                if (!apiBaseUrl && import.meta.env.VITE_YJS_WS_URL) {
+                    apiBaseUrl = import.meta.env.VITE_YJS_WS_URL.replace(/^ws(s)?:\/\//, "http$1://");
+                }
+                if (!apiBaseUrl) {
+                    apiBaseUrl = import.meta.env.VITE_API_SERVER_URL || "http://127.0.0.1:7091";
+                }
+
+                // Append /api/seed-demo, ensuring we don't double up on slashes
+                const endpoint = apiBaseUrl.endsWith('/') ? `${apiBaseUrl}api/seed-demo` : `${apiBaseUrl}/api/seed-demo`;
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -38,9 +49,9 @@
                 throw new Error("Failed to connect to the demo project.");
             }
 
-            yjsStore.yjsClient = client as any;
+            yjsStore.yjsClient = client as import("../../yjs/YjsClient").YjsClient;
             const project = client.getProject();
-            store.project = project as any;
+            store.project = project;
 
             // Wait for sync or timeout
             let retries = 0;
@@ -73,7 +84,7 @@
                 logger.warn("Timeout waiting for Demo page to sync");
             }
 
-            store.currentPage = demoPage as any;
+            store.currentPage = demoPage as import("../../schema/app-schema").Item;
 
         } catch (err) {
             console.error("Failed to initialize demo:", err);
@@ -91,7 +102,7 @@
         try {
             yjsStore.yjsClient?.dispose();
             yjsStore.yjsClient = undefined;
-            store.project = undefined as any;
+            store.project = undefined;
             store.currentPage = undefined;
         } catch {}
     });
