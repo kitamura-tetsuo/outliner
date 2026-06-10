@@ -61,16 +61,16 @@ class Registry {
 let registry: Registry;
 if (
     typeof window !== "undefined"
-    && ((window as any).__YJS_CLIENT_REGISTRY__ || (window as any).__FLUID_CLIENT_REGISTRY__)
+    && (window.__YJS_CLIENT_REGISTRY__ || window.__FLUID_CLIENT_REGISTRY__)
 ) {
-    registry = ((window as any).__YJS_CLIENT_REGISTRY__
-        || (window as any).__FLUID_CLIENT_REGISTRY__) as Registry;
+    registry = (window.__YJS_CLIENT_REGISTRY__
+        || window.__FLUID_CLIENT_REGISTRY__) as Registry;
 } else {
     registry = new Registry();
     if (typeof window !== "undefined") {
-        (window as any).__YJS_CLIENT_REGISTRY__ = registry;
+        window.__YJS_CLIENT_REGISTRY__ = registry;
         // Legacy alias for components still reading FLUID registry
-        (window as any).__FLUID_CLIENT_REGISTRY__ = registry;
+        window.__FLUID_CLIENT_REGISTRY__ = registry;
     }
 }
 
@@ -93,7 +93,7 @@ function isTestEnvironment(): boolean {
 
     // Fallback to runtime checks (for E2E tests where MODE might not be "test")
     if (typeof window !== "undefined") {
-        const win = window as any;
+        const win = window;
         const ls = win.localStorage;
 
         const isTestLs = ls?.getItem?.("VITE_IS_TEST");
@@ -208,8 +208,8 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     yjsStore.yjsClient = client;
 
     if (typeof window !== "undefined") {
-        (window as any).__CURRENT_PROJECT__ = project;
-        (window as any).__CURRENT_PROJECT_TITLE__ = projectName;
+        window.__CURRENT_PROJECT__ = project;
+        window.__CURRENT_PROJECT_TITLE__ = projectName;
     }
 
     return client;
@@ -446,7 +446,7 @@ export async function createClient(containerId?: string): Promise<YjsClient> {
     if (!userId && isTest) userId = "test-user-id";
     const resolvedId = containerId || uuid();
     const title = typeof window !== "undefined"
-        ? (((window as any).__CURRENT_PROJECT_TITLE__ as string | undefined) ?? "Test Project")
+        ? ((window.__CURRENT_PROJECT_TITLE__ as string | undefined) ?? "Test Project")
         : "Test Project";
 
     const project = Project.createInstance(title);
@@ -521,7 +521,7 @@ export async function getUserContainers(): Promise<{
 
 // Testing hooks
 if (process.env.NODE_ENV === "test" && typeof window !== "undefined") {
-    (window as any).__YJS_SERVICE__ = {
+    window.__YJS_SERVICE__ = {
         createNewProject,
         getClientByProjectTitle,
         createClient,

@@ -19,11 +19,16 @@ type Console = typeof console;
 declare global {
     interface Window {
         __CURRENT_PROJECT__?: Project;
+        __CURRENT_PROJECT_TITLE__?: string;
         generalStore?: GeneralStore;
         __YJS_SERVICE__?: unknown;
         __YJS_STORE__?: unknown;
+        __YJS_CLIENT_REGISTRY__?: unknown;
+        __FLUID_CLIENT_REGISTRY__?: unknown;
         __USER_MANAGER__?: UserManager;
         __selectionList?: SelectionRange[];
+        __FIRESTORE_STORE__?: unknown;
+        __E2E__?: boolean;
         appStore?: {
             project?: Project;
         };
