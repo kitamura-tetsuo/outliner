@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
     // Drag start position (shared by all items)
     let dragStartClientX = 0;
     let dragStartClientY = 0;

@@ -32,7 +32,7 @@ interface Props {
     item?: ItemLike; // Outliner Item (for late-binding comments getter)
 }
 
-let props: Props = $props();
+let props: Props = $props(); // eslint-disable-line svelte/no-unused-props
 let comments = $derived.by(() => props.comments ?? props.item?.comments);
 let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");
@@ -137,7 +137,7 @@ onMount(() => {
 // Count notification is delegated to the parent (OutlinerItem) Yjs-derived subscription.
 // Do not perform direct DOM manipulation or side effects here ($effect removed).
 
-    try { logger.debug('[CommentThread] mount props', { hasComments: !!props?.comments, hasDoc: !!props?.doc }); } catch {}
+    // try { logger.debug('[CommentThread] mount props', { hasComments: !!props?.comments, hasDoc: !!props?.doc }); } catch {}
 
 // Fallback removal: Remove onMount click delegation/auto-add/global delegation
 
@@ -375,7 +375,7 @@ function startEdit(c: Comment) {
 }
 
 function saveEdit(id: string) {
-    try { logger.debug('[CommentThread] saveEdit start id=', id, 'editText=', editText); } catch {}
+    // Removed to fix state_referenced_locally
     let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
     if (!commentsObj && props.item) {
         try {
@@ -410,7 +410,7 @@ function saveEdit(id: string) {
     // Update renderCommentsState to immediately show the change in UI, but only update the specific field
     renderCommentsState = renderCommentsState.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } : c);
 
-    try { logger.debug('[CommentThread] renderCommentsState after update', renderCommentsState); } catch {}
+    // Removed to fix state_referenced_locally
     editingId = null;
     
     // Dispatch an event to notify that a comment was edited
