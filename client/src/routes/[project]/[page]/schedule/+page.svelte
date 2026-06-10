@@ -33,7 +33,7 @@ let isDownloading = $state(false);
 // Function to trigger parent page load
 async function triggerParentPageLoad() {
     // Access the parent page's loadProjectAndPage via window if available
-    const win = window as any;
+    const win = window as unknown as { loadProjectAndPage?: (() => Promise<void>) & { yjsClient?: unknown }, __loadingInProgress?: boolean };
     if (win.loadProjectAndPage) {
         // Set loading in progress to prevent duplicate calls
         const loadInProgressKey = "__loadingInProgress";
@@ -131,13 +131,13 @@ onMount(async () => {
     while (parentLoadWaitAttempts < maxParentLoadWaitAttempts) {
         // Check if yjsStore.yjsClient is set (indicates main page loadProjectAndPage has completed)
         // We check both the global window reference and the imported yjsStore
-        const win = window as any;
+        const win = window as unknown as { loadProjectAndPage?: (() => Promise<void>) & { yjsClient?: unknown }, __loadingInProgress?: boolean };
         const yjsClientExists = (win.loadProjectAndPage !== undefined) &&
                                (yjsStore.yjsClient !== undefined || win.loadProjectAndPage?.yjsClient !== undefined);
 
         // Check if the parent page has finished loading
         // We check multiple conditions to determine if loading is complete
-        const gs = (window as any).generalStore;
+        const gs = (window as unknown as { generalStore?: { project?: { items?: { length: number } }, currentPage?: unknown } }).generalStore;
         const hasProject = !!gs?.project;
         const hasCurrentPage = !!gs?.currentPage;
         const projectItems = gs?.project?.items;
@@ -176,8 +176,8 @@ onMount(async () => {
         storeProjectTitle: store.project?.title ?? "null",
         storeProjectItemsLength: store.project?.items?.length ?? 0,
         storeCurrentPageTitle: store.currentPage?.text?.toString?.() ?? "null",
-        gsProjectTitle: ((window as any).generalStore?.project?.title) ?? "null",
-        gsProjectItemsLength: ((window as any).generalStore?.project?.items?.length) ?? 0,
+        gsProjectTitle: ((window as unknown as { generalStore?: { project?: { title?: string, items?: { length: number } } } }).generalStore?.project?.title) ?? "null",
+        gsProjectItemsLength: ((window as unknown as { generalStore?: { project?: { title?: string, items?: { length: number } } } }).generalStore?.project?.items?.length) ?? 0,
     });
 
     let sessionPinnedPageId: string | undefined;
@@ -202,7 +202,7 @@ onMount(async () => {
 
         // First check store.project.items (more reliable after reload)
         try {
-            const projAny = store.project as any;
+            const projAny = store.project as unknown as { items?: { length: number, at?: (idx: number) => { id: string, text?: unknown } } & Record<number, { id: string, text?: unknown }> };
             if (projAny?.items) {
                 const projItems = projAny.items;
                 const projLen = projItems?.length ?? 0;
@@ -317,7 +317,7 @@ onMount(async () => {
         // Also check store.project.items directly
         if (!foundPageRef) {
             try {
-                const projAny = store.project as any;
+                const projAny = store.project as unknown as { items?: { length: number, at?: (idx: number) => { id: string, text?: unknown } } & Record<number, { id: string, text?: unknown }> };
                 if (projAny && typeof projAny.findPage === "function") {
                     // Try to find page by iterating through project items
                     const projItems = projAny.items;
@@ -453,7 +453,7 @@ onMount(async () => {
 
     // E2E stability: Export refresh function to window for test access
     if (typeof window !== "undefined") {
-        (window as any).refreshSchedules = async (pid?: string) => {
+        (window as unknown as { refreshSchedules?: (pid?: string) => Promise<void> }).refreshSchedules = async (pid?: string) => {
             console.log("Schedule page: E2E refreshSchedules called with pid=", pid);
             if (pid) {
                 pageId = pid;
