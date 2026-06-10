@@ -123,10 +123,12 @@ export function getServiceAccount() {
     };
 }
 
-const isEmulatorEnvironment = process.env.USE_FIREBASE_EMULATOR === "true"
-    || process.env.FIREBASE_AUTH_EMULATOR_HOST
-    || process.env.FIRESTORE_EMULATOR_HOST
-    || process.env.FIREBASE_EMULATOR_HOST;
+function getIsEmulatorEnvironment() {
+    return process.env.USE_FIREBASE_EMULATOR === "true"
+        || !!process.env.FIREBASE_AUTH_EMULATOR_HOST
+        || !!process.env.FIRESTORE_EMULATOR_HOST
+        || !!process.env.FIREBASE_EMULATOR_HOST;
+}
 
 async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
     const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST
@@ -229,10 +231,27 @@ async function clearFirestoreEmulatorData() {
     }
 }
 
+function hasAdminSdkFile(): boolean {
+    if (process.env.FIREBASE_ADMIN_SDK_PATH) {
+        const candidates = [
+            path.resolve(process.env.FIREBASE_ADMIN_SDK_PATH),
+            path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH),
+            path.resolve(__dirname, "..", process.env.FIREBASE_ADMIN_SDK_PATH),
+        ];
+
+        for (const candidate of candidates) {
+            if (fs.existsSync(candidate)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 export async function initializeFirebase() {
     try {
-        // Load secrets from GCP Secret Manager if not in emulator environment
-        if (!isEmulatorEnvironment) {
+        // Load secrets from GCP Secret Manager if not in emulator environment and SDK file doesn't exist
+        if (!getIsEmulatorEnvironment() && !hasAdminSdkFile()) {
             await secretManager.loadSecrets([
                 "FIREBASE_PRIVATE_KEY",
                 "FIREBASE_PRIVATE_KEY_ID",
@@ -244,7 +263,7 @@ export async function initializeFirebase() {
 
         const serviceAccount = getServiceAccount();
 
-        if (!serviceAccount.project_id && !isEmulatorEnvironment) {
+        if (!serviceAccount.project_id && !getIsEmulatorEnvironment()) {
             logger.error(
                 "Firebase service account environment variables are not properly configured.",
             );
@@ -275,7 +294,7 @@ export async function initializeFirebase() {
             logger.warn("These environment variables should be set in .env.test and should not be set in production.");
         }
         if (
-            isEmulatorEnvironment
+            getIsEmulatorEnvironment()
             && (!serviceAccount.private_key || serviceAccount.private_key.includes("Your Private Key Here"))
         ) {
             admin.initializeApp({ projectId: serviceAccount.project_id });
