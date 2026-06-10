@@ -140,6 +140,7 @@ function handleRowDragOver(e: DragEvent) {
                                 }}
                             >
                                 {#if isEditing(rowIndex, column.name)}
+                                    <!-- svelte-ignore a11y_autofocus -->
                                     <input
                                         type="text"
                                         value={row[column.name] || ""}
