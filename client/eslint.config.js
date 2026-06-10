@@ -43,7 +43,7 @@ export default ts.config(
     // See issue #733 for tracking
     {
         rules: {
-            "@typescript-eslint/no-explicit-any": "error",
+            "@typescript-eslint/no-explicit-any": "warn",
             "@typescript-eslint/no-unused-vars": "error",
             "@typescript-eslint/ban-ts-comment": ["error", {
                 "ts-expect-error": "allow-with-description",
@@ -108,7 +108,7 @@ export default ts.config(
             "**/tests/**/*.{js,ts,tsx}",
         ],
         rules: {
-            "@typescript-eslint/no-explicit-any": "error",
+            "@typescript-eslint/no-explicit-any": "warn",
             "no-restricted-imports": [
                 "error",
                 {

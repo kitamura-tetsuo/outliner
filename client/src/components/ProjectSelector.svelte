@@ -68,7 +68,7 @@
                 import.meta.env.VITE_IS_TEST === "true" ||
                 window.location.hostname === "localhost" ||
                 window.localStorage?.getItem?.("VITE_IS_TEST") === "true" ||
-                (window as any).__E2E__ === true;
+                (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__ === true;
 
             if (isTestEnv) {
                 // In test environment, provide a backstop to follow ucVersion changes
@@ -166,13 +166,13 @@
                     const cnt = projectsFromUserProject(
                         firestoreStore.userProject,
                     ).length;
-                    (logger as any).info(
+                    logger.info(
                         { count: cnt },
                         "ProjectSelector - Checking projects after login:",
                     );
                 }, 1000);
             } catch (err) {
-                (logger as any).error("ProjectSelector - Login failed:", err);
+                logger.error("ProjectSelector - Login failed:", err);
             }
         }
     }
@@ -196,7 +196,7 @@
             // Emit event with selected project ID and name
             onProjectSelected(selectedProjectId, selectedProject.name);
         } catch (err) {
-            (logger as any).error("Project selection error:", err);
+            logger.error("Project selection error:", err);
             error =
                 err instanceof Error
                     ? err.message

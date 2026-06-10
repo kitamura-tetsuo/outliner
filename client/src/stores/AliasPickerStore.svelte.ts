@@ -40,7 +40,7 @@ class AliasPickerStore {
         this.selectedIndex = 0;
         try {
             if (typeof window !== "undefined") {
-                (window as any).ALIAS_PICKER_SHOW_COUNT = ((window as any).ALIAS_PICKER_SHOW_COUNT || 0) + 1;
+                (window as Window & typeof globalThis & { ALIAS_PICKER_SHOW_COUNT?: number }).ALIAS_PICKER_SHOW_COUNT = ((window as Window & typeof globalThis & { ALIAS_PICKER_SHOW_COUNT?: number }).ALIAS_PICKER_SHOW_COUNT || 0) + 1;
                 window.dispatchEvent(new CustomEvent("aliaspicker-visibility", { detail: { visible: true } }));
                 window.dispatchEvent(new CustomEvent("aliaspicker-options", { detail: { options: this.options } }));
             }
@@ -156,7 +156,7 @@ class AliasPickerStore {
             if (node.id === id) return node;
             const items = node.items as Items;
             if (!items) return undefined;
-            for (const child of items as any as Iterable<Item>) {
+            for (const child of items as unknown as Iterable<Item>) {
                 const found = this.findItemDFS(child, id, depth + 1);
                 if (found) return found;
             }
@@ -178,16 +178,15 @@ class AliasPickerStore {
         // Even if itemId is not set, supplement from active item or last item to stabilize E2E
         if (!this.itemId) {
             try {
-                const w: any = typeof window !== "undefined" ? (window as any) : null;
-                const eos: any = w?.editorOverlayStore;
+                const w = typeof window !== "undefined" ? (window as Window & typeof globalThis & { editorOverlayStore?: { getActiveItem?: () => string | null } }) : null;
+                const eos = w?.editorOverlayStore;
                 const activeId: string | null = eos?.getActiveItem?.() ?? null;
                 if (activeId) {
                     console.log("AliasPickerStore.confirmById: patched missing itemId from activeId:", activeId);
                     this.itemId = activeId;
                 } else {
-                    const items: any = (generalStore.currentPage as any)?.items;
-                    const last = items && typeof items.length === "number" && items.length > 0
-                        ? ((items as any).at ? (items as any).at(items.length - 1) : (items as any)[items.length - 1])
+                    const items = (generalStore.currentPage as unknown as { items?: { length: number, at?: (idx: number) => { id?: string } } & Record<number, { id?: string }> })?.items;
+                    const last = items && typeof items.length === "number" && items.length > 0 ? (items.at ? items.at(items.length - 1) : items[items.length - 1])
                         : null;
                     if (last?.id) {
                         this.itemId = last.id;
@@ -209,8 +208,8 @@ class AliasPickerStore {
 
                 // Access Y.Map directly to ensure writing to Yjs model
                 try {
-                    const anyItem: any = item as any;
-                    const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+                    const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (key: unknown) => { set?: (k: string, v: string) => void } }, key?: unknown };
+                    const ymap = anyItem?.tree?.getNodeValueFromKey?.((anyItem?.key));
                     if (ymap && typeof ymap.set === "function") {
                         ymap.set("aliasTargetId", id);
                     }
@@ -235,9 +234,9 @@ class AliasPickerStore {
         const root = generalStore.currentPage;
         if (root) {
             try {
-                const children = (root as any).items as Items;
+                const children = (root as unknown as { items?: Items }).items;
                 if (children && typeof children.length === "number") {
-                    const rawRootText: any = (root as any).text;
+                    const rawRootText = (root as unknown as { text?: unknown }).text;
                     const rootText: string = typeof rawRootText === "string"
                         ? rawRootText
                         : (rawRootText?.toString?.() ?? "");
@@ -277,7 +276,7 @@ class AliasPickerStore {
         }
 
         visited.add(node.id);
-        const rawText: any = (node as any).text;
+        const rawText = (node as unknown as { text?: unknown }).text;
         const nodeText: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
         const current = [...path, nodeText || ""];
         out.push({ id: node.id, path: current.join("/") });
@@ -374,5 +373,5 @@ class AliasPickerStore {
 export const aliasPickerStore = $state(new AliasPickerStore());
 
 if (typeof window !== "undefined") {
-    (window as any).aliasPickerStore = aliasPickerStore;
+    (window as Window & typeof globalThis & { aliasPickerStore?: AliasPickerStore }).aliasPickerStore = aliasPickerStore;
 }
