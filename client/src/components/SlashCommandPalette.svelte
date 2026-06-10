@@ -32,7 +32,6 @@ $effect(() => {
 
 <div
     class="slash-command-palette"
-    class:debug-show={!commandPaletteStore.isVisible}
     data-is-visible={commandPaletteStore.isVisible}
     data-query={currentQuery}
     data-visible-count={currentVisible.length}
@@ -71,11 +70,5 @@ $effect(() => {
 }
 .slash-command-palette li.selected {
     background:#eee;
-}
-
-/* Debug style - always show */
-.debug-show {
-    display: block !important;
-    border: 2px solid red;
 }
 </style>
