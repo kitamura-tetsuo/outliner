@@ -47,7 +47,7 @@ async function handleClipboardCopy() {
     try {
         // Save to global variable (for testing)
         if (typeof window !== "undefined") {
-            (window as any).lastCopyText = clipboardText;
+            (window as unknown as { lastCopyText?: string, lastCopiedText?: string, lastPastedText?: string }).lastCopyText = clipboardText;
         }
 
         // Try both methods
@@ -66,8 +66,8 @@ async function handleClipboardCopy() {
 
             log(`ClipboardEvent 'copy' dispatched`);
         }
-        catch (clipboardEventError: any) {
-            log(`ClipboardEvent 'copy' dispatch failed: ${clipboardEventError.message}`);
+        catch (clipboardEventError: unknown) {
+            log(`ClipboardEvent 'copy' dispatch failed: ${clipboardEventError instanceof Error ? clipboardEventError.message : String(clipboardEventError)}`);
         }
 
         // Method 2: navigator.clipboard API
@@ -87,15 +87,15 @@ async function handleClipboardCopy() {
             }
         }, 100);
     }
-    catch (err: any) {
-        showResult("clipboard", `Copy failed: ${err.message}`, false);
-        log(`navigator.clipboard.writeText failed: ${err.message}`);
+    catch (err: unknown) {
+        showResult("clipboard", `Copy failed: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`navigator.clipboard.writeText failed: ${err instanceof Error ? err.message : String(err)}`);
 
         // Force DOM update (for testing)
         setTimeout(() => {
             const resultElement = document.querySelector(".test-section:first-child .result");
             if (resultElement) {
-                resultElement.textContent = `❌ Copy failed: ${err.message}`;
+                resultElement.textContent = `❌ Copy failed: ${err instanceof Error ? err.message : String(err)}`;
                 resultElement.classList.add("error");
                 resultElement.classList.remove("success");
             }
@@ -115,7 +115,7 @@ async function handleClipboardPaste() {
             });
 
             // Get from global variable (for testing)
-            const globalText = typeof window !== "undefined" ? (window as any).lastCopyText || "" : "";
+            const globalText = typeof window !== "undefined" ? (window as unknown as { lastCopyText?: string, lastCopiedText?: string, lastPastedText?: string }).lastCopyText || "" : "";
             if (globalText) {
                 clipboardEvent.clipboardData?.setData("text/plain", globalText);
                 log(`Get text from global variable: ${globalText}`);
@@ -127,8 +127,8 @@ async function handleClipboardPaste() {
 
             log(`ClipboardEvent 'paste' dispatched`);
         }
-        catch (clipboardEventError: any) {
-            log(`ClipboardEvent 'paste' dispatch failed: ${clipboardEventError.message}`);
+        catch (clipboardEventError: unknown) {
+            log(`ClipboardEvent 'paste' dispatch failed: ${clipboardEventError instanceof Error ? clipboardEventError.message : String(clipboardEventError)}`);
         }
 
         // Method 2: navigator.clipboard API
@@ -149,15 +149,15 @@ async function handleClipboardPaste() {
             }
         }, 100);
     }
-    catch (err: any) {
-        showResult("clipboard", `Paste failed: ${err.message}`, false);
-        log(`navigator.clipboard.readText failed: ${err.message}`);
+    catch (err: unknown) {
+        showResult("clipboard", `Paste failed: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`navigator.clipboard.readText failed: ${err instanceof Error ? err.message : String(err)}`);
 
         // Force DOM update (for testing)
         setTimeout(() => {
             const resultElement = document.querySelector(".test-section:first-child .result");
             if (resultElement) {
-                resultElement.textContent = `❌ Paste failed: ${err.message}`;
+                resultElement.textContent = `❌ Paste failed: ${err instanceof Error ? err.message : String(err)}`;
                 resultElement.classList.add("error");
                 resultElement.classList.remove("success");
             }
@@ -180,9 +180,9 @@ function handleExecCommandCopy() {
             log('document.execCommand("copy") failed');
         }
     }
-    catch (err: any) {
-        showResult("execCommand", `Copy failed: ${err.message}`, false);
-        log(`document.execCommand("copy") failed: ${err.message}`);
+    catch (err: unknown) {
+        showResult("execCommand", `Copy failed: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`document.execCommand("copy") failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
@@ -201,9 +201,9 @@ function handleExecCommandPaste() {
             log('document.execCommand("paste") failed');
         }
     }
-    catch (err: any) {
-        showResult("execCommand", `Paste failed: ${err.message}`, false);
-        log(`document.execCommand("paste") failed: ${err.message}`);
+    catch (err: unknown) {
+        showResult("execCommand", `Paste failed: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`document.execCommand("paste") failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
@@ -222,9 +222,9 @@ async function checkPermissions() {
         showResult("permission", `clipboard-read: ${clipboardRead.state}, clipboard-write: ${clipboardWrite.state}`);
         log(`clipboard-read: ${clipboardRead.state}, clipboard-write: ${clipboardWrite.state}`);
     }
-    catch (err: any) {
-        showResult("permission", `Permission check failed: ${err.message}`, false);
-        log(`Permission check failed: ${err.message}`);
+    catch (err: unknown) {
+        showResult("permission", `Permission check failed: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`Permission check failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
@@ -235,11 +235,11 @@ async function handlePlaywrightCopy() {
         showResult("playwright", `Copy successful: ${playwrightText}`);
         log(`Playwright Copy successful: ${playwrightText}`);
         // Save to global variable (for testing)
-        (window as any).lastCopiedText = playwrightText;
+        (window as unknown as { lastCopyText?: string, lastCopiedText?: string, lastPastedText?: string }).lastCopiedText = playwrightText;
     }
-    catch (err: any) {
-        showResult("playwright", `Copy failed: ${err.message}`, false);
-        log(`Playwright Copy failed: ${err.message}`);
+    catch (err: unknown) {
+        showResult("playwright", `Copy failed: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`Playwright Copy failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 
@@ -250,11 +250,11 @@ async function handlePlaywrightPaste() {
         showResult("playwright", `Paste successful: ${text}`);
         log(`Playwright Paste successful: ${text}`);
         // Save to global variable (for testing)
-        (window as any).lastPastedText = text;
+        (window as unknown as { lastCopyText?: string, lastCopiedText?: string, lastPastedText?: string }).lastPastedText = text;
     }
-    catch (err: any) {
-        showResult("playwright", `Paste failed: ${err.message}`, false);
-        log(`Playwright Paste failed: ${err.message}`);
+    catch (err: unknown) {
+        showResult("playwright", `Paste failed: ${err instanceof Error ? err.message : String(err)}`, false);
+        log(`Playwright Paste failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
 

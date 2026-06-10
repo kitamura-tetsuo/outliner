@@ -23,10 +23,10 @@ let aliasTargetId = $state<string | undefined>();
 onMount(() => {
     aliasTargetId = item.aliasTargetId;
     try {
-        const anyItem: any = item as any;
-        const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+        const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (key: unknown) => { observe?: (cb: unknown) => void, unobserve?: (cb: unknown) => void } }, key?: unknown };
+        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
         if (ymap && typeof ymap.observe === 'function') {
-            const obs = (e?: any) => {
+            const obs = (e?: { keysChanged?: { has?: (key: string) => boolean } }) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
                         const newValue = ymap.get?.('aliasTargetId');
@@ -50,7 +50,7 @@ let aliasLastConfirmedPulse: { itemId: string; targetId: string; at: number } | 
 onMount(() => {
     const iv = setInterval(() => {
         try {
-            const ap: any = (typeof window !== 'undefined') ? (window as any).aliasPickerStore : null;
+            const ap = (typeof window !== "undefined") ? (window as Window & typeof globalThis & { aliasPickerStore?: { confirmById?: (id: string) => void, show?: (id: string) => void } }).aliasPickerStore : null;
             const li = ap?.lastConfirmedItemId;
             const lt = ap?.lastConfirmedTargetId;
             const la = ap?.lastConfirmedAt as number | null;
@@ -63,14 +63,14 @@ onMount(() => {
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
-    void (aliasPickerStore as any)?.tick;
+    void (aliasPickerStore as unknown as { tick?: number })?.tick;
     void aliasLastConfirmedPulse;
     const base = aliasTargetId;
     if (base) return base;
 
-    const lastItemId = (aliasPickerStore as any)?.lastConfirmedItemId;
-    const lastTargetId = (aliasPickerStore as any)?.lastConfirmedTargetId;
-    const lastAt = (aliasPickerStore as any)?.lastConfirmedAt as number | null;
+    const lastItemId = (aliasPickerStore as unknown as { lastConfirmedItemId?: string | null })?.lastConfirmedItemId;
+    const lastTargetId = (aliasPickerStore as unknown as { lastConfirmedTargetId?: string | null })?.lastConfirmedTargetId;
+    const lastAt = (aliasPickerStore as unknown as { lastConfirmedAt?: number | null })?.lastConfirmedAt;
 
     if (lastTargetId && lastAt && Date.now() - lastAt < 6000 && lastItemId === modelId) {
         return lastTargetId;
@@ -97,7 +97,7 @@ const aliasTarget = $derived.by(() => {
 });
 
 const aliasPath = $derived.by(() => {
-    void (aliasPickerStore as any)?.tick;
+    void (aliasPickerStore as unknown as { tick?: number })?.tick;
     void aliasLastConfirmedPulse;
     void aliasTargetIdEffective;
     
@@ -122,7 +122,7 @@ function findItem(node: Item, id: string): Item | undefined {
     if (node.id === id) return node;
     const children = node.items;
     if (children) {
-        for (const child of children as any) {
+        for (const child of children as unknown as Iterable<Item>) {
             const found = findItem(child, id);
             if (found) return found;
         }
@@ -135,11 +135,11 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
     if (node.id === id) return [...path, node];
     const children = node.items;
     if (children) {
-        const len = Number.isFinite((children as any).length) ? (children as any).length as number : 0;
+        const len = Number.isFinite((children as unknown as { length?: number })?.length) ? (children as unknown as { length: number }).length : 0;
         for (let i = 0; i < len; i++) {
             let child: Item | undefined;
             try {
-                child = (children as any).at ? (children as any).at(i) as Item : (children as any)[i] as Item;
+                child = (children as unknown as { at?: (idx: number) => Item, [idx: number]: Item }).at ? (children as unknown as { at: (idx: number) => Item }).at(i) : (children as unknown as { [idx: number]: Item })[i];
             } catch { child = undefined; }
             if (!child) continue;
             const res = findPath(child, id, [...path, node]);
@@ -160,7 +160,7 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
             {/each}
         {:else}
             <button type="button">
-                {findItem(generalStore.currentPage as any, aliasTargetIdEffective)?.text || "Loading..."}
+                {findItem(generalStore.currentPage as unknown as Item, aliasTargetIdEffective)?.text || "Loading..."}
             </button>
         {/if}
     </div>

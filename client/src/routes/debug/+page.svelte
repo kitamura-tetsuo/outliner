@@ -18,7 +18,7 @@ import { createYjsClient, saveFirestoreContainerIdToServer } from "../../service
 const logger = getLogger();
 
 let error: string | undefined = $state(undefined);
-let debugInfo: any = $state({});
+let debugInfo: Record<string, unknown> = $state({});
 let hostInfo = $state("");
 let portInfo = $state("");
 let envConfig = getDebugConfig();
@@ -29,7 +29,7 @@ let connectionStatus = $state("Disconnected");
 let isConnected = $state(false);
 
 // Handle authentication success
-async function handleAuthSuccess(authResult: any) {
+async function handleAuthSuccess(authResult: unknown) {
     logger.info("Authentication success:", authResult);
     isAuthenticated = true;
 
@@ -79,7 +79,7 @@ async function retryConnection() {
     await initializeFluidClient();
 }
 
-let healthStatus: any = $state(null);
+let healthStatus: Record<string, unknown> | null = $state(null);
 let healthError: string | undefined = $state(undefined);
 
 function getHealthCheckUrl() {
@@ -122,7 +122,7 @@ async function checkHealth() {
 
 // Update connection status
 function updateConnectionStatus() {
-    const client = yjsStore.yjsClient as any;
+    const client = yjsStore.yjsClient;
     if (client) {
         connectionStatus = client.getConnectionStateString() || "Disconnected";
         isConnected = client.isContainerConnected || false;
@@ -135,7 +135,7 @@ function updateConnectionStatus() {
 }
 
 // Periodically update connection status
-let statusInterval: any;
+let statusInterval: ReturnType<typeof setInterval> | undefined;
 
 onMount(() => {
     console.debug("[debug/+page] Component mounted");
