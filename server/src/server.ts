@@ -215,8 +215,12 @@ export async function startServer(
             // after the WS handshake, and if we await async operations first the message would be lost
             // (no listener registered yet), causing a 30-second timeout.
             const request = data.request;
-            const token = extractAuthToken(request);
-            console.log(`[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${token ? "FOUND" : "MISSING"}`);
+            const token = data.token || extractAuthToken(request);
+            console.log(
+                `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${
+                    token ? "FOUND" : "MISSING"
+                }, data.token=${data.token}`,
+            );
 
             const room = parseRoom(data.documentName);
             if (!room?.project) {
@@ -384,10 +388,12 @@ export async function startServer(
             const isDemoRoom = room.project === "demo";
 
             // 4. Validate token presence (synchronous, no network calls)
-            const token = extractAuthToken(request);
-            if (!token && !isDemoRoom) {
-                return rejectSync(4001, "NO_TOKEN");
-            }
+            // Note: We bypass strict HTTP Upgrade token presence validation because the client
+            // only sends the token in the initial HTTP upgrade URL for backwards compatibility.
+            // When reconnecting or using the HocuspocusProvider's native token refresh, the token
+            // is often sent exclusively inside the payload of the first WebSocket `MessageType.Auth` frame,
+            // which happens AFTER the upgrade. We enforce token presence during `onAuthenticate` instead.
+            // We just ensure we don't immediately reject.
 
             // 5. Check room connection limit (synchronous)
             const currentRoomCount = roomCounts.get(documentName) ?? 0;
