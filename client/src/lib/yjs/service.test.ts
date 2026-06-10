@@ -48,10 +48,10 @@ describe("yjsService", () => {
                 this.users = updatedUsers;
             },
         };
-        (globalThis as typeof globalThis & { presenceStore?: typeof presenceStore }).presenceStore = presenceStore;
+        (globalThis as typeof globalThis & { presenceStore?: typeof presenceStore; }).presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
-        expect((presenceStore.users["u1"] as { userName?: string }).userName).toBe("Alice");
+        expect((presenceStore.users["u1"] as { userName?: string; }).userName).toBe("Alice");
         awareness.setLocalStateField("user", null);
         unbind();
     });
@@ -80,7 +80,8 @@ describe("yjsService", () => {
                 this.selections = updatedSelections;
             },
         };
-        (globalThis as typeof globalThis & { editorOverlayStore?: typeof editorOverlayStore }).editorOverlayStore = editorOverlayStore;
+        (globalThis as typeof globalThis & { editorOverlayStore?: typeof editorOverlayStore; }).editorOverlayStore =
+            editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
 
         // seed local state (ignored by overlay sync)
@@ -88,17 +89,25 @@ describe("yjsService", () => {
         awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
 
         // simulate remote collaborator
-        const states = (awareness as unknown as { getStates: () => Map<number, unknown> }).getStates();
+        const states = (awareness as unknown as { getStates: () => Map<number, unknown>; }).getStates();
         states.set(42, {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } },
         });
-        (awareness as unknown as { emit: (event: string, args: unknown[]) => void }).emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
+        (awareness as unknown as { emit: (event: string, args: unknown[]) => void; }).emit("change", [{
+            added: new Set([42]),
+            updated: new Set(),
+            removed: new Set(),
+        }, "test"]);
 
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
-        (awareness as unknown as { emit: (event: string, args: unknown[]) => void }).emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
+        (awareness as unknown as { emit: (event: string, args: unknown[]) => void; }).emit("change", [{
+            added: new Set(),
+            updated: new Set(),
+            removed: new Set([42]),
+        }, "test"]);
         unbind();
     });
 });

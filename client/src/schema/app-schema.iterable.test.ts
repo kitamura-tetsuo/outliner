@@ -20,7 +20,9 @@ describe("Items.asArrayLike iterable characteristics", () => {
         const project = Project.createInstance("iterable-test");
 
         // Create items equivalent to 2 pages directly under the root
-        const rootItems = project.items as unknown as { addNode: (type: string) => Item, length: number } & Iterable<Item>;
+        const rootItems = project.items as unknown as
+            & { addNode: (type: string) => Item; length: number; }
+            & Iterable<Item>;
         const a = rootItems.addNode("user");
         a.updateText("A");
         const b = rootItems.addNode("user");
@@ -52,7 +54,9 @@ describe("Items.asArrayLike iterable characteristics", () => {
 describe("Cursor.searchItem recursion over children (no exceptions)", () => {
     it("findTarget() locates deep child without throwing", () => {
         const project = Project.createInstance("cursor-search");
-        const rootItems = project.items as unknown as { addNode: (type: string) => Item, length: number } & Iterable<Item>;
+        const rootItems = project.items as unknown as
+            & { addNode: (type: string) => Item; length: number; }
+            & Iterable<Item>;
 
         const page = rootItems.addNode("user");
         page.updateText("Page");
@@ -63,14 +67,17 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
         c2.updateText("child-2");
 
         // Set the currentPage referenced by Cursor
-        (generalStore as { currentPage?: Item }).currentPage = page;
+        (generalStore as { currentPage?: Item; }).currentPage = page;
 
-        const cursor = new Cursor("cur-1", {
-            itemId: c2.id,
-            offset: 0,
-            isActive: true,
-            userId: "u1",
-        } as import("../stores/EditorOverlayStore.svelte").CursorPosition);
+        const cursor = new Cursor(
+            "cur-1",
+            {
+                itemId: c2.id,
+                offset: 0,
+                isActive: true,
+                userId: "u1",
+            } as import("../stores/EditorOverlayStore.svelte").CursorPosition,
+        );
 
         // Ensure no exception is thrown and the target is found
         let found: Item | undefined;

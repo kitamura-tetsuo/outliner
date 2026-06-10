@@ -53,10 +53,10 @@ try {
     // and so subsequent imports (including Svelte-compiled graph) pick up the same instance.
     // Note: this path is relative to project root (vite config uses the same resolver in tests)
     const mod = await import("./src/stores/firestoreStore.svelte");
-    const fsStore = (mod as { firestoreStore?: unknown }).firestoreStore;
+    const fsStore = (mod as { firestoreStore?: unknown; }).firestoreStore;
     if (fsStore) {
         window.__FIRESTORE_STORE__ ||= fsStore;
-        (globalThis as typeof globalThis & { __FIRESTORE_STORE__?: unknown }).__FIRESTORE_STORE__ ||= fsStore;
+        (globalThis as typeof globalThis & { __FIRESTORE_STORE__?: unknown; }).__FIRESTORE_STORE__ ||= fsStore;
     }
 } catch {
     // no-op: if import fails here, module will still set __FIRESTORE_STORE__ on first import
@@ -66,10 +66,10 @@ try {
 try {
     // Import the real yjsStore early so it can publish itself to window.__YJS_STORE__
     const yjsMod = await import("./src/stores/yjsStore.svelte");
-    const yjsStoreInstance = (yjsMod as { yjsStore?: unknown }).yjsStore;
+    const yjsStoreInstance = (yjsMod as { yjsStore?: unknown; }).yjsStore;
     if (yjsStoreInstance) {
         window.__YJS_STORE__ ||= yjsStoreInstance;
-        (globalThis as typeof globalThis & { __YJS_STORE__?: unknown }).__YJS_STORE__ ||= yjsStoreInstance;
+        (globalThis as typeof globalThis & { __YJS_STORE__?: unknown; }).__YJS_STORE__ ||= yjsStoreInstance;
     }
 } catch {
     // no-op: if import fails here, module will still set __YJS_STORE__ on first import
