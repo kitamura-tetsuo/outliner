@@ -201,7 +201,7 @@ export class GeneralStore {
         }
     }
 
-    public set project(v: Project) {
+    public set project(v: Project | undefined) {
         if (v === this._project) {
             return;
         }
