@@ -42,8 +42,8 @@
 
     // Optional variable for pending imports - defined to avoid ESLint no-undef errors
     // This is used in conditional checks and may be set by external code
-    let pendingImport: any[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-    let project: any; // eslint-disable-line @typescript-eslint/no-unused-vars
+    let pendingImport: unknown[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
+    let project: import("../../../schema/app-schema").Project | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
 
     // Monitor and update URL parameters and auth state
     // Key to avoid multiple executions under the same conditions and prevent Svelte update depth exceeded
@@ -128,24 +128,24 @@
             }
 
             // 2. Update store
-            yjsStore.yjsClient = client as any;
+            yjsStore.yjsClient = client as unknown as import("../../../yjs/YjsClient").YjsClient;
             const project = client.getProject?.();
 
             if (!project) {
                 throw new Error("Project data not found in client");
             }
-            store.project = project as any;
+            store.project = project;
             logger.info(
                 `loadProjectAndPage: Project loaded: "${project.title}"`,
             );
 
             // 3. Search and identify page
-            // const items = project.items as any; // Moved inside findPage for freshness
-            let targetPage: any = null;
+            // const items = project?.items; // Moved inside findPage for freshness
+            let targetPage: import("../../../schema/app-schema").Item | null = null;
 
             // Helper to find page by name
             const findPage = () => {
-                const items = project.items as any;
+                const items = project?.items;
                 if (items) {
                     const len = (typeof items.length === "function") ? items.length() : (items.length ?? 0);
                     const titles: string[] = [];
@@ -183,7 +183,7 @@
                         break;
                     }
                     if (i % 10 === 0 || i === maxRetries - 1) {
-                        const items = project.items as any;
+                        const items = project?.items;
                         const len =
                             typeof items?.length === "function"
                                 ? items.length()
@@ -207,7 +207,7 @@
 
             // 5. Set current page and hydration
             if (targetPage) {
-                store.currentPage = targetPage as any;
+                store.currentPage = targetPage;
 
                 // Wait for page list store update (optional)
                 if (!store.pages) {
@@ -232,7 +232,7 @@
             isLoading = false;
             __loadingInProgress = false;
             if (typeof window !== "undefined") {
-                (window as any).__PAGE_STATE__ = {
+                (window as Window & typeof globalThis & { __PAGE_STATE__?: unknown }).__PAGE_STATE__ = {
                     loaded: true,
                     projectName,
                     pageName,
@@ -266,7 +266,7 @@
             const iv = setInterval(() => {
                 try {
                     capturePageIdForSchedule();
-                    const pg: any = store.currentPage as any;
+                    const pg = store.currentPage;
                     const len = pg?.items?.length ?? 0;
                     if (len > 0 || ++tries > 50) {
                         clearInterval(iv);
@@ -294,7 +294,7 @@
     function capturePageIdForSchedule() {
         try {
             if (typeof window === "undefined") return;
-            const pg: any = store.currentPage as any;
+            const pg = store.currentPage;
             if (!pg) return;
 
             // Always use the page ID itself, not its children
@@ -334,15 +334,15 @@
     // Auxiliary button to add items from top of screen (for E2E stabilization)
     function addItemFromTopToolbar() {
         try {
-            let pageItem: any = store.currentPage as any;
+            let pageItem = store.currentPage;
             // If currentPage is not ready, create provisional page with pageName from URL
             if (!pageItem) {
-                const proj: any = store.project as any;
+                const proj = store.project;
                 if (proj?.addPage && pageName) {
                     try {
                         const created = proj.addPage(pageName, "tester");
                         if (created) {
-                            store.currentPage = created as any;
+                            store.currentPage = created;
                             pageItem = created;
                         }
                     } catch {}
@@ -371,7 +371,7 @@
         const before = isSearchPanelVisible;
         isSearchPanelVisible = !isSearchPanelVisible;
         if (typeof window !== "undefined") {
-            (window as any).__SEARCH_PANEL_VISIBLE__ = isSearchPanelVisible;
+            (window as Window & typeof globalThis & { __SEARCH_PANEL_VISIBLE__?: boolean }).__SEARCH_PANEL_VISIBLE__ = isSearchPanelVisible;
         }
         logger.debug(
             `toggleSearchPanel called: ${JSON.stringify({
@@ -443,7 +443,7 @@
 
         // For E2E Debug: Expose function to forcibly open search panel
         if (typeof window !== "undefined") {
-            (window as any).__OPEN_SEARCH__ = async () => {
+            (window as Window & typeof globalThis & { __OPEN_SEARCH__?: () => Promise<void> }).__OPEN_SEARCH__ = async () => {
                 // Click toggle button to open only when currently hidden (prevent double toggle)
                 if (!isSearchPanelVisible) {
                     const btn =
@@ -461,7 +461,7 @@
                     await new Promise((r) => setTimeout(r, 25));
                     tries++;
                 }
-                (window as any).__SEARCH_PANEL_VISIBLE__ = true;
+                (window as Window & typeof globalThis & { __SEARCH_PANEL_VISIBLE__?: boolean }).__SEARCH_PANEL_VISIBLE__ = true;
                 logger.debug(
                     `E2E: __OPEN_SEARCH__ ensured visible (no double toggle): ${JSON.stringify(
                         {

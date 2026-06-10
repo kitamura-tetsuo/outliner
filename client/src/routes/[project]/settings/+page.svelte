@@ -49,7 +49,7 @@
     function hydrateFromSnapshotIfNeeded() {
         const projectName = $page.params.project as string | undefined;
         if (!projectName) return;
-        if (!projectLooksLikePlaceholder(store.project as any)) return;
+        if (!projectLooksLikePlaceholder(store.project)) return;
         const snapshot = loadProjectSnapshot(projectName);
         if (!snapshot) return;
         try {
@@ -63,7 +63,7 @@
                     yjsStore.yjsClient = createSnapshotClient(
                         projectName,
                         hydrated,
-                    ) as any;
+                    );
                 } catch {}
             }
             project = hydrated;
@@ -85,8 +85,8 @@
             try {
                 const client = await getYjsClientByProjectTitle(projectName);
                 if (client) {
-                    yjsStore.yjsClient = client as any;
-                    project = client.getProject() as any;
+                    yjsStore.yjsClient = client as unknown as import("../../../yjs/YjsClient").YjsClient;
+                    project = client.getProject();
                 }
             } catch (err) {
                 console.warn("SettingsPage: Failed to connect to Yjs", err);
@@ -96,7 +96,7 @@
         // Try to get project from yjsStore first, then from store if Yjs fails
         if (!project) {
             project = (yjsStore.yjsClient?.getProject() ||
-                store.project) as any;
+                store.project);
         }
         hydrateFromSnapshotIfNeeded();
     });
@@ -116,7 +116,7 @@
 
         if (
             (!projectForExport ||
-                projectLooksLikePlaceholder(projectForExport as any)) &&
+                projectLooksLikePlaceholder(projectForExport)) &&
             projectName
         ) {
             const snapshot = loadProjectSnapshot(projectName);
@@ -125,9 +125,9 @@
                     "doExport: Hydrating project from snapshot for export",
                     { projectName },
                 );
-                projectForExport = snapshotToProject(snapshot) as any;
+                projectForExport = snapshotToProject(snapshot);
                 try {
-                    store.project = projectForExport as any;
+                    store.project = projectForExport;
                 } catch {}
             }
         }
@@ -135,8 +135,8 @@
         if (projectForExport) {
             exportContent =
                 format === "opml"
-                    ? exportProjectToOpml(projectForExport as any)
-                    : exportProjectToMarkdown(projectForExport as any);
+                    ? exportProjectToOpml(projectForExport)
+                    : exportProjectToMarkdown(projectForExport);
             console.log("doExport: Export content:", exportContent);
         }
 
@@ -184,10 +184,10 @@
 
         if (importFormat === "opml") {
             console.log("doImport: Calling importOpmlIntoProject");
-            importOpmlIntoProject(importText, currentProject as any);
+            importOpmlIntoProject(importText, currentProject);
         } else {
             console.log("doImport: Calling importMarkdownIntoProject");
-            importMarkdownIntoProject(importText, currentProject as any);
+            importMarkdownIntoProject(importText, currentProject);
         }
 
         console.log(
@@ -195,7 +195,7 @@
             currentProject.items?.length || 0,
         );
         if (currentProject.items && currentProject.items.length > 0) {
-            const items = currentProject.items as any;
+            const items = currentProject.items as unknown as import("../../../schema/app-schema").Items;
             const firstPage = items.at ? items.at(0) : items[0];
             const text = firstPage
                 ? typeof firstPage.text === "function"
@@ -212,11 +212,11 @@
                 "doImport: Using Yjs-connected project, updating stores",
             );
             yjsStore.yjsClient = yjsStore.yjsClient; // This triggers reactivity in yjsStore
-            store.project = yjsProject as any;
+            store.project = yjsProject as unknown as import("../../../schema/app-schema").Project;
         } else {
             // If no Yjs project was available, update as before
             console.log("doImport: No Yjs project, using fallback");
-            store.project = currentProject as any;
+            store.project = currentProject;
         }
 
         // Clear import text after successful import
@@ -236,7 +236,7 @@
 
         // Navigate to the first imported page instead of reloading
         if (currentProject.items && currentProject.items.length > 0) {
-            const items = currentProject.items as any;
+            const items = currentProject.items as unknown as import("../../../schema/app-schema").Items;
             const firstPage = items.at ? items.at(0) : items[0];
 
             if (firstPage) {
