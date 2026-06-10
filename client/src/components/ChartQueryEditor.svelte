@@ -8,10 +8,11 @@ interface Props {
 }
 
 let { item }: Props = $props();
-let sql = $state(item.chartQuery || "SELECT 1 AS value");
+let sql = $state<string>();
 let isInitialized = $state(false);
 
 onMount(async () => {
+    sql = item.chartQuery || "SELECT 1 AS value";
     try {
         await initDb();
         isInitialized = true;

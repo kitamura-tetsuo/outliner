@@ -18,9 +18,10 @@ interface Props {
 let { modelId, item, isReadOnly = false, isCollapsed = false }: Props = $props();
 
 // Subscription to aliasTargetId via Yjs observe
-let aliasTargetId = $state<string | undefined>(item.aliasTargetId);
+let aliasTargetId = $state<string | undefined>();
 
 onMount(() => {
+    aliasTargetId = item.aliasTargetId;
     try {
         const anyItem: any = item as any;
         const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
