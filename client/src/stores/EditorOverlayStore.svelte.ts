@@ -183,7 +183,17 @@ export class EditorOverlayStore {
      */
     addCursor(omitProps: Omit<CursorPosition, "cursorId">) {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`EditorOverlayStore.addCursor called with:`, omitProps);
             console.log(`Current cursors:`, this.cursors);
             console.log(`Current cursor instances:`, Array.from(this.cursorInstances.keys()));
@@ -201,7 +211,17 @@ export class EditorOverlayStore {
 
         if (existingCursor) {
             // Debug info
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).DEBUG_MODE
+            ) {
                 console.log(
                     `Cursor already exists at this position, returning existing ID: ${existingCursor.cursorId}`,
                 );
@@ -231,7 +251,19 @@ export class EditorOverlayStore {
                         textarea.focus();
 
                         // Debug info
-                        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                        if (
+                            typeof window !== "undefined"
+                            && (window as Window & typeof globalThis & {
+                                DEBUG_MODE?: boolean;
+                                generalStore?: {
+                                    currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
+                                };
+                                itemsStore?: unknown;
+                                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                                appStore?: { currentPage?: unknown; };
+                                editorOverlayStore?: unknown;
+                            }).DEBUG_MODE
+                        ) {
                             console.log(
                                 `Focus set after finding existing cursor. Active element is textarea: ${
                                     document.activeElement === textarea
@@ -242,7 +274,17 @@ export class EditorOverlayStore {
                 });
             } else {
                 // Log error if textarea is not found
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined"
+                    && (window as Window & typeof globalThis & {
+                        DEBUG_MODE?: boolean;
+                        generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                        itemsStore?: unknown;
+                        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                        appStore?: { currentPage?: unknown; };
+                        editorOverlayStore?: unknown;
+                    }).DEBUG_MODE
+                ) {
                     console.error(`Global textarea not found in addCursor (existing cursor)`);
                 }
             }
@@ -284,7 +326,19 @@ export class EditorOverlayStore {
                     textarea.focus();
 
                     // Debug info
-                    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                    if (
+                        typeof window !== "undefined"
+                        && (window as Window & typeof globalThis & {
+                            DEBUG_MODE?: boolean;
+                            generalStore?: {
+                                currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
+                            };
+                            itemsStore?: unknown;
+                            editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                            appStore?: { currentPage?: unknown; };
+                            editorOverlayStore?: unknown;
+                        }).DEBUG_MODE
+                    ) {
                         console.log(
                             `Focus set after adding new cursor. Active element is textarea: ${
                                 document.activeElement === textarea
@@ -295,7 +349,17 @@ export class EditorOverlayStore {
             });
         } else {
             // Log error if textarea is not found
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).DEBUG_MODE
+            ) {
                 console.error(`Global textarea not found in addCursor (new cursor)`);
             }
         }
@@ -304,7 +368,17 @@ export class EditorOverlayStore {
         this.startCursorBlink();
 
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`New cursor added with ID: ${newId}`);
             console.log(`Updated cursors:`, this.cursors);
             console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
@@ -382,7 +456,17 @@ export class EditorOverlayStore {
         userId = "local",
     ) {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`setBoxSelection called with:`, {
                 startItemId,
                 startOffset,
@@ -395,7 +479,17 @@ export class EditorOverlayStore {
 
         // Validate arguments
         if (!startItemId || !endItemId) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).DEBUG_MODE
+            ) {
                 console.error(`Invalid item IDs: startItemId=${startItemId}, endItemId=${endItemId}`);
             }
             return;
@@ -420,7 +514,17 @@ export class EditorOverlayStore {
         const key = this.setSelection(selection);
 
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`Box selection set with key: ${key}`);
             console.log(`Current selections:`, this.selections);
         }
@@ -439,7 +543,17 @@ export class EditorOverlayStore {
                 };
                 this.notifyChange();
 
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined"
+                    && (window as Window & typeof globalThis & {
+                        DEBUG_MODE?: boolean;
+                        generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                        itemsStore?: unknown;
+                        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                        appStore?: { currentPage?: unknown; };
+                        editorOverlayStore?: unknown;
+                    }).DEBUG_MODE
+                ) {
                     console.log(`Box selection isUpdating set to false for key: ${key}`);
                 }
             }
@@ -465,7 +579,17 @@ export class EditorOverlayStore {
      */
     clearSelectionForUser(userId = "local") {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`clearSelectionForUser called with userId=${userId}`);
             console.log(`Current selections before clearing:`, this.selections);
         }
@@ -482,7 +606,17 @@ export class EditorOverlayStore {
         this.notifyChange();
 
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`Selections after clearing:`, this.selections);
 
             // Check if selection ranges were correctly cleared
@@ -557,7 +691,17 @@ export class EditorOverlayStore {
      */
     clearCursorAndSelection(userId = "local", clearSelections = false, preserveAltClick = false) {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(
                 `clearCursorAndSelection called with userId=${userId}, clearSelections=${clearSelections}, preserveAltClick=${preserveAltClick}`,
             );
@@ -584,7 +728,17 @@ export class EditorOverlayStore {
             }
 
             // Debug info
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).DEBUG_MODE
+            ) {
                 console.log(
                     `Cursors to remove: ${cursorIdsToRemove.length}, Cursors to keep: ${cursorIdsToKeep.length}`,
                 );
@@ -659,7 +813,17 @@ export class EditorOverlayStore {
         this.notifyChange();
 
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`Cursors after clearing:`, this.cursors);
         }
 
@@ -710,7 +874,17 @@ export class EditorOverlayStore {
      * For debugging: Log current cursor state
      */
     logCursorState() {
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             const cursorInstances = this.getCursorInstances();
             const cursors = Object.values(this.cursors);
             console.log(`=== Cursor State Debug Info ===`);
@@ -755,7 +929,17 @@ export class EditorOverlayStore {
         const itemId = cursorProps.itemId;
 
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`setCursor called for userId=${userId}, itemId=${itemId}, offset=${cursorProps.offset}`);
             console.log(`Current cursor instances:`, Array.from(this.cursorInstances.keys()));
         }
@@ -787,7 +971,17 @@ export class EditorOverlayStore {
             this.cursors = newCursors;
 
             // Debug info
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).DEBUG_MODE
+            ) {
                 console.log(`Removed ${cursorIdsToRemove.length} existing cursors:`, cursorIdsToRemove);
             }
 
@@ -836,7 +1030,17 @@ export class EditorOverlayStore {
         this.startCursorBlink();
 
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`Created new cursor with ID=${id}`);
             console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
             console.log(`Updated cursor history:`, this.cursorHistory);
@@ -1042,15 +1246,34 @@ export class EditorOverlayStore {
     private getOriginalTextFromItem(itemId: string): string | null {
         try {
             // Try to get the actual text content from the global store if available
-            if (typeof window !== "undefined" && (window as any).generalStore) {
-                const currentPage = (window as any).generalStore.currentPage;
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).generalStore
+            ) {
+                const currentPage = (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).generalStore.currentPage;
                 if (currentPage && currentPage.items) {
                     // Try to find the item by ID in the current page's items
                     // Use iterator to avoid O(N^2) complexity with indexed access on Items
                     if (currentPage.items) {
                         // Use iterateUnordered if available to avoid O(N log N) sorting
-                        const iter = (currentPage.items as any).iterateUnordered
-                            ? (currentPage.items as any).iterateUnordered()
+                        const iter = (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
+                                .iterateUnordered
+                            ? (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
+                                .iterateUnordered()
                             : currentPage.items;
                         for (const item of iter) {
                             if (item && item.id === itemId) {
@@ -1061,15 +1284,42 @@ export class EditorOverlayStore {
                 }
             }
         } catch (error) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).DEBUG_MODE
+            ) {
                 console.error("Error getting original text from item:", error);
             }
         }
 
         // Alternative approach: try to access it via the global items store
         try {
-            if (typeof window !== "undefined" && (window as any).itemsStore) {
-                const itemsStore = (window as any).itemsStore;
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).itemsStore
+            ) {
+                const itemsStore = (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).itemsStore;
                 if (itemsStore && itemsStore.allItems) {
                     // Attempt to find the item in the items store
                     for (let i = 0; i < itemsStore.allItems.length; i++) {
@@ -1081,25 +1331,64 @@ export class EditorOverlayStore {
                 }
             }
         } catch (error) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).DEBUG_MODE
+            ) {
                 console.error("Error getting original text from items store:", error);
             }
         }
 
         // Final fallback: try to access via editor store if it exists
         try {
-            if (typeof window !== "undefined" && (window as any).editorStore) {
-                const editorStore = (window as any).editorStore;
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).editorStore
+            ) {
+                const editorStore = (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).editorStore;
                 if (editorStore && editorStore.currentItems) {
                     // Look for item in editor store
-                    const item = editorStore.currentItems.find((it: any) => it.id === itemId);
+                    const item = editorStore.currentItems.find((it: { id: string; [key: string]: unknown; }) =>
+                        it.id === itemId
+                    );
                     if (item) {
                         return item.text || "";
                     }
                 }
             }
         } catch (error) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).DEBUG_MODE
+            ) {
                 console.error("Error getting original text from editor store:", error);
             }
         }
@@ -1132,7 +1421,17 @@ export class EditorOverlayStore {
      */
     getTextFromSelection(sel: SelectionRange): string {
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`getTextFromSelection called with:`, sel);
         }
 
@@ -1149,7 +1448,17 @@ export class EditorOverlayStore {
             }
         } catch (error) {
             // Log to console if an error occurs
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).DEBUG_MODE
+            ) {
                 console.error(`Error in getTextFromSelection:`, error);
                 if (error instanceof Error) {
                     console.error(`Error message: ${error.message}`);
@@ -1172,7 +1481,17 @@ export class EditorOverlayStore {
         }
 
         // Debug info
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`getTextFromBoxSelection called with:`, sel);
         }
 
@@ -1184,7 +1503,17 @@ export class EditorOverlayStore {
                 `[data-item-id="${escapeId(range.itemId)}"] .item-text`,
             ) as HTMLElement;
             if (!textEl) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined"
+                    && (window as Window & typeof globalThis & {
+                        DEBUG_MODE?: boolean;
+                        generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                        itemsStore?: unknown;
+                        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                        appStore?: { currentPage?: unknown; };
+                        editorOverlayStore?: unknown;
+                    }).DEBUG_MODE
+                ) {
                     console.log(`Text element not found for item ${range.itemId}`);
                 }
                 lines.push(""); // Add empty line
@@ -1197,7 +1526,17 @@ export class EditorOverlayStore {
 
             // Check if selection range is valid
             if (startOffset === endOffset) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined"
+                    && (window as Window & typeof globalThis & {
+                        DEBUG_MODE?: boolean;
+                        generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                        itemsStore?: unknown;
+                        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                        appStore?: { currentPage?: unknown; };
+                        editorOverlayStore?: unknown;
+                    }).DEBUG_MODE
+                ) {
                     console.log(`Empty selection for item ${range.itemId}`);
                 }
                 lines.push(""); // Add empty line
@@ -1206,7 +1545,17 @@ export class EditorOverlayStore {
 
             // Check if offset is within range
             if (startOffset < 0 || endOffset > text.length) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined"
+                    && (window as Window & typeof globalThis & {
+                        DEBUG_MODE?: boolean;
+                        generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                        itemsStore?: unknown;
+                        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                        appStore?: { currentPage?: unknown; };
+                        editorOverlayStore?: unknown;
+                    }).DEBUG_MODE
+                ) {
                     console.log(
                         `Invalid offsets for item ${range.itemId}: startOffset=${startOffset}, endOffset=${endOffset}, text.length=${text.length}`,
                     );
@@ -1237,13 +1586,33 @@ export class EditorOverlayStore {
         const sIdx = itemIdToIndex.get(sel.startItemId) ?? -1;
         const eIdx = itemIdToIndex.get(sel.endItemId) ?? -1;
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`Start index: ${sIdx}, End index: ${eIdx}`);
         }
 
         // Return empty string if index not found
         if (sIdx === -1 || eIdx === -1) {
-            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+            if (
+                typeof window !== "undefined"
+                && (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).DEBUG_MODE
+            ) {
                 console.log(`Invalid indices, skipping selection`);
             }
             return "";
@@ -1253,14 +1622,34 @@ export class EditorOverlayStore {
         const firstIdx = Math.min(sIdx, eIdx);
         const lastIdx = Math.max(sIdx, eIdx);
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`First index: ${firstIdx}, Last index: ${lastIdx}, isReversed: ${sel.isReversed || false}`);
         }
 
         // Get all items within the selection range
         const itemsInRange = allItems.slice(firstIdx, lastIdx + 1);
 
-        if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        if (
+            typeof window !== "undefined"
+            && (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).DEBUG_MODE
+        ) {
             console.log(`Items in range: ${itemsInRange.length}`);
             console.log(`Items in range:`, itemsInRange.map(item => item.getAttribute("data-item-id")));
         }
@@ -1274,7 +1663,17 @@ export class EditorOverlayStore {
             const textEl = item.querySelector(".item-text") as HTMLElement;
 
             if (!textEl) {
-                if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                if (
+                    typeof window !== "undefined"
+                    && (window as Window & typeof globalThis & {
+                        DEBUG_MODE?: boolean;
+                        generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                        itemsStore?: unknown;
+                        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                        appStore?: { currentPage?: unknown; };
+                        editorOverlayStore?: unknown;
+                    }).DEBUG_MODE
+                ) {
                     console.log(`Text element not found for item ${itemId}`);
                 }
                 continue;
@@ -1402,14 +1801,21 @@ export class EditorOverlayStore {
 
     private pushPresenceState() {
         try {
-            const client = yjsStore.yjsClient as any;
+            const client = yjsStore.yjsClient as unknown as { [key: string]: unknown; };
             if (!client) {
                 console.log("[pushPresenceState] No client");
                 return;
             }
 
             // Use page-level awareness (cursor/selection is page-specific)
-            const currentPage = (window as any).appStore?.currentPage;
+            const currentPage = (window as Window & typeof globalThis & {
+                DEBUG_MODE?: boolean;
+                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                itemsStore?: unknown;
+                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                appStore?: { currentPage?: unknown; };
+                editorOverlayStore?: unknown;
+            }).appStore?.currentPage;
             const pageId = currentPage?.id;
             if (!pageId) {
                 console.log("[pushPresenceState] No pageId", { currentPage });
@@ -1467,5 +1873,12 @@ export const editorOverlayStore = $state(new EditorOverlayStore());
 
 // Expose to global scope for testing
 if (typeof window !== "undefined") {
-    (window as any).editorOverlayStore = editorOverlayStore;
+    (window as Window & typeof globalThis & {
+        DEBUG_MODE?: boolean;
+        generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+        itemsStore?: unknown;
+        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+        appStore?: { currentPage?: unknown; };
+        editorOverlayStore?: unknown;
+    }).editorOverlayStore = editorOverlayStore;
 }
