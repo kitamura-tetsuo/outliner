@@ -215,8 +215,8 @@ export async function startServer(
             // after the WS handshake, and if we await async operations first the message would be lost
             // (no listener registered yet), causing a 30-second timeout.
             const request = data.request;
-            const token = extractAuthToken(request);
-            console.log(`[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${token ? "FOUND" : "MISSING"}`);
+            const token = data.token || extractAuthToken(request);
+            console.log(`[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${token ? "FOUND" : "MISSING"}, data.token=${data.token}`);
 
             const room = parseRoom(data.documentName);
             if (!room?.project) {
