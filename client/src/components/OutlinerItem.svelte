@@ -6,7 +6,7 @@
     // Measurement span singleton (lazy initialized)
     let _measurementSpan: HTMLSpanElement | null = null;
     function getMeasurementSpan(): HTMLSpanElement {
-        if (typeof document === 'undefined') return null as any;
+        if (typeof document === 'undefined') return null as unknown as HTMLSpanElement;
         if (!_measurementSpan) {
             _measurementSpan = document.createElement("span");
             _measurementSpan.id = "outliner-measurement-span";
@@ -40,7 +40,7 @@ const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !=
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
     const __origDebug = (logger as unknown as { debug: (...args: unknown[]) => void })?.debug?.bind?.(logger);
-    (logger as unknown as { debug: (...args: unknown[]) => void }).debug = (...args: any[]) => {
+    (logger as unknown as { debug: (...args: unknown[]) => void }).debug = (...args: unknown[]) => {
         if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch {} }
     };
 } catch {}
@@ -59,13 +59,13 @@ onMount(() => {
     try {
         if (typeof window !== 'undefined' && typeof document !== 'undefined') {
             const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W: any = window as any;
+            const W = window as Window & typeof globalThis & { __E2E_QS_PATCHED?: boolean; aliasPickerStore?: unknown };
             if (isTest && !W.__E2E_QS_PATCHED) {
                 const origQS = document.querySelector.bind(document);
                 document.querySelector = ((sel: string) => {
                     try {
                         if (/^\[data-item-id="/.test(sel)) {
-                            const ap = (W as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as { insertAlias?: (id: string, text: string) => void };
+                            const ap = (W as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as { insertAlias?: (id: string, text: string) => void, lastConfirmedItemId?: string };
                             const li = ap?.lastConfirmedItemId;
                             if (li) {
                                 const el = origQS(`[data-item-id="${li}"]`);
@@ -74,7 +74,7 @@ onMount(() => {
                         }
                     } catch {}
                     return origQS(sel);
-                }) as any;
+                }) as typeof document.querySelector;
                 W.__E2E_QS_PATCHED = true;
             }
         }
@@ -84,7 +84,7 @@ onMount(() => {
     try {
         if (typeof window !== 'undefined') {
             const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W:any = window as any;
+            const W = window as Window & typeof globalThis & { __E2E_GETATTR_PATCHED?: boolean };
             if (isTest && !W.__E2E_GETATTR_PATCHED) {
                 const origGetAttr = Element.prototype.getAttribute;
                 Element.prototype.getAttribute = function(name: string): string | null {
@@ -562,13 +562,13 @@ const aliasTargetIdEffective = $derived.by(() => {
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
             try {
-                const w = (typeof window !== "undefined") ? (window as Window & typeof globalThis & { generalStore?: any }) : null;
+                const w = (typeof window !== "undefined") ? (window as Window & typeof globalThis & { generalStore?: unknown, __ITEM_ID_MAP__?: Record<string, string> }) : null;
                 const map = w?.__ITEM_ID_MAP__;
                 const mappedId = map ? map[String(targetId)] : undefined;
-                const curPage = w?.generalStore?.currentPage as { items?: { at?: (i: number) => any } } | undefined;
+                const curPage = (w?.generalStore as { currentPage?: unknown })?.currentPage as { items?: { length: number, at?: (i: number) => unknown } } | undefined;
                 if (mappedId && curPage?.items) {
-                    for (let i = 0; i < curPage.items.length; i++) {
-                        const cand = curPage.items.at(i);
+                    for (let i = 0; i < (curPage.items.length || 0); i++) {
+                        const cand = curPage.items.at?.(i) as { id?: string, addAttachment: (u: string) => void } | undefined;
                         if (String(cand?.id) === String(mappedId)) {
                             try { cand.addAttachment(url); } catch { try { (cand as unknown as { attachments: string[][] }).attachments.push([url]); } catch {} }
                             try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {}
@@ -628,12 +628,12 @@ function handleComponentTypeChange(newType: string) {
     const value = newType === "none" ? undefined : newType;
     // Use setter preferentially if app-schema
     if (item && typeof item === "object" && "componentType" in item) {
-        try { (item as any).componentType = value; } catch {}
+        try { (item as unknown as { componentType: string | undefined }).componentType = value; } catch {}
     }
     // yjs-schema / fallback
-    setMapField(item as any, "componentType", value);
+    setMapField(item as unknown as { tree?: unknown, key?: unknown }, "componentType", value);
     // Optimistically update local state so UI reflects the change without waiting for Yjs propagation
-    componentType = value as any;
+    componentType = value;
 }
 
 // Synchronization by Yjs fine-grained observe
@@ -645,27 +645,27 @@ onMount(() => {
     try {
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
         const tree = anyItem?.tree; const key = anyItem?.key;
-        const m = tree?.getNodeValueFromKey?.(key) as any;
-        const t = m?.get?.("text");
+        const m = tree?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
+        const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
         if (t && typeof t.observe === "function") {
             const h1 = () => { try { textString = t.toString?.() ?? ""; } catch {} };
-            t.observe(h1); unsubs.push(() => { try { t.unobserve(h1); } catch {} });
+            t.observe(h1); unsubs.push(() => { try { t.unobserve?.(h1); } catch {} });
             // Initial reflection
             h1();
         }
         if (m && typeof m.observe === "function") {
-            const h2 = (e?: any) => {
+            const h2 = (e?: { keysChanged?: { has: (k: string) => boolean } }) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
-                        compTypeValue = m.get?.("componentType");
+                        compTypeValue = m.get?.("componentType") as string | undefined;
                     }
                 } catch {}
             };
-            m.observe(h2); unsubs.push(() => { try { m.unobserve(h2); } catch {} });
+            m.observe(h2); unsubs.push(() => { try { m.unobserve?.(h2); } catch {} });
             h2();
         } else {
             // Fallback: direct acquisition
-            try { compTypeValue = (anyItem as any).componentType; } catch {}
+            try { compTypeValue = (anyItem as unknown as { componentType?: string }).componentType; } catch {}
         }
     } catch {}
     return () => { for (const fn of unsubs) { try { fn(); } catch {} } };
@@ -727,13 +727,13 @@ function getClickPosition(event: MouseEvent, content: string): number {
 
     // Try Caret API (Fast Path)
     // Only use if rendered text length matches raw content length (avoids issues with hidden formatting/links)
-    if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint) && textEl.textContent?.length === content.length) {
+    if (textEl && (document.caretRangeFromPoint || (document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node, offset: number } }).caretPositionFromPoint) && textEl.textContent?.length === content.length) {
         let range: Range | null = null;
         if (document.caretRangeFromPoint) {
             range = document.caretRangeFromPoint(x, y);
         }
         else {
-            const posInfo = (document as any).caretPositionFromPoint(x, y);
+            const posInfo = (document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node, offset: number } }).caretPositionFromPoint?.(x, y);
             if (posInfo) {
                 range = document.createRange();
                 range.setStart(posInfo.offsetNode, posInfo.offset);
@@ -1432,11 +1432,11 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                     let full = el?.textContent || '';
                     if (!full) {
                         // Fallback from generalStore
-                        const w: any = (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown });
-                        const items: any = w?.generalStore?.currentPage?.items;
+                        const w = (window as Window & typeof globalThis & { generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string }, [key: number]: { id?: string, text?: string } } } } });
+                        const items = w?.generalStore?.currentPage?.items;
                         const len = items?.length ?? 0;
                         for (let i = 0; i < len; i++) {
-                            const it = items.at ? items.at(i) : items[i];
+                            const it = items?.at ? items.at(i) : items?.[i];
                             if (it?.id === r.itemId) { full = String(it?.text ?? ''); break; }
                         }
                     }
@@ -1595,7 +1595,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     if (maybeCustom?.detail && typeof maybeCustom.detail === "object" && "targetItemId" in maybeCustom.detail) {
         logger.debug("OutlinerItem handleDrop: custom event detail", maybeCustom.detail);
         event.preventDefault?.();
-        try { event.stopPropagation?.(); (event as any).stopImmediatePropagation?.(); } catch {}
+        try { event.stopPropagation?.(); (event as Event).stopImmediatePropagation?.(); } catch {}
 
         isDropTarget = false;
 
@@ -1622,7 +1622,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     logger.debug("OutlinerItem handleDrop: event received", event);
     // Prevent default action
     event.preventDefault();
-    try { event.stopPropagation(); (event as any).stopImmediatePropagation?.(); } catch {}
+    try { event.stopPropagation(); (event as Event).stopImmediatePropagation?.(); } catch {}
 
 
     // Clear drop target flag
@@ -1688,7 +1688,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         try {
                             const localUrl = URL.createObjectURL(file);
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as any)?.attachments?.push?.([localUrl]); } catch {} }
+                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as unknown as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} }
                                 try { mirrorAttachment(localUrl); } catch {}
                                 // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
                                 try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
@@ -1701,14 +1701,14 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                             }
                             // Auxiliary reflection to Doc after connection (via ID map)
                             try {
-                                const w:any = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }) : null;
+                                const w = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string, addAttachment?: (u: string) => void }, [key: number]: { id?: string, text?: string, addAttachment?: (u: string) => void } } } }, __ITEM_ID_MAP__?: Record<string, string> }) : null;
                                 const map = w?.__ITEM_ID_MAP__;
                                 const mappedId = map ? map[String(model.id)] : undefined;
-                                const curPage:any = w?.generalStore?.currentPage;
+                                const curPage = w?.generalStore?.currentPage;
                                 if (mappedId && curPage?.items) {
-                                    for (let i = 0; i < curPage.items.length; i++) {
-                                        const cand = curPage.items.at(i);
-                                        if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as any)?.attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
+                                    for (let i = 0; i < (curPage.items.length || 0); i++) {
+                                        const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
+                                        if (String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as unknown as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                                     }
                                 }
                             } catch {}
@@ -1736,7 +1736,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     }
 
     // E2E final final fallback: Add dummy attachment in test even if DataTransfer is missing/empty
-    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E__)) && (!dt || (((dt as any).files?.length ?? 0) === 0 && ((dt as any).items?.length ?? 0) === 0))) {
+    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
@@ -1791,7 +1791,7 @@ onMount(() => {
 
             custom.preventDefault?.();
             custom.stopPropagation?.();
-            (custom as any).stopImmediatePropagation?.();
+            (custom as Event).stopImmediatePropagation?.();
 
             dispatch("drop", {
                 targetItemId: detail.targetItemId ?? model.id,
@@ -1806,42 +1806,42 @@ onMount(() => {
 
         if (displayRef) {
             displayForward = maybeForward;
-            displayRef.addEventListener('synthetic-drop', displayForward as any, { capture: true } as any);
-            displayRef.addEventListener('drop', handleDrop as any, { capture: true } as any);
-            displayRef.addEventListener('drop', handleDrop as any, { capture: false } as any);
-            displayRef.addEventListener('dragover', handleDragOver as any, { capture: true } as any);
-            displayRef.addEventListener('dragover', handleDragOver as any, { capture: false } as any);
+            displayRef.addEventListener('synthetic-drop', displayForward as EventListener, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('drop', handleDrop as EventListener, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('drop', handleDrop as EventListener, { capture: false } as AddEventListenerOptions);
+            displayRef.addEventListener('dragover', handleDragOver as EventListener, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('dragover', handleDragOver as EventListener, { capture: false } as AddEventListenerOptions);
         }
         if (itemRef) {
             itemForward = maybeForward;
-            itemRef.addEventListener('synthetic-drop', itemForward as any, { capture: true } as any);
-            itemRef.addEventListener('drop', handleDrop as any, { capture: true } as any);
-            itemRef.addEventListener('drop', handleDrop as any, { capture: false } as any);
+            itemRef.addEventListener('synthetic-drop', itemForward as EventListener, { capture: true } as AddEventListenerOptions);
+            itemRef.addEventListener('drop', handleDrop as EventListener, { capture: true } as AddEventListenerOptions);
+            itemRef.addEventListener('drop', handleDrop as EventListener, { capture: false } as AddEventListenerOptions);
         }
     } catch {}
     return () => {
         try {
             if (displayForward) {
-                displayRef?.removeEventListener?.('synthetic-drop', displayForward as any, { capture: true } as any);
+                displayRef?.removeEventListener?.('synthetic-drop', displayForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: false } as any);
+            displayRef?.removeEventListener?.('drop', handleDrop as EventListener, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('drop', handleDrop as EventListener, { capture: false } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', handleDragOver as EventListener, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', handleDragOver as EventListener, { capture: false } as EventListenerOptions);
             if (itemForward) {
-                itemRef?.removeEventListener?.('synthetic-drop', itemForward as any, { capture: true } as any);
+                itemRef?.removeEventListener?.('synthetic-drop', itemForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
+            itemRef?.removeEventListener?.('drop', handleDrop as EventListener, { capture: true } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', handleDrop as EventListener, { capture: false } as EventListenerOptions);
         } catch {}
     };
 });
 // E2E: Receive direct notification from dispatchEvent hook, execute handleDrop if target element is under own displayRef
 onMount(() => {
     try {
-        const anyWin: any = (typeof window !== 'undefined') ? window : undefined;
+        const anyWin = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { __E2E_DROP_HANDLERS__?: ((el: Element, ev: DragEvent) => void)[], __E2E__?: boolean }) : undefined;
         if (!anyWin) return;
-        if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as any[];
+        if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as ((el: Element, ev: DragEvent) => void)[];
         const fn = (el: Element, ev: DragEvent) => {
             try {
                 if (displayRef && (el === displayRef || displayRef.contains(el))) {
@@ -1900,7 +1900,7 @@ onMount(() => {
 
         onDestroy(() => {
             try {
-                const arr: any[] = anyWin.__E2E_DROP_HANDLERS__;
+                const arr = anyWin.__E2E_DROP_HANDLERS__ as ((el: Element, ev: DragEvent) => void)[];
                 const i = arr.indexOf(fn);
                 if (i >= 0) arr.splice(i, 1);
             } catch {}
@@ -1913,12 +1913,12 @@ onMount(() => {
 
 onMount(() => {
     try {
-        displayRef?.addEventListener?.('drop', handleDrop as any, { capture: true });
-        displayRef?.addEventListener?.('drop', handleDrop as any, { capture: false });
-        displayRef?.addEventListener?.('dragover', handleDragOver as any, { capture: true });
-        displayRef?.addEventListener?.('dragover', handleDragOver as any, { capture: false });
-        itemRef?.addEventListener?.('drop', handleDrop as any, { capture: true });
-        itemRef?.addEventListener?.('drop', handleDrop as any, { capture: false });
+        displayRef?.addEventListener?.('drop', handleDrop as EventListener, { capture: true } as AddEventListenerOptions);
+        displayRef?.addEventListener?.('drop', handleDrop as EventListener, { capture: false } as AddEventListenerOptions);
+        displayRef?.addEventListener?.('dragover', handleDragOver as EventListener, { capture: true } as AddEventListenerOptions);
+        displayRef?.addEventListener?.('dragover', handleDragOver as EventListener, { capture: false } as AddEventListenerOptions);
+        itemRef?.addEventListener?.('drop', handleDrop as EventListener, { capture: true } as AddEventListenerOptions);
+        itemRef?.addEventListener?.('drop', handleDrop as EventListener, { capture: false } as AddEventListenerOptions);
     } catch {}
 
     // E2E file drop support removed - use proper Playwright file drop API instead
@@ -1928,12 +1928,12 @@ onMount(() => {
 
     return () => {
         try {
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: true } as any);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as any, { capture: false } as any);
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: true } as any);
-            itemRef?.removeEventListener?.('drop', handleDrop as any, { capture: false } as any);
+            displayRef?.removeEventListener?.('drop', handleDrop as EventListener, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('drop', handleDrop as EventListener, { capture: false } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', handleDragOver as EventListener, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', handleDragOver as EventListener, { capture: false } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', handleDrop as EventListener, { capture: true } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', handleDrop as EventListener, { capture: false } as EventListenerOptions);
         } catch {}
         try { if (e2eTimer) clearInterval(e2eTimer); } catch {}
     };
@@ -2011,10 +2011,10 @@ export function setSelectionPosition(start: number, end: number = start) {
     data-item-id={model.id}
     data-active={isItemActive}
     data-alias-target-id={
-        [ (aliasPickerStore as any)?.tick,
+        [ (aliasPickerStore as unknown as { tick?: unknown })?.tick,
           (aliasTargetIdEffective
-            || (((aliasPickerStore as any)?.lastConfirmedItemId === model.id)
-                && (aliasPickerStore as any)?.lastConfirmedTargetId)
+            || (((aliasPickerStore as unknown as { lastConfirmedItemId?: string })?.lastConfirmedItemId === model.id)
+                && (aliasPickerStore as unknown as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId)
             || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
             || "") ][1]
     }
@@ -2081,8 +2081,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                     class="item-text"
                     class:title-text={isPageTitle}
                     class:formatted={hasFormatting}
-                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
-                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any)?.updateText?.(t); } catch {} }}
+                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as { updateText?: (t: string) => void })?.updateText?.(t); } catch {} }}
+                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as { updateText?: (t: string) => void })?.updateText?.(t); } catch {} }}
                 >
                     <!-- XSS-safe: formattedHtml is derived from ScrapboxFormatter methods which escape HTML -->
                     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
