@@ -22,10 +22,10 @@
     </section>
 
     <section class="cta-section">
-        <button class="cta-button primary" on:click={login}>
+        <button class="cta-button primary" onclick={login}>
             Sign in with Google
         </button>
-        <button class="cta-button secondary" on:click={login}>
+        <button class="cta-button secondary" onclick={login}>
             Get Started
         </button>
     </section>
