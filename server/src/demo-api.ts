@@ -35,8 +35,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 const lastReset = metadata.get("lastReset") as number | undefined;
                 const templateVersion = metadata.get("templateVersion") as number | undefined;
 
+                const orderedTree = doc.getMap("orderedTree");
+                const keys = Array.from(orderedTree.keys());
+                const isEmpty = keys.length === 0 || (keys.length === 1 && keys[0] === "root");
+
                 if (
-                    !lastReset
+                    isEmpty
+                    || !lastReset
                     || (now - lastReset > RESET_INTERVAL_MS)
                     || templateVersion !== DEMO_TEMPLATE_VERSION
                 ) {
