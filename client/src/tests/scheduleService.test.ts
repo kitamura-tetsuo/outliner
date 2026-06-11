@@ -22,7 +22,7 @@ it("calls createSchedule API", async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
-    });
+    } as unknown as Response);
 
     const nextRunAt = Date.now() + 60000;
     const result = await createSchedule("page1", { strategy: "one_shot", nextRunAt });
@@ -54,7 +54,7 @@ it("calls listSchedules API", async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ schedules: mockSchedules }),
-    });
+    } as unknown as Response);
 
     const result = await listSchedules("page1");
 
@@ -84,7 +84,7 @@ it("calls cancelSchedule API", async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
-    });
+    } as unknown as Response);
 
     const result = await cancelSchedule("page1", "test-schedule-id");
 
@@ -111,7 +111,7 @@ it("calls updateSchedule API", async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
-    });
+    } as unknown as Response);
 
     const nextRunAt = Date.now() + 120000;
     const result = await updateSchedule("page1", "schedule1", {
@@ -144,7 +144,7 @@ it("calls exportSchedulesIcal API", async () => {
             get: (key: string) => key === "Content-Disposition" ? 'attachment; filename="test.ics"' : null,
         },
         text: () => Promise.resolve("test calendar content"),
-    });
+    } as unknown as Response);
 
     const { exportSchedulesIcal } = await import("../services/scheduleService");
     const result = await exportSchedulesIcal("page1");
