@@ -180,7 +180,7 @@ onMount(async () => {
         const isE2e = import.meta.env.MODE === "test"
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
             || (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_LAYOUT_MOUNTED__?: boolean, __E2E_DROP_PATCHED__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, __E2E_DROP_HANDLERS__?: ((this: unknown, e: Event) => void)[], __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown }).__E2E__ === true);
-        if (!isE2e && "serviceWorker" in navigator) {
+        if (!isE2e && !import.meta.env.DEV && "serviceWorker" in navigator) {
             navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
                 .then(reg => {
                     if (import.meta.env.DEV) logger.info("Service worker registered successfully");
