@@ -28,6 +28,23 @@ const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === tru
 let pageTitle = $state(isDev ? `New Page ${new Date().toLocaleTimeString()}` : "");
 let inputEl: HTMLInputElement | undefined = $state();
 let isGridView = $state(true); // Default to grid view
+let initialized = $state(false);
+
+$effect(() => {
+    if (!initialized) {
+        const saved = localStorage.getItem('outliner_page_list_view');
+        if (saved !== null) {
+            isGridView = saved === 'grid';
+        }
+        initialized = true;
+    }
+});
+
+$effect(() => {
+    if (initialized) {
+        localStorage.setItem('outliner_page_list_view', isGridView ? 'grid' : 'list');
+    }
+});
 
 function handleCreatePage() {
     if (!pageTitle.trim() && !isDev) {
