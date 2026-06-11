@@ -17,7 +17,9 @@ import {
 } from "../../../../services";
 import { store } from "../../../../stores/store.svelte";
 import { yjsStore } from "../../../../stores/yjsStore.svelte";
-import type { Item } from "../../../../schema/app-schema";
+import type { Item as AppItem } from "../../../../schema/app-schema";
+import type { Item as YjsItem } from "../../../../schema/yjs-schema";
+type Item = AppItem | YjsItem;
 
 // Import the load function from parent scope
 // We'll trigger it if the store is not properly initialized
@@ -149,7 +151,8 @@ onMount(async () => {
                 hasProject,
                 hasCurrentPage,
                 projectHasItems,
-                currentPageTitle: gs?.currentPage?.text?.toString?.() ?? "",
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                currentPageTitle: (gs?.currentPage as any)?.text?.toString?.() ?? "",
             });
             break;
         }
@@ -202,7 +205,8 @@ onMount(async () => {
 
         // First check store.project.items (more reliable after reload)
         try {
-            const projAny = store.project as unknown as { items?: { length: number, at?: (idx: number) => { id: string, text?: unknown } } & Record<number, { id: string, text?: unknown }> };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const projAny = store.project as any;
             if (projAny?.items) {
                 const projItems = projAny.items;
                 const projLen = projItems?.length ?? 0;
@@ -211,7 +215,8 @@ onMount(async () => {
                     projectItemsCount: projLen
                 });
                 for (let i = 0; i < projLen; i++) {
-                    const p = projItems?.at ? projItems.at(i) : projItems[i];
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const p = (projItems as any)?.at ? (projItems as any).at(i) : (projItems as any)[i];
                     if (!p) continue;
                     const pId = String(p.id);
                     const match = pId === String(sessionPinnedPageId);
@@ -308,7 +313,8 @@ onMount(async () => {
                 if (!p) continue;
                 const title = p.text?.toString?.() ?? "";
                 if (title.toLowerCase() === pageTitle.toLowerCase()) {
-                    foundPageRef = p;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    foundPageRef = p as any;
                     break;
                 }
             }
@@ -317,13 +323,15 @@ onMount(async () => {
         // Also check store.project.items directly
         if (!foundPageRef) {
             try {
-                const projAny = store.project as unknown as { items?: { length: number, at?: (idx: number) => { id: string, text?: unknown } } & Record<number, { id: string, text?: unknown }> };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const projAny = store.project as any;
                 if (projAny && typeof projAny.findPage === "function") {
                     // Try to find page by iterating through project items
                     const projItems = projAny.items;
                     const projLen = projItems?.length ?? 0;
                     for (let i = 0; i < projLen; i++) {
-                        const p = projItems?.at ? projItems.at(i) : projItems[i];
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const p = (projItems as any)?.at ? (projItems as any).at(i) : (projItems as any)[i];
                         if (!p) continue;
                         const title = p.text?.toString?.() ?? "";
                         if (title.toLowerCase() === pageTitle.toLowerCase()) {
