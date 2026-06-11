@@ -1,8 +1,15 @@
 import { Item, Items, Project } from "./schema/app-schema.js";
 
+// The public demo project is the living showcase of the product: every
+// end-user feature should be demonstrable on one of the pages below.
+// When you implement a new end-user feature, extend this template (add a
+// line to an existing page, or add a new feature page plus a landing-page
+// tour link) so the demo keeps covering the full feature set.
+// See docs/demo-project.md for the full policy.
+
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 3;
+export const DEMO_TEMPLATE_VERSION = 4;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -29,8 +36,10 @@ export const demoPages: DemoPageTemplate[] = [
             "  [Checkboxes and Tasks]: interactive checklists with completion status.",
             "  [Internal Links]: linking between pages, backlinks, and the graph view.",
             "  [Search and Commands]: full-text search and the inline command palette.",
+            "  [Selection and Clipboard]: multi-item selection, box selection, copy and paste.",
             "  [Collaboration]: real-time editing with other users.",
             "  [Comments and Votes]: discussing and voting on items.",
+            "  [Publishing and Sharing]: read-only sharing, scheduled publishing, and snapshots.",
             "  [Advanced Features]: charts, SQL queries, aliases, and attachments.",
             "Give it a try! Everything in this project is editable.",
         ],
@@ -102,6 +111,23 @@ export const demoPages: DemoPageTemplate[] = [
         ],
     },
     {
+        title: "Selection and Clipboard",
+        lines: [
+            "Select text with the mouse or with Shift+Arrow keys.",
+            "Selections can span multiple items: keep extending past the end of an item.",
+            "Useful shortcuts:",
+            "  Ctrl+L selects the entire line under the cursor.",
+            "  Shift+Alt+Right expands the selection to the end of the line; Shift+Alt+Left shrinks it.",
+            "  Alt+Shift+Arrow keys (or Alt+Shift+mouse drag) create a box selection across items.",
+            "With an active selection you can:",
+            "  Copy and paste it, even when it spans multiple items.",
+            "  Delete the whole selection in one step.",
+            "  Drag and drop the selected text to move it.",
+            "  Apply formatting such as bold or italic to the selected range.",
+            "Try selecting across the items above and copying them.",
+        ],
+    },
+    {
         title: "Collaboration",
         lines: [
             "This demo is a shared, real-time collaborative space.",
@@ -124,6 +150,16 @@ export const demoPages: DemoPageTemplate[] = [
         ],
     },
     {
+        title: "Publishing and Sharing",
+        lines: [
+            "Pages and projects can be shared beyond the people editing them.",
+            "Sharing: generate a read-only token to share a project without giving edit access.",
+            "Scheduled publishing: schedule a page to be published automatically at a later time.",
+            "The schedule management page lists upcoming publishing tasks and lets you edit or cancel them.",
+            "Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions.",
+        ],
+    },
+    {
         title: "Advanced Features",
         lines: [
             "A quick tour of the more advanced capabilities.",
@@ -132,7 +168,6 @@ export const demoPages: DemoPageTemplate[] = [
             "Aliases: an item can mirror another item and stay in sync with the original.",
             "Attachments: drag and drop images or files onto an item to attach them.",
             "Schedule: the Schedule view shows date-tagged items as a timeline.",
-            "Sharing: projects can be shared with read-only tokens.",
         ],
     },
 ];

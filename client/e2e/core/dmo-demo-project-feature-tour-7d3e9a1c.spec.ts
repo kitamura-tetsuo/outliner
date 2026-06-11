@@ -20,8 +20,10 @@ test.describe("Demo project feature tour", () => {
                 "Checkboxes and Tasks",
                 "Internal Links",
                 "Search and Commands",
+                "Selection and Clipboard",
                 "Collaboration",
                 "Comments and Votes",
+                "Publishing and Sharing",
                 "Advanced Features",
             ]
         ) {

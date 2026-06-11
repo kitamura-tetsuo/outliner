@@ -18,5 +18,6 @@ acceptance:
 - Internal links between demo pages resolve within the demo project
 - Selecting a page in the list opens it at /demo/<page> with the outliner view
 - The demo content resets every 24 hours or when the seed template version changes
-- The demo project is seeded with one page per feature group (formatting, outliner basics, checkboxes and tasks, internal links, search and commands, collaboration, comments and votes, advanced features)
+- The demo project is seeded with one page per feature group (formatting, outliner basics, checkboxes and tasks, internal links, search and commands, selection and clipboard, collaboration, comments and votes, publishing and sharing, advanced features)
+- When a new end-user feature is implemented, the demo template is extended to demonstrate it (see docs/demo-project.md)
 title-ja: デモプロジェクト機能ツアー
