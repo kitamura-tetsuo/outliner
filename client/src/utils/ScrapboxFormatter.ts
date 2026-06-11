@@ -940,7 +940,13 @@ export class ScrapboxFormatter {
      */
     private static getProjectPrefix(): string {
         if (typeof window !== "undefined") {
-            const store = (window as Window & typeof globalThis & { appStore?: unknown; }).appStore
+            const store = (window as Window & typeof globalThis & {
+                appStore?: {
+                    project?: import("../schema/app-schema").Project;
+                    pages?: { current?: import("../schema/app-schema").Item[]; };
+                    pageExists?: (name: string) => boolean;
+                };
+            }).appStore
                 || (window as Window & typeof globalThis & {
                     generalStore?: typeof import("../stores/store.svelte").store;
                 }).generalStore;
@@ -972,7 +978,13 @@ export class ScrapboxFormatter {
 
         try {
             // Get page info from global store
-            const store = (window as Window & typeof globalThis & { appStore?: unknown; }).appStore;
+            const store = (window as Window & typeof globalThis & {
+                appStore?: {
+                    project?: import("../schema/app-schema").Project;
+                    pages?: { current?: import("../schema/app-schema").Item[]; };
+                    pageExists?: (name: string) => boolean;
+                };
+            }).appStore;
             if (!store || !store.pages) return false;
 
             // Get current project

@@ -206,7 +206,7 @@ export class Item {
     }
     set preview(v: { lines: string[]; image: string | null; } | undefined) {
         if (v === undefined) this.value.delete("preview");
-        else this.value.set("preview", v as unknown);
+        else this.value.set("preview", v as unknown as ItemValueType);
         this.value.set("lastChanged", Date.now());
     }
 
@@ -246,13 +246,13 @@ export class Item {
     addAttachment(url: string) {
         // 1) If the current Item is a temporary Doc (before connection) and a connected Doc exists, reflect it in the corresponding node as well
         try {
-            interface WindowWithStore extends Window {
+            type WindowWithStore = Window & {
                 generalStore?: {
                     currentPage?: Item;
                 };
                 __ITEM_ID_MAP__?: Record<string, string>;
                 E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
-            }
+            };
             const w = (typeof window !== "undefined") ? (window as unknown as WindowWithStore) : null;
             const currentPage = w?.generalStore?.currentPage;
             const thisDoc = this.ydoc;

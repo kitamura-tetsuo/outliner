@@ -143,16 +143,16 @@
 
             // 3. Search and identify page
             // const items = project?.items; // Moved inside findPage for freshness
-            let targetPage: import("../../../schema/app-schema").Item | null = null;
+            let targetPage: import("../../../schema/app-schema").Item | null | undefined = null;
 
             // Helper to find page by name
             const findPage = () => {
                 const items = project?.items;
                 if (items) {
-                    const len = (typeof items.length === "function") ? items.length() : (items.length ?? 0);
+                    const len = items.length ?? 0;
                     const titles: string[] = [];
                     for (let i = 0; i < len; i++) {
-                        const p = items.at ? items.at(i) : items[i];
+                        const p = items.at(i);
                         const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                         titles.push(t);
                         if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
@@ -186,10 +186,7 @@
                     }
                     if (i % 10 === 0 || i === maxRetries - 1) {
                         const items = project?.items;
-                        const len =
-                            typeof items?.length === "function"
-                                ? items.length()
-                                : (items?.length ?? 0);
+                        const len = items?.length ?? 0;
                         logger.info(
                             `loadProjectAndPage: Retry ${i + 1}/${maxRetries}, items.length=${len}, pageName="${pageName}"`,
                         );
