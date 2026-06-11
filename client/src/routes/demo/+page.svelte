@@ -31,8 +31,8 @@
                 throw new Error("Failed to connect to the demo project.");
             }
 
-            yjsStore.yjsClient = client as import("../../yjs/YjsClient").YjsClient;
-            const project = client.getProject();
+            yjsStore.yjsClient = client as unknown as import("../../yjs/YjsClient").YjsClient;
+            const project = client.getProject() as unknown as import("../../schema/app-schema").Project;
             store.project = project;
         } catch (err) {
             console.error("Failed to initialize demo:", err);
