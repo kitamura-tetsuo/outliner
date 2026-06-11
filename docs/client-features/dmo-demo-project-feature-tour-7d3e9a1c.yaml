@@ -1,0 +1,22 @@
+id: FTR-7d3e9a1c
+title: Demo Project Feature Tour
+description: The public /demo route shows a full demo project whose pages each demonstrate a feature group, instead of a single demo page.
+category: demo
+status: implemented
+components:
+- src/lib/demoSeed.ts
+- src/routes/demo/+page.svelte
+- src/routes/demo/[page]/+page.svelte
+services:
+- server/src/demo-api.ts
+- server/src/demo-content.ts
+tests:
+- client/e2e/core/dmo-demo-project-feature-tour-7d3e9a1c.spec.ts
+- server/tests/demo-seed-content.test.ts
+acceptance:
+- /demo shows the demo project's page list without requiring login
+- Internal links between demo pages resolve within the demo project
+- Selecting a page in the list opens it at /demo/<page> with the outliner view
+- The demo content resets every 24 hours or when the seed template version changes
+- The demo project is seeded with one page per feature group (formatting, outliner basics, checkboxes and tasks, internal links, search and commands, collaboration, comments and votes, advanced features)
+title-ja: デモプロジェクト機能ツアー
