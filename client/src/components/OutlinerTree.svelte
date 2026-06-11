@@ -214,6 +214,8 @@
         if (pageItem && !isReadOnly && (pageItem as unknown as import("../schema/app-schema").Item).items) {
             // Add item to end
             (pageItem as unknown as import("../schema/app-schema").Item).items.addNode(currentUser);
+            // Trigger a re-render
+            __displayItemsTick = Date.now();
         }
     }
 
