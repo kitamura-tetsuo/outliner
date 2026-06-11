@@ -1,21 +1,30 @@
-const { chromium } = require("playwright");
+const { chromium } = require('playwright');
 
 (async () => {
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors = [];
 
-    page.on("console", msg => console.log(`CONSOLE [${msg.type()}] ${msg.text()}`));
-    page.on("pageerror", err => console.error(`PAGE_ERROR: ${err.message}`));
-    page.on(
-        "requestfailed",
-        request => console.error(`REQUEST_FAILED: ${request.url()} ${request.failure().errorText}`),
-    );
+  page.on('console', msg => {
+    if (msg.type() === 'error' || msg.type() === 'warning') {
+      errors.push(`[${msg.type()}] ${msg.text()}`);
+    }
+  });
 
-    console.log("Navigating to demo...");
-    await page.goto("https://outliner-d57b0.web.app/demo", { waitUntil: "networkidle" });
-    console.log("Navigation complete.");
+  page.on('pageerror', error => {
+    errors.push(`[pageerror] ${error.message}`);
+  });
 
-    await page.waitForTimeout(2000);
+  page.on('requestfailed', request => {
+    errors.push(`[requestfailed] ${request.url()} - ${request.failure().errorText}`);
+  });
 
-    await browser.close();
+  console.log("Navigating to https://outliner-d57b0.web.app/demo ...");
+  await page.goto('https://outliner-d57b0.web.app/demo', { waitUntil: 'networkidle' });
+
+  // Wait a bit to see if any delayed errors happen
+  await page.waitForTimeout(3000);
+
+  console.log("Errors collected:", errors);
+  await browser.close();
 })();
