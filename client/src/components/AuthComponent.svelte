@@ -8,43 +8,32 @@ import {
     userManager,
 } from "../auth/UserManager";
 
-interface AuthSuccessEvent {
-    detail?: {
-        user: IUser;
-    };
-}
-
-interface AuthSuccessDetail {
-    user: IUser;
-}
-
 interface Props {
     // Define callback props instead of using createEventDispatcher
-    onAuthSuccess?: ((authResult: AuthSuccessDetail) => void) | undefined;
+    onAuthSuccess?: ((authResult: any) => void) | undefined;
     onAuthLogout?: (() => void) | undefined;
 }
 
 let { onAuthSuccess = undefined, onAuthLogout = undefined }: Props = $props();
 
 let isLoading = $state(true);
-let isLoggingIn = $state(false);
 let error = $state("");
 let currentUser: IUser | null = $state(null);
 let loginError = $state("");
 
-// Email/password login form for development environment
+// 開発環境用のメール/パスワード認証フォーム
 let showDevLogin = $state(false);
 let email = $state("test@example.com");
 let password = $state("password");
 
-// Environment check
+// 環境チェック
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development";
 
-// Function to unsubscribe listener
+// リスナー解除用の関数
 let unsubscribe: (() => void) | null = null;
 
 onMount(() => {
-    // Monitor authentication state changes
+    // 認証状態の変更を監視
     unsubscribe = userManager.addEventListener(authResult => {
         isLoading = false;
 
@@ -60,28 +49,21 @@ onMount(() => {
         }
     });
 
-    // Set initial state
+    // 初期状態を設定
     currentUser = userManager.getCurrentUser();
     if (currentUser) {
         isLoading = false;
     }
     else {
-        // Clear loading state after a short delay (if auth state is unknown)
-        // E2E test support: Check auth state again after 2 seconds, call callback if user exists
-        // This is because connecting to Firebase Auth emulator and logging in test user may take time
+        // 短時間後にローディング状態解除（認証状態が不明の場合）
         setTimeout(() => {
             isLoading = false;
-            // Check user again (as user might not be initialized yet in E2E tests)
-            currentUser = userManager.getCurrentUser();
-            if (currentUser && onAuthSuccess) {
-                onAuthSuccess({ user: currentUser });
-            }
-        }, 2000);
+        }, 1000);
     }
 
-    // For testing: Custom authentication event listener
+    // テスト用: カスタム認証イベントリスナー
     if (typeof document !== "undefined") {
-        document.addEventListener("auth-success", (event: AuthSuccessEvent) => {
+        document.addEventListener("auth-success", (event: any) => {
             if (event.detail && event.detail.user) {
                 currentUser = event.detail.user;
                 // Call the callback prop directly
@@ -99,32 +81,30 @@ onDestroy(() => {
 
 async function handleLogin() {
     try {
-        isLoggingIn = true;
+        isLoading = true;
         error = "";
         loginError = "";
         await userManager.loginWithGoogle();
     }
     catch (err: unknown) {
-        /* eslint-disable-next-line no-console */ console.error("Login error:", err);
-        loginError = (err as Error).message || "An error occurred during login";
-    } finally {
-        isLoggingIn = false;
+        console.error("Login error:", err);
+        loginError = (err as Error).message || "ログイン中にエラーが発生しました";
+        isLoading = false;
     }
 }
 
 async function handleDevLogin() {
     try {
-        isLoggingIn = true;
+        isLoading = true;
         error = "";
         loginError = "";
         await userManager.loginWithEmailPassword(email, password);
     }
     catch (err: unknown) {
-        /* eslint-disable-next-line no-console */ console.error("Development login error:", err);
+        console.error("Development login error:", err);
         loginError = (err as Error).message ||
-            "An error occurred during development login";
-    } finally {
-        isLoggingIn = false;
+            "開発用ログインでエラーが発生しました";
+        isLoading = false;
     }
 }
 
@@ -135,8 +115,8 @@ async function handleLogout() {
         await userManager.logout();
     }
     catch (err) {
-        /* eslint-disable-next-line no-console */ console.error("Logout error:", err);
-        error = (err as Error).message || "An error occurred during logout";
+        console.error("Logout error:", err);
+        error = (err as Error).message || "ログアウト中にエラーが発生しました";
         isLoading = false;
     }
 }
@@ -149,12 +129,12 @@ function toggleDevLogin() {
 <div class="auth-container">
     {#if isLoading}
         <div class="loading">
-            <p>Checking authentication info...</p>
+            <p>認証情報を確認中...</p>
         </div>
     {:else if error}
         <div class="error">
             <p>{error}</p>
-            <button onclick={() => (error = "")} class="try-again">Retry</button>
+            <button onclick={() => (error = "")} class="try-again">再試行</button>
         </div>
     {:else if currentUser}
         <div class="user-info">
@@ -169,83 +149,66 @@ function toggleDevLogin() {
                 <p class="user-name">{currentUser.name}</p>
                 <p class="user-email">{currentUser.email || ""}</p>
             </div>
-            <button onclick={handleLogout} class="logout-btn">Logout</button>
+            <button onclick={handleLogout} class="logout-btn">ログアウト</button>
         </div>
     {:else}
-        <!-- Google Auth Button -->
+        <!-- Google認証ボタン -->
         <button
             onclick={handleLogin}
             class="auth-button google-btn"
-            disabled={isLoading || isLoggingIn}
-            aria-disabled={isLoading || isLoggingIn}
+            disabled={isLoading}
         >
             <span class="google-icon">
-                {#if isLoggingIn}
-                    <div class="spinner"></div>
-                {:else}
-                    <svg viewBox="0 0 24 24" width="18" height="18">
-                        <path
-                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                            fill="#4285F4"
-                        />
-                        <path
-                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                            fill="#34A853"
-                        />
-                        <path
-                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                            fill="#FBBC05"
-                        />
-                        <path
-                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                            fill="#EA4335"
-                        />
-                    </svg>
-                {/if}
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        fill="#4285F4"
+                    />
+                    <path
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        fill="#34A853"
+                    />
+                    <path
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        fill="#FBBC05"
+                    />
+                    <path
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        fill="#EA4335"
+                    />
+                </svg>
             </span>
-            Login with Google
+            Googleでログイン
         </button>
 
         {#if isDevelopment}
-            <!-- Development environment login toggle button -->
+            <!-- 開発環境用ログイントグルボタン -->
             <button onclick={toggleDevLogin} class="dev-toggle">
-                {showDevLogin ? "Hide Developer Login" : "Developer Login"}
+                {showDevLogin ? "開発者ログインを隠す" : "開発者ログイン"}
             </button>
 
             {#if showDevLogin}
                 <div class="dev-login-form">
-                    <h3>Development Login</h3>
+                    <h3>開発環境用ログイン</h3>
                     <div class="form-group">
-                        <label for="email">Email</label>
+                        <label for="email">メールアドレス</label>
                         <input
                             type="email"
                             id="email"
                             bind:value={email}
                             placeholder="test@example.com"
-                            autocomplete="username"
                         />
                     </div>
                     <div class="form-group">
-                        <label for="password">Password</label>
+                        <label for="password">パスワード</label>
                         <input
                             type="password"
                             id="password"
                             bind:value={password}
                             placeholder="password"
-                            autocomplete="current-password"
                         />
                     </div>
-                    <button
-                        onclick={handleDevLogin}
-                        class="dev-login-btn"
-                        disabled={isLoggingIn}
-                        aria-disabled={isLoggingIn}
-                    >
-                        {#if isLoggingIn}
-                            <span class="spinner-inline"></span>
-                        {/if}
-                        Login to Dev Environment
-                    </button>
+                    <button onclick={handleDevLogin} class="dev-login-btn">開発環境でログイン</button>
                 </div>
             {/if}
         {/if}
@@ -361,7 +324,7 @@ function toggleDevLogin() {
     background-color: #ffebee;
 }
 
-/* Development login styles */
+/* 開発環境用ログインスタイル */
 .dev-toggle {
     background-color: #f0f0f0;
     color: #666;
@@ -420,36 +383,5 @@ function toggleDevLogin() {
 
 .dev-login-btn:hover {
     background-color: #1976d2;
-}
-
-.dev-login-btn:disabled {
-    background-color: #90caf9;
-    cursor: not-allowed;
-}
-
-.spinner {
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #3498db;
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    animation: spin 1s linear infinite;
-}
-
-.spinner-inline {
-    display: inline-block;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid white;
-    border-radius: 50%;
-    width: 14px;
-    height: 14px;
-    animation: spin 1s linear infinite;
-    margin-right: 0.5rem;
-    vertical-align: middle;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
 }
 </style>

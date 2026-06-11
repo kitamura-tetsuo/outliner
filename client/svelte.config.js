@@ -6,41 +6,26 @@ import sveltePreprocess from "svelte-preprocess";
 const config = {
     // Consult https://svelte.dev/docs/kit/integrations
     // for more information about preprocessors
-    preprocess: [
-        sveltePreprocess({
-            typescript: {
-                // Skip TypeScript diagnostics during preprocessing so Vite's HMR overlay
-                // doesn't block the UI in test environments that tolerate runtime casts.
-                transpileOnly: true,
-            },
-        }),
-        mdsvex(),
-    ],
+    preprocess: [sveltePreprocess(), mdsvex()],
 
     // compilerOptions: { runes: true },
     compilerOptions: { runes: true },
 
     kit: {
         adapter: adapter({
-            // Output to Firebase Hosting public directory
+            // Firebase Hostingのpublicディレクトリに出力
             pages: "../build",
             assets: "../build",
             fallback: "index.html",
             precompress: false,
             strict: true,
         }),
-        alias: {
-            $stores: "src/stores",
-        },
-        serviceWorker: {
-            register: false, // Disabled to register Service Worker manually
-        },
     },
 
     extensions: [".svelte", ".svx"],
 };
 
-// Configure in routes/+layout.js to disable SSR
+// SSRを無効化するにはroutes/+layout.jsで設定する
 // export const ssr = false;
 
 export default config;

@@ -13,31 +13,29 @@ interface Props {
 
 let { pageName = "", projectName }: Props = $props();
 
-// State for preview display
+// プレビュー表示用の状態
 let isVisible = $state(false);
 let previewContent = $state<Item | null>(null);
-let previewItems = $state<{ id: string; text: string }[]>([]);
-let hasMoreItems = $state(false);
 let isLoading = $state(false);
 let error = $state<string | null>(null);
 let previewPosition = $state({ top: 0, left: 0 });
 let previewElement = $state<HTMLElement | null>(null);
 
-// Show preview
+// プレビューを表示する
 function showPreview(event: MouseEvent) {
     isVisible = true;
     updatePosition(event);
     loadPreviewContent();
 }
 
-// Hide preview
+// プレビューを非表示にする
 function hidePreview() {
     isVisible = false;
     previewContent = null;
     error = null;
 }
 
-// Update preview position
+// プレビューの位置を更新する
 function updatePosition(event: MouseEvent) {
     if (!previewElement) return;
 
@@ -45,20 +43,20 @@ function updatePosition(event: MouseEvent) {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    // Get preview width and height (use default values if not yet rendered)
+    // プレビューの幅と高さを取得（まだレンダリングされていない場合はデフォルト値を使用）
     const previewWidth = previewElement.offsetWidth || 300;
     const previewHeight = previewElement.offsetHeight || 200;
 
-    // Initial position (below the link)
+    // 初期位置（リンクの下）
     let top = rect.bottom + window.scrollY + 10;
     let left = rect.left + window.scrollX;
 
-    // Adjust to left if it exceeds the right edge of the screen
+    // 画面の右端を超える場合は左に調整
     if (left + previewWidth > viewportWidth) {
         left = viewportWidth - previewWidth - 20;
     }
 
-    // Show above if it exceeds the bottom edge of the screen
+    // 画面の下端を超える場合は上に表示
     if (top + previewHeight > viewportHeight + window.scrollY) {
         top = rect.top + window.scrollY - previewHeight - 10;
     }
@@ -66,7 +64,7 @@ function updatePosition(event: MouseEvent) {
     previewPosition = { top, left };
 }
 
-// Load preview content
+// プレビュー用のページ内容を読み込む
 async function loadPreviewContent() {
     if (!store.pages) return;
 
@@ -75,56 +73,37 @@ async function loadPreviewContent() {
     previewContent = null;
 
     try {
-        // Handle internal project links
+        // プロジェクト内リンクの場合
         if (projectName) {
-            // If different from current project, do not show preview
-            // Note: Extend to fetch data from other projects in the future
+            // 現在のプロジェクトと異なる場合は、プレビューを表示しない
+            // 注: 将来的には他プロジェクトのデータも取得できるように拡張する
             if (projectName !== store.project?.title) {
-                error = "Cannot preview pages from other projects";
+                error = "別プロジェクトのページはプレビューできません";
                 isLoading = false;
                 return;
             }
         }
 
-        // Search for page
+        // ページを検索
         const foundPage = findPageByName(pageName);
         if (foundPage) {
             previewContent = foundPage;
-
-            // Extract items using for...of to support Svelte 5 reactivity and YTree iteration properly
-            previewItems = [];
-            hasMoreItems = false;
-            if (foundPage.items) {
-                let count = 0;
-                for (let i = 0; i < foundPage.items.length; i++) {
-                    const item = foundPage.items.at(i);
-                    if (item) {
-                        if (count < 5) {
-                            previewItems.push({ id: item.id, text: item.text });
-                        } else {
-                            hasMoreItems = true;
-                            break;
-                        }
-                        count++;
-                    }
-                }
-            }
         } else {
-            error = "Page not found";
+            error = "ページが見つかりません";
         }
     } catch (err) {
-            logger.error({ error: err as Error }, "Failed to load preview content:");
-        error = "Failed to load preview";
+        logger.error("Failed to load preview content:", err);
+        error = "プレビューの読み込みに失敗しました";
     } finally {
         isLoading = false;
     }
 }
 
-// Find page by name
+// ページ名からページを検索する
 function findPageByName(name: string): Item | null {
     if (!store.pages) return null;
 
-    // Search for page with matching name
+    // ページ名が一致するページを検索
     for (const page of store.pages.current) {
         if (page.text.toLowerCase() === name.toLowerCase()) {
             return page;
@@ -134,9 +113,9 @@ function findPageByName(name: string): Item | null {
     return null;
 }
 
-// Check if page exists
+// ページが存在するかどうかを確認する
 export function pageExists(name: string, project?: string): boolean {
-    // If project is specified, check if it matches current project
+    // プロジェクト指定がある場合は、現在のプロジェクトと一致するか確認
     if (project && store.project?.title !== project) {
         return false;
     }
@@ -145,14 +124,15 @@ export function pageExists(name: string, project?: string): boolean {
 }
 
 onMount(() => {
-    // Handle mount
+    // マウント時の処理
 });
 
 onDestroy(() => {
-    // Handle cleanup
+    // クリーンアップ処理
 });
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
     class="link-preview-trigger"
     role="tooltip"
@@ -169,7 +149,7 @@ onDestroy(() => {
             {#if isLoading}
                 <div class="preview-loading">
                     <div class="loader"></div>
-                    <p>Loading...</p>
+                    <p>読み込み中...</p>
                 </div>
             {:else if error}
                 <div class="preview-error">
@@ -179,24 +159,24 @@ onDestroy(() => {
                 <div class="preview-content">
                     <h3 class="preview-title">{previewContent.text}</h3>
                     <div class="preview-items">
-                        {#if previewItems.length > 0}
+                        {#if previewContent && previewContent.items && (previewContent.items as any).length > 0}
                             <ul>
-                                {#each previewItems as item (item.id)}
+                                {#each Array.from({ length: Math.min(5, (previewContent.items as any).length) }, (_, i) => (previewContent.items as any)[i]) as item}
                                     <li>{item.text}</li>
                                 {/each}
 
-                                {#if hasMoreItems}
+                                {#if (previewContent.items as any).length > 5}
                                     <li class="more-items">...</li>
                                 {/if}
                             </ul>
                         {:else}
-                            <p class="empty-page">This page has no content</p>
+                            <p class="empty-page">このページには内容がありません</p>
                         {/if}
                     </div>
                 </div>
             {:else}
                 <div class="preview-not-found">
-                    <p>Page not found</p>
+                    <p>ページが見つかりません</p>
                 </div>
             {/if}
         </div>

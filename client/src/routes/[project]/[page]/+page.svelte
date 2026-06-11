@@ -1,514 +1,350 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
-    import { resolvePath } from "../../../utils/pathUtils";
-    // Use SvelteKit page store from $app/stores (not $app/state)
-    import { page } from "$app/stores";
-    import { onDestroy, onMount } from "svelte";
+import { goto } from "$app/navigation";
+import { page } from "$app/state";
+import {
+    onDestroy,
+    onMount,
+} from "svelte";
+import { v4 as uuid } from "uuid";
+import { userManager } from "../../../auth/UserManager";
+import AuthComponent from "../../../components/AuthComponent.svelte";
+import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
+import OutlinerBase from "../../../components/OutlinerBase.svelte";
+import SearchPanel from "../../../components/SearchPanel.svelte";
+import { TreeViewManager } from "../../../fluid/TreeViewManager";
+import {
+    cleanupLinkPreviews,
+    setupLinkPreviewHandlers,
+} from "../../../lib/linkPreviewHandler";
+import { getLogger } from "../../../lib/logger";
+import {
+    Item,
+    Items,
+} from "../../../schema/app-schema";
+import { getFluidClientByProjectTitle } from "../../../services";
+import { fluidStore } from "../../../stores/fluidStore.svelte";
+import { store } from "../../../stores/store.svelte";
 
-    import { userManager } from "../../../auth/UserManager";
-    import AuthComponent from "../../../components/AuthComponent.svelte";
-    import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
-    import OutlinerBase from "../../../components/OutlinerBase.svelte";
-    import SearchPanel from "../../../components/SearchPanel.svelte";
-    import {
-        cleanupLinkPreviews,
-        setupLinkPreviewHandlers,
-    } from "../../../lib/linkPreviewHandler";
-    import { getLogger } from "../../../lib/logger";
-    import { getYjsClientByProjectTitle } from "../../../services";
-    const logger = getLogger("+page");
+const logger = getLogger("ProjectPage");
 
-    import { yjsStore } from "../../../stores/yjsStore.svelte";
-    import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
-    import { store } from "../../../stores/store.svelte";
-    import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
+// URLパラメータを取得
+let projectName = page.params.project;
+let pageName = page.params.page;
 
-    // Get URL parameters (follow SvelteKit page store)
-    // NOTE: Must reference the value of $page (not the store object).
-    // Previously used page.params.page, which caused TypeError by referencing property while page was unresolved.
-    let projectName: string = $derived.by(() => $page.params.project ?? "");
-    let pageName: string = $derived.by(() => $page.params.page ?? "");
+// ページの状態
+let error: string | undefined = $state(undefined);
+let isLoading = $state(true);
+let isAuthenticated = $state(false);
+let pageNotFound = $state(false);
+let isTemporaryPage = $state(false); // 仮ページかどうかのフラグ
+let hasBeenEdited = $state(false); // 仮ページが編集されたかどうかのフラグ
+let isSearchPanelVisible = $state(false); // 検索パネルの表示状態
 
-    // Debug log
-    // logger at init; avoid referencing derived vars outside reactive contexts to silence warnings
+// URLパラメータを監視して更新
+$effect(() => {
+    logger.info(`URL params effect triggered: project=${projectName}, page=${pageName}`);
 
-    // Page state
-    let error: string | undefined = $state(undefined);
-    let isLoading = $state(true);
-    let isAuthenticated = $state(false);
-    let pageNotFound = $state(false);
+    logger.info(`Updated params: project="${projectName}", page="${pageName}", isAuthenticated=${isAuthenticated}`);
 
-    let isSearchPanelVisible = $state(false); // Search panel visibility state
-
-    // Optional variable for pending imports - defined to avoid ESLint no-undef errors
-    // This is used in conditional checks and may be set by external code
-    let pendingImport: unknown[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-    let project: import("../../../schema/app-schema").Project | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-
-    // Monitor and update URL parameters and auth state
-    // Key to avoid multiple executions under the same conditions and prevent Svelte update depth exceeded
-    // Note: Using $state causes a loop where $effect reads/writes its own dependency, so use a normal variable
-    let lastLoadKey: string | null = null;
-    let __loadingInProgress = false; // Re-entry prevention
-
-    /**
-     * Evaluate load conditions and start loading if necessary
-     */
-    function scheduleLoadIfNeeded(opts?: {
-        project?: string;
-        page?: string;
-        authenticated?: boolean;
-    }) {
-        const pj = (opts?.project ?? projectName) || "";
-        const pg = (opts?.page ?? pageName) || "";
-        const auth = opts?.authenticated ?? isAuthenticated;
-
-        // Conditions not met
-        if (!pj || !pg || !auth) {
-            logger.info(
-                `scheduleLoadIfNeeded: skip (project="${pj}", page="${pg}", auth=${auth})`,
-            );
-            return;
-        }
-
-        const key = `${pj}::${pg}`;
-        if (__loadingInProgress || lastLoadKey === key) {
-            return;
-        }
-        lastLoadKey = key;
-
-        // Defer to event loop to avoid reactivity depth issues
-        setTimeout(() => {
-            if (!__loadingInProgress) loadProjectAndPage();
-        }, 0);
+    // プロジェクトとページが指定されている場合、データを読み込む
+    if (projectName && pageName && isAuthenticated) {
+        logger.info(`Calling loadProjectAndPage()`);
+        loadProjectAndPage();
     }
-
-    // Handle auth success
-    function handleAuthSuccess() {
-        logger.info("handleAuthSuccess: Auth success");
-        isAuthenticated = true;
-        scheduleLoadIfNeeded({ authenticated: true });
-    }
-
-    // Handle auth logout
-    function handleAuthLogout() {
-        logger.info("Logged out");
-        isAuthenticated = false;
-    }
-
-    // Load project and page
-    async function loadProjectAndPage() {
+    else {
         logger.info(
-            `loadProjectAndPage: Starting for project="${projectName}", page="${pageName}"`,
-        );
-        __loadingInProgress = true;
-        isLoading = true;
-        error = undefined;
-        pageNotFound = false;
-
-        try {
-            // 1. Get client
-            logger.info(
-                `loadProjectAndPage: Getting Yjs client for "${projectName}"`,
-            );
-            let client = await getYjsClientByProjectTitle(projectName);
-
-            if (!client) {
-                // User requested NOT to create new project here.
-                logger.warn(
-                    `loadProjectAndPage: Project client not found for "${projectName}"`,
-                );
-                throw new Error(
-                    `Project "${projectName}" could not be loaded.`,
-                );
-            }
-
-            if (!client) {
-                throw new Error("Failed to load or create project client");
-            }
-
-            // 2. Update store
-            yjsStore.yjsClient = client as unknown as import("../../../yjs/YjsClient").YjsClient;
-            const project = client.getProject?.();
-
-            if (!project) {
-                throw new Error("Project data not found in client");
-            }
-            store.project = project;
-            logger.info(
-                `loadProjectAndPage: Project loaded: "${project.title}"`,
-            );
-
-            // 3. Search and identify page
-            // const items = project?.items; // Moved inside findPage for freshness
-            let targetPage: import("../../../schema/app-schema").Item | null = null;
-
-            // Helper to find page by name
-            const findPage = () => {
-                const items = project?.items;
-                if (items) {
-                    const len = (typeof items.length === "function") ? items.length() : (items.length ?? 0);
-                    const titles: string[] = [];
-                    for (let i = 0; i < len; i++) {
-                        const p = items.at ? items.at(i) : items[i];
-                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-                        titles.push(t);
-                        if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
-                            return p;
-                        }
-                    }
-                    if (len > 0) {
-                        console.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
-                    }
-                }
-                return null;
-            };
-
-            targetPage = findPage();
-
-            // Retry for eventual consistency (especially in tests where data is seeded via API)
-            if (!targetPage) {
-                logger.info(
-                    `loadProjectAndPage: Page "${pageName}" not found initially. Retrying...`,
-                );
-                // Wait up to 15 seconds (150 * 100ms) for Yjs to sync
-                const maxRetries = 150;
-                for (let i = 0; i < maxRetries; i++) {
-                    await new Promise((r) => setTimeout(r, 100));
-                    targetPage = findPage();
-                    if (targetPage) {
-                        logger.info(
-                            `loadProjectAndPage: Found page "${pageName}" after retry ${i + 1}`,
-                        );
-                        break;
-                    }
-                    if (i % 10 === 0 || i === maxRetries - 1) {
-                        const items = project?.items;
-                        const len =
-                            typeof items?.length === "function"
-                                ? items.length()
-                                : (items?.length ?? 0);
-                        logger.info(
-                            `loadProjectAndPage: Retry ${i + 1}/${maxRetries}, items.length=${len}, pageName="${pageName}"`,
-                        );
-                    }
-                }
-            }
-
-            // 4. If page does not exist: Auto-create
-            // REMOVED: Legacy auto-creation logic.
-            // If the page doesn't exist, we should not automatically create it on navigation.
-            // This ensures tests fail if seeding was missed, and avoids accidental creation in production.
-            if (!targetPage) {
-                logger.info(
-                    `loadProjectAndPage: Page "${pageName}" not found. skipping auto-creation.`,
-                );
-            }
-
-            // 5. Set current page and hydration
-            if (targetPage) {
-                store.currentPage = targetPage;
-
-                // Wait for page list store update (optional)
-                if (!store.pages) {
-                    // Might need to wait a bit to get page list on initial load
-                    // But basic display is sufficient with currentPage
-                }
-            } else {
-                // If creation failed, etc.
-                pageNotFound = true;
-                logger.error(
-                    { error: new Error(`Failed to find or create page "${pageName}"`) },
-                    "loadProjectAndPage: Failed to find or create page",
-                );
-            }
-        } catch (err) {
-            console.error("Failed to load project and page:", err);
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "An error occurred while loading the project and page.";
-        } finally {
-            isLoading = false;
-            __loadingInProgress = false;
-            if (typeof window !== "undefined") {
-                (window as Window & typeof globalThis & { __PAGE_STATE__?: unknown }).__PAGE_STATE__ = {
-                    loaded: true,
-                    projectName,
-                    pageName,
-                    hasProject: !!store.project,
-                    hasCurrentPage: !!store.currentPage,
-                    pageNotFound,
-                    error,
-                };
-            }
-            try {
-                capturePageIdForSchedule();
-            } catch {}
-        }
-    }
-
-    onMount(() => {
-        try {
-            // DIRECT DEBUG: This should appear if onMount is called
-            if (typeof console !== "undefined") {
-                console.log("[DEBUG] onMount called");
-            }
-            // Attempt initial load
-            scheduleLoadIfNeeded();
-        } catch (e) {
-            console.error("[DEBUG] onMount error:", e);
-        }
-
-        // E2E Stabilization: Track initial generation of currentPage.items and capture pageId as needed
-        try {
-            let tries = 0;
-            const iv = setInterval(() => {
-                try {
-                    capturePageIdForSchedule();
-                    const pg = store.currentPage;
-                    const len = pg?.items?.length ?? 0;
-                    if (len > 0 || ++tries > 50) {
-                        clearInterval(iv);
-                    }
-                } catch {
-                    if (++tries > 50) clearInterval(iv);
-                }
-            }, 100);
-            onDestroy(() => {
-                try {
-                    clearInterval(iv);
-                } catch {}
-            });
-        } catch {}
-
-        // Monitor route parameter changes
-        const unsub = page.subscribe(($p) => {
-            const pj = $p.params?.project ?? projectName;
-            const pg = $p.params?.page ?? pageName;
-            scheduleLoadIfNeeded({ project: pj, page: pg });
-        });
-        onDestroy(unsub);
-    });
-    // For schedule integration: Save pageId candidate from current page to session
-    function capturePageIdForSchedule() {
-        try {
-            if (typeof window === "undefined") return;
-            const pg = store.currentPage;
-            if (!pg) return;
-
-            // Always use the page ID itself, not its children
-            // This ensures consistency regardless of page content (empty vs populated)
-            const id = pg.id;
-
-            if (id) {
-                const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
-                window.sessionStorage?.setItem(key, String(id));
-                console.log(
-                    "[+page.svelte] capturePageIdForSchedule saved:",
-                    key,
-                    id,
-                );
-            }
-        } catch {}
-    }
-
-    // Return to Home
-    function goHome() {
-        goto(resolvePath("/"));
-    }
-
-    // Return to Project Page
-    function goToProject() {
-        goto(resolvePath(`/${projectName}`));
-    }
-
-    function goToSchedule() {
-        goto(resolvePath(`/${projectName}/${pageName}/schedule`));
-    }
-
-    function goToGraphView() {
-        goto(resolvePath(`/${projectName}/graph`));
-    }
-
-    // Auxiliary button to add items from top of screen (for E2E stabilization)
-    function addItemFromTopToolbar() {
-        try {
-            let pageItem = store.currentPage;
-            // If currentPage is not ready, create provisional page with pageName from URL
-            if (!pageItem) {
-                const proj = store.project;
-                if (proj?.addPage && pageName) {
-                    try {
-                        const created = proj.addPage(pageName, "tester");
-                        if (created) {
-                            store.currentPage = created;
-                            pageItem = created;
-                        }
-                    } catch {}
-                }
-            }
-            if (!pageItem || !pageItem.items) return;
-            const user = userManager.getCurrentUser()?.id ?? "tester";
-            const node = pageItem.items.addNode(user);
-            // Activate immediately after addition to stabilize subsequent test steps
-            if (node && node.id) {
-                editorOverlayStore.setCursor({
-                    itemId: node.id,
-                    offset: 0,
-                    isActive: true,
-                    userId: "local",
-                });
-                editorOverlayStore.setActiveItem(node.id);
-            }
-        } catch (e) {
-            console.warn("addItemFromTopToolbar failed", e);
-        }
-    }
-
-    // Toggle search panel display
-    function toggleSearchPanel() {
-        const before = isSearchPanelVisible;
-        isSearchPanelVisible = !isSearchPanelVisible;
-        if (typeof window !== "undefined") {
-            (window as Window & typeof globalThis & { __SEARCH_PANEL_VISIBLE__?: boolean }).__SEARCH_PANEL_VISIBLE__ = isSearchPanelVisible;
-        }
-        logger.debug(
-            `toggleSearchPanel called: ${JSON.stringify({
-                before,
-                after: isSearchPanelVisible,
-            })}`,
+            `Skipping loadProjectAndPage: projectName=${!!projectName}, pageName=${!!pageName}, isAuthenticated=${isAuthenticated}`,
         );
     }
+});
 
-    onMount(async () => {
-        // Check UserManager auth state (async support)
-        logger.info(
-            `onMount: Starting for project="${projectName}", page="${pageName}"`,
-        );
-        logger.info(
-            `onMount: URL params - projectName: "${projectName}", pageName: "${pageName}"`,
-        );
+// 認証成功時の処理
+async function handleAuthSuccess(authResult: any) {
+    logger.info("認証成功:", authResult);
+    isAuthenticated = true;
 
-        // Check initial auth state
-        let currentUser = userManager.getCurrentUser();
-        logger.info(
-            `onMount: Initial auth check - currentUser exists: ${!!currentUser}`,
-        );
-        logger.info(`onMount: UserManager instance exists: ${!!userManager}`);
+    // 認証成功後にプロジェクトとページを読み込む
+    if (projectName && pageName) {
+        logger.info(`Auth success: calling loadProjectAndPage for project="${projectName}", page="${pageName}"`);
+        loadProjectAndPage();
+    }
+    else {
+        logger.info(`Auth success: skipping loadProjectAndPage, projectName="${projectName}", pageName="${pageName}"`);
+    }
+}
 
-        if (currentUser) {
-            isAuthenticated = true;
-            logger.info(
-                "onMount: User already authenticated, setting isAuthenticated=true",
-            );
-        } else {
-            // Wait for auth state change (test environment support)
-            logger.info(
-                "onMount: No current user, waiting for authentication...",
-            );
-            let retryCount = 0;
-            const maxRetries = 50; // Wait for 5 seconds
+// 認証ログアウト時の処理
+function handleAuthLogout() {
+    logger.info("ログアウトしました");
+    isAuthenticated = false;
+}
 
-            while (!currentUser && retryCount < maxRetries) {
-                await new Promise((resolve) => setTimeout(resolve, 100));
-                currentUser = userManager.getCurrentUser();
-                retryCount++;
+// プロジェクトとページを読み込む
+async function loadProjectAndPage() {
+    isLoading = true;
+    error = undefined;
+    pageNotFound = false;
 
-                if (retryCount % 10 === 0) {
-                    logger.info(
-                        `onMount: Auth check retry ${retryCount}/${maxRetries}`,
-                    );
-                }
+    logger.info(`Loading project and page: project="${projectName}", page="${pageName}"`);
+
+    try {
+        // コンテナを読み込む
+        const client = await getFluidClientByProjectTitle(projectName);
+        logger.info(`FluidClient loaded for project: ${projectName}`);
+
+        // fluidClientストアを更新
+        fluidStore.fluidClient = client;
+        logger.info(`FluidStore updated with client`);
+        logger.info(`FluidStore.fluidClient exists: ${!!fluidStore.fluidClient}`);
+
+        // プロジェクトの設定を待つ
+        let retryCount = 0;
+        const maxRetries = 10;
+        while (!store.project && retryCount < maxRetries) {
+            logger.info(`Waiting for store.project to be set... retry ${retryCount + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            retryCount++;
+        }
+
+        logger.info(`Store.project exists: ${!!store.project}`);
+        logger.info(`Store.pages exists: ${!!store.pages}`);
+
+        if (store.project) {
+            logger.info(`Project title: "${store.project.title}"`);
+            const items = store.project.items as any;
+            logger.info(`Project items count: ${items?.length || 0}`);
+        }
+
+        // ページを検索
+        if (store.pages) {
+            logger.info(`Available pages count: ${store.pages.current.length}`);
+            for (let i = 0; i < store.pages.current.length; i++) {
+                const page = store.pages.current[i];
+                logger.info(`Page ${i}: "${page.text}"`);
             }
 
-            if (currentUser) {
-                isAuthenticated = true;
-                logger.info(
-                    `onMount: Authentication detected after ${retryCount} retries, setting isAuthenticated=true`,
-                );
-                // Ensure loading starts after authentication is confirmed
-                scheduleLoadIfNeeded();
-            } else {
-                logger.info(
-                    "onMount: No authentication detected after retries, staying unauthenticated",
-                );
+            const foundPage = findPageByName(pageName);
+            if (foundPage) {
+                store.currentPage = foundPage;
+                isTemporaryPage = false;
+                hasBeenEdited = false;
+                logger.info(`Found existing page: ${pageName}`);
+            }
+            else {
+                // プロジェクトは存在するが、ページが存在しない場合は仮ページを表示
+                isTemporaryPage = true;
+                hasBeenEdited = false;
+
+                // 仮ページ用の一時的なアイテムを作成（SharedTreeには追加しない）
+                const tempItem = createTemporaryItem(pageName);
+                store.currentPage = tempItem;
+
+                logger.info(`Creating temporary page: ${pageName}`);
             }
         }
-
-        logger.info(`onMount: Final authentication status: ${isAuthenticated}`);
-        logger.info(
-            `onMount: About to complete, $effect should trigger with isAuthenticated=${isAuthenticated}`,
-        );
-
-        // For E2E Debug: Expose function to forcibly open search panel
-        if (typeof window !== "undefined") {
-            (window as Window & typeof globalThis & { __OPEN_SEARCH__?: () => Promise<void> }).__OPEN_SEARCH__ = async () => {
-                // Click toggle button to open only when currently hidden (prevent double toggle)
-                if (!isSearchPanelVisible) {
-                    const btn =
-                        document.querySelector<HTMLButtonElement>(
-                            ".search-btn",
-                        );
-                    btn?.click();
-                }
-                // Wait for search-panel DOM appearance
-                let tries = 0;
-                while (
-                    !document.querySelector('[data-testid="search-panel"]') &&
-                    tries < 40
-                ) {
-                    await new Promise((r) => setTimeout(r, 25));
-                    tries++;
-                }
-                (window as Window & typeof globalThis & { __SEARCH_PANEL_VISIBLE__?: boolean }).__SEARCH_PANEL_VISIBLE__ = true;
-                logger.debug(
-                    `E2E: __OPEN_SEARCH__ ensured visible (no double toggle): ${JSON.stringify(
-                        {
-                            found: !!document.querySelector(
-                                '[data-testid="search-panel"]',
-                            ),
-                            tries,
-                        },
-                    )}`,
-                );
-            };
+        else {
+            pageNotFound = true;
+            logger.error("No pages available - store.pages is null/undefined");
+            logger.error(`store.project exists: ${!!store.project}`);
+            if (store.project) {
+                logger.error(`store.project.items exists: ${!!store.project.items}`);
+                const items = store.project.items as any;
+                logger.error(`store.project.items length: ${items?.length || 0}`);
+            }
         }
+    }
+    catch (err) {
+        console.error("Failed to load project and page:", err);
+        error = err instanceof Error
+            ? err.message
+            : "プロジェクトとページの読み込み中にエラーが発生しました。";
+    }
+    finally {
+        isLoading = false;
+    }
+}
 
-        // Setup link preview handlers after page load
-        // Wait for DOM to be fully loaded
-        setTimeout(() => {
-            setupLinkPreviewHandlers();
-        }, 500);
+// ページ名からページを検索する
+function findPageByName(name: string) {
+    if (!store.pages) return undefined;
 
-        if (pageName) {
-            searchHistoryStore.add(pageName);
+    logger.info(`Searching for page: "${name}"`);
+
+    // ページ名が一致するページを検索
+    for (const page of store.pages.current) {
+        logger.info(`Checking page: "${page.text}" against "${name}"`);
+        if (page.text.toLowerCase() === name.toLowerCase()) {
+            logger.info(`Found matching page: "${page.text}"`);
+            return page;
         }
+    }
+
+    logger.info(`No matching page found for: "${name}"`);
+    return undefined;
+}
+
+/**
+ * 仮ページ用の一時的なアイテムを作成する
+ * このアイテムはSharedTreeには追加されない
+ * @param pageName ページ名
+ * @returns 一時的なアイテム
+ */
+function createTemporaryItem(pageName: string): Item {
+    const timeStamp = new Date().getTime();
+    const currentUser = fluidStore.currentUser?.id || "anonymous";
+
+    logger.info(`Creating temporary item for page: ${pageName}, user: ${currentUser}`);
+
+    // 一時的なアイテムを作成
+    const tempItem = new Item({
+        id: `temp-${uuid()}`,
+        text: pageName,
+        author: currentUser,
+        votes: [],
+        created: timeStamp,
+        lastChanged: timeStamp,
+        // @ts-ignore - GitHub Issue #22101 に関連する既知の型の問題
+        items: new Items([]), // 子アイテムのための空のリスト
     });
 
-    onDestroy(() => {
-        // Cleanup link previews
-        cleanupLinkPreviews();
-    });
+    logger.info(`Created temporary item with ID: ${tempItem.id}`);
+    return tempItem;
+}
+
+/**
+ * 仮ページを実際のページとして保存する
+ */
+function saveTemporaryPage() {
+    if (!isTemporaryPage || !hasBeenEdited || !store.project) {
+        logger.info(
+            `saveTemporaryPage skipped: isTemporaryPage=${isTemporaryPage}, hasBeenEdited=${hasBeenEdited}, project=${!!store
+                .project}`,
+        );
+        return;
+    }
+
+    try {
+        const currentUser = fluidStore.currentUser?.id || "anonymous";
+        logger.info(`Saving temporary page: ${pageName} by user: ${currentUser}`);
+
+        // 新しいページを作成
+        const newPage = TreeViewManager.addPage(
+            store.project,
+            pageName,
+            currentUser,
+        );
+        logger.info(`Created new page with ID: ${newPage.id}`);
+
+        // 仮ページの内容を新しいページにコピー
+        if (store.currentPage) {
+            // 一時的なページの現在のテキストを保持
+            const currentText = store.currentPage.text || pageName;
+            newPage.updateText(currentText);
+            logger.info(`Updated page text to: ${currentText}`);
+
+            // 子アイテムがあれば、それも追加
+            // TypeScriptエラーを回避するためにキャストを使用
+            const tempItems = store.currentPage.items as unknown as Items;
+            if (tempItems && tempItems.length > 0) {
+                logger.info(`Copying ${tempItems.length} child items`);
+                for (let i = 0; i < tempItems.length; i++) {
+                    const item = tempItems[i] as Item;
+                    const newItems = newPage.items as unknown as Items;
+                    const newItem = newItems.addNode(currentUser);
+                    newItem.updateText(item.text);
+                    logger.info(`Copied item ${i}: ${item.text}`);
+                }
+            }
+        }
+
+        // 現在のページを新しいページに更新
+        store.currentPage = newPage;
+        logger.info(`Updated store.currentPage to new page`);
+
+        // 仮ページフラグをリセット
+        isTemporaryPage = false;
+        hasBeenEdited = false;
+
+        logger.info(`Temporary page saved as actual page: ${pageName}`);
+    }
+    catch (error) {
+        logger.error("Failed to save temporary page:", error);
+    }
+}
+
+/**
+ * 仮ページが編集されたことを検知する
+ */
+function handleTemporaryPageEdited() {
+    logger.info(`handleTemporaryPageEdited called: isTemporaryPage=${isTemporaryPage}, hasBeenEdited=${hasBeenEdited}`);
+
+    if (isTemporaryPage && !hasBeenEdited) {
+        hasBeenEdited = true;
+        logger.info(`Temporary page edited: ${pageName}`);
+
+        // 編集されたら実際のページとして保存
+        saveTemporaryPage();
+    }
+
+    // ページ内容が更新されたため、リンクプレビューハンドラーを再設定
+    // DOMの更新を待つ
+    setTimeout(() => {
+        setupLinkPreviewHandlers();
+    }, 300);
+}
+
+// ホームに戻る
+function goHome() {
+    goto("/");
+}
+
+// プロジェクトページに戻る
+function goToProject() {
+    goto(`/${projectName}`);
+}
+
+// 検索パネルの表示を切り替える
+function toggleSearchPanel() {
+    isSearchPanelVisible = !isSearchPanelVisible;
+}
+
+onMount(() => {
+    // UserManagerの認証状態を確認
+
+    isAuthenticated = userManager.getCurrentUser() !== null;
+
+    // ページ読み込み後にリンクプレビューハンドラーを設定
+    // DOMが完全に読み込まれるのを待つ
+    setTimeout(() => {
+        setupLinkPreviewHandlers();
+    }, 500);
+});
+
+onDestroy(() => {
+    // リンクプレビューのクリーンアップ
+    cleanupLinkPreviews();
+});
 </script>
 
 <svelte:head>
     <title>
-        {pageName ? pageName : "Page"} - {projectName
+        {pageName ? pageName : "ページ"} - {
+            projectName
             ? projectName
-            : "Project"} | Outliner
+            : "プロジェクト"
+        } | Fluid Outliner
     </title>
 </svelte:head>
 
-<main class="container mx-auto px-4 py-4">
+<main class="container mx-auto px-4 py-8">
     <div class="mb-4">
-        <!-- Breadcrumb Navigation -->
+        <!-- パンくずナビゲーション -->
         <nav class="mb-2 flex items-center text-sm text-gray-600">
             <button
                 onclick={goHome}
                 class="text-blue-600 hover:text-blue-800 hover:underline"
             >
-                Home
+                ホーム
             </button>
             {#if projectName}
                 <span class="mx-2">/</span>
@@ -525,48 +361,25 @@
             {/if}
         </nav>
 
-        <!-- Page Title and Search Button -->
+        <!-- ページタイトルと検索ボタン -->
         <div class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">
                 {#if projectName && pageName}
-                    <span class="text-gray-600">{projectName} /</span>
-                    {pageName}
+                    <span class="text-gray-600">{projectName} /</span> {pageName}
                 {:else}
-                    Page
+                    ページ
                 {/if}
             </h1>
-            <div class="flex items-center space-x-2" data-testid="page-toolbar">
-                <button
-                    onclick={toggleSearchPanel}
-                    class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    data-testid="search-toggle-button"
-                >
-                    Search
-                </button>
-                <button
-                    onclick={addItemFromTopToolbar}
-                    class="px-4 py-2 bg-slate-200 text-slate-800 rounded hover:bg-slate-300"
-                >
-                    Add Item
-                </button>
-                <button
-                    onclick={goToSchedule}
-                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                    Schedule
-                </button>
-                <button
-                    onclick={goToGraphView}
-                    data-testid="graph-view-button"
-                    class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-                >
-                    Graph View
-                </button>
-            </div>
+            <button
+                onclick={toggleSearchPanel}
+                class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+                検索
+            </button>
         </div>
     </div>
 
-    <!-- Auth Component -->
+    <!-- 認証コンポーネント -->
     <div class="auth-section mb-6">
         <AuthComponent
             onAuthSuccess={handleAuthSuccess}
@@ -574,34 +387,35 @@
         />
     </div>
 
-    <!-- Always mount OutlinerBase, switch display internally based on pageItem presence -->
-    {#if !error}
+    {#if store.currentPage}
+        <!-- デバッグ用ログ -->
+        {
+            logger.info(
+                `Rendering OutlinerBase: pageItem.id=${store.currentPage.id}, isTemporary=${isTemporaryPage}, onEdit=${!!handleTemporaryPageEdited}`,
+            )
+        }
+
+        <!-- OutlinerBase コンポーネントでアウトライナーを表示 -->
         <OutlinerBase
             pageItem={store.currentPage}
-            projectName={projectName || ""}
-            pageName={pageName || ""}
             isReadOnly={false}
-            isTemporary={store.currentPage
-                ? store.currentPage.id.startsWith("temp-")
-                : false}
-            onEdit={undefined}
+            isTemporary={isTemporaryPage}
+            onEdit={handleTemporaryPageEdited}
         />
-    {/if}
 
-    <!-- Backlink Panel (Hidden when temporary page) -->
-    {#if store.currentPage && !store.currentPage.id.startsWith("temp-")}
-        <BacklinkPanel {pageName} {projectName} />
-    {/if}
+        <!-- バックリンクパネル -->
+        {#if !isTemporaryPage}
+            <BacklinkPanel {pageName} {projectName} />
+        {/if}
 
-    <!-- Search Panel -->
-    <SearchPanel
-        isVisible={isSearchPanelVisible}
-        pageItem={store.currentPage}
-        project={store.project}
-    />
+        <!-- 検索パネル -->
+        <SearchPanel isVisible={isSearchPanelVisible} />
+    {:else}
+        <!-- デバッグ用ログ --> {logger.info(`OutlinerBase not rendered: store.currentPage=${!!store.currentPage}`)}
+    {/if}
     {#if isLoading}
         <div class="flex justify-center py-8">
-            <div class="loader">Loading...</div>
+            <div class="loader">読み込み中...</div>
         </div>
     {:else if error}
         <div class="rounded-md bg-red-50 p-4">
@@ -611,7 +425,7 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-red-800">
-                        An error occurred
+                        エラーが発生しました
                     </h3>
                     <div class="mt-2 text-sm text-red-700">
                         <p>{error}</p>
@@ -621,13 +435,13 @@
                             onclick={loadProjectAndPage}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >
-                            Retry
+                            再試行
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-    {:else if pageNotFound}
+    {:else if pageNotFound && !isTemporaryPage}
         <div class="rounded-md bg-yellow-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -635,11 +449,11 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-yellow-800">
-                        Page not found
+                        ページが見つかりません
                     </h3>
                     <div class="mt-2 text-sm text-yellow-700">
                         <p>
-                            The specified page "{pageName}" does not exist in project "{projectName}".
+                            指定されたページ「{pageName}」はプロジェクト「{projectName}」内に存在しません。
                         </p>
                     </div>
                 </div>
@@ -653,36 +467,38 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-blue-800">
-                        Login required
+                        ログインが必要です
                     </h3>
                     <div class="mt-2 text-sm text-blue-700">
-                        <p>Please login to view this page.</p>
+                        <p>このページを表示するには、ログインしてください。</p>
                     </div>
                 </div>
             </div>
         </div>
     {:else}
-        <!-- no-op: avoid misleading SSR/hydration fallback message -->
+        <div class="rounded-md bg-gray-50 p-4">
+            <p class="text-gray-700">ページデータを読み込めませんでした。</p>
+        </div>
     {/if}
 </main>
 
 <style>
-    .loader {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3498db;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto;
-    }
+.loader {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
 
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
     }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 </style>

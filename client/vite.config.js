@@ -1,23 +1,18 @@
-import { paraglideVitePlugin } from "@inlang/paraglide-js";
+import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import { sveltekit } from "@sveltejs/kit/vite";
-import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-    plugins: [
-        paraglideVitePlugin({ project: "./project.inlang", outdir: "./src/paraglide./src/lib/paraglide" }),
-        tailwindcss(),
-        sveltekit(),
-    ],
+    plugins: [paraglideVitePlugin({ project: './project.inlang', outdir: './src/paraglide./src/lib/paraglide' }),sveltekit()],
     build: {
-        // Output to the public directory for Firebase Hosting
+        // Firebase Hostingのpublicディレクトリに出力
         outDir: "../build",
         emptyOutDir: true,
-        // Run in SPA mode
+        // SPAモードで動作させる
         ssr: false,
-        // Output as a static site
+        // 静的サイトとして出力
         target: "esnext",
-        // Threshold for inlining assets such as images
+        // 画像などのアセットをインライン化する閾値
         assetsInlineLimit: 10000,
     },
 });

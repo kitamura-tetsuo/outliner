@@ -1,163 +1,110 @@
 <script lang="ts">
-    import { resolvePath } from "../../utils/pathUtils";
 import { browser } from "$app/environment";
 import {
     onDestroy,
     onMount,
 } from "svelte";
-import { userManager } from "../../auth/UserManager";
+import { UserManager } from "../../auth/UserManager";
 import AuthComponent from "../../components/AuthComponent.svelte";
 import EnvDebugger from "../../components/EnvDebugger.svelte";
 import NetworkErrorAlert from "../../components/NetworkErrorAlert.svelte";
 import { getDebugConfig } from "../../lib/env";
 import { getLogger } from "../../lib/logger";
-import { yjsStore } from "../../stores/yjsStore.svelte";
+import { fluidStore } from "../../stores/fluidStore.svelte";
 
-import { createYjsClient, saveFirestoreContainerIdToServer } from "../../services";
+import { createFluidClient } from "../../services";
 
 const logger = getLogger();
 
 let error: string | undefined = $state(undefined);
-let debugInfo: Record<string, unknown> = $state({});
+let debugInfo: any = $state({});
 let hostInfo = $state("");
 let portInfo = $state("");
 let envConfig = getDebugConfig();
 let isAuthenticated = $state(false);
 let networkError: string | undefined = $state(undefined);
 let isInitializing = $state(false);
-let connectionStatus = $state("Disconnected");
+let connectionStatus = $state("未接続");
 let isConnected = $state(false);
 
-// Handle authentication success
-async function handleAuthSuccess(authResult: unknown) {
-    logger.info("Authentication success:", authResult);
+// 認証成功時の処理
+async function handleAuthSuccess(authResult: any) {
+    logger.info("認証成功:", authResult);
     isAuthenticated = true;
 
-    // Automatically initialize Fluid client after authentication success
+    // 認証成功後に自動的にFluidクライアントを初期化
     await initializeFluidClient();
 }
 
-// Handle authentication logout
+// 認証ログアウト時の処理
 function handleAuthLogout() {
-    logger.info("Logged out");
+    logger.info("ログアウトしました");
     isAuthenticated = false;
-    connectionStatus = "Disconnected";
+    connectionStatus = "未接続";
     isConnected = false;
 }
 
-// Initialize Yjs client
+// Fluidクライアントの初期化
 async function initializeFluidClient() {
     isInitializing = true;
 
     try {
-        // Use a fixed UUID for the debug page to avoid creating new projects on every reload
-        const projectId = "00000000-0000-0000-0000-000000000000";
-        console.log(`[debug] Registering debug project: ${projectId}`);
-        const saved = await saveFirestoreContainerIdToServer(projectId);
-        if (!saved) {
-            console.error("[debug] Failed to register debug project");
-            networkError = "Failed to register debug project.";
-            return;
-        }
-
-        console.log(`[debug] Connecting to debug project: ${projectId}`);
-        await createYjsClient(projectId);
+        await createFluidClient();
         updateConnectionStatus();
     }
     catch (err) {
-        console.error("Fluid client initialization error:", err);
-        networkError = "Failed to initialize Fluid client.";
+        console.error("Fluidクライアント初期化エラー:", err);
+        networkError = "Fluidクライアントの初期化に失敗しました。";
     }
     finally {
         isInitializing = false;
     }
 }
 
-// Retry connection on network error
+// ネットワークエラー発生時の再試行
 async function retryConnection() {
     networkError = undefined;
     await initializeFluidClient();
 }
 
-let healthStatus: Record<string, unknown> | null = $state(null);
-let healthError: string | undefined = $state(undefined);
-
-function getHealthCheckUrl() {
-    let port = 7093;
-    try {
-        if (import.meta.env.VITE_YJS_PORT) port = Number(import.meta.env.VITE_YJS_PORT);
-        if (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_YJS_PORT")) {
-            port = Number(window.localStorage.getItem("VITE_YJS_PORT"));
-        }
-    } catch {}
-
-    // Prefer explicitly configured HTTP URL if available
-    const envHttpUrl = import.meta.env.VITE_YJS_HTTP_URL;
-    if (envHttpUrl) return envHttpUrl + "/health";
-
-    // Fallback to converting WS URL
-    const wsUrl = import.meta.env.VITE_YJS_WS_URL || `ws://localhost:${port}`;
-
-    if (wsUrl.startsWith("wss://")) {
-        return wsUrl.replace("wss://", "https://").replace(/\/$/, "") + "/health";
-    } else if (wsUrl.startsWith("ws://")) {
-        return wsUrl.replace("ws://", "http://").replace(/\/$/, "") + "/health";
-    }
-
-    return `http://localhost:${port}/health`;
-}
-
-async function checkHealth() {
-    healthStatus = null;
-    healthError = undefined;
-    try {
-        const url = getHealthCheckUrl();
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        healthStatus = await res.json();
-    } catch (e) {
-        healthError = e instanceof Error ? e.message : String(e);
-    }
-}
-
-// Update connection status
+// 接続状態の更新
 function updateConnectionStatus() {
-    const client = yjsStore.yjsClient;
+    const client = fluidStore.fluidClient;
     if (client) {
-        connectionStatus = client.getConnectionStateString() || "Disconnected";
+        connectionStatus = client.getConnectionStateString() || "未接続";
         isConnected = client.isContainerConnected || false;
         debugInfo = client.getDebugInfo();
     }
     else {
-        connectionStatus = "Disconnected";
+        connectionStatus = "未接続";
         isConnected = false;
     }
 }
 
-// Periodically update connection status
-let statusInterval: ReturnType<typeof setInterval> | undefined;
+// 定期的に接続状態を更新
+let statusInterval: any;
 
 onMount(() => {
     console.debug("[debug/+page] Component mounted");
 
     try {
-        // Get host info - execute only in browser environment
+        // ホスト情報を取得 - ブラウザ環境でのみ実行
         if (browser) {
             hostInfo = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
             portInfo = window.location.port || "7070/default";
             console.info("Running on host:", hostInfo);
         }
 
-        // Check UserManager authentication status
+        // UserManagerの認証状態を確認
 
         isAuthenticated = userManager.getCurrentUser() !== null;
 
-        // Automatically initialize Fluid client if authenticated
+        // 認証済みの場合は自動的にFluidクライアントを初期化
         if (isAuthenticated) {
             initializeFluidClient();
         }
 
-        // Update connection status periodically (every 5 seconds)
+        // 接続状態を定期的に更新（5秒ごと）
         statusInterval = setInterval(() => {
             updateConnectionStatus();
         }, 5000);
@@ -166,13 +113,13 @@ onMount(() => {
         console.error("Error initializing debug page:", err);
         error = err instanceof Error
             ? err.message
-            : "An error occurred during initialization.";
+            : "初期化中にエラーが発生しました。";
     }
 });
 
 onDestroy(() => {
     console.debug("[debug/+page] Component destroying");
-    // Clear periodic update
+    // 定期更新をクリア
     if (statusInterval) {
         clearInterval(statusInterval);
     }
@@ -180,14 +127,14 @@ onDestroy(() => {
 </script>
 
 <svelte:head>
-    <title>Outliner Debug</title>
+    <title>Fluid Outliner Debug</title>
 </svelte:head>
 
 <main>
-    <h1>Outliner Debug</h1>
-    <p class="subtitle">Connection test and debug information</p>
+    <h1>Fluid Outliner Debug</h1>
+    <p class="subtitle">接続テストとデバッグ情報</p>
 
-    <!-- Auth Component -->
+    <!-- 認証コンポーネント -->
     <div class="auth-section">
         <AuthComponent
             onAuthSuccess={handleAuthSuccess}
@@ -196,17 +143,17 @@ onDestroy(() => {
     </div>
 
     {#if isInitializing}
-        <div class="loading">Loading...</div>
+        <div class="loading">読み込み中...</div>
     {:else if error}
         <div class="error">
-            <p>Error: {error}</p>
-            <button onclick={() => location.reload()}>Reload</button>
+            <p>エラー: {error}</p>
+            <button onclick={() => location.reload()}>再読み込み</button>
         </div>
     {:else if isAuthenticated}
-        <!-- Content for authenticated users -->
+        <!-- 認証済みユーザー向けコンテンツ -->
         <div class="authenticated-content">
             <div class="debug-card">
-                <h2>Connection Status</h2>
+                <h2>接続ステータス</h2>
                 <div class="connection-status">
                     <div
                         class="
@@ -216,72 +163,52 @@ onDestroy(() => {
                         "
                     >
                     </div>
-                    <span id="connection-state-text">Connection Status: {connectionStatus}</span>
+                    <span id="connection-state-text">接続状態: {connectionStatus}</span>
                 </div>
 
                 <button onclick={initializeFluidClient} class="action-button">
-                    Run connection test
+                    接続テスト実行
                 </button>
 
                 <div class="status-details">
-                    <p>Connection URL: {hostInfo}</p>
-                    <p>Port: {portInfo}</p>
+                    <p>接続URL: {hostInfo}</p>
+                    <p>ポート: {portInfo}</p>
                 </div>
             </div>
 
             <div class="debug-card">
-                <h2>Server Health Check</h2>
-                <button onclick={checkHealth} class="action-button">
-                    Run health check (GET /health)
-                </button>
-                {#if healthError}
-                    <div class="error" style="margin-top: 1rem;">
-                        <p>Error: {healthError}</p>
-                    </div>
-                {:else if healthStatus}
-                    <div class="result" style="margin-top: 1rem;">
-                        <p>Status: {healthStatus.status}</p>
-                        <details open>
-                            <summary>Details (including headers)</summary>
-                            <pre>{JSON.stringify(healthStatus, null, 2)}</pre>
-                        </details>
-                    </div>
-                {/if}
-            </div>
-
-            <div class="debug-card">
-                <h2>Debug Information</h2>
+                <h2>デバッグ情報</h2>
                 <details open>
-                    <summary>Environment Config</summary>
+                    <summary>環境設定</summary>
                     <pre>{JSON.stringify(envConfig, null, 2)}</pre>
                 </details>
 
                 <details open>
-                    <summary>Fluid Client</summary>
+                    <summary>Fluidクライアント</summary>
                     <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
                 </details>
             </div>
         </div>
     {:else}
-        <!-- Message for unauthenticated users -->
+        <!-- 未認証ユーザー向けメッセージ -->
         <div class="unauthenticated-message">
             <p>
-                Please log in using the Google login button above to use debug features.
+                デバッグ機能を使用するには、上部のGoogleログインボタンからログインしてください。
             </p>
         </div>
     {/if}
 
-    <!-- Network error display -->
+    <!-- ネットワークエラー表示 -->
     <NetworkErrorAlert error={networkError} retryCallback={retryConnection} />
 
-    <!-- Environment variable debugger -->
+    <!-- 環境変数デバッガー -->
     <div class="debug-card">
-        <h2>Environment Variables</h2>
+        <h2>環境変数</h2>
         <EnvDebugger />
     </div>
 
     <div class="back-link">
-        <a href={resolvePath("/")}>Return to Main Page</a>
+        <a href="/">メインページに戻る</a>
     </div>
 </main>
 

@@ -1,288 +1,207 @@
 # Outliner
 
-Outliner is a real-time collaborative application built on Yjs.
+Outlinerは、Azure Fluid Relayを使用したリアルタイム共同編集アプリケーションです。
 
-## User Manual
+## 開発環境のセットアップ
 
-https://kitamura-tetsuo.github.io/outliner/
-
-## Yjs migration
-
-See [docs/fluid_to_yjs.md](docs/fluid_to_yjs.md) for the mapping between legacy data structures and Yjs and current migration status.
-
-## AI Integration Features
-
-### Automatic PR-Issue Linking Feature
-
-This repository includes an automatic PR-Issue linking feature using Gemini CLI and GitHub MCP server integration. When a PR is created, the system automatically analyzes the PR content and links it to relevant open issues.
-
-### Claude Code Action Integration
-
-Claude Code Action is automatically executed when an Issue is created, providing AI-based analysis and support:
-
-- **Trigger**: When creating/editing an Issue, or commenting with `@claude`
-- **Execution Environment**: Self-hosted runner
-- **AI Model**: Gemini 2.5 Pro (via actual Gemini CLI, MCP supported)
-- **Features**: Issue analysis, code suggestions, Q&A
-
-### Automatic PR Test Fix Feature
-
-If PR tests fail, Claude Code Action automatically attempts to fix them:
-
-- **Trigger**: When PR tests fail
-- **Execution Environment**: Self-hosted runner
-- **AI Model**: Gemini 2.5 Pro (via actual Gemini CLI, MCP supported)
-- **Features**: Test failure analysis, code fixes, repeated execution until tests pass (max 5 attempts)
-
-For detailed setup instructions, please refer to [docs/github-actions-setup.md](docs/github-actions-setup.md).
-
-### Improved Workflow
-
-The workflow has been improved to a two-stage approach:
-
-1. **Issue Search Stage**: Gemini CLI analyzes relevant issues and outputs in JSON format
-2. **PR Update Stage**: GitHub CLI reliably updates the PR description
-
-This improvement achieves a more reliable automatic linking feature.
-
-### Functional Testing
-
-This PR is intended for testing the automatic linking feature. The system is expected to perform the following:
-
-- Search and analyze open issues
-- Analyze PR title and description content
-- Automatically link relevant issues
-
-### Workflow Improvements
-
-Detailed logging and improved error handling have been added to the workflow:
-
-- Detailed check of Gemini CLI authentication
-- Confirmation of configuration file existence
-
-### Workflow Verification Testing
-
-This section was added to verify the operation of the automatic PR-issue linking workflow.
-
-- Saving and outputting execution logs
-- More detailed error messages
-
-## Development Environment Setup
-
-1. Install dependencies:
+1. 依存関係をインストール:
 
 ```bash
-# Client-side dependencies
+# クライアント側の依存関係
 cd client
 npm install
 
-# Server-side dependencies
+# サーバー側の依存関係
 cd ../server
 npm install
 
-# Firebase Functions dependencies
+# Firebase Functions側の依存関係
 cd ../functions
 npm install
 
-# Python dependencies (for feature-map script)
+# Python依存関係 (feature-map スクリプト用)
 cd ..
 pip install -r scripts/requirements.txt
 ```
 
-2. Set up environment variables:
+2. 環境変数を設定:
 
 ```bash
-# Client-side
+# クライアント側
 cd client
 cp .env.example .env
 
-# Server-side
+# サーバー側
 cd ../server
 cp .env.example .env
 
-# Set local IP to `LOCAL_HOST` in .env if accessing via network
+# ネットワーク経由でアクセスする場合は .env の `LOCAL_HOST` にローカル IP を設定
 
-# Firebase Functions
+# Firebase Functions側
 cd ../functions
 cp .env.example .env
 ```
 
-### Encryption of .env Files
+### .envファイルの暗号化
 
-Development environment variable files are encrypted using [`dotenvx`](https://dotenvx.com/).
-Run the following after initial setup to encrypt `.env.development`.
+開発用の環境変数ファイルは [`dotenvx`](https://dotenvx.com/) を使って暗号化します。
+初回セットアップ後に以下を実行して `.env.development` を暗号化してください。
 
 ```bash
 npx @dotenvx/dotenvx encrypt --env-file server/.env.development
 ```
 
-This command encrypts `.env.development` and overwrites it with the same filename.
+このコマンドは `.env.development` を暗号化して同じファイル名のまま上書きします。
 
-If decryption is needed, use the `decrypt` subcommand.
+復号化が必要な場合は `decrypt` サブコマンドを使用します。
 
-## Starting Development Servers
+## 開発サーバーの起動
 
-### Client Development Server
+### クライアント開発サーバー
 
 ```bash
 cd client
 npm run dev
 
-# Or, to expose on the network
+# または、ネットワーク上で公開する場合
 npm run dev:host
 ```
 
-### Auth Server (Development)
+### 認証サーバー（開発用）
 
 ```bash
 cd server
 npm run dev
 ```
 
-### Firebase Emulators (Development)
+### Firebase Emulators（開発用）
 
 ```bash
 cd firebase
 firebase emulators:start
 ```
 
-## Build and Deploy
+## ビルドとデプロイ
 
-### Build Client
+### クライアントのビルド
 
 ```bash
 cd client
 npm run build
 ```
 
-### Deploy to Firebase Hosting + Functions
+### Firebase Hosting + Functionsへのデプロイ
 
-1. Install Firebase CLI:
+1. Firebase CLIをインストール:
 
 ```bash
 npm install -g firebase-tools
 ```
 
-2. Login to Firebase:
+2. Firebaseにログイン:
 
 ```bash
 firebase login
 ```
 
-3. Select project:
+3. プロジェクトを選択:
 
 ```bash
 firebase use your-project-id
 ```
 
-4. Build client:
+4. 環境変数を設定:
+
+```bash
+# Azure Fluid Relay設定
+firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="https://us.fluidrelay.azure.com" azure.primary_key="your-primary-key"
+```
+
+5. クライアントをビルド:
 
 ```bash
 cd client
 npm run build
 ```
 
-6. Deploy:
+6. デプロイ:
 
 ```bash
 firebase deploy
 ```
 
-## Environment Variables
+## 環境変数
 
-### Development Environment
+### 開発環境
 
-- Client: `VITE_PORT=7070`
+- クライアント: `VITE_PORT=7070`
 - API: `PORT=7071`
+- Tinylicious: `VITE_TINYLICIOUS_PORT=7072`
 
-### Test Environment
+### テスト環境
 
-- Client: `VITE_PORT=7080`
-- Firebase Emulator host: `VITE_FIREBASE_EMULATOR_HOST=localhost`
+- クライアント: `VITE_PORT=7080`
+- Tinylicious: `VITE_TINYLICIOUS_PORT=7082`
+- Firestore Emulator host: `VITE_FIRESTORE_EMULATOR_HOST=localhost`
+- Auth Emulator host: `VITE_AUTH_EMULATOR_HOST=localhost`
 
 ## Firebase Hosting + Functions
 
-When using Firebase Hosting + Functions, the following configuration is required:
+Firebase Hosting + Functionsを使用する場合は、以下の設定が必要です：
 
-1. Update client-side environment variables:
+1. クライアント側の環境変数を更新:
 
 ```bash
 cd client
 cp .env.firebase.example .env
 ```
 
-2. Deploy:
+2. Firebase Functionsの環境変数を設定:
+
+```bash
+firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="https://us.fluidrelay.azure.com" azure.primary_key="your-primary-key"
+```
+
+3. デプロイ:
 
 ```bash
 firebase deploy
 ```
 
-## Open Source Libraries Used
+## 使用しているオープンソースライブラリ
 
-This project adopts the following major open source libraries.
+このプロジェクトでは以下の主要なオープンソースライブラリを採用しています。
 
-- **SvelteKit** / **Svelte** - Used for client UI development.
-- **Express** - Builds the authentication server.
-- **Firebase** - Used for authentication and hosting.
+- **SvelteKit** / **Svelte** - クライアント UI 開発に使用。
+- **Express** - 認証サーバーを構築。
+- **Firebase** - 認証やホスティングに利用。
+- **Fluid Framework** - リアルタイムコラボレーション機能の基盤。
 
-Each library is released under licenses such as MIT or Apache, and details are listed in `package.json`.
+各ライブラリはMITやApacheなどのライセンスの下で公開されており、`package.json`に詳細が記載されています。
 
-## SSO Login Procedure (For New Employees)
+## SSO ログイン手順（新入社員向け）
 
-1. After obtaining a company SSO account, please contact the internal administrator with your GitHub username.
-2. Once access rights to the repository are granted, access `/login` in your browser to complete SSO login.
-3. You will be automatically registered with Firebase Authentication after the first login.
+1. 会社のSSOアカウントを取得後、社内管理者へGitHubユーザー名を連絡してください。
+2. リポジトリへのアクセス権が付与されたら、ブラウザで `/login` へアクセスしてSSOログインを完了します。
+3. 初回ログイン後はFirebase Authenticationにも自動登録されます。
 
-## How to Run Tests
+## テスト実行方法
 
-Unit tests use `Vitest`, and E2E tests use `Playwright`.
-
-We recommend using `scripts/test.sh` to run tests. This script automatically calls `scripts/setup.sh` to set up the emulator environment if necessary.
-
-```bash
-# Run specific tests (Auto-detect Unit/Integration/E2E)
-scripts/test.sh client/e2e/path/to/test.spec.ts
-
-# E2E Tests (Specify directory)
-scripts/test.sh client/e2e
-
-# Run all tests
-scripts/test.sh
-```
-
-When using `scripts/test.sh`, manual execution of `scripts/setup.sh` beforehand is not required (it is done automatically).
-If executing by other methods, run `scripts/setup.sh` beforehand to start the local emulators.
-
-### Running Playwright Tests Sequentially
-
-In cloud environments, running multiple E2E tests at once may cause timeouts. Use `scripts/run-e2e-progress.sh 1` to run test files one by one.
-This prevents timeout errors during coding agent's env runs.
+ユニットテストは `Vitest`、E2E テストは `Playwright` を使用しています。
 
 ```bash
-scripts/run-e2e-progress.sh 1
+# ユニットテスト
+cd client
+npm run test:unit
+
+# E2E テスト (dotenvxで復号化して実行)
+dotenvx run -- npm run test:e2e
+
+# 環境維持テスト (Vitest)
+dotenvx run -- npm run test:env
 ```
 
-This script records progress in the `.e2e-progress` file and can resume from where it left off even if a timeout occurs. Please log any timed-out tests.
-Delete `.e2e-progress` to start from the beginning.
+テストの前には `scripts/codex-setup.sh` を実行してローカルのエミュレータ群を起動してください。
+スクリプトは初回実行後にインストール結果をキャッシュするため、二回目以降は依存関係のインストールをスキップして短時間で完了します。
 
-### Starting Local Servers Together
-
-When performing manual tests locally, execute `scripts/setup.sh`. SvelteKit, Yjs WebSocket, and Firebase Emulators will start, and subsequent tests can be executed.
-
-## Aggregating Feature Documentation
-
-`docs/client-features.yaml` and `docs/dev-features.yaml` are generated by aggregating YAMLs under `docs/client-features/` and `docs/dev-features/`. Run the following command after adding a new YAML file.
-
-```bash
-python scripts/aggregate_features.py
-```
-
-### Verifying Format with pre-push
-
-Run `dprint check` before push to check for unformatted files. Set up the hook as follows:
-
-```bash
-ln -s ../../scripts/pre_push.sh .git/hooks/pre-push
-```
-
-If there are unformatted files, the push will be rejected.
+自動化されたテストにより、主要機能の回帰を防ぎます。CI環境でも同じコマンドが実行されます。

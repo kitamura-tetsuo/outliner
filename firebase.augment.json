@@ -32,6 +32,10 @@
         ],
         "rewrites": [
             {
+                "source": "/api/fluid-token",
+                "function": "fluidToken"
+            },
+            {
                 "source": "/api/save-container",
                 "function": "saveContainer"
             },
@@ -63,7 +67,7 @@
             "host": "localhost"
         },
         "functions": {
-            "port": 57070,
+            "port": 57000,
             "host": "localhost"
         },
         "hosting": {

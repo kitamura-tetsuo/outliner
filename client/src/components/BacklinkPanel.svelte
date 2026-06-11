@@ -1,20 +1,8 @@
 <script lang="ts">
-import { goto } from "$app/navigation";
-import { resolvePath } from "../utils/pathUtils";
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-
-import {
-    type Backlink,
-    collectBacklinks,
-} from "$lib/backlinkCollector";
+import { onMount, onDestroy } from "svelte";
 import { getLogger } from "$lib/logger";
-import {
-    onDestroy,
-    onMount,
-} from "svelte";
-import { highlightLinkInContext } from "../utils/linkHighlighter";
+import { collectBacklinks, type Backlink } from "$lib/backlinkCollector";
+import { goto } from "$app/navigation";
 
 const logger = getLogger("BacklinkPanel");
 
@@ -25,13 +13,13 @@ interface Props {
 
 let { pageName, projectName }: Props = $props();
 
-// Backlink information
+// バックリンク情報
 let backlinks = $state<Backlink[]>([]);
 let isLoading = $state(false);
 let isOpen = $state(false);
 let error = $state<string | null>(null);
 
-// Load backlinks
+// バックリンクを読み込む
 async function loadBacklinks() {
     if (!pageName) return;
 
@@ -39,21 +27,19 @@ async function loadBacklinks() {
     error = null;
 
     try {
-        // Collect backlinks
+        // バックリンクを収集
         backlinks = collectBacklinks(pageName);
         logger.info(`Loaded ${backlinks.length} backlinks for page: ${pageName}`);
-    }
-    catch (err) {
-        logger.error({ error: err as Error }, "Failed to load backlinks");
-        error = "Failed to load backlinks";
+    } catch (err) {
+        logger.error("Failed to load backlinks:", err);
+        error = "バックリンクの読み込みに失敗しました";
         backlinks = [];
-    }
-    finally {
+    } finally {
         isLoading = false;
     }
 }
 
-// Toggle panel visibility
+// パネルの開閉を切り替える
 function togglePanel() {
     isOpen = !isOpen;
 
@@ -62,32 +48,31 @@ function togglePanel() {
     }
 }
 
-// Navigate to source page
-async function navigateToPage(_pageId: string, pageName: string) {
+// バックリンク先のページに移動する
+function navigateToPage(pageId: string, pageName: string) {
     if (!projectName) {
-        // Use current project if not specified
-        await goto(resolvePath(`/${pageName}`));
-    }
-    else {
-        await goto(resolvePath(`/${projectName}/${pageName}`));
+        // プロジェクト名が指定されていない場合は現在のプロジェクトを使用
+        goto(`/${pageName}`);
+    } else {
+        goto(`/${projectName}/${pageName}`);
     }
 }
 
-// Reload backlinks
+// バックリンクを再読み込みする
 function refreshBacklinks() {
     loadBacklinks();
 }
 
-// Component lifecycle
+// コンポーネントがマウントされたときの処理
 onMount(() => {
-    // Start collapsed
+    // 初期状態では閉じておく
     isOpen = false;
 });
 
+// コンポーネントが破棄されるときの処理
 onDestroy(() => {
-    // Cleanup
+    // クリーンアップ処理
 });
-
 </script>
 
 <div class="backlink-panel">
@@ -95,82 +80,48 @@ onDestroy(() => {
         onclick={togglePanel}
         class="backlink-toggle-button"
         class:active={isOpen}
-        aria-expanded={isOpen}
-        aria-controls="backlink-content-panel"
     >
         <span class="backlink-count">{backlinks.length}</span>
-        <span class="backlink-label">Backlinks</span>
-        <svg
-            class="chevron-icon"
-            class:collapsed={!isOpen}
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-        >
-            <path
-                d="M4 6L8 10L12 6"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            />
-        </svg>
+        <span class="backlink-label">バックリンク</span>
+        <span class="toggle-icon">{isOpen ? '▼' : '▶'}</span>
     </button>
 
     {#if isOpen}
-        <div
-            id="backlink-content-panel"
-            class="backlink-content"
-            role="region"
-            aria-label="Backlinks"
-        >
+        <div class="backlink-content">
             <div class="backlink-header">
-                <h3>Backlinks</h3>
-                <button
-                    onclick={refreshBacklinks}
-                    class="refresh-button"
-                    title="Refresh"
-                    aria-label="Refresh backlinks"
-                >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M23 4v6h-6"></path>
-                        <path d="M1 20v-6h6"></path>
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                    </svg>
+                <h3>バックリンク</h3>
+                <button onclick={refreshBacklinks} class="refresh-button" title="再読み込み">
+                    ↻
                 </button>
             </div>
 
             {#if isLoading}
-                <div class="backlink-loading" role="status" aria-live="polite">
+                <div class="backlink-loading">
                     <div class="loader"></div>
-                    <p>Loading...</p>
+                    <p>読み込み中...</p>
                 </div>
             {:else if error}
-                <div class="backlink-error" role="status" aria-live="polite">
+                <div class="backlink-error">
                     <p>{error}</p>
                 </div>
             {:else if backlinks.length === 0}
-                <div class="backlink-empty" role="status">
-                    <p>No backlinks found for this page.</p>
+                <div class="backlink-empty">
+                    <p>このページへのリンクはありません</p>
                 </div>
             {:else}
                 <ul class="backlink-list">
-                    {#each backlinks as backlink (`${backlink.sourcePageId}-${backlink.context}`)}
+                    {#each backlinks as backlink}
                         <li class="backlink-item">
                             <div class="backlink-source">
-                                <button
-                                    type="button"
+                                <a
+                                    href="javascript:void(0)"
                                     onclick={() => navigateToPage(backlink.sourcePageId, backlink.sourcePageName)}
                                     class="source-page-link"
                                 >
                                     {backlink.sourcePageName}
-                                </button>
+                                </a>
                             </div>
                             <div class="backlink-context">
-                                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                                 {@html highlightLinkInContext(backlink.context, pageName)}
                             </div>
                         </li>
@@ -229,14 +180,9 @@ onDestroy(() => {
     font-weight: 500;
 }
 
-.chevron-icon {
-    transition: transform 0.2s ease;
-    transform: rotate(0deg); /* Expanded state (down) */
+.toggle-icon {
+    font-size: 10px;
     color: #666;
-}
-
-.chevron-icon.collapsed {
-    transform: rotate(-90deg); /* Collapsed state (right) */
 }
 
 .backlink-content {
@@ -267,9 +213,6 @@ onDestroy(() => {
     font-size: 16px;
     padding: 4px 8px;
     border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .refresh-button:hover {
@@ -302,12 +245,8 @@ onDestroy(() => {
 }
 
 @keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .backlink-list {
@@ -347,9 +286,39 @@ onDestroy(() => {
     word-break: break-word;
 }
 
-:global(.highlight) {
+.highlight {
     background-color: #fff3cd;
     padding: 0 2px;
     border-radius: 2px;
 }
 </style>
+
+<script lang="ts" context="module">
+// コンテキスト内のリンクをハイライトする
+function highlightLinkInContext(context: string, pageName: string): string {
+    if (!context || !pageName) return context;
+
+    // 内部リンクの正規表現パターン
+    const internalLinkPattern = new RegExp(`\\[(${escapeHtml(pageName)})\\]`, 'gi');
+
+    // プロジェクト内部リンクの正規表現パターン
+    const projectLinkPattern = new RegExp(`\\[\\/[^/]+\\/(${escapeHtml(pageName)})\\]`, 'gi');
+
+    // リンクをハイライト
+    let result = context
+        .replace(internalLinkPattern, '<span class="highlight">[$1]</span>')
+        .replace(projectLinkPattern, '<span class="highlight">[/project/$1]</span>');
+
+    return result;
+}
+
+// HTMLエスケープ
+function escapeHtml(text: string): string {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+</script>

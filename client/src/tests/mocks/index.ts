@@ -1,7 +1,10 @@
 // filepath: /workspace/client/src/tests/mocks/index.ts
 import { vi } from "vitest";
 import * as UserManagerModule from "../../auth/UserManager";
-import { resetMockFirestore, setupMockFirestore } from "./firestoreMock";
+import {
+    resetMockFirestore,
+    setupMockFirestore,
+} from "./firestoreMock";
 
 // Mock for UserManager
 const mockUserManager = {
@@ -30,12 +33,11 @@ const mockUserManager = {
 
 // Setup all mocks at once
 export function setupMocks({
+    firebase = {},
     firestore = {},
 } = {}) {
     // Mock userManager instance
-    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(
-        mockUserManager as unknown as typeof UserManagerModule.userManager,
-    );
+    vi.spyOn(UserManagerModule, "userManager", "get").mockReturnValue(mockUserManager as any);
 
     // Setup Firestore mock with optional initial data
     setupMockFirestore(firestore);
@@ -48,6 +50,18 @@ export function setupMocks({
                 ok: true,
                 status: 200,
                 json: () => Promise.resolve({ success: true }),
+            });
+        }
+
+        if (url.includes("/api/fluid-token")) {
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () =>
+                    Promise.resolve({
+                        token: "mock-fluid-token",
+                        user: { id: "test-user-id", name: "Test User" },
+                    }),
             });
         }
 

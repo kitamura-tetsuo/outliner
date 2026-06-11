@@ -17,6 +17,7 @@
     "arrowFunction.useParentheses": "preferNone",
     "conditionalExpression.linePerExpression": false,
     "functionExpression.spaceAfterFunctionKeyword": true,
+    "importDeclaration.forceMultiLine": false,
     "constructorType.spaceAfterNewKeyword": true,
     "constructSignature.spaceAfterNewKeyword": true,
     "module.sortImportDeclarations": "caseInsensitive",

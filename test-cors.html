@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>CORS Test</title>
+    </head>
+    <body>
+        <h1>CORS Test</h1>
+        <button onclick="testCors()">Test CORS</button>
+        <div id="result"></div>
+
+        <script>
+        async function testCors() {
+                const resultDiv = document.getElementById("result");
+                resultDiv.innerHTML = "Testing...";
+
+                try {
+                    // Test without credentials
+                    const response = await fetch("http://localhost:57000/api/fluid-token", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        mode: "cors",
+                        body: JSON.stringify({
+                            idToken: "test-token",
+                            containerId: "test-container",
+                        }),
+                    });
+
+                    resultDiv.innerHTML = `
+                    <h3>Success!</h3>
+                    <p>Status: ${response.status}</p>
+                    <p>CORS headers work correctly</p>
+                `;
+                }
+                catch (error) {
+                    resultDiv.innerHTML = `
+                    <h3>Error:</h3>
+                    <p>${error.message}</p>
+                `;
+                }
+            }
+        </script>
+    </body>
+</html>

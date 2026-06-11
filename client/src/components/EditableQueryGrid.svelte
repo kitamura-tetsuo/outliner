@@ -1,24 +1,22 @@
 <script lang="ts">
 import { mapEdit } from "../services/editMapper";
-import { applyEdit, queryStore } from "../services/sqlService";
-import { onDestroy, onMount, tick } from "svelte";
-import type { QueryResult } from "../services/sqlService";
+import {
+    applyEdit,
+    queryStore,
+} from "../services/sqlService";
 
-let data = $state<QueryResult>({ rows: [], columnsMeta: [] });
+let data = $state({ rows: [], columnsMeta: [] } as any);
 let editingCell = $state<{ rowIndex: number; columnKey: string; } | null>(null);
-let draggedColumnIndex = $state<number | null>(null);
-let draggedRowIndex = $state<number | null>(null);
 
-// Manage Svelte 5 subscriptions explicitly with onMount/onDestroy
-let __unsubscribe: (() => void) | null = null;
-onMount(() => {
-    try {
-        __unsubscribe = queryStore.subscribe(v => { data = v; });
-    } catch {}
+// Svelte 5のリアクティブな購読
+$effect(() => {
+    const unsubscribe = queryStore.subscribe(v => {
+        data = v;
+    });
+    return unsubscribe;
 });
-onDestroy(() => { try { __unsubscribe?.(); } catch {} });
 
-async function handleCellEdit(rowIndex: number, columnKey: string, newValue: unknown) {
+function handleCellEdit(rowIndex: number, columnKey: string, newValue: any) {
     const row = data.rows[rowIndex];
     const info = mapEdit(data.columnsMeta, row, columnKey);
     if (info) {
@@ -30,9 +28,6 @@ async function handleCellEdit(rowIndex: number, columnKey: string, newValue: unk
         applyEdit(info, newValue);
     }
     editingCell = null;
-    await tick();
-    const cell = document.querySelector(`td[data-row="${rowIndex}"][data-col="${columnKey.replace(/"/g, '\\"')}"]`) as HTMLElement;
-    cell?.focus();
 }
 
 function startEdit(rowIndex: number, columnKey: string) {
@@ -42,59 +37,6 @@ function startEdit(rowIndex: number, columnKey: string) {
 function isEditing(rowIndex: number, columnKey: string): boolean {
     return editingCell?.rowIndex === rowIndex && editingCell?.columnKey === columnKey;
 }
-
-function addColumn(index: number) {
-    const newName = `col${data.columnsMeta.length + 1}`;
-    data.columnsMeta.splice(index + 1, 0, { name: newName });
-    data.rows.forEach(r => (r[newName] = ""));
-    queryStore.update(q => {
-        q.columnsMeta = data.columnsMeta;
-        q.rows = data.rows;
-        return q;
-    });
-}
-
-function handleColumnDragStart(e: DragEvent, index: number) {
-    draggedColumnIndex = index;
-    e.dataTransfer?.setData("text/plain", String(index));
-}
-
-function handleColumnDrop(e: DragEvent, index: number) {
-    e.preventDefault();
-    if (draggedColumnIndex === null) return;
-    const [moved] = data.columnsMeta.splice(draggedColumnIndex, 1);
-    data.columnsMeta.splice(index, 0, moved);
-    draggedColumnIndex = null;
-    queryStore.update(q => {
-        q.columnsMeta = data.columnsMeta;
-        return q;
-    });
-}
-
-function handleColumnDragOver(e: DragEvent) {
-    e.preventDefault();
-}
-
-function handleRowDragStart(e: DragEvent, index: number) {
-    draggedRowIndex = index;
-    e.dataTransfer?.setData("text/plain", String(index));
-}
-
-function handleRowDrop(e: DragEvent, index: number) {
-    e.preventDefault();
-    if (draggedRowIndex === null) return;
-    const [row] = data.rows.splice(draggedRowIndex, 1);
-    data.rows.splice(index, 0, row);
-    draggedRowIndex = null;
-    queryStore.update(q => {
-        q.rows = data.rows;
-        return q;
-    });
-}
-
-function handleRowDragOver(e: DragEvent) {
-    e.preventDefault();
-}
 </script>
 
 <div class="editable-query-grid">
@@ -102,45 +44,17 @@ function handleRowDragOver(e: DragEvent) {
         <table class="table">
             <thead>
                 <tr>
-                    {#each data.columnsMeta as column, colIndex (column.name)}
-                        <th
-                            draggable="true"
-                            oncontextmenu={(e) => {
-                                e.preventDefault();
-                                addColumn(colIndex);
-                            }}
-                            ondragstart={e => handleColumnDragStart(e, colIndex)}
-                            ondragover={handleColumnDragOver}
-                            ondrop={e => handleColumnDrop(e, colIndex)}
-                        >{column.name}</th>
+                    {#each data.columnsMeta as column}
+                        <th>{column.name}</th>
                     {/each}
                 </tr>
             </thead>
             <tbody>
-                {#each data.rows as row, rowIndex (rowIndex)}
-                    <tr
-                        draggable="true"
-                        ondragstart={e => handleRowDragStart(e, rowIndex)}
-                        ondragover={handleRowDragOver}
-                        ondrop={e => handleRowDrop(e, rowIndex)}
-                    >
-                        {#each data.columnsMeta as column (column.name)}
-                            <td
-                                data-row={rowIndex}
-                                data-col={column.name}
-                                ondblclick={() => startEdit(rowIndex, column.name)}
-                                tabindex="0"
-                                role="gridcell"
-                                title="Double click or Enter to edit"
-                                onkeydown={(e) => {
-                                    if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        startEdit(rowIndex, column.name);
-                                    }
-                                }}
-                            >
+                {#each data.rows as row, rowIndex}
+                    <tr>
+                        {#each data.columnsMeta as column}
+                            <td ondblclick={() => startEdit(rowIndex, column.name)}>
                                 {#if isEditing(rowIndex, column.name)}
-                                    <!-- svelte-ignore a11y_autofocus -->
                                     <input
                                         type="text"
                                         value={row[column.name] || ""}
@@ -160,7 +74,6 @@ function handleRowDragOver(e: DragEvent) {
                                             }
                                         }}
                                         class="cell-input"
-                                        autofocus
                                     />
                                 {:else}
                                     <span class="cell-value">{row[column.name] || ""}</span>
@@ -172,7 +85,7 @@ function handleRowDragOver(e: DragEvent) {
             </tbody>
         </table>
     {:else}
-        <p>Please execute a query</p>
+        <p>クエリを実行してください</p>
     {/if}
 </div>
 
@@ -198,12 +111,6 @@ function handleRowDragOver(e: DragEvent) {
 .table th {
     background-color: #f5f5f5;
     font-weight: bold;
-    cursor: move;
-}
-
-.table td:focus {
-    outline: 2px solid #007bff;
-    outline-offset: -2px;
 }
 
 .cell-input {
@@ -227,9 +134,5 @@ function handleRowDragOver(e: DragEvent) {
 
 .cell-value:hover {
     background-color: #f8f9fa;
-}
-
-.table tr[draggable="true"] {
-    cursor: move;
 }
 </style>

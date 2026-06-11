@@ -19,44 +19,43 @@ class AsyncLock {
             // shift() never returns undefined here because length > 0
             const resolve = this._queue.shift()!;
             resolve();
-        } else {
+        }
+        else {
             this._locked = false;
         }
     }
 
-    async runExclusive<T>(callback: () => Promise<T> | T) {
+    async runExclusive(callback: () => any) {
         await this.acquire();
         try {
             return await callback();
-        } finally {
+        }
+        finally {
             this.release();
         }
     }
 }
 
 export class AsyncLockManager {
-    locks: Map<unknown, AsyncLock>;
+    locks: Map<any, any>;
     constructor() {
-        this.locks = new Map<unknown, AsyncLock>();
+        this.locks = new Map();
     }
 
-    getLock<T = unknown>(key: T) {
-        if (!this.locks.has(key as unknown)) {
-            this.locks.set(key as unknown, new AsyncLock());
+    getLock(key: any) {
+        if (!this.locks.has(key)) {
+            this.locks.set(key, new AsyncLock());
         }
-        return this.locks.get(key as unknown);
+        return this.locks.get(key);
     }
 
-    async runExclusive<T, R>(key: T, callback: () => Promise<R> | R) {
+    async runExclusive(key: any, callback: any) {
         const lock = this.getLock(key);
-        if (!lock) {
-            throw new Error(`Lock not initialized for key: ${String(key)}`);
-        }
         return lock.runExclusive(callback);
     }
 }
 
-// // Example usage
+// // 使い方の例
 // class MyService {
 //     lockManager: AsyncLockManager;
 //     constructor() {
@@ -79,24 +78,24 @@ export class AsyncLockManager {
 //         });
 //     }
 
-//     // Can also lock with arbitrary keys
+//     // 任意キーでもロック可能
 //     async runWithCustomLock(key: string, fn: { (): Promise<void>; (): Promise<void>; }) {
 //         return this.lockManager.runExclusive(key, fn);
 //     }
 // }
 
-// // Test execution
+// // 動作テスト
 // (async () => {
 //     const service = new MyService();
 
-//     // methodA is exclusively controlled
+//     // methodA は排他制御される
 //     service.methodA();
 //     service.methodA();
 
-//     // methodB uses a different lock so it can run concurrently
+//     // methodB は別ロックなので同時実行可能
 //     service.methodB();
 
-//     // Locking with an arbitrary key
+//     // 任意のキーでのロック
 //     service.runWithCustomLock('custom', async () => {
 //         console.log('custom lock start');
 //         await new Promise(r => setTimeout(r, 700));

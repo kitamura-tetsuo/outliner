@@ -1,84 +1,84 @@
-import "../utils/registerAfterEachSnapshot";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
 /** @feature TST-0005
- *  Title   : Initializing and preparing the test environment
+ *  Title   : テスト環境の初期化と準備
  *  Source  : docs/client-features.yaml
  */
 /**
  * @file auth.spec.ts
- * @description Authentication related tests
- * Tests the application authentication flow.
- * Verifies the authentication flow in the development environment and the actual authentication state.
+ * @description 認証機能関連のテスト
+ * アプリケーションの認証フローをテストします。
+ * 開発環境での認証フローと、実際の認証状態の検証を行います。
  * @playwright
  */
 
-import { expect, test } from "@playwright/test";
+import {
+    expect,
+    test,
+} from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("Authentication Functionality Test", () => {
+test.describe("認証機能テスト", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // Prepare test environment (navigate to page where auth component is displayed)
-        await TestHelpers.seedProjectAndNavigate(page, testInfo);
+        // テスト環境を準備（認証コンポーネントが表示されるページに移動）
+        await TestHelpers.prepareTestEnvironment(page, testInfo);
 
-        // Wait for auth component to be displayed
+        // 認証コンポーネントが表示されるまで待機
         await page.waitForSelector(".auth-container", { timeout: 10000 });
     });
 
     /**
-     * @testcase Developer mode login flow
-     * @description Verify that the authentication flow in the development environment works correctly
-     * @check Start from logged out state
-     * @check Developer login button is clickable
-     * @check Email and password input is possible
-     * @check Authentication completes upon clicking login button
-     * @check Logout button is displayed after login
+     * @testcase 開発者モードでのログインフロー
+     * @description 開発環境での認証フローが正常に動作することを確認
+     * @check ログアウト状態からスタート
+     * @check 開発者ログインボタンのクリックが可能
+     * @check メールアドレスとパスワードの入力が可能
+     * @check ログインボタンのクリックで認証が完了
+     * @check ログイン後にログアウトボタンが表示される
      */
-    test("Developer mode login flow works correctly", async ({ page }) => {
-        // Logout if already logged in
+    test("開発者モードでログインフローが正常に動作する", async ({ page }) => {
+        // 既にログインしている場合はログアウト
         const logoutButton = page.locator("button.logout-btn");
         if (await logoutButton.isVisible()) {
             await logoutButton.click();
-            // Wait for logout process to complete
+            // ログアウト処理が完了するまで待機
             await page.waitForSelector("button.dev-toggle", { timeout: 10000 });
         }
 
-        // Click developer login button
+        // 開発者ログインボタンをクリック
         const devToggleButton = page.locator("button.dev-toggle");
         await expect(devToggleButton).toBeVisible();
         await devToggleButton.click();
 
-        // Wait for developer login form to be displayed
+        // 開発者ログインフォームが表示されるまで待機
         await page.waitForSelector(".dev-login-form", { timeout: 5000 });
 
-        // Input authentication information
+        // 認証情報の入力
         await page.locator("#email").fill("test@example.com");
         await page.locator("#password").fill("password");
 
-        // Execute login
+        // ログイン実行
         await page.locator("button.dev-login-btn").click();
 
-        // Confirm login success (logout button is displayed)
+        // ログイン成功の確認（ログアウトボタンが表示される）
         await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
     });
 
     /**
-     * @testcase Login state persistence
-     * @description Verify that the state after login is correctly maintained
-     * @check Reload page after login
-     * @check Login state is maintained
-     * @check User information is displayed correctly
+     * @testcase ログイン状態の永続化
+     * @description ログイン後の状態が正しく保持されることを確認
+     * @check ログイン後にページをリロード
+     * @check ログイン状態が維持されている
+     * @check ユーザー情報が正しく表示される
      */
-    test("Login state is maintained correctly", async ({ page }) => {
-        // Logout if already logged in
+    test("ログイン状態が正しく保持される", async ({ page }) => {
+        // 既にログインしている場合はログアウト
         const logoutButton = page.locator("button.logout-btn");
         if (await logoutButton.isVisible()) {
             await logoutButton.click();
-            // Wait for logout process to complete
+            // ログアウト処理が完了するまで待機
             await page.waitForSelector("button.dev-toggle", { timeout: 10000 });
         }
 
-        // Execute developer login
+        // 開発者ログインの実行
         const devToggleButton = page.locator("button.dev-toggle");
         await devToggleButton.click();
         await page.waitForSelector(".dev-login-form", { timeout: 5000 });
@@ -87,16 +87,16 @@ test.describe("Authentication Functionality Test", () => {
         await page.locator("#password").fill("password");
         await page.locator("button.dev-login-btn").click();
 
-        // Confirm login success
+        // ログイン成功を確認
         await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
 
-        // Reload page
+        // ページのリロード
         await page.reload();
 
-        // Wait for auth component to be displayed again
+        // 認証コンポーネントが再度表示されるまで待機
         await page.waitForSelector(".auth-container", { timeout: 10000 });
 
-        // Confirm login state is maintained
+        // ログイン状態が維持されていることを確認
         await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
     });
 });

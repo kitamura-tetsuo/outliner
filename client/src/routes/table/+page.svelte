@@ -7,9 +7,9 @@ import {
     queryStore,
 } from "../../services/sqlService";
 
-let data = $state({ rows: [], columnsMeta: [] } as import("../../services/sqlService").QueryResult);
+let data = $state({ rows: [], columnsMeta: [] } as any);
 
-// Svelte 5 reactive subscription
+// Svelte 5のリアクティブな購読
 $effect(() => {
     const unsubscribe = queryStore.subscribe(v => {
         data = v;
@@ -23,7 +23,7 @@ onMount(async () => {
 </script>
 
 <svelte:head>
-    <title>Table | Outliner</title>
+    <title>テーブル | Fluid Outliner</title>
 </svelte:head>
 
 <main class="container mx-auto px-4 py-8">
@@ -31,24 +31,24 @@ onMount(async () => {
 
     <div class="space-y-6">
         <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold mb-4">SQL Query Editor</h2>
+            <h2 class="text-lg font-semibold mb-4">SQLクエリエディタ</h2>
             <QueryEditor />
         </div>
 
         <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold mb-4">Query Results</h2>
+            <h2 class="text-lg font-semibold mb-4">クエリ結果</h2>
             <EditableQueryGrid />
         </div>
 
         <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold mb-4">Chart</h2>
+            <h2 class="text-lg font-semibold mb-4">チャート</h2>
             <div class="chart-panel">
                 {#if data.rows.length > 0}
                     <div class="chart-content">
                         {data.rows[0] ? Object.values(data.rows[0])[0] : ""}
                     </div>
                 {:else}
-                    <div class="no-data">No data</div>
+                    <div class="no-data">データがありません</div>
                 {/if}
             </div>
         </div>

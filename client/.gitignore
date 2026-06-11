@@ -1,8 +1,0 @@
-
-.env.keys
-
-# Playwright test reports
-playwright-report
-/playwright-report/
-/blob-report/
-/playwright/.cache/

@@ -1,39 +1,24 @@
+import { Tree } from "fluid-framework";
 import { getLogger } from "../lib/logger";
-import { Item, Items } from "../schema/app-schema";
+import {
+    Item,
+    Items,
+} from "../schema/app-schema";
 
 const logger = getLogger();
-// Suppress verbose logs in E2E/Test environments
-const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-    || import.meta.env.MODE === "test"
-    || import.meta.env.VITE_IS_TEST === "true";
-const debugLog = (...args: unknown[]) => {
-    if (!__IS_E2E__) console.log(...args);
-};
 
-const isItemLike = (obj: unknown): boolean => {
-    try {
-        const id = obj?.id;
-        const txt = obj?.text;
-        return typeof id === "string" && id.length > 0
-            && (typeof txt === "string" || typeof txt?.toString === "function");
-    } catch {
-        return false;
-    }
-};
-
-// View model interface
+// ビューモデルのインターフェース
 export interface OutlinerItemViewModel {
     id: string;
-    original: Item; // Reference to original Fluid object
+    original: Item; // 元のFluidオブジェクトへの参照
     text: string;
     votes: string[];
     author: string;
     created: number;
     lastChanged: number;
-    commentCount: number;
 }
 
-// Display item information
+// 表示用のアイテム情報
 export interface DisplayItem {
     model: OutlinerItemViewModel;
     depth: number;
@@ -41,344 +26,208 @@ export interface DisplayItem {
 }
 
 /**
- * Store managing the outliner view model
- * Maintains item reference identity to avoid DOM regeneration
+ * アウトライナーのビューモデルを管理するストア
+ * DOMの再生成を避けるために、アイテムの参照同一性を維持する
  */
 export class OutlinerViewModel {
-    // View model map by ID (maintains reference identity)
+    // IDによるビューモデルマップ（参照同一性を維持）
     private viewModels = new Map<string, OutlinerItemViewModel>();
 
-    // ID array indicating display order
+    // 表示順序を示すID配列
     private visibleOrder: string[] = [];
 
-    // Item depth map
+    // アイテムの深度マップ
     private depthMap = new Map<string, number>();
 
-    // Parent item ID map
+    // 親アイテムIDのマップ
     private parentMap = new Map<string, string | null>();
 
-    // Collapsed state map
+    // 折りたたみ状態のマップ
     private collapsedMap = new Map<string, boolean>();
 
-    // Updating flag
+    // 更新中フラグ
     private _isUpdating = false;
 
     /**
-     * Update view model from data model
-     * @param pageItem Root item collection
+     * データモデルからビューモデルを更新する
+     * @param pageItem ルートアイテムのコレクション
      */
     updateFromModel(pageItem: Item): void {
-        // Check if already processing during update
+        // 更新中に既に処理中かどうかをチェック
         if (this._isUpdating) return;
-
-        if (!pageItem) {
-            debugLog("OutlinerViewModel: updateFromModel called with null pageItem");
-            return;
-        }
 
         try {
             this._isUpdating = true;
 
-            debugLog(
-                `OutlinerViewModel: updateFromModel for pageItem.id=${pageItem.id} isItemLike=${isItemLike(pageItem)}`,
-            );
-            debugLog(
-                "OutlinerViewModel: pageItem.items length:",
-                (pageItem.items as unknown as { length?: number; })?.length || 0,
-            );
-
-            // Update or add existing view models
+            // 既存のビューモデルをクリアせず、更新または追加する
             this.ensureViewModelsItemExist(pageItem);
 
-            debugLog(
-                "OutlinerViewModel: viewModels count after ensure:",
-                this.viewModels.size,
-            );
-
-            // Recalculate display order and depth - start from pageItem itself
+            // 表示順序と深度を再計算
             this.recalculateOrderAndDepthItem(pageItem);
 
-            debugLog(
-                "OutlinerViewModel: visibleOrder length after recalculate:",
-                this.visibleOrder.length,
-            );
-            if (this.visibleOrder.length === 0) {
-                debugLog("OutlinerViewModel: visibleOrder is EMPTY!");
-            }
-        } catch (err) {
-            console.error("OutlinerViewModel: Error in updateFromModel:", err);
-        } finally {
+            logger.info("View models updated, count:", this.visibleOrder.length);
+        }
+        finally {
             this._isUpdating = false;
         }
     }
 
     /**
-     * Ensure item view model exists, create or update as needed
+     * アイテムのビューモデルが存在することを確認し、必要に応じて作成または更新する
      */
-    private ensureViewModelsItemsExist(
-        items: Items,
-        parentId: string | null = null,
-    ): void {
+    private ensureViewModelsItemsExist(items: Items, parentId: string | null = null): void {
         if (!items) return;
 
-        // Use iterateUnordered if available to avoid O(N log N) sorting
-        // Order doesn't matter here as we're just populating the map
-        const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
-            ? items.iterateUnordered()
-            : items;
-        for (const child of iter) {
-            this.ensureViewModelsItemExist(child, parentId);
+        for (let i = 0; i < items.length; i++) {
+            this.ensureViewModelsItemExist(items[i], parentId);
         }
     }
 
-    private ensureViewModelsItemExist(
-        item: Item,
-        parentId: string | null = null,
-    ): void {
-        if (!isItemLike(item)) return;
+    private ensureViewModelsItemExist(item: Item, parentId: string | null = null): void {
+        if (!Tree.is(item, Item) || !item.id) return;
 
-        debugLog(
-            `OutlinerViewModel: ensureViewModelsItemExist for item "${item.text}" (id: ${item.id})`,
-        );
-
-        // Update existing view model or create new
+        // 既存のビューモデルを更新または新規作成
         const existingViewModel = this.viewModels.get(item.id);
         if (existingViewModel) {
-            // Update properties (maintain reference)
-            // Performance optimization: Recalculate only if lastChanged has modified
-            // Y.Text.toString() is a high-cost operation, so avoid unnecessary calls
-            // Use safe type checking instead of explicit any casts
-            const lastChangedProp = "lastChanged" in item ? item.lastChanged : undefined;
-            const newLastChanged = typeof lastChangedProp === "number" ? lastChangedProp : 0;
-
-            if (existingViewModel.lastChanged !== newLastChanged) {
-                existingViewModel.text = item.text.toString();
-
-                // Safely access votes array
-                let votesArray: string[] = [];
-                if (item.votes && typeof item.votes.toArray === "function") {
-                    votesArray = item.votes.toArray();
-                } else if ("votes" in item && Array.isArray((item as unknown as { votes: string[]; }).votes)) {
-                    votesArray = (item as unknown as { votes: string[]; }).votes;
-                }
-                existingViewModel.votes = [...votesArray];
-
-                existingViewModel.lastChanged = newLastChanged;
-                // Item wrapper exposes comments wrapper, but we need length from underlying Y.Array or wrapper
-                const comments = item.comments;
-                existingViewModel.commentCount = comments?.length ?? 0;
-                debugLog(
-                    `OutlinerViewModel: Updated existing view model for "${existingViewModel.text}"`,
-                );
-            }
-        } else {
-            // Create new view model
+            // プロパティを更新（参照は維持）
+            existingViewModel.text = item.text;
+            existingViewModel.votes = [...item.votes];
+            existingViewModel.lastChanged = item.lastChanged;
+        }
+        else {
+            // 新しいビューモデルを作成
             this.viewModels.set(item.id, {
                 id: item.id,
                 original: item,
-                text: item.text.toString(),
-                votes: [...((item as unknown as { votes?: string[]; }).votes || [])],
-                author: (item as unknown as { author?: string; }).author,
-                created: (item as unknown as { created?: number; }).created,
-                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged,
-                commentCount: (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0,
+                text: item.text,
+                votes: [...item.votes],
+                author: item.author,
+                created: item.created,
+                lastChanged: item.lastChanged,
             });
-            debugLog(
-                `OutlinerViewModel: Created new view model for "${item.text}"`,
-            );
         }
 
-        // Set parent
+        // 親の設定
         this.parentMap.set(item.id, parentId);
 
-        // Process child items too
-        if (
-            ((
-                it: unknown,
-            ) => (it && typeof (it as { length?: number; }).length === "number"
-                && typeof (it as { at?: unknown; }).at === "function"))((item as unknown as { items?: unknown; }).items)
-        ) {
-            const children = item.items;
-            debugLog(
-                `OutlinerViewModel: Processing ${children.length} children for "${item.text.toString()}"`,
-            );
-            this.ensureViewModelsItemsExist(children, item.id);
-        } else {
-            debugLog(`OutlinerViewModel: No children for "${item.text.toString()}"`);
+        // 子アイテムも処理
+        if (item.items && Tree.is(item.items, Items)) {
+            this.ensureViewModelsItemsExist(item.items, item.id);
         }
     }
     /**
-     * Recalculate display order and depth
+     * 表示順序と深度を再計算する
      */
-    private recalculateOrderAndDepth(
-        items: Items,
-        depth: number = 0,
-        parentId: string | null = null,
-    ): void {
+    private recalculateOrderAndDepth(items: Items, depth: number = 0, parentId: string | null = null): void {
         if (!items) return;
 
-        // Initialize display order and depth first
+        // 表示順序と深度を最初に初期化
         if (depth === 0) {
             this.visibleOrder = [];
         }
 
-        for (const child of items) {
-            this.recalculateOrderAndDepthItem(child, depth, parentId);
+        for (let i = 0; i < items.length; i++) {
+            this.recalculateOrderAndDepthItem(items[i], depth, parentId);
         }
     }
     /**
-     * Recalculate display order and depth (for single item)
+     * 表示順序と深度を再計算する
      */
-    private recalculateOrderAndDepthItem(
-        item: Item,
-        depth: number = 0,
-        parentId: string | null = null, // eslint-disable-line @typescript-eslint/no-unused-vars
-    ): void {
-        if (!isItemLike(item)) return;
-
-        // Initialize display order first (only for root item)
+    private recalculateOrderAndDepthItem(item: Item, depth: number = 0, parentId: string | null = null): void {
+        // 表示順序と深度を最初に初期化
         if (depth === 0) {
             this.visibleOrder = [];
         }
+        if (!Tree.is(item, Item) || !item.id) return;
 
-        debugLog(
-            `OutlinerViewModel: recalculateOrderAndDepthItem for "${item.text.toString()}" (depth: ${depth})`,
-        );
-
-        // Add to display order
+        // 表示順序に追加
         this.visibleOrder.push(item.id);
 
-        // Set depth
+        // 深度を設定
         this.depthMap.set(item.id, depth);
-        const vm = this.viewModels.get(item.id);
-        if (vm) {
-            vm.commentCount = (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0;
-        }
 
-        // Process child items (only if not collapsed)
-        const isCollapsed = this.collapsedMap.get(item.id);
-        const ch = (item as unknown as { items?: unknown; }).items as {
-            length?: number;
-            at: (i: number) => import("../schema/app-schema").Item | undefined;
-        };
-        const hasChildren = !!(ch && typeof ch.length === "number" && typeof ch.at === "function" && ch.length > 0);
-
-        debugLog(
-            `OutlinerViewModel: Item "${item.text.toString()}" - hasChildren: ${hasChildren}, isCollapsed: ${isCollapsed}, childrenCount: ${
-                hasChildren ? item.items.length : 0
-            }`,
-        );
-
-        if (hasChildren && !isCollapsed) {
-            const children = item.items;
-            debugLog(
-                `OutlinerViewModel: Processing ${children.length} children for "${item.text.toString()}"`,
-            );
-            for (const child of children) {
-                this.recalculateOrderAndDepthItem(child, depth + 1, item.id);
-            }
-        } else if (hasChildren && isCollapsed) {
-            debugLog(
-                `OutlinerViewModel: Skipping children for "${item.text}" because it's collapsed`,
-            );
-        } else if (!hasChildren) {
-            debugLog(`OutlinerViewModel: No children for "${item.text}"`);
+        // 子アイテムを処理（折りたたまれていない場合のみ）
+        if (item.items && Tree.is(item.items, Items) && !this.collapsedMap.get(item.id)) {
+            this.recalculateOrderAndDepth(item.items, depth + 1, item.id);
         }
     }
 
     /**
-     * Toggle item collapsed state
+     * アイテムの折りたたみ状態を切り替える
      */
     toggleCollapsed(itemId: string): void {
         const isCollapsed = this.collapsedMap.get(itemId) || false;
         this.collapsedMap.set(itemId, !isCollapsed);
 
-        // Recalculate display info from model (maintain item instance)
+        // モデルから表示情報を再計算（アイテムインスタンスは維持）
         const rootItem = this.findRootItem(itemId);
-        if (!rootItem) return;
-        if (
-            ((
-                it: unknown,
-            ) => (it && typeof (it as { length?: number; }).length === "number"
-                && typeof (it as { at?: unknown; }).at === "function"))(
-                    (rootItem as unknown as { items?: unknown; })?.items,
-                )
-        ) {
+        if (rootItem && rootItem.items && Tree.is(rootItem.items, Items)) {
             this.recalculateOrderAndDepth(rootItem.items);
         }
     }
 
     /**
-     * Find root item
+     * ルートアイテムを見つける
      */
     private findRootItem(itemId: string): Item | null {
         const item = this.viewModels.get(itemId)?.original;
         if (!item) return null;
 
-        let current: Item = item;
-        let parentList = current.parent;
+        let current = item;
+        let parent: unknown;
 
-        while (parentList && parentList.parentKey !== "root") {
-            current = new Item(current.ydoc, current.tree, parentList.parentKey);
-            parentList = current.parent;
+        // ルートに到達するまで親を辿る
+        while ((parent = Tree.parent(current)) && Tree.is(parent, Item)) {
+            current = parent;
         }
 
         return current;
     }
 
     /**
-     * Get display item list
+     * 表示用のアイテムリストを取得する
      */
     getVisibleItems(): DisplayItem[] {
-        return this.visibleOrder
-            .map(id => {
-                const model = this.viewModels.get(id);
-                if (!model) {
-                    logger.error(
-                        { error: new Error("View model not found for ID"), id },
-                        "View model not found for ID",
-                    );
-                    return null;
-                }
+        return this.visibleOrder.map(id => {
+            const model = this.viewModels.get(id);
+            if (!model) {
+                logger.error("View model not found for ID:", id);
+                return null;
+            }
 
-                return {
-                    model,
-                    depth: this.depthMap.get(id) || 0,
-                    parentId: this.parentMap.get(id) || null,
-                };
-            })
-            .filter((item): item is DisplayItem => item !== null);
+            return {
+                model,
+                depth: this.depthMap.get(id) || 0,
+                parentId: this.parentMap.get(id) || null,
+            };
+        }).filter((item): item is DisplayItem => item !== null);
     }
 
     /**
-     * Get item collapsed state
+     * アイテムの折りたたみ状態を取得
      */
     isCollapsed(itemId: string): boolean {
         return this.collapsedMap.get(itemId) || false;
     }
 
     /**
-     * Check if item has children
+     * アイテムが子を持っているかを確認
      */
     hasChildren(itemId: string): boolean {
         const model = this.viewModels.get(itemId);
         if (!model || !model.original || !model.original.items) return false;
-        const ch = (model.original as unknown as { items?: unknown; }).items as {
-            length?: number;
-            at: (i: number) => import("../schema/app-schema").Item | undefined;
-        };
-        return !!(ch && typeof ch.length === "number" && typeof ch.at === "function" && ch.length > 0);
+        return Tree.is(model.original.items, Items) && model.original.items.length > 0;
     }
 
     /**
-     * Get view model directly
+     * ビューモデルを直接取得
      */
     getViewModel(id: string): OutlinerItemViewModel | undefined {
         return this.viewModels.get(id);
     }
 
     /**
-     * Dispose resources
+     * リソースの解放
      */
     dispose(): void {
         this.viewModels.clear();

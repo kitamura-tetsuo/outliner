@@ -1,4 +1,4 @@
-declare module "sql.js" {
+declare module 'sql.js' {
     export interface Database {
         exec(sql: string): QueryExecResult[];
         close(): void;
@@ -6,12 +6,12 @@ declare module "sql.js" {
 
     export interface QueryExecResult {
         columns: string[];
-        values: unknown[][];
+        values: any[][];
     }
 
     export interface SqlJsStatic {
-        Database: new(data?: Uint8Array) => Database;
+        Database: new (data?: Uint8Array) => Database;
     }
 
-    export default function initSqlJs(config?: unknown): Promise<SqlJsStatic>;
+    export default function initSqlJs(config?: any): Promise<SqlJsStatic>;
 }

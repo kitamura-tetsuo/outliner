@@ -1,368 +1,204 @@
-import { type FirebaseApp } from "firebase/app";
+import {
+    type FirebaseApp,
+    initializeApp,
+} from "firebase/app";
 import {
     connectFirestoreEmulator,
     doc,
-    type Firestore,
+    Firestore,
     getDoc,
     getFirestore,
     onSnapshot,
-    setDoc,
 } from "firebase/firestore";
 
 import { userManager } from "../auth/UserManager";
-import { getFirebaseApp } from "../lib/firebase-app";
-import { getFirebaseFunctionUrl } from "../lib/firebaseFunctionsUrl";
 import { getLogger } from "../lib/logger";
 const logger = getLogger();
+const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+};
 
-// User container type definition
-export interface UserProject {
+// ユーザーコンテナの型定義
+export interface UserContainer {
     userId: string;
-    defaultProjectId: string | null;
-    accessibleProjectIds: Array<string>;
-    projectTitles?: Record<string, string>;
+    defaultContainerId?: string;
+    accessibleContainerIds?: string[];
     createdAt: Date;
     updatedAt: Date;
 }
 
 class GeneralStore {
-    // Direct public field
-    public userProject = $state<UserProject | null>(null);
-
-    // $state recalculation trigger
-    public ucVersion = $state(0);
-
-    // Flag indicating if the first snapshot has been received
-    public isLoaded = $state(false);
-
-    // Aliases for backwards compatibility
-    get userContainer() {
-        return this.userProject;
-    }
-
-    // Apply wrap + new reference with explicit API
-    setUserProject(value: UserProject | null) {
-        const prevVersion = this.ucVersion;
-        const prevLength = this.userProject?.accessibleProjectIds?.length ?? 0;
-        const prevDefault = this.userProject?.defaultProjectId;
-
-        const nextProject = value ? this.wrapUserProject(value) : null;
-        this.userProject = nextProject;
-
-        this.ucVersion = prevVersion + 1;
-        // Additional notification (test environment only)
-        try {
-            const __isTestEnv = import.meta.env.MODE === "test"
-                || process.env.NODE_ENV === "test"
-                || import.meta.env.VITE_IS_TEST === "true"
-                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                || (typeof window !== "undefined"
-                    && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
-            if (typeof window !== "undefined" && __isTestEnv) {
-                window.dispatchEvent(new CustomEvent("firestore-uc-changed"));
-            }
-        } catch {}
-
-        const nextLength = this.userProject?.accessibleProjectIds?.length ?? 0;
-        const nextDefault = this.userProject?.defaultProjectId;
-
-        if (typeof console !== "undefined" && typeof console.info === "function") {
-            console.info(
-                `[firestoreStore.setUserProject] prev.ucVersion=${prevVersion} prev.len=${prevLength} prev.default=${prevDefault} -> next.ucVersion=${this.ucVersion} next.len=${nextLength} next.default=${nextDefault}`,
-            );
-        }
-    }
-
-    setUserContainer(value: UserProject | null) {
-        this.setUserProject(value);
-    }
-    // For testing: Save current state to Firestore
-    async testSaveUserProject() {
-        if (!this.userProject) return;
-        if (!db) return;
-
-        try {
-            const userId = this.userProject.userId;
-            const userProjectRef = doc(db, "userProjects", userId);
-            await setDoc(userProjectRef, this.userProject);
-            console.log(`[firestoreStore] Saved userProject to Firestore for ${userId}`);
-        } catch (e) {
-            console.error("[firestoreStore] Failed to save userProject to Firestore", e);
-            throw e;
-        }
-    }
-
-    // Proxy wrapper to update UI even with Array changes (push/splice, etc.)
-    public wrapUserProject(value: UserProject): UserProject {
-        const arrayHandler: ProxyHandler<string[]> = {
-            get: (target, prop, receiver) => {
-                const v = Reflect.get(target, prop, receiver);
-                // Hook destructive methods
-                if (
-                    typeof v === "function"
-                    && ["push", "pop", "splice", "shift", "unshift", "sort", "reverse"].includes(String(prop))
-                ) {
-                    return (...args: unknown[]) => {
-                        const res = (v as (...a: unknown[]) => unknown).apply(target, args);
-                        // Re-assign to trigger reactivity even with the same reference
-                        try {
-                            // Create a new array and replace
-                            const nextArr = Array.from(target);
-                            const next: UserProject = { ...value, accessibleProjectIds: nextArr };
-                            // Assign to public proxy to ensure reactivity triggers via Proxy
-                            firestoreStore.setUserProject(next); // Ensure ucVersion++ is reflected via API
-                        } catch (e) {
-                            const err = e instanceof Error ? e : new Error(String(e));
-                            logger.warn({ err }, "Failed to trigger userProject update after array mutation");
-                        }
-                        return res;
-                    };
-                }
-                return v;
-            },
-        };
-        const proxiedIds = new Proxy(value.accessibleProjectIds ?? [], arrayHandler);
-        return { ...value, accessibleProjectIds: proxiedIds } as UserProject;
-    }
-
-    reset() {
-        this.userProject = null;
-        this.ucVersion = 0;
-        this.stopFirestoreSync();
-    }
-
-    private unsubscribe: (() => void) | null = null;
-
-    public initFirestoreSync(): () => void {
-        // Unsubscribe if there is a previous listener
-        if (this.unsubscribe) {
-            this.unsubscribe();
-            this.unsubscribe = null;
-        }
-
-        const currentUser = userManager.getCurrentUser();
-        // Early return if user is not logged in
-        if (!currentUser) {
-            logger.info("Not starting Firestore observation because user is not logged in");
-            return () => {}; // Return cleanup function
-        }
-
-        // Add check for user ID existence
-        if (!currentUser.id) {
-            logger.warn("Not starting Firestore observation because user object has no ID");
-            return () => {}; // Return cleanup function
-        }
-
-        const userId = currentUser.id;
-        logger.info(`Observing userProjects document for user ${userId}`);
-
-        try {
-            // Get reference to document (/userProjects/{userId})
-            if (!db) {
-                logger.error(
-                    { error: new Error("Firestore db is not initialized in initFirestoreSync") },
-                    "Firestore db is not initialized in initFirestoreSync",
-                );
-                return () => {};
-            }
-            const userProjectRef = doc(db, "userProjects", userId);
-
-            // Real-time update listener with enhanced error handling
-            this.unsubscribe = onSnapshot(
-                userProjectRef,
-                snapshot => {
-                    firestoreStore.isLoaded = true;
-                    if (snapshot.exists()) {
-                        const data = snapshot.data();
-
-                        const projectData: UserProject = {
-                            userId: data.userId || userId,
-                            defaultProjectId: data.defaultProjectId,
-                            accessibleProjectIds: data.accessibleProjectIds || [],
-                            projectTitles: data.projectTitles || {},
-                            createdAt: data.createdAt?.toDate() || new Date(),
-                            updatedAt: data.updatedAt?.toDate() || new Date(),
-                        };
-
-                        // Stabilization for E2E tests: If userProject is already seeded by test helper
-                        // and incoming is an empty array, suppress overwrite (avoid clearing immediately due to empty initial sync)
-                        const isTestEnv = import.meta.env.MODE === "test"
-                            || process.env.NODE_ENV === "test"
-                            || import.meta.env.VITE_IS_TEST === "true"
-                            || (typeof window !== "undefined"
-                                && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                            || (typeof window !== "undefined"
-                                && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
-                        const hasSeeded = !!(firestoreStore.userProject?.accessibleProjectIds?.length);
-                        const incomingEmpty = !(projectData.accessibleProjectIds?.length);
-                        if (isTestEnv && hasSeeded && incomingEmpty) {
-                            logger.info(
-                                "FirestoreStore: keeping seeded userProject; ignoring empty snapshot in test env",
-                            );
-                        } else {
-                            firestoreStore.setUserProject(projectData);
-                            logger.info(`Loaded container info for user ${userId}`);
-                            logger.info(`Default container ID: ${projectData.defaultProjectId || "None"}`);
-                        }
-                    } else {
-                        logger.info(`Container info for user ${userId} does not exist`);
-                    }
-                },
-                error => {
-                    if (error.code === "permission-denied") {
-                        logger.warn(
-                            `Firestore permission denied for user ${userId}. This is expected if data isn't seeded yet.`,
-                        );
-                        return;
-                    }
-                    const err = error instanceof Error ? error : new Error(String(error));
-                    logger.error({ error: err as Error }, "Firestore listening error");
-                },
-            );
-
-            // Return cleanup function
-            return () => {
-                if (this.unsubscribe) {
-                    this.unsubscribe();
-                    this.unsubscribe = null;
-                }
-            };
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            logger.error({ error: err as Error }, "Firestore observation setup error");
-            return () => {}; // Return cleanup function
-        }
-    }
-
-    public stopFirestoreSync() {
-        if (this.unsubscribe) {
-            this.unsubscribe();
-            this.unsubscribe = null;
-        }
-    }
-
-    constructor() {
-        // Leave constructor empty
-    }
+    // ユーザーコンテナのストア
+    userContainer: UserContainer | null = $state(null);
 }
-// Create store using Svelte 5 runes
-// $state is always available because the file has .svelte.ts extension
-const __tmpStore = $state(new GeneralStore());
-const existingCandidate = typeof window !== "undefined"
-    ? (window as Window & typeof globalThis & { __FIRESTORE_STORE__?: unknown; }).__FIRESTORE_STORE__
-    : (globalThis as typeof globalThis & { __FIRESTORE_STORE__?: unknown; }).__FIRESTORE_STORE__;
-const shouldReuseExisting = typeof existingCandidate === "object"
-    && existingCandidate !== null
-    && (existingCandidate as { __isRealFirestoreStore?: boolean; }).__isRealFirestoreStore === true;
-export const firestoreStore = (shouldReuseExisting ? existingCandidate : __tmpStore) as typeof __tmpStore;
-(firestoreStore as unknown as { __isRealFirestoreStore: boolean; }).__isRealFirestoreStore = true;
+export const firestoreStore = new GeneralStore();
 
-// Expose globally in test environment to allow control from E2E
-if (typeof window !== "undefined") {
-    const isTestEnv = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test"
-        || import.meta.env.VITE_IS_TEST === "true"
-        || window.location.hostname === "localhost"
-        || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
-        || (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true;
-    if (isTestEnv) {
-        (window as Window & typeof globalThis & { __FIRESTORE_STORE__?: typeof firestoreStore; }).__FIRESTORE_STORE__ =
-            firestoreStore;
-    }
-}
-
-// Initialize Firestore app and database
+// Firestoreアプリとデータベースの初期化
 let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
 
-// Initialize Firebase app (once)
+// Firebaseアプリの初期化（一度だけ）
 try {
-    // Use centrally managed Firebase app
-    app = getFirebaseApp();
-    logger.info("Firebase app initialized via central management");
+    try {
+        app = initializeApp(firebaseConfig);
+        logger.info("Firebase app initialized successfully");
+    }
+    catch (e) {
+        // すでに初期化されている場合は既存のアプリを使用
+        logger.info("Firebase app already initialized, reusing existing instance");
+    }
 
-    // Get Firestore instance
+    // Firestoreインスタンスの取得
     db = getFirestore(app!);
 
-    // Detect test environment or emulator environment and connect
-    const isTestEnv = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test"
-        || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.mockFluidClient === false)
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined"
-            && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
+    // テスト環境またはエミュレータ環境を検出して接続
+    const isTestEnv = import.meta.env.MODE === "test" ||
+        process.env.NODE_ENV === "test" ||
+        import.meta.env.VITE_IS_TEST === "true" ||
+        (typeof window !== "undefined" && window.mockFluidClient === false);
 
-    // Never use emulator in production environment
-    const isProduction = process.env.NODE_ENV === "production"
-        || import.meta.env.MODE === "production";
+    const useEmulator = isTestEnv ||
+        import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true" ||
+        (typeof window !== "undefined" &&
+            window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true");
 
-    const useEmulator = !isProduction && (
-        isTestEnv
-        || import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
-        || (typeof window !== "undefined"
-            && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true")
-    );
-
-    // Connect to Firebase Emulator
+    // Firebase Emulatorに接続
     if (useEmulator) {
-        // Get connection info from environment variables (default is localhost:58080)
-        const emulatorHost = import.meta.env.VITE_FIREBASE_EMULATOR_HOST || "localhost";
+        // 環境変数から接続情報を取得（デフォルトはlocalhost:58080）
+        const emulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST || "localhost";
         const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "58080", 10);
 
-        // Log emulator connection info
+        // エミュレーター接続情報をログに出力
         logger.info(`Connecting to Firestore emulator at ${emulatorHost}:${emulatorPort}`);
 
         try {
-            // Connect to emulator
+            // エミュレーターに接続
             connectFirestoreEmulator(db, emulatorHost, emulatorPort);
             logger.info("Successfully connected to Firestore emulator");
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error(String(err));
-            logger.error({ error: error as Error }, "Failed to connect to Firestore emulator");
+        }
+        catch (err) {
+            logger.error("Failed to connect to Firestore emulator:", err);
 
-            // Notify that we continue in offline mode if connection fails
+            // 接続できない場合はオフラインモードで続行することを通知
             logger.warn("Continuing in offline mode. Data operations will be cached until connection is restored.");
         }
     }
-} catch (error) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    logger.error({ error: err as Error }, "Critical error initializing Firestore");
-    // Ensure app continues to run even if database connection fails
-    // Do nothing if app is undefined (handled properly in subsequent processing)
-    if (!db && app) {
-        db = getFirestore(app);
+}
+catch (error) {
+    logger.error("Critical error initializing Firestore:", error);
+    // データベース接続に失敗した場合でもアプリが動作し続けられるように
+    // 最低限の初期化だけを行う
+    if (!db) {
+        db = getFirestore(app!);
     }
 }
 
-// Save container ID using server API (updates are done only on server side)
-export async function saveProjectId(projectId: string): Promise<boolean> {
+// リスナーの解除関数
+let unsubscribe: (() => void) | null = null;
+
+// Firestoreとの同期を開始する関数
+function initFirestoreSync(): () => void {
+    // 以前のリスナーがあれば解除
+    if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+    }
+
+    const currentUser = userManager.getCurrentUser();
+    // ユーザーがログインしていない場合は早期リターン
+    if (!currentUser) {
+        logger.info("ユーザーがログインしていないため、Firestoreの監視を開始しません");
+        return () => {}; // 空のクリーンアップ関数を返す
+    }
+
+    // ユーザーIDの存在確認を追加
+    if (!currentUser.id) {
+        logger.warn("ユーザーオブジェクトにIDがないため、Firestoreの監視を開始しません");
+        return () => {}; // 空のクリーンアップ関数を返す
+    }
+
+    const userId = currentUser.id;
+    logger.info(`ユーザー ${userId} の userContainers ドキュメントを監視します`);
+
+    try {
+        // ドキュメントへの参照を取得 (/userContainers/{userId})
+        const userContainerRef = doc(db!, "userContainers", userId);
+
+        // エラーハンドリングを強化したリアルタイム更新リスナー
+        unsubscribe = onSnapshot(
+            userContainerRef,
+            snapshot => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+
+                    const containerData: UserContainer = {
+                        userId: data.userId,
+                        defaultContainerId: data.defaultContainerId,
+                        accessibleContainerIds: data.accessibleContainerIds || [],
+                        createdAt: data.createdAt?.toDate() || new Date(),
+                        updatedAt: data.updatedAt?.toDate() || new Date(),
+                    };
+
+                    firestoreStore.userContainer = containerData;
+                    logger.info(`ユーザー ${userId} のコンテナ情報を読み込みました`);
+                    logger.info(`デフォルトコンテナID: ${containerData.defaultContainerId || "なし"}`);
+                }
+                else {
+                    logger.info(`ユーザー ${userId} のコンテナ情報は存在しません`);
+                }
+            },
+            error => {
+                logger.error("Firestoreのリスニングエラー:", error);
+            },
+        );
+
+        // クリーンアップ関数を返す
+        return () => {
+            if (unsubscribe) {
+                unsubscribe();
+                unsubscribe = null;
+            }
+        };
+    }
+    catch (error) {
+        logger.error("Firestore監視設定エラー:", error);
+        return () => {}; // 空のクリーンアップ関数を返す
+    }
+}
+
+// サーバーAPIを使ってコンテナIDを保存（更新はサーバーサイドでのみ行う）
+export async function saveContainerId(containerId: string): Promise<boolean> {
     try {
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            throw new Error("User is not logged in");
+            throw new Error("ユーザーがログインしていません");
         }
 
-        // Get Firebase ID token
+        // Firebase IDトークンを取得
         const idToken = await userManager.auth.currentUser?.getIdToken();
         if (!idToken) {
-            throw new Error("Cannot get authentication token");
+            throw new Error("認証トークンを取得できません");
         }
 
-        // Call via host adding /api/ prefix
-        logger.info(`Saving project ID via /api/saveProject`);
+        // Firebase Functionsのエンドポイントを取得
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
 
-        // Call Firebase Functions to save container ID
-        const url = getFirebaseFunctionUrl("saveProject");
-
-        const response = await fetch(url, {
+        // Firebase Functionsを呼び出してコンテナIDを保存
+        const response = await fetch(`${apiBaseUrl}/api/save-container`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
                 idToken,
-                projectId,
+                containerId,
             }),
         });
 
@@ -373,156 +209,136 @@ export async function saveProjectId(projectId: string): Promise<boolean> {
 
         const result = await response.json();
         return result.success === true;
-    } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ error: err as Error }, "Error saving container ID");
+    }
+    catch (error) {
+        logger.error("コンテナID保存エラー:", error);
         return false;
     }
 }
 
-// Get default container ID
-export async function getDefaultProjectId(): Promise<string | undefined> {
+// デフォルトコンテナIDを取得
+export async function getDefaultContainerId(): Promise<string | undefined> {
     try {
-        // Check if user is logged in
+        // ユーザーがログインしていることを確認
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            logger.info("Cannot get default project ID: User not logged in. Waiting for login...");
+            logger.info("Cannot get default container ID: User not logged in. Waiting for login...");
             return undefined;
         }
 
-        // 1. First try to get directly from store (if updated in real time)
-        if (firestoreStore.userProject?.defaultProjectId) {
-            logger.info(`Found default project ID in store: ${firestoreStore.userProject.defaultProjectId}`);
-            return firestoreStore.userProject.defaultProjectId;
+        // 1. まずストアから直接取得を試みる（リアルタイム更新されている場合）
+        if (firestoreStore.userContainer?.defaultContainerId) {
+            logger.info(`Found default container ID in store: ${firestoreStore.userContainer.defaultContainerId}`);
+            return firestoreStore.userContainer.defaultContainerId;
         }
 
-        // 2. If no value in store, get directly from Firestore
+        // 2. ストアに値がない場合は直接Firestoreから取得
         try {
-            logger.info("No default project found in store, fetching from server...");
+            logger.info("No default container found in store, fetching from server...");
             const userId = currentUser.id;
 
-            // Check Firestore import
+            // Firestoreのimport確認
             if (!db) {
-                logger.error(
-                    { error: new Error("Firestore db is not initialized") },
-                    "Firestore db is not initialized",
-                );
+                logger.error("Firestore db is not initialized");
                 return undefined;
             }
 
-            const userProjectRef = doc(db, "userProjects", userId);
-            const snapshot = await getDoc(userProjectRef);
+            const userContainerRef = doc(db, "userContainers", userId);
+            const snapshot = await getDoc(userContainerRef);
 
             if (snapshot.exists()) {
                 const data = snapshot.data();
-                const projectId = data.defaultProjectId;
-                if (projectId) {
-                    logger.info(`Found default project ID from Firestore: ${projectId}`);
-                    return projectId;
+                const containerId = data.defaultContainerId;
+                if (containerId) {
+                    logger.info(`Found default container ID from Firestore: ${containerId}`);
+                    return containerId;
                 }
             }
-        } catch (firestoreError) {
-            const err = firestoreError instanceof Error ? firestoreError : new Error(String(firestoreError));
-            logger.error({ error: err as Error }, "Firestore access error");
-            // Firestore error is not fatal, so continue
+        }
+        catch (firestoreError) {
+            logger.error("Firestore access error:", firestoreError);
+            // Firestoreエラーは致命的ではないので、続行
         }
 
-        logger.info("No default project ID found");
+        logger.info("No default container ID found");
         return undefined;
-    } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ error: err as Error }, "Error getting default container ID");
+    }
+    catch (error) {
+        logger.error("デフォルトコンテナID取得エラー:", error);
         return undefined;
     }
 }
 
-// Aliases for backwards compatibility during containers -> projects migration
-export const getDefaultContainerId = getDefaultProjectId;
-export const saveContainerId = saveProjectId;
-
 /**
- * Save container ID to server side
- * @param projectId Container ID to save
- * @param title Optional title to save
- * @returns Whether save was successful
+ * コンテナIDをサーバー側に保存する
+ * @param containerId 保存するコンテナID
+ * @returns 保存に成功したかどうか
  */
-export async function saveProjectIdToServer(projectId: string, title?: string): Promise<boolean> {
+export async function saveContainerIdToServer(containerId: string): Promise<boolean> {
     try {
-        // In test environment, add directly to userProject store
+        // テスト環境の場合は、直接 userContainer ストアに追加
         if (
-            typeof window !== "undefined"
-            && (window.mockFluidClient === false
-                || import.meta.env.VITE_IS_TEST === "true"
-                || window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")
+            typeof window !== "undefined" &&
+            (window.mockFluidClient === false ||
+                import.meta.env.VITE_IS_TEST === "true" ||
+                window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")
         ) {
-            logger.info("Test environment detected, saving project ID to mock store");
+            logger.info("Test environment detected, saving container ID to mock store");
 
-            // Create or update new container data
-            const updatedData = firestoreStore.userProject
-                ? {
-                    ...firestoreStore.userProject,
-                    defaultProjectId: projectId,
-                    accessibleProjectIds: firestoreStore.userProject.accessibleProjectIds
-                        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
-                        ? [...new Set([...firestoreStore.userProject.accessibleProjectIds, projectId])]
-                        : [projectId],
-                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
-                    updatedAt: new Date(),
-                    projectTitles: {
-                        ...(firestoreStore.userProject.projectTitles || {}),
-                        [projectId]: title || projectId,
-                    },
-                }
-                : {
-                    userId: "test-user-id",
-                    defaultProjectId: projectId,
-                    accessibleProjectIds: [projectId],
-                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
-                    createdAt: new Date(),
-                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
-                    updatedAt: new Date(),
-                    projectTitles: { [projectId]: title || projectId },
-                };
+            // 新しいコンテナデータを作成または更新
+            const updatedData = firestoreStore.userContainer ? {
+                ...firestoreStore.userContainer,
+                defaultContainerId: containerId,
+                accessibleContainerIds: firestoreStore.userContainer.accessibleContainerIds
+                    ? [...new Set([...firestoreStore.userContainer.accessibleContainerIds, containerId])]
+                    : [containerId],
+                updatedAt: new Date(),
+            } : {
+                userId: "test-user-id",
+                defaultContainerId: containerId,
+                accessibleContainerIds: [containerId],
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
 
-            // Update store
-            firestoreStore.setUserProject(updatedData);
-            logger.info({ updatedData }, "Project ID saved to mock store");
+            // ストアを更新
+            firestoreStore.userContainer = updatedData;
+            logger.info("Container ID saved to mock store:", updatedData);
 
-            // Save current container ID to local storage as well
-            window.localStorage.setItem("currentProjectId", projectId);
+            // ローカルストレージにも現在のコンテナIDを保存
+            window.localStorage.setItem("currentContainerId", containerId);
 
             return true;
         }
 
-        // Use API in production environment
-        // Check if user is logged in
+        // 本番環境ではAPIを使用
+        // ユーザーがログインしていることを確認
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            logger.warn("Cannot save project ID to server: User not logged in");
+            logger.warn("Cannot save container ID to server: User not logged in");
             return false;
         }
 
-        // Get Firebase ID token
+        // Firebase IDトークンを取得
         const idToken = await userManager.auth.currentUser?.getIdToken();
         if (!idToken) {
-            logger.warn("Cannot save project ID to server: Firebase user not available");
+            logger.warn("Cannot save container ID to server: Firebase user not available");
             return false;
         }
 
-        // Get Firebase Functions endpoint
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
-        logger.info(`Saving project ID to Firebase Functions at ${apiBaseUrl}`);
+        // Firebase Functionsのエンドポイントを取得
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57070";
+        logger.info(`Saving container ID to Firebase Functions at ${apiBaseUrl}`);
 
-        // Call Firebase Functions to save container ID
-        const response = await fetch(getFirebaseFunctionUrl("saveProject"), {
+        // Firebase Functionsを呼び出してコンテナIDを保存
+        const response = await fetch(`${apiBaseUrl}/api/save-container`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
                 idToken,
-                projectId,
-                title,
+                containerId,
             }),
         });
 
@@ -532,69 +348,42 @@ export async function saveProjectIdToServer(projectId: string, title?: string): 
         }
 
         const result = await response.json();
-        logger.info(`Successfully saved project ID to server for user ${currentUser.id}`);
+        logger.info(`Successfully saved container ID to server for user ${currentUser.id}`);
         return result.success === true;
-    } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        logger.error({ error: err as Error }, "Error saving project ID to server");
+    }
+    catch (error) {
+        logger.error("Error saving container ID to server:", error);
         return false;
     }
 }
 
-// Alias for backwards compatibility during containers -> projects migration
-export const saveContainerIdToServer = saveProjectIdToServer;
-
-// Getter alias to access userProject as userContainer (deprecated, move to class)
-// Already handled in GeneralStore class
-
-// Automatically initialize when app starts
+// アプリ起動時に自動的に初期化
 if (typeof window !== "undefined") {
-    const __isTestEnv = import.meta.env.MODE === "test"
-        || process.env.NODE_ENV === "test"
-        || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined"
-            && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
+    let cleanup: (() => void) | null = null;
 
-    const isProd = import.meta.env.MODE === "production" || process.env.NODE_ENV === "production";
+    // 認証状態が変更されたときに Firestore 同期を初期化/クリーンアップ
+    const unsubscribeAuth = userManager.addEventListener(authResult => {
+        // 前回のクリーンアップがあれば実行
+        if (cleanup) {
+            cleanup();
+            cleanup = null;
+        }
 
-    // Enable automatic sync if:
-    // 1) It's production (always sync in prod)
-    // 2) OR it's not a test environment
-    // 3) OR it's an E2E test
-    const shouldAutoSync = isProd || !__isTestEnv
-        || (typeof window !== "undefined"
-            && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
+        // 認証されていればリスナーを設定
+        if (authResult) {
+            cleanup = initFirestoreSync();
+        }
+        else {
+            // 未認証の場合はコンテナを空にする
+            firestoreStore.userContainer = null;
+        }
+    });
 
-    if (shouldAutoSync) {
-        let cleanup: (() => void) | null = null;
-
-        // Initialize/cleanup Firestore sync when auth state changes
-        const unsubscribeAuth = userManager.addEventListener(authResult => {
-            // Execute previous cleanup if exists
-            if (cleanup) {
-                cleanup();
-                cleanup = null;
-            }
-
-            // Set listener if authenticated
-            if (authResult) {
-                cleanup = firestoreStore.initFirestoreSync();
-            } else {
-                firestoreStore.setUserProject(null);
-            }
-        });
-
-        // Cleanup on page unload
-        window.addEventListener("beforeunload", () => {
-            if (cleanup) {
-                cleanup();
-            }
-            unsubscribeAuth();
-        });
-    } else {
-        console.warn(
-            "[firestoreStore] Firestore sync is DISABLED because environment is identified as non-E2E test environment. (isProd=false, isTest=true)",
-        );
-    }
+    // ページアンロード時のクリーンアップ
+    window.addEventListener("beforeunload", () => {
+        if (cleanup) {
+            cleanup();
+        }
+        unsubscribeAuth();
+    });
 }

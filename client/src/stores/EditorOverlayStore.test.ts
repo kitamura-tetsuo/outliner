@@ -1,113 +1,21 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-// Local minimal replica to avoid importing .svelte.ts in tests
-class TestEditorOverlayStore {
-    cursors: Record<string, { cursorId: string; itemId: string; offset: number; isActive: boolean; userId: string; }> =
-        {};
-    cursorInstances = new Map<string, { itemId: string; offset: number; isActive: boolean; userId: string; }>();
-    cursorHistory: string[] = [];
-    selections: Record<
-        string,
-        { startItemId: string; startOffset: number; endItemId: string; endOffset: number; userId?: string; }
-    > = {};
-    activeItemId: string | null = null;
-    cursorVisible = true;
-    animationPaused = false;
-    private timerId: ReturnType<typeof setInterval> | undefined;
-    private genUUID() {
-        return Math.random().toString(36).slice(2);
-    }
-    addCursor(
-        { itemId, offset, isActive, userId = "local" }: {
-            itemId: string;
-            offset: number;
-            isActive: boolean;
-            userId?: string;
-        },
-    ) {
-        const id = this.genUUID();
-        this.cursorInstances.set(id, { itemId, offset, isActive, userId });
-        this.cursors = { ...this.cursors, [id]: { cursorId: id, itemId, offset, isActive, userId } };
-        if (isActive) this.activeItemId = itemId;
-        this.cursorHistory = [...this.cursorHistory, id];
-        return id;
-    }
-    removeCursor(id: string) {
-        this.cursorInstances.delete(id);
-        const newCursors = { ...this.cursors };
-        delete newCursors[id];
-        this.cursors = newCursors;
-    }
-    undoLastCursor() {
-        const id = this.cursorHistory.pop();
-        if (id) this.removeCursor(id);
-    }
-    getLastActiveCursor() {
-        const id = this.cursorHistory[this.cursorHistory.length - 1];
-        return id ? this.cursors[id] : null;
-    }
-    clearCursorForItem(itemId: string) {
-        const keep = Object.entries(this.cursors).filter((entry: [string, { itemId: string; userId: string; }]) =>
-            entry[1].itemId !== itemId
-        );
-        this.cursors = Object.fromEntries(keep);
-    }
-    setSelection(
-        sel: { startItemId: string; startOffset: number; endItemId: string; endOffset: number; userId?: string; },
-    ) {
-        const key = `${sel.startItemId}-${sel.endItemId}-${sel.userId || "local"}`;
-        this.selections = { ...this.selections, [key]: sel };
-    }
-    clearCursorAndSelection(userId = "local", clearSelections = false) {
-        this.cursors = Object.fromEntries(
-            Object.entries(this.cursors).filter((entry: [string, { itemId: string; userId: string; }]) =>
-                entry[1].userId !== userId
-            ),
-        );
-        if (clearSelections) {
-            this.selections = Object.fromEntries(
-                Object.entries(this.selections).filter((entry: [string, { userId?: string; }]) =>
-                    entry[1].userId !== userId
-                ),
-            );
-        }
-    }
-    clearSelectionForUser(userId = "local") {
-        this.selections = Object.fromEntries(
-            Object.entries(this.selections).filter(([key, s]: [string, { userId?: string; }]) =>
-                !key.includes(`-${userId}`) && s.userId !== userId
-            ),
-        );
-    }
-    startCursorBlink() {
-        this.cursorVisible = true;
-        clearInterval(this.timerId);
-        this.timerId = setInterval(() => {
-            this.cursorVisible = !this.cursorVisible;
-        }, 530);
-    }
-    stopCursorBlink() {
-        clearInterval(this.timerId);
-        this.cursorVisible = true;
-    }
-    reset() {
-        this.cursors = {};
-        this.selections = {};
-        this.activeItemId = null;
-        this.cursorVisible = true;
-        this.animationPaused = false;
-        clearInterval(this.timerId);
-    }
-}
+import {
+    afterEach,
+    beforeEach,
+    describe,
+    expect,
+    it,
+    vi,
+} from "vitest";
+import { EditorOverlayStore } from "./EditorOverlayStore.svelte";
 
 describe("EditorOverlayStore", () => {
-    let store: TestEditorOverlayStore;
+    let store: EditorOverlayStore;
 
     beforeEach(() => {
-        store = new TestEditorOverlayStore();
+        store = new EditorOverlayStore();
     });
 
-    it("initial state is correct", () => {
+    it("初期状態が正しい", () => {
         expect(store.cursors).toEqual({});
         expect(store.selections).toEqual({});
         expect(store.activeItemId).toBeNull();
@@ -115,136 +23,54 @@ describe("EditorOverlayStore", () => {
         expect(store.animationPaused).toBe(false);
     });
 
-    it("addCursor and removeCursor work correctly", () => {
-        const id = store.addCursor({
-            itemId: "foo",
-            offset: 3,
-            isActive: true,
-            userId: "local",
-        });
+    it("addCursor と removeCursor が動作する", () => {
+        const id = store.addCursor({ itemId: "foo", offset: 3, isActive: true, userId: "local" });
         expect(typeof id).toBe("string");
-        expect(store.cursors[id]).toEqual({
-            cursorId: id,
-            itemId: "foo",
-            offset: 3,
-            isActive: true,
-            userId: "local",
-        });
+        expect(store.cursors[id]).toEqual({ cursorId: id, itemId: "foo", offset: 3, isActive: true, userId: "local" });
         store.removeCursor(id);
         expect(store.cursors[id]).toBeUndefined();
     });
 
-    it("undoLastCursor removes the last added cursor", () => {
-        const id1 = store.addCursor({
-            itemId: "A",
-            offset: 0,
-            isActive: true,
-            userId: "local",
-        });
-        const id2 = store.addCursor({
-            itemId: "B",
-            offset: 0,
-            isActive: true,
-            userId: "local",
-        });
-        expect(Object.keys(store.cursors).length).toBe(2);
-        store.undoLastCursor();
-        expect(store.cursors[id2]).toBeUndefined();
-        expect(store.cursors[id1]).toBeDefined();
-    });
+    it("clearCursorForItem がアイテムの全カーソルをクリアする", () => {
+        // テスト用にカーソルを追加
+        store.addCursor({ itemId: "X", offset: 0, isActive: true, userId: "local" });
+        store.addCursor({ itemId: "X", offset: 5, isActive: true, userId: "local" });
 
-    it("getLastActiveCursor returns the last added cursor", () => {
-        const id1 = store.addCursor({
-            itemId: "A",
-            offset: 0,
-            isActive: true,
-            userId: "local",
-        });
-        const id2 = store.addCursor({
-            itemId: "B",
-            offset: 1,
-            isActive: true,
-            userId: "local",
-        });
-        expect(store.getLastActiveCursor()).toEqual({
-            cursorId: id2,
-            itemId: "B",
-            offset: 1,
-            isActive: true,
-            userId: "local",
-        });
-        store.undoLastCursor();
-        expect(store.getLastActiveCursor()).toEqual({
-            cursorId: id1,
-            itemId: "A",
-            offset: 0,
-            isActive: true,
-            userId: "local",
-        });
-    });
+        // 追加したカーソルが存在することを確認
+        expect(Object.values(store.cursors).filter(c => c.itemId === "X").length).toBe(2);
 
-    it("clearCursorForItem clears all cursors for an item", () => {
-        // Add cursor for testing
-        store.addCursor({
-            itemId: "X",
-            offset: 0,
-            isActive: true,
-            userId: "local",
-        });
-        store.addCursor({
-            itemId: "X",
-            offset: 5,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Confirm added cursor exists
-        expect(
-            Object.values(store.cursors).filter(c => c.itemId === "X").length,
-        ).toBe(2);
-
-        // Execute clear operation
+        // クリア処理を実行
         store.clearCursorForItem("X");
 
-        // Confirm cursor is deleted
-        expect(
-            Object.values(store.cursors).filter(c => c.itemId === "X").length,
-        ).toBe(0);
+        // カーソルが削除されたことを確認
+        expect(Object.values(store.cursors).filter(c => c.itemId === "X").length).toBe(0);
     });
 
-    it("setSelection and clearCursorAndSelection work correctly", () => {
-        // setSelection method generates selection key in format `${selection.startItemId}-${selection.endItemId}-${selection.userId || 'local'}`
-        const selection = {
-            startItemId: "Y",
-            startOffset: 0,
-            endItemId: "Y",
-            endOffset: 5,
-        };
+    it("setSelection と clearCursorAndSelection が動作する", () => {
+        // setSelectionメソッドは選択範囲のキーを`${selection.startItemId}-${selection.endItemId}-${selection.userId || 'local'}`の形式で生成する
+        const selection = { startItemId: "Y", startOffset: 0, endItemId: "Y", endOffset: 5 };
         store.setSelection(selection);
 
-        // Retrieve selection with correct key
+        // 正しいキーで選択範囲を取得
         const key = `${selection.startItemId}-${selection.endItemId}-local`;
-        expect(store.selections[key]).toMatchObject({
-            startOffset: 0,
-            endOffset: 5,
-        });
+        expect(store.selections[key]).toMatchObject({ startOffset: 0, endOffset: 5 });
 
-        // clearCursorAndSelection removes by userId, so passing itemId does not remove selection
+        // clearCursorAndSelectionはuserIdをキーにremovalするので、アイテムIDを渡しても選択範囲は削除されない
         store.clearCursorAndSelection("Y");
         expect(store.selections[key]).toBeDefined();
 
-        // Selection is not removed if second argument of clearCursorAndSelection is false
+        // clearCursorAndSelectionの第2引数がfalseの場合は選択範囲は削除されない
         store.clearCursorAndSelection("local", false);
         expect(store.selections[key]).toBeDefined();
 
-        // Remove selection using clearSelectionForUser method
+        // clearSelectionForUserメソッドを使用して選択範囲を削除
         store.clearSelectionForUser("local");
 
-        // Confirm selection is deleted
+        // 選択範囲が削除されたことを確認
         expect(Object.keys(store.selections).length).toBe(0);
     });
 
-    it("startCursorBlink and stopCursorBlink toggle cursorVisible", () => {
+    it("startCursorBlink と stopCursorBlink が cursorVisible をトグルする", () => {
         vi.useFakeTimers();
         store.startCursorBlink();
         expect(store.cursorVisible).toBe(true);
@@ -258,7 +84,7 @@ describe("EditorOverlayStore", () => {
     });
 
     afterEach(() => {
-        // Reset timers and state
+        // タイマーや状態をリセット
         vi.useRealTimers();
         store.reset();
     });

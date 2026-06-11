@@ -1,8 +1,8 @@
 {
-    "type": "module",
-    "devDependencies": {
-        "patch-package": "^8.0.1",
-        "pm2": "^7.0.1",
-        "vitepress": "^1.6.4"
+    "scripts": {
+        "postinstall": "playwright install --with-deps chromium"
+    },
+    "dependencies": {
+        "@playwright/test": "^1.52.0"
     }
 }

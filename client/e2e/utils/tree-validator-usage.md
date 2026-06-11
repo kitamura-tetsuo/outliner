@@ -1,39 +1,39 @@
-# TreeValidator Usage Guide
+# TreeValidator 使用ガイド
 
-This document describes how to use the `TreeValidator` class and how to verify SharedTree data.
+このドキュメントでは、`TreeValidator` クラスの使用方法と、SharedTreeデータの検証方法について説明します。
 
-## Table of Contents
+## 目次
 
-1. [Basic Usage](#basic-usage)
-2. [Data Comparison](#data-comparison)
-   - [Partial Comparison Mode](#partial-comparison-mode)
-   - [Strict Comparison Mode](#strict-comparison-mode)
-3. [Verification by Path](#verification-by-path)
-4. [Comparing Snapshots](#comparing-snapshots)
-5. [Comparison Ignoring Specific Paths](#comparison-ignoring-specific-paths)
-6. [Actual Data Structure](#actual-data-structure)
-7. [Debugging in the Browser](#debugging-in-the-browser)
+1. [基本的な使い方](#基本的な使い方)
+2. [データの比較](#データの比較)
+   - [部分比較モード](#部分比較モード)
+   - [厳密比較モード](#厳密比較モード)
+3. [パスによる検証](#パスによる検証)
+4. [スナップショットの比較](#スナップショットの比較)
+5. [特定のパスを無視した比較](#特定のパスを無視した比較)
+6. [実際のデータ構造](#実際のデータ構造)
+7. [ブラウザでのデバッグ](#ブラウザでのデバッグ)
 
-## Basic Usage
+## 基本的な使い方
 
-You can use the `TreeValidator` class to retrieve and verify the SharedTree data structure.
+`TreeValidator` クラスを使用して、SharedTreeのデータ構造を取得し、検証することができます。
 
 ```typescript
 import { TreeValidator } from "./treeValidation";
 
-// Get SharedTree data structure
+// SharedTreeのデータ構造を取得
 const treeData = await TreeValidator.getTreeData(page);
 console.log("Tree data:", JSON.stringify(treeData, null, 2));
 ```
 
-## Data Comparison
+## データの比較
 
-### Partial Comparison Mode
+### 部分比較モード
 
-In partial comparison mode, only the properties included in the expected value are compared. It is acceptable for the actual data to contain additional properties not included in the expected value.
+部分比較モードでは、期待値に含まれるプロパティのみを比較します。実際のデータには、期待値に含まれていない追加のプロパティが存在しても問題ありません。
 
 ```typescript
-// Define expected value matching the actual data structure
+// 実際のデータ構造に合わせた期待値を定義
 const expectedData = {
     itemCount: 1,
     items: [
@@ -47,89 +47,91 @@ const expectedData = {
     ],
 };
 
-// Verify in partial comparison mode
+// 部分比較モードで検証
 await TreeValidator.assertTreeData(page, expectedData);
 ```
 
-### Strict Comparison Mode
+### 厳密比較モード
 
-In strict comparison mode, the expected value and the actual value must match exactly.
+厳密比較モードでは、期待値と実際の値が完全に一致する必要があります。
 
 ```typescript
-// Get current data
+// 現在のデータを取得
 const currentData = await TreeValidator.getTreeData(page);
 
-// Strict comparison with the same data
+// 同じデータで厳密比較
 await TreeValidator.assertTreeData(page, currentData, true);
 ```
 
-## Verification by Path
+## パスによる検証
 
-You can verify data at a specific path. The path is specified using dot notation.
+特定のパスのデータを検証することができます。パスはドット区切りで指定します。
 
 ```typescript
-// Verify data at specific paths
+// 特定のパスのデータを検証
 await TreeValidator.assertTreePath(page, "itemCount", 1);
 await TreeValidator.assertTreePath(page, "items.0.text", "First item");
 await TreeValidator.assertTreePath(page, "items.0.items.0.text", "Second item");
 await TreeValidator.assertTreePath(page, "items.0.items.1.text", "Third item");
 ```
 
-## Comparing Snapshots
+## スナップショットの比較
 
-You can save the current state as a snapshot and compare it later.
+現在の状態をスナップショットとして保存し、後で比較することができます。
 
 ```typescript
-// Take a snapshot
+// スナップショットを取得
 const snapshot = await TreeValidator.takeTreeSnapshot(page);
 
-// Compare without any changes (should match)
+// 何も変更せずに比較（一致するはず）
 await TreeValidator.compareWithSnapshot(page, snapshot);
 
-// Add a new item
+// 新しいアイテムを追加
 await page.locator(".outliner-item").first().click();
 await page.keyboard.press("End");
 await page.keyboard.press("Enter");
 await page.keyboard.type("New item");
 await page.waitForTimeout(500);
 
-// Should not match after changes
+// 変更後は一致しないはず
 try {
     await TreeValidator.compareWithSnapshot(page, snapshot);
-    throw new Error("Snapshot matched unexpectedly");
-} catch (error) {
-    console.log("Confirmed that snapshot does not match");
+    throw new Error("スナップショットが一致してしまいました");
+}
+catch (error) {
+    console.log("スナップショットが一致しないことを確認しました");
 }
 ```
 
-## Comparison Ignoring Specific Paths
+## 特定のパスを無視した比較
 
-You can compare while ignoring specific paths. This is useful when you want to ignore values that change with every test, such as timestamps or IDs.
+特定のパスを無視して比較することができます。これは、時間やIDなど、テストごとに変わる値を無視したい場合に便利です。
 
 ```typescript
-// Take a snapshot
+// スナップショットを取得
 const snapshot = await TreeValidator.takeTreeSnapshot(page);
 
-// Add a new item
+// 新しいアイテムを追加
 await page.locator(".outliner-item").first().click();
 await page.keyboard.press("End");
 await page.keyboard.press("Enter");
 await page.keyboard.type("New item");
 await page.waitForTimeout(500);
 
-// Compare ignoring specific paths
+// 特定のパスを無視して比較
 try {
-    // Ignore the path of the newly added item
+    // 新しく追加されたアイテムのパスを無視
     await TreeValidator.compareWithSnapshot(page, snapshot, ["items.0.items.2"]);
-    console.log("Matched except for the ignored path");
-} catch (error) {
-    console.error("Changed even outside the ignored path");
+    console.log("無視したパス以外は一致しました");
+}
+catch (error) {
+    console.error("無視したパス以外も変更されています");
 }
 ```
 
-## Actual Data Structure
+## 実際のデータ構造
 
-The actual data structure is as follows:
+実際のデータ構造は以下のようになっています：
 
 ```json
 {
@@ -165,17 +167,16 @@ The actual data structure is as follows:
 }
 ```
 
-## Debugging in the Browser
+## ブラウザでのデバッグ
 
-You can also retrieve Yjs tree data from the browser console.
+ブラウザのコンソールからもSharedTreeのデータを取得できます。
 
 ```javascript
-// Get tree data from console
-const treeData = window.getYjsTreeDebugData?.() ?? window.getFluidTreeDebugData?.();
+// コンソールからSharedTreeのデータを取得
+const treeData = window.getFluidTreeDebugData();
 console.log(treeData);
 
-// Get data at a specific path
-const firstItemText = window.getYjsTreePathData?.("items.0.text")
-    ?? window.getFluidTreePathData?.("items.0.text");
+// 特定のパスのデータを取得
+const firstItemText = window.getFluidTreePathData("items.0.text");
 console.log(firstItemText);
 ```

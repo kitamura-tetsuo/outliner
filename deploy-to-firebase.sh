@@ -1,8 +1,5 @@
 #!/bin/bash
-set -e
 echo "Starting deployment to Firebase Hosting + Functions..."
-
-curl -sL https://firebase.tools | bash
 
 echo "1. Cleaning up old build files if they exist..."
 if [ -d "build" ]; then
@@ -11,17 +8,11 @@ fi
 
 echo "2. Building client application..."
 cd client
-npm install
 cp .env.firebase .env
 npm run build
 cd ..
 
-echo "3. Preparing functions..."
-cd functions
-npm install
-cd ..
-
-echo "4. Deploying Firebase Functions and Hosting..."
+echo "3. Deploying Firebase Functions and Hosting..."
 firebase deploy
 
 echo "Deployment completed!"

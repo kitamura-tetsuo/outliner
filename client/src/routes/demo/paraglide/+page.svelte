@@ -1,6 +1,8 @@
 <script lang="ts">
+export const ssr = false;
+
 import { goto } from "$app/navigation";
-import { page } from "$app/stores";
+import { page } from "$app/state";
 import * as m from "$lib/paraglide/messages.js";
 import {
     getLocale,
@@ -8,8 +10,8 @@ import {
     localizeHref,
 } from "$lib/paraglide/runtime";
 
-function switchToLanguage(newLanguage: "en" | "ja") {
-    const localisedPath = localizeHref($page.url.pathname, { locale: newLanguage });
+function switchToLanguage(newLanguage: string) {
+    const localisedPath = localizeHref(page.url.pathname, { locale: newLanguage });
     goto(localisedPath);
 }
 </script>
@@ -20,7 +22,7 @@ function switchToLanguage(newLanguage: "en" | "ja") {
     <p>{m.hello_world({ name: "World" })}</p>
 
     <h2>Switch Language</h2>
-    {#each locales as lang (lang)}
+    {#each locales as lang}
         <button
             onclick={() => switchToLanguage(lang)}
             disabled={lang === getLocale()}

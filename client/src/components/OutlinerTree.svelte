@@ -1,2418 +1,1492 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
-    import { resolvePath } from "../utils/pathUtils";
-    import { onDestroy, onMount } from "svelte";
-    import { fade } from "svelte/transition";
-    import { getLogger } from "../lib/logger";
-    import { Item, Items } from "../schema/app-schema";
-    import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
-    import type { DisplayItem } from "../stores/OutlinerViewModel";
-    import { OutlinerViewModel } from "../stores/OutlinerViewModel";
-    import { userManager } from "../auth/UserManager";
-    import { uploadAttachment } from "../services/attachmentService";
-    import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
-    import EditorOverlay from "./EditorOverlay.svelte";
-    import OutlinerItem from "./OutlinerItem.svelte";
+import { Tree } from "fluid-framework";
+import {
+    onDestroy,
+    onMount,
+} from "svelte";
+import { getLogger } from "../lib/logger";
+import {
+    Item,
+    Items,
+} from "../schema/app-schema";
+import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
+import { fluidStore } from "../stores/fluidStore.svelte";
+import type { DisplayItem } from "../stores/OutlinerViewModel";
+import { OutlinerViewModel } from "../stores/OutlinerViewModel";
+import { TreeSubscriber } from "../stores/TreeSubscriber";
+import EditorOverlay from "./EditorOverlay.svelte";
+import OutlinerItem from "./OutlinerItem.svelte";
 
-    const logger = getLogger();
+const logger = getLogger();
 
-    interface Props {
-        pageItem: Item; // Item to display as page
-        projectName?: string;
-        pageName?: string;
-        isReadOnly?: boolean;
-        onEdit?: () => void;
-    }
+/**
+ * 【重要な実装メモ】
+ * このコンポーネントではFluid FrameworkとSvelteの「マジカルな連携」を利用しています。
+ * 特にタイトル編集では、SvelteのUI (bind:value) が直接Fluidオブジェクト (pageItem.text) に
+ * バインドされています。これにより中間変数やTreeSubscriberなしで双方向バインディングが実現されています。
+ *
+ * この方法が機能する理由：
+ * 1. Fluid Frameworkのオブジェクトはプロキシベースでプロパティ変更を検知
+ * 2. Svelteの双方向バインディングがプロパティへの書き込みを処理
+ * 3. Fluidが自動的に変更を分散データモデルに同期
+ *
+ * 注意: この連携が壊れた場合は、明示的なTreeSubscriberと更新関数の使用に戻すことを検討してください
+ */
 
-    let {
-        pageItem,
-        projectName = "",
-        pageName = "",
-        isReadOnly = false,
-        onEdit,
-    }: Props = $props();
+interface Props {
+    pageItem: Item; // ページとして表示する Item
+    isReadOnly?: boolean;
+    onEdit?: () => void;
+}
 
-    // moved to onMount to avoid initial-value capture warnings
+let { pageItem, isReadOnly = false, onEdit }: Props = $props();
 
-    let currentUser = $state("anonymous");
-    // Remount key to eliminate any possibility of Y.Doc switching within a mounted instance
-    const outlinerKey = $derived.by(() => {
-        const ydocGuid = (pageItem as unknown as import("../schema/app-schema").Item)?.ydoc?.guid as string | undefined;
-        const id = (pageItem as unknown as import("../schema/app-schema").Item)?.id as string | undefined;
-        return ydocGuid ?? id ?? `${projectName}:${pageName}`;
-    });
+let currentUser = $derived(fluidStore.currentUser?.id ?? 'anonymous');
 
-    onMount(() => {
-        try {
-            console.log("OutlinerTree props:", {
-                pageItem,
-                projectName,
-                pageName,
-                isReadOnly,
-            });
-        } catch {}
-    });
+// ビューストアを作成
+const viewModel = new OutlinerViewModel();
 
-    let unsubscribeUser: (() => void) | null = null;
+// コンテナ要素への参照
+let containerRef: HTMLDivElement;
 
-    // Create view store
-    const viewModel = new OutlinerViewModel();
 
-    let treeContainer = $state<HTMLDivElement | null>(null);
-    let showScrollTop = $state(false);
-    let mobileToolbarBottomOffset = $state(0);
+let itemHeights = $state<number[]>([]);
+let itemPositions = $state<number[]>([]);
 
-    // Throttle scroll event to improve performance
-    let scrollTimeout: number | null = null;
-    function handleScroll() {
-        if (scrollTimeout) return;
+// ドラッグ選択関連の状態
+let isDragging = $state(false);
+let dragStartItemId = $state<string | null>(null);
+let dragStartOffset = $state(0);
+let dragCurrentItemId = $state<string | null>(null);
+let dragCurrentOffset = $state(0);
 
-        scrollTimeout = requestAnimationFrame(() => {
-            if (typeof window !== "undefined") {
-                showScrollTop = window.scrollY > 300;
-            }
-            scrollTimeout = null;
-        });
-    }
+const displayItems = new TreeSubscriber<Items, DisplayItem[]>(
+    pageItem.items as Items,
+    "treeChanged",
+    () => {
+        console.log("OutlinerTree: displayItems transformer called");
+        console.log("OutlinerTree: pageItem exists:", !!pageItem);
+        console.log("OutlinerTree: pageItem.items exists:", !!pageItem.items);
+        console.log("OutlinerTree: pageItem.items length:", (pageItem.items as any)?.length || 0);
 
-    // Visual Viewport logic for mobile keyboard
-    function handleVisualViewportResize() {
-        if (typeof window === "undefined" || !window.visualViewport) return;
-        const vv = window.visualViewport;
-        // In iOS Safari, the layout viewport often does not shrink when the keyboard opens,
-        // but the visual viewport does. We calculate the difference to push the toolbar up.
-        // offsetTop is usually 0 unless scrolled within visual viewport, but good to include.
-        const offset = window.innerHeight - vv.height - vv.offsetTop;
-        // Clamp to 0 to prevent issues on desktop or when keyboard is hidden
-        mobileToolbarBottomOffset = Math.max(0, offset);
-    }
-
-    // Register visualViewport listeners separately from the main onMount logic
-    // to keep concerns separated and avoid conflict with the return cleanup of the main onMount.
-    // (Svelte 5 supports multiple onMount calls)
-    onMount(() => {
-        if (typeof window !== "undefined" && window.visualViewport) {
-            window.visualViewport.addEventListener("resize", handleVisualViewportResize);
-            window.visualViewport.addEventListener("scroll", handleVisualViewportResize);
-            handleVisualViewportResize(); // Initial check
-        }
-        return () => {
-            if (typeof window !== "undefined" && window.visualViewport) {
-                window.visualViewport.removeEventListener("resize", handleVisualViewportResize);
-                window.visualViewport.removeEventListener("scroll", handleVisualViewportResize);
-            }
-        };
-    });
-
-    function scrollToTop() {
-        if (typeof window !== "undefined") {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-        // Move focus back to the tree container or first item for accessibility
-        // For now, keeping focus management simple as scrolling doesn't change context significantly
-    }
-
-    // Drag selection related state
-    let isDragging = $state(false);
-    let dragStartItemId = $state<string | null>(null);
-    let dragStartOffset = $state(0);
-    let dragCurrentItemId = $state<string | null>(null);
-    let dragCurrentOffset = $state(0);
-
-    // To prevent infinite loops, we'll cache the last known structure and only update when it changes
-
-    // Track the last update timestamp to prevent rapid successive updates
-
-    // Minimum granularity observe for Yjs: Observe the underlying Y.Map("orderedTree") of the tree
-    let __displayItemsTick = $state(0);
-    onMount(() => {
-        try {
-            const ymap = (pageItem as unknown as import("../schema/app-schema").Item)?.ydoc?.getMap?.("orderedTree");
-            if (ymap && typeof (ymap as { observeDeep?: unknown }).observeDeep === "function") {
-                const handler = (events: unknown[]) => {
-                    try {
-                        if (
-                            typeof window !== "undefined" &&
-                            (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__
-                        ) {
-                            console.log("OutlinerTree: observeDeep tick");
-                            events.forEach((e) => {
-                                console.log(
-                                    " [Yjs Event]",
-                                    e.path,
-                                    e.keysChanged,
-                                );
-                            });
-                        }
-                    } catch {}
-                    __displayItemsTick = Date.now();
-                };
-                ymap.observeDeep(handler);
-                return () => {
-                    try {
-                        ymap.unobserveDeep(handler);
-                    } catch {}
-                };
-            }
-        } catch {}
-    });
-
-    // Re-binding on Y.Doc switch is unnecessary: Stabilized by re-mounting with OutlinerBase and {#key} of this component
-
-    // Fallback for E2E environment: Ensure DOM updates in environments where observe rarely arrives
-    onMount(() => {
-        try {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__) {
-                const timer = setInterval(() => {
-                    __displayItemsTick = Date.now();
-                }, 200);
-                return () => clearInterval(timer);
-            }
-        } catch {}
-    });
-
-    let displayItems = $derived.by<DisplayItem[]>(() => {
-        // Dependency: Recalculate whenever __displayItemsTick updates
-        void __displayItemsTick;
-        // Update view model from latest model
         viewModel.updateFromModel(pageItem);
-        // Return flat display array
-        return viewModel.getVisibleItems();
+        const visibleItems = viewModel.getVisibleItems();
+        console.log("OutlinerTree: visibleItems length:", visibleItems.length);
+
+        return visibleItems;
+    },
+);
+
+// アイテムの高さが変更されたときに位置を再計算
+function updateItemPositions() {
+    let currentTop = 8; // 最初のアイテムの上部マージン
+    itemPositions = itemHeights.map((height) => {
+        const position = currentTop;
+        // 最小高さ36pxを考慮
+        const effectiveHeight = Math.max(height || 28, 28);
+        // ページタイトルの後は24px、それ以降は36pxの間隔
+        currentTop += effectiveHeight;
+        return position;
     });
 
-    onMount(() => {
-        currentUser = userManager.getCurrentUser()?.id ?? "anonymous";
-        unsubscribeUser = userManager.addEventListener((result) => {
-            currentUser = result?.user.id ?? "anonymous";
+    // デバッグ用のログ
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log("Heights:", $state.snapshot(itemHeights));
+        console.log("Positions:", $state.snapshot(itemPositions));
+    }
+}
+
+// アイテムの高さが変更されたときのハンドラ
+function handleItemResize(event: CustomEvent) {
+    const { index, height } = event.detail;
+    if (typeof index === 'number' && typeof height === 'number') {
+        // 高さが実際に変更され、かつ0より大きい場合のみ更新
+        if (itemHeights[index] !== height && height > 0) {
+            itemHeights[index] = height;
+            updateItemPositions();
+
+            // デバッグ用のログ
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Item ${index} height changed to ${height}px`);
+            }
+        }
+    }
+}
+
+onMount(() => {
+    const client = fluidStore.fluidClient;
+    if (client?.currentUser) {
+        currentUser = client.currentUser.id;
+    }
+
+    // onEdit コールバックをストアに設定
+    editorOverlayStore.setOnEditCallback(onEdit || null);
+
+    // 初期状態でアイテムの高さを初期化
+    itemHeights = new Array(displayItems.current.length).fill(0);
+
+    // 各アイテムの初期高さを取得して設定
+    requestAnimationFrame(() => {
+        const items = document.querySelectorAll('.item-container');
+        items.forEach((item, index) => {
+            const height = item.getBoundingClientRect().height;
+            itemHeights[index] = height;
         });
-        editorOverlayStore.setOnEditCallback(handleEdit);
-        if (typeof window !== "undefined") {
-            window.addEventListener("scroll", handleScroll);
-        }
+        updateItemPositions();
     });
+});
 
-    // Remeasure height in response to changes in visible item count ($effect is unused)
-    // Legacy hook assuming update trigger via observeDeep (__displayItemsTick)
+// displayItemsが変更されたときにitemHeightsを更新
+$effect(() => {
+    const itemCount = displayItems.current.length;
+    if (itemHeights.length !== itemCount) {
+        // 既存のアイテムの高さを保持しつつ、新しい配列を作成
+        const newHeights = new Array(itemCount).fill(28); // デフォルト値として28pxを設定
+        itemHeights.forEach((height, index) => {
+            if (index < itemCount) {
+                newHeights[index] = height || 28; // 0の場合は28pxを使用
+            }
+        });
+        itemHeights = newHeights;
 
-    onDestroy(() => {
-        if (typeof window !== "undefined") {
-            window.removeEventListener("scroll", handleScroll);
-        }
-
-        // Clear onEdit callback
-        editorOverlayStore.setOnEditCallback(null);
-
-        // Release resources
-        viewModel.dispose();
-        if (unsubscribeUser) {
-            unsubscribeUser();
-            unsubscribeUser = null;
-        }
-    });
-
-    function handleAddItem() {
-        if (pageItem && !isReadOnly && (pageItem as unknown as import("../schema/app-schema").Item).items) {
-            // Add item to end
-            (pageItem as unknown as import("../schema/app-schema").Item).items.addNode(currentUser);
-        }
-    }
-
-    let fileInput: HTMLInputElement | null = $state(null);
-
-    function triggerFileSelect() {
-        if (fileInput) {
-            fileInput.click();
-        }
-    }
-
-    async function handleFileSelect(event: Event) {
-        if (isReadOnly) return;
-
-        const target = event.target as HTMLInputElement;
-        const files: File[] = target.files ? Array.from(target.files) : [];
-
-        if (files.length === 0) return;
-
-        let containerId: string | undefined = undefined;
-        try { containerId = await getDefaultContainerId(); } catch {}
-
-        // Ensure containerId exists, skip fallback logic if unavailable in production
-        if (!containerId && !(typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) {
-            /* eslint-disable-next-line no-console */ console.error("No valid container ID found for file upload");
-            return;
-        }
-
-        containerId = containerId || "test-container";
-
-        const items = pageItem.items as Items;
-
-        for (const file of files) {
-            try {
-                // Create new item at the end
-                const newItem = items.addNode(currentUser, items.length);
-                if (newItem) {
-                    try {
-                        const url = await uploadAttachment(containerId, newItem.id, file);
-                        newItem.addAttachment(url);
-                    } catch (uploadErr) {
-                        /* eslint-disable-next-line no-console */ console.error("Upload failed via file select", uploadErr);
-                        // E2E fallback local URL for test environment (mocking network)
-                        if (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__) {
-                            const localUrl = URL.createObjectURL(file);
-                            newItem.addAttachment(localUrl);
-                            window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
-                        }
-                    }
+        // DOMの更新を待ってから実際の高さを取得
+        requestAnimationFrame(() => {
+            const items = document.querySelectorAll('.item-container');
+            items.forEach((item, index) => {
+                const height = item.getBoundingClientRect().height;
+                if (height > 0) {  // 実際の高さが取得できた場合のみ更新
+                    itemHeights[index] = height;
                 }
-            } catch (e) {
-                /* eslint-disable-next-line no-console */ console.error("Failed to process selected file", e);
-            }
-        }
-
-        if (target) {
-            target.value = ''; // Reset input
-        }
-    }
-
-    // Add empty sibling item while editing the bottom item
-    function handleEdit() {
-        // Call external onEdit if available
-        if (onEdit) onEdit();
-
-        // Get the last display item
-        const items = displayItems;
-        if (items.length === 0) return;
-        const last = items[items.length - 1];
-        const activeId = editorOverlayStore.getActiveItem();
-        if (!activeId || activeId !== last.model.id) return;
-
-        // Add only if the bottom item is not empty
-        const lastText = (last.model.original.text as { toString?: () => string })?.toString?.() ?? "";
-        if (lastText.trim().length === 0) return;
-
-        const parent = last.model.original.parent;
-        if (parent) {
-            const idx = parent.indexOf(last.model.original);
-            parent.addNode(currentUser, idx + 1);
-        } else if (pageItem.items) {
-            const idx = (pageItem.items as unknown as import("../schema/app-schema").Items).indexOf(last.model.original);
-            (pageItem.items as unknown as import("../schema/app-schema").Items).addNode(currentUser, idx + 1);
-        }
-    }
-
-    function handleToggleCollapse(event: CustomEvent) {
-        const { itemId } = event.detail;
-
-        // Change collapse state
-        viewModel.toggleCollapsed(itemId);
-    }
-
-    function handleIndent(event: CustomEvent) {
-        const itemId: string | undefined = event?.detail?.itemId;
-        if (!itemId || itemId === "page-title") return;
-
-        const itemViewModel = viewModel.getViewModel(itemId);
-        if (!itemViewModel) return;
-
-        const item = itemViewModel.original as unknown as { tree?: unknown; ydoc?: unknown; key?: string };
-        const tree = item?.tree;
-        const doc = item?.ydoc;
-        const key = item?.key;
-
-        try {
-            console.log("handleIndent debug", {
-                itemId,
-                hasTree: Boolean(tree),
-                hasDoc: Boolean(doc),
-                key,
-                treeType: (tree as { constructor?: { name?: string } })?.constructor?.name,
             });
-        } catch {}
+            updateItemPositions();
+        });
+    }
+});
 
-        if (
-            !tree ||
-            !doc ||
-            !key ||
-            typeof tree.getNodeParentFromKey !== "function"
-        ) {
-            if (typeof logger.warn === "function") {
-                logger.warn({ itemId }, "Indent skipped: missing tree context");
-            }
-            return;
-        }
+onDestroy(() => {
+    // onEdit コールバックをクリア
+    editorOverlayStore.setOnEditCallback(null);
 
-        const parentKey = tree.getNodeParentFromKey(key);
-        if (!parentKey) return;
+    // リソースを解放
+    viewModel.dispose();
+});
 
-        const siblingKeys: string[] = tree.sortChildrenByOrder(
-            tree.getNodeChildrenFromKey(parentKey),
-            parentKey,
-        );
+function handleAddItem() {
+    if (pageItem && !isReadOnly && pageItem.items && Tree.is(pageItem.items, Items)) {
+        // 末尾にアイテム追加
+        pageItem.items.addNode(currentUser);
+    }
+}
 
-        const siblingOrder = [...siblingKeys];
-        const currentIndex = siblingOrder.indexOf(key);
-        try {
-            console.log(
-                "handleIndent parent info",
-                JSON.stringify({
-                    itemId,
-                    parentKey,
-                    siblingOrder,
-                    currentIndex,
-                }),
-            );
-        } catch {}
+function handleToggleCollapse(event: CustomEvent) {
+    const { itemId } = event.detail;
 
-        if (currentIndex <= 0) return; // Cannot indent first item
+    // 折りたたみ状態を変更
+    viewModel.toggleCollapsed(itemId);
+}
 
-        const targetParentKey = siblingOrder[currentIndex - 1];
-        try {
-            console.log(
-                "handleIndent moving",
-                JSON.stringify({ itemId, targetParentKey, currentIndex }),
-            );
-        } catch {}
-        if (!targetParentKey) return;
+function handleIndent(event: CustomEvent) {
+    // ページタイトルの場合は無視
+    if (event.detail.itemId === "page-title") return;
 
-        const run = () => {
-            try {
-                tree.moveChildToParent(key, targetParentKey);
-                tree.setNodeOrderToEnd(key);
-            } catch (error) {
-                // The Y.Tree implementation throws when reordering with a stale parent reference.
-                // Swallow the error so mobile indent tests do not fail and log for follow-up.
-                logger.error(
-                    { error },
-                    `Indent failed; skipping reparent. itemId: ${itemId}, targetParentKey: ${targetParentKey}`,
-                );
-                return;
-            }
-        };
+    // インデントを増やす処理
+    const { itemId } = event.detail;
 
-        if (typeof doc.transact === "function") {
-            doc.transact(run, "mobile-indent");
-        } else {
-            run();
-        }
+    // 元のアイテムを取得
+    const itemViewModel = viewModel.getViewModel(itemId);
+    if (!itemViewModel) return;
 
-        try {
-            console.log(
-                "handleIndent new parent",
-                JSON.stringify({
-                    itemId,
-                    newParent: tree.getNodeParentFromKey(key),
-                }),
-            );
-        } catch {}
+    const item = itemViewModel.original;
 
+    logger.info("Indent event received for item:", item);
+
+    // 1. アイテムの親を取得
+    const parent = Tree.parent(item);
+    if (!Tree.is(parent, Items)) return;
+
+    // 2. 親内でのアイテムのインデックスを取得
+    const index = parent.indexOf(item);
+    if (index <= 0) return; // 最初のアイテムはインデントできない
+
+    // 3. 前のアイテムを取得
+    const previousItem = parent[index - 1];
+
+    try {
+        // 4. 前のアイテムの子リストへアイテムを移動
+        // itemIndexが確実に取得できるようにインデックスを再計算
+        const itemIndex = parent.indexOf(item);
+
+        // 移動操作の前にログを追加
         logger.info(
-            { itemId, targetParentKey },
-            "Indented item under previous sibling",
-        );
-        editorOverlayStore.setActiveItem(itemId);
-    }
-
-    function handleUnindent(event: CustomEvent) {
-        const itemId: string | undefined = event?.detail?.itemId;
-        if (!itemId || itemId === "page-title") return;
-
-        const itemViewModel = viewModel.getViewModel(itemId);
-        if (!itemViewModel) return;
-
-        const item = itemViewModel.original as unknown as { tree?: unknown; ydoc?: unknown; key?: string };
-        const tree = item?.tree;
-        const doc = item?.ydoc;
-        const key = item?.key;
-
-        if (
-            !tree ||
-            !doc ||
-            !key ||
-            typeof tree.getNodeParentFromKey !== "function"
-        ) {
-            if (typeof logger.warn === "function") {
-                logger.warn(
-                    { itemId },
-                    "Unindent skipped: missing tree context",
-                );
-            }
-            return;
-        }
-
-        const parentKey = tree.getNodeParentFromKey(key);
-        if (!parentKey || parentKey === "root") return;
-
-        const grandParentKey = tree.getNodeParentFromKey(parentKey);
-        if (!grandParentKey) return;
-
-        const run = () => {
-            tree.moveChildToParent(key, grandParentKey);
-            if (typeof tree.recomputeParentsAndChildren === "function") {
-                tree.recomputeParentsAndChildren();
-            }
-            tree.setNodeAfter(key, parentKey);
-        };
-
-        if (typeof doc.transact === "function") {
-            doc.transact(run, "mobile-unindent");
-        } else {
-            run();
-        }
-
-        logger.info(
-            { itemId, parentKey, grandParentKey },
-            "Unindented item to parent level",
-        );
-        editorOverlayStore.setActiveItem(itemId);
-    }
-
-    let lastToolbarItemId: string | null = null;
-
-    function resolveActiveItemId(): string | null {
-        const fromStore = editorOverlayStore.getActiveItem();
-        if (fromStore) {
-            lastToolbarItemId = fromStore;
-            return fromStore;
-        }
-
-        const cursorCandidates = Object.values(
-            editorOverlayStore.cursors ?? {},
-        );
-        const activeCursor = cursorCandidates.find(
-            (cursor) => cursor?.isActive && cursor.itemId,
-        );
-        if (activeCursor?.itemId) {
-            lastToolbarItemId = activeCursor.itemId;
-            return activeCursor.itemId;
-        }
-
-        if (typeof document !== "undefined") {
-            const focused = document.activeElement as HTMLElement | null;
-            const itemContainer = focused?.closest?.(
-                "[data-item-id]",
-            ) as HTMLElement | null;
-            const fallbackId = itemContainer?.getAttribute("data-item-id");
-            if (fallbackId) {
-                lastToolbarItemId = fallbackId;
-                return fallbackId;
-            }
-        }
-
-        if (lastToolbarItemId) {
-            try {
-                console.log(
-                    "resolveActiveItemId: using last known id",
-                    lastToolbarItemId,
-                );
-            } catch {}
-            return lastToolbarItemId;
-        }
-
-        try {
-            console.log("resolveActiveItemId: no active item");
-        } catch {}
-        return null;
-    }
-
-    // Debug mode manually enabled by local storage flag (default OFF to prevent spam)
-    if (typeof window !== "undefined") {
-        try {
-            const flag = localStorage.getItem("DEBUG_MODE");
-            if (flag === "1" || flag === "true") {
-                (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE = true;
-            }
-        } catch {}
-    }
-
-    // Item navigation handling
-    function handleNavigateToItem(event: CustomEvent) {
-        // Get shiftKey and direction for Shift selection support
-        const { direction, cursorScreenX, fromItemId, toItemId, shiftKey } =
-            event.detail;
-        // Clear existing selection for non-Shift movement (switch to non-multi-selection)
-        if (!shiftKey) {
-            editorOverlayStore.clearSelections();
-        }
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(
-                `Navigation event received: direction=${direction}, fromItemId=${fromItemId}, toItemId=${toItemId}, cursorScreenX=${cursorScreenX}`,
-            );
-        }
-
-        // If toItemId is specified, focus directly on that item
-        if (toItemId) {
-            // For vertical movement, set cursor position appropriately
-            if (direction === "up") {
-                // Move to the last line of the previous item
-                focusItemWithPosition(
-                    toItemId,
-                    Number.MAX_SAFE_INTEGER,
-                    shiftKey,
-                    direction,
-                );
-                return;
-            } else if (direction === "down") {
-                // Move to the first line of the next item
-                focusItemWithPosition(toItemId, 0, shiftKey, direction);
-                return;
-            } else if (direction === "left" || direction === "right") {
-                // Horizontal movement
-                focusItemWithPosition(
-                    toItemId,
-                    direction === "left" ? Number.MAX_SAFE_INTEGER : 0,
-                    shiftKey,
-                    direction,
-                );
-                return;
-            } else {
-                // If direction is not specified (e.g. clicking an alias path)
-                focusItemWithPosition(toItemId, 0, shiftKey, undefined);
-                return;
-            }
-        }
-
-        // Horizontal processing
-        if (direction === "left") {
-            let currentIndex = displayItems.findIndex(
-                (item) => item.model.id === fromItemId,
-            );
-            if (currentIndex > 0) {
-                // Move to previous item
-                const targetItemId = displayItems[currentIndex - 1].model.id;
-                focusItemWithPosition(
-                    targetItemId,
-                    Number.MAX_SAFE_INTEGER,
-                    shiftKey,
-                    "left",
-                );
-            } else {
-                // Stay on current item if it's the first one
-                focusItemWithPosition(fromItemId, 0, shiftKey, "left");
-            }
-            return;
-        } else if (direction === "right") {
-            let currentIndex = displayItems.findIndex(
-                (item) => item.model.id === fromItemId,
-            );
-            if (currentIndex >= 0 && currentIndex < displayItems.length - 1) {
-                // Move to next item
-                const targetItemId = displayItems[currentIndex + 1].model.id;
-                focusItemWithPosition(targetItemId, 0, shiftKey, "right");
-                return;
-            }
-            // Do nothing if it's the last item (move to end)
-            focusItemWithPosition(
-                fromItemId,
-                Number.MAX_SAFE_INTEGER,
-                shiftKey,
-                "right",
-            );
-            return;
-        }
-
-        // Vertical processing
-        let currentIndex = displayItems.findIndex(
-            (item) => item.model.id === fromItemId,
+            `Moving item from parent (${parent.length} items) at index ${itemIndex} to previous item's children`,
         );
 
-        // Shift+Down multi-selection: update end of first range from store selections
-        if (shiftKey && direction === "down") {
-            const selectionRanges = Object.values(
-                editorOverlayStore.selections,
-            );
-            if (selectionRanges.length === 0) return;
-            const { startItemId, startOffset } = selectionRanges[0];
-            const targetItemId = displayItems[currentIndex + 1]?.model.id;
-            if (!targetItemId) return;
-            const endEl = document.querySelector(
-                `[data-item-id="${targetItemId}"] .item-text`,
-            ) as HTMLElement;
-            const endLen = endEl?.textContent?.length || 0;
-            editorOverlayStore.setSelection({
-                startItemId,
-                endItemId: targetItemId,
-                startOffset,
-                endOffset: endLen,
-                userId: "local",
-                isReversed: false,
+        // 厳密なトランザクション処理を行う
+        const prevItems = previousItem.items;
+        if (prevItems && Tree.is(prevItems, Items)) {
+            Tree.runTransaction(parent, () => {
+                // 型キャストを使用してTypeScriptエラーを回避
+                (prevItems as any).moveRangeToEnd(itemIndex, itemIndex + 1, parent);
             });
-            return;
+
+            logger.info(`Indented item under previous item`);
         }
-        // Shift+Up multi-selection: update start of first range from store selections
-        if (shiftKey && direction === "up") {
-            const selectionRanges = Object.values(
-                editorOverlayStore.selections,
-            );
-            if (selectionRanges.length === 0) return;
-            const { endItemId, endOffset } = selectionRanges[0];
-            const targetItemId = displayItems[currentIndex - 1]?.model.id;
-            if (!targetItemId) return;
-            const startEl = document.querySelector(
-                `[data-item-id="${targetItemId}"] .item-text`,
-            ) as HTMLElement;
-            const startLen = startEl?.textContent?.length || 0;
-            editorOverlayStore.setSelection({
-                startItemId: targetItemId,
-                endItemId,
-                startOffset: startLen,
-                endOffset,
-                userId: "local",
-                isReversed: true,
+    }
+    catch (error) {
+        console.error("Failed to indent item:", error);
+    }
+}
+
+function handleUnindent(event: CustomEvent) {
+    // ページタイトルの場合は無視
+    if (event.detail.itemId === "page-title") return;
+
+    // インデントを減らす処理
+    const { itemId } = event.detail;
+
+    // 元のアイテムを取得
+    const itemViewModel = viewModel.getViewModel(itemId);
+    if (!itemViewModel) return;
+
+    const item = itemViewModel.original;
+
+    logger.info("Unindent event received for item:", item);
+
+    // 1. アイテムの親を取得
+    const parentList = Tree.parent(item);
+    if (!Tree.is(parentList, Items)) return;
+
+    // 2. 親の親を取得（親グループを取得）
+    const parentItem = Tree.parent(parentList);
+    if (!parentItem || !Tree.is(parentItem, Item)) return; // ルートアイテムの直下は既に最上位
+
+    const grandParentList = Tree.parent(parentItem);
+    if (!grandParentList || !Tree.is(grandParentList, Items)) return; // ルートアイテムの直下は既に最上位
+
+    try {
+        // 3. 親アイテムのindex取得
+        const parentIndex = grandParentList.indexOf(parentItem);
+
+        // 4. 親の親の、親の次の位置にアイテムを移動
+        const itemIndex = parentList.indexOf(item);
+
+        // parentListの要素をgrandParentListに移動
+        const sourceItem = parentList[itemIndex];
+        if (sourceItem) {
+            // readonly array型に適合するようコピー
+            const targetArray = grandParentList as any;
+
+            Tree.runTransaction(grandParentList, () => {
+                targetArray.moveRangeToIndex(parentIndex + 1, itemIndex, itemIndex + 1, parentList);
             });
-            return;
-        }
 
-        // Attempting to move up from the first item
-        if (currentIndex === 0 && direction === "up") {
-            focusItemWithPosition(fromItemId, 0, shiftKey, "up");
-            return;
+            logger.info("Unindented item to parent level");
         }
+    }
+    catch (error) {
+        console.error("Failed to unindent item:", error);
+    }
+}
 
-        // Attempting to move down from the last item
-        if (direction === "down" && currentIndex === displayItems.length - 1) {
-            focusItemWithPosition(
-                fromItemId,
-                Number.MAX_SAFE_INTEGER,
-                shiftKey,
-                "down",
-            );
-            return;
-        }
+// デバッグモードを有効化（テスト環境でのみ）
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'test') {
+    (window as any).DEBUG_MODE = true;
+}
 
-        // Normal item navigation
-        let targetIndex = -1;
+// アイテム間のナビゲーション処理
+function handleNavigateToItem(event: CustomEvent) {
+    // Shift選択対応のため shiftKey と direction も取得
+    const { direction, cursorScreenX, fromItemId, toItemId, shiftKey } = event.detail;
+    // Shiftなしの移動では既存の選択をクリア（非複数選択へ）
+    if (!shiftKey) {
+        editorOverlayStore.clearSelections();
+    }
+
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(
+            `Navigation event received: direction=${direction}, fromItemId=${fromItemId}, toItemId=${toItemId}, cursorScreenX=${cursorScreenX}`,
+        );
+    }
+
+    // toItemIdが指定されている場合は、そのアイテムに直接フォーカスする
+    if (toItemId) {
+        // 上下方向の移動の場合、カーソル位置を適切に設定
         if (direction === "up") {
-            targetIndex = currentIndex - 1;
+            // 前のアイテムの最後の行に移動
+            focusItemWithPosition(toItemId, Number.MAX_SAFE_INTEGER, shiftKey, direction);
+            return;
         } else if (direction === "down") {
-            targetIndex = currentIndex + 1;
-        }
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(
-                `Navigation calculation: currentIndex=${currentIndex}, targetIndex=${targetIndex}, items count=${displayItems.length}`,
-            );
-        }
-
-        // If target is within normal item range
-        if (targetIndex >= 0 && targetIndex < displayItems.length) {
-            const targetItemId = displayItems[targetIndex].model.id;
-            focusItemWithPosition(
-                targetItemId,
-                cursorScreenX,
-                shiftKey,
-                direction,
-            );
+            // 次のアイテムの最初の行に移動
+            focusItemWithPosition(toItemId, 0, shiftKey, direction);
+            return;
+        } else {
+            // 左右方向の移動
+            focusItemWithPosition(toItemId, direction === "left" ? Number.MAX_SAFE_INTEGER : 0, shiftKey, direction);
+            return;
         }
     }
 
-    // Focus specified item and set cursor position
-    function focusItemWithPosition(
-        itemId: string,
-        cursorScreenX?: number,
-        shiftKey = false,
-        direction?: string,
-    ) {
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(
-                `Focusing item ${itemId} with cursor X: ${cursorScreenX}px, shift=${shiftKey}, direction=${direction}`,
-            );
+    // 左右方向の処理
+    if (direction === "left") {
+        let currentIndex = displayItems.current.findIndex(item => item.model.id === fromItemId);
+        if (currentIndex > 0) {
+            // 前のアイテムに移動
+            const targetItemId = displayItems.current[currentIndex - 1].model.id;
+            focusItemWithPosition(targetItemId, Number.MAX_SAFE_INTEGER, shiftKey, 'left');
         }
-
-        // Get target item element
-        const item = document.querySelector(`[data-item-id="${itemId}"]`);
-        if (!item) {
-            /* eslint-disable-next-line no-console */ console.error(`Could not find item with ID: ${itemId}`);
+        else {
+            // 最初のアイテムの場合は現在のアイテムにとどまる
+            focusItemWithPosition(fromItemId, 0, shiftKey, 'left');
+        }
+        return;
+    }
+    else if (direction === "right") {
+        let currentIndex = displayItems.current.findIndex(item => item.model.id === fromItemId);
+        if (currentIndex >= 0 && currentIndex < displayItems.current.length - 1) {
+            // 次のアイテムに移動
+            const targetItemId = displayItems.current[currentIndex + 1].model.id;
+            focusItemWithPosition(targetItemId, 0, shiftKey, 'right');
             return;
         }
+        // 最後のアイテムなら何もしない（末尾まで移動）
+        focusItemWithPosition(fromItemId, Number.MAX_SAFE_INTEGER, shiftKey, 'right');
+        return;
+    }
 
-        // End editing if there is currently a focused item
-        const activeItem = editorOverlayStore.getActiveItem();
+    // 上下方向の処理
+    let currentIndex = displayItems.current.findIndex(item => item.model.id === fromItemId);
 
-        // Process move from active item to new item in order
-        const focusNewItem = () => {
-            try {
-                // Handle special cursor position values
-                let cursorXValue = cursorScreenX;
+    // Shift+Down による複数選択: storeのselectionsから最初の範囲を取得して終端を更新
+    if (shiftKey && direction === "down") {
+        const selectionRanges = Object.values(editorOverlayStore.selections);
+        if (selectionRanges.length === 0) return;
+        const { startItemId, startOffset } = selectionRanges[0];
+        const targetItemId = displayItems.current[currentIndex + 1]?.model.id;
+        if (!targetItemId) return;
+        const endEl = document.querySelector(`[data-item-id="${targetItemId}"] .item-text`) as HTMLElement;
+        const endLen = endEl?.textContent?.length || 0;
+        editorOverlayStore.setSelection({
+            startItemId,
+            endItemId: targetItemId,
+            startOffset,
+            endOffset: endLen,
+            userId: 'local',
+            isReversed: false
+        });
+        return;
+    }
+    // Shift+Up による複数選択: storeのselectionsから最初の範囲を取得して始端を更新
+    if (shiftKey && direction === "up") {
+        const selectionRanges = Object.values(editorOverlayStore.selections);
+        if (selectionRanges.length === 0) return;
+        const { endItemId, endOffset } = selectionRanges[0];
+        const targetItemId = displayItems.current[currentIndex - 1]?.model.id;
+        if (!targetItemId) return;
+        const startEl = document.querySelector(`[data-item-id="${targetItemId}"] .item-text`) as HTMLElement;
+        const startLen = startEl?.textContent?.length || 0;
+        editorOverlayStore.setSelection({
+            startItemId: targetItemId,
+            endItemId,
+            startOffset: startLen,
+            endOffset,
+            userId: 'local',
+            isReversed: true
+        });
+        return;
+    }
 
-                // Create custom event and fire on item
-                const event = new CustomEvent("focus-item", {
-                    detail: {
-                        cursorScreenX: cursorXValue,
-                        shiftKey,
-                        direction,
-                    },
-                    bubbles: false,
-                    cancelable: true,
-                });
+    // 最初のアイテムで上に移動しようとした場合
+    if (currentIndex === 0 && direction === "up") {
+        focusItemWithPosition(fromItemId, 0, shiftKey, 'up');
+        return;
+    }
 
-                // Dispatch event
-                item.dispatchEvent(event);
+    // 最後のアイテムから下へ移動しようとした場合
+    if (direction === "down" && currentIndex === displayItems.current.length - 1) {
+        focusItemWithPosition(fromItemId, Number.MAX_SAFE_INTEGER, shiftKey, 'down');
+        return;
+    }
 
-                if (
-                    typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                ) {
-                    console.log(
-                        `Dispatched focus-item event to ${itemId} with X: ${cursorXValue}px, shift=${shiftKey}`,
-                    );
-                }
-            } catch (error) {
-                /* eslint-disable-next-line no-console */ console.error(
-                    `Error dispatching focus-item event to ${itemId}:`,
-                    error,
-                );
+    // 通常のアイテム間ナビゲーション
+    let targetIndex = -1;
+    if (direction === "up") {
+        targetIndex = currentIndex - 1;
+    }
+    else if (direction === "down") {
+        targetIndex = currentIndex + 1;
+    }
+
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(
+            `Navigation calculation: currentIndex=${currentIndex}, targetIndex=${targetIndex}, items count=${displayItems.current.length}`,
+        );
+    }
+
+    // ターゲットが通常のアイテムの範囲内にある場合
+    if (targetIndex >= 0 && targetIndex < displayItems.current.length) {
+        const targetItemId = displayItems.current[targetIndex].model.id;
+        focusItemWithPosition(targetItemId, cursorScreenX, shiftKey, direction);
+    }
+}
+
+// 指定したアイテムにフォーカスし、カーソル位置を設定する
+function focusItemWithPosition(itemId: string, cursorScreenX?: number, shiftKey = false, direction?: string) {
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(`Focusing item ${itemId} with cursor X: ${cursorScreenX}px, shift=${shiftKey}, direction=${direction}`);
+    }
+
+    // ターゲットアイテム要素を取得
+    const item = document.querySelector(`[data-item-id="${itemId}"]`);
+    if (!item) {
+        console.error(`Could not find item with ID: ${itemId}`);
+        return;
+    }
+
+    // 現在フォーカスされているアイテムがある場合は編集を終了
+    const activeItem = editorOverlayStore.getActiveItem();
+
+    // アクティブなアイテムから新しいアイテムへの移動を順に処理
+    const focusNewItem = () => {
+        try {
+            // 特殊なカーソル位置値を処理
+            let cursorXValue = cursorScreenX;
+
+            // カスタムイベントを作成してアイテムに発火
+            const event = new CustomEvent("focus-item", {
+                detail: {
+                    cursorScreenX: cursorXValue,
+                    shiftKey,
+                    direction
+                },
+                bubbles: false,
+                cancelable: true,
+            });
+
+            // イベントをディスパッチ
+            item.dispatchEvent(event);
+
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Dispatched focus-item event to ${itemId} with X: ${cursorXValue}px, shift=${shiftKey}`);
             }
-        };
+        }
+        catch (error) {
+            console.error(`Error dispatching focus-item event to ${itemId}:`, error);
+        }
+    };
 
-        if (activeItem && activeItem !== itemId) {
-            // If there is currently an editing item and it differs from target
-            const activeElement = document.querySelector(
-                `[data-item-id="${activeItem}"]`,
-            );
-            if (activeElement) {
-                // End editing on current item
-                const finishEditEvent = new CustomEvent("finish-edit");
-                activeElement.dispatchEvent(finishEditEvent);
+    if (activeItem && activeItem !== itemId) {
+        // 現在編集中のアイテムがあり、それが対象と異なる場合
+        const activeElement = document.querySelector(`[data-item-id="${activeItem}"]`);
+        if (activeElement) {
+            // 現在のアイテムで編集を終了
+            const finishEditEvent = new CustomEvent("finish-edit");
+            activeElement.dispatchEvent(finishEditEvent);
 
-                if (
-                    typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                ) {
-                    console.log(
-                        `Sent finish-edit event to active item ${activeItem}`,
-                    );
-                }
-
-                // Delay slightly before focusing new item to ensure processing order
-                setTimeout(focusNewItem, 10);
-            } else {
-                // Focus immediately if active element not found
-                focusNewItem();
+            if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+                console.log(`Sent finish-edit event to active item ${activeItem}`);
             }
-        } else {
-            // Focus directly if no active item or same item
+
+            // 確実に処理の順序を保つため、少し遅延させてから新しいアイテムにフォーカス
+            setTimeout(focusNewItem, 10);
+        }
+        else {
+            // アクティブ要素が見つからない場合はすぐにフォーカス
             focusNewItem();
         }
     }
+    else {
+        // アクティブなアイテムがない、または同じアイテムなら直接フォーカス
+        focusNewItem();
+    }
+}
 
-    // Handler to add new item at same level
-    function handleAddSibling(event: CustomEvent) {
-        const { itemId } = event.detail;
-        const currentIndex = displayItems.findIndex(
-            (item) => item.model.id === itemId,
-        );
 
-        if (currentIndex >= 0) {
-            const currentItem = displayItems[currentIndex];
-            const parent = currentItem.model.original.parent;
+// 同じ階層に新しいアイテムを追加するハンドラ
+function handleAddSibling(event: CustomEvent) {
+    const { itemId } = event.detail;
+    const currentIndex = displayItems.current.findIndex(item => item.model.id === itemId);
 
-            if (parent) {
-                // If parent item exists, add immediately after current item
-                const itemIndex = parent.indexOf(currentItem.model.original);
-                parent.addNode(currentUser, itemIndex + 1);
-            } else {
-                // Add as root level item
-                const items = pageItem.items as unknown as import("../schema/app-schema").Items;
-                if (items) {
-                    const itemIndex = items.indexOf(currentItem.model.original);
-                    items.addNode(currentUser, itemIndex + 1);
-                }
+    if (currentIndex >= 0) {
+        const currentItem = displayItems.current[currentIndex];
+        const parent = Tree.parent(currentItem.model.original);
+
+        if (parent && Tree.is(parent, Items)) {
+            // 親アイテムが存在する場合、現在のアイテムの直後に追加
+            const itemIndex = parent.indexOf(currentItem.model.original);
+            parent.addNode(currentUser, itemIndex + 1);
+        } else {
+            // ルートレベルのアイテムとして追加
+            const items = pageItem.items;
+            if (items && Tree.is(items, Items)) {
+                const itemIndex = items.indexOf(currentItem.model.original);
+                items.addNode(currentUser, itemIndex + 1);
             }
         }
     }
+}
 
-    // Add new items when pasting multiple lines
-    function handlePasteMultiItem(event: CustomEvent) {
-        const { lines, selections, activeItemId } = event.detail;
 
-        // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`handlePasteMultiItem called with lines:`, lines);
-            console.log(`Selections:`, selections);
-            console.log(`Active item ID: ${activeItemId}`);
-        }
+// 複数行ペースト時に新規アイテムを追加
+function handlePasteMultiItem(event: CustomEvent) {
+    const { lines, selections, activeItemId } = event.detail;
 
-        // Set global variables for testing
-        if (typeof window !== "undefined") {
-            const win = window as Window & typeof globalThis & {
-                lastPasteLines?: unknown;
-                lastPasteSelections?: unknown;
-                lastPasteActiveItemId?: unknown;
-            };
-            win.lastPasteLines = lines;
-            win.lastPasteSelections = selections;
-            win.lastPasteActiveItemId = activeItemId;
-        }
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handlePasteMultiItem called with lines:`, lines);
+        console.log(`Selections:`, selections);
+        console.log(`Active item ID: ${activeItemId}`);
+    }
 
-        // If selections exist, delete selections then paste
-        if (selections && selections.length > 0) {
-            // Handle selection spanning multiple items
-            const multiItemSelection = selections.find(
-                (sel: { startItemId?: string, endItemId?: string }) => sel.startItemId !== sel.endItemId,
-            );
+    // テスト用にグローバル変数に設定
+    if (typeof window !== 'undefined') {
+        (window as any).lastPasteLines = lines;
+        (window as any).lastPasteSelections = selections;
+        (window as any).lastPasteActiveItemId = activeItemId;
+    }
 
-            if (multiItemSelection) {
-                // Process selection spanning multiple items
-                handleMultiItemSelectionPaste(multiItemSelection, lines);
-                return;
-            }
+    // 選択範囲がある場合は、選択範囲を削除してからペースト
+    if (selections && selections.length > 0) {
+        // 複数アイテムにまたがる選択範囲がある場合
+        const multiItemSelection = selections.find((sel: any) => sel.startItemId !== sel.endItemId);
 
-            // Process selection within single item
-            const singleItemSelection = selections[0];
-            if (singleItemSelection) {
-                handleSingleItemSelectionPaste(singleItemSelection, lines);
-                return;
-            }
-        }
-
-        // If no selection, paste into active item
-        // Based on first selected item
-        const firstItemId = activeItemId;
-        const itemIndex = displayItems.findIndex(
-            (d) => d.model.id === firstItemId,
-        );
-
-        // Use first item if active item not found
-        if (itemIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(`Active item not found, aborting paste`);
-            }
+        if (multiItemSelection) {
+            // 複数アイテムにまたがる選択範囲を処理
+            handleMultiItemSelectionPaste(multiItemSelection, lines);
             return;
         }
 
-        const items = pageItem.items as Items;
+        // 単一アイテム内の選択範囲を処理
+        const singleItemSelection = selections[0];
+        if (singleItemSelection) {
+            handleSingleItemSelectionPaste(singleItemSelection, lines);
+            return;
+        }
+    }
 
-        // Update existing selected item
-        const baseOriginal = displayItems[itemIndex].model.original;
-        baseOriginal.updateText(lines[0] || "");
+    // 選択範囲がない場合は、アクティブアイテムにペースト
+    // 最初の選択アイテムをベースとする
+    const firstItemId = activeItemId;
+    const itemIndex = displayItems.current.findIndex(d => d.model.id === firstItemId);
 
-        // Add items with remaining lines
+    // アクティブアイテムが見つからない場合は最初のアイテムを使用
+    if (itemIndex < 0) {
+        if (displayItems.current.length > 0) {
+            const firstAvailableItemId = displayItems.current[0].model.id;
+            const firstAvailableIndex = 0;
+
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Active item not found, using first available item: ${firstAvailableItemId}`);
+            }
+
+            // 最初のアイテムにペースト
+            const items = pageItem.items as Items;
+            const baseOriginal = displayItems.current[firstAvailableIndex].model.original;
+            baseOriginal.text = lines[0] || '';
+
+            // 残りの行を新しいアイテムとして追加
+            for (let i = 1; i < lines.length; i++) {
+                const newIndex = firstAvailableIndex + i;
+                items.addNode(currentUser, newIndex);
+                // 追加直後のアイテムを配列インデックスで取得しテキスト設定
+                const newItem = items[newIndex];
+                if (newItem) {
+                    newItem.text = lines[i];
+                }
+            }
+
+            return;
+        }
+
+        return;
+    }
+
+    const items = pageItem.items as Items;
+
+    // 既存の選択アイテムを更新
+    const baseOriginal = displayItems.current[itemIndex].model.original;
+    baseOriginal.text = lines[0] || '';
+
+    // 残りの行でアイテムを追加
+    for (let i = 1; i < lines.length; i++) {
+        const newIndex = itemIndex + i;
+        items.addNode(currentUser, newIndex);
+        // 追加直後のアイテムを配列インデックスで取得しテキスト設定
+        const newItem = items[newIndex];
+        if (newItem) {
+            newItem.text = lines[i];
+        }
+    }
+}
+
+// 複数アイテムにまたがる選択範囲にペーストする
+function handleMultiItemSelectionPaste(selection: any, lines: string[]) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handleMultiItemSelectionPaste called with selection:`, selection);
+        console.log(`Lines to paste:`, lines);
+    }
+
+    // 選択範囲の開始と終了アイテムを取得
+    const startItemId = selection.startItemId;
+    const endItemId = selection.endItemId;
+
+    // アイテムのインデックスを取得
+    const startIndex = displayItems.current.findIndex(d => d.model.id === startItemId);
+    const endIndex = displayItems.current.findIndex(d => d.model.id === endItemId);
+
+    if (startIndex < 0 || endIndex < 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Start or end item not found: startIndex=${startIndex}, endIndex=${endIndex}`);
+        }
+        return;
+    }
+
+    // 選択範囲の方向を考慮
+    const isReversed = selection.isReversed || false;
+    const actualStartIndex = Math.min(startIndex, endIndex);
+    const actualEndIndex = Math.max(startIndex, endIndex);
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Selection direction: isReversed=${isReversed}`);
+        console.log(`Actual indices: start=${actualStartIndex}, end=${actualEndIndex}`);
+    }
+
+    const items = pageItem.items as Items;
+
+    // 選択範囲内のアイテムを削除（後ろから削除）
+    for (let i = actualEndIndex; i >= actualStartIndex; i--) {
+        if (i === actualStartIndex) {
+            // 開始アイテムは削除せず、テキストを更新
+            const startItem = displayItems.current[i].model.original;
+            startItem.text = lines[0] || '';
+
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Updated first item text to: "${lines[0] || ''}"`);
+            }
+        } else {
+            // それ以外のアイテムは削除
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Removing item at index ${i}`);
+            }
+            items.removeAt(i);
+        }
+    }
+
+    // 残りの行を新しいアイテムとして追加
+    for (let i = 1; i < lines.length; i++) {
+        const newIndex = actualStartIndex + i;
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Adding new item at index ${newIndex} with text: "${lines[i]}"`);
+        }
+        items.addNode(currentUser, newIndex);
+        // 追加直後のアイテムを配列インデックスで取得しテキスト設定
+        const newItem = items[newIndex];
+        if (newItem) {
+            newItem.text = lines[i];
+        }
+    }
+
+    // カーソル位置を更新
+    const newCursorItemId = displayItems.current[actualStartIndex]?.model.id;
+    if (newCursorItemId) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Setting cursor to item ${newCursorItemId} at offset ${(lines[0] || '').length}`);
+        }
+
+        editorOverlayStore.setCursor({
+            itemId: newCursorItemId,
+            offset: (lines[0] || '').length,
+            isActive: true,
+            userId: 'local'
+        });
+
+        // アクティブアイテムを設定
+        editorOverlayStore.setActiveItem(newCursorItemId);
+
+        // 選択範囲をクリア
+        editorOverlayStore.clearSelections();
+    } else {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Could not find cursor item at index ${actualStartIndex}`);
+        }
+    }
+}
+
+// 単一アイテム内の選択範囲にペーストする
+function handleSingleItemSelectionPaste(selection: any, lines: string[]) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handleSingleItemSelectionPaste called with selection:`, selection);
+        console.log(`Lines to paste:`, lines);
+    }
+
+    const itemId = selection.startItemId;
+    const startOffset = Math.min(selection.startOffset, selection.endOffset);
+    const endOffset = Math.max(selection.startOffset, selection.endOffset);
+
+    // アイテムのインデックスを取得
+    const itemIndex = displayItems.current.findIndex(d => d.model.id === itemId);
+    if (itemIndex < 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Item not found: itemId=${itemId}, itemIndex=${itemIndex}`);
+        }
+        return;
+    }
+
+    const items = pageItem.items as Items;
+    const item = displayItems.current[itemIndex].model.original;
+    const text = item.text || '';
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Original text: "${text}"`);
+        console.log(`Selection range: start=${startOffset}, end=${endOffset}`);
+    }
+
+    if (lines.length === 1) {
+        // 単一行のペーストの場合は、選択範囲を置き換え
+        const newText = text.substring(0, startOffset) + lines[0] + text.substring(endOffset);
+        item.text = newText;
+
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Updated text to: "${newText}"`);
+        }
+
+        // カーソル位置を更新
+        editorOverlayStore.setCursor({
+            itemId,
+            offset: startOffset + lines[0].length,
+            isActive: true,
+            userId: 'local'
+        });
+
+        // 選択範囲をクリア
+        editorOverlayStore.clearSelections();
+    } else {
+        // 複数行のペーストの場合
+        // 最初の行は現在のアイテムの選択範囲を置き換え
+        const newFirstText = text.substring(0, startOffset) + lines[0];
+        item.text = newFirstText;
+
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Updated first item text to: "${newFirstText}"`);
+        }
+
+        // 残りの行を新しいアイテムとして追加
         for (let i = 1; i < lines.length; i++) {
             const newIndex = itemIndex + i;
-            let newItem = items.addNode(currentUser, newIndex);
-            if (!newItem) {
-                newItem = items.at ? items.at(newIndex) : items[newIndex];
+
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Adding new item at index ${newIndex}`);
             }
+
+            items.addNode(currentUser, newIndex);
+            // 追加直後のアイテムを配列インデックスで取得しテキスト設定
+            const newItem = items[newIndex];
             if (newItem) {
-                newItem.updateText(lines[i]);
-            }
-        }
-    }
+                if (i === lines.length - 1) {
+                    // 最後の行は、選択範囲の後ろのテキストを追加
+                    const lastItemText = lines[i] + text.substring(endOffset);
+                    newItem.text = lastItemText;
 
-    // Paste into selection spanning multiple items
-    function handleMultiItemSelectionPaste(selection: { startItemId: string, endItemId: string, startOffset?: number, endOffset?: number }, lines: string[]) {
-        // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(
-                `handleMultiItemSelectionPaste called with selection:`,
-                selection,
-            );
-            console.log(`Lines to paste:`, lines);
-        }
-
-        // Get start and end items of selection
-        const startItemId = selection.startItemId;
-        const endItemId = selection.endItemId;
-
-        // Get item indices
-        const startIndex = displayItems.findIndex(
-            (d) => d.model.id === startItemId,
-        );
-        const endIndex = displayItems.findIndex(
-            (d) => d.model.id === endItemId,
-        );
-
-        if (startIndex < 0 || endIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(
-                    `Start or end item not found: startIndex=${startIndex}, endIndex=${endIndex}`,
-                );
-            }
-            return;
-        }
-
-        // Consider selection direction
-        const isReversed = selection.isReversed || false;
-        const actualStartIndex = Math.min(startIndex, endIndex);
-        const actualEndIndex = Math.max(startIndex, endIndex);
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Selection direction: isReversed=${isReversed}`);
-            console.log(
-                `Actual indices: start=${actualStartIndex}, end=${actualEndIndex}`,
-            );
-        }
-
-        const items = pageItem.items as Items;
-
-        // Delete items in selection (delete backwards)
-        for (let i = actualEndIndex; i >= actualStartIndex; i--) {
-            if (i === actualStartIndex) {
-                // Do not delete start item, update text instead
-                const startItem = displayItems[i].model.original;
-                startItem.updateText(lines[0] || "");
-
-                if (
-                    typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                ) {
-                    console.log(
-                        `Updated first item text to: "${lines[0] || ""}"`,
-                    );
-                }
-            } else {
-                // Delete other items
-                if (
-                    typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                ) {
-                    console.log(`Removing item at index ${i}`);
-                }
-                items.removeAt(i);
-            }
-        }
-
-        // Add remaining lines as new items
-        for (let i = 1; i < lines.length; i++) {
-            const newIndex = actualStartIndex + i;
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(
-                    `Adding new item at index ${newIndex} with text: "${lines[i]}"`,
-                );
-            }
-            let newItem = items.addNode(currentUser, newIndex);
-            if (!newItem) {
-                newItem = items.at ? items.at(newIndex) : items[newIndex];
-            }
-            if (newItem) {
-                newItem.updateText(lines[i]);
-            }
-        }
-
-        // Update cursor position
-        const newCursorItemId = displayItems[actualStartIndex]?.model.id;
-        if (newCursorItemId) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(
-                    `Setting cursor to item ${newCursorItemId} at offset ${(lines[0] || "").length}`,
-                );
-            }
-
-            editorOverlayStore.setCursor({
-                itemId: newCursorItemId,
-                offset: (lines[0] || "").length,
-                isActive: true,
-                userId: "local",
-            });
-
-            // Set active item
-            editorOverlayStore.setActiveItem(newCursorItemId);
-
-            // Clear selection
-            editorOverlayStore.clearSelections();
-        } else {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(
-                    `Could not find cursor item at index ${actualStartIndex}`,
-                );
-            }
-        }
-    }
-
-    // Paste into selection within single item
-    function handleSingleItemSelectionPaste(selection: { startItemId: string, startOffset: number, endOffset: number }, lines: string[]) {
-        // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(
-                `handleSingleItemSelectionPaste called with selection:`,
-                selection,
-            );
-            console.log(`Lines to paste:`, lines);
-        }
-
-        const itemId = selection.startItemId;
-        const startOffset = Math.min(
-            selection.startOffset,
-            selection.endOffset,
-        );
-        const endOffset = Math.max(selection.startOffset, selection.endOffset);
-
-        // Get item index
-        const itemIndex = displayItems.findIndex((d) => d.model.id === itemId);
-        if (itemIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(
-                    `Item not found: itemId=${itemId}, itemIndex=${itemIndex}`,
-                );
-            }
-            return;
-        }
-
-        const items = pageItem.items as Items;
-        const item = displayItems[itemIndex].model.original;
-        const text: string = (item.text as { toString?: () => string })?.toString?.() ?? "";
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Original text: "${text}"`);
-            console.log(
-                `Selection range: start=${startOffset}, end=${endOffset}`,
-            );
-        }
-
-        if (lines.length === 1) {
-            // For single line paste, replace selection
-            const newText =
-                text.substring(0, startOffset) +
-                lines[0] +
-                text.substring(endOffset);
-            item.updateText(newText);
-
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(`Updated text to: "${newText}"`);
-            }
-
-            // Update cursor position
-            editorOverlayStore.setCursor({
-                itemId,
-                offset: startOffset + lines[0].length,
-                isActive: true,
-                userId: "local",
-            });
-
-            // Clear selection
-            editorOverlayStore.clearSelections();
-        } else {
-            // For multi-line paste
-            // First line replaces selection in current item
-            const newFirstText = text.substring(0, startOffset) + lines[0];
-            item.updateText(newFirstText);
-
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(`Updated first item text to: "${newFirstText}"`);
-            }
-
-            // Add remaining lines as new items
-            for (let i = 1; i < lines.length; i++) {
-                const newIndex = itemIndex + i;
-
-                if (
-                    typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                ) {
-                    console.log(`Adding new item at index ${newIndex}`);
-                }
-
-                let newItem = items.addNode(currentUser, newIndex);
-                if (!newItem) {
-                    newItem = items.at ? items.at(newIndex) : items[newIndex];
-                }
-                if (newItem) {
-                    if (i === lines.length - 1) {
-                        // For last line, add text following selection
-                        const lastItemText =
-                            lines[i] + text.substring(endOffset);
-                        newItem.updateText(lastItemText);
-
-                        if (
-                            typeof window !== "undefined" &&
-                            (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                        ) {
-                            console.log(
-                                `Last item text set to: "${lastItemText}"`,
-                            );
-                        }
-                    } else {
-                        newItem.updateText(lines[i]);
-
-                        if (
-                            typeof window !== "undefined" &&
-                            (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                        ) {
-                            console.log(`Item ${i} text set to: "${lines[i]}"`);
-                        }
+                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                        console.log(`Last item text set to: "${lastItemText}"`);
                     }
-                }
-            }
-
-            // Update cursor position (end of last item)
-            const lastItemIndex = itemIndex + lines.length - 1;
-            const lastItemId = displayItems[lastItemIndex]?.model.id;
-            if (lastItemId) {
-                const lastLine = lines[lines.length - 1];
-                const newOffset = lastLine.length;
-
-                if (
-                    typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                ) {
-                    console.log(
-                        `Setting cursor to last item ${lastItemId} at offset ${newOffset}`,
-                    );
-                }
-
-                editorOverlayStore.setCursor({
-                    itemId: lastItemId,
-                    offset: newOffset,
-                    isActive: true,
-                    userId: "local",
-                });
-
-                // Set active item
-                editorOverlayStore.setActiveItem(lastItemId);
-
-                // Clear selection
-                editorOverlayStore.clearSelections();
-            } else {
-                if (
-                    typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                ) {
-                    console.log(
-                        `Could not find last item at index ${lastItemIndex}`,
-                    );
-                }
-            }
-        }
-    }
-
-    // Tree-wide mouse down event handler
-    function handleTreeMouseDown(event: MouseEvent) {
-        // Ignore right click
-        if (event.button !== 0) return;
-
-        // Ignore already processed events
-        if (event.defaultPrevented) return;
-
-        // Ignore clicks within item (handled by OutlinerItem)
-        const target = event.target as HTMLElement;
-        if (target.closest(".outliner-item")) return;
-
-        // Clear selection
-        editorOverlayStore.clearSelections();
-    }
-
-    // Tree-wide mouse up event handler
-    function handleTreeMouseUp() {
-        // Ignore if not dragging
-        if (!isDragging) return;
-
-        // End drag
-        isDragging = false;
-
-        // Reset drag info
-        dragStartItemId = null;
-        dragCurrentItemId = null;
-    }
-
-    // Item drag start event handler
-    function handleItemDragStart(event: CustomEvent) {
-        const { itemId, offset } = event.detail;
-
-        // Save drag start info
-        isDragging = true;
-        dragStartItemId = itemId;
-        dragStartOffset = offset;
-        dragCurrentItemId = itemId;
-        dragCurrentOffset = offset;
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Drag start: itemId=${itemId}, offset=${offset}`);
-        }
-    }
-
-    // Item drag event handler
-    function handleItemDrag(event: CustomEvent) {
-        const { itemId, offset } = event.detail;
-
-        // Ignore if not dragging
-        if (!isDragging || !dragStartItemId) return;
-
-        // Update current drag position
-        dragCurrentItemId = itemId;
-        dragCurrentOffset = offset;
-
-        // Update selection range
-        updateDragSelection();
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Dragging: itemId=${itemId}, offset=${offset}`);
-        }
-    }
-
-    // Update drag selection range
-    function updateDragSelection() {
-        if (!dragStartItemId || !dragCurrentItemId) return;
-
-        // Get start and current item indices
-        const startIndex = displayItems.findIndex(
-            (item) => item.model.id === dragStartItemId,
-        );
-        const currentIndex = displayItems.findIndex(
-            (item) => item.model.id === dragCurrentItemId,
-        );
-
-        if (startIndex === -1 || currentIndex === -1) return;
-
-        // Determine selection direction
-        const isReversed =
-            startIndex > currentIndex ||
-            (startIndex === currentIndex &&
-                dragStartOffset > dragCurrentOffset);
-
-        // Determine selection start and end
-        const startItemId = isReversed ? dragCurrentItemId : dragStartItemId;
-        const startOffset = isReversed ? dragCurrentOffset : dragStartOffset;
-        const endItemId = isReversed ? dragStartItemId : dragCurrentItemId;
-        const endOffset = isReversed ? dragStartOffset : dragCurrentOffset;
-
-        // Set selection range
-        editorOverlayStore.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: "local",
-            isReversed,
-        });
-
-        // Update cursor position
-        editorOverlayStore.setCursor({
-            itemId: dragCurrentItemId,
-            offset: dragCurrentOffset,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Set active item
-        editorOverlayStore.setActiveItem(dragCurrentItemId);
-    }
-
-    // Item drop event handler
-    function handleItemDrop(event: CustomEvent) {
-        const { targetItemId, position, text, selection, sourceItemId, attachmentUrl } =
-            event.detail;
-
-        try {
-            const w = typeof window !== "undefined"
-                ? (window as Window & typeof globalThis & { E2E_LOGS?: unknown[] })
-                : null;
-            if (w && Array.isArray(w.E2E_LOGS)) {
-                w.E2E_LOGS.push({
-                    tag: "handleItemDrop",
-                    targetItemId,
-                    position,
-                    sourceItemId,
-                    selection: selection ? "yes" : "no",
-                    t: Date.now(),
-                });
-            }
-        } catch {}
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(
-                `Drop event: targetItemId=${targetItemId}, position=${position}, sourceItemId=${sourceItemId}`,
-            );
-            console.log(`Text: "${text}"`);
-            console.log(`Selection:`, selection);
-        }
-
-        // If selection exists, delete selection then drop
-        if (selection) {
-            // Delete selection logic
-            const startItemId = selection.startItemId;
-            const endItemId = selection.endItemId;
-
-            // Selection within single item
-            if (startItemId === endItemId) {
-                handleSingleItemSelectionDrop(
-                    selection,
-                    targetItemId,
-                    position,
-                    text,
-                );
-            } else {
-                // Selection spanning multiple items
-                handleMultiItemSelectionDrop(
-                    selection,
-                    targetItemId,
-                    position,
-                    text,
-                );
-            }
-        } else if (sourceItemId) {
-            // Drag & drop of entire single item
-            handleItemMoveDrop(sourceItemId, targetItemId, position);
-        } else if (attachmentUrl) {
-            // External attachment drop
-            handleExternalAttachmentDrop(targetItemId, position, attachmentUrl);
-        } else {
-            // External text drop
-            handleExternalTextDrop(targetItemId, position, text);
-        }
-
-        // Reset drag state
-        isDragging = false;
-        dragStartItemId = null;
-        dragCurrentItemId = null;
-    }
-
-    // Item drag end event handler
-    function handleItemDragEnd(event: CustomEvent) {
-        const { itemId } = event.detail;
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Drag end: itemId=${itemId}`);
-        }
-
-        // Reset drag state
-        isDragging = false;
-        dragStartItemId = null;
-        dragCurrentItemId = null;
-    }
-
-    // Drop selection within single item
-    function handleSingleItemSelectionDrop(
-        selection: { startItemId: string, startOffset: number, endOffset: number },
-        targetItemId: string,
-        position: string,
-        _dropEffect: string, // eslint-disable-line @typescript-eslint/no-unused-vars
-    ) {
-        // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(
-                `handleSingleItemSelectionDrop called with selection:`,
-                selection,
-            );
-            console.log(`Target: itemId=${targetItemId}, position=${position}`);
-        }
-
-        const sourceItemId = selection.startItemId;
-        const startOffset = Math.min(
-            selection.startOffset,
-            selection.endOffset,
-        );
-        const endOffset = Math.max(selection.startOffset, selection.endOffset);
-
-        // Get source and target item indices
-        const sourceIndex = displayItems.findIndex(
-            (d) => d.model.id === sourceItemId,
-        );
-        const targetIndex = displayItems.findIndex(
-            (d) => d.model.id === targetItemId,
-        );
-
-        if (sourceIndex < 0 || targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(
-                    `Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`,
-                );
-            }
-            return;
-        }
-
-        // Get source item text
-        const sourceItem = displayItems[sourceIndex].model.original;
-        const sourceText: string = (sourceItem.text as { toString?: () => string })?.toString?.() ?? "";
-
-        // Get target item text
-        const targetItem = displayItems[targetIndex].model.original;
-        const targetText: string = (targetItem.text as { toString?: () => string })?.toString?.() ?? "";
-
-        // Get selected text
-        const selectedText = sourceText.substring(startOffset, endOffset);
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Selected text: "${selectedText}"`);
-        }
-
-        // Remove selection from source item
-        const newSourceText =
-            sourceText.substring(0, startOffset) +
-            sourceText.substring(endOffset);
-        sourceItem.updateText(newSourceText);
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Updated source text: "${newSourceText}"`);
-        }
-
-        // Insert selection into target item
-        if (position === "top") {
-            // Insert at start of item
-            targetItem.updateText(selectedText + targetText);
-        } else if (position === "bottom") {
-            // Insert at end of item
-            targetItem.updateText(targetText + selectedText);
-        } else if (position === "middle") {
-            // Insert at middle of item (calculate cursor position)
-            const middleOffset = Math.floor(targetText.length / 2);
-            targetItem.updateText(
-                targetText.substring(0, middleOffset) +
-                    selectedText +
-                    targetText.substring(middleOffset),
-            );
-        }
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Updated target text: "${targetItem.text}"`);
-        }
-
-        // Update cursor position
-        editorOverlayStore.setCursor({
-            itemId: targetItemId,
-            offset:
-                position === "top"
-                    ? selectedText.length
-                    : position === "bottom"
-                      ? targetText.length + selectedText.length
-                      : Math.floor(targetText.length / 2) + selectedText.length,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Set active item
-        editorOverlayStore.setActiveItem(targetItemId);
-
-        // Clear selection
-        editorOverlayStore.clearSelections();
-    }
-
-    // Drop selection spanning multiple items
-    function handleMultiItemSelectionDrop(
-        selection: { startItemId: string, endItemId: string, startOffset?: number, endOffset?: number },
-        targetItemId: string,
-        position: string,
-        text: string,
-    ) {
-        // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(
-                `handleMultiItemSelectionDrop called with selection:`,
-                selection,
-            );
-            console.log(`Target: itemId=${targetItemId}, position=${position}`);
-        }
-
-        // Get start and end items of selection
-        const startItemId = selection.startItemId;
-        const endItemId = selection.endItemId;
-
-        // Get item indices
-        const startIndex = displayItems.findIndex(
-            (d) => d.model.id === startItemId,
-        );
-        const endIndex = displayItems.findIndex(
-            (d) => d.model.id === endItemId,
-        );
-        const targetIndex = displayItems.findIndex(
-            (d) => d.model.id === targetItemId,
-        );
-
-        if (startIndex < 0 || endIndex < 0 || targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(
-                    `Start, end, or target item not found: startIndex=${startIndex}, endIndex=${endIndex}, targetIndex=${targetIndex}`,
-                );
-            }
-            return;
-        }
-
-        // Consider selection direction
-        const actualStartIndex = Math.min(startIndex, endIndex);
-        const actualEndIndex = Math.max(startIndex, endIndex);
-
-        // Get text within selection
-        const selectedText = text;
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Selected text: "${selectedText}"`);
-        }
-
-        const items = pageItem.items as Items;
-
-        // Delete items in selection (delete backwards)
-        for (let i = actualEndIndex; i >= actualStartIndex; i--) {
-            if (i === actualStartIndex) {
-                // Do not delete start item, update text instead
-                const startItem = displayItems[i].model.original;
-                startItem.updateText("");
-
-                if (
-                    typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                ) {
-                    console.log(`Cleared first item text`);
-                }
-            } else {
-                // Delete other items
-                if (
-                    typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
-                ) {
-                    console.log(`Removing item at index ${i}`);
-                }
-                items.removeAt(i);
-            }
-        }
-
-        // Get target item text
-        const targetItem = displayItems[targetIndex].model.original;
-        const targetText = targetItem.text || "";
-
-        // Split selected text into lines
-        const lines = selectedText.split(/\r?\n/);
-
-        // Insert selection into target item
-        if (position === "top") {
-            // Insert at start of item
-            targetItem.updateText(lines[0] + targetText);
-
-            // Add remaining lines as new items
-            for (let i = 1; i < lines.length; i++) {
-                let newItem = items.addNode(currentUser, targetIndex + i);
-                if (!newItem) {
-                    newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
-                }
-                if (newItem) {
-                    newItem.updateText(lines[i]);
-                }
-            }
-        } else if (position === "bottom") {
-            // Insert at end of item
-            targetItem.updateText(targetText + lines[0]);
-
-            // Add remaining lines as new items
-            for (let i = 1; i < lines.length; i++) {
-                items.addNode(currentUser, targetIndex + i);
-                const newItem = items.at(targetIndex + i);
-                if (newItem) {
-                    newItem.updateText(lines[i]);
-                }
-            }
-        } else if (position === "middle") {
-            // Insert at middle of item (calculate cursor position)
-            const middleOffset = Math.floor(targetText.length / 2);
-            targetItem.updateText(
-                targetText.substring(0, middleOffset) +
-                    lines[0] +
-                    targetText.substring(middleOffset),
-            );
-
-            // Add remaining lines as new items
-            for (let i = 1; i < lines.length; i++) {
-                items.addNode(currentUser, targetIndex + i);
-                const newItem = items.at(targetIndex + i);
-                if (newItem) {
-                    newItem.updateText(lines[i]);
-                }
-            }
-        }
-
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Updated target text: "${targetItem.text}"`);
-        }
-
-        // Update cursor position
-        editorOverlayStore.setCursor({
-            itemId: targetItemId,
-            offset:
-                position === "top"
-                    ? lines[0].length
-                    : position === "bottom"
-                      ? targetText.length + lines[0].length
-                      : Math.floor(targetText.length / 2) + lines[0].length,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Set active item
-        editorOverlayStore.setActiveItem(targetItemId);
-
-        // Clear selection
-        editorOverlayStore.clearSelections();
-    }
-
-    // Move entire item
-    function handleItemMoveDrop(
-        sourceItemId: string,
-        targetItemId: string,
-        position: string,
-    ) {
-        // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(
-                `handleItemMoveDrop called with sourceItemId=${sourceItemId}, targetItemId=${targetItemId}, position=${position}`,
-            );
-        }
-
-        // Get source and target item indices
-        const sourceIndex = displayItems.findIndex(
-            (d) => d.model.id === sourceItemId,
-        );
-        const targetIndex = displayItems.findIndex(
-            (d) => d.model.id === targetItemId,
-        );
-
-        if (sourceIndex < 0 || targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(
-                    `Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`,
-                );
-            }
-            return;
-        }
-
-        // Do nothing if source and target are the same item
-        if (sourceIndex === targetIndex) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(
-                    `Source and target are the same item, no action needed`,
-                );
-            }
-            return;
-        }
-
-        const items = pageItem.items as Items;
-        const sourceItem = displayItems[sourceIndex].model.original;
-        const targetItem = displayItems[targetIndex].model.original;
-
-        const sourceKey = sourceItem.key!;
-        const targetKey = targetItem.key!;
-
-        try {
-            const w = typeof window !== "undefined"
-                ? (window as Window & typeof globalThis & { E2E_LOGS?: unknown[] })
-                : null;
-            if (w && Array.isArray(w.E2E_LOGS)) {
-                w.E2E_LOGS.push({
-                    tag: "handleItemMoveDrop",
-                    source: sourceItemId,
-                    target: targetItemId,
-                    position,
-                    t: Date.now(),
-                });
-            }
-        } catch {}
-
-        try {
-            const tree = items.tree as unknown as import("../schema/app-schema").YTree & { getNodeParentFromKey?: (k: string) => string };
-            const doc = pageItem?.ydoc;
-            const sourceParent = tree.getNodeParentFromKey?.(sourceKey);
-            const targetParent = tree.getNodeParentFromKey?.(targetKey);
-
-            const run = () => {
-                // Middle drop should nest under the target item.
-                if (position === "middle") {
-                    if (sourceParent !== targetKey) {
-                        tree.moveChildToParent(sourceKey, targetKey);
-                    }
-                    if (
-                        typeof tree.recomputeParentsAndChildren === "function"
-                    ) {
-                        tree.recomputeParentsAndChildren();
-                    }
-                    tree.setNodeOrderToEnd(sourceKey);
-                    return;
-                }
-
-                // For top/bottom drops, ensure the item is a sibling before reordering.
-                if (
-                    sourceParent &&
-                    targetParent &&
-                    sourceParent !== targetParent
-                ) {
-                    tree.moveChildToParent(sourceKey, targetParent);
-                }
-                if (typeof tree.recomputeParentsAndChildren === "function") {
-                    tree.recomputeParentsAndChildren();
-                }
-
-                if (position === "top") {
-                    tree.setNodeBefore(sourceKey, targetKey);
                 } else {
-                    tree.setNodeAfter(sourceKey, targetKey);
+                    newItem.text = lines[i];
+
+                    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                        console.log(`Item ${i} text set to: "${lines[i]}"`);
+                    }
                 }
-            };
-
-            if (typeof doc?.transact === "function") {
-                doc.transact(run, "item-drop-reorder");
-            } else {
-                run();
             }
+        }
 
-            // Ensure derived display list re-renders after order-only updates (Y.Tree order changes don't emit observeDeep events reliably)
-            __displayItemsTick = Date.now();
+        // カーソル位置を更新（最後のアイテムの末尾）
+        const lastItemIndex = itemIndex + lines.length - 1;
+        const lastItemId = displayItems.current[lastItemIndex]?.model.id;
+        if (lastItemId) {
+            const lastLine = lines[lines.length - 1];
+            const newOffset = lastLine.length;
+
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Setting cursor to last item ${lastItemId} at offset ${newOffset}`);
+            }
 
             editorOverlayStore.setCursor({
-                itemId: sourceItemId,
-                offset: 0,
+                itemId: lastItemId,
+                offset: newOffset,
                 isActive: true,
-                userId: "local",
+                userId: 'local'
             });
 
-            editorOverlayStore.setActiveItem(sourceItemId);
+            // アクティブアイテムを設定
+            editorOverlayStore.setActiveItem(lastItemId);
+
+            // 選択範囲をクリア
             editorOverlayStore.clearSelections();
-        } catch (error) {
-            /* eslint-disable-next-line no-console */ console.error("Failed to move item:", error);
+        } else {
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Could not find last item at index ${lastItemIndex}`);
+            }
         }
     }
+}
 
-    // Drop text from external source
-    /**
-     * Handle attachment drop from external application
-     */
-    function handleExternalAttachmentDrop(
-        targetItemId: string,
-        position: string,
-        url: string
-    ) {
-        // Resolve target index
-        const targetIndex = displayItems.findIndex(
-            (d) => d.model.id === targetItemId
-        );
+// ツリー全体のマウスダウンイベントハンドラ
+function handleTreeMouseDown(event: MouseEvent) {
+    // 右クリックは無視
+    if (event.button !== 0) return;
 
-        if (targetIndex < 0) return;
+    // 既に処理されたイベントは無視
+    if (event.defaultPrevented) return;
 
-        const targetItem = displayItems[targetIndex].model.original;
-        const items = pageItem.items as Items;
-        
-        if (position === "middle") {
-            // Add to existing item
-            try {
-                targetItem.addAttachment(url);
-            } catch {
-                try { (targetItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
+    // アイテム内のクリックは無視（OutlinerItemで処理される）
+    const target = event.target as HTMLElement;
+    if (target.closest('.outliner-item')) return;
+
+    // 選択範囲をクリア
+    editorOverlayStore.clearSelections();
+}
+
+// ツリー全体のマウスアップイベントハンドラ
+function handleTreeMouseUp() {
+    // ドラッグ中でない場合は無視
+    if (!isDragging) return;
+
+    // ドラッグ終了
+    isDragging = false;
+
+    // ドラッグ情報をリセット
+    dragStartItemId = null;
+    dragCurrentItemId = null;
+}
+
+// アイテムのドラッグ開始イベントハンドラ
+function handleItemDragStart(event: CustomEvent) {
+    const { itemId, offset } = event.detail;
+
+    // ドラッグ開始情報を保存
+    isDragging = true;
+    dragStartItemId = itemId;
+    dragStartOffset = offset;
+    dragCurrentItemId = itemId;
+    dragCurrentOffset = offset;
+
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(`Drag start: itemId=${itemId}, offset=${offset}`);
+    }
+}
+
+// アイテムのドラッグ中イベントハンドラ
+function handleItemDrag(event: CustomEvent) {
+    const { itemId, offset } = event.detail;
+
+    // ドラッグ中でない場合は無視
+    if (!isDragging || !dragStartItemId) return;
+
+    // 現在のドラッグ位置を更新
+    dragCurrentItemId = itemId;
+    dragCurrentOffset = offset;
+
+    // 選択範囲を更新
+    updateDragSelection();
+
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(`Dragging: itemId=${itemId}, offset=${offset}`);
+    }
+}
+
+// ドラッグ選択範囲を更新する
+function updateDragSelection() {
+    if (!dragStartItemId || !dragCurrentItemId) return;
+
+    // 開始アイテムと現在のアイテムのインデックスを取得
+    const startIndex = displayItems.current.findIndex(item => item.model.id === dragStartItemId);
+    const currentIndex = displayItems.current.findIndex(item => item.model.id === dragCurrentItemId);
+
+    if (startIndex === -1 || currentIndex === -1) return;
+
+    // 選択方向を決定
+    const isReversed = startIndex > currentIndex ||
+                      (startIndex === currentIndex && dragStartOffset > dragCurrentOffset);
+
+    // 選択範囲の開始と終了を決定
+    const startItemId = isReversed ? dragCurrentItemId : dragStartItemId;
+    const startOffset = isReversed ? dragCurrentOffset : dragStartOffset;
+    const endItemId = isReversed ? dragStartItemId : dragCurrentItemId;
+    const endOffset = isReversed ? dragStartOffset : dragCurrentOffset;
+
+    // 選択範囲を設定
+    editorOverlayStore.setSelection({
+        startItemId,
+        startOffset,
+        endItemId,
+        endOffset,
+        userId: 'local',
+        isReversed
+    });
+
+    // カーソル位置を更新
+    editorOverlayStore.setCursor({
+        itemId: dragCurrentItemId,
+        offset: dragCurrentOffset,
+        isActive: true,
+        userId: 'local'
+    });
+
+    // アクティブアイテムを設定
+    editorOverlayStore.setActiveItem(dragCurrentItemId);
+}
+
+// アイテムのドロップイベントハンドラ
+function handleItemDrop(event: CustomEvent) {
+    const { targetItemId, position, text, selection, sourceItemId } = event.detail;
+
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(`Drop event: targetItemId=${targetItemId}, position=${position}, sourceItemId=${sourceItemId}`);
+        console.log(`Text: "${text}"`);
+        console.log(`Selection:`, selection);
+    }
+
+    // 選択範囲がある場合は、選択範囲を削除してからドロップ
+    if (selection) {
+        // 選択範囲の削除処理
+        const startItemId = selection.startItemId;
+        const endItemId = selection.endItemId;
+
+        // 単一アイテム内の選択範囲
+        if (startItemId === endItemId) {
+            handleSingleItemSelectionDrop(selection, targetItemId, position, text);
+        } else {
+            // 複数アイテムにまたがる選択範囲
+            handleMultiItemSelectionDrop(selection, targetItemId, position, text);
+        }
+    } else if (sourceItemId) {
+        // 単一アイテム全体のドラッグ＆ドロップ
+        handleItemMoveDrop(sourceItemId, targetItemId, position);
+    } else {
+        // 外部からのテキストドロップ
+        handleExternalTextDrop(targetItemId, position, text);
+    }
+
+    // ドラッグ状態をリセット
+    isDragging = false;
+    dragStartItemId = null;
+    dragCurrentItemId = null;
+}
+
+// アイテムのドラッグ終了イベントハンドラ
+function handleItemDragEnd(event: CustomEvent) {
+    const { itemId } = event.detail;
+
+    if (typeof window !== "undefined" && (window as any).DEBUG_MODE) {
+        console.log(`Drag end: itemId=${itemId}`);
+    }
+
+    // ドラッグ状態をリセット
+    isDragging = false;
+    dragStartItemId = null;
+    dragCurrentItemId = null;
+}
+
+// 単一アイテム内の選択範囲をドロップする
+function handleSingleItemSelectionDrop(selection: any, targetItemId: string, position: string, text: string) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handleSingleItemSelectionDrop called with selection:`, selection);
+        console.log(`Target: itemId=${targetItemId}, position=${position}`);
+    }
+
+    const sourceItemId = selection.startItemId;
+    const startOffset = Math.min(selection.startOffset, selection.endOffset);
+    const endOffset = Math.max(selection.startOffset, selection.endOffset);
+
+    // ソースアイテムとターゲットアイテムのインデックスを取得
+    const sourceIndex = displayItems.current.findIndex(d => d.model.id === sourceItemId);
+    const targetIndex = displayItems.current.findIndex(d => d.model.id === targetItemId);
+
+    if (sourceIndex < 0 || targetIndex < 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`);
+        }
+        return;
+    }
+
+    // ソースアイテムのテキストを取得
+    const sourceItem = displayItems.current[sourceIndex].model.original;
+    const sourceText = sourceItem.text || '';
+
+    // ターゲットアイテムのテキストを取得
+    const targetItem = displayItems.current[targetIndex].model.original;
+    const targetText = targetItem.text || '';
+
+    // 選択範囲のテキストを取得
+    const selectedText = sourceText.substring(startOffset, endOffset);
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Selected text: "${selectedText}"`);
+    }
+
+    // ソースアイテムから選択範囲を削除
+    const newSourceText = sourceText.substring(0, startOffset) + sourceText.substring(endOffset);
+    sourceItem.text = newSourceText;
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Updated source text: "${newSourceText}"`);
+    }
+
+    // ターゲットアイテムに選択範囲を挿入
+    if (position === 'top') {
+        // アイテムの先頭に挿入
+        targetItem.text = selectedText + targetText;
+    } else if (position === 'bottom') {
+        // アイテムの末尾に挿入
+        targetItem.text = targetText + selectedText;
+    } else if (position === 'middle') {
+        // アイテムの中央に挿入（カーソル位置を計算）
+        const middleOffset = Math.floor(targetText.length / 2);
+        targetItem.text = targetText.substring(0, middleOffset) + selectedText + targetText.substring(middleOffset);
+    }
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Updated target text: "${targetItem.text}"`);
+    }
+
+    // カーソル位置を更新
+    editorOverlayStore.setCursor({
+        itemId: targetItemId,
+        offset: position === 'top' ? selectedText.length :
+                position === 'bottom' ? targetText.length + selectedText.length :
+                Math.floor(targetText.length / 2) + selectedText.length,
+        isActive: true,
+        userId: 'local'
+    });
+
+    // アクティブアイテムを設定
+    editorOverlayStore.setActiveItem(targetItemId);
+
+    // 選択範囲をクリア
+    editorOverlayStore.clearSelections();
+}
+
+// 複数アイテムにまたがる選択範囲をドロップする
+function handleMultiItemSelectionDrop(selection: any, targetItemId: string, position: string, text: string) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handleMultiItemSelectionDrop called with selection:`, selection);
+        console.log(`Target: itemId=${targetItemId}, position=${position}`);
+    }
+
+    // 選択範囲の開始と終了アイテムを取得
+    const startItemId = selection.startItemId;
+    const endItemId = selection.endItemId;
+
+    // アイテムのインデックスを取得
+    const startIndex = displayItems.current.findIndex(d => d.model.id === startItemId);
+    const endIndex = displayItems.current.findIndex(d => d.model.id === endItemId);
+    const targetIndex = displayItems.current.findIndex(d => d.model.id === targetItemId);
+
+    if (startIndex < 0 || endIndex < 0 || targetIndex < 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Start, end, or target item not found: startIndex=${startIndex}, endIndex=${endIndex}, targetIndex=${targetIndex}`);
+        }
+        return;
+    }
+
+    // 選択範囲の方向を考慮
+    const isReversed = selection.isReversed || false;
+    const actualStartIndex = Math.min(startIndex, endIndex);
+    const actualEndIndex = Math.max(startIndex, endIndex);
+
+    // 選択範囲内のテキストを取得
+    const selectedText = text;
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Selected text: "${selectedText}"`);
+    }
+
+    const items = pageItem.items as Items;
+
+    // 選択範囲内のアイテムを削除（後ろから削除）
+    for (let i = actualEndIndex; i >= actualStartIndex; i--) {
+        if (i === actualStartIndex) {
+            // 開始アイテムは削除せず、テキストを更新
+            const startItem = displayItems.current[i].model.original;
+            startItem.text = '';
+
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Cleared first item text`);
             }
         } else {
-            // Create new item at top or bottom relative to targetItem
-            const parentItems = targetItem.parent || items;
-            const newItem = parentItems.addNode(currentUser);
-            if (newItem) {
-                try {
-                    if (position === "top") {
-                        parentItems.tree.setNodeBefore(newItem.key, targetItem.key);
-                    } else {
-                        parentItems.tree.setNodeAfter(newItem.key, targetItem.key);
-                    }
-                } catch (e) {
-                    logger.error({ error: e as Error }, "Failed to reorder dropped item");
-                }
-
-                try {
-                    newItem.addAttachment(url);
-                } catch {
-                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
-                }
+            // それ以外のアイテムは削除
+            if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+                console.log(`Removing item at index ${i}`);
             }
+            items.removeAt(i);
         }
-        
-        // Refresh display items
-        __displayItemsTick = Date.now();
     }
 
-    function handleExternalTextDrop(
-        targetItemId: string,
-        position: string,
-        text: string,
-    ) {
-        // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(
-                `handleExternalTextDrop called with targetItemId=${targetItemId}, position=${position}`,
-            );
-            console.log(`Text: "${text}"`);
-        }
+    // ターゲットアイテムのテキストを取得
+    const targetItem = displayItems.current[targetIndex].model.original;
+    const targetText = targetItem.text || '';
 
-        // Get target item index
-        const targetIndex = displayItems.findIndex(
-            (d) => d.model.id === targetItemId,
-        );
+    // 選択範囲のテキストを行に分割
+    const lines = selectedText.split('\n');
 
-        if (targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-                console.log(
-                    `Target item not found: targetIndex=${targetIndex}`,
-                );
-            }
-            return;
-        }
+    // ターゲットアイテムに選択範囲を挿入
+    if (position === 'top') {
+        // アイテムの先頭に挿入
+        targetItem.text = lines[0] + targetText;
 
-        // Get target item text
-        const targetItem = displayItems[targetIndex].model.original;
-        const targetText = targetItem.text || "";
-
-        // Split text into lines
-        const lines = text.split(/\r?\n/);
-
-        const items = pageItem.items as Items;
-
-        // Insert text into target item
-        if (position === "top") {
-            // Insert at start of item
-            targetItem.text = lines[0] + targetText;
-
-            // Add remaining lines as new items
-            for (let i = 1; i < lines.length; i++) {
-                let newItem = items.addNode(currentUser, targetIndex + i);
-                if (!newItem) {
-                    newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
-                }
-                if (newItem) {
-                    newItem.text = lines[i];
-                }
-            }
-        } else if (position === "bottom") {
-            // Insert at end of item
-            targetItem.text = targetText + lines[0];
-
-            // Add remaining lines as new items
-            for (let i = 1; i < lines.length; i++) {
-                items.addNode(currentUser, targetIndex + i);
-                const newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
-                if (newItem) {
-                    newItem.text = lines[i];
-                }
-            }
-        } else if (position === "middle") {
-            // Insert at middle of item (calculate cursor position)
-            const middleOffset = Math.floor(targetText.length / 2);
-            targetItem.text =
-                targetText.substring(0, middleOffset) +
-                lines[0] +
-                targetText.substring(middleOffset);
-
-            // Add remaining lines as new items
-            for (let i = 1; i < lines.length; i++) {
-                items.addNode(currentUser, targetIndex + i);
-                const newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
-                if (newItem) {
-                    newItem.text = lines[i];
-                }
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
             }
         }
+    } else if (position === 'bottom') {
+        // アイテムの末尾に挿入
+        targetItem.text = targetText + lines[0];
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
-            console.log(`Updated target text: "${targetItem.text}"`);
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    } else if (position === 'middle') {
+        // アイテムの中央に挿入（カーソル位置を計算）
+        const middleOffset = Math.floor(targetText.length / 2);
+        targetItem.text = targetText.substring(0, middleOffset) + lines[0] + targetText.substring(middleOffset);
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    }
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Updated target text: "${targetItem.text}"`);
+    }
+
+    // カーソル位置を更新
+    editorOverlayStore.setCursor({
+        itemId: targetItemId,
+        offset: position === 'top' ? lines[0].length :
+                position === 'bottom' ? targetText.length + lines[0].length :
+                Math.floor(targetText.length / 2) + lines[0].length,
+        isActive: true,
+        userId: 'local'
+    });
+
+    // アクティブアイテムを設定
+    editorOverlayStore.setActiveItem(targetItemId);
+
+    // 選択範囲をクリア
+    editorOverlayStore.clearSelections();
+}
+
+// アイテム全体を移動する
+function handleItemMoveDrop(sourceItemId: string, targetItemId: string, position: string) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handleItemMoveDrop called with sourceItemId=${sourceItemId}, targetItemId=${targetItemId}, position=${position}`);
+    }
+
+    // ソースアイテムとターゲットアイテムのインデックスを取得
+    const sourceIndex = displayItems.current.findIndex(d => d.model.id === sourceItemId);
+    const targetIndex = displayItems.current.findIndex(d => d.model.id === targetItemId);
+
+    if (sourceIndex < 0 || targetIndex < 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`);
+        }
+        return;
+    }
+
+    // ソースアイテムとターゲットアイテムが同じ場合は何もしない
+    if (sourceIndex === targetIndex) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Source and target are the same item, no action needed`);
+        }
+        return;
+    }
+
+    const items = pageItem.items as Items;
+
+    // ソースアイテムを取得
+    const sourceItem = displayItems.current[sourceIndex].model.original;
+    const sourceText = sourceItem.text || '';
+
+    // ターゲットの位置を計算
+    let targetPosition = targetIndex;
+    if (position === 'bottom') {
+        targetPosition = targetIndex + 1;
+    }
+
+    // ソースアイテムがターゲットより前にある場合、ターゲット位置を調整
+    if (sourceIndex < targetPosition) {
+        targetPosition--;
+    }
+
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Moving item from index ${sourceIndex} to index ${targetPosition}`);
+    }
+
+    // アイテムを移動
+    try {
+        // ソースアイテムを削除
+        items.removeAt(sourceIndex);
+
+        // 新しい位置にアイテムを追加
+        items.addNode(currentUser, targetPosition);
+        const newItem = items[targetPosition];
+        if (newItem) {
+            newItem.text = sourceText;
         }
 
-        // Update cursor position
+        // カーソル位置を更新
         editorOverlayStore.setCursor({
-            itemId: targetItemId,
-            offset:
-                position === "top"
-                    ? lines[0].length
-                    : position === "bottom"
-                      ? targetText.length + lines[0].length
-                      : Math.floor(targetText.length / 2) + lines[0].length,
+            itemId: newItem.id,
+            offset: 0,
             isActive: true,
-            userId: "local",
+            userId: 'local'
         });
 
-        // Set active item
-        editorOverlayStore.setActiveItem(targetItemId);
+        // アクティブアイテムを設定
+        editorOverlayStore.setActiveItem(newItem.id);
 
-        // Clear selection
+        // 選択範囲をクリア
         editorOverlayStore.clearSelections();
+    } catch (error) {
+        console.error('Failed to move item:', error);
     }
-    function handleTreeDragOver(event: DragEvent) {
-        if (isReadOnly) return;
-        
-        const dt = event.dataTransfer;
-        if (dt) {
-            const hasFiles = dt.types.includes("Files");
-            const hasText = dt.types.includes("text/plain");
-            if (hasFiles || hasText) {
-                event.preventDefault();
-                dt.dropEffect = "copy";
+}
+
+// 外部からのテキストをドロップする
+function handleExternalTextDrop(targetItemId: string, position: string, text: string) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`handleExternalTextDrop called with targetItemId=${targetItemId}, position=${position}`);
+        console.log(`Text: "${text}"`);
+    }
+
+    // ターゲットアイテムのインデックスを取得
+    const targetIndex = displayItems.current.findIndex(d => d.model.id === targetItemId);
+
+    if (targetIndex < 0) {
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+            console.log(`Target item not found: targetIndex=${targetIndex}`);
+        }
+        return;
+    }
+
+    // ターゲットアイテムのテキストを取得
+    const targetItem = displayItems.current[targetIndex].model.original;
+    const targetText = targetItem.text || '';
+
+    // テキストを行に分割
+    const lines = text.split('\n');
+
+    const items = pageItem.items as Items;
+
+    // ターゲットアイテムにテキストを挿入
+    if (position === 'top') {
+        // アイテムの先頭に挿入
+        targetItem.text = lines[0] + targetText;
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    } else if (position === 'bottom') {
+        // アイテムの末尾に挿入
+        targetItem.text = targetText + lines[0];
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
+            }
+        }
+    } else if (position === 'middle') {
+        // アイテムの中央に挿入（カーソル位置を計算）
+        const middleOffset = Math.floor(targetText.length / 2);
+        targetItem.text = targetText.substring(0, middleOffset) + lines[0] + targetText.substring(middleOffset);
+
+        // 残りの行を新しいアイテムとして追加
+        for (let i = 1; i < lines.length; i++) {
+            items.addNode(currentUser, targetIndex + i);
+            const newItem = items[targetIndex + i];
+            if (newItem) {
+                newItem.text = lines[i];
             }
         }
     }
 
-    async function handleTreeDrop(event: DragEvent) {
-        if (isReadOnly) return;
-        
-        const dt = event.dataTransfer;
-        if (!dt) return;
-
-        // Check if we already handled this in an item
-        if (event.defaultPrevented) return;
-        
-        event.preventDefault();
-        event.stopPropagation();
-
-        const hasFileList = dt.files && dt.files.length > 0;
-        const hasFileItems = dt.items && Array.from(dt.items).some(it => it.kind === "file");
-        const e2eFiles: File[] = (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__ && Array.isArray((window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__)) ? (window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__ as File[] : [];
-        const hasE2eFiles = e2eFiles.length > 0;
-
-        if (hasFileList || hasFileItems || hasE2eFiles) {
-            const files: File[] = [];
-            if (hasFileList) {
-                files.push(...Array.from(dt.files));
-            } else if (hasFileItems) {
-                for (const it of Array.from(dt.items)) {
-                    if (it.kind === "file") {
-                        const f = it.getAsFile();
-                        if (f) files.push(f);
-                    }
-                }
-            } else if (hasE2eFiles) {
-                files.push(...e2eFiles);
-                try { (window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__ = []; } catch {}
-            }
-
-            if (files.length > 0) {
-                let containerId: string | undefined = undefined;
-                try { containerId = await getDefaultContainerId(); } catch {}
-                containerId = containerId || "test-container";
-
-                const items = pageItem.items as Items;
-
-                for (const file of files) {
-                    try {
-                        // Create new item at the end
-                        const newItem = items.addNode(currentUser, items.length);
-                        if (newItem) {
-                            try {
-                                const url = await uploadAttachment(containerId, newItem.id, file);
-                                try {
-                                    newItem.addAttachment(url);
-                                } catch {
-                                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
-                                }
-                            } catch (uploadErr) {
-                                logger.error({ error: uploadErr as Error }, "Upload failed in tree bottom, using local fallback");
-                                const localUrl = URL.createObjectURL(file);
-                                try {
-                                    newItem.addAttachment(localUrl);
-                                } catch {
-                                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([localUrl]); } catch {}
-                                }
-                                try {
-                                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) {
-                                        window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
-                                    }
-                                } catch {}
-                            }
-                        }
-                    } catch (e) {
-                        logger.error({ error: e as Error }, "Failed to upload file to tree bottom");
-                    }
-                }
-                __displayItemsTick = Date.now();
-            }
-        } else {
-            const text = dt.getData("text/plain");
-            if (text) {
-                const items = pageItem.items as Items;
-                // Insert as new item at the end
-                const newItem = items.addNode(currentUser, items.length);
-                if (newItem && text) {
-                    newItem.updateText(text);
-                }
-                __displayItemsTick = Date.now();
-            }
-        }
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+        console.log(`Updated target text: "${targetItem.text}"`);
     }
+
+    // カーソル位置を更新
+    editorOverlayStore.setCursor({
+        itemId: targetItemId,
+        offset: position === 'top' ? lines[0].length :
+                position === 'bottom' ? targetText.length + lines[0].length :
+                Math.floor(targetText.length / 2) + lines[0].length,
+        isActive: true,
+        userId: 'local'
+    });
+
+    // アクティブアイテムを設定
+    editorOverlayStore.setActiveItem(targetItemId);
+
+    // 選択範囲をクリア
+    editorOverlayStore.clearSelections();
+}
 </script>
 
-{#key outlinerKey}
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div
-        class="outliner"
-        onmousedown={handleTreeMouseDown}
-        onmouseup={handleTreeMouseUp}
-        role="application"
-    >
-        <div class="toolbar">
-            <div class="actions">
-                <button onclick={handleAddItem}>Add Item</button>
-                <button onclick={triggerFileSelect} aria-label="Add Image" title="Add Image">Add Image</button>
-                <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    bind:this={fileInput}
-                    onchange={handleFileSelect}
-                    style="display: none;"
-                />
-                <button
-                    onclick={() => goto(resolvePath(`/${projectName}/${pageName}/diff`))}
-                >
-                    History / Diff
-                </button>
-            </div>
-        </div>
-
-        <div
-            class="tree-container"
-            role="region"
-            aria-label="Outliner Tree"
-            bind:this={treeContainer}
-            ondrop={handleTreeDrop}
-            ondragover={handleTreeDragOver}
-        >
-            <!-- Flat display items (static placement) -->
-            {#each displayItems as display, index (display.model.id)}
-                <div
-                    class="item-container"
-                    style="--item-depth: {display.depth}"
-                >
-                    <OutlinerItem
-                        model={display.model}
-                        depth={display.depth}
-                        {currentUser}
-                        {isReadOnly}
-                        isCollapsed={viewModel.isCollapsed(display.model.id)}
-                        hasChildren={viewModel.hasChildren(display.model.id)}
-                        isPageTitle={index === 0}
-                        {index}
-                        on:toggle-collapse={handleToggleCollapse}
-                        on:indent={handleIndent}
-                        on:unindent={handleUnindent}
-                        on:navigate-to-item={handleNavigateToItem}
-                        on:add-sibling={handleAddSibling}
-                        on:drag-start={handleItemDragStart}
-                        on:drag={handleItemDrag}
-                        on:drop={handleItemDrop}
-                        on:drag-end={handleItemDragEnd}
-                    />
-                </div>
-            {/each}
-
-            {#if displayItems.length === 0 && !isReadOnly}
-                <div class="empty-state">
-                    <div class="empty-icon" aria-hidden="true">
-                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="12" y1="18" x2="12" y2="12"></line>
-                            <line x1="9" y1="15" x2="15" y2="15"></line>
-                        </svg>
-                    </div>
-                    <p class="empty-text">
-                        No items yet
-                    </p>
-                    <button class="empty-action-btn" onclick={handleAddItem}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        Add first item
-                    </button>
-                </div>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<div class="outliner" bind:this={containerRef} onmousedown={handleTreeMouseDown} onmouseup={handleTreeMouseUp} role="application">
+    <div class="toolbar">
+        <div class="actions">
+            {#if !isReadOnly}
+                <button onclick={handleAddItem}>アイテム追加</button>
             {/if}
-
-            <!-- Editor overlay layer -->
-            <div class="overlay-container">
-                <EditorOverlay on:paste-multi-item={handlePasteMultiItem} />
-            </div>
         </div>
-
-        {#if showScrollTop}
-            <button
-                class="scroll-top-btn"
-                onclick={scrollToTop}
-                aria-label="Scroll to top"
-                transition:fade={{ duration: 200 }}
-                title="Scroll to top"
-            >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="19" x2="12" y2="5"></line>
-                    <polyline points="5 12 12 5 19 12"></polyline>
-                </svg>
-            </button>
-        {/if}
     </div>
-{/key}
 
-<!-- Mobile Action Toolbar (appears on mobile devices when needed) -->
-<div
-    class="mobile-action-toolbar"
-    data-testid="mobile-action-toolbar"
-    role="toolbar"
-    aria-label="Mobile Action Toolbar"
-    style="bottom: {mobileToolbarBottomOffset}px"
->
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="Indent"
-        title="Indent"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId },
-            } as CustomEvent;
-            handleIndent(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-    </button>
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="Outdent"
-        title="Outdent"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId },
-            } as CustomEvent;
-            handleUnindent(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-    </button>
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="Insert Above"
-        title="Insert Above"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId, position: "above" },
-            } as CustomEvent;
-            handleAddSibling(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
-    </button>
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="Insert Below"
-        title="Insert Below"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId, position: "below" },
-            } as CustomEvent;
-            handleAddSibling(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
-    </button>
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="New Child"
-        title="New Child"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId, position: "child" },
-            } as CustomEvent;
-            handleAddSibling(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-    </button>
-    <button
-        class="mobile-toolbar-btn"
-        aria-label="Insert Sibling Below"
-        title="Insert Sibling Below"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
-            const activeCursor = editorOverlayStore.getCursorForItem(activeItemId);
-            if (activeCursor) {
-                // GlobalTextArea will handle key events, let's just dispatch to document
-                const event = new KeyboardEvent('keydown', {
-                    key: 'Enter',
-                    ctrlKey: true,
-                    bubbles: true
-                });
-                document.dispatchEvent(event);
-            }
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 10 4 15 9 20"></polyline>
-            <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
-        </svg>
-    </button>
+    <div class="tree-container" role="region" aria-label="アウトライナーツリー">
+        <!-- フラット表示の各アイテム（絶対位置配置） -->
+        {#each displayItems.current as display, index (display.model.id)}
+            <div
+                class="item-container"
+                style="--item-depth: {display.depth}; top: {itemPositions[index] ?? 0}px"
+                bind:clientHeight={itemHeights[index]}
+            >
+                <OutlinerItem
+                    model={display.model}
+                    depth={display.depth}
+                    currentUser={currentUser}
+                    isReadOnly={isReadOnly}
+                    isCollapsed={viewModel.isCollapsed(display.model.id)}
+                    hasChildren={viewModel.hasChildren(display.model.id)}
+                    isPageTitle={index === 0}
+                    {index}
+                    on:toggle-collapse={handleToggleCollapse}
+                    on:indent={handleIndent}
+                    on:unindent={handleUnindent}
+                    on:navigate-to-item={handleNavigateToItem}
+                    on:resize={handleItemResize}
+                    on:add-sibling={handleAddSibling}
+                    on:drag-start={handleItemDragStart}
+                    on:drag={handleItemDrag}
+                    on:drop={handleItemDrop}
+                    on:drag-end={handleItemDragEnd}
+                />
+            </div>
+        {/each}
+
+        {#if displayItems.current.length === 0 && !isReadOnly}
+            <div class="empty-state">
+                <p>
+                    アイテムがありません。「アイテム追加」ボタンを押して始めましょう。
+                </p>
+            </div>
+        {/if}
+
+        <!-- エディタオーバーレイレイヤー -->
+        <div class="overlay-container">
+            <EditorOverlay on:paste-multi-item={handlePasteMultiItem} />
+        </div>
+    </div>
 </div>
 
 <style>
-    /* Mobile Action Toolbar */
-    .mobile-action-toolbar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: flex; /* Always visible */
-        background: white;
-        border-top: 1px solid #ddd;
-        padding: 8px;
-        z-index: 1000;
-        justify-content: space-around;
-        align-items: center;
-        height: 50px;
-    }
+.outliner {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    height: calc(100vh - 40px); /* ブラウザの高さから余白を引いた値 */
+    display: flex;
+    flex-direction: column;
+}
 
-    .mobile-toolbar-btn {
-        background: #f0f0f0;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        padding: 6px 10px;
-        cursor: pointer;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-    }
+.toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 8px 16px;
+    background: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    flex-shrink: 0; /* ツールバーは縮まないように */
+}
 
-    .mobile-toolbar-btn:hover {
-        background: #e0e0e0;
-    }
+.actions {
+    display: flex;
+    gap: 8px;
+}
 
+.actions button {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
 
-    .outliner {
-        background: white;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        margin-bottom: 20px;
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        min-height: calc(100vh - 140px);
-    }
+.actions button:hover {
+    background: #e8e8e8;
+}
 
-    .toolbar {
-        display: flex;
+.tree-container {
+    padding: 8px 16px;
+    position: relative; /* 子要素の絶対位置の基準点 */
+    min-height: 100px; /* 最小高さを設定 */
+    flex: 1; /* 残りの空間を全て使用 */
+    overflow-y: auto; /* スクロール可能に */
+}
 
-        justify-content: flex-end;
-        align-items: center;
-        padding: 8px 16px;
-        background: #f5f5f5;
-        border-bottom: 1px solid #ddd;
-        flex-shrink: 0; /* Prevent toolbar from shrinking */
-    }
+.item-container {
+    position: absolute;
+    left: calc(16px + var(--item-depth) * 24px);
+    width: calc(100% - 32px - var(--item-depth) * 24px);
+    min-height: 36px; /* 最小の高さを設定 */
+    transition: left 0.2s ease, top 0.2s ease;
+}
 
-    .actions {
-        display: flex;
-        gap: 8px;
-    }
+.empty-state {
+    padding: 20px;
+    text-align: center;
+    color: #999;
+}
 
-    .actions button {
-        background: #f0f0f0;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 4px 8px;
-        cursor: pointer;
-        font-size: 14px;
-    }
-
-    .actions button:hover {
-        background: #e8e8e8;
-    }
-
-    .tree-container {
-        padding: 8px 16px;
-        position: relative; /* Reference point for absolute positioning of child elements */
-        min-height: 100px; /* Set minimum height */
-    }
-
-    .item-container {
-        position: relative;
-        margin-left: calc(max(0, var(--item-depth) - 1) * 24px);
-        width: auto;
-        min-height: 36px; /* Set minimum height */
-    }
-
-    .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 20px;
-        text-align: center;
-        color: #9ca3af;
-    }
-
-    .empty-icon {
-        margin-bottom: 16px;
-        color: #d1d5db;
-    }
-
-    .empty-text {
-        font-size: 0.95rem;
-        margin-bottom: 24px;
-        color: #6b7280;
-    }
-
-    .empty-action-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        background-color: #2563eb;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: background-color 0.2s, transform 0.1s;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-
-    .empty-action-btn:hover {
-        background-color: #1d4ed8;
-    }
-
-    .empty-action-btn:active {
-        transform: translateY(1px);
-    }
-
-    .overlay-container {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        pointer-events: none !important; /* Ensure click events pass through to lower layers */
-        z-index: 100;
-        transform: none !important; /* Prevent transformation */
-    }
-
-    .scroll-top-btn {
-        position: absolute;
-        bottom: 20px;
-        right: 20px;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: white;
-        border: 1px solid #ddd;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 200;
-        color: #666;
-        transition: background-color 0.2s, color 0.2s;
-    }
-
-    .scroll-top-btn:hover {
-        background-color: #f0f0f0;
-        color: #333;
-    }
-
-    .scroll-top-btn:focus-visible {
-        outline: 2px solid #2563eb;
-        outline-offset: 2px;
-    }
+.overlay-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none !important; /* クリックイベントを下のレイヤーに確実に透過 */
+    z-index: 100;
+    transform: none !important; /* 変形を防止 */
+}
 </style>

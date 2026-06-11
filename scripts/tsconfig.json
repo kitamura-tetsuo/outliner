@@ -1,6 +1,0 @@
-{
-    "extends": "../client/tsconfig.json",
-    "compilerOptions": {
-        "useDefineForClassFields": true
-    }
-}

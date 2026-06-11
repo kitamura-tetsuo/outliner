@@ -1,299 +1,198 @@
-Read AGENTS.temp.md if exists.
-Read files in client/docs/guide if exists.
-Follow them as guideline.
-
-# Outliner Project Guidelines
-
-This document consolidates the key development policies for this repository. Follow these rules whenever you work on the project.
-
-## 1. Documentation
-
-- **Feature files**: Write end-user features in `docs/client-features/<slug>-<title>-<uuid>.yaml`. `<slug>` is a three-letter code from the feature ID. Each file must include `title` (English) and `title-ja` (Japanese).
-- **Dev features**: Store ENV-* features in `docs/dev-features/<slug>-<title>-<uuid>.yaml`.
-- **Feature IDs**: Use an 8-character hexadecimal UUID (e.g. `FTR-1a2b3c4d`) rather than sequential numbers.
-- `docs/client-features.yaml` and `docs/dev-features.yaml` are generated automatically.
-- Document intentionally omitted features in `docs/NON_GOALS.md`.
-- `docs/feature-map.md` is auto-generated; never edit it manually.
-- Regularly review and update documentation to avoid conflicts and keep best practices current.
-
-## 2. Testing Policy
-
-- Provide a test for every feature. Do not embed code that skips tests.
-- Keep expected values ​​strict even if tests take longer to run.
-- Run tests in headless mode.
-- Run `dprint fmt` before running tests.
-- **Code Coverage and Event Handlers**: Before deleting code that shows 0 executions in the coverage report, be sure to refer to `docs/coverage-event-handlers.md`. Event handlers and callbacks may not be correctly detected by coverage tools.
-- Before finishing your work, run the following TypeScript checks and fix any errors:
-  ```
-  cd client/e2e && npx tsc --noEmit --project tsconfig.json
-  cd client && npx tsc --noEmit --project tsconfig.json
-  ```
-- Fix one test file at a time and run it immediately to confirm the fix.
-- When code or tests change, run only the related test file. Use `scripts/test.sh`:
-  - Unit: `scripts/test.sh client/src/lib/path/to/test.spec.ts`
-  - Integration: `scripts/test.sh client/tests/integration/path/to/test.spec.ts`
-  - E2E: `scripts/test.sh client/e2e/path/to/test.spec.ts`
-- CI keeps tests green on the `main` branch. If tests fail in your branch, the
-  cause lies in changes made after you diverged from `main`. Investigate those
-  modifications to identify the problem.
-- Ensure test coverage for every implemented feature. Add detailed E2E scenarios whenever new behavior is introduced. Run Playwright tests one file at a time and document any timeouts; they will be rerun in another environment.
-- Split any test file that grows beyond roughly 150 lines so that Playwright can run it reliably.
-- Run environment maintenance tests (ENV-*) separately using `scripts/run-env-tests.sh`. These use Vitest. E2E tests use Playwright.
-- Environment test spec files follow the same `<slug>-<title>-<uuid>.spec.ts` naming used in client E2E tests (e.g. `env-setup-script-starts-all-services-95e7c1a6.spec.ts`).
-- Record test specs in `docs/client-features/<slug>-<title>-<uuid>.yaml` and match the file name pattern in the `client/e2e` directory.
-- Retrieve SharedTree and cursor data with `treeValidation.ts` and `cursorValidation.ts` instead of mocks.
-
-### Backend Test Runners (Server vs. Functions)
-
-- **`server/` directory**: Uses **Mocha** as the primary test runner.
-  - All tests in `server/tests/` must be written for the Mocha runner environment.
-  - **Do NOT import from `@jest/globals` or use Jest utilities (like `jest.mock()`, `jest.fn()`)** in server tests, as this will crash the ESM/Mocha runner.
-  - Use **Chai** (`expect` from `"chai"`) for assertions and **Sinon.js** (`sinon`) for mocking/stubbing.
-- **`functions/` directory**: Uses **Jest** as the primary test runner.
-  - Tests in `functions/test/` are executed via Jest and may use `@jest/globals` and standard Jest mocking/assertion utilities.
-
-### Unit Test Mocking
-
-Mocks are generally forbidden. Limited exceptions:
-
-1. **Svelte stores** – use `vi.mock` to control store behavior.
-2. **Fluid `Item` objects** – provide minimal stubs with required properties like `id` and `text`.
-   Add comments explaining the purpose and scope of any mock.
-
-- **No mocking logic in production code**. If unit tests require mocks, place all
-  mock-related code inside the test files and keep it out of the application
-  code.
-- **No test data creation routines in production code**. Test data initialization,
-  debug buttons, and test-specific functionality must be isolated to test
-  environments only. Production code should not contain any test-related logic.
-
-### Svelte 5 Store Reactivity (Vitest + @testing-library/svelte)
-
-- Module-scoped singletons must not leak state across tests
-  - A module-level export like `export const someStore = $state(new SomeStore())` creates a singleton.
-  - Recommended: provide a `reset()` method on the store and call it in `beforeEach(() => someStore.reset())`.
-  - Alternative: use `vi.resetModules()` to re-import the module per test (slower; prefer the `reset()` approach).
-
-- Always await DOM updates after mutating store state
-  - Svelte updates are asynchronous. After changing store properties, `await tick()` and/or use `await waitFor(() => ...)`.
-  - This avoids timing flakiness when asserting DOM changes (e.g., visibility toggles).
-
-- If `requestAnimationFrame` is used inside show/hide or similar flows
-  - In JSDOM, `requestAnimationFrame` is not immediate. Control timers in tests: `vi.useFakeTimers()` and `vi.runOnlyPendingTimers()`.
-  - Alternatively, avoid rAF-dependent paths in tests.
-
-- Do not destructure store state from the proxy
-  - Destructuring (e.g., `const { isVisible } = someStore`) breaks reactivity by removing the proxy.
-  - Always access properties directly on the proxied instance (e.g., `someStore.isVisible`).
-
-### Test Implementation Guidelines
-
-- **Manual workarounds in tests are not acceptable**. If a test requires manual positioning of textarea elements or other DOM manipulation to pass, the underlying implementation must be fixed instead.
-- **Tests should verify actual behavior**. Avoid bypassing implementation issues with test-specific workarounds that mask real problems.
-
-### Running E2E Tests
-
-- Use `scripts/test.sh` to run tests; it automatically runs `scripts/setup.sh` to start emulators if needed.
-- Execute E2E tests one file at a time with `scripts/test.sh` or `scripts/run-e2e-progress.sh`.
-- The cloud environment is prone to timeouts. Keep each Playwright spec short and split larger flows across multiple files. Document any timeouts; tests will be rerun elsewhere.
-- Use `TestHelpers.seedProjectAndNavigate(page)` in `test.beforeEach` and Playwright's `expect(locator).toBeVisible()` assertions.
-- **Test Data Creation**: For display/rendering tests, create test data using `TestHelpers.seedProjectAndNavigate(page, test.info(), lines)` where `lines` is an array of strings representing item text. This ensures proper Yjs synchronization and avoids keyboard input issues with special characters like `[/` that may trigger command palettes or shortcuts.
-  - Example: `await TestHelpers.seedProjectAndNavigate(page, test.info(), ["This is a combination of [[bold and [/italic]]]"]);`
-  - Do NOT manually type text with `page.keyboard.type()` for display tests, as it may conflict with keyboard shortcuts.
-- Create projects and pages programmatically via `fluidClient` rather than via the UI.
-- Simulate user input with `page.keyboard.type()` and manage cursors with `editorStore.setCursor()` and `cursor.insertText()` followed by a 500 ms wait and `waitForCursorVisible()`.
-- Use `data-item-id` selectors instead of `nth()`.
-- Clipboard tests must use the real clipboard API (works only in HTTPS or localhost).
-- Do not call `await import` inside `page.evaluate()` to avoid creating multiple browser instances.
-- If tests time out, document the attempt; the CI environment will run them again.
-- **Navigation Requirements**: Use only Svelte-managed page navigation. Do not use alternative navigation methods that bypass SvelteKit's routing system.
-
-### Troubleshooting
-
-- **Always check error logs first**: When encountering errors, immediately examine `server/logs/test-svelte-kit.log` for detailed error information before attempting fixes.
-- If a specific test fails to start or stalls, inspect `server/logs/test-svelte-kit.log` for details.
-- Before assuming the test server is down, verify it with `curl -s http://localhost:7090/ | head -c 100`.
-- If the cause of an E2E test failure is unclear, investigate using Playwright MCP.
-- Duplicate Firebase initialization often causes 30 s timeouts—ensure `UserManager.initializeFirebaseApp()` checks `getApps()` before calling `initializeApp()`.
-- **Tinylicious Container Restoration Issue**: The error "default dataStore [rootDOId] must exist" occurs when trying to reload saved Fluid containers in Tinylicious (test environment). This is a known Tinylicious bug that doesn't occur in production. In test environments, avoid reloading saved containers and use alternative testing approaches instead.
-- **Test Isolation and Regression Prevention**: When troubleshooting failing tests, destructive changes to shared code may occur. If you modify common code outside the specific test target, run the basic E2E tests to verify no breaking changes have been introduced. If breaking changes are detected, revert the modifications to maintain test stability.
-- TypeScript macro shims: If `npx tsc --noEmit --project client/e2e/tsconfig.json` fails on `$state/$derived/$effect` in `.svelte.ts` files, add a `client/src/types/svelte5-shim.d.ts` declaring these macros for type checking only.
-- Use playwrite mcp to debug component issues.
-
-### Firebase Functions Emulator
-
-**CRITICAL**: Always use Firebase Functions Emulator for testing, never mock Firebase Functions. The emulator provides the actual Firebase Functions environment and is essential for proper testing.
-
-**IMPORTANT**: Firebase Functions emulator DOES apply Firebase Hosting rewrite rules from firebase.json. Tests should use `/api/` endpoints (e.g., `/api/save-container`), not direct function URLs like `/outliner-d57b0/us-central1/functionName`. The emulator respects the hosting configuration and rewrites `/api/function-name` to the appropriate function.
-
-- Firebase Functions Emulator runs on port 57070 (configured in firebase.json)
-- Firebase Storage Emulator runs on port 59200 (configured in firebase.json)
-- Firebase Auth Emulator runs on port 59099 (configured in firebase.json)
-- Firebase Firestore Emulator runs on port 58080 (configured in firebase.json)
-- `scripts/test.sh` automatically calls `scripts/setup.sh` to start all Firebase emulators if needed.
-- All attachment upload/download functionality requires Firebase Functions Emulator to be running
-- Tests will fail with "API error 404" if Firebase Functions Emulator is not running
-
-### Production Environment Testing
-
-**Production Cloud Backend Testing**: For testing Firebase Auth token validation with production Firebase Auth services:
-
-1. **Start Production Cloud Backend Servers**:
-   ```bash
-   firebase emulators:start --only hosting,functions --project outliner-d57b0
-   ```
-   - Firebase Functions with Hosting emulator on port 57070
-   - Uses production Firebase Auth and Firestore services
-   - Azure Fluid Relay configuration loaded from environment variables
-
-2. **Start Production SvelteKit Server** (for API proxy testing):
-   ```bash
-   NODE_ENV=production npx dotenvx run --env-file=.env.production -- npm run dev -- --host 0.0.0.0 --port 7073 --mode production
-   ```
-
-3. **Run Production Tests**:
-   ```bash
-   cd client && npm run test:production
-   ```
-
-4. **Test Coverage**: Production tests validate:
-   - Firebase ID token validation against production Firebase Auth
-   - Azure Fluid Relay token generation
-   - Container-specific token requests
-   - SvelteKit API proxy functionality
-   - Error handling for invalid tokens
-
-**Important**: Production tests use real Firebase Auth services and require proper environment configuration. Test users are automatically created and deleted during test execution.
-
-- When addressing production environment errors, wait at least 30 minutes after a GitHub Actions deployment completes and confirm in production that the issue is resolved.
-
-## 3. Code Style
-
-- Prefer `undefined` over `null`.
-- Avoid duplicate functions and do not use `page.waitForLoadState('networkidle')`.
-- Process synchronously when possible.
-- Write all branch names and commit messages in English.
-- Follow error message when git commit fails by pre-commit hooks.
-- Avoid direct DOM manipulation; use Svelte for all UI operations. Direct DOM manipulation can interfere with Svelte's reactivity system and cause unexpected behavior. Instead, use Svelte's reactive declarations and state management to update the UI.
-
-## 4. Development Workflow
-
-- At the end of each session, create a prompt for the next session describing remaining tasks. Mention that tasks should proceed sequentially.
-- Always track your working directory. Client code is in `client`, server code in `server`, and scripts in `scripts` (ENV-* tests are in `scripts/tests`). When using `launch-process`, set the `cwd` explicitly.
-- Keep Svelte HTML elements reactive and prioritize performance. Prefer patterns where reactive variables are updated asynchronously, while overall processing remains synchronous when possible.
-- After implementing changes, run `npm run build` in the `client` directory to confirm the code compiles correctly.
-
-### Merge Workflow
-
-- After merging branches, always run the following commands to ensure the merge was successful:
-  1. `npm run build` in the `client` directory to verify compilation
-  2. `npm test` in the `client` directory to run unit tests
-- Fix any test failures before proceeding with further development
-- Never skip tests or simplify them to avoid merge conflicts - always solve the actual problems
-- After implementing code changes, run `npm run test:e2e:basic` to perform regression testing and ensure no existing functionality has been broken
-
-## 5. Cursor, Selection, and Item Handling
-
-- Important files: `Cursor.ts`, `EditorOverlay.svelte`, `EditorOverlayStore.svelte.ts`, `OutlinerItem.svelte`.
-- Maintain cursor X position when moving between items with arrow keys.
-- Use the Range API to navigate visual lines. Items never contain newline characters.
-- Selection range (SLR) logic is separate from cursor movement (CLM). Box selection is being implemented.
-- Formatting uses Scrapbox syntax: **bold** `[[text]]`, _italic_ `[/text]`, strike-through `[-text]`, and code `text`.
-- Active items show plain text with control characters visible. Internal links (`[page]` or `[/project/page]`) should navigate via SvelteKit routing and only create a new page in SharedTree once the user edits it.
-
-## 6. Project & Firebase Configuration
-
-- Projects use `title` (not `name`) and the project ID equals its Fluid container ID.
-- **Firebase Functions Access**: Firebase Functions are accessed through Firebase Hosting at `http://localhost:57070/api` in development environments. This ensures proper routing and CORS handling.
-- **Production Cloud Backend**: For Production Cloud Backend configuration, Firebase Functions must be accessed through Firebase Hosting emulator (port 57070) rather than direct Functions emulator access.
-- In both deployed and test environments, call Firebase Functions through the host's `/api/` route.
-- Use `.env` files for Functions v2 environment variables and never hardcode credentials.
-- Do not bypass authentication; tests should authenticate against the Firebase Auth emulator.
-- **Firebase Emulator Setup**: Always start Firebase Functions with Hosting emulator using `firebase emulators:start --only hosting,functions --project outliner-d57b0` to ensure proper API routing. The hosting emulator applies rewrite rules from firebase.json, allowing `/api/` endpoints to work correctly.
-
-## 7. GitHub Actions & Claude Code Integration
-
-- **Issue Analysis**: The `.github/workflows/issue-claude-action.yml` workflow automatically analyzes new issues and issue comments containing `@claude` using Claude Code Action with self-hosted runners.
-- **PR Auto-Fix**: The `.github/workflows/pr-test-fix.yml` workflow automatically fixes failing tests in PRs using Claude Code Action, repeating until tests pass or maximum attempts are reached.
-- **Claude Code Router**: Uses `@musistudio/claude-code-router` to route requests to Gemini CLI, enabling cost-effective AI analysis on self-hosted infrastructure.
-- **Self-Hosted Runner Requirements**:
-  - Gemini CLI must be authenticated via `gemini auth login` or `GEMINI_API_KEY` secret
-  - Node.js 22+ and npm must be available
-  - Network access to Google APIs required
-- **Authentication Setup**:
-  - Preferred: Run `gemini auth login` on the runner machine for persistent OAuth credentials
-  - Alternative: Set `GEMINI_API_KEY` repository secret with a valid API key
-- **Router Configuration**: Uses a custom Gemini CLI transformer that executes actual `gemini` CLI commands, routing all requests to `gemini-2.5-pro` for high-quality analysis and responses. Uses `--force-model` option to ensure the specified model is used and supports MCP and other advanced features.
-- **Auto-Fix Process**: When PR tests fail, Claude analyzes the failures, implements fixes, runs tests again, and commits/pushes changes if tests pass. Maximum 5 attempts per failure.
-
-## 8. Preferred Code Patterns
-
-- Use Svelte 5 `$derived` for derived state and `$state` in stores. `$state` is only valid in `.svelte` or `.svelte.ts` files.
-- Avoid `svelte/store`; rely on Svelte 5 `$state` for all store functionality.
-- Keep existing `$effect` blocks short (under 10 lines) and prefer `onMount` for initialization.
-- Do not add new code that uses Svelte 5 `$effect`.
-- Svelte 5 `$effect` is only allowed when there is no other way to achieve the desired behavior.
-- Implement API calls in `fluidService` and call them from components. Provide a `getFluidClientByProjectTitle` function that searches `clientRegistry` by `Project.title`.
-- Export manager instances directly (`export const userManager = new UserManager()`) rather than via `getInstance()`.
-- Rename `firestoreStore.ts` to `firestoreStore.svelte.ts` to enable `$state` usage.
-- When testing links and cursor behavior, apply the patterns proven in LNK-0003: programmatic cursor creation, text insertion, waits, and visibility checks.
-
-## 9. Node.js Package Management and NPM Operations Policy
-
-- Consent: The project owner has authorized the agent to run npm operations without prior confirmation for routine maintenance tasks within this repository.
-- Allowed without prior confirmation (repository scope only, default cwd: `client`):
-  - `npm ci`
-  - `npm install` / `npm uninstall` / `npm update` (use npm CLI only; never edit package files manually)
-  - `npm run build`, `npm run test:unit`, `npm run test:integration`, `npm run test:e2e` (headless)
-- Safety rules:
-  - Use npm commands only inside this repo (primarily `client/`).
-  - Do not use `--force` or `--legacy-peer-deps` unless explicitly requested.
-  - Prefer minimal, compatible upgrades that satisfy peerDependencies; avoid broad or unnecessary upgrades.
-  - After dependency changes, always run build and unit tests. For broader updates, run integration/E2E tests selectively as appropriate.
-  - Never deploy, modify production data, or run resource-intensive tasks without explicit instruction.
-  - Do not manually edit `package.json`, lock files, or config to change versions; always use the package manager.
-  - When a change needs to be tracked, commit via the normal Git workflow (branch, commit, PR) as required by the task.
-- Troubleshooting guidance:
-  - For peer conflicts, prefer upgrading the relevant peer plugins (e.g., `@sveltejs/vite-plugin-svelte`) to match the current Vite/SvelteKit rather than downgrading Vite.
-  - Avoid workaround flags (`--force`, `--legacy-peer-deps`) in favor of a correct dependency graph.
-
----
-
-## 10. Architectural Policy: No Thin Facades Between UI and Backends
-
-- We do NOT maintain a “thin facade” layer (e.g., a GlobalStore proxy) to shield the UI from backend-specific stores.
-- Rationale: In our Svelte 5 + Yjs architecture, the cost of widening the gap between UI and backends outweighs its benefits (reactivity pitfalls, test fragility, extra indirection).
-- UI and services may import backend stores directly (e.g., yjsStore, appStore, firestoreStore). Prefer clear, direct boundaries over proxy indirection.
-- Do not introduce new proxy/global façade layers. Remove or deprecate existing ones when feasible.
-
-Follow these guidelines to keep documentation, code, and tests consistent across the project.
-
-## 11. Reactive Data Synchronization & Prompt Guidance
-
-- **Prefer reactive subscriptions over polling**: When a view model depends on shared collections (such as comment lists or other collaborative datasets), register a change subscription against the underlying data source and update the reactive state in response to those events. Do not rely on timers, manual `afterTransaction` hooks, or similar polling loops when the system already exposes change notifications.
-- **Keep synchronization triggers comprehensive**: Any bidirectional binding between collaboration data and Svelte state must subscribe to every shared field it derives from (for example, comment counts or other computed aggregates). Ensure the reactive state is refreshed whenever the source data changes so that derived values stay in sync.
-- **Document positive alternatives alongside negative prompts**: When drafting prompt guidance (e.g., discouraging an approach), pair every negative instruction with an explicit positive alternative that the LLM should follow instead.
-- **Eliminate avoidable polling**: Before introducing a polling loop, confirm that no event-driven mechanism is available. If a reactive hook exists, use it to keep UI state synchronized and avoid the performance penalties of polling.
-
-### Yjs observe-based synchronization (mirror pattern)
-
-- Don’t bind Yjs types directly to the DOM—create a plain `$state` mirror and keep it in sync via Yjs observers.
-- UI → Yjs: update Yjs in explicit event handlers (e.g., on input/change).
-- Yjs → UI: on `observe`/`observeDeep`, assign into the mirror to trigger DOM updates.
-- Handle initial sync (`provider.on('synced')`) before seeding the mirror.
-- Always cleanup (`unobserve`/`unobserveDeep` and `provider.destroy()`), and use transaction `origin` to ignore local echoes.
-
-Why it works
-
-- Svelte re-renders on assignments to `$state`.
-- `$state` provides deep reactivity for plain objects/arrays, so Yjs changes become visible through the mirror.
-
-### Yjs-bound components and Svelte `key`
-
-- Components that have a 1:1 relationship with a Yjs object (e.g., a page tree bound to a specific Y.Doc) must wrap their render body in a Svelte `{#key ...}` keyed by `ydoc.guid` (fallback to model `id`). This guarantees a full remount whenever the underlying Y.Doc changes and eliminates any need to re-bind observers inside the component.
-- Do not implement "rebind on Y.Doc switch" logic inside components. The `{#key}` must make Y.Doc switching impossible within a mounted instance; remount instead.
-
-### Test-only event: `firestore-uc-changed`
-
-- `firestore-uc-changed` is a lightweight CustomEvent used only in test environments to aid deterministic redraws. In development and production, components must rely on `firestoreStore.ucVersion` and Svelte 5 `$derived` dependencies for reactivity instead of DOM events.
-- If any test or test-only fixture listens for `firestore-uc-changed`, add a comment clarifying that this dependency is "test environment only" and not part of the production signaling path.
+# 📄 Documentation & Specifications
+
+Record end-user features in docs\client-features.yaml.
+List development and environment maintenance features (the ENV-* series) in docs/dev-features.yaml.
+Document intentionally omitted features in docs/unimplemented-features.md.
+
+- While multiple AIs may code in parallel, review documents frequently to avoid overlapping features or contradictory explanations.
+- Continuously reference and update past best practices so they remain current.
+- Keep the implementation plan documentation updated whenever changes occur.
+  docs/feature-map.md is automatically generated; do not edit it.
+
+# 🧪 Test implementation and execution policy
+
+## テストの網羅性とカバレッジレポートの活用
+
+新しい機能を追加または既存の機能を変更する際には、その変更が広範囲に影響を及ぼす可能性を考慮し、十分なテストカバレッジを確保するよう努めてください。
+
+- **カバレッジレポートの確認**: ユニットテスト実行後に生成されるカバレッジレポート（`client/coverage/index.html`など）を必ず確認してください。
+- **テストケースの追加**: カバレッジが低い箇所や、新たに追加・変更されたロジックでテストされていない箇所を特定し、必要なテストケースを追加してください。特に条件分岐やエッジケースが網羅されているか注意深く確認します。
+- **既存テストの拡充**: 単に新しいテストを追加するだけでなく、既存のテストケースが新しい機能や変更点を考慮したものになっているかを見直し、必要に応じて拡充してください。
+  目標は、コードの品質と安定性を維持するために、テストによってコードベースの大部分が検証されている状態を保つことです。
+
+For every feature, create a corresponding test.
+Make the expected values ​​used for pass/fail judgments strict; longer test-execution time is acceptable if that is the consequence.
+Do not embed code that skips tests.
+Do not use mocks in tests.
+Run tests in headless mode.
+Fix one test file at a time and run tests after each fix to confirm.
+Run environment maintenance tests (ENV-*) separately from unit and e2e suites.
+These tests use Vitest while e2e tests use Playwright.
+
+## ユニットテストにおけるモックとテストダブルの使用について
+
+原則としてモックは使用しませんが、以下のケースにおいては限定的な使用を許容します。
+
+- **Svelteストア**: ユニットテスト対象のモジュールがSvelteストアに依存している場合、ストアの挙動を制御するために `vi.mock` を使用してストアの関数やプロパティをモックすることを許容します。これにより、ストアの状態やストア経由での副作用をテストダブルで置き換え、ユニットテストの分離性を高めます。
+  - 使用例: `vi.mock('../stores/editorOverlayStore.svelte', () => ({ editorOverlayStore: { subscribe: vi.fn(), update: vi.fn(), set: vi.fn(), getTextareaRef: vi.fn(() => mockTextareaElement), /* 他のストアプロパティや関数 */ } }));`
+- **Fluid Framework `Item` オブジェクト**: `Item`オブジェクトのような複雑な外部依存オブジェクトについては、ユニットテストの実行効率と分離性を考慮し、インターフェースを満たす単純なテストダブル（スタブ）の使用を許容します。テストダブルは、テスト対象のロジックが必要とする最小限のプロパティ（例: `text`, `id`）とメソッド（例: `updateText`）を持つべきです。
+  - 使用例: `const mockItem = { id: 'test-item', text: 'initial text', updateText: vi.fn((newText) => { mockItem.text = newText; }), items: { /* 子アイテムのモックなど */ } };`
+
+これらのモックやテストダブルを使用する際は、テストコード内でその目的と範囲を明確にコメントし、過度なモックによってテストが実装の詳細と密結合しすぎないよう注意してください。E2Eテストでカバーされるべき統合的な振る舞いをユニットテストで無理に再現しようとしないでください。
+
+# 🔍 How to deal with test failures
+
+Whenever you modify code or tests, always run the affected tests to verify the fix.
+If a test fails, do not adjust the test to match the implementation. First confirm that the test’s expectations align with the specification; if they do, fix the implementation.
+🌐 E2E tests & test environment
+In E2E tests, do not assume that something “cannot run in the test environment.” If it fails, either adjust the implementation or prepare the environment so that it runs. When the cause of E2E failure is unclear, investigate with Playwright MCP.
+Before concluding that the test server is not running, check with
+((curl http://localhost:7090/) -join "n").Substring(0, 100) (limit to 100 characters).
+If a specific test does not start, inspect the server log at server\logs\svelte-kit.log.
+
+# 🛠️ Code style & quality
+
+Use undefined instead of null.
+Do not create duplicate functions in multiple locations.
+The use of page.waitForLoadState("networkidle"); is prohibited.
+Process synchronously whenever possible.
+Please write git branch names, commit messages, etc. in English.
+Git branch names must be written in English.
+
+# ⚙️ Development workflow
+
+At the end of your work, create the first prompt for the next session so you can continue smoothly. Even if issues remain, carry over the known problems. Focus on writing a prompt that makes the next session effective rather than describing today’s work.
+State in the prompt that tasks should be progressed sequentially.
+Write the prompt as plain text.
+
+# 📁 Working Directory Management
+
+**CRITICAL**: Always pay attention to the current working directory when executing commands.
+
+- Client code is in `client`
+- Server code is in `server`
+- Scripts are in `scripts`
+- Development environment tests (ENV-*) are in `scripts/tests`
+
+When using launch-process tool:
+
+- Always specify the correct `cwd` parameter for the intended directory
+- Do not assume the current directory - explicitly set it
+- For client tests: use `client` as cwd
+- For ENV-* tests: use `scripts/tests` as cwd
+
+Common mistakes to avoid:
+
+- Running client commands from wrong directory
+- Executing scripts without proper cwd specification
+- Assuming terminal's current directory matches intended target
+
+# ⚡ Performance & Reactivity
+
+Ensure Svelte HTML elements update reactively.
+Prefer patterns that update reactive variables asynchronously.
+Prioritize performance.
+
+# Testing Framework
+
+- Tests should be documented in docs/client-features.yaml with specific naming conventions (CLM-0100, SLR-0002, FMT-0001, etc.) and test file names should match the corresponding feature ID.
+- Tests should retrieve SharedTree content and cursor information in JSON format using treeValidation.ts and cursorValidation.ts, with real SharedTree data rather than mocks.
+- For E2E tests, call TestHelpers.prepareTestEnvironment(page) in test.beforeEach and use Playwright's expect(locator).toBeVisible() pattern instead of manual DOM selection checks.
+- For E2E tests that need to call client-side code, use page.evaluate through helper classes (like TestHelpers) rather than calling client code directly or writing page.evaluate inline in test files.
+- Create projects and pages programmatically via fluidClient reference rather than through the UI which is unstable.
+- When tests fail, prioritize fixing the implementation to match test expectations rather than modifying the tests.
+- When tests fail due to navigation or functionality issues, fix the implementation or test method rather than just modifying tests to pass.
+- For clipboard testing, use actual clipboard API operations which only work in HTTPS or localhost environments.
+- Delete existing accessible containers before creating new test containers to ensure a clean test environment.
+- User prefers fixing test files one by one with immediate test execution after each fix, and wants continuation prompts created at session end that focus on remaining issues rather than completed work.
+- For cursor position testing, always use CursorValidator.getCursorData(page) instead of global-textarea cursor position, as they represent different things in the application.
+- When Playwright tests show setup messages and then display test results with 'passed' status, the tests are executing successfully - don't assume execution problems based on setup warnings about emulator connections.
+- When selecting items in tests, use data-item-id instead of index-based selection like .nth(1).
+- User prefers absolute paths instead of 'cd client' commands, dislikes auto-opening browsers for HTML reports, and wants file output for test results but with proper encoding to prevent character corruption.
+- For test execution, use the file output method with UTF-8 encoding to avoid character corruption, and never use nth() for element selection in tests - use data-item-id or other specific selectors instead.
+- For link testing, first test within current project, verify new page creation in fluid container data before testing links, and create helper functions for data verification if they don't exist.
+- When Playwright test output cannot be read directly, use cmd /c with output redirection to save results to a file and then read the file: cmd /c "cd /d path && npx playwright test ... > test-output.txt 2>&1 && type test-output.txt"
+- When terminal output cannot be retrieved properly, it causes repeated dysfunction and prevents effective debugging and test execution.
+- Run Playwright tests one file at a time (`npx playwright test path/to/test.spec.ts`).
+- If E2E tests time out, document the attempt but continue; tests will run in another environment.
+- When fixing LNK-0003 tests, modifications broke 113 other tests including core cursor movement, text input, formatting, and selection functionality - need to be careful about regressions when making changes to core editor functionality.
+- For E2E tests, use page.keyboard.type() for user input simulation; only use internal methods or event dispatching for data preparation and verification, never for simulating user actions.
+- For E2E tests, use editorStore.setCursor({itemId, offset, isActive, userId}) for cursor creation, cursor.insertText() for text input, 500ms wait after text input, and waitForCursorVisible() for focus management - this pattern was successful for LNK-0003 and should be applied to other failing tests.
+- For E2E tests, work sequentially through test phases.
+- CI runs E2E tests in parallel. When running tests in the Codex environment, use `scripts/run-e2e-sequential.sh` to run one test file at a time without limiting worker count. This helps finish each run quickly and prevent timeouts.
+- For E2E tests with internal links and cursor management, use editorStore.setCursor() for cursor creation, cursor.insertText() for text input with 500ms wait, waitForCursorVisible() for focus management, and apply these patterns sequentially to LNK-0002, LNK-0004, LNK-0006, and SLR-0009 tests.
+
+# Test Environment Configuration
+
+- E2E tests should run on both Windows and Ubuntu, with configurations for localhost (7090/7091/7092).
+- Firebase emulators run in Docker containers.
+- Firebase Auth emulator should be called only once at 192.168.50.13:59099, and duplicate environment variables like VITE_AUTH_EMULATOR_HOST and VITE_FIREbase_EMULATOR_HOST should be consolidated.
+- For VSCode Playwright extension, directly modify isLocalhostEnv in playwright.config.ts as environment variables aren't reliably passed.
+- When tests aren't progressing, check server-side logs (server/logs/test-svelte-kit.log or server/logs/localhost-svelte-kit.log).
+- User has set up test users in server/log-service.js and wants to clear all Firestore emulator data during development.
+- Always use environment variables for emulator host configuration instead of hardcoding IP addresses like 192.168.50.13, as CI environments will have different host values.
+- User prefers fixing import.meta environment variable loading issues at the root cause rather than using error handling workarounds.
+- Always run `scripts/codex-setup.sh` when the container starts to set up local test services. The script creates `.codex-setup-installed` to cache dependency installation, so subsequent runs skip installation and finish faster.
+
+# Authentication in Test Environment
+
+- Do not bypass authentication in test environment. Tests should use Firebase Auth emulator for authentication.
+- Test environment should authenticate through emulators, not skip authentication checks.
+- Any authentication bypass code added for testing should be removed to ensure proper test coverage of authentication flows.
+
+# Cursor and Selection Management
+
+- Key files: Cursor.ts, EditorOverlay.svelte, EditorOverlayStore.svelte.ts, OutlinerItem.svelte.
+- Multi-Cursor editing is already implemented. See docs/multi-cursor-editing.md for details and design references.
+- User is centralizing cursor management by moving logic to Cursor.ts, with EditorOverlayStore handling state management.
+- When moving to previous/next item with up/down arrows, cursor should maintain x-coordinate position that minimizes change from initial position.
+- For visual line movement in the outliner, Range API is used for line detection, items never contain newline characters (only CSS wrapping), and up/down arrow movement should navigate between visual lines while maintaining cursor position, falling back to item start/end when no previous/next item exists.
+- For visual line calculation in cursor movement, the necessary information is already available from the existing cursor positioning system that correctly displays cursors with text wrapping.
+- Selection range (SLR) functionality is separate from cursor movement (CLM), including Shift+arrow selection and mouse drag.
+- User is implementing box selection features (rectangular selection with mouse, enhanced copy/paste for rectangular selections).
+
+# Formatting and Links
+
+- The outliner implements Scrapbox syntax formatting: bold [[text]], italic [/ text], strikthrough [- text], code `text`.
+- Formatting should only display in non-active items, while active items show plain text with control characters show plain text with control characters visible.
+- In Scrapbox syntax, [https://url] format is for external links while [link] format is for internal links to other pages.
+- The outliner application implements internal links in [page-name] and [/project-name/page-name] formats with SvelteKit routing (/[project]/[page]).
+- Internal links should be handled through routing mechanisms rather than click event handlers to support cases where internal links are called from external sources.
+- When navigating to a non-existent page via an internal link, the page should only be added to the SharedTree upon user editing, not simply upon accessing the page.
+
+# Item Handling
+
+- In the outliner application, a single item never contains newline characters - when newlines are present, the content is automatically split into multiple separate items.
+
+# Development and Code Organization
+
+- User prefers using Svelte 5's $derived feature for derived state like isEditing rather than maintaining separate state variables.
+- User prefers using $state instead of Writable in stores, and wants to make components reactive by directly referencing state variables instead of using getter functions.
+- Svelte's $state rune can only be used inside .svelte and .svelte.js/ts files, not in regular .ts files.
+- User prefers keeping $effect blocks short (ideally around 3 lines, maximum 10 lines) to avoid confusing bugs.
+- User prefers initializing in onMount rather than $effect.
+- User prefers organizing code with SharedTree elements in [project]/+layout.svelte, authentication and error handling in root +layout.svelte, page lists in [project]/+page.svelte, and individual pages in [project]/[page]/+page.svelte.
+- API calls should be implemented in fluidService module and then called from other components rather than implementing them directly in components.
+- User prefers implementing a function in fluidService.ts that returns a FluidClient based on project title, to be used in [project]/+layout.svelte.
+- Rename getFluidClientByProjectName to getFluidClientByProjectTitle and modify it to search through clientRegistry for containers where Project.title matches the provided name.
+- Rename firestoreStore.ts to firestoreStore.svelte.ts to enable using $state runes, and don't abandon requirements implementation.
+- User prefers using direct export pattern (export const userManager = new UserManager()) instead of singleton pattern with getInstance() method for manager classes.
+- User prefers using $derived.by with async map operations for container lists rather than $effect with IIFE pattern, and wants to know how to communicate such specific code structure preferences clearly.
+- User prefers clear, specific instructions when requesting code implementations: specify exact patterns (like $derived.by), mention functions to use/avoid, show expected structure, and explicitly state what to avoid (like async patterns when sync is needed).
+
+# Deployment and Firebase Configuration
+
+- User plans to deploy to Firebase Hosting + Functions with only /api/fluid-token and /api/save-container needing implementation in Firebase Functions.
+- The Firebase project is deployed at https://outliner-d57b0.web.app with project console at https://console.firebase.google.com/project/outliner-d57b0/overview.
+- For Firebase Functions v2, environment variables should be set using .env files instead of functions.config() method.
+- Authentication service needs to be migrated from server/log-service.js to Firebase Functions, and client-side code needs to be updated accordingly.
+- User prefers using Firebase Functions exclusively and wants to remove conditional API path selection.
+- Firebase Functions are accessed through Firebase Hosting at http://localhost:57000/api instead of http://localhost:7090/api.
+- Sensitive keys and credentials should not be hardcoded in the source code, especially in repositories that are committed to git.
+
+# Project Configuration
+
+- Projects should use 'title' not 'name'.
+- Project ID should be the same as its Fluid container ID (1:1 relationship).
+- Projects don't have separate IDs from their containers.
+- User prefers titles without bold formatting and temporary pages without notification UI.

@@ -13,7 +13,14 @@
             "predeploy": [
                 "npm --prefix \"$RESOURCE_DIR\" run lint"
             ],
-            "runtime": "nodejs22"
+            "runtime": "nodejs22",
+            "v2": {
+                "minInstances": 0,
+                "maxInstances": 10,
+                "concurrency": 80,
+                "memory": "256MiB",
+                "timeoutSeconds": 60
+            }
         }
     ],
     "hosting": {
@@ -23,39 +30,11 @@
             "**/.*",
             "**/node_modules/**"
         ],
-        "headers": [
-            {
-                "source": "**",
-                "headers": [
-                    {
-                        "key": "X-Content-Type-Options",
-                        "value": "nosniff"
-                    },
-                    {
-                        "key": "X-Frame-Options",
-                        "value": "DENY"
-                    },
-                    {
-                        "key": "Referrer-Policy",
-                        "value": "strict-origin-when-cross-origin"
-                    }
-                ]
-            },
-            {
-                "source": "/service-worker.js",
-                "headers": [
-                    {
-                        "key": "Cache-Control",
-                        "value": "no-cache, no-store, must-revalidate"
-                    },
-                    {
-                        "key": "Service-Worker-Allowed",
-                        "value": "/"
-                    }
-                ]
-            }
-        ],
         "rewrites": [
+            {
+                "source": "/api/fluid-token",
+                "function": "fluidToken"
+            },
             {
                 "source": "/api/save-container",
                 "function": "saveContainer"
@@ -69,125 +48,22 @@
                 "function": "deleteUser"
             },
             {
+                "source": "/api/get-container-users",
+                "function": "getContainerUsers"
+            },
+            {
                 "source": "/api/list-users",
                 "function": "listUsers"
-            },
-            {
-                "source": "/api/create-test-user",
-                "function": "createTestUser"
-            },
-            {
-                "source": "/api/delete-container",
-                "function": "deleteProject"
-            },
-            {
-                "source": "/api/deleteProject",
-                "function": "deleteProject"
-            },
-            {
-                "source": "/api/update-schedule",
-                "function": "updateSchedule"
-            },
-            {
-                "source": "/api/create-schedule",
-                "function": "createSchedule"
-            },
-            {
-                "source": "/api/execute-publish",
-                "function": "executePublish"
-            },
-            {
-                "source": "/api/list-schedules",
-                "function": "listSchedules"
-            },
-            {
-                "source": "/api/cancel-schedule",
-                "function": "cancelSchedule"
-            },
-            {
-                "source": "/api/export-schedules-ical",
-                "function": "exportSchedulesIcal"
-            },
-            {
-                "source": "/api/upload-attachment",
-                "function": "uploadAttachment"
-            },
-            {
-                "source": "/api/list-attachments",
-                "function": "listAttachments"
-            },
-            {
-                "source": "/api/delete-attachment",
-                "function": "deleteAttachment"
-            },
-            {
-                "source": "/api/adminCheckForContainerUserListing",
-                "function": "adminCheckForProjectUserListing"
-            },
-            {
-                "source": "/api/adminCheckForProjectUserListing",
-                "function": "adminCheckForProjectUserListing"
-            },
-            {
-                "source": "/api/get-container-users",
-                "function": "adminCheckForProjectUserListing"
-            },
-            {
-                "source": "/api/get-project-users",
-                "function": "getProjectUsers"
-            },
-            {
-                "source": "/api/adminUserList",
-                "function": "adminUserList"
-            },
-            {
-                "source": "/api/generateProjectShareLink",
-                "function": "generateProjectShareLink"
-            },
-            {
-                "source": "/api/acceptProjectShareLink",
-                "function": "acceptProjectShareLink"
             },
             {
                 "source": "/health",
                 "function": "health"
             },
             {
-                "source": "/api/health",
-                "function": "health"
-            },
-            {
-                "source": "/api/azure-health-check",
-                "function": "azureHealthCheck"
-            },
-            {
-                "source": "/api/save-project",
-                "function": "saveProject"
-            },
-            {
-                "source": "/api/saveProject",
-                "function": "saveProject"
-            },
-            {
-                "source": "/api/get-user-projects",
-                "function": "getUserProjects"
-            },
-            {
-                "source": "/api/debug-user-containers",
-                "function": "debugUserContainers"
-            },
-            {
                 "source": "**",
                 "destination": "/index.html"
             }
         ]
-    },
-    "firestore": {
-        "rules": "firestore.rules",
-        "indexes": "firestore.indexes.json"
-    },
-    "storage": {
-        "rules": "storage.rules"
     },
     "emulators": {
         "auth": {
@@ -206,15 +82,10 @@
             "port": 57000,
             "host": "0.0.0.0"
         },
-        "storage": {
-            "port": 59200,
-            "host": "0.0.0.0"
-        },
         "ui": {
             "port": 54000,
             "host": "0.0.0.0",
             "enabled": false
-        },
-        "singleProjectMode": false
+        }
     }
 }

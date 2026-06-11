@@ -1,138 +1,68 @@
 # Outliner Firebase Functions
 
-## Overview
+## 概要
 
-This directory contains the Firebase Functions used in the Outliner application.
-The main functions are as follows:
+このディレクトリには、Outlinerアプリケーションで使用するFirebase Functionsが含まれています。
+主な機能は以下の通りです：
 
-1. `/api/save-container` - Endpoint to save user's container ID
-2. `/api/get-user-containers` - Endpoint to get the list of container IDs
-   accessible by the user
-3. `/health` - Health check endpoint
-4. `/api/azure-health-check` - Endpoint to check the operation of Azure Fluid
-   Relay keys
-5. `/api/create-schedule` - Endpoint to register a publishing schedule for a
-   specified page
-6. `/api/update-schedule` - Endpoint to update an existing schedule
-7. `/api/list-schedules` - Endpoint to get a list of schedules created by the
-   user
-8. `/api/cancel-schedule` - Endpoint to cancel a schedule
+1. `/api/fluid-token` - Firebase認証トークンを検証し、Azure Fluid RelayのJWTトークンを生成するエンドポイント
+2. `/api/save-container` - ユーザーのコンテナIDを保存するエンドポイント
+3. `/api/get-user-containers` - ユーザーがアクセス可能なコンテナIDのリストを取得するエンドポイント
+4. `/health` - ヘルスチェックエンドポイント
 
-### Samples
+## セットアップ
 
-```bash
-curl -X POST http://localhost:57000/api/create-schedule \
-  -H 'Content-Type: application/json' \
-  -d '{"idToken":"<ID_TOKEN>","pageId":"<PAGE_ID>","schedule":{"strategy":"one_shot","nextRunAt":<TIMESTAMP>}}'
-
-curl -X POST http://localhost:57000/api/cancel-schedule \
-  -H 'Content-Type: application/json' \
-  -d '{"idToken":"<ID_TOKEN>","pageId":"<PAGE_ID>","scheduleId":"<SCHEDULE_ID>"}'
-```
-
-## Setup
-
-1. Install dependencies:
+1. 依存関係をインストール:
 
 ```bash
 cd functions
 npm install
 ```
 
-2. Set environment variables:
+2. 環境変数を設定:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit the `.env` file and set the necessary environment variables:
+`.env`ファイルを編集して、必要な環境変数を設定してください：
 
-- Azure Fluid Relay settings (Tenant ID, Endpoint, Primary Key)
+- Azure Fluid Relay設定（テナントID、エンドポイント、プライマリキー）
 
-## Local Testing
+## ローカルでのテスト
 
-To run Firebase Functions locally:
+Firebase Functionsをローカルで実行するには：
 
 ```bash
 npm run serve
 ```
 
-This starts the Functions emulator, allowing you to test Functions locally.
+これにより、Functionsエミュレーターが起動し、ローカルでFunctionsをテストできます。
 
-## Deployment
+## デプロイ
 
-To deploy Firebase Functions:
+Firebase Functionsをデプロイするには：
 
 ```bash
 npm run deploy
 ```
 
-Or, from the project root directory:
+または、プロジェクトのルートディレクトリから：
 
 ```bash
 firebase deploy --only functions
 ```
 
-## Environment Variable Configuration
+## 環境変数の設定
 
-In the production environment, you need to set environment variables for
-Firebase Functions:
+本番環境では、Firebase Functionsの環境変数を設定する必要があります：
 
 ```bash
 firebase functions:config:set azure.tenant_id="your-tenant-id" azure.endpoint="https://us.fluidrelay.azure.com" azure.primary_key="your-primary-key"
 ```
 
-## Azure Fluid Relay Health Check
+## 注意事項
 
-### `/api/azure-health-check`
-
-Endpoint to check the operation of Azure Fluid Relay keys. It allows verifying
-if the Azure Fluid Relay settings are working correctly in the production
-environment.
-
-**Method**: GET
-
-**Response Example**:
-
-```json
-{
-  "status": "healthy",
-  "timestamp": "2025-07-22T06:45:00.000Z",
-  "azure": {
-    "config": {
-      "tenantId": "configured",
-      "endpoint": "configured",
-      "primaryKey": "configured",
-      "secondaryKey": "configured",
-      "activeKey": "primary"
-    },
-    "tokenTest": {
-      "status": "success",
-      "error": null,
-      "tokenGenerated": true,
-      "tokenValid": true
-    },
-    "connectionTest": {
-      "status": "skipped",
-      "note": "Connection test requires actual container creation which is not performed in health check"
-    }
-  },
-  "environment": {
-    "isEmulator": false,
-    "projectId": "outliner-d57b0"
-  }
-}
-```
-
-**Status**:
-
-- `healthy`: All tests passed
-- `unhealthy`: Issue with configuration or token generation
-- `error`: Unexpected error occurred
-
-## Notes
-
-- Firebase Functions uses Node.js 22 runtime
-- Please configure appropriate security rules in the production environment
-- Azure Fluid Relay settings must be set as environment variables for Firebase
-  Functions
+- Firebase Functionsは、Node.js 22ランタイムを使用しています
+- 本番環境では、適切なセキュリティルールを設定してください
+- Azure Fluid Relay設定は、Firebase Functionsの環境変数として設定する必要があります

@@ -15,10 +15,7 @@ Thumbs.db
 
 # Env
 .env
-.env.local
 !.env.example
-
-!.env.test
 .env.keys
 
 # Vite
@@ -28,7 +25,7 @@ vite.config.ts.timestamp-*
 # Paraglide
 src/lib/paraglide
 
-# Tinylicious data files
+# Tinylicious のデータファイル
 tinylicious
 
 playwright-report
@@ -46,7 +43,6 @@ logs/
 
 # Coverage reports
 client/coverage/
-coverage/
 
 # GitLab CI
 .gitlab-ci-local
@@ -69,53 +65,18 @@ server/firebase-adminsdk.json
 functions/.env.production
 *.swp
 
-.setup-installed
-.e2e-progress
+# Coverage reports
+client/coverage/
 
-docs/feature-map.md
-docs/client-features.yaml
-docs/dev-features.yaml
-docs/unimplemented-features.md
-client/docs/client-features.yaml
-
-pglite-debug.log
-
-next-session-prompt.txt
-gemini_interactions.log
-outliner-d57b0-firebase-adminsdk-fbsvc-a989b4a237.json
-backups/
-yjs-data/
-
-server/dist/
-client/e2e-snapshots/
-AGENTS.temp.md
-e2e-snapshots/
-server/e2e-backups/
-server/e2e-src/
-
-llm_task.md
-.auto-coder/
-
-*.log
-!.github/
-!.github/*.md
-*.backup
-*.bak
-*.temp
-client/ydb/
-coverage-backups/
-NEXT_SESSION_PROMPT.txt
-
-.gemini/settings.json
-
-server/ydb
-
-.leveldb/
-.aider.tags.cache.v4/
-client/.eslintcache
-server/db
-.jdk/
-server/.env.production
 .codex-setup-installed
-.agents/rules/docker.md
-.pnpm-store
+node_modules/
+coverage/
+coverage-backups/
+dist/
+build/
+.svelte-kit/
+test-results/
+test_results.log
+test_results_*.log
+playwright-report/
+chat.stash.txt

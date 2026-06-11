@@ -1,4 +1,0 @@
-Fix E2E test timeouts by adding retry logic to SeedClient and failing fast on seed errors
-
-- Added retry logic (3 attempts) to `SeedClient.seed` to handle transient network errors during server seeding.
-- Updated `TestHelpers.createAndSeedProject` to throw an error immediately if seeding fails, preventing subsequent 120s timeouts in `navigateToProjectPage` and ensuring clearer failure reporting.

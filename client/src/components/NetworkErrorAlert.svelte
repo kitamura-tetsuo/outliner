@@ -12,20 +12,16 @@ function dismiss() {
 </script>
 
 {#if error}
-    <div
-        class="network-error"
-        role="alert"
-        aria-live="assertive"
-    >
-        <div class="error-icon" aria-hidden="true">⚠️</div>
+    <div class="network-error">
+        <div class="error-icon">⚠️</div>
         <div class="error-content">
-            <h3>Server Connection Error</h3>
+            <h3>サーバー接続エラー</h3>
             <p>{error}</p>
             <div class="error-actions">
                 {#if retryCallback}
-                    <button class="retry-btn" onclick={retryCallback}>Retry</button>
+                    <button class="retry-btn" onclick={retryCallback}>再試行</button>
                 {/if}
-                <button class="dismiss-btn" onclick={dismiss}>Close</button>
+                <button class="dismiss-btn" onclick={dismiss}>閉じる</button>
             </div>
         </div>
     </div>

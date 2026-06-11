@@ -1,9 +1,0 @@
-id: ENV-0005
-title: dotenvx handles env variables without cross-env
-description: Verify that NODE_ENV and TEST_ENV are correctly loaded using dotenvx alone.
-category: environment
-status: implemented
-components: []
-tests:
-- scripts/tests/env-dotenvx-handles-env-variables-e812d0dd.spec.ts
-title-ja: dotenvx handles env variables without cross-env

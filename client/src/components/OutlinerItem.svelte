@@ -1,2474 +1,1615 @@
-<script module lang="ts">
-    // Drag start position (shared by all items)
-    let dragStartClientX = 0;
-    let dragStartClientY = 0;
-
-    // Measurement span singleton (lazy initialized)
-    let _measurementSpan: HTMLSpanElement | null = null;
-    function getMeasurementSpan(): HTMLSpanElement {
-        if (typeof document === 'undefined') return null as unknown as HTMLSpanElement;
-        if (!_measurementSpan) {
-            _measurementSpan = document.createElement("span");
-            _measurementSpan.id = "outliner-measurement-span";
-            _measurementSpan.style.whiteSpace = "pre";
-            _measurementSpan.style.visibility = "hidden";
-            _measurementSpan.style.position = "absolute";
-            _measurementSpan.style.top = "-9999px";
-            _measurementSpan.style.left = "-9999px";
-            // Ensure it is attached
-            document.body.appendChild(_measurementSpan);
-        } else if (!_measurementSpan.isConnected) {
-            document.body.appendChild(_measurementSpan);
-        }
-        return _measurementSpan;
-    }
-</script>
-
 <script lang="ts">
-import {
-    createEventDispatcher,
-    onMount,
-    onDestroy,
-} from "svelte";
+	import { Tree } from 'fluid-framework';
+	import { createEventDispatcher, onMount } from 'svelte';
+	import { Items } from '../schema/app-schema';
+	import { editorOverlayStore } from '../stores/EditorOverlayStore.svelte';
+	import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
+	import { TreeSubscriber } from "../stores/TreeSubscriber";
+	import { ScrapboxFormatter } from '../utils/ScrapboxFormatter';
+	interface Props {
+		model: OutlinerItemViewModel;
+		depth?: number;
+		currentUser?: string;
+		isReadOnly?: boolean;
+		isCollapsed?: boolean;
+		hasChildren?: boolean;
+		isPageTitle?: boolean;
+		index: number;
+	}
 
-import { getLogger } from "../lib/logger";
-const logger = getLogger("OutlinerItem");
+	let {
+		model,
+		depth = 0,
+		currentUser = 'anonymous',
+		isReadOnly = false,
+		isCollapsed = false,
+		hasChildren = false,
+		isPageTitle = false,
+		index
+	}: Props = $props();
 
-// Debug/Test flags and logger.debug suppression
-const DEBUG_LOG: boolean = (typeof window !== 'undefined') && (((window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && ((window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E__ === true));
-// Override logger.debug to respect DEBUG_LOG to reduce log noise
-try {
-    const __origDebug = (logger as unknown as { debug: (...args: unknown[]) => void })?.debug?.bind?.(logger);
-    (logger as unknown as { debug: (...args: unknown[]) => void }).debug = (...args: unknown[]) => {
-        if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch {} }
-    };
-} catch {}
+	const dispatch = createEventDispatcher();
 
+	// Stateの管理
+	let lastSelectionStart = $state(0);
+	let lastSelectionEnd = $state(0);
+	let lastCursorPosition = $state(0);
 
-import { uploadAttachment } from "../services/attachmentService";
-import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
+	// 注: 編集モードフラグはカーソル状態から導出されるため、独立した変数は不要
+	// 代わりに hasActiveCursor() 関数を使用
 
+	// ドラッグ関連の状態
+	let isDragging = $state(false);
+	let dragStartPosition = $state(0);
+	let isDragSelectionMode = $state(false);
+	let isDropTarget = $state(false);
+	let dropTargetPosition = $state<'top' | 'middle' | 'bottom' | null>(null);
 
-onMount(() => {
-    try {
-        logger.debug(undefined, "[OutlinerItem] compTypeValue on mount: " + (compTypeValue as unknown as { current: unknown })?.current + " id=" + model?.id);
-    } catch {}
-});
-onMount(() => {
-    try {
-        if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-            const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W = window as Window & typeof globalThis & { __E2E_QS_PATCHED?: boolean; aliasPickerStore?: unknown };
-            if (isTest && !W.__E2E_QS_PATCHED) {
-                const origQS = document.querySelector.bind(document);
-                document.querySelector = ((sel: string) => {
-                    try {
-                        if (/^\[data-item-id="/.test(sel)) {
-                            const ap = (W as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-                            const li = ap?.lastConfirmedItemId;
-                            if (li) {
-                                const el = origQS(`[data-item-id="${li}"]`);
-                                if (el) return el;
-                            }
-                        }
-                    } catch {}
-                    return origQS(sel);
-                }) as typeof document.querySelector;
-                W.__E2E_QS_PATCHED = true;
-            }
-        }
-    } catch {}
-});
-onMount(() => {
-    try {
-        if (typeof window !== 'undefined') {
-            const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W = window as Window & typeof globalThis & { __E2E_GETATTR_PATCHED?: boolean };
-            if (isTest && !W.__E2E_GETATTR_PATCHED) {
-                const origGetAttr = Element.prototype.getAttribute;
-                Element.prototype.getAttribute = function(this: HTMLElement, name: string): string | null {
-                    try {
-                        if (name === 'data-alias-target-id') {
-                            const ap = (window as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-                            const itemId = (this as HTMLElement).getAttribute('data-item-id');
-                            if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
-                                return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
-                            }
-                        }
-                    } catch {}
-                    return origGetAttr.call(this, name) as string | null;
-                } as unknown as (qualifiedName: string) => string | null;
-                W.__E2E_GETATTR_PATCHED = true;
-            }
-        }
-    } catch {}
-});
+	let item = model.original;
 
-
-onMount(() => {
-    try {
-        const gs = generalStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-        if (!isPageTitle && index === 0 && (gs.openCommentItemId == null)) {
-            gs.openCommentItemId = model.id;
-            logger.debug(undefined, '[OutlinerItem] auto-open comment thread for id=' + model.id);
-        }
-    } catch {}
-});
-onMount(() => {
-    // If openCommentItemId does not exist in the current page due to Yjs connection switching, etc.
-        // Automatically reopen comment thread prioritizing index (E2E stabilization)
-    try {
-        const gs = generalStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-        // Optimization: Only perform the expensive existence check if this item is a candidate for auto-reopen
-        // This avoids O(N^2) complexity where every item iterates the full list on mount
-        const isCandidate = !isPageTitle && (index === 1 || gs.openCommentItemIndex === index);
-
-        if (isCandidate) {
-            const cp = gs?.currentPage;
-            const items = cp?.items as unknown as { iterateUnordered?: () => Iterable<unknown> };
-            const targetId = gs?.openCommentItemId;
-            let exists = false;
-            if (items) {
-                // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
-                // Use iterateUnordered if available for O(N) instead of O(N log N)
-                const iter = items.iterateUnordered ? items.iterateUnordered() : items as unknown as Iterable<unknown>;
-                for (const it of iter as any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
-                    if (it?.id === targetId) { exists = true; break; }
-                }
-            }
-            if (!exists) {
-                gs.openCommentItemId = model.id;
-                gs.openCommentItemIndex = index;
-                try { logger.debug(undefined, '[OutlinerItem] auto-reopen comment thread by index, id=' + model.id + ' index=' + index); } catch {}
-            }
-        }
-    } catch {}
-});
-
-
-import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
-import { calculateGlobalOffset } from "../utils/domCursorUtils";
-import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
-import { store as generalStore } from "../stores/store.svelte";
-import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
-import { presenceStore } from "../stores/PresenceStore.svelte";
-import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
-import ChartPanel from "./ChartPanel.svelte";
-import ChartQueryEditor from "./ChartQueryEditor.svelte";
-import CommentThread from "./CommentThread.svelte";
-import InlineJoinTable from "./InlineJoinTable.svelte";
-
-import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
-import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
-
-// Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
-// These are called in try-catch blocks and are meant to fail silently if not implemented
-const mirrorAttachment = (_url: string) => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
-let attachmentsMirror: string[] = []; // eslint-disable-line @typescript-eslint/no-unused-vars
-let e2eTimer: ReturnType<typeof setInterval> | undefined = undefined;
-
-/**
- * Binary search to find the character offset corresponding to a relative X coordinate.
- * Uses the provided span element to measure widths via Range API to avoid layout thrashing.
- */
-function findBestOffsetBinary(content: string, relX: number, span: HTMLElement): number {
-    span.textContent = content;
-    const textNode = span.firstChild;
-
-    // Fast path: empty or no text
-    if (!textNode) return 0;
-
-    // Fast path: check total width
-    const spanRect = span.getBoundingClientRect();
-    if (relX > spanRect.width) return content.length;
-    if (relX <= 0) return 0;
-
-    const range = document.createRange();
-    range.setStart(textNode, 0);
-    range.setEnd(textNode, 0);
-
-    // Calculate start offset (padding-left equivalent)
-    const rangeStartRect = range.getBoundingClientRect();
-    const offset = rangeStartRect.left - spanRect.left;
-
-    let low = 0;
-    const len = textNode.textContent?.length ?? 0;
-    let high = len;
-
-    while (low < high) {
-        const mid = Math.floor((low + high) / 2);
-        range.setEnd(textNode, mid);
-        const w = range.getBoundingClientRect().width + offset;
-
-        if (w < relX) {
-            low = mid + 1;
-        } else {
-            high = mid;
-        }
+	const text = new TreeSubscriber(
+    item,
+    "nodeChanged",
+    () => item.text,
+    value => {
+			item.text = value;
     }
-
-    // low is the first index where width >= relX
-    let best = low;
-
-    range.setEnd(textNode, low);
-    const dist1 = Math.abs((range.getBoundingClientRect().width + offset) - relX);
-
-    if (low > 0) {
-        const prev = low - 1;
-        range.setEnd(textNode, prev);
-        const dist2 = Math.abs((range.getBoundingClientRect().width + offset) - relX);
-        if (dist2 < dist1) {
-            best = prev;
-        }
-    }
-
-    return best;
-}
-
-interface Props {
-    model: OutlinerItemViewModel;
-    depth?: number;
-    currentUser?: string;
-    isReadOnly?: boolean;
-    isCollapsed?: boolean;
-    hasChildren?: boolean;
-    isPageTitle?: boolean;
-    index: number;
-}
-
-let {
-    model,
-    depth = 0,
-    currentUser = "anonymous",
-    isReadOnly = false,
-    isCollapsed = false,
-    hasChildren = false,
-    isPageTitle = false,
-    index,
-}: Props = $props();
-
-const dispatch = createEventDispatcher();
-
-// State management
-
-let lastCursorPosition = $state(0);
-
-// Note: The edit mode flag is derived from the cursor state, so an independent variable is not needed.
-// Use hasActiveCursor() function instead.
-
-// Drag related state
-let isDragging = $state(false);
-let dragStartPosition = $state(0);
-
-let isDropTarget = $state(false);
-let dropTargetPosition = $state<"top" | "middle" | "bottom" | null>(null);
-
-let item = $derived.by(() => model.original);
-// Ensure comments are evaluated before passing to CommentThread (initialize Y.Array with getter side effect)
-let ensuredComments = $derived.by(() => item.comments);
-
-// Comment count subscription (follow Yjs directly)
-
-// Comment thread open/close state (explicitly subscribe with Svelte 5 $derived)
-let openCommentItemId = $derived.by(() => (generalStore as unknown as { openCommentItemId: string | null }).openCommentItemId);
-let openCommentItemIndex = $derived.by(() => (generalStore as unknown as { openCommentItemIndex: number | null }).openCommentItemIndex);
-
-let isCommentsVisible = $derived(
-    !isPageTitle && (
-        (openCommentItemId === model.id)
-        || ((openCommentItemId == null) && (openCommentItemIndex === index))
-        || ((openCommentItemId == null) && (openCommentItemIndex == null) && index === 1)
-    )
-);
-
-
-// Local state of comment count (to ensure UI reflection)
-let commentCountLocal = $state(0);
-
-/**
- * Get normalized comment count from Yjs comments array
- */
-function normalizeCommentCount(arr: any /* eslint-disable-line @typescript-eslint/no-explicit-any */): number {
-    if (!arr || typeof arr.length !== "number") return 0;
-    return Number(arr.length);
-}
-
-/**
- * Ensure item.comments is a Y.Array, initialize if missing
- */
-function ensureCommentsArray(): unknown[] {
-    try {
-        const it = item as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-        if (!it) return null as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-        let arr: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = it.comments;
-        if (!arr) {
-            // Initialize if comments property does not exist
-            if (typeof it.setComments === "function") {
-                it.setComments([]);
-                arr = it.comments;
-            }
-        }
-        return arr;
-    } catch {
-        return null as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-    }
-}
-
-/**
- * Get the latest comment count from Yjs comments array and reflect it in local state
- */
-function syncCommentCountFromItem() {
-    try {
-        const arr: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = ensureCommentsArray();
-        if (arr && typeof arr.length === "number") {
-            const newCount = normalizeCommentCount(arr);
-            if (commentCountLocal !== newCount) {
-                commentCountLocal = newCount;
-                logger.debug(
-                    `[OutlinerItem][syncCommentCountFromItem] Updated commentCountLocal to ${newCount}`,
-                );
-            }
-        } else {
-            if (commentCountLocal !== 0) {
-                commentCountLocal = 0;
-            }
-        }
-    } catch (err) {
-        logger.error({ error: err }, "[OutlinerItem][syncCommentCountFromItem] Error:");
-    }
-}
-
-/**
- * Apply comment count to local state (for observe callback)
- */
-function applyCommentCount(arrOrCount: unknown) {
-    let newCount: number;
-    if (typeof arrOrCount === "number") {
-        newCount = arrOrCount;
-    } else {
-        newCount = normalizeCommentCount(arrOrCount);
-    }
-    if (commentCountLocal !== newCount) {
-        commentCountLocal = newCount;
-    }
-}
-
-/**
- * Set up observe for Yjs comments array
- */
-function attachCommentObserver(): (() => void) | null {
-    try {
-        const arr: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = ensureCommentsArray();
-        if (arr && typeof arr.observe === "function") {
-            const observer = () => applyCommentCount(arr);
-            arr.observe(observer);
-            return () => arr.unobserve(observer);
-        }
-    } catch {}
-    return null as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-    }
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function handleCommentCountChanged() {
-    syncCommentCountFromItem();
-}
-
-onMount(() => {
-    syncCommentCountFromItem();
-    const cleanup: Array<() => void> = [];
-
-    const detachObserver = attachCommentObserver();
-    if (typeof detachObserver === "function") {
-        cleanup.push(detachObserver);
-    }
-
-    const handleWindowEvent = (event: Event) => {
-        try {
-            const detail: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = (event as CustomEvent<any>)?.detail;
-            if (!detail) return;
-            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
-            if (targetId == null) return;
-            if (String(targetId) !== String(model?.id)) return;
-            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
-            applyCommentCount(possibleCount);
-        } catch {}
-    };
-
-    try {
-        window.addEventListener("item-comment-count", handleWindowEvent as EventListener);
-        cleanup.push(() => { try { window.removeEventListener("item-comment-count", handleWindowEvent as EventListener); } catch {} });
-    } catch {}
-
-    return () => {
-        for (const fn of cleanup) {
-            try { fn(); } catch {}
-        }
-    };
-});
-
-// Unified display count to single source derived from Yjs
-const commentCountVisual = $derived.by(() => Number(commentCountLocal ?? 0));
-
-// Computed voter names for tooltip
-const voterNames = $derived.by(() => {
-    if (!model.votes || model.votes.length === 0) return "";
-    return model.votes.map(uid => {
-        if (uid === currentUser) return "You";
-        const u = presenceStore.users[uid];
-        // If user is online, show name. If offline but ID matches a known pattern, maybe abbreviated ID?
-        // Fallback to "User <ID>"
-        return u ? u.userName : `User ${uid.slice(0, 4)}`;
-    }).join(", ");
-});
-
-
-
-
-
-
-
-
-
-
-// Observe aliasTargetId Y.Map with fine granularity
-let aliasTargetId = $state<string | undefined>();
-onMount(() => {
-    aliasTargetId = item.aliasTargetId;
-    try {
-        const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
-        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-        if (ymap && typeof ymap.observe === 'function') {
-            const obs = (e?: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => {
-                try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
-                        aliasTargetId = ymap.get?.('aliasTargetId');
-                    }
-                } catch {}
-            };
-            ymap.observe(obs);
-            // Initial reflection
-            obs();
-            onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
-        }
-    } catch {}
-});
-// Reactively track aliasPickerStore changes using $derived
-// This replaces the polling approach with proper Svelte 5 reactivity
-let aliasLastConfirmedPulse = $derived.by(() => {
-    // Subscribe to aliasPickerStore changes
-    const ap = aliasPickerStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-    const li = ap?.lastConfirmedItemId;
-    const lt = ap?.lastConfirmedTargetId;
-    const la = ap?.lastConfirmedAt as number | null;
-
-    if (li && lt && la && (Date.now() - la < 6000) && li === model.id) {
-        return { itemId: li, targetId: lt, at: la };
-    }
-    return null as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-    });
-
-// Update DOM attributes when aliasLastConfirmedPulse changes
-$effect(() => {
-    if (aliasLastConfirmedPulse && itemRef) {
-        const { itemId, targetId } = aliasLastConfirmedPulse;
-        try {
-            // Set attribute on this item
-            (itemRef as HTMLElement)?.setAttribute?.('data-alias-target-id', String(targetId));
-
-            // Set attribute on all matching items efficiently
-            const root = document.querySelector(".outliner") || document.body;
-            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-                acceptNode(node) {
-                    return (node as Element).getAttribute("data-item-id") === itemId
-                        ? NodeFilter.FILTER_ACCEPT
-                        : NodeFilter.FILTER_SKIP;
-                },
-            });
-            while (walker.nextNode()) {
-                (walker.currentNode as HTMLElement).setAttribute('data-alias-target-id', String(targetId));
-            }
-
-            // E2E support: set attribute on all items in test environment
-            const isTest = (typeof localStorage !== 'undefined') && localStorage.getItem('VITE_IS_TEST') === 'true';
-            if (isTest) {
-                const allWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-                    acceptNode(node) {
-                        return (node as Element).hasAttribute("data-item-id")
-                            ? NodeFilter.FILTER_ACCEPT
-                            : NodeFilter.FILTER_SKIP;
-                    },
-                });
-                while (allWalker.nextNode()) {
-                    const el = allWalker.currentNode as HTMLElement;
-                    if (!el.classList.contains('page-title')) {
-                        el.setAttribute('data-alias-target-id', String(targetId));
-                    }
-                }
-
-                // Create mirror element for E2E utility world
-                let mirror = document.getElementById('e2e-alias-mirror') as HTMLElement | null;
-                if (!mirror) {
-                    mirror = document.createElement('div');
-                    mirror.id = 'e2e-alias-mirror';
-                    mirror.style.display = 'none';
-                    document.body.prepend(mirror);
-                }
-                mirror.setAttribute('data-item-id', String(itemId));
-                mirror.setAttribute('data-alias-target-id', String(targetId));
-            }
-        } catch {}
-    }
-});
-
-const aliasTargetIdEffective = $derived.by(() => {
-    void (aliasPickerStore as unknown as { tick?: unknown })?.tick;
-    void aliasLastConfirmedPulse; // Make sure to react to pulse changes
-    const base = aliasTargetId;
-    if (base) return base;
-    const lastItemId = (aliasPickerStore as unknown as { lastConfirmedItemId?: string })?.lastConfirmedItemId;
-    const lastTargetId = (aliasPickerStore as unknown as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId;
-    const lastAt = (aliasPickerStore as unknown as { lastConfirmedAt?: number | null })?.lastConfirmedAt;
-    const isE2E = typeof window !== 'undefined' && window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-    const isEmpty = (textString ?? '').toString().trim().length === 0;
-    if (lastTargetId && lastAt && Date.now() - lastAt < 2000) {
-        if (lastItemId === model.id) return lastTargetId;
-        if (isE2E && isEmpty) return lastTargetId;
-    }
-    // Check pulse for recent confirmations
-    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
-        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
-    }
-    return undefined;
-});
-
-// aliasTarget $derived variable removed (moved to OutlinerItemAlias.svelte)
-// Duplicate code related to attachments removed (moved to OutlinerItemAttachments.svelte)
-// Keep only addAttachmentToDomTargetOrModel function (used in drag and drop)
-
-
-// Identify drop target outliner-item from DOM and add attachment to that Item (top-level definition)
-    function addAttachmentToDomTargetOrModel(ev: DragEvent | null, url: string) {
-        // Resolve target item from event or fallback to current model
-        const targetEl = (ev?.target as Element | null)?.closest?.(".outliner-item") || null;
-        const targetId: string | null = targetEl?.getAttribute?.('data-item-id') ?? null;
-
-        if (targetId && String(targetId) === String(model.id)) {
-            // Target is this item
-            try {
-                model.original.addAttachment(url);
-            } catch {
-                // Fallback for cases where addAttachment is not available
-                try { (model.original as unknown as { attachments: string[][] }).attachments.push([url]); } catch {}
-            }
-        } else if (targetId) {
-            // Target is another item, find it in the global state (E2E fallback)
-            try {
-                const w = (typeof window !== "undefined") ? (window as Window & typeof globalThis & { generalStore?: unknown, __ITEM_ID_MAP__?: Record<string, string> }) : null;
-                const map = w?.__ITEM_ID_MAP__;
-                const mappedId = map ? map[String(targetId)] : undefined;
-                const curPage = (w?.generalStore as { currentPage?: unknown })?.currentPage as { items?: { length: number, at?: (i: number) => unknown } } | undefined;
-                if (mappedId && curPage?.items) {
-                    for (let i = 0; i < (curPage.items.length || 0); i++) {
-                        const cand = curPage.items.at?.(i) as { id?: string, addAttachment: (u: string) => void } | undefined;
-                        if (cand && String(cand?.id) === String(mappedId)) {
-                            try { cand.addAttachment(url); } catch { try { (cand as unknown as { attachments: string[][] }).attachments.push([url]); } catch {} }
-                            try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {}
-                            break;
-                        }
-                    }
-                }
-            } catch {}
-        } else {
-            // No target found in DOM, default to current model
-            try {
-                model.original.addAttachment(url);
-            } catch {
-                try { (model.original as unknown as { attachments: string[][] }).attachments.push([url]); } catch {}
-            }
-        }
-
-        // Always trigger change event for test environment stabilization
-        try {
-            if (IS_TEST) {
-                window.dispatchEvent(new CustomEvent('item-attachments-changed', {
-                    detail: { id: String(targetId || model.id) }
-                }));
-            }
-        } catch {}
-    }
-
-
-
-// Attachments related onMount block and $derived variables removed (moved to OutlinerItemAttachments.svelte)
-
-
-
-// Duplicate code related to aliases removed (moved to OutlinerItemAlias.svelte)
-
-// Component type state management
-let componentType = $state<string | undefined>(undefined);
-
-// Update item when component type changes
-function handleComponentTypeChange(newType: string) {
-    if (!item) return;
-
-    const setMapField = (it: any /* eslint-disable-line @typescript-eslint/no-explicit-any */, key: string, value: unknown) => {
-        try {
-            const tree = it?.tree;
-            const nodeKey = it?.key;
-            const m = tree?.getNodeValueFromKey?.(nodeKey);
-            if (m && typeof m.set === "function") {
-                m.set(key, value);
-                if (key !== "lastChanged") m.set("lastChanged", Date.now());
-                return true;
-            }
-        } catch {}
-        return false;
-    };
-
-    const value = newType === "none" ? undefined : newType;
-    // Use setter preferentially if app-schema
-    if (item && typeof item === "object" && "componentType" in item) {
-        try { (item as unknown as { componentType: string | undefined }).componentType = value; } catch {}
-    }
-    // yjs-schema / fallback
-    setMapField(item as unknown as { tree?: unknown, key?: unknown }, "componentType", value);
-    // Optimistically update local state so UI reflects the change without waiting for Yjs propagation
-    componentType = value;
-}
-
-// Synchronization by Yjs fine-grained observe
-let textString = $state<string>("");
-let compTypeValue = $state<string | undefined>(undefined);
-
-onMount(() => {
-    let unsubs: Array<() => void> = [];
-    try {
-        const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
-        const tree = anyItem?.tree; const key = anyItem?.key;
-        const m = tree?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
-        const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
-        if (t && typeof t.observe === "function") {
-            const h1 = () => { try { textString = t.toString?.() ?? ""; } catch {} };
-            t.observe(h1); unsubs.push(() => { try { t.unobserve?.(h1); } catch {} });
-            // Initial reflection
-            h1();
-        }
-        if (m && typeof m.observe === "function") {
-            const h2 = (e?: { keysChanged?: { has: (k: string) => boolean } }) => {
-                try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
-                        compTypeValue = m.get?.("componentType") as string | undefined;
-                    }
-                } catch {}
-            };
-            m.observe(h2); unsubs.push(() => { try { m.unobserve?.(h2); } catch {} });
-            h2();
-        } else {
-            // Fallback: direct acquisition
-            try { compTypeValue = (anyItem as unknown as { componentType?: string }).componentType; } catch {}
-        }
-    } catch {}
-    return () => { for (const fn of unsubs) { try { fn(); } catch {} } };
-});
-
-// Reactively resubscribe to editor overlay store changes to update focus state
-let isItemActive = $state(false);
-
-onMount(() => {
-    const updateActive = () => {
-        const detail = editorOverlayStore.getItemCursorsAndSelections(model.id);
-        isItemActive = detail.isActive || detail.cursors.some(cursor => cursor.isActive && (!cursor.userId || cursor.userId === "local"));
-    };
-    updateActive(); // Initial update
-    const unsubscribe = editorOverlayStore.subscribe(updateActive);
-    return () => { try { unsubscribe(); } catch {} };
-});
-
-// Memoize formatting operations to avoid unnecessary recalculations during render
-let hasFormatting = $derived(ScrapboxFormatter.hasFormatting(textString));
-let formattedHtml = $derived(
-    hasFormatting
-        ? (isItemActive ? ScrapboxFormatter.formatWithControlChars(textString) : ScrapboxFormatter.formatToHtml(textString))
-        : ScrapboxFormatter.escapeHtml(textString)
-);
-
-// Display area ref
-let displayRef: HTMLDivElement;
-// Whole item DOM element ref
-let itemRef: HTMLDivElement;
-
-// Global textarea reference
-let hiddenTextareaRef: HTMLTextAreaElement;
-
-
-
-// Function to determine based on cursor state
-function hasCursorBasedOnState(): boolean {
-    // Depend on overlayPulse so we recompute when editorOverlayStore notifies changes
-    const { cursors, isActive } = editorOverlayStore.getItemCursorsAndSelections(model.id);
-    if (isActive) return true;
-    return cursors.some(cursor => cursor.isActive && (!cursor.userId || cursor.userId === "local"));
-}
-
-
-// Set global textarea element to reference
-onMount(() => {
-    const globalTextarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
-    if (globalTextarea) {
-        hiddenTextareaRef = globalTextarea;
-    }
-});
-
-function getClickPosition(event: MouseEvent, content: string): number {
-    const x = event.clientX;
-    const y = event.clientY;
-    // Identify text element
-    const textEl = displayRef.querySelector(".item-text") as HTMLElement;
-
-    // Try Caret API (Fast Path)
-    // Only use if rendered text length matches raw content length (avoids issues with hidden formatting/links)
-    if (textEl && (document.caretRangeFromPoint || (document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node, offset: number } }).caretPositionFromPoint) && textEl.textContent?.length === content.length) {
-        let range: Range | null = null;
-        if (document.caretRangeFromPoint) {
-            range = document.caretRangeFromPoint(x, y);
-        }
-        else {
-            const posInfo = (document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node, offset: number } }).caretPositionFromPoint?.(x, y);
-            if (posInfo) {
-                range = document.createRange();
-                range.setStart(posInfo.offsetNode, posInfo.offset);
-                range.collapse(true);
-            }
-        }
-
-        if (range && textEl.contains(range.startContainer)) {
-            // Calculate global offset avoiding O(N) layout thrashing
-            return calculateGlobalOffset(textEl, range.startContainer, range.startOffset);
-        }
-    }
-
-    // Fallback: width measurement using span
-    // Use entire content if no text element
-    const targetElement = textEl || displayRef;
-    const rect = targetElement.getBoundingClientRect();
-    const relX = x - rect.left;
-
-    // Processing when click position is outside text area
-    if (relX < 0) {
-        return 0; // Beginning if clicked on the left side of text
-    }
-
-    const span = getMeasurementSpan();
-    const style = window.getComputedStyle(targetElement);
-
-    // Only update styles if they differ (avoid unnecessary property writes)
-    if (span.style.fontSize !== style.fontSize ||
-        span.style.fontFamily !== style.fontFamily ||
-        span.style.fontWeight !== style.fontWeight ||
-        span.style.letterSpacing !== style.letterSpacing) {
-
-        span.style.fontFamily = style.fontFamily;
-        span.style.fontSize = style.fontSize;
-        span.style.fontWeight = style.fontWeight;
-        span.style.letterSpacing = style.letterSpacing;
-    }
-
-    const best = findBestOffsetBinary(content, relX, span);
-    // Span remains in DOM for reuse
-
-    return best;
-}
-
-function toggleCollapse() {
-    dispatch("toggle-collapse", { itemId: model.id });
-}
-
-/**
- * Set cursor
- * @param event Mouse event (calculate cursor position from click position)
- * @param initialCursorPosition Initial cursor position (if specified)
- */
-function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
-    if (isReadOnly) return;
-
-    // Get global textarea (from store, fallback to DOM if missing)
-    let textareaEl = editorOverlayStore.getTextareaRef();
-    if (!textareaEl) {
-        textareaEl = document.querySelector(".global-textarea") as HTMLTextAreaElement | null;
-        if (!textareaEl) {
-            logger.error({ error: new Error("Global textarea not found") }, "Global textarea not found");
-            return;
-        }
-        // Re-register to store
-        editorOverlayStore.setTextareaRef(textareaEl);
-    }
-
-    // Set focus to global textarea (highest priority)
-    textareaEl.focus();
-    logger.debug(undefined, "OutlinerItem startEditing: Focus set to global textarea, activeElement: " + (document.activeElement === textareaEl));
-
-    // Additional attempts to ensure focus
-    requestAnimationFrame(() => {
-        textareaEl.focus();
-
-        setTimeout(() => {
-            textareaEl.focus();
-
-        }, 10);
-    });
-    // Synchronize text content
-    textareaEl.value = textString;
-    textareaEl.focus();
-    logger.debug(undefined, "OutlinerItem startEditing: focus called, activeElement:" + document.activeElement?.tagName + " " + document.activeElement?.className);
-
-    let cursorPosition = initialCursorPosition;
-
-    if (event) {
-        // Set cursor position based on click position
-        cursorPosition = getClickPosition(event, textString);
-    }
-    else if (initialCursorPosition === undefined) {
-        // Place cursor at the end by default (only if not specified externally)
-        cursorPosition = textString.length;
-    }
-
-    if (cursorPosition !== undefined) {
-        // Set cursor position to textarea
-        textareaEl.setSelectionRange(cursorPosition, cursorPosition);
-    }
-
-    // Show mobile toolbar when editing starts (if on mobile)
-    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
-        document.dispatchEvent(new CustomEvent('mobile-toolbar-show'));
-    }
-
-    // Clear cursor of currently active item
-    const activeItemId = editorOverlayStore.getActiveItem();
-    if (activeItemId && activeItemId !== model.id) {
-        editorOverlayStore.clearCursorForItem(activeItemId);
-    }
-
-    // Determine whether to keep cursor added by Alt+Click
-    // Normal deletion processing if event is undefined or Alt key is not pressed
-    const preserveAltClick = event?.altKey === true;
-
-    // Debug info
-    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-        // Intentionally empty: placeholder for debug logging
-    }
-
-    // Clear all cursors then set new cursor
-    // Keep existing cursors if adding multi-cursor with Alt+Click
-    editorOverlayStore.clearCursorAndSelection("local", false, preserveAltClick);
-
-    // Clear existing cursor of current item (keep if Alt+Click)
-    if (!preserveAltClick) {
-        editorOverlayStore.clearCursorForItem(model.id);
-    }
-
-    // Set active item
-    editorOverlayStore.setActiveItem(model.id);
-
-    // Set new cursor
-    editorOverlayStore.setCursor({
-        itemId: model.id,
-        offset: cursorPosition !== undefined ? cursorPosition : 0,
-        isActive: true,
-        userId: "local",
-    });
-
-    // Start cursor blinking
-    editorOverlayStore.startCursorBlink();
-
-    // Reconfirm focus
-    if (document.activeElement !== textareaEl) {
-        textareaEl.focus();
-    }
-}
-
-/**
- * Common function to update cursor position and selection range
- */
-function updateSelectionAndCursor() {
-    if (!hiddenTextareaRef) return;
-
-    const currentStart = hiddenTextareaRef.selectionStart;
-    const currentEnd = hiddenTextareaRef.selectionEnd;
-
-    // When there is no selection range
-    if (currentStart === currentEnd) {
-        // Set cursor position
-        editorOverlayStore.setCursor({
-            itemId: model.id,
-            offset: currentStart,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Clear selection range
-        const selections = Object.values(editorOverlayStore.selections).filter(s =>
-            s.userId === "local" && s.startItemId === model.id && s.endItemId === model.id
-        );
-
-        if (selections.length > 0) {
-            // Delete selection range
-            const filteredEntries = [];
-            for (const [key, s] of Object.entries(editorOverlayStore.selections)) {
-                if (!(s.userId === "local" && s.startItemId === model.id && s.endItemId === model.id)) {
-                    filteredEntries.push([key, s]);
-                }
-            }
-            editorOverlayStore.selections = Object.fromEntries(filteredEntries);
-        }
-
-        // Clear global textarea selection range
-        if (hiddenTextareaRef) {
-            hiddenTextareaRef.setSelectionRange(currentStart, currentStart);
-        }
-    }
-    else {
-        // When there is a selection range
-        const isReversed = hiddenTextareaRef.selectionDirection === "backward";
-        const cursorOffset = isReversed ? currentStart : currentEnd;
-
-        // Set cursor position
-        editorOverlayStore.setCursor({
-            itemId: model.id,
-            offset: cursorOffset,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Set selection range
-        editorOverlayStore.setSelection({
-            startItemId: model.id,
-            endItemId: model.id,
-            startOffset: Math.min(currentStart, currentEnd),
-            endOffset: Math.max(currentStart, currentEnd),
-            userId: "local",
-            isReversed: isReversed,
-        });
-
-        // Set global textarea selection range
-        if (hiddenTextareaRef) {
-            hiddenTextareaRef.setSelectionRange(
-                currentStart,
-                currentEnd,
-                isReversed ? "backward" : "forward",
-            );
-        }
-    }
-
-    // Update cursor position
-    lastCursorPosition = currentStart === currentEnd ? currentStart :
-        (hiddenTextareaRef.selectionDirection === "backward" ? currentStart : currentEnd);
-}
-
-// Whole item keydown event handler
-
-
-
-
-
-function addNewItem() {
-    if (isReadOnly) return;
-    const p = model.original.parent;
-    if (p) {
-        const idx = model.original.indexInParent();
-        if (idx !== -1) {
-            p.addNode(currentUser, idx + 1);
-        }
-    }
-}
-
-function handleDelete() {
-    if (isReadOnly) return;
-    if (confirm("Are you sure you want to delete this item?")) {
-        model.original.delete();
-    }
-}
-
-function toggleVote() {
-    if (!isReadOnly) {
-        model.original.toggleVote(currentUser);
-    }
-}
-
-function toggleComments() {
-    const gs = generalStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-    if (gs.openCommentItemId === model.id) {
-        gs.openCommentItemId = null;
-        gs.openCommentItemIndex = null;
-        try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
-    } else {
-        gs.openCommentItemId = model.id;
-        gs.openCommentItemIndex = index;
-        try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch {}
-    }
-}
-
-function handleContentClick(e: MouseEvent) {
-    const el = e.target as HTMLElement | null;
-    if (!el) return;
-
-    // Prevent component selector clicks from triggering item editing (focusing textarea)
-    // which would immediately close the select dropdown
-    if (el.closest('.component-selector') || el.tagName.toLowerCase() === 'select') {
-        e.stopPropagation();
-        return;
-    }
-
-    const btn = el.closest('button.comment-button');
-    if (btn) {
-        try { logger.debug(undefined, '[OutlinerItem] handleContentClick toggling comments for id=' + model.id); } catch {}
-        e.stopPropagation();
-        toggleComments();
-    }
-}
-
-/**
- * Click handling: Add multi-cursor with Alt+Click, otherwise start editing
- * @param event Mouse event
- */
-function handleClick(event: MouseEvent) {
-    // Anchor click: navigate to link without entering edit mode
-    if ((event.target as HTMLElement).closest("a")) {
-        return;
-    }
-
-    // Alt+Click: Add new cursor
-    if (event.altKey) {
-        // Ensure event propagation is stopped
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-
-        // Get click position
-        const pos = getClickPosition(event, textString);
-
-        // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            // Intentionally empty: placeholder for debug logging
-        }
-
-        // Add new cursor (existing cursor check is done in addCursor)
-        editorOverlayStore.addCursor({
-            itemId: model.id,
-            offset: pos,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            // Intentionally empty: placeholder for debug logging
-        }
-
-        // Set active item
-        editorOverlayStore.setActiveItem(model.id);
-
-        // Focus on global textarea (more reliable method)
-        const textarea = editorOverlayStore.getTextareaRef();
-        if (textarea) {
-            // Multiple attempts to ensure focus is set
-            textarea.focus();
-
-            // requestAnimationFrame
-            requestAnimationFrame(() => {
-                textarea.focus();
-
-                // Use setTimeout as well for further certainty
-                setTimeout(() => {
-                    textarea.focus();
-
-                    // Check if focus was set
-                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        // Intentionally empty: placeholder for debug logging
-                    }
-                }, 10);
-            });
-        }
-        else {
-            logger.error({ error: new Error("Global textarea not found") }, "Global textarea not found");
-        }
-
-        // Start cursor blinking
-        editorOverlayStore.startCursorBlink();
-        return;
-    }
-
-    // Normal click: start editing
-    event.preventDefault();
-    event.stopPropagation();
-
-    // Start editing (clear and set cursor internally)
-    startEditing(event);
-}
-
-/**
- * Mousedown handling: Start drag
- * @param event Mouse event
- */
-function handleMouseDown(event: MouseEvent) {
-    // Ignore right click
-    if (event.button !== 0) return;
-
-    // Anchor click should not trigger editing or dragging
-    if ((event.target as HTMLElement).closest("a")) {
-        return;
-    }
-
-    // Component selector clicks should not trigger item editing (focusing textarea)
-    if ((event.target as HTMLElement).closest(".component-selector") || (event.target as HTMLElement).tagName.toLowerCase() === 'select') {
-        return;
-    }
-
-    // Extend selection if Shift+Click
-    if (event.shiftKey) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        // Get currently active item
-        const activeItemId = editorOverlayStore.getActiveItem();
-        if (!activeItemId) {
-            // Normal click processing if no active item
-            startEditing(event);
-            return;
-        }
-
-        // Get current selection range
-        const existingSelection = Object.values(editorOverlayStore.selections).find(s => s.userId === "local");
-        const lastCursor = editorOverlayStore.getLastActiveCursor();
-
-        if (!existingSelection && !lastCursor) {
-            // Normal click processing if no selection range and no cursor
-            startEditing(event);
-            return;
-        }
-
-        // Get click position
-        const clickPosition = getClickPosition(event, textString);
-
-        const startItemId = existingSelection ? existingSelection.startItemId : lastCursor!.itemId;
-        const startOffset = existingSelection ? existingSelection.startOffset : lastCursor!.offset;
-
-        // Extend selection
-        const isReversed = existingSelection
-            ? (activeItemId === model.id ? clickPosition < existingSelection.startOffset : false)
-            : (activeItemId === model.id ? clickPosition < lastCursor!.offset : false);
-
-        editorOverlayStore.setSelection({
-            startItemId: startItemId,
-            startOffset: startOffset,
-            endItemId: model.id,
-            endOffset: clickPosition,
-            userId: "local",
-            isReversed: isReversed,
-        });
-
-        // Set cursor position
-        editorOverlayStore.setCursor({
-            itemId: model.id,
-            offset: clickPosition,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Set active item
-        editorOverlayStore.setActiveItem(model.id);
-
-        // Start cursor blinking
-        editorOverlayStore.startCursorBlink();
-
-        return;
-    }
-
-    // Normal mousedown: prepare for drag start
-    const clickPosition = getClickPosition(event, textString);
-    dragStartPosition = clickPosition;
-    dragStartClientX = event.clientX;
-    dragStartClientY = event.clientY;
-
-    // Start edit mode
-    if (!hasCursorBasedOnState()) {
-        startEditing(event);
-    }
-
-}
-
-/**
- * Mousemove handling: Update selection range during drag
- * @param event Mouse event
- */
-function handleMouseMove(event: MouseEvent) {
-    // Ignore if left button is not pressed
-    if (event.buttons !== 1) return;
-
-    // Ignore if not editing
-    if (!hasCursorBasedOnState()) return;
-
-    // Set dragging flag
-    isDragging = true;
-
-    // Get current mouse position
-    const currentPosition = getClickPosition(event, textString);
-
-    // Rectangular selection (box selection) if Alt+Shift+Drag
-    if (event.altKey && event.shiftKey) {
-        // Box selection processing
-        handleBoxSelection(event, currentPosition);
-        return;
-    }
-
-    // Update normal selection range
-    if (hiddenTextareaRef) {
-        const start = Math.min(dragStartPosition, currentPosition);
-        const end = Math.max(dragStartPosition, currentPosition);
-        const isReversed = currentPosition < dragStartPosition;
-
-        // Set textarea selection range
-        hiddenTextareaRef.setSelectionRange(
-            start,
-            end,
-            isReversed ? "backward" : "forward",
-        );
-
-        // Reflect selection range to store
-        editorOverlayStore.setSelection({
-            startItemId: model.id,
-            startOffset: start,
-            endItemId: model.id,
-            endOffset: end,
-            userId: "local",
-            isReversed: isReversed,
-        });
-
-        // Set cursor position
-        editorOverlayStore.setCursor({
-            itemId: model.id,
-            offset: isReversed ? start : end,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Fire drag event
-        dispatch("drag", {
-            itemId: model.id,
-            offset: currentPosition,
-        });
-    }
-}
-
-/**
- * Box selection processing
- * @param event Mouse event
- * @param currentPosition Current cursor position
- */
-function handleBoxSelection(event: MouseEvent, currentPosition: number) {
-    // Debug info
-    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-        // Intentionally empty: placeholder for debug logging
-    }
-
-    // Start and end positions of box selection (in pixels)
-    const startPixelX = Math.min(dragStartClientX, event.clientX);
-    const endPixelX = Math.max(dragStartClientX, event.clientX);
-
-    // Y coordinates of drag start and current position (in pixels)
-    const startPixelY = dragStartClientY;
-    const endPixelY = event.clientY;
-
-    // Upper and lower limits of Y coordinate of selection range
-    const topY = Math.min(startPixelY, endPixelY);
-    const bottomY = Math.max(startPixelY, endPixelY);
-
-    // Identify items within box selection range
-    const itemsInRange: Array<{
-        itemId: string;
-        element: HTMLElement;
-        rect: DOMRect;
-    }> = [];
-
-    // Use TreeWalker to traverse items in DOM order efficiently.
-    const root = document.querySelector(".outliner") || document.body;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-        acceptNode(node) {
-            return (node as Element).classList.contains("outliner-item")
-                ? NodeFilter.FILTER_ACCEPT
-                : NodeFilter.FILTER_SKIP;
-        },
-    });
-
-    while (walker.nextNode()) {
-        const itemElement = walker.currentNode as HTMLElement;
-        const itemId = itemElement.getAttribute("data-item-id");
-        if (!itemId) continue;
-
-        const rect = itemElement.getBoundingClientRect();
-
-        // Stop traversing if we've passed the bottom of the selection box
-        if (rect.top > bottomY) {
-            break;
-        }
-
-        // Determine if item is within box selection range
-        // Select items with Y coordinate within range (including partial overlap)
-        const verticalOverlap = Math.max(0, Math.min(rect.bottom, bottomY) - Math.max(rect.top, topY));
-
-        // If overlapping by at least 1 pixel or is the current item
-        if (itemId === model.id || verticalOverlap > 0) {
-            itemsInRange.push({
-                itemId,
-                element: itemElement,
-                rect,
-            });
-        }
-    }
-
-    // Do nothing if no items are within box selection range
-    if (itemsInRange.length === 0) return;
-
-    // Calculate selection range for each item
-    const boxSelectionRanges: Array<{
-        itemId: string;
-        startOffset: number;
-        endOffset: number;
-    }> = [];
-
-    // Create measurement span only once and reuse (DOM operation optimization)
-    const span = getMeasurementSpan();
-
-    // Calculate selection range for each item
-    itemsInRange.forEach(item => {
-        const textElement = item.element.querySelector(".item-text") as HTMLElement;
-        if (!textElement) return;
-
-        const textContent = textElement.textContent || "";
-
-        // Calculate start and end positions of selection range
-        const rect = textElement.getBoundingClientRect();
-
-        // Relative X coordinates of left and right ends of box selection (based on text element)
-        const relStartX = startPixelX - rect.left;
-        const relEndX = endPixelX - rect.left;
-
-        // Calculate position in characters
-        const style = window.getComputedStyle(textElement);
-
-        // Only update styles if they differ
-        if (span.style.fontSize !== style.fontSize ||
-            span.style.fontFamily !== style.fontFamily ||
-            span.style.fontWeight !== style.fontWeight ||
-            span.style.letterSpacing !== style.letterSpacing) {
-
-            span.style.fontFamily = style.fontFamily;
-            span.style.fontSize = style.fontSize;
-            span.style.fontWeight = style.fontWeight;
-            span.style.letterSpacing = style.letterSpacing;
-        }
-
-        // Calculate start position (offset)
-        const startPos = findBestOffsetBinary(textContent, relStartX, span);
-
-        // Calculate end position (offset)
-        const endPos = findBestOffsetBinary(textContent, relEndX, span);
-
-        // Use calculated positions
-        let itemStartOffset = Math.min(startPos, endPos);
-        let itemEndOffset = Math.max(startPos, endPos);
-
-        // Correct if out of range
-        if (itemStartOffset < 0) itemStartOffset = 0;
-        if (itemEndOffset > textContent.length) itemEndOffset = textContent.length;
-
-        // Adjust to select at least 1 character (measure against extremely narrow drag)
-        if (itemStartOffset === itemEndOffset) {
-            if (itemEndOffset < textContent.length) {
-                itemEndOffset += 1;
-            } else if (itemStartOffset > 0) {
-                itemStartOffset -= 1;
-            }
-        }
-
-        // Add only if selection range is valid
-        if (itemStartOffset < itemEndOffset) {
-            boxSelectionRanges.push({
-                itemId: item.itemId,
-                startOffset: itemStartOffset,
-                endOffset: itemEndOffset,
-            });
-        }
-    });
-
-    // Set box selection
-    if (boxSelectionRanges.length > 0) {
-        // Get first and last items
-        const firstItem = boxSelectionRanges[0];
-        const lastItem = boxSelectionRanges[boxSelectionRanges.length - 1];
-
-        // Set box selection
-        editorOverlayStore.setBoxSelection(
-            firstItem.itemId,
-            firstItem.startOffset,
-            lastItem.itemId,
-            lastItem.endOffset,
-            boxSelectionRanges,
-            "local",
-        );
-
-        // Calculate and keep box selection text in lastCopiedText every time selection is confirmed (for paste fallback)
-        try {
-            if (typeof window !== 'undefined') {
-                const lines: string[] = [];
-                for (const r of boxSelectionRanges) {
-                    const el = document.querySelector(`[data-item-id="${r.itemId}"] .item-text`) as HTMLElement | null;
-                    let full = el?.textContent || '';
-                    if (!full) {
-                        // Fallback from generalStore
-                        const w = (window as Window & typeof globalThis & { generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string }, [key: number]: { id?: string, text?: string } } } } });
-                        const items = w?.generalStore?.currentPage?.items;
-                        const len = items?.length ?? 0;
-                        for (let i = 0; i < len; i++) {
-                            const it = items?.at ? items.at(i) : items?.[i];
-                            if (it?.id === r.itemId) { full = String(it?.text ?? ''); break; }
-                        }
-                    }
-                    const s = Math.max(0, Math.min(full.length, Math.min(r.startOffset, r.endOffset)));
-                    const e = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
-                    lines.push(full.substring(s, e));
-                }
-                (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).lastCopiedText = lines.join('\n');
-            }
-        } catch {}
-
-        // Set cursor position
-        editorOverlayStore.setCursor({
-            itemId: model.id,
-            offset: currentPosition,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Fire drag event
-        dispatch("box-selection", {
-            startItemId: firstItem.itemId,
-            endItemId: lastItem.itemId,
-            ranges: boxSelectionRanges,
-        });
-    }
-}
-
-/**
- * Mouseup handling: End drag
- */
-function handleMouseUp() {
-    // Ignore if not dragging
-    if (!isDragging) return;
-
-    // End drag
-    isDragging = false;
-
-    // Confirm selection range
-    updateSelectionAndCursor();
-
-    // Start cursor blinking
-    editorOverlayStore.startCursorBlink();
-
-    // Fire drag end event
-    dispatch("drag-end", {
-        itemId: model.id,
-        offset: lastCursorPosition,
-    });
-}
-
-/**
- * Drag start handling
- * @param event Drag event
- */
-function handleDragStart(event: DragEvent) {
-    // Drag selection range if exists
-    const selection = Object.values(editorOverlayStore.selections).find(s =>
-        s.userId === "local" && (s.startItemId === model.id || s.endItemId === model.id)
-    );
-
-    if (selection) {
-        // Get text of selection range
-        const selectedText = editorOverlayStore.getSelectedText("local");
-
-        // Set drag data
-        if (event.dataTransfer) {
-            event.dataTransfer.setData("text/plain", selectedText);
-            event.dataTransfer.setData("application/x-outliner-selection", JSON.stringify(selection));
-            event.dataTransfer.effectAllowed = "move";
-        }
-
-        // Set dragging flag
-        isDragging = true;
-    }
-    else {
-        // Drag text of single item
-        if (event.dataTransfer) {
-            event.dataTransfer.setData("text/plain", textString);
-            event.dataTransfer.setData("application/x-outliner-item", model.id);
-            event.dataTransfer.effectAllowed = "move";
-        }
-
-        // Set dragging flag
-        isDragging = true;
-    }
-
-    // Fire drag start event
-    dispatch("drag-start", {
-        itemId: model.id,
-        selection: selection || null,
-    });
-}
-
-/**
- * Drag over handling
- * @param event Drag event
- */
-function handleDragOver(event: DragEvent) {
-    // Prevent default action (allow drop)
-    event.preventDefault();
-
-    // Set drop effect
-    if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = "move";
-    }
-
-    // Calculate drop target position
-    const rect = displayRef.getBoundingClientRect();
-    const y = event.clientY;
-    const relativeY = y - rect.top;
-    const height = rect.height;
-
-    // Determine whether to drop at top, middle, or bottom
-    if (relativeY < height * 0.3) {
-        dropTargetPosition = "top";
-    }
-    else if (relativeY > height * 0.7) {
-        dropTargetPosition = "bottom";
-    }
-    else {
-        dropTargetPosition = "middle";
-    }
-
-    // Set drop target flag
-    isDropTarget = true;
-}
-
-/**
- * Drag enter handling
- * @param event Drag event
- */
-function handleDragEnter(event: DragEvent) {
-    // Prevent default action
-    event.preventDefault();
-
-    // Set drop target flag
-    isDropTarget = true;
-}
-
-/**
- * Drag leave handling
- */
-function handleDragLeave() {
-    // Clear drop target flag
-    isDropTarget = false;
-    dropTargetPosition = null;
-}
-
-/**
- * Drop handling
- * @param event Drag event
- */
-async function handleDrop(event: DragEvent | CustomEvent) {
-    const maybeCustom = event as CustomEvent;
-    if (maybeCustom?.detail && typeof maybeCustom.detail === "object" && "targetItemId" in maybeCustom.detail) {
-        logger.debug("OutlinerItem handleDrop: custom event detail", maybeCustom.detail);
-        event.preventDefault?.();
-        try { event.stopPropagation?.(); (event as Event).stopImmediatePropagation?.(); } catch {}
-
-        isDropTarget = false;
-
-        const detail = maybeCustom.detail as {
-            targetItemId?: string;
-            position?: string | null;
-            text?: string;
-            selection?: unknown;
-            sourceItemId?: string | null;
-        };
-
-        dispatch("drop", {
-            targetItemId: detail.targetItemId ?? model.id,
-            position: detail.position ?? dropTargetPosition ?? null,
-            text: detail.text ?? "",
-            selection: detail.selection ?? null,
-            sourceItemId: detail.sourceItemId ?? null,
-        });
-
-        dropTargetPosition = null;
-        return;
-    }
-
-    logger.debug(undefined, "OutlinerItem handleDrop: event received " + !!event);
-    // Prevent default action
-    event.preventDefault();
-    try { event.stopPropagation(); (event as Event).stopImmediatePropagation?.(); } catch {}
-
-
-    // Clear drop target flag
-    isDropTarget = false;
-
-
-    // Get drop data (provide fallback for missing event.dataTransfer in Playwright isolated world)
-    const dt = (event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).dataTransfer as DataTransfer | null;
-
-    // File drop (Support both DataTransfer.files and DataTransfer.items(kind=file), or E2E fallback)
-    const hasFileList = !!dt && dt.files && dt.files.length > 0;
-    const hasFileItems = !!dt && dt.items && Array.from(dt.items).some(it => it.kind === "file");
-    const e2eFiles: File[] = (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E_LAST_FILES__ && Array.isArray((window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E_LAST_FILES__)) ? (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E_LAST_FILES__ as File[] : [];
-    const hasE2eFiles = e2eFiles.length > 0;
-
-    if (hasFileList || hasFileItems || hasE2eFiles) {
-        try {
-            const files: File[] = [];
-            if (hasFileList) {
-                files.push(...Array.from(dt!.files));
-            } else if (hasFileItems) {
-                for (const it of Array.from(dt!.items)) {
-                    if (it.kind === "file") {
-                        const f = it.getAsFile();
-                        if (f) files.push(f);
-                    }
-                }
-            } else if (hasE2eFiles) {
-                // Playwright fallback: Use last files recorded via DataTransfer.items.add
-                files.push(...e2eFiles);
-                try { (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E_LAST_FILES__ = []; } catch {}
-            }
-
-            if (files.length > 0) {
-                // Resolve container ID (Priority: FirestoreStore -> localStorage -> Yjs title -> Fallback)
-                let containerId: string | undefined = undefined;
-                try { containerId = await getDefaultContainerId(); } catch {}
-                if (!containerId && typeof window !== "undefined") {
-                    try { containerId = window.localStorage?.getItem?.("currentContainerId") ?? undefined; } catch {}
-                    try { containerId = containerId || (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__CURRENT_PROJECT_TITLE__; } catch {}
-                }
-                containerId = containerId || "test-container";
-
-                for (const file of files) {
-                    try {
-                        const url = await uploadAttachment(containerId, model.id, file);
-                        
-                        if (!dropTargetPosition || dropTargetPosition === "middle") {
-                            addAttachmentToDomTargetOrModel(event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */, url);
-                            // Reflect to Doc after connection
-                            try { mirrorAttachment(url); } catch {}
-                        } else {
-                            // Dispatch event for top/bottom insertion
-                            dispatch("drop", {
-                                targetItemId: model.id,
-                                position: dropTargetPosition,
-                                attachmentUrl: url
-                            });
-                        }
-
-                    } catch (e) {
-                        // Fallback with local preview even if upload fails (E2E stabilization)
-                        try {
-                            const localUrl = URL.createObjectURL(file);
-                            if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as unknown as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} }
-                                try { mirrorAttachment(localUrl); } catch {}
-                                // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
-                                try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
-                            } else {
-                                dispatch("drop", {
-                                    targetItemId: model.id,
-                                    position: dropTargetPosition,
-                                    attachmentUrl: localUrl
-                                });
-                            }
-                            // Auxiliary reflection to Doc after connection (via ID map)
-                            try {
-                                const w = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string, addAttachment?: (u: string) => void }, [key: number]: { id?: string, text?: string, addAttachment?: (u: string) => void } } } }, __ITEM_ID_MAP__?: Record<string, string> }) : null;
-                                const map = w?.__ITEM_ID_MAP__;
-                                const mappedId = map ? map[String(model.id)] : undefined;
-                                const curPage = w?.generalStore?.currentPage;
-                                if (mappedId && curPage?.items) {
-                                    for (let i = 0; i < (curPage.items.length || 0); i++) {
-                                        const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
-                                        if (cand && String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as unknown as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
-                                    }
-                                }
-                            } catch {}
-                        } catch {}
-                        logger.error({ error: e as Error }, "attachment upload failed");
-                    }
-                }
-            } else {
-                // E2E final fallback: Add dummy attachment in test environment if file cannot be obtained from DataTransfer,
-                // to enable UI path (preview display) verification
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E__)) {
-                    try {
-                        const blob = new Blob(["e2e"], { type: "text/plain" });
-                        const localUrl = URL.createObjectURL(blob);
-                        addAttachmentToDomTargetOrModel(event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */, localUrl);
-                        try { mirrorAttachment(localUrl); } catch {}
-
-                    } catch {}
-                }
-            }
-        } finally {
-            dropTargetPosition = null;
-        }
-        return;
-    }
-
-    // E2E final final fallback: Add dummy attachment in test even if DataTransfer is missing/empty
-    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
-        try {
-            const blob = new Blob(["e2e"], { type: "text/plain" });
-            const localUrl = URL.createObjectURL(blob);
-            addAttachmentToDomTargetOrModel(event as DragEvent, localUrl);
-            try { mirrorAttachment(localUrl); } catch {}
-        } catch {}
-        dropTargetPosition = null;
-        return;
-    }
-
-    // Non-file drop (text or in-app data)
-    try {
-        const plainText = ((event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
-        const selectionData = ((event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
-        const itemId = ((event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
-
-        // Fire drop event
-        dispatch("drop", {
-            targetItemId: model.id,
-            position: dropTargetPosition,
-            text: plainText,
-            selection: selectionData ? JSON.parse(selectionData) : null,
-            sourceItemId: itemId || null,
-        });
-    } finally {
-        // Clear drop position
-        dropTargetPosition = null;
-    }
-}
-
-// Safety measure: Bind with addEventListener in addition to legacy onXXX handlers (Playwright drop synthesis support)
-
-// Explicitly register drop/dragover with addEventListener (Countermeasure for Playwright dispatchEvent)
-onMount(() => {
-    let displayForward: ((ev: Event) => void) | null = null;
-    let itemForward: ((ev: Event) => void) | null = null;
-    try {
-        const maybeForward = (ev: Event) => {
-            if (ev.type !== 'synthetic-drop') return;
-
-            const custom = ev as CustomEvent;
-
-            if (!custom || typeof custom.detail !== "object" || custom.detail === null) return;
-            const detail = custom.detail as {
-                targetItemId?: string;
-                position?: string | null;
-                text?: string;
-                selection?: unknown;
-                sourceItemId?: string | null;
-            };
-            if (!("targetItemId" in detail) && !("sourceItemId" in detail)) return;
-
-            custom.preventDefault?.();
-            custom.stopPropagation?.();
-            (custom as Event).stopImmediatePropagation?.();
-
-            dispatch("drop", {
-                targetItemId: detail.targetItemId ?? model.id,
-                position: detail.position ?? dropTargetPosition ?? null,
-                text: detail.text ?? "",
-                selection: detail.selection ?? null,
-                sourceItemId: detail.sourceItemId ?? null,
-            });
-
-            dropTargetPosition = null;
-        };
-
-        if (displayRef) {
-            displayForward = maybeForward;
-            displayRef.addEventListener('synthetic-drop', displayForward as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-        }
-        if (itemRef) {
-            itemForward = maybeForward;
-            itemRef.addEventListener('synthetic-drop', itemForward as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-        }
-    } catch {}
-    return () => {
-        try {
-            if (displayForward) {
-                displayRef?.removeEventListener?.('synthetic-drop', displayForward as EventListener, { capture: true } as EventListenerOptions);
-            }
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as EventListenerOptions);
-            if (itemForward) {
-                itemRef?.removeEventListener?.('synthetic-drop', itemForward as EventListener, { capture: true } as EventListenerOptions);
-            }
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
-        } catch {}
-    };
-});
-// E2E: Receive direct notification from dispatchEvent hook, execute handleDrop if target element is under own displayRef
-onMount(() => {
-    try {
-        const anyWin = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { __E2E_DROP_HANDLERS__?: ((el: Element, ev: DragEvent) => void)[], __E2E__?: boolean }) : undefined;
-        if (!anyWin) return;
-        if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as ((el: Element, ev: DragEvent) => void)[];
-        const fn = (el: Element, ev: DragEvent) => {
-            try {
-                if (displayRef && (el === displayRef || displayRef.contains(el))) {
-                    handleDrop(ev);
-                }
-            } catch {}
-        };
-        anyWin.__E2E_DROP_HANDLERS__.push(fn);
-
-        // E2E: Global function to forcibly trigger handleDrop (test only). If element is under self, synthesize drop and process.
-        if (anyWin.__E2E__) {
-            const selfInvoker = (el: Element) => {
-                try {
-                    if (displayRef && (el === displayRef || displayRef.contains(el))) {
-                        const ev = new DragEvent('drop', { bubbles: true, cancelable: true } as DragEventInit);
-                        handleDrop(ev);
-                    }
-                } catch {}
-            };
-            if (!(anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_FORCE_HANDLE_DROP__) {
-                (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
-            } else {
-                const prev: any   = (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_FORCE_HANDLE_DROP__;
-                (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
-            }
-
-            // E2E: Test-only helper to add attachment directly (deterministically reproduce final result of DnD)
-            const selfAdd = (el: Element, text?: string) => {
-                try {
-                    if (displayRef && (el === displayRef || displayRef.contains(el))) {
-                        const blob = new Blob([text ?? 'e2e'], { type: 'text/plain' });
-                        const localUrl = URL.createObjectURL(blob);
-                        addAttachmentToDomTargetOrModel(new DragEvent('drop'), localUrl);
-                        try { mirrorAttachment(localUrl); } catch {}
-                        // Immediately reflect to mirror in test environment to ensure visibility
-                        try {
-                            // Test environment immediate mirror update - attachmentsMirror is handled in OutlinerItemAttachments component
-                            // if (IS_TEST) {
-                            //     const arr: any /* eslint-disable-line @typescript-eslint/no-explicit-any */[] = ((model?.original as any /* eslint-disable-line @typescript-eslint/no-explicit-any */)?.attachments?.toArray?.() ?? []);
-                            //     if (arr.length > 0) {
-                            //         attachmentsMirror = arr.map((u: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => Array.isArray(u) ? u[0] : u);
-                            //     }
-                            // }
-                        } catch {}
-                        try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
-                    }
-                } catch {}
-            };
-            if (!(anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_ADD_ATTACHMENT__) {
-                (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
-            } else {
-                const prevAdd: any   = (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_ADD_ATTACHMENT__;
-                (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
-            }
-        }
-
-        onDestroy(() => {
-            try {
-                const arr = anyWin.__E2E_DROP_HANDLERS__ as ((el: Element, ev: DragEvent) => void)[];
-                const i = arr.indexOf(fn);
-                if (i >= 0) arr.splice(i, 1);
-            } catch {}
-        });
-    } catch {}
-});
-
-
-
-
-onMount(() => {
-    try {
-        displayRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-        displayRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-        displayRef?.addEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-        displayRef?.addEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-        itemRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-        itemRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-    } catch {}
-
-    // E2E file drop support removed - use proper Playwright file drop API instead
-    // If tests fail, update the test to use page.setInputFiles() or proper drag-and-drop simulation
-
-
-
-    return () => {
-        try {
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
-        } catch {}
-        try { if (e2eTimer) clearInterval(e2eTimer); } catch {}
-    };
-});
-
-// Fallback in document capture: Reliably pick up synthetic drop
-onMount(() => {
-    const handler = (e: Event) => {
-        try {
-            const t = e.target as Node | null;
-            logger.debug(undefined, "[doc-capture] drop captured at document " + (t as HTMLElement | null)?.tagName + " " + (t as HTMLElement | null)?.className);
-            const displayMatch = displayRef && t && (displayRef === t || displayRef.contains(t));
-            const containerMatch = itemRef && t && (itemRef === t || itemRef.contains(t));
-            if (displayMatch || containerMatch) {
-                logger.debug(undefined, "[doc-capture] forwarding to handleDrop");
-                handleDrop(e as DragEvent);
-            }
-        } catch {}
-    };
-    try { document.addEventListener('drop', handler, true); } catch {}
-    return () => { try { document.removeEventListener('drop', handler, true); } catch {}; };
-});
-
-/**
- * Drag end handling
- */
-function handleDragEnd() {
-    // Clear dragging flag
-    isDragging = false;
-
-
-
-
-    // Fire drag end event
-    dispatch("drag-end", {
-        itemId: model.id,
-    });
-}
-
-// Internal link click event handler removed
-// Handle internal links using SvelteKit routing
-
-
-
-
-
-
-
-// Cursor position setting method called from outside
-export function setSelectionPosition(start: number, end: number = start) {
-    if (!hiddenTextareaRef || !hasCursorBasedOnState()) return;
-
-    hiddenTextareaRef.setSelectionRange(start, end);
-    lastCursorPosition = end;
-
-    updateSelectionAndCursor();
-    editorOverlayStore.startCursorBlink();
-}
-
-// Fire event to move to another item
+	);
+
+	// 表示エリアのref
+	let displayRef: HTMLDivElement;
+	// アイテム全体のDOMエレメントのref
+	let itemRef: HTMLDivElement;
+	let lastHeight = 0;
+
+	// グローバルテキストエリアの参照
+	let hiddenTextareaRef: HTMLTextAreaElement;
+
+	// アイテムにカーソルがあるかどうかを判定する
+	function hasActiveCursor(): boolean {
+		// カーソル状態に基づく判定
+		return hasCursorBasedOnState();
+	}
+
+	// カーソル状態に基づいて判定する関数
+	function hasCursorBasedOnState(): boolean {
+		// アクティブなアイテムかどうか
+		const activeItemId = editorOverlayStore.getActiveItem();
+		if (activeItemId === model.id) return true;
+
+		// カーソルがあるかどうか
+		const cursors = editorOverlayStore.getItemCursorsAndSelections(model.id).cursors;
+		return cursors.length > 0;
+	}
+
+	// グローバル textarea 要素を参照にセット
+	onMount(() => {
+		const globalTextarea = document.querySelector('.global-textarea') as HTMLTextAreaElement;
+		if (!globalTextarea) return;
+		hiddenTextareaRef = globalTextarea;
+	});
+
+	function getClickPosition(event: MouseEvent, content: string): number {
+		const x = event.clientX;
+		const y = event.clientY;
+		// テキスト要素を特定
+		const textEl = displayRef.querySelector('.item-text') as HTMLElement;
+
+		// Caret APIを試す
+		if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
+			let range: Range | null = null;
+			if (document.caretRangeFromPoint) {
+				range = document.caretRangeFromPoint(x, y);
+			} else {
+				const posInfo = (document as any).caretPositionFromPoint(x, y);
+				if (posInfo) {
+					range = document.createRange();
+					range.setStart(posInfo.offsetNode, posInfo.offset);
+					range.collapse(true);
+				}
+			}
+			if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
+				// テキストノード内オフセットを返す
+				return Math.min(Math.max(0, range.startOffset), content.length);
+			}
+		}
+
+		// フォールバック: spanを使った幅測定
+		// テキスト要素がない場合はコンテンツ全体を使用
+		const targetElement = textEl || displayRef;
+		const rect = targetElement.getBoundingClientRect();
+		const relX = x - rect.left;
+
+		// クリック位置がテキスト領域外の場合の処理
+		if (relX < 0) {
+			return 0; // テキストの左側をクリックした場合は先頭
+		}
+
+		const span = document.createElement('span');
+		const style = window.getComputedStyle(targetElement);
+		span.style.fontFamily = style.fontFamily;
+		span.style.fontSize = style.fontSize;
+		span.style.fontWeight = style.fontWeight;
+		span.style.letterSpacing = style.letterSpacing;
+		span.style.whiteSpace = 'pre';
+		span.style.visibility = 'hidden';
+		span.style.position = 'absolute';
+		document.body.appendChild(span);
+
+		let best = 0;
+		let minDist = Infinity;
+		let totalWidth = 0;
+
+		// 各文字位置での幅を測定
+		for (let i = 0; i <= content.length; i++) {
+			span.textContent = content.slice(0, i);
+			const w = span.getBoundingClientRect().width;
+			const d = Math.abs(w - relX);
+			if (d < minDist) {
+				minDist = d;
+				best = i;
+			}
+			// 最後の文字位置での幅を記録
+			if (i === content.length) {
+				totalWidth = w;
+			}
+		}
+
+		document.body.removeChild(span);
+
+		// テキストの右側をクリックした場合は末尾に配置
+		if (relX > totalWidth) {
+			return content.length;
+		}
+
+		return best;
+	}
+
+	function toggleCollapse() {
+		dispatch('toggle-collapse', { itemId: model.id });
+	}
+
+	/**
+	 * カーソルを設定する
+	 * @param event マウスイベント（クリック位置からカーソル位置を計算）
+	 * @param initialCursorPosition 初期カーソル位置（指定がある場合）
+	 */
+	function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
+		if (isReadOnly) return;
+
+		// グローバル textarea を取得（ストアから、なければDOMからフォールバック）
+		let textareaEl = editorOverlayStore.getTextareaRef();
+		console.log('OutlinerItem startEditing: textareaEl from store:', !!textareaEl);
+		if (!textareaEl) {
+			textareaEl = document.querySelector('.global-textarea') as HTMLTextAreaElement | null;
+			console.log('OutlinerItem startEditing: textareaEl from DOM:', !!textareaEl);
+			if (!textareaEl) {
+				console.error('Global textarea not found');
+				return;
+			}
+			// ストアに再登録
+			editorOverlayStore.setTextareaRef(textareaEl);
+		}
+
+		// グローバルテキストエリアにフォーカスを設定（最優先）
+		textareaEl.focus();
+		console.log('OutlinerItem startEditing: Focus set to global textarea, activeElement:', document.activeElement === textareaEl);
+
+		// フォーカス確保のための追加試行
+		requestAnimationFrame(() => {
+			textareaEl.focus();
+			console.log('OutlinerItem startEditing: RAF focus set, activeElement:', document.activeElement === textareaEl);
+
+			setTimeout(() => {
+				textareaEl.focus();
+				const isFocused = document.activeElement === textareaEl;
+				console.log('OutlinerItem startEditing: Final focus set, focused:', isFocused);
+			}, 10);
+		});
+		// テキスト内容を同期
+		console.log('OutlinerItem startEditing: setting textarea value to:', text.current);
+		textareaEl.value = text.current;
+		console.log('OutlinerItem startEditing: calling focus()');
+		textareaEl.focus();
+		console.log('OutlinerItem startEditing: focus called, activeElement:', document.activeElement?.tagName, document.activeElement?.className);
+
+		let cursorPosition = initialCursorPosition;
+
+		if (event) {
+			// クリック位置に基づいてカーソル位置を設定
+			cursorPosition = getClickPosition(event, text.current);
+		} else if (initialCursorPosition === undefined) {
+			// デフォルトでは末尾にカーソルを配置（外部から指定がない場合のみ）
+			cursorPosition = text.current.length;
+		}
+
+		if (cursorPosition !== undefined) {
+			// カーソル位置を textarea に設定
+			textareaEl.setSelectionRange(cursorPosition, cursorPosition);
+		}
+
+		// 現在アクティブなアイテムのカーソルをクリア
+		const activeItemId = editorOverlayStore.getActiveItem();
+		if (activeItemId && activeItemId !== model.id) {
+			editorOverlayStore.clearCursorForItem(activeItemId);
+		}
+
+		// Alt+Clickで追加されたカーソルを保持するかどうかを判断
+		// event が undefined または Alt キーが押されていない場合は通常の削除処理
+		const preserveAltClick = event?.altKey === true;
+
+		// デバッグ情報
+		if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+			console.log(`startEditing called with preserveAltClick=${preserveAltClick}`);
+		}
+
+		// 全てのカーソルをクリアしてから新しいカーソルを設定
+		// Alt+Clickでのマルチカーソル追加の場合は、既存のカーソルを保持する
+		editorOverlayStore.clearCursorAndSelection('local', false, preserveAltClick);
+
+		// 現在のアイテムの既存のカーソルをクリア（Alt+Clickの場合は保持）
+		if (!preserveAltClick) {
+			editorOverlayStore.clearCursorForItem(model.id);
+		}
+
+		// アクティブアイテムを設定
+		editorOverlayStore.setActiveItem(model.id);
+
+		// 新しいカーソルを設定
+		const cursorId = editorOverlayStore.setCursor({
+			itemId: model.id,
+			offset: cursorPosition !== undefined ? cursorPosition : 0,
+			isActive: true,
+			userId: 'local'
+		});
+
+		console.log('OutlinerItem startEditing: Cursor set with ID:', cursorId, 'at position:', cursorPosition);
+
+		// カーソル点滅を開始
+		editorOverlayStore.startCursorBlink();
+
+		// フォーカスを再確認
+		if (document.activeElement !== textareaEl) {
+			console.log('OutlinerItem startEditing: Re-focusing textarea');
+			textareaEl.focus();
+		}
+
+		console.log('OutlinerItem startEditing: Final state - activeElement:', document.activeElement === textareaEl, 'cursorId:', cursorId);
+	}
+
+
+	/**
+	 * カーソル位置と選択範囲を更新する共通関数
+	 */
+	function updateSelectionAndCursor() {
+		if (!hiddenTextareaRef) return;
+
+		const currentStart = hiddenTextareaRef.selectionStart;
+		const currentEnd = hiddenTextareaRef.selectionEnd;
+
+		// 選択範囲がない場合
+		if (currentStart === currentEnd) {
+			// カーソル位置を設定
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: currentStart,
+				isActive: true,
+				userId: 'local'
+			});
+
+			// 選択範囲をクリア
+			const selections = Object.values(editorOverlayStore.selections).filter(s =>
+				s.userId === 'local' && s.startItemId === model.id && s.endItemId === model.id
+			);
+
+			if (selections.length > 0) {
+				// 選択範囲を削除
+				editorOverlayStore.selections = Object.fromEntries(
+					Object.entries(editorOverlayStore.selections).filter(([_, s]) =>
+						!(s.userId === 'local' && s.startItemId === model.id && s.endItemId === model.id)
+					)
+				);
+			}
+
+			// グローバルテキストエリアの選択範囲をクリア
+			if (hiddenTextareaRef) {
+				hiddenTextareaRef.setSelectionRange(currentStart, currentStart);
+			}
+		} else {
+			// 選択範囲がある場合
+			const isReversed = hiddenTextareaRef.selectionDirection === 'backward';
+			const cursorOffset = isReversed ? currentStart : currentEnd;
+
+			// カーソル位置を設定
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: cursorOffset,
+				isActive: true,
+				userId: 'local'
+			});
+
+			// 選択範囲を設定
+			editorOverlayStore.setSelection({
+				startItemId: model.id,
+				endItemId: model.id,
+				startOffset: Math.min(currentStart, currentEnd),
+				endOffset: Math.max(currentStart, currentEnd),
+				userId: 'local',
+				isReversed: isReversed
+			});
+
+			// グローバルテキストエリアの選択範囲を設定
+			if (hiddenTextareaRef) {
+				hiddenTextareaRef.setSelectionRange(
+					currentStart,
+					currentEnd,
+					isReversed ? 'backward' : 'forward'
+				);
+			}
+		}
+
+		// ローカル変数を更新
+		lastSelectionStart = currentStart;
+		lastSelectionEnd = currentEnd;
+		lastCursorPosition = currentStart === currentEnd ? currentStart :
+			(hiddenTextareaRef.selectionDirection === 'backward' ? currentStart : currentEnd);
+	}
+
+	// アイテム全体のキーダウンイベントハンドラ
+
+	function finishEditing() {
+		editorOverlayStore.stopCursorBlink();
+
+		// カーソルのみクリアし、跨いだ選択は残す
+		editorOverlayStore.clearCursorForItem(model.id);
+		editorOverlayStore.setActiveItem(null);
+	}
+
+	function addNewItem() {
+		if (!isReadOnly && model.original.items && Tree.is(model.original.items, Items)) {
+			model.original.items.addNode(currentUser,0);
+		}
+	}
+
+	function handleDelete() {
+		if (isReadOnly) return;
+		if (confirm('このアイテムを削除しますか？')) {
+			model.original.delete();
+		}
+	}
+
+	function toggleVote() {
+		if (!isReadOnly) {
+			model.original.toggleVote(currentUser);
+		}
+	}
+
+	/**
+	 * クリック時のハンドリング: Alt+Click でマルチカーソル追加、それ以外は編集開始
+	 * @param event マウスイベント
+	 */
+	function handleClick(event: MouseEvent) {
+		// Alt+Click: 新しいカーソルを追加
+		if (event.altKey) {
+			// イベントの伝播を確実に停止
+			event.preventDefault();
+			event.stopPropagation();
+			event.stopImmediatePropagation();
+
+			// クリック位置を取得
+			const pos = getClickPosition(event, text.current);
+
+			// デバッグ情報
+			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+				console.log(`Alt+Click on item ${model.id} at position ${pos}`);
+				// 現在のカーソル状態をログ
+				const cursorInstances = editorOverlayStore.getCursorInstances();
+				const cursors = Object.values(editorOverlayStore.cursors);
+				console.log(`Current cursor instances: ${cursorInstances.length}`);
+				console.log(`Current cursors in store: ${cursors.length}`);
+				console.log(`Active item ID: ${editorOverlayStore.getActiveItem()}`);
+			}
+
+			// 新しいカーソルを追加（既存のカーソルチェックはaddCursor内で行う）
+			const cursorId = editorOverlayStore.addCursor({
+				itemId: model.id,
+				offset: pos,
+				isActive: true,
+				userId: 'local'
+			});
+
+			// デバッグ情報
+			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+				console.log(`Added new cursor with ID ${cursorId} at position ${pos}`);
+			}
+
+			// アクティブアイテムを設定
+			editorOverlayStore.setActiveItem(model.id);
+
+			// グローバルテキストエリアにフォーカス（より確実な方法）
+			const textarea = editorOverlayStore.getTextareaRef();
+			if (textarea) {
+				// フォーカスを確実に設定するための複数の試行
+				textarea.focus();
+
+				// requestAnimationFrameを使用してフォーカスを設定
+				requestAnimationFrame(() => {
+					textarea.focus();
+
+					// さらに確実にするためにsetTimeoutも併用
+					setTimeout(() => {
+						textarea.focus();
+
+						// フォーカスが設定されたかチェック
+						if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+							console.log(`Textarea has focus: ${document.activeElement === textarea}`);
+						}
+					}, 10);
+				});
+			} else {
+				console.error('Global textarea not found');
+			}
+
+			// カーソル点滅を開始
+			editorOverlayStore.startCursorBlink();
+			return;
+		}
+
+		// 通常クリック: 編集開始
+		event.preventDefault();
+		event.stopPropagation();
+
+		// 編集開始（内部でカーソルクリアと設定を行う）
+		startEditing(event);
+	}
+
+	/**
+	 * マウスダウン時のハンドリング: ドラッグ開始
+	 * @param event マウスイベント
+	 */
+	function handleMouseDown(event: MouseEvent) {
+		// 右クリックは無視
+		if (event.button !== 0) return;
+
+		// Shift+クリックの場合は選択範囲を拡張
+		if (event.shiftKey) {
+			event.preventDefault();
+			event.stopPropagation();
+
+			// 現在のアクティブアイテムを取得
+			const activeItemId = editorOverlayStore.getActiveItem();
+			if (!activeItemId) {
+				// アクティブアイテムがない場合は通常のクリック処理
+				startEditing(event);
+				return;
+			}
+
+			// 現在の選択範囲を取得
+			const existingSelection = Object.values(editorOverlayStore.selections).find(s =>
+				s.userId === 'local'
+			);
+
+			if (!existingSelection) {
+				// 選択範囲がない場合は通常のクリック処理
+				startEditing(event);
+				return;
+			}
+
+			// クリック位置を取得
+			const clickPosition = getClickPosition(event, text.current);
+
+			// 選択範囲を拡張
+			const isReversed = activeItemId === model.id ?
+				clickPosition < existingSelection.startOffset :
+				false;
+
+			editorOverlayStore.setSelection({
+				startItemId: existingSelection.startItemId,
+				startOffset: existingSelection.startOffset,
+				endItemId: model.id,
+				endOffset: clickPosition,
+				userId: 'local',
+				isReversed: isReversed
+			});
+
+			// カーソル位置を更新
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: clickPosition,
+				isActive: true,
+				userId: 'local'
+			});
+
+			// アクティブアイテムを設定
+			editorOverlayStore.setActiveItem(model.id);
+
+			// カーソル点滅を開始
+			editorOverlayStore.startCursorBlink();
+
+			return;
+		}
+
+		// 通常のマウスダウン: ドラッグ開始準備
+		const clickPosition = getClickPosition(event, text.current);
+		dragStartPosition = clickPosition;
+
+		// 編集モードを開始
+		if (!hasCursorBasedOnState()) {
+			startEditing(event);
+		}
+
+		// ドラッグ開始イベントを発火
+		dispatch('drag-start', {
+			itemId: model.id,
+			offset: clickPosition
+		});
+	}
+
+	/**
+	 * マウスムーブ時のハンドリング: ドラッグ中の選択範囲更新
+	 * @param event マウスイベント
+	 */
+	function handleMouseMove(event: MouseEvent) {
+		// 左ボタンが押されていない場合は無視
+		if (event.buttons !== 1) return;
+
+		// 編集中でない場合は無視
+		if (!hasCursorBasedOnState()) return;
+
+		// ドラッグ中フラグを設定
+		isDragging = true;
+
+		// 現在のマウス位置を取得
+		const currentPosition = getClickPosition(event, text.current);
+
+		// Alt+Shift+ドラッグの場合は矩形選択（ボックス選択）
+		if (event.altKey && event.shiftKey) {
+			// 矩形選択の処理
+			handleBoxSelection(event, currentPosition);
+			return;
+		}
+
+		// 通常の選択範囲を更新
+		if (hiddenTextareaRef) {
+			const start = Math.min(dragStartPosition, currentPosition);
+			const end = Math.max(dragStartPosition, currentPosition);
+			const isReversed = currentPosition < dragStartPosition;
+
+			// テキストエリアの選択範囲を設定
+			hiddenTextareaRef.setSelectionRange(
+				start,
+				end,
+				isReversed ? 'backward' : 'forward'
+			);
+
+			// 選択範囲をストアに反映
+			editorOverlayStore.setSelection({
+				startItemId: model.id,
+				startOffset: start,
+				endItemId: model.id,
+				endOffset: end,
+				userId: 'local',
+				isReversed: isReversed
+			});
+
+			// カーソル位置を更新
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: isReversed ? start : end,
+				isActive: true,
+				userId: 'local'
+			});
+
+			// ドラッグイベントを発火
+			dispatch('drag', {
+				itemId: model.id,
+				offset: currentPosition
+			});
+		}
+	}
+
+	/**
+	 * 矩形選択（ボックス選択）の処理
+	 * @param event マウスイベント
+	 * @param currentPosition 現在のカーソル位置
+	 */
+	function handleBoxSelection(event: MouseEvent, currentPosition: number) {
+		// デバッグ情報
+		if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+			console.log(`handleBoxSelection called with currentPosition=${currentPosition}`);
+		}
+
+		// 矩形選択の開始位置と終了位置
+		const startX = Math.min(dragStartPosition, currentPosition);
+		const endX = Math.max(dragStartPosition, currentPosition);
+
+		// ドラッグの開始位置と現在位置のY座標
+		const dragStartY = event.clientY - event.movementY; // 前回のY座標
+		const currentY = event.clientY;
+
+		// 選択範囲のY座標の上限と下限
+		const topY = Math.min(dragStartY, currentY);
+		const bottomY = Math.max(dragStartY, currentY);
+
+		// 表示されているすべてのアイテムを取得
+		const allItems = Array.from(document.querySelectorAll('.outliner-item'));
+
+		// 矩形選択の範囲内にあるアイテムを特定
+		const itemsInRange: Array<{
+			itemId: string;
+			element: HTMLElement;
+			rect: DOMRect;
+		}> = [];
+
+		// 各アイテムについて、矩形選択の範囲内かどうかを判定
+		allItems.forEach(itemElement => {
+			const itemId = itemElement.getAttribute('data-item-id');
+			if (!itemId) return;
+
+			const rect = itemElement.getBoundingClientRect();
+
+			// アイテムが矩形選択の範囲内にあるかどうかを判定
+			// 現在のアイテムは常に含める
+			if (itemId === model.id || (rect.bottom >= topY && rect.top <= bottomY)) {
+				itemsInRange.push({
+					itemId,
+					element: itemElement as HTMLElement,
+					rect
+				});
+			}
+		});
+
+		// 矩形選択の範囲内にあるアイテムがない場合は何もしない
+		if (itemsInRange.length === 0) return;
+
+		// Y座標でソート
+		itemsInRange.sort((a, b) => a.rect.top - b.rect.top);
+
+		// 各アイテムの選択範囲を計算
+		const boxSelectionRanges: Array<{
+			itemId: string;
+			startOffset: number;
+			endOffset: number;
+		}> = [];
+
+		// 各アイテムについて、選択範囲を計算
+		itemsInRange.forEach(item => {
+			const textElement = item.element.querySelector('.item-text') as HTMLElement;
+			if (!textElement) return;
+
+			const textContent = textElement.textContent || '';
+
+			// 選択範囲の開始位置と終了位置を計算
+			// 各アイテムの文字位置を計算するためのより正確な方法
+			let itemStartOffset = startX;
+			let itemEndOffset = endX;
+
+			// テキスト内容に基づいて位置を調整
+			// 文字単位での位置計算を行う
+			if (item.itemId === model.id) {
+				// 現在のアイテムの場合は、ドラッグ開始位置と現在位置を使用
+				itemStartOffset = startX;
+				itemEndOffset = endX;
+			} else {
+				// 他のアイテムの場合は、テキスト内容に基づいて位置を計算
+				// 仮想的なクリックイベントを作成して位置を計算
+				const virtualEvent = new MouseEvent('click', {
+					clientX: event.clientX,
+					clientY: item.rect.top + (item.rect.height / 2) // アイテムの中央
+				});
+
+				// 水平方向の位置を計算
+				const rect = textElement.getBoundingClientRect();
+				const relX = event.clientX - rect.left;
+
+				// 文字単位での位置を計算
+				const span = document.createElement('span');
+				const style = window.getComputedStyle(textElement);
+				span.style.fontFamily = style.fontFamily;
+				span.style.fontSize = style.fontSize;
+				span.style.fontWeight = style.fontWeight;
+				span.style.letterSpacing = style.letterSpacing;
+				span.style.whiteSpace = 'pre';
+				span.style.visibility = 'hidden';
+				span.style.position = 'absolute';
+				document.body.appendChild(span);
+
+				// 開始位置を計算
+				let startPos = 0;
+				let minStartDist = Infinity;
+				for (let i = 0; i <= textContent.length; i++) {
+					span.textContent = textContent.slice(0, i);
+					const w = span.getBoundingClientRect().width;
+					const d = Math.abs(w - (relX - (endX - startX)));
+					if (d < minStartDist) {
+						minStartDist = d;
+						startPos = i;
+					}
+				}
+
+				// 終了位置を計算
+				let endPos = 0;
+				let minEndDist = Infinity;
+				for (let i = 0; i <= textContent.length; i++) {
+					span.textContent = textContent.slice(0, i);
+					const w = span.getBoundingClientRect().width;
+					const d = Math.abs(w - relX);
+					if (d < minEndDist) {
+						minEndDist = d;
+						endPos = i;
+					}
+				}
+
+				document.body.removeChild(span);
+
+				// 計算した位置を使用
+				itemStartOffset = Math.min(startPos, endPos);
+				itemEndOffset = Math.max(startPos, endPos);
+			}
+
+			// 範囲外の場合は修正
+			if (itemStartOffset < 0) itemStartOffset = 0;
+			if (itemEndOffset > textContent.length) itemEndOffset = textContent.length;
+
+			// 選択範囲が有効な場合のみ追加
+			if (itemStartOffset < itemEndOffset) {
+				boxSelectionRanges.push({
+					itemId: item.itemId,
+					startOffset: itemStartOffset,
+					endOffset: itemEndOffset
+				});
+			}
+		});
+
+		// 矩形選択を設定
+		if (boxSelectionRanges.length > 0) {
+			// 最初と最後のアイテムを取得
+			const firstItem = boxSelectionRanges[0];
+			const lastItem = boxSelectionRanges[boxSelectionRanges.length - 1];
+
+			// 矩形選択を設定
+			editorOverlayStore.setBoxSelection(
+				firstItem.itemId,
+				firstItem.startOffset,
+				lastItem.itemId,
+				lastItem.endOffset,
+				boxSelectionRanges,
+				'local'
+			);
+
+			// カーソル位置を更新
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: currentPosition,
+				isActive: true,
+				userId: 'local'
+			});
+
+			// ドラッグイベントを発火
+			dispatch('box-selection', {
+				startItemId: firstItem.itemId,
+				endItemId: lastItem.itemId,
+				ranges: boxSelectionRanges
+			});
+		}
+	}
+
+	/**
+	 * マウスアップ時のハンドリング: ドラッグ終了
+	 */
+	function handleMouseUp() {
+		// ドラッグ中でない場合は無視
+		if (!isDragging) return;
+
+		// ドラッグ終了
+		isDragging = false;
+
+		// 選択範囲を確定
+		updateSelectionAndCursor();
+
+		// カーソル点滅を開始
+		editorOverlayStore.startCursorBlink();
+
+		// ドラッグ終了イベントを発火
+		dispatch('drag-end', {
+			itemId: model.id,
+			offset: lastCursorPosition
+		});
+	}
+
+	/**
+	 * ドラッグ開始時のハンドリング
+	 * @param event ドラッグイベント
+	 */
+	function handleDragStart(event: DragEvent) {
+		// 選択範囲がある場合は選択範囲をドラッグ
+		const selection = Object.values(editorOverlayStore.selections).find(s =>
+			s.userId === 'local' && (s.startItemId === model.id || s.endItemId === model.id)
+		);
+
+		if (selection) {
+			// 選択範囲のテキストを取得
+			const selectedText = editorOverlayStore.getSelectedText('local');
+
+			// ドラッグデータを設定
+			if (event.dataTransfer) {
+				event.dataTransfer.setData('text/plain', selectedText);
+				event.dataTransfer.setData('application/x-outliner-selection', JSON.stringify(selection));
+				event.dataTransfer.effectAllowed = 'move';
+			}
+
+			// ドラッグ中フラグを設定
+			isDragging = true;
+			isDragSelectionMode = true;
+		} else {
+			// 単一アイテムのテキストをドラッグ
+			if (event.dataTransfer) {
+				event.dataTransfer.setData('text/plain', text.current);
+				event.dataTransfer.setData('application/x-outliner-item', model.id);
+				event.dataTransfer.effectAllowed = 'move';
+			}
+
+			// ドラッグ中フラグを設定
+			isDragging = true;
+			isDragSelectionMode = false;
+		}
+
+		// ドラッグ開始イベントを発火
+		dispatch('drag-start', {
+			itemId: model.id,
+			selection: selection || null
+		});
+	}
+
+	/**
+	 * ドラッグオーバー時のハンドリング
+	 * @param event ドラッグイベント
+	 */
+	function handleDragOver(event: DragEvent) {
+		// デフォルト動作を防止（ドロップを許可）
+		event.preventDefault();
+
+		// ドロップ効果を設定
+		if (event.dataTransfer) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+
+		// ドロップターゲットの位置を計算
+		const rect = displayRef.getBoundingClientRect();
+		const y = event.clientY;
+		const relativeY = y - rect.top;
+		const height = rect.height;
+
+		// 上部、中央、下部のどこにドロップするかを決定
+		if (relativeY < height * 0.3) {
+			dropTargetPosition = 'top';
+		} else if (relativeY > height * 0.7) {
+			dropTargetPosition = 'bottom';
+		} else {
+			dropTargetPosition = 'middle';
+		}
+
+		// ドロップターゲットフラグを設定
+		isDropTarget = true;
+	}
+
+	/**
+	 * ドラッグエンター時のハンドリング
+	 * @param event ドラッグイベント
+	 */
+	function handleDragEnter(event: DragEvent) {
+		// デフォルト動作を防止
+		event.preventDefault();
+
+		// ドロップターゲットフラグを設定
+		isDropTarget = true;
+	}
+
+	/**
+	 * ドラッグリーブ時のハンドリング
+	 */
+	function handleDragLeave() {
+		// ドロップターゲットフラグをクリア
+		isDropTarget = false;
+		dropTargetPosition = null;
+	}
+
+	/**
+	 * ドロップ時のハンドリング
+	 * @param event ドラッグイベント
+	 */
+	function handleDrop(event: DragEvent) {
+		// デフォルト動作を防止
+		event.preventDefault();
+
+		// ドロップターゲットフラグをクリア
+		isDropTarget = false;
+
+		// ドロップデータを取得
+		if (!event.dataTransfer) return;
+
+		const plainText = event.dataTransfer.getData('text/plain');
+		const selectionData = event.dataTransfer.getData('application/x-outliner-selection');
+		const itemId = event.dataTransfer.getData('application/x-outliner-item');
+
+		// ドロップイベントを発火
+		dispatch('drop', {
+			targetItemId: model.id,
+			position: dropTargetPosition,
+			text: plainText,
+			selection: selectionData ? JSON.parse(selectionData) : null,
+			sourceItemId: itemId || null
+		});
+
+		// ドロップ位置をクリア
+		dropTargetPosition = null;
+	}
+
+	/**
+	 * ドラッグ終了時のハンドリング
+	 */
+	function handleDragEnd() {
+		// ドラッグ中フラグをクリア
+		isDragging = false;
+		isDragSelectionMode = false;
+
+		// ドラッグ終了イベントを発火
+		dispatch('drag-end', {
+			itemId: model.id
+		});
+	}
+
+	// 内部リンクのクリックイベントハンドラは削除
+	// SvelteKitのルーティングを使用して内部リンクを処理
+
+	onMount(() => {
+		// テキストエリアがレンダリングされているか確認
+		if (!hiddenTextareaRef) {
+			console.error('Hidden textarea reference is not available');
+			return;
+		}
+
+		// 内部リンクのクリックイベントリスナーは削除
+		// SvelteKitのルーティングを使用して内部リンクを処理
+
+		// クリック外のイベントリスナー
+		const handleOutsideClick = (e: MouseEvent) => {
+			if (hasCursorBasedOnState() && displayRef && !displayRef.contains(e.target as Node)) {
+				finishEditing();
+			}
+		};
+		document.addEventListener('click', handleOutsideClick);
+
+		// カーソル位置を保持してアイテム間をナビゲートするためのイベントリスナー
+		const handleFocusItem = (event: CustomEvent) => {
+			// shiftKeyと方向も取得
+			const { cursorScreenX, shiftKey, direction } = event.detail;
+
+			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+				console.log(`Received focus-item event for ${model.id} with X: ${cursorScreenX}px`);
+			}
+
+			// アイテムがすでに編集中の場合は処理を省略
+			if (hasCursorBasedOnState()) {
+				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+					console.log(`Item ${model.id} is already in edit mode`);
+				}
+				return;
+			}
+
+			// テキストエリアの内容を同期
+			hiddenTextareaRef.value = text.current;
+
+			// カーソル位置を決定
+			let textPosition = 0;
+
+			// 方向に基づいてカーソル位置を設定
+			if (direction === 'up') {
+				// 上方向の移動の場合、末尾に配置
+				textPosition = text.current.length;
+				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+					console.log(`Direction 'up': positioning cursor at end: ${textPosition}`);
+				}
+			} else if (direction === 'down') {
+				// 下方向の移動の場合、先頭に配置
+				textPosition = 0;
+				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+					console.log(`Direction 'down': positioning cursor at start: ${textPosition}`);
+				}
+			} else {
+				// 特殊な値の処理
+				if (cursorScreenX === Number.MAX_SAFE_INTEGER) {
+					// 末尾位置
+					textPosition = text.current.length;
+					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+						console.log(`Using special MAX_SAFE_INTEGER value to position cursor at end: ${textPosition}`);
+					}
+				} else if (cursorScreenX === 0) {
+					// 先頭位置
+					textPosition = 0;
+					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+						console.log(`Using special 0 value to position cursor at start`);
+					}
+				} else if (cursorScreenX !== undefined) {
+					// ピクセル座標からテキスト位置を計算
+					textPosition = pixelPositionToTextPosition(cursorScreenX);
+
+					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+						console.log(`Calculated text position ${textPosition} from X: ${cursorScreenX}`);
+					}
+				} else {
+					// デフォルトは末尾
+					textPosition = text.current.length;
+					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+						console.log(`No cursor X provided, using text end: ${textPosition}`);
+					}
+				}
+			}
+
+			// 一連の処理をリクエストアニメーションフレームで最適化
+			requestAnimationFrame(() => {
+				try {
+					// まずフォーカスを設定（最優先）
+					hiddenTextareaRef.focus();
+
+					// ローカル変数を更新 (shiftKey時はクロスアイテム選択拡張)
+					if (!shiftKey) {
+						lastSelectionStart = lastSelectionEnd = textPosition;
+						lastCursorPosition = textPosition;
+					} else if (direction === 'down' || direction === 'right') {
+						// 次アイテム: 行頭からカーソル位置まで選択
+						lastSelectionStart = 0;
+						lastSelectionEnd = textPosition;
+						lastCursorPosition = textPosition;
+					} else if (direction === 'up' || direction === 'left') {
+						// 前アイテム: カーソル位置から行末まで選択
+						lastSelectionStart = textPosition;
+						lastSelectionEnd = hiddenTextareaRef.value.length;
+						lastCursorPosition = textPosition;
+					}
+
+					// 再度カーソルが表示されていることを確認
+					editorOverlayStore.startCursorBlink();
+
+					// editorOverlayStoreにアクティブアイテムとカーソル位置を設定（選択範囲はOutlinerTree側で管理）
+					editorOverlayStore.setCursor({
+						itemId: model.id,
+						offset: textPosition,
+						isActive: true,
+						userId: 'local'
+					});
+
+					// カーソル位置設定を実行
+					setCaretPosition(textPosition);
+
+					if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+						console.log(`Focus and cursor position set for item ${model.id} at position ${textPosition}`);
+					}
+				} catch (error) {
+					console.error('Error setting focus and cursor position:', error);
+				}
+			});
+		};
+
+		// 編集完了イベントハンドラ
+		const handleFinishEdit = () => {
+			if (hasCursorBasedOnState()) {
+				if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+					console.log(`Finishing edit for item ${model.id} via custom event`);
+				}
+				finishEditing();
+			}
+		};
+
+		// コンポーネント要素にイベントリスナーを追加
+		if (itemRef) {
+			itemRef.addEventListener('focus-item', handleFocusItem as EventListener);
+			itemRef.addEventListener('finish-edit', handleFinishEdit as EventListener);
+
+			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+				console.log(`Added event listeners to item element with ID: ${model.id}`);
+			}
+		} else {
+			console.error(`itemRef is not available for ${model.id}`);
+		}
+
+		// クリーンアップ関数
+		return () => {
+			if (itemRef) {
+				itemRef.removeEventListener('focus-item', handleFocusItem as EventListener);
+				itemRef.removeEventListener('finish-edit', handleFinishEdit as EventListener);
+			}
+			document.removeEventListener('click', handleOutsideClick);
+
+			editorOverlayStore.clearCursorAndSelection();
+		};
+	});
+
+	// ピクセル座標からテキスト位置を計算する関数
+	function pixelPositionToTextPosition(screenX: number): number {
+		// 特殊な値の処理
+		if (screenX === Number.MAX_SAFE_INTEGER) {
+			// 末尾位置を表す特殊値
+			return text.current.length;
+		} else if (screenX === 0) {
+			// 先頭位置を表す特殊値
+			return 0;
+		}
+
+		if (!displayRef) return 0;
+
+		const textElement = displayRef.querySelector('.item-text') as HTMLElement;
+		if (!textElement) return 0;
+
+		const currentText = text.current || ''; // 現在のテキストを取得
+		if (currentText.length === 0) return 0;
+
+		// テキスト要素の位置を取得
+		const textRect = textElement.getBoundingClientRect();
+
+		// スクリーンX座標からテキスト要素相対位置を計算
+		const relativeX = screenX - textRect.left;
+
+		if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+			console.log(`Converting pixel position: screenX=${screenX}, textLeft=${textRect.left}, relativeX=${relativeX}`);
+		}
+
+		// 境界値チェック
+		if (relativeX <= 0) return 0;
+		if (relativeX >= textRect.width) return currentText.length;
+
+		// 測定用のスパン要素を作成
+		const span = document.createElement('span');
+		span.style.font = window.getComputedStyle(textElement).font;
+		span.style.whiteSpace = 'pre';
+		span.style.visibility = 'hidden';
+		span.style.position = 'absolute';
+		document.body.appendChild(span);
+
+		let bestPos = 0;
+		let bestDistance = Infinity;
+
+		// バイナリサーチでおおよその位置を特定
+		let left = 0;
+		let right = currentText.length;
+
+		while (left <= right) {
+			const mid = Math.floor((left + right) / 2);
+
+			span.textContent = currentText.substring(0, mid);
+			const width = span.getBoundingClientRect().width;
+			const distance = Math.abs(width - relativeX);
+
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				bestPos = mid;
+			}
+
+			if (width < relativeX) {
+				left = mid + 1;
+			} else {
+				right = mid - 1;
+			}
+		}
+
+		// 近傍をより詳細に探索
+		const rangeStart = Math.max(0, bestPos - 3);
+		const rangeEnd = Math.min(currentText.length, bestPos + 3);
+
+		for (let i = rangeStart; i <= rangeEnd; i++) {
+			span.textContent = currentText.substring(0, i);
+			const width = span.getBoundingClientRect().width;
+			const distance = Math.abs(width - relativeX);
+
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				bestPos = i;
+			}
+		}
+
+		document.body.removeChild(span);
+
+		if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+			console.log(`Found best text position: ${bestPos} for text "${currentText}"`);
+		}
+
+		return bestPos;
+	}
+
+	// 指定したテキスト位置にカーソルを設定する関数
+	function setCaretPosition(position: number) {
+		if (!hiddenTextareaRef) return;
+
+		try {
+			// 範囲内に収める
+			const safePosition = Math.min(Math.max(0, position), hiddenTextareaRef.value.length);
+
+			// フォーカスを確保
+			hiddenTextareaRef.focus();
+
+			// カーソル位置を設定（複数回試行）
+			hiddenTextareaRef.setSelectionRange(safePosition, safePosition, 'none');
+
+			// 確実に設定されるよう、少し遅延後にもう一度試行
+			setTimeout(() => {
+				if (document.activeElement === hiddenTextareaRef) {
+					hiddenTextareaRef.setSelectionRange(safePosition, safePosition, 'none');
+				}
+			}, 0);
+
+			// ローカル変数を更新
+			lastSelectionStart = lastSelectionEnd = safePosition;
+			lastCursorPosition = safePosition;
+
+			// ストアにカーソル位置を設定
+			editorOverlayStore.setCursor({
+				itemId: model.id,
+				offset: safePosition,
+				isActive: true,
+				userId: 'local'
+			});
+
+			// 選択範囲をクリア
+			editorOverlayStore.setSelection({
+				startItemId: model.id,
+				endItemId: model.id,
+				startOffset: 0,
+				endOffset: 0,
+				userId: 'local'
+			});
+
+			if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+				console.log(`Cursor position set to ${safePosition} in setCaretPosition function`);
+			}
+		} catch (error) {
+			console.error('Error setting caret position:', error);
+		}
+	}
+
+	// 外部から呼び出されるカーソル位置設定メソッド
+	export function setSelectionPosition(start: number, end: number = start) {
+		if (!hiddenTextareaRef || !hasCursorBasedOnState()) return;
+
+		hiddenTextareaRef.setSelectionRange(start, end);
+		lastSelectionStart = start;
+		lastSelectionEnd = end;
+		lastCursorPosition = end;
+
+		updateSelectionAndCursor();
+		editorOverlayStore.startCursorBlink();
+	}
+
+
+	// 他のアイテムに移動するイベントを発火する
+
+
+	// ResizeObserverを使用して要素の高さ変更を監視
+	onMount(() => {
+		const resizeObserver = new ResizeObserver(entries => {
+			for (const entry of entries) {
+				const newHeight = entry.contentRect.height;
+				if (newHeight !== lastHeight) {
+					lastHeight = newHeight;
+					dispatch('resize', {
+						index,
+						height: newHeight
+					});
+				}
+			}
+		});
+
+		if (itemRef) {
+			resizeObserver.observe(itemRef);
+			// 初期高さを通知
+			dispatch('resize', {
+				index,
+				height: itemRef.getBoundingClientRect().height
+			});
+		}
+
+		return () => {
+			resizeObserver.disconnect();
+		};
+	});
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
-    class="outliner-item"
-    class:page-title={isPageTitle}
-    style={"margin-left: " + (depth <= 1 ? 0 : (depth - 1) * 20) + "px"}
-    onclick={handleClick}
-    onmousedown={handleMouseDown}
-    onmousemove={handleMouseMove}
-    onmouseup={handleMouseUp}
-
-    bind:this={itemRef}
-    data-item-id={model.id}
-    data-active={isItemActive}
-    data-alias-target-id={
-        [ (aliasPickerStore as unknown as { tick?: unknown })?.tick,
-          (aliasTargetIdEffective
-            || (((aliasPickerStore as unknown as { lastConfirmedItemId?: string })?.lastConfirmedItemId === model.id)
-                && (aliasPickerStore as unknown as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId)
-            || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
-            || "") ][1]
-    }
+	class="outliner-item"
+	class:page-title={isPageTitle}
+	style="margin-left: {depth * 20}px"
+	onclick={handleClick}
+	onmousedown={handleMouseDown}
+	onmousemove={handleMouseMove}
+	onmouseup={handleMouseUp}
+	bind:this={itemRef}
+	data-item-id={model.id}
 >
-    <div class="item-header">
-        {#if !isPageTitle}
-            {#if hasChildren}
-                <button
-                    class="collapse-btn"
-                    onclick={toggleCollapse}
-                    title={isCollapsed ? "Expand" : "Collapse"}
-                    aria-label={isCollapsed ? "Expand item" : "Collapse item"}
-                    aria-expanded={!isCollapsed}
-                >
-                    <svg
-                        class="chevron-icon"
-                        class:collapsed={isCollapsed}
-                        width="12"
-                        height="12"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                    >
-                        <path
-                            d="M4 6L8 10L12 6"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-                    </svg>
-                </button>
-            {:else}
-                <span class="bullet">•</span>
-            {/if}
-        {/if}
+	<div class="item-header">
+		{#if !isPageTitle}
+			{#if hasChildren}
+				<button class="collapse-btn" onclick={toggleCollapse}>
+					{isCollapsed ? '▶' : '▼'}
+				</button>
+			{:else}
+				<span class="bullet">•</span>
+			{/if}
+		{/if}
 
-        <div class="item-content-container">
-            <!-- Element for display -->
-            <div
-                bind:this={displayRef}
-                class="item-content"
-                class:page-title-content={isPageTitle}
-                class:dragging={isDragging}
-                class:drop-target={isDropTarget}
-                class:drop-target-top={isDropTarget && dropTargetPosition === "top"}
-                class:drop-target-bottom={isDropTarget && dropTargetPosition === "bottom"}
-                class:drop-target-middle={isDropTarget && dropTargetPosition === "middle"}
-                draggable={!isReadOnly}
-                ondragstart={handleDragStart}
-                ondragover={handleDragOver}
-                ondragenter={handleDragEnter}
-                ondragleave={handleDragLeave}
-                ondrop={handleDrop}
-                ondragend={handleDragEnd}
-                onclick={handleContentClick}
-            >
-                <!-- Text display (hidden when component is displayed) -->
-                <!-- Temporarily disable component type conditional branching -->
-                <!-- When focused: Display control characters after applying formatting -->
-                <!-- When not focused: Hide control characters, apply formatting -->
-                <span
-                    class="item-text"
-                    class:title-text={isPageTitle}
-                    class:formatted={hasFormatting}
-                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as { updateText?: (t: string) => void })?.updateText?.(t); } catch {} }}
-                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as { updateText?: (t: string) => void })?.updateText?.(t); } catch {} }}
-                >
-                    <!-- XSS-safe: formattedHtml is derived from ScrapboxFormatter methods which escape HTML -->
-                    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                    {@html formattedHtml}
-                </span>
-                {#if !isPageTitle && model.votes.length > 0}
-                    <span
-                        class="vote-count"
-                        title={voterNames}
-                        aria-label={`${model.votes.length} vote${model.votes.length === 1 ? '' : 's'}`}
-                    >
-                        {model.votes.length}
-                    </span>
-                {/if}
-                {#if !isPageTitle}
-                    <span class="comment-count-visual" aria-hidden="true">{commentCountVisual}</span>
-                {/if}
-                {#if !isPageTitle}
-                    <button
-                        type="button"
-                        class="comment-button"
-                        data-testid="comment-button-{model.id}"
-                        draggable="false"
-                        onclick={(e) => { e.stopPropagation(); toggleComments(); }}
-                        onpointerdown={(e) => { e.stopPropagation(); }}
-                        onmousedown={(e) => { e.stopPropagation(); }}
-                        onmouseup={(e) => { e.stopPropagation(); }}
-                        aria-label={isCommentsVisible ? "Close comments" : `Open comments (${commentCountVisual})`}
-                        aria-expanded={isCommentsVisible}
-                    >
-                        <span class="comment-icon">💬</span>
-                        <span class="comment-count">{commentCountVisual}</span>
-                    </button>
-                {/if}
+		<div class="item-content-container">
+			<!-- 表示用の要素 -->
+			<div
+				bind:this={displayRef}
+				class="item-content"
+				class:page-title-content={isPageTitle}
+				class:dragging={isDragging}
+				class:drop-target={isDropTarget}
+				class:drop-target-top={isDropTarget && dropTargetPosition === 'top'}
+				class:drop-target-bottom={isDropTarget && dropTargetPosition === 'bottom'}
+				class:drop-target-middle={isDropTarget && dropTargetPosition === 'middle'}
+				draggable={!isReadOnly}
+				ondragstart={handleDragStart}
+				ondragover={handleDragOver}
+				ondragenter={handleDragEnter}
+				ondragleave={handleDragLeave}
+				ondrop={handleDrop}
+				ondragend={handleDragEnd}
+			>
+				{#if hasActiveCursor()}
+					<!-- フォーカスがある場合：フォーマットを適用した上で制御文字を表示 -->
+					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
+						{@html ScrapboxFormatter.formatWithControlChars(text.current)}
+					</span>
+				{:else}
+					<!-- フォーカスがない場合：制御文字は非表示、フォーマットは適用 -->
+					<span class="item-text" class:title-text={isPageTitle} class:formatted={ScrapboxFormatter.hasFormatting(text.current)}>
+						{@html ScrapboxFormatter.formatToHtml(text.current)}
+					</span>
+				{/if}
+				{#if !isPageTitle && model.votes.length > 0}
+					<span class="vote-count">{model.votes.length}</span>
+				{/if}
+			</div>
+		</div>
 
-
-                <!-- Attachment display -->
-                <OutlinerItemAttachments modelId={model.id} item={item} />
-
-                <!-- Component type selector -->
-                {#if !isPageTitle}
-                    <div class="component-selector">
-                        <select
-                            value={(componentType ?? compTypeValue) || "none"}
-                            onchange={(e: Event) => handleComponentTypeChange(String((e.target as HTMLSelectElement)?.value ?? "none"))}
-                            aria-label="Item component type"
-                        >
-                            <option value="none">Text</option>
-                            <option value="table">Table</option>
-                            <option value="chart">Chart</option>
-                        </select>
-                    </div>
-                {/if}
-
-                <!-- Component display (text is hidden) -->
-                {#if (componentType ?? compTypeValue) === "table"}
-                    <InlineJoinTable />
-                {:else if (componentType ?? compTypeValue) === "chart"}
-                    <ChartQueryEditor item={model.original} />
-                    <ChartPanel item={model.original} />
-                {/if}
-                <!-- Alias display -->
-                <OutlinerItemAlias modelId={model.id} item={item} isReadOnly={isReadOnly} isCollapsed={isCollapsed} />
-            </div>
-        </div>
-
-        {#if !isPageTitle}
-            <div class="item-actions">
-                <button onclick={addNewItem} title="Add new item" aria-label="Add new item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
-                <button onclick={handleDelete} title="Delete" aria-label="Delete item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                </button>
-                <button
-                    onclick={toggleVote}
-                    class="vote-btn"
-                    class:voted={model.votes.includes(currentUser)}
-                    title={model.votes.includes(currentUser) ? "Remove vote" : "Vote"}
-                    aria-label={model.votes.includes(currentUser) ? "Remove vote" : "Vote for this item"}
-                    aria-pressed={model.votes.includes(currentUser)}
-                >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill={model.votes.includes(currentUser) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                    </svg>
-                </button>
-            </div>
-        {/if}
-    </div>
-
-    <!-- Comment Thread (visible only for active item; default to first non-title item when none selected) -->
-
-
-    {#if isCommentsVisible}
-        <!-- XSS-safe: This only returns an empty string, used to trigger reactivity on item.comments -->
-        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-        {@html (() => { try { void item.comments; } catch {} return ''; })() }
-        <CommentThread
-            comments={ensuredComments}
-            item={item}
-            currentUser={currentUser}
-            doc={item.ydoc}
-        />
-    {/if}
+		{#if !isPageTitle}
+			<div class="item-actions">
+				<button onclick={addNewItem} title="新しいアイテムを追加">+</button>
+				<button onclick={handleDelete} title="削除">×</button>
+				<button
+					onclick={toggleVote}
+					class="vote-btn"
+					class:voted={model.votes.includes(currentUser)}
+					title="投票"
+				>
+					⭐
+				</button>
+			</div>
+		{/if}
+	</div>
 </div>
 
 <style>
-.outliner-item {
-    position: relative;
-    margin: 0;
-    padding-top: 4px;
-    padding-bottom: 4px;
-    min-height: 24px; /* E2E stabilization: Ensure visible boundary is not zero immediately after new insertion */
-}
+	.outliner-item {
+		position: relative;
+		margin: 0;
+		padding-top: 4px;
+		padding-bottom: 4px;
+	}
 
-.page-title {
-    margin-bottom: 10px;
-}
+	.page-title {
+		margin-bottom: 10px;
+	}
 
-.item-header {
-    display: flex;
-    align-items: center;
-    min-height: 24px;
-}
+	.item-header {
+		display: flex;
+		align-items: center;
+		min-height: 24px;
+	}
 
-.collapse-btn,
-.bullet {
-    width: 18px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-right: 4px;
-    flex-shrink: 0;
-}
+	.collapse-btn,
+	.bullet {
+		width: 18px;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin-right: 4px;
+		flex-shrink: 0;
+	}
 
-.collapse-btn {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    font-size: 0.7rem;
-    color: #666;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+	.collapse-btn {
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		font-size: 0.7rem;
+		color: #666;
+	}
 
-.chevron-icon {
-    transition: transform 0.2s ease;
-    transform: rotate(0deg); /* Expanded state (down) */
-}
+	.item-content-container {
+		position: relative;
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
 
-.chevron-icon.collapsed {
-    transform: rotate(-90deg); /* Collapsed state (right) */
-}
+	.item-content {
+		position: relative;
+		cursor: text;
+		padding: 2px 0;
+		min-height: 20px;
+		display: flex;
+		align-items: center;
+		word-break: break-word;
+		width: 100%;
+	}
 
-.item-content-container {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
+	.page-title-content {
+		font-size: 24px;
+		font-weight: bold;
+		min-height: 32px;
+		border-bottom: 1px solid #eee;
+		margin-bottom: 8px;
+		padding-bottom: 8px;
+	}
 
-.item-content {
-    position: relative;
-    cursor: text;
-    padding: 2px 0;
-    min-height: 20px;
-    display: flex;
-    align-items: center;
-    word-break: break-word;
-    width: 100%;
-    /* Ensure scrolling brings item below the fixed Toolbar */
-    scroll-margin-top: 80px;
-}
+	/* 編集中のスタイルは削除 */
 
-.page-title-content {
-    font-size: 24px;
-    font-weight: bold;
-    min-height: 32px;
-    border-bottom: 1px solid #eee;
-    margin-bottom: 8px;
-    padding-bottom: 8px;
-}
+	.item-text {
+		flex: 1;
+		white-space: pre-wrap;
+		display: inline-block;
+		min-width: 1px;
+	}
 
-/* Editing styles deleted */
+	.item-actions {
+		display: flex;
+		gap: 4px;
+		opacity: 0;
+		transition: opacity 0.2s;
+		flex-shrink: 0;
+	}
 
-.item-text {
-    flex: 1;
-    white-space: pre-wrap;
-    display: inline-block;
-    min-width: 1px;
-}
+	.outliner-item:hover .item-actions,
+	.outliner-item:focus-within .item-actions {
+		opacity: 1;
+	}
 
-.item-actions {
-    display: flex;
-    gap: 4px;
-    opacity: 0;
-    transition: opacity 0.2s;
-    flex-shrink: 0;
-}
+	.item-actions button {
+		background: none;
+		border: none;
+		padding: 2px 4px;
+		cursor: pointer;
+		font-size: 0.8rem;
+		color: #666;
+		border-radius: 3px;
+	}
 
-.outliner-item:hover .item-actions,
-.outliner-item:focus-within .item-actions {
-    opacity: 1;
-}
+	.item-actions button:hover {
+		background-color: #f0f0f0;
+	}
 
-.item-actions button {
-    background: none;
-    border: none;
-    padding: 2px 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    color: #666;
-    border-radius: 3px;
-}
+	.vote-btn {
+		color: #ccc;
+	}
 
-.item-actions button:hover {
-    background-color: #f0f0f0;
-}
+	.vote-btn.voted {
+		color: gold;
+	}
 
-.item-actions button:focus-visible {
-    background-color: #f0f0f0;
-    outline: 2px solid #0078d7;
-    outline-offset: -2px;
-}
+	.vote-count {
+		margin-left: 4px;
+		background: #f0f0f0;
+		border-radius: 8px;
+		padding: 0 4px;
+		font-size: 0.7rem;
+		color: #666;
+	}
 
-.vote-btn {
-    color: #ccc;
-}
+	.title-text {
+		font-size: 1.5em;
+		color: #333;
+	}
 
-.vote-btn.voted {
-    color: gold;
-}
+	.page-title {
+		margin-bottom: 1.5em;
+		border-bottom: 1px solid #eee;
+		padding-bottom: 0.5em;
+	}
 
-.vote-count {
-    margin-left: 4px;
-    background: #f0f0f0;
-    border-radius: 8px;
-    padding: 0 4px;
-    font-size: 0.7rem;
-    color: #666;
-}
+	.page-title-content {
+		font-size: 1.2em;
+	}
 
-.component-selector {
-    margin-left: 8px;
-}
+	/* フォーマットされたテキストのスタイル */
+	.item-text.formatted strong {
+		font-weight: bold;
+	}
 
-.component-selector select {
-    padding: 2px 4px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    background-color: white;
-}
+	.item-text.formatted em {
+		font-style: italic;
+	}
 
-.title-text {
-    font-size: 1.5em;
-    color: #333;
-}
+	.item-text.formatted s {
+		text-decoration: line-through;
+	}
 
-.page-title {
-    margin-bottom: 1.5em;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.5em;
-}
+	.item-text.formatted code {
+		font-family: monospace;
+		background-color: #f5f5f5;
+		padding: 0 4px;
+		border-radius: 3px;
+	}
 
-.page-title-content {
-    font-size: 1.2em;
-}
+	/* リンクのスタイル */
+	.item-text.formatted a {
+		color: #0078d7;
+		text-decoration: none;
+	}
 
-/* Formatted text styles */
-:global(.item-text.formatted strong) {
-    font-weight: bold;
-}
-
-:global(.item-text.formatted em) {
-    font-style: italic;
-}
-
-:global(.item-text.formatted s) {
-    text-decoration: line-through;
-}
-
-:global(.item-text.formatted code) {
-    font-family: monospace;
-    background-color: #f5f5f5;
-    padding: 0 4px;
-    border-radius: 3px;
-}
-
-/* Link styles */
-:global(.item-text.formatted a) {
-    color: #0078d7;
-    text-decoration: none;
-}
-
-:global(.item-text.formatted a:hover) {
-    text-decoration: underline;
-}
-
-/* Quote styles */
-:global(.item-text.formatted blockquote) {
-    margin: 0;
-    padding-left: 10px;
-    border-left: 3px solid #ccc;
-    color: #666;
-    font-style: italic;
-}
-
-/* Control character styles */
-:global(.control-char) {
-    color: #aaa;
-    font-size: 0.9em;
-    opacity: 0.7;
-    background-color: #f8f8f8;
-    border-radius: 2px;
-    padding: 0 2px;
-}
-
-/* Drag & drop related styles */
-.item-content.dragging {
-    opacity: 0.7;
-    cursor: grabbing;
-}
-
-.item-content.drop-target {
-    position: relative;
-}
-
-.item-content.drop-target::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background-color: #0078d7;
-    z-index: 10;
-}
-
-.item-content.drop-target-top::before {
-    top: 0;
-}
-
-.item-content.drop-target-bottom::before {
-    bottom: 0;
-}
-
-.item-content.drop-target-middle::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background-color: #0078d7;
-    z-index: 10;
-}
-/* alias-path, alias-subtree, attachments, attachment-preview styles deleted */
-/* Moved to OutlinerItemAlias.svelte and OutlinerItemAttachments.svelte */
-
-.comment-count {
-    background-color: #e3f2fd;
-    color: #1976d2;
-    border-radius: 10px;
-    padding: 2px 6px;
-    font-size: 0.75rem;
-    margin-left: 4px;
-    display: inline-block;
-}
-
-.comment-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 0.9rem;
-    margin-left: 4px;
-    padding: 2px 4px;
-    border-radius: 3px;
-}
-
-.comment-button:hover {
-    background-color: #f0f0f0;
-}
+	.item-text.formatted a:hover {
+		text-decoration: underline;
+	}
 
 
+
+	/* 引用のスタイル */
+	.item-text.formatted blockquote {
+		margin: 0;
+		padding-left: 10px;
+		border-left: 3px solid #ccc;
+		color: #666;
+		font-style: italic;
+	}
+
+	/* 制御文字のスタイル */
+	:global(.control-char) {
+		color: #aaa;
+		font-size: 0.9em;
+		opacity: 0.7;
+		background-color: #f8f8f8;
+		border-radius: 2px;
+		padding: 0 2px;
+	}
+
+	/* ドラッグ＆ドロップ関連のスタイル */
+	.item-content.dragging {
+		opacity: 0.7;
+		cursor: grabbing;
+	}
+
+	.item-content.drop-target {
+		position: relative;
+	}
+
+	.item-content.drop-target::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		height: 2px;
+		background-color: #0078d7;
+		z-index: 10;
+	}
+
+	.item-content.drop-target-top::before {
+		top: 0;
+	}
+
+	.item-content.drop-target-bottom::before {
+		bottom: 0;
+	}
+
+	.item-content.drop-target-middle::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 2px;
+		background-color: #0078d7;
+		z-index: 10;
+	}
 </style>

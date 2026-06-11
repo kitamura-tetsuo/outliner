@@ -1,228 +1,112 @@
-// Do not add webServer.
-
-import { defineConfig, devices } from "@playwright/test";
+import {
+    defineConfig,
+    devices,
+} from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// Configuration to use __dirname in ES modules
+// ESモジュールで__dirnameを使うための設定
 const __filename = fileURLToPath(import.meta.url);
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const __dirname = path.dirname(__filename);
 
-// -- Estimate whether it is a single spec run -------------------------
-function detectSingleSpec() {
-    // Use environment variable if already set
-    if (process.env.PLAYWRIGHT_SINGLE_SPEC_RUN !== undefined) {
-        return process.env.PLAYWRIGHT_SINGLE_SPEC_RUN === "true";
-    }
+// テスト環境の設定
+// 環境変数TEST_ENVが'localhost'の場合はlocalhost環境、それ以外はデフォルト環境
+// VSCode Playwright拡張から実行する場合は環境変数が正しく渡らないことがあるため、
+// 必要に応じて直接trueに設定してください
+const isLocalhostEnv = process.env.TEST_ENV === "localhost";
 
-    const idx = process.argv.findIndex(a => a === "test");
-    const patterns = idx === -1 ? [] : process.argv.slice(idx + 1).filter(a => !a.startsWith("-"));
-    const isSingle = patterns.length === 1;
-
-    // Set to environment variable to propagate to worker processes
-    process.env.PLAYWRIGHT_SINGLE_SPEC_RUN = isSingle.toString();
-
-    return isSingle;
-}
-
-export const isSingleSpecRun = detectSingleSpec();
-
-// Test environment configuration
-// Use localhost environment if TEST_ENV is 'localhost', otherwise use default environment
-// Since environment variables may not be passed correctly when running from VSCode Playwright extension,
-// set to true directly if necessary
-const isLocalhostEnv = process.env.TEST_ENV === "localhost" || true; // Default to localhost
-
-// Define test port - specify explicitly
-// Define Tinylicious server port
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// テスト用ポートを定義 - これを明示的に指定
+const TEST_PORT = isLocalhostEnv ? "7090" : "7080";
+// Tinylicious サーバーのポートを定義
 const TINYLICIOUS_PORT = isLocalhostEnv ? "7092" : "7082";
-// Define host
+// ホストを定義
 const VITE_HOST = process.env.VITE_HOST || "localhost";
-const TEST_PORT = 7090;
-
-// Force the same project ID as the emulator
-process.env.VITE_FIREBASE_PROJECT_ID = "outliner-d57b0";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// 環境設定ファイルを定義
 const ENV_FILE = isLocalhostEnv ? ".env.localhost.test" : ".env.test";
 
-const commonArgs = [
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-dev-shm-usage",
-    "--disable-gpu",
-    "--disable-web-security",
-    "--disable-features=VizDisplayCompositor",
-    "--disable-background-timer-throttling",
-    "--disable-backgrounding-occluded-windows",
-    "--disable-renderer-backgrounding",
-    "--memory-pressure-off",
-    "--max_old_space_size=4096",
-    "--disable-extensions",
-    "--disable-plugins",
-    "--run-all-compositor-stages-before-draw",
-    "--disable-ipc-flooding-protection",
-    // Explicitly specify shared memory size
-    "--shm-size=1gb",
-    "--allow-file-access-from-files",
-    "--enable-clipboard-read",
-    "--enable-clipboard-write",
-];
-
-// 👉 add the debugging port **only** in single-spec mode
-// debug from vscode
-const workerIdx = Number(process.env.TEST_WORKER_INDEX ?? 0); // undefined → 0
-const debugArgs = isSingleSpecRun
-    ? [`--remote-debugging-port=${process.env.CDP_PORT ?? 9222 + workerIdx}`]
-    : [];
-
-// console.log(`workerIdx: ${workerIdx}`);
 // console.log(`Using test environment: ${isLocalhostEnv ? "localhost" : "default"}`);
 // console.log(`Test port: ${TEST_PORT}, Tinylicious port: ${TINYLICIOUS_PORT}, Host: ${VITE_HOST}`);
 // console.log(`Environment file: ${ENV_FILE}`);
 export default defineConfig({
     testDir: "./e2e",
     testMatch: "**/*.spec.ts",
-    fullyParallel: false,
+    fullyParallel: true,
     forbidOnly: !!process.env.CI,
-    retries: (process.env.CI || !isSingleSpecRun) ? 2 : 1,
-    workers: 4,
-    maxFailures: process.env.CI ? 3 : 5,
+    retries: process.env.CI ? 10 : 0,
+    workers: process.env.CI ? 2 : 4,
+    maxFailures: process.env.CI ? 1 : undefined,
 
-    reporter: [
-        ["html", { open: "never" }],
-        ["list"],
-        ...(process.env.PLAYWRIGHT_JSON_OUTPUT_NAME
-            ? [["json", { outputFile: process.env.PLAYWRIGHT_JSON_OUTPUT_NAME }]]
-            : []),
-    ] as import("@playwright/test").ReporterDescription[],
-    // Extend test execution timeout (to accommodate environment initialization fluctuations)
-    // Extended to 120 seconds because connection to Hocuspocus and Yjs synchronization may take time
-    timeout: 120 * 1000,
+    reporter: [["html", { open: "never" }]],
+    headless: true,
+    // テスト実行時のタイムアウト設定を延長
+    timeout: 30 * 1000, // 30秒
     expect: {
-        // Extend element detection timeout
-        timeout: 90 * 1000,
+        // 要素の検出待機のタイムアウト設定を延長
+        timeout: 15 * 1000, // 15秒
     },
 
     use: {
-        headless: true,
-        ...devices["Desktop Chrome"],
-        // Extend timeout setting for Chromium
-        launchOptions: {
-            // Option to avoid shared memory issues
-            args: [...commonArgs, ...debugArgs],
-        },
-        // Use localhost to enable Clipboard API
+        // Clipboard APIを有効にするためにlocalhostを使用
         baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
-        // Allow clipboard access
+        trace: "on-first-retry",
+        // クリップボードへのアクセスを許可
         permissions: ["clipboard-read", "clipboard-write"],
+        // ブラウザの起動オプションを設定
+        launchOptions: {
+            args: ["--allow-file-access-from-files", "--enable-clipboard-read", "--enable-clipboard-write"],
+        },
     },
 
     projects: [
         {
-            // Basic tests: For environment check and minimal configuration verification
-            name: "basic",
-            testDir: "./e2e/basic",
-        },
-        {
-            // Core tests 1: a-c (excl clm), f
-            name: "core-1",
+            // コアテスト: 認証不要の基本機能テスト
+            name: "core",
             testDir: "./e2e/core",
-            testMatch: ["[abcf]*.spec.ts"],
-            testIgnore: ["**/clm*.spec.ts"],
+            use: { ...devices["Desktop Chrome"] },
         },
         {
-            // Core tests 2: clm only
-            name: "core-2",
-            testDir: "./e2e/core",
-            testMatch: ["**/clm*.spec.ts"],
-        },
-        {
-            // Core tests 3: l only
-            name: "core-3",
-            testDir: "./e2e/core",
-            testMatch: ["**/l*.spec.ts"],
-        },
-        {
-            // Core tests 4: slr only
-            name: "core-4",
-            testDir: "./e2e/core",
-            testMatch: ["**/slr*.spec.ts"],
-        },
-        {
-            // Core tests 5: n, o, p
-            name: "core-5",
-            testDir: "./e2e/core",
-            testMatch: ["**/[nop]*.spec.ts"],
-        },
-        {
-            // Core tests 6: sbd, sch
-            name: "core-6",
-            testDir: "./e2e/core",
-            testMatch: ["**/sbd*.spec.ts", "**/sch*.spec.ts"],
-        },
-        {
-            // Core tests 7: sea, sec, server, snapshot
-            name: "core-7",
-            testDir: "./e2e/core",
-            testMatch: [
-                "**/sea*.spec.ts",
-                "**/sec*.spec.ts",
-                "**/seed*.spec.ts",
-                "**/server*.spec.ts",
-                "**/snapshot*.spec.ts",
-            ],
-        },
-        {
-            // Core tests 8: d, e, g, h, i, j, k, m, q, t, u, v, w, x, y, z, M
-            name: "core-8",
-            testDir: "./e2e/core",
-            testMatch: ["**/[deghijkmtuvwxyzM]*.spec.ts"],
-        },
-        {
-            // New feature tests 1: a, b
-            name: "new-1",
-            testDir: "./e2e/new",
-            testMatch: ["**/[ab]*.spec.ts"],
-        },
-        {
-            // New feature tests 2: c
-            name: "new-2",
-            testDir: "./e2e/new",
-            testMatch: ["**/c*.spec.ts"],
-        },
-        {
-            // New feature tests 3: d, e, f, g, h, i
-            name: "new-3",
-            testDir: "./e2e/new",
-            testMatch: ["**/[defghi]*.spec.ts"],
-        },
-        {
-            // New feature tests 4: j-z
-            name: "new-4",
-            testDir: "./e2e/new",
-            testMatch: ["**/[j-z]*.spec.ts"],
-        },
-        {
-            // Auth tests: Run only in production environment
+            // 認証テスト: 本番環境でのみ実行
             name: "auth",
             testDir: "./e2e/auth",
+            use: { ...devices["Desktop Chrome"] },
         },
         {
-            // Utility tests: Common functionality tests
+            // ユーティリティテスト: 共通機能のテスト
             name: "utils",
             testDir: "./e2e/utils",
+            use: { ...devices["Desktop Chrome"] },
         },
         {
-            // Server tests: For backend connection verification
-            name: "server",
-            testDir: "./e2e/server",
-        },
-        {
-            // Yjs tests: Yjs synchronization functionality tests
-            name: "yjs",
-            testDir: "./e2e/yjs",
+            // 新機能テスト
+            name: "new",
+            testDir: "./e2e/new",
+            use: { ...devices["Desktop Chrome"] },
         },
     ],
+    // webServer: {
+    //     command: `npx dotenv -e .env.test -- npm run dev -- --host 0.0.0.0 --port ${TEST_PORT}`,
+    //     url: `http://localhost:${TEST_PORT}`,
+    //     reuseExistingServer: !process.env.CI,
+    //     env: {
+    //         NODE_ENV: "test",
+    //         VITE_USE_TINYLICIOUS: "true",
+    //         VITE_FORCE_AZURE: "false",
+    //         VITE_IS_TEST: "true", // 明示的にテスト環境フラグを設定
+    //         // ポートを明示的に設定
+    //         VITE_PORT: TEST_PORT,
+    //         // TinyliciousのポートをVITE_TINYLICIOUS_PORTとして設定
+    //         // global-setup.tsではこの値を取得してPORT環境変数に設定します
+    //         VITE_TINYLICIOUS_PORT: TINYLICIOUS_PORT,
+    //     },
+    //     // ready文字列を指定して、Viteサーバーの準備完了を検知
+    //     stdout: "pipe",
+    //     stderr: "pipe",
+    //     // Viteの "ready in" メッセージを待機
+    //     readyCondition: {
+    //         pattern: "ready in",
+    //         flags: "i",
+    //     },
+    //     // タイムアウトは開発サーバーが通常起動する時間より少し長めに設定
+    //     timeout: 600,
+    // },
 });

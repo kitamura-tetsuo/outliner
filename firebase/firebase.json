@@ -1,9 +1,6 @@
 {
     "functions": {
-        "source": "../functions"
-    },
-    "storage": {
-        "rules": "storage.rules"
+        "source": "./functions"
     },
     "hosting": {
         "public": "client/build",
@@ -13,6 +10,10 @@
             "**/node_modules/**"
         ],
         "rewrites": [
+            {
+                "source": "/api/fluid-token",
+                "function": "fluidToken"
+            },
             {
                 "source": "/api/save-container",
                 "function": "saveContainer"
@@ -24,22 +25,6 @@
             {
                 "source": "/api/delete-user",
                 "function": "deleteUser"
-            },
-            {
-                "source": "/api/delete-container",
-                "function": "deleteContainer"
-            },
-            {
-                "source": "/api/upload-attachment",
-                "function": "uploadAttachment"
-            },
-            {
-                "source": "/api/list-attachments",
-                "function": "listAttachments"
-            },
-            {
-                "source": "/api/delete-attachment",
-                "function": "deleteAttachment"
             },
             {
                 "source": "/health",
@@ -62,10 +47,6 @@
         },
         "functions": {
             "port": 57070,
-            "host": "0.0.0.0"
-        },
-        "storage": {
-            "port": 59200,
             "host": "0.0.0.0"
         },
         "hosting": {

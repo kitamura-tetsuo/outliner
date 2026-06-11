@@ -5,9 +5,9 @@
     "dockerComposeFile": "docker-compose.yml",
     "service": "app",
     "workspaceFolder": "/workspace",
-    // Run commands after container creation if necessary
+    // 必要に応じてコンテナ作成後にコマンドを実行
     // "postCreateCommand": "cd client && npm install && cd ../server && npm install",
-    // Customize VS Code features
+    // VS Code 機能をカスタマイズ
     "customizations": {
         "vscode": {
             "extensions": [
@@ -21,25 +21,24 @@
             ]
         }
     },
-    // "forwardPorts": [
-    //     7070,
-    //     7071,
-    //     7072,
-    //     7080,
-    //     7081,
-    //     7082,
-    //     7090,
-    //     7091,
-    //     7092,
-    //     7093,
-    //     9323,
-    //     54000,
-    //     58080,
-    //     59099,
-    //     59200,
-    //     57070
-    // ],
-    "postStartCommand": "bash /workspace/scripts/setup.sh; bash /workspace/outliner/scripts/setup.sh;",
-    // Connect as node user
+    "forwardPorts": [
+        7070,
+        7071,
+        7072,
+        7080,
+        7081,
+        7082,
+        7090,
+        7091,
+        7092,
+        9323,
+        54000,
+        58080,
+        59099,
+        57070,
+        57000
+    ],
+    "postStartCommand": "bash /workspace/outliner/scripts/codex-setup.sh",
+    // node ユーザーとして接続
     "remoteUser": "node"
 }

@@ -1,133 +1,87 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
-    import { resolvePath } from "../../utils/pathUtils";
-    import { page } from "$app/stores";
-    import { onDestroy, onMount } from "svelte";
-    import { userManager } from "../../auth/UserManager";
-    import AuthComponent from "../../components/AuthComponent.svelte";
-    import PageList from "../../components/PageList.svelte";
-    import { getLogger } from "../../lib/logger";
-    import { getYjsClientByProjectTitle } from "../../services";
-    import { store } from "../../stores/store.svelte";
-    import { yjsStore } from "../../stores/yjsStore.svelte";
+import { goto } from "$app/navigation";
+import { page } from "$app/state";
+import {
+    onDestroy,
+    onMount,
+} from "svelte";
+import { userManager } from "../../auth/UserManager";
+import AuthComponent from "../../components/AuthComponent.svelte";
+import PageList from "../../components/PageList.svelte";
+import { getLogger } from "../../lib/logger";
+import { fluidStore } from "../../stores/fluidStore.svelte";
+import { store } from "../../stores/store.svelte";
 
-    const logger = getLogger("ProjectIndex");
+const logger = getLogger("ProjectIndex");
 
-    // Get URL parameters (reactively)
-    let projectName = $derived($page.params.project || "");
+// URLパラメータを取得
+let projectName = page.params.project;
 
-    // Reactive page list (depends on store.pagesVersion)
-    let pages = $derived.by(() => {
-        void store.pagesVersion;
-        return store.pages?.current;
-    });
+// ページの状態
+let error: string | undefined = $state(undefined);
+let isAuthenticated = $state(false);
+let projectNotFound = $state(false);
 
-    // Page state
-    let error: string | undefined = $state(undefined);
-    let isAuthenticated = $state(false);
-    let projectNotFound = $state(false);
-    let isLoading = $state(true);
+// 認証成功時の処理
+async function handleAuthSuccess(authResult: any) {
+    logger.info("認証成功:", authResult);
+    isAuthenticated = true;
+}
 
-    // Process on authentication success
-    async function handleAuthSuccess() {
-        if (import.meta.env.DEV) {
-            logger.info("Authentication success");
-        }
-        isAuthenticated = true;
+// 認証ログアウト時の処理
+function handleAuthLogout() {
+    logger.info("ログアウトしました");
+    isAuthenticated = false;
+}
+
+// ページを選択したときの処理
+function handlePageSelected(event: CustomEvent) {
+    const pageId = event.detail.pageId;
+    const pageName = event.detail.pageName;
+
+    if (pageName) {
+        goto(`/${projectName}/${pageName}`);
     }
+}
 
-    // Process on authentication logout
-    function handleAuthLogout() {
-        if (import.meta.env.DEV) {
-            logger.info("Logged out");
-        }
-        isAuthenticated = false;
-    }
+// ホームに戻る
+function goHome() {
+    goto("/");
+}
 
-    // Load project
-    async function loadProject() {
-        if (!projectName || !isAuthenticated) return;
+onMount(() => {
+    // UserManagerの認証状態を確認
 
-        logger.info(`loadProject: Starting for project="${projectName}"`);
-        isLoading = true;
-        error = undefined;
-        projectNotFound = false;
+    isAuthenticated = userManager.getCurrentUser() !== null;
+});
 
-        try {
-            let client = await getYjsClientByProjectTitle(projectName);
-            if (!client) {
-                logger.warn(`loadProject: Project client not found for "${projectName}"`);
-                projectNotFound = true;
-                return;
-            }
-
-            // Update store
-            yjsStore.yjsClient = client as unknown as NonNullable<typeof yjsStore.yjsClient>;
-            const project = client.getProject?.();
-            if (project) {
-                store.project = project as unknown as NonNullable<typeof store.project>;
-                logger.info(`loadProject: Project loaded: "${project.title}", GUID: ${(project as unknown as { ydoc?: { guid?: string } }).ydoc?.guid}`);
-            }
-        } catch (err) {
-            console.error("Failed to load project:", err);
-            error = err instanceof Error ? err.message : "An error occurred while loading the project.";
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    // Process when a page is selected
-    function handlePageSelected(event: CustomEvent) {
-        const pageName = event.detail.pageName;
-
-        if (pageName) {
-            goto(resolvePath(`/${projectName}/${pageName}`));
-        }
-    }
-
-    // Return to home
-    function goHome() {
-        goto(resolvePath("/"));
-    }
-
-    $effect(() => {
-        if (isAuthenticated && projectName) {
-            loadProject();
-        }
-    });
-
-    onMount(() => {
-        // Check UserManager authentication state
-        isAuthenticated = userManager.getCurrentUser() !== null;
-    });
-
-    onDestroy(() => {
-        // Cleanup code
-    });
+onDestroy(() => {
+    // クリーンアップコード
+});
 </script>
 
 <svelte:head>
-    <title>{projectName ? projectName : "Project"} | Outliner</title>
+    <title>{projectName ? projectName : "プロジェクト"} | Fluid Outliner</title>
 </svelte:head>
 
-<main class="container mx-auto px-4 py-4">
+<main class="container mx-auto px-4 py-8">
     <div class="mb-4 flex items-center">
         <button
             onclick={goHome}
             class="mr-4 text-blue-600 hover:text-blue-800 hover:underline"
         >
-            ← Return to Home
+            ← ホームに戻る
         </button>
         <h1 class="text-2xl font-bold">
             {#if projectName}
                 {projectName}
             {:else}
-                Project
+                プロジェクト
             {/if}
         </h1>
     </div>
 
-    <!-- Authentication component -->
+    <!-- 認証コンポーネント -->
     <div class="auth-section mb-6">
         <AuthComponent
             onAuthSuccess={handleAuthSuccess}
@@ -135,19 +89,14 @@
         />
     </div>
 
-    {#if isLoading}
-        <div class="flex justify-center py-8">
-            <div class="loader">Loading...</div>
-        </div>
-    {:else if store.pages}
+    {#if store.pages}
         <div class="mt-6">
-            <h2 class="mb-4 text-xl font-semibold">Page List</h2>
+            <h2 class="mb-4 text-xl font-semibold">ページ一覧</h2>
             <div class="rounded-lg bg-white p-4 shadow-md">
                 <PageList
-                    currentUser={userManager.getCurrentUser()?.id ||
-                        "anonymous"}
+                    currentUser={fluidStore.currentUser?.id || "anonymous"}
                     project={store.project!}
-                    rootItems={pages}
+                    rootItems={store.pages.current}
                     onPageSelected={handlePageSelected}
                 />
             </div>
@@ -160,7 +109,7 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-red-800">
-                        An error occurred
+                        エラーが発生しました
                     </h3>
                     <div class="mt-2 text-sm text-red-700">
                         <p>{error}</p>
@@ -170,7 +119,7 @@
                             onclick={() => window.location.reload()}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >
-                            Retry
+                            再試行
                         </button>
                     </div>
                 </div>
@@ -184,11 +133,11 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-yellow-800">
-                        Project not found
+                        プロジェクトが見つかりません
                     </h3>
                     <div class="mt-2 text-sm text-yellow-700">
                         <p>
-                            The specified project "{projectName}" does not exist.
+                            指定されたプロジェクト「{projectName}」は存在しません。
                         </p>
                     </div>
                 </div>
@@ -202,11 +151,11 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-blue-800">
-                        Login required
+                        ログインが必要です
                     </h3>
                     <div class="mt-2 text-sm text-blue-700">
                         <p>
-                            Please log in to view this project.
+                            このプロジェクトを表示するには、ログインしてください。
                         </p>
                     </div>
                 </div>
@@ -215,15 +164,14 @@
     {:else}
         <div class="rounded-md bg-gray-50 p-4">
             <p class="text-gray-700">
-                Could not load project data.
+                プロジェクトデータを読み込めませんでした。
             </p>
         </div>
     {/if}
 </main>
 
 <style>
-    /* .loader {  Removed as unused */
-    /* .loader {
+.loader {
     border: 4px solid #f3f3f3;
     border-top: 4px solid #3498db;
     border-radius: 50%;
@@ -231,14 +179,14 @@
     height: 30px;
     animation: spin 1s linear infinite;
     margin: 0 auto;
-} */
+}
 
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
     }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 </style>

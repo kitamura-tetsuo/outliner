@@ -7,7 +7,14 @@ vi.mock("../stores/firestoreStore.svelte", async () => {
     return { ...mockStore };
 });
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { get } from "svelte/store";
+import {
+    afterEach,
+    beforeEach,
+    describe,
+    expect,
+    it,
+} from "vitest";
 import * as firestoreStore from "../stores/firestoreStore.svelte";
 import { setupMocks } from "./mocks";
 import { setupMockFirestore } from "./mocks/firestoreMock";
@@ -36,13 +43,12 @@ describe("Firestore Store", () => {
     });
 
     it("should provide container data through the store", () => {
-        // Get the current value from the store
-        const containerData = firestoreStore.firestoreStore.userContainer;
+        const containerData = get(firestoreStore.firestoreStore.userContainer);
 
         expect(containerData).not.toBeNull();
         expect(containerData?.userId).toBe("test-user-id");
-        expect(containerData?.defaultProjectId).toBe("test-container-1");
-        expect(containerData?.accessibleProjectIds).toEqual([
+        expect(containerData?.defaultContainerId).toBe("test-container-1");
+        expect(containerData?.accessibleContainerIds).toEqual([
             "test-container-1",
             "test-container-2",
             "test-container-3",
@@ -56,8 +62,7 @@ describe("Firestore Store", () => {
     });
 
     it("should return a list of user containers", async () => {
-        const containers = await (firestoreStore as unknown as { getUserContainers: () => Promise<unknown[]>; })
-            .getUserContainers();
+        const containers = await firestoreStore.getUserContainers();
 
         expect(containers).toHaveLength(3);
         expect(containers[0].id).toBe("test-container-1");

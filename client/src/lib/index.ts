@@ -1,31 +1,36 @@
 // place files you want to import through the `$lib` alias in this folder.
 
-// (removed Fluid telemetry init)
+// Fluid Framework Telemetryフィルタを初期化
+import "./fluidTelemetryInit";
 
-// Apply only in development mode
+// 開発モードのみ適用する場合
 if (import.meta.env.MODE === "development") {
-    // Add fetch error handling only in development mode
+    // 開発モードのときだけ、fetch のエラーハンドリングを追加
     if (typeof window !== "undefined") {
         const originalFetch = window.fetch;
-        window.fetch = async function(input, init) {
+        window.fetch = async function (input, init) {
             try {
                 return await originalFetch(input, init);
-            } catch (error) {
+            }
+            catch (error) {
                 let url;
                 if (typeof input === "string") {
                     url = input;
-                } else if (input instanceof Request) {
+                }
+                else if (input instanceof Request) {
                     url = input.url;
-                } else {
+                }
+                else {
                     url = "Unknown URL";
                 }
-                // Add URL to the original error message
+                // オリジナルのエラーメッセージに URL を追加
                 if (error instanceof Error) {
-                    const enhancedError = new Error(`Failed to fetch from ${url}: ${error.message}`, { cause: error });
+                    const enhancedError = new Error(`Failed to fetch from ${url}: ${error.message}`);
                     enhancedError.stack = error.stack;
                     throw enhancedError;
-                } else {
-                    throw new Error(`Failed to fetch from ${url}: Unknown error`, { cause: error });
+                }
+                else {
+                    throw new Error(`Failed to fetch from ${url}: Unknown error`);
                 }
             }
         };

@@ -1,7 +1,7 @@
-// Barrel file consolidating service exports
-// Pattern to avoid circular dependencies
+// サービス機能のエクスポートをまとめたバレルファイル
+// 循環依存を避けるためのパターン
 
-// Export FirestoreStore related functions
+// FirestoreStore関連の関数をエクスポート
 export {
     firestoreStore,
     getDefaultContainerId,
@@ -9,42 +9,15 @@ export {
     saveContainerIdToServer as saveFirestoreContainerIdToServer,
 } from "../stores/firestoreStore.svelte";
 
-// Yjs Service functions (Fluid replacement)
+// FluidService関連の関数をエクスポート
 export {
-    cleanupClient as cleanupYjsClient,
-    createClient as createYjsClient,
-    createNewProject as createNewYjsProject,
-    getClientByProjectTitle as getYjsClientByProjectTitle,
-} from "../lib/yjsService.svelte";
-
-// SnapshotService
-export {
-    addSnapshot,
-    getCurrentContent,
-    getSnapshot,
-    listSnapshots,
-    replaceWithSnapshot,
-    setCurrentContent,
-    type Snapshot,
-} from "./snapshotService";
-
-// ScheduleService
-export {
-    cancelSchedule,
-    createSchedule,
-    exportSchedulesIcal,
-    listSchedules,
-    type Schedule,
-    updateSchedule,
-} from "./scheduleService";
-
-// Import/Export Service
-export {
-    exportProjectToMarkdown,
-    exportProjectToOpml,
-    importMarkdownIntoProject,
-    importOpmlIntoProject,
-} from "./importExportService";
-
-// Attachment Service
-export { deleteAttachment, listAttachments, uploadAttachment } from "./attachmentService";
+    cleanupFluidClient,
+    createFluidClient,
+    createNewContainer,
+    deleteContainer,
+    getFluidClientByProjectTitle,
+    getProjectTitle,
+    getUserContainers,
+    initFluidClientWithAuth,
+    loadContainer,
+} from "../lib/fluidService.svelte";

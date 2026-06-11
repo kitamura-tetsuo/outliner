@@ -1,28 +1,19 @@
 // Utility functions for text measuring and cursor positioning
 
-interface CaretPosition {
-    offsetNode: Node;
-    offset: number;
-}
-
-interface DocumentWithCaret extends Document {
-    caretPositionFromPoint?: (x: number, y: number, options?: unknown) => CaretPosition | null;
-}
-
-// getClickPosition: Receives Text Element, MouseEvent, and content, returning the offset.
+// getClickPosition: Text Element と MouseEvent, content を受け取り、オフセットを返す
 export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content: string): number {
     const x = event.clientX;
     const y = event.clientY;
-    // Try using Caret API
-    const doc = document as DocumentWithCaret;
-    if (textEl && (doc.caretRangeFromPoint || doc.caretPositionFromPoint)) {
+    // Caret API を試す
+    if (textEl && (document.caretRangeFromPoint || (document as any).caretPositionFromPoint)) {
         let range: Range | null = null;
-        if (doc.caretRangeFromPoint) {
-            range = doc.caretRangeFromPoint(x, y);
-        } else if (doc.caretPositionFromPoint) {
-            const posInfo = doc.caretPositionFromPoint(x, y);
+        if (document.caretRangeFromPoint) {
+            range = document.caretRangeFromPoint(x, y);
+        }
+        else {
+            const posInfo = (document as any).caretPositionFromPoint(x, y);
             if (posInfo) {
-                range = doc.createRange();
+                range = document.createRange();
                 range.setStart(posInfo.offsetNode, posInfo.offset);
                 range.collapse(true);
             }
@@ -31,7 +22,7 @@ export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content
             return Math.min(Math.max(0, range.startOffset), content.length);
         }
     }
-    // Fallback: Measure width using a span
+    // フォールバック: span を使って幅測定
     const rect = textEl.getBoundingClientRect();
     const relX = x - rect.left;
     const span = document.createElement("span");
@@ -59,7 +50,7 @@ export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content
     return best;
 }
 
-// pixelPositionToTextPosition: Receives screen X coordinate and display element, returning text offset.
+// pixelPositionToTextPosition: 画面X座標と表示要素を受け取り、テキストオフセットを返す
 export function pixelPositionToTextPosition(screenX: number, displayRef: HTMLElement): number {
     const textElement = displayRef.querySelector(".item-text") as HTMLElement;
     if (!textElement) return 0;

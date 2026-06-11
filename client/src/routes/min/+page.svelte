@@ -26,9 +26,8 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-// Initialize Firestore without storing the instance
-getFirestore(app);
-getFunctions(app);
+const db = getFirestore(app);
+const functions = getFunctions(app);
 
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
@@ -36,25 +35,25 @@ const provider = new GoogleAuthProvider();
 let idToken = $state("");
 let verificationResult = $state("");
 
-// Expose environment variables to window object for testing
+// テスト用に環境変数をwindowオブジェクトに公開
 onMount(() => {
     if (typeof window !== "undefined") {
-        (window as Window & typeof globalThis & { testEnvVars?: Record<string, string> }).testEnvVars = {
-            VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY ?? "",
-            VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "",
-            VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL ?? "",
+        (window as any).testEnvVars = {
+            VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY,
+            VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+            VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL,
         };
     }
 });
 
-// Sign in with Google, get ID token, and verify with backend
+// Google ログインして ID トークンを取得し、バックエンドで検証する
 async function signIn() {
     try {
         const result = await signInWithPopup(auth, provider);
         idToken = await result.user.getIdToken(true);
-        console.log("Retrieved ID Token:", idToken);
+        console.log("取得した ID Token:", idToken);
 
-        const verifyUrl = import.meta.env.VITE_TOKEN_VERIFY_URL ?? "";
+        const verifyUrl = import.meta.env.VITE_TOKEN_VERIFY_URL;
         const response = await fetch(verifyUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -64,7 +63,7 @@ async function signIn() {
         verificationResult = JSON.stringify(data, null, 2);
     }
     catch (error) {
-        console.error("Error occurred during login or verification:", error);
+        console.error("ログインまたは検証処理でエラーが発生しました:", error);
     }
 }
 </script>

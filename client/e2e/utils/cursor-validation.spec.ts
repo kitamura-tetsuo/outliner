@@ -1,64 +1,66 @@
-import "./registerAfterEachSnapshot";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
 /** @feature TST-0002
- *  Title   : Test for Cursor Information Validation Utility
+ *  Title   : カーソル情報検証ユーティリティのテスト
  *  Source  : docs/client-features.yaml
  */
-import { expect, test } from "@playwright/test";
+import {
+    expect,
+    test,
+} from "@playwright/test";
 import { waitForCursorVisible } from "../helpers";
 import { CursorValidator } from "./cursorValidation";
 import { TestHelpers } from "./testHelpers";
 
-test.describe("CursorValidator: Cursor Information Validation Utility", () => {
+test.describe("CursorValidator: カーソル情報検証ユーティリティ", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // Set up the test page
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
+        // テストページをセットアップ
+        await TestHelpers.prepareTestEnvironment(page, testInfo, [
             "First item",
             "Second item",
             "Third item",
         ]);
 
-        // Wait a bit for data to be reflected
+        // 少し待機してデータが反映されるのを待つ
         await page.waitForTimeout(500);
 
-        // Click the first item to display the cursor
+        // 最初のアイテムをクリックしてカーソルを表示
         await page.locator(".outliner-item").first().click();
         await waitForCursorVisible(page);
 
-        // Verify that editorOverlayStore is globally exposed
+        // editorOverlayStoreがグローバルに公開されていることを確認
         await page.evaluate(() => {
             if (typeof window.editorOverlayStore === "undefined") {
                 console.error("editorOverlayStore is not defined in window");
-            } else {
+            }
+            else {
                 console.log("editorOverlayStore is available:", window.editorOverlayStore);
             }
         });
 
-        // Verify that getCursorDebugData function is available
+        // getCursorDebugData関数が利用可能であることを確認
         await page.evaluate(() => {
             if (typeof window.getCursorDebugData !== "function") {
                 console.error("getCursorDebugData is not defined in window");
-            } else {
+            }
+            else {
                 console.log("getCursorDebugData is available");
             }
         });
     });
 
-    test("getCursorData: Can retrieve cursor information", async ({ page }) => {
-        // Retrieve cursor information
+    test("getCursorData: カーソル情報を取得できる", async ({ page }) => {
+        // カーソル情報を取得
         const cursorData = await CursorValidator.getCursorData(page);
 
-        // Verify that data is retrieved
+        // データが取得できていることを確認
         expect(cursorData).toBeTruthy();
         expect(cursorData.cursors).toBeTruthy();
         expect(Array.isArray(cursorData.cursors)).toBe(true);
         expect(cursorData.activeItemId).toBeTruthy();
 
-        // Verify that at least one cursor is included
+        // 少なくとも1つのカーソルが含まれていることを確認
         expect(cursorData.cursors.length).toBeGreaterThan(0);
 
-        // Check information of the first cursor
+        // 最初のカーソルの情報を確認
         const firstCursor = cursorData.cursors[0];
         expect(firstCursor).toHaveProperty("cursorId");
         expect(firstCursor).toHaveProperty("itemId");
@@ -68,8 +70,8 @@ test.describe("CursorValidator: Cursor Information Validation Utility", () => {
         console.log("Cursor data:", JSON.stringify(cursorData, null, 2));
     });
 
-    test("assertCursorData: Can compare with expected value (partial comparison mode)", async ({ page }) => {
-        // Define expected value matching the actual data structure
+    test("assertCursorData: 期待値と比較できる（部分比較モード）", async ({ page }) => {
+        // 実際のデータ構造に合わせた期待値を定義
         const expectedData = {
             cursorCount: 1,
             cursors: [
@@ -79,63 +81,64 @@ test.describe("CursorValidator: Cursor Information Validation Utility", () => {
             ],
         };
 
-        // Verify in partial comparison mode
+        // 部分比較モードで検証
         await CursorValidator.assertCursorData(page, expectedData);
     });
 
-    test("assertCursorData: Can compare with expected value (strict comparison mode)", async ({ page }) => {
-        // Get current data
+    test("assertCursorData: 期待値と比較できる（厳密比較モード）", async ({ page }) => {
+        // 現在のデータを取得
         const currentData = await CursorValidator.getCursorData(page);
 
-        // Strict comparison with the same data
+        // 同じデータで厳密比較
         await CursorValidator.assertCursorData(page, currentData, true);
     });
 
-    test("assertCursorPath: Can verify data at a specific path", async ({ page }) => {
-        // Verify cursor count
+    test("assertCursorPath: 特定のパスのデータを検証できる", async ({ page }) => {
+        // カーソルの数を検証
         await CursorValidator.assertCursorPath(page, "cursorCount", 1);
 
-        // Verify that the first cursor is active
+        // 最初のカーソルがアクティブであることを検証
         await CursorValidator.assertCursorPath(page, "cursors.0.isActive", true);
     });
 
-    test("takeCursorSnapshot & compareWithSnapshot: Can take snapshot and compare", async ({ page }) => {
-        // Take a snapshot
+    test("takeCursorSnapshot & compareWithSnapshot: スナップショットを取得して比較できる", async ({ page }) => {
+        // スナップショットを取得
         const snapshot = await CursorValidator.takeCursorSnapshot(page);
 
-        // Compare without changes (should match)
+        // 何も変更せずに比較（一致するはず）
         await CursorValidator.compareWithSnapshot(page, snapshot);
 
-        // Move cursor
+        // カーソルを移動
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(100);
 
-        // Should not match after change
+        // 変更後は一致しないはず
         try {
             await CursorValidator.compareWithSnapshot(page, snapshot);
-            // Fail if reached here
+            // ここに到達したら失敗
             expect(false).toBeTruthy();
-        } catch (error) {
-            // Expect an error to occur
+        }
+        catch (error) {
+            // エラーが発生することを期待
             expect(error).toBeTruthy();
         }
     });
 
-    test("assertCursorCount: Can verify cursor count", async ({ page }) => {
-        // Verify cursor count
+    test("assertCursorCount: カーソルの数を検証できる", async ({ page }) => {
+        // カーソルの数を検証
         await CursorValidator.assertCursorCount(page, 1);
     });
 
-    test("assertActiveItemId: Can verify active item ID", async ({ page }) => {
-        // Get the first item
+    test("assertActiveItemId: アクティブなアイテムIDを検証できる", async ({ page }) => {
+        // 最初のアイテムを取得
         const firstItem = page.locator(".outliner-item").first();
 
-        // Get item ID
+        // アイテムIDを取得
         const itemId = await firstItem.getAttribute("data-item-id");
         expect(itemId).toBeTruthy();
 
         if (itemId) {
-            // Verify active item ID
+            // アクティブなアイテムIDを検証
             await CursorValidator.assertActiveItemId(page, itemId);
         }
     });

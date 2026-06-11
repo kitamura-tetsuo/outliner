@@ -2,18 +2,18 @@ import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
 /**
- * Utility functions for validating cursor information and cursor selection ranges.
+ * カーソル情報とカーソル選択範囲を検証するユーティリティ関数群
  */
 export class CursorValidator {
     /**
-     * Retrieves cursor information.
+     * カーソル情報を取得する
      */
     static async getCursorData(page: Page): Promise<any> {
-        // First, set up the debug function
+        // まず、デバッグ関数をセットアップ
         await page.evaluate(() => {
-            // Add the debug function to the global object
-            window.getCursorDebugData = function() {
-                // Get the EditorOverlayStore instance
+            // グローバルオブジェクトにデバッグ関数を追加
+            window.getCursorDebugData = function () {
+                // EditorOverlayStoreインスタンスを取得
                 const editorOverlayStore = window.editorOverlayStore;
                 if (!editorOverlayStore) {
                     console.error("EditorOverlayStore instance not found");
@@ -21,13 +21,13 @@ export class CursorValidator {
                 }
 
                 try {
-                    // Get cursor information
+                    // カーソル情報を取得
                     const cursors = Object.values(editorOverlayStore.cursors);
                     const selections = Object.values(editorOverlayStore.selections);
                     const activeItemId = editorOverlayStore.activeItemId;
                     const cursorVisible = editorOverlayStore.cursorVisible;
 
-                    // Get information about cursor instances
+                    // カーソルインスタンスの情報を取得
                     const cursorInstances: Array<any> = [];
 
                     editorOverlayStore.cursorInstances.forEach((cursor: any, id: string) => {
@@ -49,42 +49,44 @@ export class CursorValidator {
                         cursorCount: cursors.length,
                         selectionCount: selections.length,
                     };
-                } catch (error) {
+                }
+                catch (error) {
                     console.error("Error getting cursor data:", error);
                     return { error: error.message || "Unknown error" };
                 }
             };
         });
 
-        // Retrieve cursor information
+        // カーソル情報を取得
         return page.evaluate(() => {
             return window.getCursorDebugData!();
         });
     }
 
     /**
-     * Retrieves cursor information and compares it with expected values.
-     * @param page The Playwright Page object.
-     * @param expectedData The expected data structure (partial structure is allowed).
-     * @param strict Whether to perform a strict comparison (default is false).
-     * @returns The validation result.
+     * カーソル情報を取得し、期待値と比較する
+     * @param page Playwrightのページオブジェクト
+     * @param expectedData 期待されるデータ構造（部分的な構造も可）
+     * @param strict 厳密に比較するかどうか（デフォルトはfalse）
+     * @returns 検証結果
      */
     static async assertCursorData(page: Page, expectedData: any, strict: boolean = false): Promise<void> {
         const cursorData = await this.getCursorData(page);
 
         if (strict) {
-            // Strict comparison mode - must match exactly
+            // 厳密比較モード - 完全に一致する必要がある
             expect(JSON.stringify(cursorData)).toBe(JSON.stringify(expectedData));
-        } else {
-            // Partial comparison mode - OK if all properties of the expected value are included
+        }
+        else {
+            // 部分比較モード - 期待値のプロパティが全て含まれていればOK
             this.assertObjectContains(cursorData, expectedData);
         }
     }
 
     /**
-     * Validates that an object contains all properties of the expected value.
-     * @param actual The actual value.
-     * @param expected The expected value.
+     * オブジェクトが期待値のプロパティを全て含んでいるか検証する
+     * @param actual 実際の値
+     * @param expected 期待値
      */
     private static assertObjectContains(actual: any, expected: any): void {
         if (typeof expected !== "object" || expected === null) {
@@ -99,11 +101,13 @@ export class CursorValidator {
             for (let i = 0; i < expected.length; i++) {
                 if (i < actual.length) {
                     this.assertObjectContains(actual[i], expected[i]);
-                } else {
+                }
+                else {
                     throw new Error(`Expected array item at index ${i} not found in actual array`);
                 }
             }
-        } else {
+        }
+        else {
             for (const key in expected) {
                 expect(actual).toHaveProperty(key);
                 this.assertObjectContains(actual[key], expected[key]);
@@ -112,10 +116,10 @@ export class CursorValidator {
     }
 
     /**
-     * Retrieves and validates data at a specific path of the cursor.
-     * @param page The Playwright Page object.
-     * @param path The path to the data (e.g., "cursors.0.offset").
-     * @param expectedValue The expected value.
+     * カーソルの特定のパスにあるデータを取得して検証する
+     * @param page Playwrightのページオブジェクト
+     * @param path データのパス（例: "cursors.0.offset"）
+     * @param expectedValue 期待される値
      */
     static async assertCursorPath(page: Page, path: string, expectedValue: any): Promise<void> {
         const cursorData = await this.getCursorData(page);
@@ -124,10 +128,10 @@ export class CursorValidator {
     }
 
     /**
-     * Retrieves the value of a specified path from an object.
-     * @param obj The target object.
-     * @param path The path (e.g., "cursors.0.offset").
-     * @returns The value corresponding to the path.
+     * オブジェクトから指定されたパスの値を取得する
+     * @param obj 対象オブジェクト
+     * @param path パス（例: "cursors.0.offset"）
+     * @returns パスに対応する値
      */
     private static getValueByPath(obj: any, path: string): any {
         return path.split(".").reduce((prev, curr) => {
@@ -136,9 +140,9 @@ export class CursorValidator {
     }
 
     /**
-     * Takes a snapshot of the current cursor information.
-     * @param page The Playwright Page object.
-     * @returns A snapshot of the cursor information.
+     * 現在のカーソル情報のスナップショットを取得する
+     * @param page Playwrightのページオブジェクト
+     * @returns カーソル情報のスナップショット
      */
     static async takeCursorSnapshot(page: Page): Promise<any> {
         const cursorData = await this.getCursorData(page);
@@ -146,10 +150,10 @@ export class CursorValidator {
     }
 
     /**
-     * Compares current cursor information with a previous snapshot.
-     * @param page The Playwright Page object.
-     * @param snapshot The previous snapshot.
-     * @param ignorePaths An array of paths to ignore (e.g., ["cursors.0.lastChanged"]).
+     * 現在のカーソル情報と以前のスナップショットを比較する
+     * @param page Playwrightのページオブジェクト
+     * @param snapshot 以前のスナップショット
+     * @param ignorePaths 無視するパスの配列（例: ["cursors.0.lastChanged"]）
      */
     static async compareWithSnapshot(page: Page, snapshot: any, ignorePaths: string[] = []): Promise<void> {
         const currentData = await this.getCursorData(page);
@@ -160,7 +164,7 @@ export class CursorValidator {
     }
 
     /**
-     * Removes properties at specified paths from an object.
+     * オブジェクトから指定されたパスのプロパティを削除する
      */
     private static removeIgnoredPaths(obj: any, paths: string[]): any {
         for (const path of paths) {
@@ -178,9 +182,9 @@ export class CursorValidator {
     }
 
     /**
-     * Validates the number of cursors.
-     * @param page The Playwright Page object.
-     * @param expectedCount The expected number of cursors.
+     * カーソルの数を検証する
+     * @param page Playwrightのページオブジェクト
+     * @param expectedCount 期待されるカーソルの数
      */
     static async assertCursorCount(page: Page, expectedCount: number): Promise<void> {
         const cursorData = await this.getCursorData(page);
@@ -188,9 +192,9 @@ export class CursorValidator {
     }
 
     /**
-     * Validates the item ID of the active cursor.
-     * @param page The Playwright Page object.
-     * @param expectedItemId The expected item ID.
+     * アクティブなカーソルのアイテムIDを検証する
+     * @param page Playwrightのページオブジェクト
+     * @param expectedItemId 期待されるアイテムID
      */
     static async assertActiveItemId(page: Page, expectedItemId: string): Promise<void> {
         const cursorData = await this.getCursorData(page);
@@ -198,9 +202,9 @@ export class CursorValidator {
     }
 
     /**
-     * Retrieves detailed information about cursor elements in the DOM.
-     * @param page The Playwright Page object.
-     * @returns Detailed information about cursor elements.
+     * DOM上のカーソル要素の詳細情報を取得する
+     * @param page Playwrightのページオブジェクト
+     * @returns カーソル要素の詳細情報
      */
     static async getDOMCursorInfo(page: Page): Promise<{
         totalCursors: number;
@@ -208,7 +212,7 @@ export class CursorValidator {
         cursorDetails: Array<{
             index: number;
             isActive: boolean;
-            position: { left: string; top: string; };
+            position: { left: string; top: string };
             dataOffset: string | null;
         }>;
     }> {
@@ -224,37 +228,37 @@ export class CursorValidator {
                     isActive: cursor.classList.contains("active"),
                     position: {
                         left: (cursor as HTMLElement).style.left,
-                        top: (cursor as HTMLElement).style.top,
+                        top: (cursor as HTMLElement).style.top
                     },
-                    dataOffset: cursor.getAttribute("data-offset"),
-                })),
+                    dataOffset: cursor.getAttribute("data-offset")
+                }))
             };
         });
     }
 
     /**
-     * Validates cursor duplication issues (for CLM-0101).
-     * @param page The Playwright Page object.
-     * @param expectedCount The expected number of cursors.
-     * @param stepDescription Description of the step.
+     * カーソルの重複問題を検証する（CLM-0101用）
+     * @param page Playwrightのページオブジェクト
+     * @param expectedCount 期待されるカーソル数
+     * @param stepDescription ステップの説明
      */
     static async validateCursorState(page: Page, expectedCount: number, stepDescription: string): Promise<void> {
         const domInfo = await this.getDOMCursorInfo(page);
 
         console.log(`${stepDescription}:`);
-        console.log(`  Total cursors: ${domInfo.totalCursors}`);
-        console.log(`  Active cursors: ${domInfo.activeCursors}`);
-        console.log(`  Cursor details:`, domInfo.cursorDetails);
+        console.log(`  総カーソル数: ${domInfo.totalCursors}`);
+        console.log(`  アクティブカーソル数: ${domInfo.activeCursors}`);
+        console.log(`  カーソル詳細:`, domInfo.cursorDetails);
 
-        // Verify that the cursor count matches the expectation
+        // カーソルが期待数と一致することを確認
         expect(domInfo.totalCursors).toBe(expectedCount);
-        expect(domInfo.activeCursors).toBeLessThanOrEqual(1); // At most one active cursor
+        expect(domInfo.activeCursors).toBeLessThanOrEqual(1); // アクティブカーソルは最大1つ
     }
 
     /**
-     * Validates the number of active cursors.
-     * @param page The Playwright Page object.
-     * @param expectedCount The expected number of active cursors.
+     * アクティブカーソルの数を検証する
+     * @param page Playwrightのページオブジェクト
+     * @param expectedCount 期待されるアクティブカーソル数
      */
     static async assertActiveCursorCount(page: Page, expectedCount: number): Promise<void> {
         const domInfo = await this.getDOMCursorInfo(page);
@@ -262,8 +266,8 @@ export class CursorValidator {
     }
 
     /**
-     * Validates that at most one cursor exists.
-     * @param page The Playwright Page object.
+     * カーソルが最大1つまでしか存在しないことを検証する
+     * @param page Playwrightのページオブジェクト
      */
     static async assertSingleCursor(page: Page): Promise<void> {
         const domInfo = await this.getDOMCursorInfo(page);
@@ -272,38 +276,38 @@ export class CursorValidator {
     }
 
     /**
-     * Validates cursor blinking.
-     * @param page The Playwright Page object.
-     * @param waitTime Time to wait for blinking state change (in milliseconds).
+     * カーソルの点滅を検証する
+     * @param page Playwrightのページオブジェクト
+     * @param waitTime 点滅状態変化を待つ時間（ミリ秒）
      */
     static async assertCursorBlink(page: Page, waitTime: number = 600): Promise<void> {
-        // Verify that an active cursor exists
+        // アクティブカーソルが存在することを確認
         const initialDomInfo = await this.getDOMCursorInfo(page);
         expect(initialDomInfo.activeCursors).toBeGreaterThan(0);
 
-        // Get initial opacity
+        // 初期の透明度を取得
         const initialOpacity = await page.evaluate(() => {
             const cursor = document.querySelector(".editor-overlay .cursor.active");
             return cursor ? window.getComputedStyle(cursor).opacity : null;
         });
         expect(initialOpacity).not.toBeNull();
 
-        // Wait for blinking state change
+        // 点滅状態変化を待つ
         await page.waitForTimeout(waitTime);
 
-        // Get opacity after change
+        // 変化後の透明度を取得
         const nextOpacity = await page.evaluate(() => {
             const cursor = document.querySelector(".editor-overlay .cursor.active");
             return cursor ? window.getComputedStyle(cursor).opacity : null;
         });
         expect(nextOpacity).not.toBeNull();
 
-        // Verify that opacity has changed (is blinking)
+        // 透明度が変化していることを確認（点滅している）
         expect(initialOpacity).not.toBe(nextOpacity);
     }
 }
 
-// Extend global type definition (add functionality to window object for testing)
+// グローバル型定義を拡張（テスト用にwindowオブジェクトに機能を追加）
 declare global {
     interface Window {
         getCursorDebugData?: () => any;

@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Clipboard API Test</title>
+        <title>クリップボードAPIテスト</title>
         <style>
         body {
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -68,54 +68,54 @@
         </style>
     </head>
     <body>
-        <h1>Clipboard API Test</h1>
-        <p>This page is for testing the Clipboard API.</p>
+        <h1>クリップボードAPIテスト</h1>
+        <p>このページはクリップボードAPIのテストを行うためのものです。</p>
 
         <div class="container">
             <div class="test-section">
-                <h2>1. navigator.clipboard API Test</h2>
-                <textarea id="clipboard-text" placeholder="Enter text to copy here"></textarea>
+                <h2>1. navigator.clipboard APIテスト</h2>
+                <textarea id="clipboard-text" placeholder="ここにコピーするテキストを入力してください"></textarea>
                 <div>
-                    <button id="copy-btn">Copy</button>
-                    <button id="paste-btn">Paste</button>
+                    <button id="copy-btn">コピー</button>
+                    <button id="paste-btn">ペースト</button>
                 </div>
                 <div class="result" id="clipboard-result"></div>
             </div>
 
             <div class="test-section">
-                <h2>2. document.execCommand API Test</h2>
-                <textarea id="execcommand-text" placeholder="Enter text to copy here"></textarea>
+                <h2>2. document.execCommand APIテスト</h2>
+                <textarea id="execcommand-text" placeholder="ここにコピーするテキストを入力してください"></textarea>
                 <div>
-                    <button id="execcommand-copy-btn">Copy</button>
-                    <button id="execcommand-paste-btn">Paste</button>
+                    <button id="execcommand-copy-btn">コピー</button>
+                    <button id="execcommand-paste-btn">ペースト</button>
                 </div>
                 <div class="result" id="execcommand-result"></div>
             </div>
 
             <div class="test-section">
-                <h2>3. Clipboard Permission Test</h2>
-                <button id="check-permission-btn">Check Clipboard Permission</button>
+                <h2>3. クリップボード権限テスト</h2>
+                <button id="check-permission-btn">クリップボード権限を確認</button>
                 <div class="result" id="permission-result"></div>
             </div>
 
             <div class="test-section">
-                <h2>4. For Playwright Tests</h2>
-                <textarea id="playwright-text" placeholder="Text from Playwright will appear here"></textarea>
+                <h2>4. Playwrightテスト用</h2>
+                <textarea id="playwright-text" placeholder="Playwrightからのテキストがここに表示されます"></textarea>
                 <div>
-                    <button id="playwright-copy-btn">Copy</button>
-                    <button id="playwright-paste-btn">Paste</button>
+                    <button id="playwright-copy-btn">コピー</button>
+                    <button id="playwright-paste-btn">ペースト</button>
                 </div>
                 <div class="result" id="playwright-result"></div>
             </div>
         </div>
 
         <div class="log-container">
-            <h3>Log</h3>
+            <h3>ログ</h3>
             <div id="log"></div>
         </div>
 
         <script>
-        // Log function
+        // ログ関数
             function log(message) {
                 const logElement = document.getElementById("log");
                 const logItem = document.createElement("div");
@@ -124,24 +124,24 @@
                 console.log(message);
             }
 
-            // Result display function
+            // 結果表示関数
             function showResult(elementId, message, isSuccess = true) {
                 const resultElement = document.getElementById(elementId);
                 resultElement.textContent = message;
                 resultElement.className = "result " + (isSuccess ? "success" : "error");
             }
 
-            // 1. navigator.clipboard API Test
+            // 1. navigator.clipboard APIテスト
             document.getElementById("copy-btn").addEventListener("click", async () => {
                 try {
                     const text = document.getElementById("clipboard-text").value;
                     await navigator.clipboard.writeText(text);
-                    showResult("clipboard-result", "Copy successful: " + text);
-                    log("navigator.clipboard.writeText successful: " + text);
+                    showResult("clipboard-result", "コピー成功: " + text);
+                    log("navigator.clipboard.writeText 成功: " + text);
                 }
                 catch (err) {
-                    showResult("clipboard-result", "Copy failed: " + err.message, false);
-                    log("navigator.clipboard.writeText failed: " + err.message);
+                    showResult("clipboard-result", "コピー失敗: " + err.message, false);
+                    log("navigator.clipboard.writeText 失敗: " + err.message);
                 }
             });
 
@@ -149,33 +149,33 @@
                 try {
                     const text = await navigator.clipboard.readText();
                     document.getElementById("clipboard-text").value = text;
-                    showResult("clipboard-result", "Paste successful: " + text);
-                    log("navigator.clipboard.readText successful: " + text);
+                    showResult("clipboard-result", "ペースト成功: " + text);
+                    log("navigator.clipboard.readText 成功: " + text);
                 }
                 catch (err) {
-                    showResult("clipboard-result", "Paste failed: " + err.message, false);
-                    log("navigator.clipboard.readText failed: " + err.message);
+                    showResult("clipboard-result", "ペースト失敗: " + err.message, false);
+                    log("navigator.clipboard.readText 失敗: " + err.message);
                 }
             });
 
-            // 2. document.execCommand API Test
+            // 2. document.execCommand APIテスト
             document.getElementById("execcommand-copy-btn").addEventListener("click", () => {
                 try {
                     const textarea = document.getElementById("execcommand-text");
                     textarea.select();
                     const success = document.execCommand("copy");
                     if (success) {
-                        showResult("execcommand-result", "Copy successful: " + textarea.value);
-                        log('document.execCommand("copy") successful: ' + textarea.value);
+                        showResult("execcommand-result", "コピー成功: " + textarea.value);
+                        log('document.execCommand("copy") 成功: ' + textarea.value);
                     }
                     else {
-                        showResult("execcommand-result", "Copy failed", false);
-                        log('document.execCommand("copy") Failed');
+                        showResult("execcommand-result", "コピー失敗", false);
+                        log('document.execCommand("copy") 失敗');
                     }
                 }
                 catch (err) {
-                    showResult("execcommand-result", "Copy failed: " + err.message, false);
-                    log('document.execCommand("copy") failed: ' + err.message);
+                    showResult("execcommand-result", "コピー失敗: " + err.message, false);
+                    log('document.execCommand("copy") 失敗: ' + err.message);
                 }
             });
 
@@ -185,30 +185,30 @@
                     textarea.focus();
                     const success = document.execCommand("paste");
                     if (success) {
-                        showResult("execcommand-result", "Paste successful: " + textarea.value);
-                        log('document.execCommand("paste") successful: ' + textarea.value);
+                        showResult("execcommand-result", "ペースト成功: " + textarea.value);
+                        log('document.execCommand("paste") 成功: ' + textarea.value);
                     }
                     else {
-                        showResult("execcommand-result", "Paste failed", false);
-                        log('document.execCommand("paste") Failed');
+                        showResult("execcommand-result", "ペースト失敗", false);
+                        log('document.execCommand("paste") 失敗');
                     }
                 }
                 catch (err) {
-                    showResult("execcommand-result", "Paste failed: " + err.message, false);
-                    log('document.execCommand("paste") failed: ' + err.message);
+                    showResult("execcommand-result", "ペースト失敗: " + err.message, false);
+                    log('document.execCommand("paste") 失敗: ' + err.message);
                 }
             });
 
-            // 3. Clipboard Permission Test
+            // 3. クリップボード権限テスト
             document.getElementById("check-permission-btn").addEventListener("click", async () => {
                 try {
                     if (!navigator.permissions) {
                         showResult(
                             "permission-result",
-                            "navigator.permissions API is not supported",
+                            "navigator.permissions APIがサポートされていません",
                             false,
                         );
-                        log("navigator.permissions API is not supported");
+                        log("navigator.permissions APIがサポートされていません");
                         return;
                     }
 
@@ -222,24 +222,24 @@
                     log(`clipboard-read: ${clipboardRead.state}, clipboard-write: ${clipboardWrite.state}`);
                 }
                 catch (err) {
-                    showResult("permission-result", "Permission check failed: " + err.message, false);
-                    log("Permission check failed: " + err.message);
+                    showResult("permission-result", "権限確認失敗: " + err.message, false);
+                    log("権限確認失敗: " + err.message);
                 }
             });
 
-            // 4. For Playwright Tests
+            // 4. Playwrightテスト用
             document.getElementById("playwright-copy-btn").addEventListener("click", async () => {
                 try {
                     const text = document.getElementById("playwright-text").value;
                     await navigator.clipboard.writeText(text);
-                    showResult("playwright-result", "Copy successful: " + text);
-                    log("Playwright copy successful: " + text);
-                    // Save to global variable (for testing)
+                    showResult("playwright-result", "コピー成功: " + text);
+                    log("Playwright用コピー成功: " + text);
+                    // グローバル変数に保存（テスト用）
                     window.lastCopiedText = text;
                 }
                 catch (err) {
-                    showResult("playwright-result", "Copy failed: " + err.message, false);
-                    log("Playwright copy failed: " + err.message);
+                    showResult("playwright-result", "コピー失敗: " + err.message, false);
+                    log("Playwright用コピー失敗: " + err.message);
                 }
             });
 
@@ -247,26 +247,26 @@
                 try {
                     const text = await navigator.clipboard.readText();
                     document.getElementById("playwright-text").value = text;
-                    showResult("playwright-result", "Paste successful: " + text);
-                    log("Playwright paste successful: " + text);
-                    // Save to global variable (for testing)
+                    showResult("playwright-result", "ペースト成功: " + text);
+                    log("Playwright用ペースト成功: " + text);
+                    // グローバル変数に保存（テスト用）
                     window.lastPastedText = text;
                 }
                 catch (err) {
-                    showResult("playwright-result", "Paste failed: " + err.message, false);
-                    log("Playwright paste failed: " + err.message);
+                    showResult("playwright-result", "ペースト失敗: " + err.message, false);
+                    log("Playwright用ペースト失敗: " + err.message);
                 }
             });
 
-            // Execute on page load
+            // ページ読み込み時に実行
             window.addEventListener("load", () => {
-                log("Page loaded");
-                // Check clipboard API support status
+                log("ページが読み込まれました");
+                // クリップボードAPIのサポート状況を確認
                 if (navigator.clipboard) {
-                    log("navigator.clipboard API is supported");
+                    log("navigator.clipboard APIがサポートされています");
                 }
                 else {
-                    log("navigator.clipboard API is not supported");
+                    log("navigator.clipboard APIがサポートされていません");
                 }
             });
         </script>

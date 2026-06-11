@@ -1,85 +1,92 @@
 <script lang="ts">
-import { onMount } from "svelte";
-import { goto } from "$app/navigation";
-    import { resolvePath } from "../../utils/pathUtils";
+import { browser } from "$app/environment";
+import {
+    onDestroy,
+    onMount,
+} from "svelte";
 import { userManager } from "../../auth/UserManager";
-import { getYjsClientByProjectTitle } from "../../services";
-import { yjsStore } from "../../stores/yjsStore.svelte";
-import { store } from "../../stores/store.svelte";
+import { getLogger } from "../../lib/logger";
+import { getFluidClientByProjectTitle } from "../../services";
+import { fluidStore } from "../../stores/fluidStore.svelte";
 
-// Project-level layout
-// This layout applies to both /[project] and /[project]/[page]
+// プロジェクトレベルのレイアウト
+// このレイアウトは /[project] と /[project]/[page] の両方に適用されます
 let { data, children } = $props();
 
-import type { Project } from "../../schema/app-schema";
-import type { YjsClient } from "../../yjs/YjsClient";
+const logger = getLogger("ProjectLayout");
 
-let project: Project | null = $state(null);
+// URLパラメータを取得
+let projectName = $state("");
 
-// Retrieve project from the store
+// プロジェクト関連の状態
+let project: any = $state(undefined);
+let rootItems: any = $state(undefined);
+let error: string | undefined = $state(undefined);
+let isLoading = $state(true);
+let isAuthenticated = $state(false);
+let projectNotFound = $state(false);
+
+// URLパラメータを監視して更新
 $effect(() => {
-    if (yjsStore.yjsClient) {
-        project = yjsStore.yjsClient.getProject();
+    // SvelteKit 2.0では、dataオブジェクトからパラメータを取得
+    if (data && data.project) {
+        projectName = data.project;
+    }
+
+    logger.info(`Layout loading project: ${projectName}`);
+
+    // プロジェクトが指定されている場合、データを読み込む
+    if (projectName && isAuthenticated) {
+        loadProject();
     }
 });
 
-// Retrieve project name from URL parameters
-$effect(() => {
-    const projectParam = (data as { project?: string })?.project;
-    if (!projectParam) return;
+// プロジェクトを読み込む
+async function loadProject() {
+    isLoading = true;
+    error = undefined;
+    projectNotFound = false;
 
-    if (!yjsStore.yjsClient) {
-        loadProject(projectParam);
-    }
-});
-
-async function loadProject(projectNameFromParam?: string) {
     try {
-        const projectName = projectNameFromParam ?? (data as { project: string }).project;
+        const projectName = data.project;
+        // プロジェクト名からFluidClientを取得
+        logger.info(`プロジェクト名からFluidClientを取得: ${projectName}`);
+        const client = await getFluidClientByProjectTitle(projectName);
 
-        // Retrieve Yjs client from project name
-        let client = await getYjsClientByProjectTitle(projectName);
-
-        if (client) {
-            yjsStore.yjsClient = client as YjsClient;
-            project = client.getProject();
-            // expose project to the global store so pages become available immediately
-            store.project = project;
-        } else {
-            // Only redirect if user is authenticated (to avoid redirecting during initial load)
-            // If user is not authenticated, the onMount listener will retry once auth settles.
-            if (userManager.getCurrentUser()) {
-                goto(resolvePath("/error/project-unavailable"));
-            }
-        }
-    } catch (err) {
+        // fluidClientストアを更新
+        fluidStore.fluidClient = client;
+    }
+    catch (err) {
         console.error("Failed to load project:", err);
-        if (err instanceof Error && err.message.includes("Access Denied")) {
-            goto(resolvePath("/error/project-unavailable"));
-        }
+        error = err instanceof Error
+            ? err.message
+            : "プロジェクトの読み込み中にエラーが発生しました。";
+        projectNotFound = true;
+    }
+    finally {
+        isLoading = false;
     }
 }
 
+$effect(() => {
+    if (isAuthenticated) {
+        const client = fluidStore.fluidClient;
+        if (client?.container) {
+            project = client.getProject();
+            rootItems = client.getTree();
+        }
+    }
+});
+
 onMount(() => {
-    // Keep auth state in sync
-    try {
-        userManager.addEventListener(() => {
-            // If project not yet loaded but param exists, try again when auth flips
-            const projectParam = (data as { project?: string })?.project;
-            if (projectParam && !yjsStore.yjsClient) {
-                loadProject(projectParam);
-            }
-        });
-    } catch {}
+    // UserManagerの認証状態を確認
+
+    isAuthenticated = userManager.getCurrentUser() !== null;
+});
+
+onDestroy(() => {
+    // クリーンアップコード
 });
 </script>
 
-<div class="main-content">
-    {@render children()}
-</div>
-
-<style>
-.main-content {
-    padding-top: 5rem; /* Padding for toolbar height (allowing 5rem) */
-}
-</style>
+{@render children()}

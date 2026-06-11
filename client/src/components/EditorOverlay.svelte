@@ -1,21 +1,30 @@
 <script lang="ts">
-import { SvelteSet } from "svelte/reactivity";
 import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
-import { escapeId } from '../utils/domUtils';
-import { presenceStore } from '../stores/PresenceStore.svelte';
-import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
 
-// store API (functions only)
+// store API (関数のみ)
 const { stopCursorBlink } = store;
 
-// Debug mode
+// デバッグモード
 let DEBUG_MODE = $state(false);
-// Dispatch event to parent
+
+// デバッグモードの変更を監視して、グローバル変数を更新
+$effect(() => {
+    if (typeof window !== 'undefined') {
+        (window as any).DEBUG_MODE = DEBUG_MODE;
+        console.log(`Debug mode ${DEBUG_MODE ? 'enabled' : 'disabled'}`);
+
+        // カーソル状態をログに出力
+        if (DEBUG_MODE) {
+            store.logCursorState();
+        }
+    }
+});
+// 上位へイベント dispatch
 const dispatch = createEventDispatcher();
 
-// Object mapping cursor position and item position information
+// カーソルの位置とアイテムの位置情報をマッピングするオブジェクト
 interface CursorPositionMap {
     [itemId: string]: {
         elementRect: DOMRect;
@@ -30,504 +39,170 @@ interface CursorPositionMap {
     };
 }
 
-// Reactively manage state such as cursor position and selection range
+// カーソル位置・選択範囲などの状態をリアクティブに管理
 let positionMap = $state<CursorPositionMap>({});
-// Derived values tracking store content
-let cursorList = $state<CursorPosition[]>([]);
-let selectionList = $state<SelectionRange[]>([]);
-let allSelections = $derived.by(() => Object.values(store.selections));
+let allCursors = $state<CursorPosition[]>([]);
+let allSelections = $state<SelectionRange[]>([]);
 let clipboardRef: HTMLTextAreaElement;
 let localActiveItemId = $state<string | null>(null);
 let localCursorVisible = $state<boolean>(false);
-// derive a stable visibility that does not blink while alias picker is open
-// in test environments, always show the cursor
-let overlayCursorVisible = $derived.by(() => {
-    const isTestEnvironment = typeof window !== 'undefined' && window.navigator?.webdriver;
-    return (store.cursorVisible || isTestEnvironment) && !aliasPickerStore.isVisible;
-});
+let localAnimationPaused = $state<boolean>(false);
 
-// References to DOM elements
+// DOM要素への参照
 let overlayRef: HTMLDivElement;
-let measureCanvas: HTMLCanvasElement | null = null;
-let measureCtx: CanvasRenderingContext2D | null = null;
 
-let lastScrolledCursorId = '';
-let lastScrolledOffset = -1;
-
-// Alternative text measurement method for test environment (jsdom)
-function measureTextWidthFallback(itemId: string, text: string): number {
+// より正確なテキスト測定を行うヘルパー関数
+function createMeasurementSpan(itemId: string, text: string): HTMLSpanElement {
     const itemInfo = positionMap[itemId];
-    if (!itemInfo) return 0;
+    if (!itemInfo) {
+        throw new Error(`Item info not found for ${itemId}`);
+    }
 
+    // 仮想測定用のspan要素を作成
+    const span = document.createElement('span');
+
+    // スタイルを正確に継承
     const { fontProperties } = itemInfo;
-    // Calculate estimated text width based on font properties
-    // Use standard character widths (space, alphanumeric, Japanese, etc.)
-    let width = 0;
-    for (const char of text) {
-        if (char.match(/[a-zA-Z0-9.,;:[\](){}]/)) {
-            // Half-width characters are about half the font size
-            width += parseFloat(fontProperties.fontSize) * 0.5;
-        } else if (char.match(/[一-龯]/)) {
-            // Kanji is close to the font size
-            width += parseFloat(fontProperties.fontSize) * 0.9;
-        } else {
-            // Other characters are also treated as half-width
-            width += parseFloat(fontProperties.fontSize) * 0.5;
-        }
-    }
-    return width;
+    span.style.fontFamily = fontProperties.fontFamily;
+    span.style.fontSize = fontProperties.fontSize;
+    span.style.fontWeight = fontProperties.fontWeight;
+    span.style.letterSpacing = fontProperties.letterSpacing;
+
+    // その他の重要なスタイル
+    span.style.whiteSpace = 'pre';
+    span.style.visibility = 'hidden';
+    span.style.position = 'absolute';
+    span.style.pointerEvents = 'none';
+    span.textContent = text;
+
+    return span;
 }
 
-function colorWithAlpha(baseColor: string | undefined, alpha: number, fallback: string): string {
-    if (!baseColor) return fallback;
-    const color = baseColor.trim();
-
-    const hslMatch = color.match(/^hsla?\(([^)]+)\)$/i);
-    if (hslMatch) {
-        const parts = hslMatch[1].split(",").map(part => part.trim());
-        if (parts.length >= 3) {
-            const [h, s, l] = parts;
-            return `hsla(${h}, ${s}, ${l}, ${alpha})`;
-        }
-    }
-
-    const rgbMatch = color.match(/^rgba?\(([^)]+)\)$/i);
-    if (rgbMatch) {
-        const parts = rgbMatch[1].split(",").map(part => part.trim());
-        if (parts.length >= 3) {
-            const [r, g, b] = parts;
-            return `rgba(${parseFloat(r)}, ${parseFloat(g)}, ${parseFloat(b)}, ${alpha})`;
-        }
-    }
-
-    if (color.startsWith("#")) {
-        let hex = color.slice(1);
-        if (hex.length === 3) {
-            hex = hex.split("").map(ch => ch + ch).join("");
-        }
-        if (hex.length === 6) {
-            const r = parseInt(hex.slice(0, 2), 16);
-            const g = parseInt(hex.slice(2, 4), 16);
-            const b = parseInt(hex.slice(4, 6), 16);
-            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        }
-    }
-
-    return fallback;
-}
-
-function getSelectionStyle(sel: SelectionRange) {
-    const baseColor = sel.color || presenceStore.users[sel.userId || ""]?.color;
-    return {
-        fill: colorWithAlpha(baseColor, 0.25, "rgba(0, 120, 215, 0.25)"),
-        outline: colorWithAlpha(baseColor, 0.18, "rgba(0, 120, 215, 0.1)"),
-        edge: colorWithAlpha(baseColor, 0.7, "rgba(0, 120, 215, 0.7)"),
-        markerStart: colorWithAlpha(baseColor, 0.85, "#0078d7"),
-        markerEnd: colorWithAlpha(baseColor, 0.7, "#ff4081"),
-    };
-}
-
-// Helper function to resolve tree container
-function resolveTreeContainer(): HTMLElement | null {
-    if (overlayRef) {
-        const fromOverlay = overlayRef.closest('.tree-container');
-        if (fromOverlay instanceof HTMLElement) return fromOverlay;
-    }
-
-    const fallback = document.querySelector('.tree-container');
-    if (fallback instanceof HTMLElement) return fallback;
-
-    if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-        console.warn('EditorOverlay: tree container element not found');
-    }
-    return null;
-}
-
-// Helper function to update textarea position
-function updateTextareaPosition() {
-    try {
-        if (aliasPickerStore.isVisible) return; // avoid churn while alias picker open
-        const textareaRef = store.getTextareaRef();
-        // Allow dynamic position update even during composition
-        if (!textareaRef || !overlayRef) return;
-        const lastCursor = store.getLastActiveCursor();
-        if (!lastCursor) return;
-
-        // Always update position map to ensure it's current before calculations
-        // This is especially important in test environments and after DOM changes
-        updatePositionMap();
-
-        const itemInfo = positionMap[lastCursor.itemId];
-        if (!itemInfo) {
-            debouncedUpdatePositionMap();
-            return;
-        }
-
-        const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
-        if (!pos) {
-            debouncedUpdatePositionMap();
-            return;
-        }
-
-        // Get the tree container's position relative to the viewport
-        const treeContainer = resolveTreeContainer();
-        if (!treeContainer) return;
-        const treeContainerRect = treeContainer.getBoundingClientRect();
-
-        // Position the textarea using viewport coordinates
-        textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left + window.scrollX}px`, 'important');
-        textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top + window.scrollY}px`, 'important');
-
-        // Scroll the cursor into view if it moved
-        if (lastScrolledCursorId !== lastCursor.itemId || lastScrolledOffset !== lastCursor.offset) {
-            lastScrolledCursorId = lastCursor.itemId;
-            lastScrolledOffset = lastCursor.offset;
-
-            const viewportTop = treeContainerRect.top + pos.top;
-            const cursorHeight = itemInfo.lineHeight ? parseInt(itemInfo.lineHeight) : 20;
-            const viewportBottom = viewportTop + cursorHeight;
-
-            const stickyHeaderHeight = 80;
-            const margin = 20;
-            const windowHeight = window.innerHeight || document.documentElement.clientHeight;
-
-            if (viewportTop < stickyHeaderHeight) {
-                window.scrollBy({ top: viewportTop - stickyHeaderHeight - margin, behavior: "smooth" });
-            } else if (viewportBottom > windowHeight) {
-                window.scrollBy({ top: viewportBottom - windowHeight + margin, behavior: "smooth" });
-            }
-        }
-    } catch (e) {
-        /* eslint-disable-next-line no-console */ console.error("Error in updateTextareaPosition:", e);
-    }
-}
-
-// Update position in response to change notification (eliminate polling)
-onMount(() => {
-    // setup text measurement without DOM mutations
-    // Since Canvas API is not supported in jsdom environment,
-    // Initialize only in browser environment where Canvas is implemented
-    if (typeof document !== 'undefined' && typeof HTMLCanvasElement !== 'undefined') {
-        // jsdom-specific check: navigator properties in jsdom differ from browsers
-        // Also Node.js environment if process is defined
-        const isJsdom = (typeof navigator !== 'undefined' &&
-                        navigator.userAgent.includes('jsdom')) ||
-                        (typeof process !== 'undefined' && process.versions && process.versions.node);
-
-
-
-        if (!isJsdom) {
-            try {
-                measureCanvas = document.createElement('canvas');
-                // Use fallback if Canvas context is not available
-                measureCtx = measureCanvas.getContext('2d');
-                if (!measureCtx) {
-                    console.warn('Canvas 2D context not available, using fallback text measurement');
-                }
-            } catch (error) {
-                // Canvas API might not be available in test environments or specific browsers
-                console.warn('Canvas API not available, using fallback text measurement:', error);
-                measureCtx = null;
-            }
-        } else {
-            console.warn('Canvas API not available in jsdom environment, using fallback text measurement');
-            measureCtx = null;
-        }
-    } else {
-        console.warn('Canvas API not available in this environment, using fallback text measurement');
-        measureCtx = null;
-    }
-
-    // Subscribe to store changes with debounce to avoid infinite loops
-
-    let updateTimeout: number | null = null;
-    let unsubscribe = () => {};
-
-    // Subscribe to store changes in all environments to ensure proper updates
-    const syncCursors = () => {
-        cursorList = Object.values(store.cursors);
-        selectionList = Object.values(store.selections);
-    };
-
-    try {
-        unsubscribe = store.subscribe(() => {
-            if (updateTimeout) {
-                clearTimeout(updateTimeout);
-            }
-            updateTimeout = setTimeout(() => {
-                // Force update of positionMap to ensure it's current
-                updatePositionMap(); // Direct call instead of debounced to ensure immediate update in tests
-                syncCursors();
-                if (typeof window !== 'undefined') {
-                    window.__selectionList = selectionList;
-                }
-                updateTextareaPosition();
-
-                // Update localCursorVisible in all environments to ensure proper reactivity
-                // In test environments, ensure it's always true if there are active cursors
-                const isTestEnvironment = typeof window !== 'undefined' && window.navigator?.webdriver;
-                if (isTestEnvironment) {
-                    localCursorVisible = store.cursorVisible || cursorList.some(cursor => cursor.isActive);
-                } else {
-                    localCursorVisible = store.cursorVisible;
-                }
-            }, 16) as unknown as number; // Update at ~60fps interval
-        });
-    } catch (error) {
-        console.warn('Failed to subscribe to store changes:', error);
-    }
-
-    // Initialization
-    try {
-        syncCursors();
-        if (typeof window !== 'undefined') {
-            window.__selectionList = selectionList;
-        }
-        updateTextareaPosition();
-        // In test environments, trigger an immediate update to ensure DOM is ready
-        if (typeof window !== 'undefined' && window.navigator?.webdriver) {
-            updatePositionMap();
-            // Also make sure cursor blink is working in test environments
-            setTimeout(() => {
-                if (cursorList.some(cursor => cursor.isActive)) {
-                    store.startCursorBlink();
-                } else {
-                    // If no active cursors exist, ensure we at least set cursorVisible to true for test environments
-                    store.setCursorVisible(true);
-                }
-            }, 100);
-        } else {
-            // In non-test environments, set cursorVisible based on store state
-            localCursorVisible = store.cursorVisible;
-        }
-    } catch (error) {
-        console.warn('Failed to update textarea position on init:', error);
-    }
-
-    // cleanup
-    return () => {
-        try {
-            unsubscribe();
-        } catch (error) {
-            console.warn('Error during unsubscribe:', error);
-        }
-        if (updateTimeout) {
-            clearTimeout(updateTimeout);
-        }
-    };
-});
-
-// Helper function to perform more accurate text measurement
-
-function measureTextWidthCanvas(itemId: string, text: string): number {
-    const itemInfo = positionMap[itemId];
-    if (!itemInfo) return 0;
-
-    // Use fallback if Canvas context is not available
-    if (!measureCtx) {
-        return measureTextWidthFallback(itemId, text);
-    }
-
-    const { fontProperties } = itemInfo;
-    const font = `${fontProperties.fontWeight} ${fontProperties.fontSize} ${fontProperties.fontFamily}`.trim();
-    try {
-        measureCtx.font = font;
-    } catch {
-        // Intentionally empty - catch potential errors without further handling
-    }
-    const m = measureCtx.measureText(text);
-    return m.width || 0;
-}
-
-// Function to calculate pixel position of selection range
+// カーソル位置をピクセル値に変換する関数
 function calculateCursorPixelPosition(itemId: string, offset: number): { left: number; top: number } | null {
     const itemInfo = positionMap[itemId];
     if (!itemInfo) {
-        if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-            console.log(`calculateCursorPixelPosition: no itemInfo for ${itemId}`, Object.keys(positionMap));
-        }
-        // Skip rendering if item info is missing
+        // アイテム情報がない場合は描画をスキップ
         return null;
     }
     const { textElement } = itemInfo;
-    // Get tree container
-    const treeContainer = resolveTreeContainer();
-    if (!treeContainer) {
-        if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-            console.log(`calculateCursorPixelPosition: tree container not found for ${itemId}`);
-        }
-        return null;
-    }
+    // ツリーコンテナを取得
+    const treeContainer = overlayRef.closest('.tree-container');
+    if (!treeContainer) return null;
     try {
-        // Always measure anew to get the latest position information
-        // Absolute position of tree container (reference point)
-        const treeContainerRect = treeContainer.getBoundingClientRect();
-        // Absolute position of text element
+        // 最新の位置情報を取得するため、常に新たに計測
+        // テキスト要素の絶対位置
         const textRect = textElement.getBoundingClientRect();
-
-        // Get text content
+        // ツリーコンテナの絶対位置
+        const treeContainerRect = treeContainer.getBoundingClientRect();
+        // テキストの内容を取得
         const text = textElement.textContent || '';
-        // Always left edge if empty text
+        // 空テキストの場合は必ず左端
         if (!text || text.length === 0) {
             const contentContainer = textElement.closest('.item-content-container');
             const contentRect = contentContainer?.getBoundingClientRect() || textRect;
-            // Calculate position relative to the tree container
-            const relativeLeft = contentRect.left - treeContainerRect.left;
-            // Subtract 4px to compensate for the .outliner-item's padding-top
-            const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
-            return { left: relativeLeft, top: relativeTop };
+            const contentLeft = contentRect.left - treeContainerRect.left;
+            const relativeTop = textRect.top - treeContainerRect.top + 3;
+            return { left: contentLeft, top: relativeTop };
         }
-
-        // Find the correct text node and offset for the given character position
-        const findTextPosition = (element: Node, targetOffset: number): { node: Text, offset: number } | null => {
-            let currentOffset = 0;
-            let lastTextNode: Text | null = null;
-
-            const walker = document.createTreeWalker(
-                element,
-                NodeFilter.SHOW_TEXT,
-                {
-                    acceptNode: function() {
-                        return NodeFilter.FILTER_ACCEPT;
-                    }
-                }
-            );
-
-            while (walker.nextNode()) {
-                const textNode = walker.currentNode as Text;
-                lastTextNode = textNode;
-                const textLength = textNode.textContent?.length || 0;
-
-                if (targetOffset < currentOffset + textLength) {
-                    return {
-                        node: textNode,
-                        offset: targetOffset - currentOffset
-                    };
-                }
-
-                currentOffset += textLength;
-            }
-
-            if (targetOffset === currentOffset && lastTextNode) {
-                return {
-                    node: lastTextNode,
-                    offset: lastTextNode.textContent?.length || 0
-                };
-            }
-
-            return null;
-        };
-
-        // Word wrap support: Prioritize Range API
-        const textPosition = findTextPosition(textElement, offset);
-        if (textPosition) {
+        // 折り返し対応: Range API を優先
+        const textNode = Array.from(textElement.childNodes).find(node => node.nodeType === Node.TEXT_NODE) as Text | undefined;
+        if (textNode) {
             const range = document.createRange();
-            const safeOffset = Math.min(textPosition.offset, textPosition.node.textContent?.length || 0);
-            range.setStart(textPosition.node, safeOffset);
-            range.setEnd(textPosition.node, safeOffset);
+            const safeOffset = Math.min(offset, textNode.textContent?.length || 0);
+            range.setStart(textNode, safeOffset);
+            range.setEnd(textNode, safeOffset);
             const rects = range.getClientRects();
-            // Use the first rect or fallback to getBoundingClientRect
             const caretRect = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
-            // Calculate position relative to the tree container (not viewport)
             const relativeLeft = caretRect.left - treeContainerRect.left;
-            // Subtract 4px to compensate for the .outliner-item's padding-top
-            const relativeTop = caretRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
+            const relativeTop = caretRect.top - treeContainerRect.top;
             return { left: relativeLeft, top: relativeTop };
         }
-
-        // Fallback: Measure width with Canvas (do not modify DOM)
+        // フォールバック: 仮想spanで幅を測定
         const textBeforeCursor = text.substring(0, offset);
-        const cursorWidth = measureTextWidthCanvas(itemId, textBeforeCursor);
+        const span = createMeasurementSpan(itemId, textBeforeCursor);
+        textElement.parentElement?.appendChild(span);
+        const cursorWidth = span.getBoundingClientRect().width;
+        textElement.parentElement?.removeChild(span);
         const contentContainer = textElement.closest('.item-content-container');
         const contentRect = contentContainer?.getBoundingClientRect() || textRect;
-        // Calculate position relative to the tree container
-        const relativeLeft = (contentRect.left - treeContainerRect.left) + cursorWidth;
-        // Subtract 4px to compensate for the .outliner-item's padding-top
-        const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
-        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+        const contentLeft = contentRect.left - treeContainerRect.left;
+        const relativeLeft = contentLeft + cursorWidth;
+        const relativeTop = textRect.top - treeContainerRect.top + 3;
+        if (DEBUG_MODE) {
             console.log(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
         }
         return { left: relativeLeft, top: relativeTop };
     } catch (error) {
-        /* eslint-disable-next-line no-console */ console.error('Error calculating cursor position:', error);
+        console.error('Error calculating cursor position:', error);
         return null;
     }
 }
 
-// Function to calculate pixel position of selection range
+// 選択範囲のピクセル位置を計算する関数
 function calculateSelectionPixelRange(
     itemId: string,
     startOffset: number,
     endOffset: number,
     isReversed?: boolean
 ): { left: number; top: number; width: number; height: number } | null {
-    // Do not display if start and end positions are the same
-    if (startOffset === endOffset) {
-        if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-            console.log(`calculateSelectionPixelRange: zero-width selection for ${itemId}`);
-        }
-        return null;
-    }
+    // 開始位置と終了位置が同じ場合は表示しない
+    if (startOffset === endOffset) return null;
 
     const itemInfo = positionMap[itemId];
-    if (!itemInfo) {
-        if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-            console.log(`calculateSelectionPixelRange: no itemInfo for ${itemId}`, Object.keys(positionMap));
-        }
-        return null;
-    }
+    if (!itemInfo) return null;
 
     const { textElement, lineHeight } = itemInfo;
 
-    // Get tree container
-    const treeContainer = resolveTreeContainer();
-    if (!treeContainer) {
-        if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-            console.log(`calculateSelectionPixelRange: tree container not found for ${itemId}`);
-        }
-        return null;
-    }
+    // ツリーコンテナを取得
+    const treeContainer = overlayRef.closest('.tree-container');
+    if (!treeContainer) return null;
 
     try {
-        // Always measure anew to get the latest position information
-        // Absolute position of text element
+        // 最新の位置情報を取得するため、常に新たに計測
+        // テキスト要素の絶対位置
         const textRect = textElement.getBoundingClientRect();
 
-        // Absolute position of tree container
+        // ツリーコンテナの絶対位置
         const treeContainerRect = treeContainer.getBoundingClientRect();
 
-        // Get text content
+        // テキストコンテンツを取得
         const text = textElement.textContent || '';
 
-        // Swap if start and end are reversed
+        // 開始と終了が逆転している場合は入れ替え
         const actualStart = Math.min(startOffset, endOffset);
         const actualEnd = Math.max(startOffset, endOffset);
 
         const textBeforeStart = text.substring(0, actualStart);
         const selectedText = text.substring(actualStart, actualEnd);
 
-        // Calculate start position
-        const startX = measureTextWidthCanvas(itemId, textBeforeStart);
+        // 開始位置の計算
+        const startSpan = createMeasurementSpan(itemId, textBeforeStart);
+        textElement.parentElement?.appendChild(startSpan);
+        const startX = startSpan.getBoundingClientRect().width;
+        textElement.parentElement?.removeChild(startSpan);
 
-        // Calculate selection width
-        const width = measureTextWidthCanvas(itemId, selectedText) || 5; // Minimum width
+        // 選択範囲の幅を計算
+        const selectionSpan = createMeasurementSpan(itemId, selectedText);
+        textElement.parentElement?.appendChild(selectionSpan);
+        const width = selectionSpan.getBoundingClientRect().width || 5; // 最小幅を確保
+        textElement.parentElement?.removeChild(selectionSpan);
 
-        // Distance from the left edge of the text element
+        // テキスト要素の左端からの距離
         const contentContainer = textElement.closest('.item-content-container');
         const contentRect = contentContainer?.getBoundingClientRect() || textRect;
 
-        // Position relative to tree container
+        // ツリーコンテナを基準にした位置
         const contentLeft = contentRect.left - treeContainerRect.left;
 
-        // Final position calculation
+        // 最終位置計算
         const relativeLeft = contentLeft + startX;
-        // Subtract 4px to compensate for the .outliner-item's padding-top
-        const relativeTop = textRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
+        const relativeTop = textRect.top - treeContainerRect.top + 3;
 
-        // Use line height for height
+        // 高さは行の高さを使用
         const height = lineHeight || textRect.height || 20;
 
-        if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+        if (DEBUG_MODE) {
             console.log(`Selection for ${itemId} from ${actualStart} to ${actualEnd}:`, {
                 relativeLeft, relativeTop, width, height,
                 contentLeft,
@@ -545,55 +220,37 @@ function calculateSelectionPixelRange(
             height
         };
     } catch (error) {
-        /* eslint-disable-next-line no-console */ console.error('Error calculating selection range:', error);
+        console.error('Error calculating selection range:', error);
         return null;
     }
 }
 
-// Function to update position mapping when DOM changes
+// DOMが変更された時に位置マッピングを更新する関数
 function updatePositionMap() {
     const newMap: CursorPositionMap = {};
 
-    // Optimization: Instead of scanning the entire document,
-    // we only populate information for items that are currently "active"
-    // (i.e. have a cursor or are part of a selection).
-    const idsToTrack = new SvelteSet<string>();
+    // すべてのアイテムとそのテキスト要素を取得
+    const itemElements = document.querySelectorAll('[data-item-id]');
 
-    // 1) Items with cursors
-    for (const c of cursorList) {
-        if (c.itemId) idsToTrack.add(c.itemId);
-    }
-
-    // 2) Items in selections
-    for (const s of selectionList) {
-        if (s.startItemId === s.endItemId) {
-            idsToTrack.add(s.startItemId);
-        } else {
-            // Selection spans multiple items. We need to identify all items in between.
-            // Since we use DOM order for selection rendering, we can find them via TreeWalker.
-            const items = getItemsInRange(s.startItemId, s.endItemId);
-            for (const id of items) idsToTrack.add(id);
-        }
-    }
-
-    const root = document.querySelector(".outliner") || document.body;
-
-    for (const itemId of idsToTrack) {
-        // Targeted querySelector is O(1) in modern browsers
-        const itemElement = root.querySelector(`.outliner-item[data-item-id="${escapeId(itemId)}"]`) as HTMLElement | null;
-        if (!itemElement) continue;
+    itemElements.forEach(itemElement => {
+        const itemId = itemElement.getAttribute('data-item-id');
+        if (!itemId) return;
 
         const textElement = itemElement.querySelector('.item-text');
-        if (!textElement || !(textElement instanceof HTMLElement)) continue;
+        if (!textElement || !(textElement instanceof HTMLElement)) return;
 
-        // Get element position information
+        // 要素の位置情報を取得
         const elementRect = itemElement.getBoundingClientRect();
 
-        // Get computed style
+        // コンテンツコンテナの位置情報
+        const contentContainer = textElement.closest('.item-content-container');
+        if (!contentContainer) return;
+
+        // コンピュートされたスタイルを取得
         const styles = window.getComputedStyle(textElement);
         const lineHeight = parseFloat(styles.lineHeight) || textElement.getBoundingClientRect().height;
 
-        // Save font-related properties
+        // フォント関連のプロパティを保存
         const fontProperties = {
             fontFamily: styles.fontFamily,
             fontSize: styles.fontSize,
@@ -607,323 +264,155 @@ function updatePositionMap() {
             lineHeight,
             fontProperties
         };
-    }
+    });
 
     positionMap = newMap;
 
-    if (typeof window !== "undefined" && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-        console.log("Position map updated (targeted):", Object.keys(newMap));
+    if (DEBUG_MODE) {
+        console.log("Position map updated:", Object.keys(newMap));
     }
 }
 
-// Helper to get item IDs in range efficiently
-function getItemsInRange(startId: string, endId: string): string[] {
-    const startEl = document.querySelector(`[data-item-id="${escapeId(startId)}"]`);
-    const endEl = document.querySelector(`[data-item-id="${escapeId(endId)}"]`);
-    if (!startEl || !endEl) return [startId, endId].filter(id => id);
-
-    const comparison = startEl.compareDocumentPosition(endEl);
-    let firstEl: Element, lastEl: Element;
-    if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
-        firstEl = startEl; lastEl = endEl;
-    } else {
-        firstEl = endEl; lastEl = startEl;
-    }
-
-    const root = document.querySelector(".outliner") || document.body;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-        acceptNode(node) {
-            return (node as Element).hasAttribute("data-item-id")
-                ? NodeFilter.FILTER_ACCEPT
-                : NodeFilter.FILTER_SKIP;
-        },
-    });
-    walker.currentNode = firstEl;
-    const items = [];
-    while (walker.currentNode) {
-        const current = walker.currentNode as HTMLElement;
-        const id = current.getAttribute("data-item-id")!;
-        items.push(id);
-        if (current === lastEl) break;
-        if (!walker.nextNode()) break;
-    }
-    return items;
-}
-
-// MutationObserver to monitor DOM changes
+// MutationObserver を使用してDOMの変更を監視
 let mutationObserver: MutationObserver;
 
-// Variable to debounce (rate limit) position map updates
+// 位置マップの更新をdebounce（頻度制限）するための変数
 let updatePositionMapTimer: number;
 
-// Update position map with debounce
+// 位置マップをdebounce付きで更新
 function debouncedUpdatePositionMap() {
     clearTimeout(updatePositionMapTimer);
     updatePositionMapTimer = setTimeout(() => {
-        if (!aliasPickerStore.isVisible) updatePositionMap();
+        updatePositionMap();
     }, 100) as unknown as number;
 }
 
-// Data reflection from store is guaranteed by MutationObserver and onMount initialization
+// store からのデータを反映するリアクティブ処理
+$effect(() => {
+  // DOM 更新を反映して positionMap を更新
+  updatePositionMap();
+  allCursors = Object.values(store.cursors);
+  allSelections = Object.values(store.selections);
+  localActiveItemId = store.activeItemId;
+  localCursorVisible = store.cursorVisible;
+  localAnimationPaused = store.animationPaused;
+});
 
-// Set up MutationObserver to monitor DOM changes
+// MutationObserver を設定して DOM の変更を監視
 onMount(() => {
-    // Create initial position map
+    // 初期位置マップの作成
     updatePositionMap();
 
-    // Monitor copy event (hook at capture stage to ensure capture)
-    document.addEventListener('copy', handleCopy as EventListener, true);
-    // Monitor cut event
-    document.addEventListener('cut', handleCut as EventListener);
-    // Monitor paste event (multi-line paste)
+    // copyイベントを監視
+    document.addEventListener('copy', handleCopy as EventListener);
+    // pasteイベントを監視 (マルチラインペースト)
     document.addEventListener('paste', handlePaste as EventListener);
-    // Fallback when Ctrl+C is pressed (for E2E environment)
-    const keydownHandler = (e: KeyboardEvent) => {
-        if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
-            try {
-                let txt = store.getSelectedText('local');
-                if (!txt) {
-                    const sels = Object.values(store.selections || {}) as SelectionRange[];
-                    const boxSel = sels.find(s => s.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length);
-                    if (boxSel) {
-                        const lines: string[] = [];
-                        for (const r of boxSel.boxSelectionRanges) {
-                            const full = getTextByItemId(r.itemId);
-                            const s = Math.max(0, Math.min(full.length, Math.min(r.startOffset, r.endOffset)));
-                            const ee = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
-                            lines.push(full.substring(s, ee));
-                        }
-                        txt = lines.join('\n');
-                    }
-                }
-                if (typeof window !== 'undefined' && txt) {
-                    (window as typeof window & { lastCopiedText?: string }).lastCopiedText = txt;
-                }
-            } catch {
-                // Intentionally empty - catch potential errors without further handling
-            }
-        }
-    };
-    document.addEventListener('keydown', keydownHandler as EventListener);
 
-
-    // Simplify MutationObserver - instead of recalculating immediately after change detection,
-    // Limit frequency using debounce
+    // MutationObserverを単純化 - 変更検出後すぐに再計算するのではなく、
+    // debounceを使用して頻度を制限
     mutationObserver = new MutationObserver(() => {
-        if (!aliasPickerStore.isVisible) debouncedUpdatePositionMap();
+        debouncedUpdatePositionMap();
     });
 
-    // Observe only structural changes under the tree container to avoid
-    // feedback from our own overlay class/style updates.
-    const rootToObserve = document.querySelector('.tree-container') || document.body;
-    mutationObserver.observe(rootToObserve, {
+    mutationObserver.observe(document.body, {
         childList: true,
         subtree: true,
-        // Do not observe attributes to avoid loops on style/class changes
-        attributes: false
+        attributes: true,
+        attributeFilter: ['style', 'class']
     });
 
-    // Update position map on resize or scroll
+    // リサイズやスクロール時に位置マップを更新
     window.addEventListener('resize', debouncedUpdatePositionMap);
-    const treeContainer = resolveTreeContainer();
-    if (treeContainer) {
-        treeContainer.addEventListener('scroll', debouncedUpdatePositionMap);
-    }
+    window.addEventListener('scroll', debouncedUpdatePositionMap);
 
-
-    // If there is an active cursor in the initial state, start blinking after a short delay
+    // 初期状態でアクティブカーソルがある場合は、少し遅延してから点滅を開始
     setTimeout(() => {
-        if (cursorList.some(cursor => cursor.isActive)) {
+        if (allCursors.some(cursor => cursor.isActive)) {
             store.startCursorBlink();
         }
     }, 200);
 });
 
-// While AliasPicker is open, fully disconnect observers and pause blinking (subscribe via window event)
-onMount(() => {
-    const handler = (e: CustomEvent) => {
-        const open = !!(e?.detail as { visible?: boolean })?.visible;
-        try {
-            if (open) {
-                // stop observing DOM changes to avoid feedback loops
-                if (mutationObserver) mutationObserver.disconnect();
-                // stop blinking to avoid periodic updates
-                stopCursorBlink();
-            } else {
-                // resume observing and recalc once
-                if (mutationObserver) {
-                    try {
-                        mutationObserver.observe(document.body, {
-                            childList: true,
-                            subtree: true,
-                            attributes: true,
-                            attributeFilter: ['style', 'class']
-                        });
-                    } catch {
-                        // Intentionally empty - catch potential errors without further handling
-                    }
-                }
-                debouncedUpdatePositionMap();
-            }
-        } catch {
-            // Intentionally empty - catch potential errors without further handling
-        }
-    };
-    try { window.addEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {
-        // Intentionally empty - catch potential errors without further handling
-    }
-    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {
-        // Intentionally empty - catch potential errors without further handling
-    } };
-});
-
 onDestroy(() => {
-    // Disconnect MutationObserver
+    // MutationObserver の切断
     if (mutationObserver) {
         mutationObserver.disconnect();
     }
 
-    // Remove copy event listener
-    document.removeEventListener('copy', handleCopy as EventListener, true);
-    // Remove cut event listener
-    document.removeEventListener('cut', handleCut as EventListener);
-    // Remove paste event listener
+    // copyイベントリスナー解除
+    document.removeEventListener('copy', handleCopy as EventListener);
+    // pasteイベントリスナー解除
     document.removeEventListener('paste', handlePaste as EventListener);
 
-    // Remove event listeners
+    // イベントリスナーの削除
     window.removeEventListener('resize', debouncedUpdatePositionMap);
-    const treeContainer = resolveTreeContainer();
-    if (treeContainer) {
-        treeContainer.removeEventListener('scroll', debouncedUpdatePositionMap);
-    }
+    window.removeEventListener('scroll', debouncedUpdatePositionMap);
 
-    // Clear timer
+    // タイマーのクリア
     clearTimeout(updatePositionMapTimer);
 
-    // Stop cursor blink timer
+    // カーソル点滅タイマーの停止
     stopCursorBlink();
 });
 
-// Safely get current text from item ID (DOM -> active textarea -> Yjs order)
-function getTextByItemId(itemId: string): string {
-  // 1) .item-text in DOM
-  const el = document.querySelector(`[data-item-id="${escapeId(itemId)}"] .item-text`) as HTMLElement | null;
-  if (el && el.textContent) return el.textContent;
-
-  // 2) Active textarea
-  try {
-    const ta = store.getTextareaRef?.();
-    const activeId = store.getActiveItem?.();
-    if (ta && activeId === itemId) {
-      return ta.value || "";
-    }
-  } catch {
-    // Intentionally empty - catch potential errors without further handling
-  }
-
-  // 3) Search from generalStore
-  try {
-    const W = (typeof window !== 'undefined') ? window : null;
-    const gs = W?.generalStore;
-    const page = gs?.currentPage;
-    const items = page?.items;
-    const len = items?.length ?? 0;
-    for (let i = 0; i < len; i++) {
-      const it = items.at ? items.at(i) : items[i];
-      if (it?.id === itemId) {
-        return String(it?.text ?? "");
-      }
-    }
-  } catch {
-    // Intentionally empty - catch potential errors without further handling
-  }
-  return "";
-}
-
-// Copy multiple item selection to clipboard
+// 複数アイテム選択をクリップボードにコピー
 function handleCopy(event: ClipboardEvent) {
-  // Debug info
-  if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+  // デバッグ情報
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
     console.log(`handleCopy called`);
   }
 
-  // Do nothing if no selection (reference store directly to avoid reactive lag)
-  const selections = Object.values(store.selections).filter(sel =>
+  // 選択範囲がない場合は何もしない
+  const selections = allSelections.filter(sel =>
     sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
   );
 
   if (selections.length === 0) return;
 
-  // Get text of selection range
+  // ブラウザのデフォルトコピー動作を防止
+  event.preventDefault();
+
+  // EditorOverlayStoreのgetSelectedTextメソッドを使用
+  const store = (window as any).editorOverlayStore;
+  if (!store) {
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
+      console.log(`EditorOverlayStore not found`);
+    }
+    return;
+  }
+
+  // 選択範囲のテキストを取得
   const selectedText = store.getSelectedText('local');
 
-  // Debug info
-  if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+  // デバッグ情報
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
     console.log(`Selected text from store: "${selectedText}"`);
   }
 
-  // Process rectangular selection (box selection) existence first
-  const boxSel = selections.find((s) => s.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length > 0);
-  if (!selectedText && boxSel) {
-    const lines: string[] = [];
-    for (const r of boxSel.boxSelectionRanges) {
-      const full = getTextByItemId(r.itemId);
-      const s = Math.max(0, Math.min(full.length, Math.min(r.startOffset, r.endOffset)));
-      const e = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
-      lines.push(full.substring(s, e));
-    }
-    const rectText = lines.join('\n');
-
-    if (rectText) {
-      if (event.clipboardData) {
-        event.preventDefault();
-        event.clipboardData.setData('text/plain', rectText);
-      }
-      if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
-        (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(rectText).catch(() => {});
-      }
-      if (typeof window !== 'undefined') {
-        (window as typeof window & { lastCopiedText?: string }).lastCopiedText = rectText;
-      }
-      if (clipboardRef) {
-        clipboardRef.value = rectText;
-      }
-      return;
-    }
-  }
-
-  // If selection text is obtained
+  // 選択範囲のテキストが取得できた場合
   if (selectedText) {
-    // Write to clipboard
+    // クリップボードに書き込み
     if (event.clipboardData) {
-      // Prevent browser default copy behavior (only when setting manually)
-      event.preventDefault();
-      // Plain text format
+      // プレーンテキスト形式
       event.clipboardData.setData('text/plain', selectedText);
 
-      // Save to global variable (for E2E test environment only)
-      // Not used in production, but needed to verify copy content in E2E tests
-      if (typeof window !== 'undefined') {
-        (window as typeof window & { lastCopiedText?: string }).lastCopiedText = selectedText;
-      }
-
-      // Add VS Code specific metadata for multi-cursor selection
+      // マルチカーソル選択の場合、VS Code固有のメタデータを追加
       const cursorInstances = store.getCursorInstances();
       if (cursorInstances.length > 1) {
-        // Get selected text for each cursor
+        // 各カーソルの選択テキストを取得
         const multicursorText: string[] = [];
 
-        // Collect selected text for each cursor
-        cursorInstances.forEach((cursor: CursorPosition) => {
+        // 各カーソルの選択テキストを収集
+        cursorInstances.forEach((cursor: any) => {
           const itemId = cursor.itemId;
 
-          // Find selection range for the corresponding item
-          const selection = Object.values(store.selections).find((sel: SelectionRange) =>
+          // 該当するアイテムの選択範囲を探す
+          const selection = Object.values(store.selections).find((sel: any) =>
             sel.startItemId === itemId || sel.endItemId === itemId
           );
 
           if (selection) {
-            // Get text of selection range
+            // 選択範囲のテキストを取得
             const selText = store.getTextFromSelection(selection);
             if (selText) {
               multicursorText.push(selText);
@@ -931,44 +420,38 @@ function handleCopy(event: ClipboardEvent) {
           }
         });
 
-        // If multi-cursor text is obtained
+        // マルチカーソルテキストが取得できた場合
         if (multicursorText.length > 0) {
-          // Set VS Code specific metadata
+          // VS Code固有のメタデータを設定
           const vscodeMetadata = {
             version: 1,
             isFromEmptySelection: false,
             multicursorText: multicursorText,
             mode: 'plaintext',
-            pasteMode: 'spread' // Default is spread
+            pasteMode: 'spread' // デフォルトはspread
           };
 
-          // Convert metadata to JSON string
+          // メタデータをJSON文字列に変換
           const vscodeMetadataStr = JSON.stringify(vscodeMetadata);
 
-          // Set VS Code specific metadata
+          // VS Code固有のメタデータを設定
           event.clipboardData.setData('application/vscode-editor', vscodeMetadataStr);
 
-          // Debug info
-          if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+          // デバッグ情報
+          if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
             console.log(`VS Code metadata added:`, vscodeMetadata);
           }
         }
       }
 
-    // Save to global variable (for E2E test environment only)
-    // Not used in production, but needed to verify copy content in E2E tests
-    if (typeof window !== 'undefined' && selectedText) {
-      (window as typeof window & { lastCopiedText?: string }).lastCopiedText = selectedText;
-    }
-
-      // In case of rectangular selection (box selection)
-      // Currently not implemented, but may be implemented in the future
-      // Here, simply treat as multi-line text
+      // 矩形選択（ボックス選択）の場合
+      // 現在は実装されていないが、将来的に実装する可能性がある
+      // ここでは単純に複数行テキストとして処理
       if (selectedText.includes('\n')) {
-        // Detect multi-line text
+        // 複数行テキストを検出
         const lineCount = selectedText.split(/\r?\n/).length;
 
-        // Set VS Code specific metadata
+        // VS Code固有のメタデータを設定
         const vscodeMetadata = {
           version: 1,
           isFromEmptySelection: false,
@@ -976,46 +459,37 @@ function handleCopy(event: ClipboardEvent) {
           lineCount: lineCount
         };
 
-        // Convert metadata to JSON string
+        // メタデータをJSON文字列に変換
         const vscodeMetadataStr = JSON.stringify(vscodeMetadata);
 
-        // Set VS Code specific metadata
+        // VS Code固有のメタデータを設定
         event.clipboardData.setData('application/vscode-editor', vscodeMetadataStr);
 
-        // Debug info
-        if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+        // デバッグ情報
+        if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
           console.log(`VS Code metadata added for multi-line text:`, vscodeMetadata);
         }
       }
     }
 
-    // Always update hidden textarea to maintain test focus
+    // テスト・フォーカス保持のため、常に隠しtextareaを更新
     if (clipboardRef) {
       clipboardRef.value = selectedText;
     }
 
-    // Also write to navigator.clipboard API (for compatibility in test environment)
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(selectedText).catch((err) => {
-        if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-          console.log(`Failed to write to navigator.clipboard: ${err}`);
-        }
-      });
-    }
-
-    // Debug info
-    if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
       console.log(`Clipboard updated with: "${selectedText}"`);
     }
     return;
   }
 
-  // Fallback processing when selection text cannot be obtained
+  // 選択範囲のテキストが取得できなかった場合のフォールバック処理
 
-  // Case of selection within a single item
+  // 単一アイテム内の選択範囲の場合
   if (selections.length === 1 && selections[0].startItemId === selections[0].endItemId) {
     const sel = selections[0];
-    const textEl = document.querySelector(`[data-item-id="${escapeId(sel.startItemId)}"] .item-text`) as HTMLElement;
+    const textEl = document.querySelector(`[data-item-id="${sel.startItemId}"] .item-text`) as HTMLElement;
     if (!textEl) return;
 
     const text = textEl.textContent || '';
@@ -1023,53 +497,33 @@ function handleCopy(event: ClipboardEvent) {
     const endOffset = Math.max(sel.startOffset, sel.endOffset);
     const selectedText = text.substring(startOffset, endOffset);
 
-    // Debug info
-    if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
       console.log(`Single item selection: "${selectedText}"`);
     }
 
-    // Write to clipboard
+    // クリップボードに書き込み
     if (event.clipboardData) {
-      // Prevent browser default copy behavior
-      event.preventDefault();
       event.clipboardData.setData('text/plain', selectedText);
     }
-    // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
-      (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch(() => {});
-    }
 
-    // Always update hidden textarea to maintain test focus
+    // テスト・フォーカス保持のため、常に隠しtextareaを更新
     if (clipboardRef) {
       clipboardRef.value = selectedText;
     }
     return;
   }
 
-  // Case of selection spanning multiple items
-  // Get items in DOM order efficiently
-  const allItemIds: string[] = [];
-  const allItems: HTMLElement[] = [];
-  const root = document.querySelector(".outliner") || document.body;
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-      acceptNode(node) {
-          return (node as Element).hasAttribute("data-item-id")
-              ? NodeFilter.FILTER_ACCEPT
-              : NodeFilter.FILTER_SKIP;
-      },
-  });
-  while (walker.nextNode()) {
-      const el = walker.currentNode as HTMLElement;
-      const id = el.getAttribute("data-item-id")!;
-      allItems.push(el);
-      allItemIds.push(id);
-  }
+  // 複数アイテムにまたがる選択範囲の場合
+  // DOM上の順序でアイテムを取得
+  const allItems = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[];
+  const allItemIds = allItems.map(el => el.getAttribute('data-item-id')!);
 
   let combinedText = '';
 
-  // Process each selection range
+  // 各選択範囲を処理
   for (const sel of selections) {
-    // Selection within a single item
+    // 単一アイテム内の選択範囲
     if (sel.startItemId === sel.endItemId) {
       const textEl = document.querySelector(`[data-item-id="${sel.startItemId}"] .item-text`) as HTMLElement;
       if (!textEl) continue;
@@ -1085,30 +539,30 @@ function handleCopy(event: ClipboardEvent) {
       continue;
     }
 
-    // Selection spanning multiple items
+    // 複数アイテムにまたがる選択範囲
     const startIdx = allItemIds.indexOf(sel.startItemId);
     const endIdx = allItemIds.indexOf(sel.endItemId);
 
     if (startIdx === -1 || endIdx === -1) {
-      if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+      if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
         console.log(`Start or end item not found in DOM: startIdx=${startIdx}, endIdx=${endIdx}`);
       }
       continue;
     }
 
-    // Consider selection direction
+    // 選択範囲の方向を考慮
     const isReversed = sel.isReversed || false;
 
-    // Determine start and end indices
+    // 開始と終了のインデックスを決定
     const firstIdx = Math.min(startIdx, endIdx);
     const lastIdx = Math.max(startIdx, endIdx);
 
-    // Debug info
-    if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
       console.log(`Multi-item selection: firstIdx=${firstIdx}, lastIdx=${lastIdx}, isReversed=${isReversed}`);
     }
 
-    // Process each item within the selection range
+    // 選択範囲内の各アイテムを処理
     for (let i = firstIdx; i <= lastIdx; i++) {
       const item = allItems[i];
       const itemId = item.getAttribute('data-item-id')!;
@@ -1119,288 +573,151 @@ function handleCopy(event: ClipboardEvent) {
       const text = textEl.textContent || '';
       const len = text.length;
 
-      // Offset calculation
+      // オフセット計算
       let startOff = 0;
       let endOff = len;
 
-      // Start item
+      // 開始アイテム
       if (itemId === sel.startItemId) {
         startOff = sel.startOffset;
       }
 
-      // End item
+      // 終了アイテム
       if (itemId === sel.endItemId) {
         endOff = sel.endOffset;
       }
 
-      // Debug info
-      if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+      // デバッグ情報
+      if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
         console.log(`Item ${i} (${itemId}) offsets: start=${startOff}, end=${endOff}, text="${text.substring(startOff, endOff)}"`);
       }
 
-      // Append text
+      // テキストを追加
       combinedText += text.substring(startOff, endOff);
 
-      // Add newline except for the last item
+      // 最後のアイテム以外は改行を追加
       if (i < lastIdx) {
         combinedText += '\n';
       }
     }
   }
 
-  // Remove trailing newline (if necessary)
+  // 最後の改行を削除（必要な場合）
   if (combinedText.endsWith('\n')) {
     combinedText = combinedText.slice(0, -1);
   }
 
-  // Debug info
-  if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+  // デバッグ情報
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
     console.log(`Final combined text: "${combinedText}"`);
   }
 
-  // Write to clipboard
-  if (combinedText) {
-    if (event.clipboardData) {
-      // Prevent browser default copy behavior
-      event.preventDefault();
-      event.clipboardData.setData('text/plain', combinedText);
-    }
-    // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
-      (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch(() => {});
-    }
-    // Save to global variable (for E2E test environment only)
-    // Not used in production, but needed to verify copy content in E2E tests
-    if (typeof window !== 'undefined') {
-      (window as typeof window & { lastCopiedText?: string }).lastCopiedText = combinedText;
-    }
+  // クリップボードに書き込み
+  if (event.clipboardData && combinedText) {
+    event.clipboardData.setData('text/plain', combinedText);
   }
 
-  // Always update hidden textarea to maintain test focus
+  // テスト・フォーカス保持のため、常に隠しtextareaを更新
   if (clipboardRef && combinedText) {
     clipboardRef.value = combinedText;
   }
 }
 
-// Cut multiple item selection to clipboard
-function handleCut(event: ClipboardEvent) {
-  // Debug info
-  if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-    console.log(`handleCut called`);
-  }
-
-  // Do nothing if no selection
-  const selections = allSelections.filter(sel =>
-    sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
-  );
-
-  if (selections.length === 0) return;
-
-  // Prevent browser default cut behavior
-  event.preventDefault();
-
-  // Get selected text
-  const selectedText = store.getSelectedText('local');
-
-  // Save text to global variable (for E2E test environment only)
-  // Not used in production, but needed to verify cut content in E2E tests
-  if (typeof window !== 'undefined' && selectedText) {
-    (window as typeof window & { lastCopiedText?: string }).lastCopiedText = selectedText;
-    console.log(`Cut: Saved text to global variable: "${selectedText}"`);
-  }
-
-  // Execute copy process first
-  handleCopy(event);
-
-  // Delete selection range
-  const cursors = store.getCursorInstances();
-  if (cursors.length > 0) {
-    // Delete selection using the first cursor
-    cursors[0].deleteSelection();
-  }
-
-  // Debug info
-  if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-    console.log(`Cut operation completed`);
-  }
-}
-
-// Notify parent of multi-line paste
+// マルチラインペーストを上位に通知
 function handlePaste(event: ClipboardEvent) {
-  // Provide fallback for paste to temporary textarea (#clipboard-test) for E2E tests
-  // This path is for E2E test environment only and is not executed in production
-  const target = event.target as HTMLTextAreaElement | null;
-  if (target && (target.id === 'clipboard-test' || target.closest?.('#clipboard-test'))) {
-    const dataText = event.clipboardData?.getData('text/plain') || '';
-    const fallbackText = (typeof window !== 'undefined' && (window as typeof window & { lastCopiedText?: string })?.lastCopiedText) || '';
-    const textToPaste = dataText || fallbackText;
-    if (textToPaste) {
-      event.preventDefault();
-      // Paste into existing value
-      const start = (target.selectionStart ?? target.value.length);
-      const end = (target.selectionEnd ?? target.value.length);
-      target.value = target.value.slice(0, start) + textToPaste + target.value.slice(end);
-    }
-    return;
-  }
-
   const text = event.clipboardData?.getData('text/plain') || '';
   if (!text) return;
 
-  // If there is a selection, delete selection before pasting
+  // 選択範囲がある場合は、選択範囲を削除してからペースト
   const selections = allSelections.filter(sel =>
     sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
   );
 
-  // Debug info
-  if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+  // デバッグ情報
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
     console.log(`handlePaste called with text: "${text}"`);
     console.log(`Current selections:`, selections);
   }
 
-  // Consider as multi-item paste if it is multi-line text
+  // 複数行テキストの場合はマルチアイテムペーストとみなす
   if (text.includes('\n')) {
     event.preventDefault();
     const lines = text.split(/\r?\n/);
 
-    // Debug info
-    if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
       console.log(`Multi-line paste detected, lines:`, lines);
       console.log(`Lines count: ${lines.length}`);
       lines.forEach((line, i) => console.log(`Line ${i}: "${line}"`));
     }
 
-    // Notify selected range
+    // 選択中の範囲を通知
     dispatch('paste-multi-item', {
       lines,
       selections,
-      activeItemId: store.getActiveItem(),
+      activeItemId: localActiveItemId,
     });
     return;
   }
 
-  // If selection spans multiple items, delete selection before pasting
+  // 複数アイテムにまたがる選択範囲がある場合は、選択範囲を削除してからペースト
   if (selections.some(sel => sel.startItemId !== sel.endItemId)) {
     event.preventDefault();
 
-    // Treat single-line text as single-line array
+    // 単一行テキストを単一行配列として扱う
     const lines = [text];
 
-    // Debug info
-    if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+    // デバッグ情報
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
       console.log(`Multi-item selection paste detected, text: "${text}"`);
     }
 
-    // Notify selected range
+    // 選択中の範囲を通知
     dispatch('paste-multi-item', {
       lines,
       selections,
-      activeItemId: store.getActiveItem(),
+      activeItemId: localActiveItemId,
     });
     return;
   }
 
-  // Delete selection before pasting even if selection is within a single item
+  // 単一アイテム内の選択範囲がある場合も、選択範囲を削除してからペースト
   if (selections.length > 0) {
-    // Leave to browser default behavior if there is a selection
-    // Cursor.insertText() method deletes selection before inserting text
-    if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+    // 選択範囲がある場合は、ブラウザのデフォルト動作に任せる
+    // Cursor.insertText()メソッドが選択範囲を削除してからテキストを挿入する
+    if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
       console.log(`Single item selection paste, using default browser behavior`);
     }
     return;
   }
 
-  // Leave to browser default behavior if there is no selection
-  if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
+  // 選択範囲がない場合は、ブラウザのデフォルト動作に任せる
+  if (typeof window !== 'undefined' && (window as any).DEBUG_MODE) {
     console.log(`No selection paste, using default browser behavior`);
   }
 }
-    // Temporary flag per selection box (remove class by setting to false in 300ms)
-    let updatingFlags: Record<string, boolean> = $state({});
-    // True if at least one selection is updating
-    const anySelectionUpdating = $derived.by(() => {
-        try {
-            return Object.values(store.selections).some((s: SelectionRange & { isUpdating?: boolean }) => !!s?.isUpdating);
-        } catch {
-            return false;
-        }
-    });
-
-    function setupUpdatingFlag(node: HTMLElement, key: string) {
-        // Apply after microtask initially (to execute after Svelte's initial class setting)
-        let mo: MutationObserver | undefined;
-        queueMicrotask(() => {
-            node.classList.add('selection-box-updating');
-            mo = new MutationObserver(() => {
-                if (!node.classList.contains('selection-box-updating')) {
-                    node.classList.add('selection-box-updating');
-                }
-            });
-            mo.observe(node, { attributes: true, attributeFilter: ['class'] });
-            try {
-                if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-                    console.log('EditorOverlay: setupUpdatingFlag set true for', key, 'class=', node.className);
-                }
-            } catch {
-                // Intentionally empty - catch potential errors without further handling
-            }
-        });
-        updatingFlags[key] = true; // Side effect for debugging (UI does not depend on this)
-        const timer = setTimeout(() => {
-            mo?.disconnect();
-            node.classList.remove('selection-box-updating');
-            updatingFlags[key] = false;
-            try {
-                if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-                    console.log('EditorOverlay: setupUpdatingFlag set false for', key, 'class=', node.className);
-                }
-            } catch {}
-        }, 1200);
-        return {
-            destroy() {
-                clearTimeout(timer);
-                node.classList.remove('selection-box-updating');
-                delete updatingFlags[key];
-                try {
-                    if (typeof window !== 'undefined' && (window as typeof window & { DEBUG_MODE?: boolean })?.DEBUG_MODE) {
-                        console.log('EditorOverlay: setupUpdatingFlag destroy for', key);
-                    }
-                } catch {}
-            },
-        } as const;
-    }
 </script>
 
-<div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={overlayCursorVisible || localCursorVisible || (typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver)} data-test-env={(typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver) ? 'true' : 'false'}>
-    <!-- Debug button -->
+<div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={store.cursorVisible}>
+    <!-- デバッグボタン -->
     <button
         class="debug-button"
         class:active={DEBUG_MODE}
         onclick={() => DEBUG_MODE = !DEBUG_MODE}
-        title="Toggle debug mode"
+        title="デバッグモードの切り替え"
     >
         D
     </button>
 
-    <!-- Hidden textarea for clipboard -->
+    <!-- 隠しクリップボード用textarea -->
     <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
-    <!-- Suppress selection and cursor while AliasPicker is displayed to avoid loops -->
-    {#if !aliasPickerStore.isVisible || typeof window === 'undefined' || (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver}
-    <!-- Rendering selection range -->
-        {#if anySelectionUpdating}
-            <div class="selection-box-updating" data-test-helper="updating-marker-global" style="display:none"></div>
-        {/if}
-
-    {#each Object.entries(store.selections) as [selKey, sel] (selKey)}
-
-        {@const selectionStyle = getSelectionStyle(sel)}
+    <!-- 選択範囲のレンダリング -->
+    {#each Object.values(store.selections) as sel}
         {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
             {#if sel.isBoxSelection && sel.boxSelectionRanges}
-                <!-- In case of rectangular selection (box selection) -->
-                {#each sel.boxSelectionRanges as range, index (`${selKey}-${range.itemId}-${index}`)}
-
+                <!-- 矩形選択（ボックス選択）の場合 -->
+                {#each sel.boxSelectionRanges as range, index}
                     {@const rect = calculateSelectionPixelRange(range.itemId, range.startOffset, range.endOffset, sel.isReversed)}
-
                     {#if rect}
                         {@const isPageTitle = range.itemId === "page-title"}
                         {@const isFirstRange = index === 0}
@@ -1408,70 +725,67 @@ function handlePaste(event: ClipboardEvent) {
                         {@const isStartItem = range.itemId === sel.startItemId}
                         {@const isEndItem = range.itemId === sel.endItemId}
 
-                        {@const boxKey = `${selKey}:${index}`}
-
-
-                        <!-- Temporary marker (for test detection). Exists only while isUpdating=true -->
-                        {#if sel.isUpdating}
-                            <div class="selection-box-updating" data-test-helper="updating-marker" style="display:none"></div>
-                        {/if}
-
-                        <!-- Background of rectangular selection range -->
+                        <!-- 矩形選択範囲の背景 -->
                         <div
-                            use:setupUpdatingFlag={boxKey}
                             class="selection selection-box"
                             class:page-title-selection={isPageTitle}
                             class:selection-box-first={isFirstRange}
                             class:selection-box-last={isLastRange}
                             class:selection-box-start={isStartItem}
                             class:selection-box-end={isEndItem}
-                            style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
+                            style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none;"
                         ></div>
 
-                        <!-- Markers for start and end positions -->
+                        <!-- 開始位置と終了位置のマーカー -->
                         {#if isStartItem}
                             <div
                                 class="selection-box-marker selection-box-start-marker"
-                                style="position:absolute; left:{rect.left - 2}px; top:{rect.top - 2}px; pointer-events:none; background-color:{selectionStyle.markerStart};"
-                                title="Selection start position"
+                                style="position:absolute; left:{rect.left - 2}px; top:{rect.top - 2}px; pointer-events:none;"
+                                title="選択開始位置"
                             ></div>
                         {/if}
 
                         {#if isEndItem}
                             <div
                                 class="selection-box-marker selection-box-end-marker"
-                                style="position:absolute; left:{rect.left + rect.width - 4}px; top:{rect.top + rect.height - 4}px; pointer-events:none; background-color:{selectionStyle.markerEnd};"
-                                title="Selection end position"
+                                style="position:absolute; left:{rect.left + rect.width - 4}px; top:{rect.top + rect.height - 4}px; pointer-events:none;"
+                                title="選択終了位置"
                             ></div>
                         {/if}
                     {/if}
                 {/each}
             {:else if sel.startItemId === sel.endItemId}
-                <!-- Single item selection -->
+                <!-- 単一アイテム選択 -->
                 {@const rect = calculateSelectionPixelRange(sel.startItemId, sel.startOffset, sel.endOffset, sel.isReversed)}
                 {#if rect}
                     {@const isPageTitle = sel.startItemId === "page-title"}
-                        <div
-                            class="selection"
-                            class:page-title-selection={isPageTitle}
-                            class:selection-reversed={sel.isReversed}
-                            class:selection-forward={!sel.isReversed}
-                            style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
-                        ></div>
+                    <div
+                        class="selection"
+                        class:page-title-selection={isPageTitle}
+                        class:selection-reversed={sel.isReversed}
+                        class:selection-forward={!sel.isReversed}
+                        style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none;"
+                    ></div>
                 {/if}
             {:else}
-                <!-- Multi-item selection -->
-                {@const itemsInRange = getItemsInRange(sel.startItemId, sel.endItemId)}
+                <!-- マルチアイテム選択 -->
+                {@const allEls = Array.from(document.querySelectorAll('[data-item-id]')) as HTMLElement[]}
+                {@const ids = allEls.map(el => el.getAttribute('data-item-id')!)}
+                {@const sIdx = ids.indexOf(sel.startItemId)}
+                {@const eIdx = ids.indexOf(sel.endItemId)}
 
-                {#if itemsInRange.length > 0}
+                <!-- インデックスが見つからない場合はスキップ -->
+                {#if sIdx >= 0 && eIdx >= 0}
                     {@const forward = !sel.isReversed}
+                    {@const startIdx = forward ? sIdx : eIdx}
+                    {@const endIdx   = forward ? eIdx : sIdx}
 
-                    <!-- Draw selection range for each item within range -->
-                    {#each itemsInRange as itemId (itemId)}
-                        {@const textEl = document.querySelector(`[data-item-id="${escapeId(itemId)}"] .item-text`) as HTMLElement}
+                    <!-- 範囲内の各アイテムに選択範囲を描画 -->
+                    {#each ids.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1) as itemId}
+                        {@const textEl = document.querySelector(`[data-item-id="${itemId}"] .item-text`) as HTMLElement}
                         {@const len = textEl?.textContent?.length || 0}
 
-                        <!-- offset calculation: start item, end item, others -->
+                        <!-- offset 計算: 開始アイテム, 終了アイテム, その他 -->
                         {@const startOff = itemId === sel.startItemId
                             ? (forward ? sel.startOffset : 0)
                             : itemId === sel.endItemId
@@ -1483,7 +797,7 @@ function handlePaste(event: ClipboardEvent) {
                             ? (forward ? sel.endOffset : len)
                             : len}
 
-                        <!-- Draw only if selection range actually exists -->
+                        <!-- 選択範囲が実際に存在する場合のみ描画 -->
                         {#if startOff !== endOff}
                             {@const rect = calculateSelectionPixelRange(itemId, startOff, endOff, sel.isReversed)}
                             {#if rect}
@@ -1493,7 +807,7 @@ function handlePaste(event: ClipboardEvent) {
                                     class:page-title-selection={isPageTitle}
                                     class:selection-reversed={sel.isReversed && itemId === sel.startItemId}
                                     class:selection-forward={!sel.isReversed && itemId === sel.endItemId}
-                                    style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
+                                    style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none;"
                                 ></div>
                             {/if}
                         {/if}
@@ -1502,72 +816,37 @@ function handlePaste(event: ClipboardEvent) {
             {/if}
         {/if}
     {/each}
-    {/if}
 
-    <!-- Rendering cursor (always render in all environments including test) -->
-    {#each cursorList as cursor (cursor.cursorId)}
-        {@const isTestEnvironment = typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator.webdriver}
-        {@const cursorPos = (function() {
-            try {
-                const pos = calculateCursorPixelPosition(cursor.itemId, cursor.offset);
-                // In test environments, always return a valid position to ensure cursor is rendered
-                if (isTestEnvironment && !pos) {
-                    return { left: 0, top: 0 }; // Fallback position for tests
-                }
-                return pos || { left: 0, top: 0 };
-            } catch (e) {
-                console.warn('Error calculating cursor position:', e);
-                return { left: 0, top: 0 };
-            }
-        })()}
-        {@const isPageTitle = cursor.itemId === "page-title"}
-        {@const isActive = cursor.isActive}
-        <!-- Specify only cursor position with style, leave blinking to CSS class -->
-        <div
-            class="cursor"
-            class:active={isActive}
-            class:page-title-cursor={isPageTitle}
-            class:test-env-visible={isTestEnvironment}
-            data-offset={cursor.offset}
-            data-cursor-id={cursor.cursorId}
-            data-rendered={true}
-            style="
-                position: absolute;
-                left: {cursorPos.left}px;
-                top: {cursorPos.top}px;
-                height: {isPageTitle ? '1.5em' : (positionMap[cursor.itemId]?.lineHeight || '1.2em')};
-                background-color: {cursor.color || presenceStore.users[cursor.userId || '']?.color || '#0078d7'};
-                pointer-events: none;
-            "
-            title={cursor.userName || ''}
-        ></div>
+    <!-- カーソルのレンダリング -->
+    {#each Object.values(store.cursors) as cursor}
+        {@const cursorPos = calculateCursorPixelPosition(cursor.itemId, cursor.offset)}
+        {#if cursorPos}
+            {@const isPageTitle = cursor.itemId === "page-title"}
+            {@const isActive = cursor.isActive}
+            <!-- カーソル位置のみスタイルで指定し、点滅はCSSクラスに任せる -->
+            <div
+                class="cursor"
+                class:active={isActive}
+                class:page-title-cursor={isPageTitle}
+                data-offset={cursor.offset}
+                style="
+                    position: absolute;
+                    left: {cursorPos.left}px;
+                    top: {cursorPos.top}px;
+                    height: {isPageTitle ? '1.5em' : positionMap[cursor.itemId]?.lineHeight || '1.2em'};
+                    background-color: {cursor.color || '#0078d7'};
+                    pointer-events: none;
+                "
+                title={cursor.userName || ''}
+            ></div>
+        {/if}
     {/each}
-
-    <!-- In test environments, ensure at least one cursor element is rendered to ensure the CSS classes work correctly -->
-    {#if typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver && cursorList.length === 0}
-        <div
-            class="cursor"
-            class:test-env-visible={true}
-            data-offset={0}
-            data-cursor-id="test-placeholder"
-            data-placeholder={true}
-            style="
-                position: absolute;
-                left: 0px;
-                top: 0px;
-                height: 1.2em;
-                width: 2px;
-                background-color: #0078d7;
-                pointer-events: none;
-            "
-        ></div>
-    {/if}
 
     {#if DEBUG_MODE && localActiveItemId}
         <div class="debug-info">
-            Cursor Position: Item {localActiveItemId}
-            {#if cursorList.length > 0}
-                <br>Offset: {cursorList[0].offset}
+            カーソル位置: アイテム {localActiveItemId}
+            {#if allCursors.length > 0}
+                <br>オフセット: {allCursors[0].offset}
             {/if}
         </div>
     {/if}
@@ -1575,7 +854,7 @@ function handlePaste(event: ClipboardEvent) {
 
 <style>
 .editor-overlay {
-    /* outline: 2px dashed red;  Delete as it is for debugging */
+    /* outline: 2px dashed red;  デバッグ用なので削除 */
     position: absolute;
     top: 0;
     left: 0;
@@ -1583,12 +862,8 @@ function handlePaste(event: ClipboardEvent) {
     bottom: 0;
     pointer-events: none !important;
     z-index: 100;
-    /* background-color: rgba(255, 0, 0, 0.1) !important; Delete as it is for debugging */
+    /* background-color: rgba(255, 0, 0, 0.1) !important; デバッグ用なので削除 */
     will-change: transform;
-    /* In test environments, ensure the overlay is always visible */
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: block !important;
 }
 
 /* blink via JS-driven visibility */
@@ -1600,19 +875,6 @@ function handlePaste(event: ClipboardEvent) {
     opacity: 1;
     visibility: visible !important;
 }
-/* In test environments, always show cursor if it's active */
-.editor-overlay .cursor.test-env-visible.active {
-    opacity: 1 !important;
-    visibility: visible !important;
-    animation: none !important;
-}
-
-/* Force cursor visibility in test environments regardless of active state */
-.editor-overlay .cursor.test-env-visible {
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: block !important;
-}
 
 .cursor {
     display: block;
@@ -1623,8 +885,8 @@ function handlePaste(event: ClipboardEvent) {
     pointer-events: none !important;
     will-change: transform;
     z-index: 200;
-    box-shadow: 0 0 3px rgba(0, 0, 0, 0.3); /* Improve cursor visibility */
-    border-radius: 1px; /* Slightly round corners */
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.3); /* カーソルの視認性向上 */
+    border-radius: 1px; /* 微妙に角を丸くする */
 }
 
 .page-title-cursor {
@@ -1632,47 +894,47 @@ function handlePaste(event: ClipboardEvent) {
 }
 
 .cursor.active {
-    /* Animation synchronized with JS-controlled visibility */
+    /* アニメーションはJS制御のvisibilityで同期 */
     pointer-events: none !important;
 }
 
 .selection {
     position: absolute;
-    background-color: var(--selection-fill, rgba(0, 120, 215, 0.25));
+    background-color: rgba(0, 120, 215, 0.25); /* コントラスト向上 */
     pointer-events: none !important;
     will-change: transform;
-    border-radius: 2px;
-    box-shadow: 0 0 0 1px var(--selection-outline, rgba(0, 120, 215, 0.1));
-    transition: background-color 0.1s ease;
+    border-radius: 2px; /* 角を少し丸くして視認性向上 */
+    box-shadow: 0 0 0 1px rgba(0, 120, 215, 0.1); /* 微妙な影を追加 */
+    transition: background-color 0.1s ease; /* スムーズな色変更 */
 }
 
 .selection-reversed {
-    border-left: 2px solid var(--selection-edge, rgba(0, 120, 215, 0.7));
+    border-left: 2px solid rgba(0, 120, 215, 0.7); /* 太く、より目立つ境界線 */
 }
 
 .selection-forward {
-    border-right: 2px solid var(--selection-edge, rgba(0, 120, 215, 0.7));
+    border-right: 2px solid rgba(0, 120, 215, 0.7); /* 正方向選択の視覚的区別 */
 }
 
 .page-title-selection {
-    background-color: var(--selection-fill, rgba(0, 120, 215, 0.2));
+    background-color: rgba(0, 120, 215, 0.2);
 }
 
-/* Emphasize continuity when selecting multiple items */
+/* 複数アイテム選択時の連続性を強調 */
 .selection-multi-item {
     border-left: none;
     border-right: none;
 }
 
-/* Box selection styles */
-
+/* 矩形選択（ボックス選択）のスタイル */
 .selection-box {
-    background-color: var(--selection-fill, rgba(0, 120, 215, 0.2));
-    border: 1px dashed var(--selection-edge, rgba(0, 120, 215, 0.7));
-    box-shadow: 0 0 3px var(--selection-outline, rgba(0, 120, 215, 0.3));
+    background-color: rgba(0, 120, 215, 0.2);
+    border: 1px dashed rgba(0, 120, 215, 0.7); /* 境界線の色を濃くして視認性向上 */
+    box-shadow: 0 0 3px rgba(0, 120, 215, 0.3); /* 微妙な影を追加 */
+    animation: box-selection-pulse 2s infinite ease-in-out; /* パルスアニメーション */
 }
 
-/* Box selection pulse animation */
+/* 矩形選択のパルスアニメーション */
 @keyframes box-selection-pulse {
     0% {
         background-color: rgba(0, 120, 215, 0.15);
@@ -1688,7 +950,7 @@ function handlePaste(event: ClipboardEvent) {
     }
 }
 
-/* Start and end position markers for box selection */
+/* 矩形選択の開始位置と終了位置のマーカー */
 .selection-box-marker {
     width: 8px;
     height: 8px;
@@ -1697,21 +959,21 @@ function handlePaste(event: ClipboardEvent) {
     box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
 }
 
-/* Start position marker */
+/* 開始位置マーカー */
 .selection-box-start-marker {
     background-color: #0078d7;
     border: 1px solid white;
     animation: marker-pulse 2s infinite ease-in-out;
 }
 
-/* End position marker */
+/* 終了位置マーカー */
 .selection-box-end-marker {
     background-color: #ff4081;
     border: 1px solid white;
     animation: marker-pulse 2s infinite ease-in-out reverse;
 }
 
-/* Marker pulse animation */
+/* マーカーのパルスアニメーション */
 @keyframes marker-pulse {
     0% {
         transform: scale(0.8);
@@ -1727,7 +989,7 @@ function handlePaste(event: ClipboardEvent) {
     }
 }
 
-/* Styles for the first and last lines of box selection */
+/* 矩形選択の最初と最後の行のスタイル */
 .selection-box-first {
     border-top: 2px solid rgba(0, 120, 215, 0.9);
 }
@@ -1736,7 +998,7 @@ function handlePaste(event: ClipboardEvent) {
     border-bottom: 2px solid rgba(0, 120, 215, 0.9);
 }
 
-/* Styles for the start and end items of box selection */
+/* 矩形選択の開始アイテムと終了アイテムのスタイル */
 .selection-box-start {
     border-left: 2px solid rgba(0, 120, 215, 0.9);
 }
@@ -1745,8 +1007,8 @@ function handlePaste(event: ClipboardEvent) {
     border-right: 2px solid rgba(0, 120, 215, 0.9);
 }
 
-/* Styles when box selection is updating */
-:global(.selection-box-updating) {
+/* 矩形選択の更新時のスタイル */
+.selection-box-updating {
     animation: box-selection-update 0.3s ease-out;
 }
 
@@ -1807,13 +1069,5 @@ function handlePaste(event: ClipboardEvent) {
 .debug-button.active {
     background-color: #f00;
     opacity: 0.8;
-}
-
-/* Force overlay visibility in test environments */
-:global(.test-environment) .editor-overlay,
-.editor-overlay[data-test-env="true"] {
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: block !important;
 }
 </style>

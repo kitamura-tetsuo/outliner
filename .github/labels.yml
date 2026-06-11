@@ -1,3 +1,4 @@
+# .github/labels.yml
 labels:
   - name: bug
     description: Something isn't working
@@ -17,6 +18,7 @@ labels:
   - name: chore
     description: Maintenance of test frameworks or environments
     color: d4c5f9
+
 
   # Priority
   - name: P0-critical
@@ -81,11 +83,3 @@ labels:
   - name: invalid
     description: Not a valid bug or feature request
     color: e6e6e6
-
-  # Dependabot / Package management
-  - name: dependencies
-    description: Dependency updates and related maintenance
-    color: c24f1b
-  - name: npm
-    description: Issues or updates specific to npm packages
-    color: 88b8ff
