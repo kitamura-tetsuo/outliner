@@ -283,7 +283,7 @@ export class GeneralStore {
             ymap?.observeDeep?.(handler);
             if (project?.items && "observeDeep" in project.items) {
                 (project.items as {
-                    observeDeep?: (fn: (events: Y.YEvent<Y.AbstractType<unknown>>[]) => void) => void;
+                    observeDeep?: (fn: (events: Y.YEvent<Y.AbstractType<unknown>>[], transaction: Y.Transaction) => void) => void;
                 }).observeDeep?.(handler as Parameters<Y.Map<unknown>["observeDeep"]>[0]);
             }
         } catch {
