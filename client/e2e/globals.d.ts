@@ -59,36 +59,36 @@ export const test = base.extend({
         // Set connection information for Firebase Emulator
         await page.addInitScript(() => {
             // Set test environment flag
-            window.localStorage.setItem("VITE_IS_TEST", "true");
+            globalThis.localStorage.setItem("VITE_IS_TEST", "true");
 
             // Enable Firebase Emulator
-            window.localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+            globalThis.localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
 
             // Emulator connection info (from env vars, default is localhost)
-            window.localStorage.setItem(
+            globalThis.localStorage.setItem(
                 "VITE_FIREBASE_EMULATOR_HOST",
                 process.env.VITE_FIREBASE_EMULATOR_HOST || "localhost",
             );
-            window.localStorage.setItem(
+            globalThis.localStorage.setItem(
                 "VITE_FIRESTORE_EMULATOR_PORT",
                 process.env.VITE_FIRESTORE_EMULATOR_PORT || "58080",
             );
-            window.localStorage.setItem(
+            globalThis.localStorage.setItem(
                 "VITE_AUTH_EMULATOR_PORT",
                 process.env.VITE_AUTH_EMULATOR_PORT || "59099",
             );
 
             // Simulate authenticated state
             // User data for testing
-            window.mockUser = {
+            globalThis.mockUser = {
                 id: "test-user-id",
                 name: "Test User",
                 email: "test@example.com",
             };
 
             // Define environment variables that the test is looking for
-            if (typeof window !== "undefined") {
-                const globalObj = window as any;
+            if (typeof globalThis !== "undefined") {
+                const globalObj = globalThis as any;
 
                 // Set up the exact property name that the test is looking for
                 if (!globalObj["import.meta.env"]) {
