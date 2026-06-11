@@ -4,21 +4,18 @@ const { chromium } = require("playwright");
     const browser = await chromium.launch();
     const page = await browser.newPage();
 
-    const errors = [];
-    page.on("console", msg => {
-        if (msg.type() === "error") {
-            errors.push(msg.text());
-        }
-    });
-    page.on("pageerror", error => {
-        errors.push(error.message);
-    });
+    page.on("console", msg => console.log(`CONSOLE [${msg.type()}] ${msg.text()}`));
+    page.on("pageerror", err => console.error(`PAGE_ERROR: ${err.message}`));
+    page.on(
+        "requestfailed",
+        request => console.error(`REQUEST_FAILED: ${request.url()} ${request.failure().errorText}`),
+    );
 
-    await page.goto("http://localhost:5173/demo");
+    console.log("Navigating to demo...");
+    await page.goto("https://outliner-d57b0.web.app/demo", { waitUntil: "networkidle" });
+    console.log("Navigation complete.");
+
     await page.waitForTimeout(2000);
-
-    console.log("Errors found on page load:");
-    console.log(errors);
 
     await browser.close();
 })();
