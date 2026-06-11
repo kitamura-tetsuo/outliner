@@ -48,19 +48,19 @@ export default ts.config(
             "@typescript-eslint/ban-ts-comment": ["error", {
                 "ts-expect-error": "allow-with-description",
             }],
-            "@typescript-eslint/no-unsafe-function-type": "error", // Gradually converting back to error - has few violations
-            "@typescript-eslint/no-require-imports": "error", // Gradually converting back to error - has few violations
-            "@typescript-eslint/no-this-alias": "error", // Gradually converting back to error - has few violations
-            "@typescript-eslint/no-unused-expressions": "error", // Gradually converting back to error - has few violations
+            "@typescript-eslint/no-unsafe-function-type": "error",
+            "@typescript-eslint/no-require-imports": "error",
+            "@typescript-eslint/no-this-alias": "error",
+            "@typescript-eslint/no-unused-expressions": "error",
             "no-useless-escape": "error",
             "no-empty": ["error", { "allowEmptyCatch": true }],
-            "no-irregular-whitespace": "error", // Gradually converting back to error - has only 1 violation
+            "no-irregular-whitespace": "error",
             "no-undef": "error",
-            "no-case-declarations": "error", // Gradually converting back to error - can be easily fixed
-            "svelte/no-navigation-without-resolve": "error", // Gradually converting back to error - navigation with manual resolve wrapper
+            "no-case-declarations": "error",
+            "svelte/no-navigation-without-resolve": "error",
             "svelte/prefer-writable-derived": "off", // Disabled: Svelte 4 rule not applicable to Svelte 5 patterns
             "svelte/require-each-key": "error",
-            "svelte/no-at-html-tags": "error", // Gradually converting back to error - security concern
+            "svelte/no-at-html-tags": "error",
             "svelte/no-unused-svelte-ignore": "error",
             "svelte/no-unused-props": "error",
             "svelte/prefer-svelte-reactivity": "error",
