@@ -700,7 +700,7 @@ export class KeyEventHandler {
                                         );
                                     }
                                 } catch (e) {
-                                    /* eslint-disable-next-line no-console */ console.error(
+                                    console.error(
                                         "KeyEventHandler(Post): error while trying to open AliasPicker via active item",
                                         e,
                                     );
@@ -708,7 +708,7 @@ export class KeyEventHandler {
                             };
                             tryOpen(0);
                         } catch (e) {
-                            /* eslint-disable-next-line no-console */ console.error(
+                            console.error(
                                 "KeyEventHandler(Post): failed to schedule AliasPicker open after default handler",
                                 e,
                             );
@@ -776,7 +776,7 @@ export class KeyEventHandler {
                                         );
                                     }
                                 } catch (e) {
-                                    /* eslint-disable-next-line no-console */ console.error(
+                                    console.error(
                                         "KeyEventHandler(Post2): error while trying to open AliasPicker via active item",
                                         e,
                                     );
@@ -784,7 +784,7 @@ export class KeyEventHandler {
                             };
                             tryOpen(0);
                         } catch (e) {
-                            /* eslint-disable-next-line no-console */ console.error(
+                            console.error(
                                 "KeyEventHandler(Post2): failed to schedule AliasPicker open after cursor.onKeyDown",
                                 e,
                             );
@@ -961,7 +961,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                /* eslint-disable-next-line no-console */ console.error(`Global textarea not found in handleInput`);
+                console.error(`Global textarea not found in handleInput`);
             }
         }
 
@@ -1135,7 +1135,7 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                             ) {
-                                /* eslint-disable-next-line no-console */ console.error(
+                                console.error(
                                     `Failed to set VS Code metadata:`,
                                     error,
                                 );
@@ -1166,7 +1166,7 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                             ) {
-                                /* eslint-disable-next-line no-console */ console.error(
+                                console.error(
                                     `navigator.clipboard.writeText failed in handleCopy:`,
                                     err,
                                 );
@@ -1199,7 +1199,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    /* eslint-disable-next-line no-console */ console.error(`Error in handleCopy:`, error);
+                    console.error(`Error in handleCopy:`, error);
                 }
             }
             return;
@@ -1447,10 +1447,10 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    /* eslint-disable-next-line no-console */ console.error(`Error in handleBoxSelection:`, error);
+                    console.error(`Error in handleBoxSelection:`, error);
                     if (error instanceof Error) {
-                        /* eslint-disable-next-line no-console */ console.error(`Error message: ${error.message}`);
-                        /* eslint-disable-next-line no-console */ console.error(`Error stack: ${error.stack}`);
+                        console.error(`Error message: ${error.message}`);
+                        console.error(`Error stack: ${error.stack}`);
                     }
                 }
                 // Cancel box selection
@@ -1562,10 +1562,10 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                /* eslint-disable-next-line no-console */ console.error(`Error in updateBoxSelectionRanges:`, error);
+                console.error(`Error in updateBoxSelectionRanges:`, error);
                 if (error instanceof Error) {
-                    /* eslint-disable-next-line no-console */ console.error(`Error message: ${error.message}`);
-                    /* eslint-disable-next-line no-console */ console.error(`Error stack: ${error.stack}`);
+                    console.error(`Error message: ${error.message}`);
+                    console.error(`Error stack: ${error.stack}`);
                 }
             }
             // Set empty range
@@ -1721,7 +1721,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                /* eslint-disable-next-line no-console */ console.error(`Error in getItemsBetween:`, error);
+                console.error(`Error in getItemsBetween:`, error);
             }
             return [];
         }
@@ -1784,7 +1784,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                /* eslint-disable-next-line no-console */ console.error(`Error in getBoxSelectionDirection:`, error);
+                console.error(`Error in getBoxSelectionDirection:`, error);
             }
             return "";
         }
@@ -1829,10 +1829,10 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                /* eslint-disable-next-line no-console */ console.error(`Error in cancelBoxSelection:`, error);
+                console.error(`Error in cancelBoxSelection:`, error);
                 if (error instanceof Error) {
-                    /* eslint-disable-next-line no-console */ console.error(`Error message: ${error.message}`);
-                    /* eslint-disable-next-line no-console */ console.error(`Error stack: ${error.stack}`);
+                    console.error(`Error message: ${error.message}`);
+                    console.error(`Error stack: ${error.stack}`);
                 }
             }
 
@@ -1881,7 +1881,7 @@ export class KeyEventHandler {
                         if ((error as Error)?.name === "NotAllowedError") {
                             console.warn("Clipboard permission denied", error);
                         } else {
-                            /* eslint-disable-next-line no-console */ console.error(
+                            console.error(
                                 "navigator.clipboard.readText failed",
                                 error,
                             );
@@ -1936,7 +1936,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    /* eslint-disable-next-line no-console */ console.error(`Failed to parse VS Code metadata:`, error);
+                    console.error(`Failed to parse VS Code metadata:`, error);
                 }
             }
 
@@ -2211,7 +2211,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                /* eslint-disable-next-line no-console */ console.error(`Error in handlePaste:`, error);
+                console.error(`Error in handlePaste:`, error);
             }
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("clipboard-read-error"));
@@ -2310,7 +2310,7 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                             ) {
-                                /* eslint-disable-next-line no-console */ console.error(
+                                console.error(
                                     `Failed to set VS Code metadata:`,
                                     error,
                                 );
@@ -2342,7 +2342,7 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                             ) {
-                                /* eslint-disable-next-line no-console */ console.error(
+                                console.error(
                                     `navigator.clipboard.writeText failed in handleCut:`,
                                     err,
                                 );
@@ -2375,7 +2375,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    /* eslint-disable-next-line no-console */ console.error(`Error in handleCut:`, error);
+                    console.error(`Error in handleCut:`, error);
                 }
             }
         }

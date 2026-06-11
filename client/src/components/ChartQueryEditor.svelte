@@ -21,7 +21,7 @@ onMount(async () => {
             runQuery(item.chartQuery);
         }
     } catch (error) {
-        /* eslint-disable-next-line no-console */ console.error("Error initializing database:", error);
+          console.error("Error initializing database:", error);
     }
 });
 
@@ -34,7 +34,7 @@ async function run() {
         await initDb();
         runQuery(sql);
     } catch (error) {
-        /* eslint-disable-next-line no-console */ console.error("Error running query:", error);
+          console.error("Error running query:", error);
     }
 }
 

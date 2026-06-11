@@ -105,7 +105,7 @@ async function handleLogin() {
         await userManager.loginWithGoogle();
     }
     catch (err: unknown) {
-        /* eslint-disable-next-line no-console */ console.error("Login error:", err);
+          console.error("Login error:", err);
         loginError = (err as Error).message || "An error occurred during login";
     } finally {
         isLoggingIn = false;
@@ -120,7 +120,7 @@ async function handleDevLogin() {
         await userManager.loginWithEmailPassword(email, password);
     }
     catch (err: unknown) {
-        /* eslint-disable-next-line no-console */ console.error("Development login error:", err);
+          console.error("Development login error:", err);
         loginError = (err as Error).message ||
             "An error occurred during development login";
     } finally {
@@ -135,7 +135,7 @@ async function handleLogout() {
         await userManager.logout();
     }
     catch (err) {
-        /* eslint-disable-next-line no-console */ console.error("Logout error:", err);
+          console.error("Logout error:", err);
         error = (err as Error).message || "An error occurred during logout";
         isLoading = false;
     }

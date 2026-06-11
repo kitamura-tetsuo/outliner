@@ -238,7 +238,7 @@
 
         // Ensure containerId exists, skip fallback logic if unavailable in production
         if (!containerId && !(typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) {
-            /* eslint-disable-next-line no-console */ console.error("No valid container ID found for file upload");
+              console.error("No valid container ID found for file upload");
             return;
         }
 
@@ -255,7 +255,7 @@
                         const url = await uploadAttachment(containerId, newItem.id, file);
                         newItem.addAttachment(url);
                     } catch (uploadErr) {
-                        /* eslint-disable-next-line no-console */ console.error("Upload failed via file select", uploadErr);
+                          console.error("Upload failed via file select", uploadErr);
                         // E2E fallback local URL for test environment (mocking network)
                         if (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__) {
                             const localUrl = URL.createObjectURL(file);
@@ -265,7 +265,7 @@
                     }
                 }
             } catch (e) {
-                /* eslint-disable-next-line no-console */ console.error("Failed to process selected file", e);
+                  console.error("Failed to process selected file", e);
             }
         }
 
@@ -722,7 +722,7 @@
         // Get target item element
         const item = document.querySelector(`[data-item-id="${itemId}"]`);
         if (!item) {
-            /* eslint-disable-next-line no-console */ console.error(`Could not find item with ID: ${itemId}`);
+              console.error(`Could not find item with ID: ${itemId}`);
             return;
         }
 
@@ -758,7 +758,7 @@
                     );
                 }
             } catch (error) {
-                /* eslint-disable-next-line no-console */ console.error(
+                  console.error(
                     `Error dispatching focus-item event to ${itemId}:`,
                     error,
                 );
@@ -1753,7 +1753,7 @@
             editorOverlayStore.setActiveItem(sourceItemId);
             editorOverlayStore.clearSelections();
         } catch (error) {
-            /* eslint-disable-next-line no-console */ console.error("Failed to move item:", error);
+              console.error("Failed to move item:", error);
         }
     }
 

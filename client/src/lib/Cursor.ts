@@ -177,7 +177,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    /* eslint-disable-next-line no-console */ console.error(
+                    console.error(
                         `Cursor.applyToStore: Global textarea not found`,
                     );
                 }
@@ -1618,7 +1618,7 @@ export class Cursor implements CursorEditingContext {
                         }
                     }
                 } catch (e) {
-                    /* eslint-disable-next-line no-console */ console.error("Error in DOM-based next item lookup:", e);
+                    console.error("Error in DOM-based next item lookup:", e);
                 }
 
                 // If still not found, try a different approach by using a depth-first traversal of the tree
@@ -1676,7 +1676,7 @@ export class Cursor implements CursorEditingContext {
                             }
                         }
                     } catch (e) {
-                        /* eslint-disable-next-line no-console */ console.error("Error in ultimate fallback:", e);
+                        console.error("Error in ultimate fallback:", e);
                     }
                 }
 

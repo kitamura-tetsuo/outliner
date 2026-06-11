@@ -42,7 +42,7 @@ onMount(async () => {
             chart?.dispose();
         };
     } catch (error) {
-        /* eslint-disable-next-line no-console */ console.error("Error initializing chart:", error);
+          console.error("Error initializing chart:", error);
     }
 });
 
@@ -53,7 +53,7 @@ async function runItemQuery() {
             await initDb();
             runQuery(item.chartQuery);
         } catch (error) {
-            /* eslint-disable-next-line no-console */ console.error("Error running item query:", error);
+              console.error("Error running item query:", error);
         }
     }
 }
