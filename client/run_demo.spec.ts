@@ -1,17 +1,14 @@
-const { chromium } = require('playwright');
+import { test, expect } from '@playwright/test';
 
-(async () => {
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-
-  const errors = [];
+test('check demo page errors', async ({ page }) => {
+  const errors: string[] = [];
   page.on('console', msg => {
     if (msg.type() === 'error') {
-      errors.push(msg.text());
+      errors.push(`Console error: ${msg.text()}`);
     }
   });
   page.on('pageerror', error => {
-    errors.push(error.message);
+    errors.push(`Page error: ${error.message}`);
   });
 
   await page.goto('http://localhost:5173/demo');
@@ -19,6 +16,4 @@ const { chromium } = require('playwright');
 
   console.log("Errors found on page load:");
   console.log(errors);
-
-  await browser.close();
-})();
+});

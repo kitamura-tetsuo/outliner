@@ -7,15 +7,16 @@ const { chromium } = require('playwright');
   const errors = [];
   page.on('console', msg => {
     if (msg.type() === 'error') {
-      errors.push(msg.text());
+      errors.push(`Console Error: ${msg.text()}`);
     }
   });
   page.on('pageerror', error => {
-    errors.push(error.message);
+    errors.push(`Page Error: ${error.message}`);
   });
 
+  console.log("Navigating to demo page...");
   await page.goto('http://localhost:5173/demo');
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(5000);
 
   console.log("Errors found on page load:");
   console.log(errors);
