@@ -1,9 +1,7 @@
 import express from "express";
-import fs from "fs";
-import path from "path";
 import * as Y from "yjs";
+import { buildDemoProject, DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION } from "./demo-content.js";
 import { logger } from "./logger.js";
-import { Project } from "./schema/app-schema.js";
 
 type HocuspocusInstance = any;
 
@@ -35,29 +33,18 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
 
                 const metadata = doc.getMap("metadata") as Y.Map<any>;
                 const lastReset = metadata.get("lastReset") as number | undefined;
+                const templateVersion = metadata.get("templateVersion") as number | undefined;
 
-                if (!lastReset || (now - lastReset > RESET_INTERVAL_MS)) {
+                if (
+                    !lastReset
+                    || (now - lastReset > RESET_INTERVAL_MS)
+                    || templateVersion !== DEMO_TEMPLATE_VERSION
+                ) {
                     shouldReset = true;
                 }
 
                 if (shouldReset) {
-                    logger.info({ event: "seed_demo_resetting", lastReset, now });
-
-                    // Read template
-                    let templateLines: string[] = [];
-                    try {
-                        // Find docs relative to current file to be more robust
-                        const docsDir = path.resolve(__dirname, "../../docs");
-                        const templatePath = path.resolve(docsDir, "demo-template.txt");
-                        const templateContent = fs.readFileSync(templatePath, "utf-8");
-                        templateLines = templateContent.split("\n");
-                    } catch (e) {
-                        logger.warn({ event: "seed_demo_template_not_found", error: String(e) });
-                        templateLines = [
-                            "Welcome to the Outliner Demo!",
-                            "This demo resets every 24 hours.",
-                        ];
-                    }
+                    logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now });
 
                     await directConnection.transact((document: any) => {
                         const ydoc = document as unknown as Y.Doc;
@@ -72,26 +59,19 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
 
                         // Re-initialize metadata
                         const meta = ydoc.getMap("metadata");
-                        meta.set("title", "Demo Project");
+                        meta.set("title", DEMO_PROJECT_TITLE);
                         meta.set("lastReset", now);
+                        meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
-                        // Create project wrapper and root page in a temporary valid instance first
-                        const tempProject = Project.createInstance("Demo Project");
-                        const page = tempProject.addPage("Demo", "seed-server");
-
-                        if (templateLines.length > 0) {
-                            const pageItems = page.items;
-                            for (const line of templateLines) {
-                                const item = pageItems.addNode("seed-server");
-                                item.text = line;
-                            }
-                        }
+                        // Build the full demo project (all feature pages) in a
+                        // temporary valid instance first
+                        const tempProject = buildDemoProject("seed-server");
 
                         // Apply the properly initialized project document into the real shared document
                         Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(tempProject.ydoc));
                     });
                 } else {
-                    logger.info({ event: "seed_demo_no_reset_needed", lastReset, now });
+                    logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });
                 }
 
                 res.json({ success: true, reset: shouldReset });

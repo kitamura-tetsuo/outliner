@@ -1,97 +1,62 @@
 <script lang="ts">
-    import { resolvePath } from "../../utils/pathUtils";
-    import { onMount, onDestroy } from "svelte";
-    import OutlinerBase from "../../components/OutlinerBase.svelte";
-    import { getLogger } from "../../lib/logger";
+    import { goto } from "$app/navigation";
+    import { onDestroy, onMount } from "svelte";
+    import PageList from "../../components/PageList.svelte";
+    import { DEMO_PROJECT_NAME, seedDemo } from "../../lib/demoSeed";
     import { getYjsClientByProjectTitle } from "../../services";
-    import { yjsStore } from "../../stores/yjsStore.svelte";
     import { store } from "../../stores/store.svelte";
-
-    const logger = getLogger("DemoPage");
+    import { yjsStore } from "../../stores/yjsStore.svelte";
+    import { resolvePath } from "../../utils/pathUtils";
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
+
+    // Reactive page list (depends on store.pagesVersion)
+    let pages = $derived.by(() => {
+        void store.pagesVersion;
+        return store.pages?.current;
+    });
 
     async function initializeDemo() {
         try {
             isLoading = true;
             error = undefined;
 
-            // Seed demo document via API
-            try {
-                let apiBaseUrl = import.meta.env.VITE_YJS_API_URL;
-                if (!apiBaseUrl && import.meta.env.VITE_YJS_WS_URL) {
-                    apiBaseUrl = import.meta.env.VITE_YJS_WS_URL.replace(/^ws(s)?:\/\//, "http$1://");
-                }
-                if (!apiBaseUrl) {
-                    apiBaseUrl = import.meta.env.VITE_API_SERVER_URL || "http://127.0.0.1:7091";
-                }
-
-                // Append /api/seed-demo, ensuring we don't double up on slashes
-                const endpoint = apiBaseUrl.endsWith('/') ? `${apiBaseUrl}api/seed-demo` : `${apiBaseUrl}/api/seed-demo`;
-
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                if (!response.ok) {
-                    logger.warn(`Failed to seed demo: ${response.statusText}`);
-                }
-            } catch (seedErr) {
-                logger.warn(`Error seeding demo ${seedErr}`);
-            }
+            // Seed demo project via API (no-op when already seeded)
+            await seedDemo();
 
             // Connect to demo room
-            let client = await getYjsClientByProjectTitle("demo");
+            const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
             if (!client) {
                 throw new Error("Failed to connect to the demo project.");
             }
 
             yjsStore.yjsClient = client as import("../../yjs/YjsClient").YjsClient;
             const project = client.getProject();
-            // @ts-expect-error - Project types from app-schema and yjs-schema differ in private properties
             store.project = project;
 
-            // Wait for sync or timeout
+            // Wait for the page list to sync (3 seconds max)
             let retries = 0;
-            let demoPage = undefined;
-
-            while (retries < 20) { // 2 seconds max
-                const pages = store.project?.items?.length || 0;
-
-                for (let i = 0; i < pages; i++) {
-                    const item = store.project?.items?.at?.(i);
-                    if (item && String(item.text) === "Demo") {
-                        demoPage = item;
-                        break;
-                    }
-                }
-
-                if (!demoPage && pages > 0) {
-                     demoPage = store.project?.items?.at?.(0);
-                }
-
-                if (demoPage) {
+            while (retries < 30) {
+                if ((store.project?.items?.length || 0) > 0) {
                     break;
                 }
-
                 await new Promise(r => setTimeout(r, 100));
                 retries++;
             }
-
-            if (!demoPage) {
-                logger.warn("Timeout waiting for Demo page to sync");
-            }
-
-            store.currentPage = demoPage;
-
         } catch (err) {
             console.error("Failed to initialize demo:", err);
             error = err instanceof Error ? err.message : "An error occurred while loading the demo.";
         } finally {
             isLoading = false;
+        }
+    }
+
+    // Navigate to the demo page view when a page is selected
+    function handlePageSelected(event: CustomEvent<{ pageId: string; pageName: string; }>) {
+        const pageName = event.detail.pageName;
+        if (pageName) {
+            goto(resolvePath(`/demo/${pageName}`));
         }
     }
 
@@ -121,13 +86,15 @@
                 Home
             </a>
             <span class="mx-2">/</span>
-            <span class="text-gray-900">Demo Page</span>
+            <span class="text-gray-900">Demo Project</span>
         </nav>
 
         <div class="flex items-center justify-between">
-            <h1 class="text-2xl font-bold">Public Demo</h1>
+            <h1 class="text-2xl font-bold">Public Demo Project</h1>
         </div>
-        <p class="text-sm text-gray-500 mt-1">This is a public, collaborative demo space. Content resets every 24 hours.</p>
+        <p class="mt-1 text-sm text-gray-500">
+            This is a public, collaborative demo project. Each page demonstrates a group of features. Content resets every 24 hours.
+        </p>
     </div>
 
     {#if isLoading}
@@ -156,15 +123,21 @@
                 </div>
             </div>
         </div>
+    {:else if store.project && pages}
+        <div class="mt-6" data-testid="demo-page-list">
+            <PageList
+                currentUser="anonymous"
+                project={store.project}
+                rootItems={pages}
+                onPageSelected={handlePageSelected}
+            />
+        </div>
     {:else}
-        <OutlinerBase
-            pageItem={store.currentPage}
-            projectName="demo"
-            pageName="Demo"
-            isReadOnly={false}
-            isTemporary={false}
-            onEdit={undefined}
-        />
+        <div class="rounded-md bg-gray-50 p-4">
+            <p class="text-gray-700">
+                Could not load the demo project.
+            </p>
+        </div>
     {/if}
 </main>
 
