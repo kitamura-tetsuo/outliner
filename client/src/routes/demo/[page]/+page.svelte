@@ -50,7 +50,7 @@
                 if (!client) {
                     throw new Error("Failed to connect to the demo project.");
                 }
-                yjsStore.yjsClient = client as import("../../../yjs/YjsClient").YjsClient;
+                yjsStore.yjsClient = client as unknown as import("../../../yjs/YjsClient").YjsClient;
                 store.project = client.getProject();
             }
 
