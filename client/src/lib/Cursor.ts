@@ -2083,7 +2083,9 @@ export class Cursor implements CursorEditingContext {
      * @param currentItemId The ID of the current item
      * @returns The next item if found, otherwise undefined
      */
-    private findNextItemViaDOM(currentItemId: string): import("../schema/app-schema").Item | undefined {
+    private findNextItemViaDOM(
+        currentItemId: string,
+    ): import("../schema/app-schema").Item | import("../schema/yjs-schema").Item | undefined {
         if (typeof document === "undefined") return undefined;
 
         // Find the current element in the DOM
