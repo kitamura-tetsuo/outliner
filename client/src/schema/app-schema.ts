@@ -252,7 +252,7 @@ export class Item {
                 };
                 __ITEM_ID_MAP__?: Record<string, string>;
                 E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
-            }
+            };
             const w = (typeof window !== "undefined") ? (window as unknown as WindowWithStore) : null;
             const currentPage = w?.generalStore?.currentPage;
             const thisDoc = this.ydoc;
