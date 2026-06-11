@@ -29,7 +29,7 @@
             const item = items.at?.(i);
             const text = item?.text?.toString?.() ?? String(item?.text ?? "");
             if (String(text).toLowerCase() === String(name).toLowerCase()) {
-                return item as Item;
+                return item as unknown as Item;
             }
         }
         return undefined;

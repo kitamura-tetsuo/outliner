@@ -77,7 +77,7 @@
     }
 
     // Process when a page is selected
-    function handlePageSelected(event: CustomEvent) {
+    function handlePageSelected(event: CustomEvent<{ pageId: string; pageName: string; }>) {
         const pageName = event.detail.pageName;
 
         if (pageName) {

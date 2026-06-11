@@ -156,7 +156,7 @@
                         const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                         titles.push(t);
                         if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
-                            return p;
+                            return p as unknown as import("../../../schema/app-schema").Item;
                         }
                     }
                     if (len > 0) {
