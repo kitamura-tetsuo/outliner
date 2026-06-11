@@ -23,3 +23,4 @@ The Outliner project is a real-time collaborative application built with the fol
 - [**State Management / state_management.md**](state_management.md): Guidelines on how state is managed across the application, particularly interacting with Yjs.
 - [**Production Setup / PRODUCTION_SETUP.md**](PRODUCTION_SETUP.md): Instructions and configurations for the production cloud backend.
 - [**Documentation / Documentation.md**](Documentation.md): Instructions for the documentation.
+- [**Demo Project / demo-project.md**](demo-project.md): How the public `/demo` feature tour is seeded, and the policy that every new end-user feature must also be added to the demo template.

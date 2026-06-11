@@ -13,6 +13,7 @@ This document consolidates the key development policies for this repository. Fol
 - **Feature IDs**: Use an 8-character hexadecimal UUID (e.g. `FTR-1a2b3c4d`) rather than sequential numbers.
 - `docs/client-features.yaml` and `docs/dev-features.yaml` are generated automatically.
 - Document intentionally omitted features in `docs/NON_GOALS.md`.
+- **Demo project**: The public `/demo` route is seeded from the template in `server/src/demo-content.ts` and must always demonstrate the current feature set. When you implement a new end-user feature, also add it to the demo template (extend an existing demo page or add a new feature page with a landing-page tour link) and bump `DEMO_TEMPLATE_VERSION`. See `docs/demo-project.md` for the full policy.
 - `docs/feature-map.md` is auto-generated; never edit it manually.
 - Regularly review and update documentation to avoid conflicts and keep best practices current.
 
