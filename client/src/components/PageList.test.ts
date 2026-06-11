@@ -1,9 +1,9 @@
 /** @vitest-environment jsdom */
-import { render, fireEvent } from "@testing-library/svelte";
+import { fireEvent, render } from "@testing-library/svelte";
 import { tick } from "svelte";
-import { describe, expect, it, beforeEach } from "vitest";
-import PageList from "./PageList.svelte";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Project } from "../schema/app-schema";
+import PageList from "./PageList.svelte";
 
 describe("PageList", () => {
     let project: Project;
@@ -18,8 +18,8 @@ describe("PageList", () => {
         const { getByText } = render(PageList, {
             props: {
                 project,
-                rootItems: project.items
-            }
+                rootItems: project.items,
+            },
         });
 
         expect(getByText("No pages found.")).toBeTruthy();
@@ -33,8 +33,8 @@ describe("PageList", () => {
         const { container } = render(PageList, {
             props: {
                 project,
-                rootItems: project.items
-            }
+                rootItems: project.items,
+            },
         });
 
         // Wait for effects to run
@@ -45,7 +45,7 @@ describe("PageList", () => {
         expect(container.textContent).toContain("Page 2");
 
         // localStorage should be 'grid'
-        expect(localStorage.getItem('outliner_page_list_view')).toBe('grid');
+        expect(localStorage.getItem("outliner_page_list_view")).toBe("grid");
 
         // Toggle to list view
         const listBtn = container.querySelector('[aria-label="List view"]');
@@ -53,19 +53,19 @@ describe("PageList", () => {
         if (listBtn) {
             await fireEvent.click(listBtn);
             await tick();
-            expect(localStorage.getItem('outliner_page_list_view')).toBe('list');
+            expect(localStorage.getItem("outliner_page_list_view")).toBe("list");
         }
     });
 
     it("initializes from localStorage preference", async () => {
-        localStorage.setItem('outliner_page_list_view', 'list');
+        localStorage.setItem("outliner_page_list_view", "list");
         project.addPage("Page 1", "u1");
 
         const { container } = render(PageList, {
             props: {
                 project,
-                rootItems: project.items
-            }
+                rootItems: project.items,
+            },
         });
 
         // Wait for effects to run
@@ -77,7 +77,7 @@ describe("PageList", () => {
         if (gridBtn) {
             await fireEvent.click(gridBtn);
             await tick();
-            expect(localStorage.getItem('outliner_page_list_view')).toBe('grid');
+            expect(localStorage.getItem("outliner_page_list_view")).toBe("grid");
         }
     });
 });
