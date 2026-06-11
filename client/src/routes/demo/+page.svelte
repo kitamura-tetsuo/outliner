@@ -34,16 +34,6 @@
             yjsStore.yjsClient = client as import("../../yjs/YjsClient").YjsClient;
             const project = client.getProject();
             store.project = project;
-
-            // Wait for the page list to sync (3 seconds max)
-            let retries = 0;
-            while (retries < 30) {
-                if ((store.project?.items?.length || 0) > 0) {
-                    break;
-                }
-                await new Promise(r => setTimeout(r, 100));
-                retries++;
-            }
         } catch (err) {
             console.error("Failed to initialize demo:", err);
             error = err instanceof Error ? err.message : "An error occurred while loading the demo.";
