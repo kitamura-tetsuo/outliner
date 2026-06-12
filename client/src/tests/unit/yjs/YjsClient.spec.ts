@@ -28,7 +28,7 @@ describe("YjsClient", () => {
 
     let provider: import("@hocuspocus/provider").HocuspocusProvider;
 
-    let project: { metadata: unknown; rootFolder: unknown; items: unknown; dispose: unknown; };
+    let project: Project;
 
     beforeEach(async () => {
         // Reset mocks
@@ -51,6 +51,10 @@ describe("YjsClient", () => {
         project = {
             title: "Test Project",
             items: { length: 0 },
+            ydoc: doc,
+            tree: {},
+            findPage: vi.fn(),
+            addPage: vi.fn(),
         } as unknown as Project;
 
         client = new YjsClient({

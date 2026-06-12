@@ -1,28 +1,34 @@
-import fs from "fs";
-import { createRequire } from "module";
-import initSqlJs from "sql.js";
-import { beforeAll, describe, expect, it } from "vitest";
-import { SyncWorker } from "../services/syncWorker";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { SyncWorker, type SqlJsDatabase } from "../services/syncWorker";
 
-import type { Database } from "sql.js";
-let db: Database;
+describe("SyncWorker", () => {
+    let mockStmt: { run: ReturnType<typeof vi.fn>; free: ReturnType<typeof vi.fn> };
+    let mockDb: { prepare: ReturnType<typeof vi.fn> };
 
-const require = createRequire(import.meta.url);
+    beforeEach(() => {
+        mockStmt = {
+            run: vi.fn(),
+            free: vi.fn(),
+        };
+        mockDb = {
+            prepare: vi.fn().mockReturnValue(mockStmt),
+        };
+    });
 
-beforeAll(async () => {
-    const wasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
-    const wasmBinary = fs.readFileSync(wasmPath);
-    const SQL = await initSqlJs({ wasmBinary });
-    db = new SQL.Database();
-    db.run("CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER)");
-    db.run("INSERT INTO tbl VALUES('a',1)");
-});
-
-describe("syncWorker", () => {
     it("applies op to sqlite", () => {
-        const worker = new SyncWorker(db);
+        const worker = new SyncWorker(mockDb as unknown as SqlJsDatabase);
         worker.applyOp({ table: "tbl", pk: "a", column: "val", value: 2 });
-        const res = db.exec("SELECT val FROM tbl WHERE id='a'")[0].values[0][0];
-        expect(res).toBe(2);
+        expect(mockDb.prepare).toHaveBeenCalledWith("UPDATE tbl SET val=? WHERE id=?");
+        expect(mockStmt.run).toHaveBeenCalledWith([2, "a"]);
+        expect(mockStmt.free).toHaveBeenCalled();
+    });
+
+    it("emits applied event", () => {
+        const worker = new SyncWorker(mockDb as unknown as SqlJsDatabase);
+        const listener = vi.fn();
+        worker.on("applied", listener);
+        const op = { table: "tbl", pk: "a", column: "val", value: 2 };
+        worker.applyOp(op);
+        expect(listener).toHaveBeenCalledWith(op);
     });
 });

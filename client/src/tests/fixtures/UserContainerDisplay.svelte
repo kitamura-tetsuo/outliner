@@ -1,6 +1,13 @@
 <script lang="ts">
 import { firestoreStore as moduleStore } from "../../stores/firestoreStore.svelte";
 import { onMount } from "svelte";
+
+// Define a type for the userProject structure expected in this component
+type UserProjectData = {
+    accessibleProjectIds?: Set<string> | string[];
+    defaultProjectId?: string;
+};
+
 // Workaround for double loading in Vitest + JSDOM: Use the instance exposed on window if available
 const storeRef = (typeof window !== "undefined" && (window as Window & typeof globalThis & { __FIRESTORE_STORE__?: unknown }).__FIRESTORE_STORE__)
     ? (window as Window & typeof globalThis & { __FIRESTORE_STORE__?: unknown }).__FIRESTORE_STORE__
@@ -18,7 +25,7 @@ function computeDisplayed(ids: string[], def?: string) {
 onMount(() => {
     const apply = () => {
         try {
-            const u = (storeRef as { userProject?: unknown })?.userProject;
+            const u = (storeRef as { userProject?: UserProjectData })?.userProject;
             idsLocal = Array.from(u?.accessibleProjectIds ?? []);
             defaultIdLocal = u?.defaultProjectId;
         } catch {}

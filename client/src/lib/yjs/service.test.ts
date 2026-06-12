@@ -29,9 +29,9 @@ describe("yjsService", () => {
 
     it("sets presence state", () => {
         const awareness = new Awareness(new Y.Doc());
-        yjsService.setPresence(awareness, { cursor: { itemId: "i1", offset: 0 } });
+        yjsService.setPresence(awareness, { cursor: { itemId: "i1", offset: 0, isActive: true, cursorId: "c1" } } as any);
         const presence = yjsService.getPresence(awareness);
-        expect(presence.cursor.itemId).toBe("i1");
+        expect(presence?.cursor?.itemId).toBe("i1");
     });
 
     it("binds project presence to store", () => {
@@ -57,7 +57,7 @@ describe("yjsService", () => {
     });
 
     it("binds page presence to overlay", () => {
-        const awareness = new Awareness(new Y.Doc());
+        const awareness = new Awareness(new Y.Doc()) as Awareness & { emit(event: string, args: unknown[]): void };
         // Provide a minimal global overlay store
         type CursorState = { itemId: string; offset: number; userId: string; };
         const editorOverlayStore = {

@@ -68,7 +68,8 @@ describe("Import/Export Service", () => {
 
             // There should be 1 child item in SecondItem
             expect(page.items.at(1)!.items.length).toBe(1);
-            expect(page.items.at(1)!.items[0].text).toBe("Child2");
+            const secondItemChildren = Array.from(page.items.at(1)!.items);
+            expect(secondItemChildren[0].text).toBe("Child2");
         });
     });
 

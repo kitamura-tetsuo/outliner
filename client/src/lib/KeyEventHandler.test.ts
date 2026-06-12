@@ -47,8 +47,8 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
 
 describe("KeyEventHandler.handlePaste", () => {
     // Get mocked functions from global
-    const { mockInsertText } =
-        (globalThis as Window & typeof globalThis & { __testMocks: Record<string, unknown>; }).__testMocks;
+    const testMocks = (globalThis as Window & typeof globalThis & { __testMocks: Record<string, unknown>; }).__testMocks;
+    const mockInsertText = testMocks.mockInsertText as ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -56,7 +56,11 @@ describe("KeyEventHandler.handlePaste", () => {
     });
 
     afterEach(() => {
-        delete (navigator as Navigator & { clipboard?: unknown; }).clipboard;
+        // Just redefine the property to remove the getter/setter mock
+        Object.defineProperty(navigator, "clipboard", {
+            value: undefined,
+            configurable: true,
+        });
     });
 
     const createEvent = (text: string): ClipboardEvent => {

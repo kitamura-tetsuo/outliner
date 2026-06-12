@@ -1,3 +1,4 @@
+import type { TestInfo } from "@playwright/test";
 /**
  * Yjs Test Helpers
  *
@@ -304,7 +305,7 @@ export async function setupUpdateTracking(
 
     await page.evaluate(
         ({ docVar, counterVar, counterV2Var }) => {
-            const doc = (window as Window & typeof globalThis & Record<string, unknown>)[docVar];
+            const doc = (window as Window & typeof globalThis & Record<string, any>)[docVar];
             if (!doc) {
                 console.error(`setupUpdateTracking: ${docVar} not found`);
                 return;
@@ -314,11 +315,11 @@ export async function setupUpdateTracking(
             (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var] = 0;
 
             doc.on("update", () => {
-                (window as Window & typeof globalThis & Record<string, unknown>)[counterVar]++;
+                (window as Window & typeof globalThis & Record<string, any>)[counterVar]++;
             });
 
             doc.on("updateV2", () => {
-                (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var]++;
+                (window as Window & typeof globalThis & Record<string, any>)[counterV2Var]++;
             });
         },
         { docVar, counterVar, counterV2Var },
@@ -462,7 +463,7 @@ export async function prepareTwoFullBrowserPages(
     browser: Browser,
     testInfo: { title: string; },
     initialItems: string[],
-    TestHelpers: { expectEmptyOutliner: (page: Page) => Promise<void>; },
+    TestHelpers: { expectEmptyOutliner: (page: Page) => Promise<void>; seedProjectAndNavigate: (page: Page, testInfo: TestInfo, initialItems?: string[]) => Promise<{ projectName: string; pageName: string; }>; },
 ): Promise<TwoFullBrowserPagesResult> {
     // Create first browser context
     const context1 = await browser.newContext();
@@ -481,7 +482,7 @@ export async function prepareTwoFullBrowserPages(
     });
 
     // Prepare test environment for page1
-    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(
+    const { projectName, pageName } = (TestHelpers as any).seedProjectAndNavigate(
         page1,
         testInfo,
         initialItems,
@@ -494,7 +495,7 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page1 to initialize Yjs client and project
     await page1.waitForFunction(
         () => {
-            const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
+            const yjsStore = (window as Window & typeof globalThis & Record<string, any>).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             if (!client) {
                 console.log("page1: yjsClient not found");
@@ -565,7 +566,7 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page2 to initialize Yjs client and appStore
     await page2.waitForFunction(
         () => {
-            const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
+            const yjsStore = (window as Window & typeof globalThis & Record<string, any>).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             if (!client) {
                 console.log("page2: yjsClient not found");

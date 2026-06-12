@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock module
 // Provide a local mock instead of importing .svelte.ts in tests
-const mockCursor: import("./editorOverlayStore.svelte.ts").CursorModel = {
+const mockCursor: any = {
     itemId: "test-item",
     offset: 5,
     findTarget: vi.fn(() => ({ text: "hello/", updateText: vi.fn() })),
@@ -10,7 +10,7 @@ const mockCursor: import("./editorOverlayStore.svelte.ts").CursorModel = {
 };
 const mockEditorOverlayStore = {
     getCursorInstances: vi.fn(() => [mockCursor]),
-} as unknown as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
+} as any;
 vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 
 // Access global store if available; otherwise provide a local minimal implementation
@@ -119,9 +119,15 @@ describe("CommandPaletteStore", () => {
         vi.clearAllMocks();
 
         // reset spies/state on our local mocks
-        mockEditorOverlayStore.getCursorInstances.mockClear?.();
-        mockCursor.findTarget.mockClear();
-        mockCursor.applyToStore.mockClear();
+        if (typeof (mockEditorOverlayStore.getCursorInstances as any).mockClear === 'function') {
+            (mockEditorOverlayStore.getCursorInstances as any).mockClear();
+        }
+        if (typeof (mockCursor.findTarget as any).mockClear === 'function') {
+            (mockCursor.findTarget as any).mockClear();
+        }
+        if (typeof (mockCursor.applyToStore as any).mockClear === 'function') {
+            (mockCursor.applyToStore as any).mockClear();
+        }
     });
 
     describe("show", () => {
@@ -148,7 +154,7 @@ describe("CommandPaletteStore", () => {
                 text: "hello/",
                 updateText: vi.fn(),
             };
-            mockCursor.findTarget.mockReturnValue(mockNode);
+            (mockCursor.findTarget as any).mockReturnValue(mockNode);
             mockCursor.offset = 6; // Immediately after slash
 
             // Call show to set commandStartOffset
@@ -166,7 +172,7 @@ describe("CommandPaletteStore", () => {
                 text: "hello/",
                 updateText: vi.fn(),
             };
-            mockCursor.findTarget.mockReturnValue(mockNode);
+            (mockCursor.findTarget as any).mockReturnValue(mockNode);
             mockCursor.offset = 6;
 
             // Call show to set commandStartOffset
@@ -191,7 +197,7 @@ describe("CommandPaletteStore", () => {
                 text: "hello/tab",
                 updateText: vi.fn(),
             };
-            mockCursor.findTarget.mockReturnValue(mockNode);
+            (mockCursor.findTarget as any).mockReturnValue(mockNode);
             mockCursor.offset = 9;
 
             // Call show to set commandStartOffset
@@ -213,7 +219,7 @@ describe("CommandPaletteStore", () => {
                 text: "hello/",
                 updateText: vi.fn(),
             };
-            mockCursor.findTarget.mockReturnValue(mockNode);
+            (mockCursor.findTarget as any).mockReturnValue(mockNode);
             mockCursor.offset = 6;
 
             // Call show to set commandStartOffset
@@ -233,7 +239,7 @@ describe("CommandPaletteStore", () => {
                 text: "hello/",
                 updateText: vi.fn(),
             };
-            mockCursor.findTarget.mockReturnValue(mockNode);
+            (mockCursor.findTarget as any).mockReturnValue(mockNode);
             mockCursor.offset = 6;
 
             commandPaletteStore.show({ top: 0, left: 0 });
