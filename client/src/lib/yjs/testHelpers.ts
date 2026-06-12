@@ -1,3 +1,4 @@
+import * as Y from "yjs";
 /**
  * Yjs Test Helpers
  *
@@ -313,12 +314,12 @@ export async function setupUpdateTracking(
             (window as Window & typeof globalThis & Record<string, unknown>)[counterVar] = 0;
             (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var] = 0;
 
-            doc.on("update", () => {
+            (doc as unknown as Y.Doc).on("update", () => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ((window as any)[counterVar] as number)++;
             });
 
-            doc.on("updateV2", () => {
+            (doc as unknown as Y.Doc).on("updateV2", () => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ((window as any)[counterV2Var] as number)++;
             });
@@ -464,7 +465,7 @@ export async function prepareTwoFullBrowserPages(
     browser: Browser,
     testInfo: { title: string; },
     initialItems: string[],
-    TestHelpers: { expectEmptyOutliner: (page: Page) => Promise<void>; },
+    TestHelpers: { seedProjectAndNavigate: unknown; expectEmptyOutliner: (page: Page) => Promise<void>; },
 ): Promise<TwoFullBrowserPagesResult> {
     // Create first browser context
     const context1 = await browser.newContext();
