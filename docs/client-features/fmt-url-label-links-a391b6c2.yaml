@@ -5,7 +5,7 @@ description: Convert bracketed URL and label pairs into links that display only 
 category: text-formatting
 status: implemented
 acceptance:
-- Bracketed URLs without a label, like [URL], are converted to clickable links showing the URL text. Bare URLs outside brackets are not auto-linked.
+- Bracketed URLs without a label, like [URL], are converted to clickable links showing the URL text. Bare URLs outside brackets are auto-linked by FMT-3ad6e710.
 - Bracketed pairs [URL label] render the label text linked to the URL.
 - No URL text remains visible when a label is provided.
 tests:
