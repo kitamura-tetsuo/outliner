@@ -33,7 +33,7 @@ interface Props {
 }
 
 let props: Props = $props(); // eslint-disable-line svelte/no-unused-props
-let comments = $derived.by(() => props.comments ?? props.item?.comments);
+let comments = $derived.by(() => props.comments ?? (props.item as any)?.comments);
 let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");
 let editingId = $state<string | null>(null);
@@ -67,7 +67,7 @@ onMount(() => {
     let unobserve: (() => void) | undefined;
     try {
         // 1) Get internal yArray if Comments wrapper exists (private but accessible in JS)
-        let yarr: Y.Array<Y.Map<unknown>> | undefined = (comments as Comments | undefined)?.yArray;
+        let yarr: any = (comments as any)?.yArray;
         // 2) If not, ensure "comments" via item Y.Map
         if (!yarr && props.item) {
             const item = props.item as ItemLike;
@@ -77,7 +77,7 @@ onMount(() => {
             if (value) {
                 yarr = value.get?.("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!yarr) {
-                    yarr = new Y.Array<Y.Map<unknown>>();
+                    yarr = new Y.Array<Y.Map<import("../types/yjs-types.js").CommentValueType>>();
                     value.set?.("comments", yarr);
                 }
             }
@@ -98,7 +98,7 @@ onMount(() => {
                     // This prevents the observer from overwriting UI changes when they're more recent
                     const currentRenderState = renderCommentsState;
                     const needsUpdate = plainComments.length !== currentRenderState.length ||
-                        plainComments.some((yjsComment, index) => {
+                        plainComments.some((yjsComment: any, index: number) => {
                             const currentComment = currentRenderState[index];
                             return !currentComment || currentComment.id !== yjsComment.id || currentComment.text !== yjsComment.text;
                         });
@@ -218,7 +218,7 @@ function add() {
         } catch {}
     }
     if (!text) return;
-    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
+    let commentsObj: Comments | undefined = props.comments ?? (props.item as any)?.comments;
     if (!commentsObj && props.item) {
         try {
             const item = props.item as ItemLike;
@@ -227,22 +227,22 @@ function add() {
             const key = item?.key;
             if (tree && key) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
-                let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
+                let arr = value.get("comments") as any;
                 if (!arr) {
-                    arr = new Y.Array<Y.Map<unknown>>();
+                    arr = new Y.Array<Y.Map<import("../types/yjs-types.js").CommentValueType>>();
                     value.set("comments", arr);
                 }
                 commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] initialized comments via tree/key fallback');
             }
         } catch (e) {
-            logger.warn('[CommentThread] failed to ensure comments via fallback', e);
+            logger.warn({ error: e }, "[CommentThread] failed to ensure comments via fallback");
         }
     }
     const user = props.currentUser;
 
-    logger.debug('[CommentThread] add comment, newText=', newText);
-    logger.debug('[CommentThread] comments object:', commentsObj, 'props.item?', !!props.item, 'item?.comments?', !!props.item?.comments);
+    logger.debug({ newText }, '[CommentThread] add comment, newText');
+    logger.debug({ hasCommentsObj: !!commentsObj, hasPropsItem: !!props.item, hasItemComments: !!(props.item as any)?.comments }, '[CommentThread] comments object check');
 
     // Proceed with UI even if comments object is invalid (ensure reflection via DOM/events)
     const time = Date.now();
@@ -250,9 +250,9 @@ function add() {
     if (commentsObj && typeof commentsObj.addComment === 'function') {
         const res = commentsObj.addComment(user, newText);
         id = res?.id || `local-${time}-${Math.random().toString(36).slice(2)}`;
-        logger.debug('[CommentThread] comment added to Yjs, id=', id);
+        logger.debug({ id }, '[CommentThread] comment added to Yjs');
     } else {
-        logger.error({ error: new Error("invalid or missing addComment") }, '[CommentThread] comments object is invalid or missing addComment; falling back to local DOM only');
+        logger.error({ error: new Error("invalid or missing addComment") }, '[CommentThread] comments object is invalid or missing addComment');
         id = `local-${time}-${Math.random().toString(36).slice(2)}`;
     }
 
@@ -288,8 +288,8 @@ function add() {
         } else {
             // Fallback: try to get the length from the item's comments
             try {
-                if (props.item && typeof props.item.comments !== 'undefined') {
-                    const itemComments = props.item.comments;
+                if (props.item && typeof (props.item as any).comments !== 'undefined') {
+                    const itemComments = (props.item as any).comments;
                     if (typeof itemComments.length === 'number') {
                         countNow = itemComments.length;
                     }
@@ -332,7 +332,7 @@ function add() {
     newText = '';
 }
 function remove(id: string) {
-    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
+    let commentsObj: Comments | undefined = props.comments ?? (props.item as any)?.comments;
     if (!commentsObj && props.item) {
         try {
             const item = props.item as ItemLike;
@@ -340,13 +340,13 @@ function remove(id: string) {
             const key = item?.key;
             if (tree && key) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
-                let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
-                if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
+                let arr = value.get("comments") as any;
+                if (!arr) { arr = new Y.Array<Y.Map<import("../types/yjs-types.js").CommentValueType>>(); value.set("comments", arr); }
                 commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] ensured comments for remove via tree/key');
             }
         } catch (e) {
-            logger.warn('[CommentThread] failed to ensure comments for remove', e);
+            logger.warn({ error: e }, "[CommentThread] failed to ensure comments for remove");
         }
     }
     try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error({ error: e as Error }, '[CommentThread] deleteComment error'); }
@@ -376,7 +376,7 @@ function startEdit(c: Comment) {
 
 function saveEdit(id: string) {
     // Removed to fix state_referenced_locally
-    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
+    let commentsObj: Comments | undefined = props.comments ?? (props.item as any)?.comments;
     if (!commentsObj && props.item) {
         try {
             const item = props.item as ItemLike;
@@ -384,13 +384,13 @@ function saveEdit(id: string) {
             const key = item?.key;
             if (tree && key) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
-                let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
-                if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
+                let arr = value.get("comments") as any;
+                if (!arr) { arr = new Y.Array<Y.Map<import("../types/yjs-types.js").CommentValueType>>(); value.set("comments", arr); }
                 commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] ensured comments for saveEdit via tree/key');
             }
         } catch (e) {
-            logger.warn('[CommentThread] failed to ensure comments for saveEdit', e);
+            logger.warn({ error: e }, "[CommentThread] failed to ensure comments for saveEdit");
         }
     }
 

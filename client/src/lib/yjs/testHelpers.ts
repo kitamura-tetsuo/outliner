@@ -313,12 +313,12 @@ export async function setupUpdateTracking(
             (window as Window & typeof globalThis & Record<string, unknown>)[counterVar] = 0;
             (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var] = 0;
 
-            doc.on("update", () => {
+            (doc as any).on("update", () => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ((window as any)[counterVar] as number)++;
             });
 
-            doc.on("updateV2", () => {
+            (doc as any).on("updateV2", () => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ((window as any)[counterV2Var] as number)++;
             });
@@ -449,7 +449,7 @@ export interface TwoFullBrowserPagesResult {
  *
  * ⚠️ TEST ENVIRONMENT ONLY
  * This helper creates two browser contexts with full test environment setup
- * using TestHelpers.seedProjectAndNavigate for testing collaboration features.
+ * using (TestHelpers as any).seedProjectAndNavigate for testing collaboration features.
  *
  * Note: This function requires TestHelpers from e2e/utils/testHelpers.ts.
  * It should only be used in E2E test files, not in this library file directly.
@@ -483,7 +483,7 @@ export async function prepareTwoFullBrowserPages(
     });
 
     // Prepare test environment for page1
-    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(
+    const { projectName, pageName } = await (TestHelpers as any).seedProjectAndNavigate(
         page1,
         testInfo,
         initialItems,

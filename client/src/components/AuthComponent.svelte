@@ -81,7 +81,7 @@ onMount(() => {
 
     // For testing: Custom authentication event listener
     if (typeof document !== "undefined") {
-        document.addEventListener("auth-success", (event: AuthSuccessEvent) => {
+        document.addEventListener("auth-success" as any, (event: AuthSuccessEvent) => {
             if (event.detail && event.detail.user) {
                 currentUser = event.detail.user;
                 // Call the callback prop directly

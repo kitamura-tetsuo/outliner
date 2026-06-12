@@ -4,7 +4,7 @@ import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
 
-function childrenKeys(tree: import("../../schema/YTree").YTree, parentKey: string): string[] {
+function childrenKeys(tree: any, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
     return tree.sortChildrenByOrder(children, parentKey);
 }
@@ -88,7 +88,7 @@ export const yjsService = {
     },
 
     moveItem(project: Project, itemKey: string, newParentKey: string, index?: number) {
-        const tree = project.tree;
+        const tree = project.tree as any;
         tree.moveChildToParent(itemKey, newParentKey);
         if (index !== undefined) {
             const siblings = childrenKeys(tree, newParentKey).filter((k: string) => k !== itemKey);
@@ -104,7 +104,7 @@ export const yjsService = {
     },
 
     indentItem(project: Project, itemKey: string) {
-        const tree = project.tree;
+        const tree = project.tree as any;
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
         const siblings = childrenKeys(tree, parent);
@@ -117,7 +117,7 @@ export const yjsService = {
     },
 
     outdentItem(project: Project, itemKey: string) {
-        const tree = project.tree;
+        const tree = project.tree as any;
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
         const grand = tree.getNodeParentFromKey(parent);
@@ -127,7 +127,7 @@ export const yjsService = {
     },
 
     reorderItem(project: Project, itemKey: string, index: number) {
-        const tree = project.tree;
+        const tree = project.tree as any;
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
         const siblings = childrenKeys(tree, parent).filter((k: string) => k !== itemKey);
@@ -165,7 +165,7 @@ export const yjsService = {
             const target = resolvePresenceStore();
             if (!target) return;
             const states = awareness.getStates();
-            const clientId = awareness.clientID;
+            const clientId = (awareness as any).clientID;
             const overlay = resolveOverlayStore();
 
             [...added, ...updated].forEach((id: number) => {
@@ -202,7 +202,7 @@ export const yjsService = {
             const overlay = resolveOverlayStore();
             if (!overlay) return; // no-op when overlay store not present
             const states = awareness.getStates();
-            const clientId = awareness.clientID;
+            const clientId = (awareness as any).clientID;
 
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
@@ -225,7 +225,7 @@ export const yjsService = {
     },
 
     promoteChildren(project: Project, itemKey: string) {
-        const tree = project.tree;
+        const tree = project.tree as any;
         const children = childrenKeys(tree, itemKey);
         if (children.length === 0) return;
 
@@ -241,7 +241,7 @@ export const yjsService = {
     },
 
     moveSubtreeUp(project: Project, itemKey: string) {
-        const tree = project.tree;
+        const tree = project.tree as any;
         const parentKey = tree.getNodeParentFromKey(itemKey);
         if (!parentKey) return;
         const siblings = childrenKeys(tree, parentKey);
@@ -252,7 +252,7 @@ export const yjsService = {
     },
 
     moveSubtreeDown(project: Project, itemKey: string) {
-        const tree = project.tree;
+        const tree = project.tree as any;
         const parentKey = tree.getNodeParentFromKey(itemKey);
         if (!parentKey) return;
         const siblings = childrenKeys(tree, parentKey);

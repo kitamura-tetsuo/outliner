@@ -29,7 +29,7 @@ describe("yjsService", () => {
 
     it("sets presence state", () => {
         const awareness = new Awareness(new Y.Doc());
-        yjsService.setPresence(awareness, { cursor: { itemId: "i1", offset: 0 } });
+        yjsService.setPresence(awareness, { cursor: { itemId: "i1", offset: 0, cursorId: "1", isActive: true } } as any);
         const presence = yjsService.getPresence(awareness);
         expect(presence?.cursor?.itemId).toBe("i1");
     });
@@ -93,7 +93,7 @@ describe("yjsService", () => {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } },
         });
-        awareness.emit("change", [{
+        (awareness as any).emit("change", [{
             added: new Set([42]),
             updated: new Set(),
             removed: new Set(),
@@ -102,7 +102,7 @@ describe("yjsService", () => {
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
-        awareness.emit("change", [{
+        (awareness as any).emit("change", [{
             added: new Set(),
             updated: new Set(),
             removed: new Set([42]),

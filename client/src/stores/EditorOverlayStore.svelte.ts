@@ -1257,7 +1257,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).generalStore
             ) {
-                const currentPage = (window as Window & typeof globalThis & {
+                const currentPage = (window as any & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
                     itemsStore?: unknown;
@@ -1270,14 +1270,14 @@ export class EditorOverlayStore {
                     // Use iterator to avoid O(N^2) complexity with indexed access on Items
                     if (currentPage.items) {
                         // Use iterateUnordered if available to avoid O(N log N) sorting
-                        const iter = (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
+                        const iter = ((currentPage as any).items)
                                 .iterateUnordered
-                            ? (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
+                            ? ((currentPage as any).items)
                                 .iterateUnordered()
                             : currentPage.items;
                         for (const item of iter) {
                             if (item && item.id === itemId) {
-                                return item.text || "";
+                                return (item as any).text || "";
                             }
                         }
                     }
@@ -1320,12 +1320,12 @@ export class EditorOverlayStore {
                     appStore?: { currentPage?: unknown; };
                     editorOverlayStore?: unknown;
                 }).itemsStore;
-                if (itemsStore && itemsStore.allItems) {
+                if (itemsStore && (itemsStore as any).allItems) {
                     // Attempt to find the item in the items store
-                    for (let i = 0; i < itemsStore.allItems.length; i++) {
-                        const item = itemsStore.allItems[i];
+                    for (let i = 0; i < (itemsStore as any).allItems.length; i++) {
+                        const item = (itemsStore as any).allItems[i];
                         if (item && item.id === itemId) {
-                            return item.text || "";
+                            return (item as any).text || "";
                         }
                     }
                 }
@@ -1373,7 +1373,7 @@ export class EditorOverlayStore {
                         it.id === itemId
                     );
                     if (item) {
-                        return item.text || "";
+                        return (item as any).text || "";
                     }
                 }
             }
@@ -1808,7 +1808,7 @@ export class EditorOverlayStore {
             }
 
             // Use page-level awareness (cursor/selection is page-specific)
-            const currentPage = (window as Window & typeof globalThis & {
+            const currentPage = (window as any & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
                 itemsStore?: unknown;
@@ -1822,7 +1822,7 @@ export class EditorOverlayStore {
                 return;
             }
 
-            const pageAwareness = client.getPageAwareness?.(pageId);
+            const pageAwareness = (client as any).getPageAwareness?.(pageId);
             if (!pageAwareness) {
                 console.log("[pushPresenceState] No pageAwareness", {
                     pageId,
@@ -1851,7 +1851,7 @@ export class EditorOverlayStore {
             };
 
             // Set directly to page-level awareness
-            yjsService.setPresence(pageAwareness, (!cursor && !selection) ? null : presenceState);
+            yjsService.setPresence(pageAwareness, (!cursor && !selection) ? null : presenceState as any);
         } catch {
             // Skip presence sync in environments where Awareness is not available
         }

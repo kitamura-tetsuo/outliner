@@ -24,28 +24,26 @@ let chart: echarts.ECharts | undefined;
 let hasData = $state(false);
 let isInitialized = $state(false);
 
-onMount(async () => {
-    try {
-        await initDb();
-        isInitialized = true;
-        
-        chart = echarts.init(chartDiv);
-        
-        // If an item is provided and has a chartQuery, run it
-        if (item && item.chartQuery) {
-            runQuery(item.chartQuery);
+onMount(() => {
+    let unsub = () => {};
+    (async () => {
+        try {
+            await initDb();
+            isInitialized = true;
+            chart = echarts.init(chartDiv);
+            if (item && item.chartQuery) {
+                runQuery(item.chartQuery);
+            }
+            unsub = queryStore.subscribe(update);
+        } catch (error) {
+            console.error("Error initializing chart:", error);
         }
-        
-        const unsub = queryStore.subscribe(update);
-        return () => {
-            unsub();
-            chart?.dispose();
-        };
-    } catch (error) {
-          console.error("Error initializing chart:", error);
-    }
+    })();
+    return () => {
+        unsub();
+        chart?.dispose();
+    };
 });
-
 // Function to run the item's query when needed
 async function runItemQuery() {
     if (item && item.chartQuery && isInitialized) {

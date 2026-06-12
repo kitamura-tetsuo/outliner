@@ -184,7 +184,7 @@ function updateTextareaPosition() {
             lastScrolledOffset = lastCursor.offset;
 
             const viewportTop = treeContainerRect.top + pos.top;
-            const cursorHeight = itemInfo.lineHeight ? parseInt(itemInfo.lineHeight) : 20;
+            const cursorHeight = itemInfo.lineHeight ? parseInt(String(itemInfo.lineHeight)) : 20;
             const viewportBottom = viewportTop + cursorHeight;
 
             const stickyHeaderHeight = 80;
@@ -687,7 +687,7 @@ onMount(() => {
                     const boxSel = sels.find(s => s.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length);
                     if (boxSel) {
                         const lines: string[] = [];
-                        for (const r of boxSel.boxSelectionRanges) {
+                        for (const r of boxSel.boxSelectionRanges || []) {
                             const full = getTextByItemId(r.itemId);
                             const s = Math.max(0, Math.min(full.length, Math.min(r.startOffset, r.endOffset)));
                             const ee = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
@@ -829,7 +829,7 @@ function getTextByItemId(itemId: string): string {
     const items = page?.items;
     const len = items?.length ?? 0;
     for (let i = 0; i < len; i++) {
-      const it = items.at ? items.at(i) : items[i];
+      const it = (items as any)?.at ? (items as any).at(i) : (items as any)?.[i];
       if (it?.id === itemId) {
         return String(it?.text ?? "");
       }
@@ -866,7 +866,7 @@ function handleCopy(event: ClipboardEvent) {
   const boxSel = selections.find((s) => s.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length > 0);
   if (!selectedText && boxSel) {
     const lines: string[] = [];
-    for (const r of boxSel.boxSelectionRanges) {
+    for (const r of boxSel.boxSelectionRanges || []) {
       const full = getTextByItemId(r.itemId);
       const s = Math.max(0, Math.min(full.length, Math.min(r.startOffset, r.endOffset)));
       const e = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
@@ -879,7 +879,7 @@ function handleCopy(event: ClipboardEvent) {
         event.preventDefault();
         event.clipboardData.setData('text/plain', rectText);
       }
-      if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
+      if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
         (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(rectText).catch(() => {});
       }
       if (typeof window !== 'undefined') {
@@ -1035,7 +1035,7 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', selectedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
+      if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
       (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch(() => {});
     }
 
@@ -1166,7 +1166,7 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', combinedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
+      if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
       (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch(() => {});
     }
     // Save to global variable (for E2E test environment only)

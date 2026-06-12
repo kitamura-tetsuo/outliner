@@ -204,7 +204,7 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as import("../../schema/app-schema").Items;
+            const parent = target.parent as any;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
@@ -290,7 +290,7 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as import("../../schema/app-schema").Items;
+            const parent = target.parent as any;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
@@ -446,17 +446,17 @@ export class CursorEditor {
         const prevItem = findPreviousItem(cursor.itemId);
         if (!prevItem) return;
 
-        const prevText = this.getPlainText(prevItem);
-        const currentText = this.getPlainText(currentItem);
+        const prevText = this.getPlainText(prevItem as any);
+        const currentText = this.getPlainText(currentItem as any);
         const combinedText = `${prevText}${currentText}`;
 
         const oldItemId = cursor.itemId;
-        const prevId = (prevItem as import("../../schema/app-schema").Item)?.id ?? cursor.itemId;
+        const prevId = (prevItem as any)?.id ?? cursor.itemId;
         const newOffset = prevText.length;
 
-        this.runInTransaction([prevItem, currentItem], () => {
-            this.updateItemText(prevItem, combinedText);
-            this.deleteItemNode(currentItem);
+        this.runInTransaction([prevItem as any, currentItem as any], () => {
+            this.updateItemText(prevItem as any, combinedText);
+            this.deleteItemNode(currentItem as any);
         });
 
         cursor.itemId = prevId;
@@ -470,16 +470,16 @@ export class CursorEditor {
 
     private getPlainText(item: import("../../schema/app-schema").Item): string {
         if (!item) return "";
-        const textValue = (item as import("../../schema/app-schema").Item).text;
+        const textValue = (item as any).text;
         if (typeof textValue === "string") return textValue;
-        if (textValue && typeof textValue.toString === "function") {
+        if (textValue && typeof (textValue as any).toString === "function") {
             try {
-                return textValue.toString();
+                return (textValue as any).toString();
             } catch {}
         }
-        if (typeof (item as import("../../schema/app-schema").Item).getText === "function") {
+        if (typeof (item as any).getText === "function") {
             try {
-                const result = (item as import("../../schema/app-schema").Item).getText();
+                const result = (item as any).getText();
                 if (typeof result === "string") return result;
             } catch {}
         }
@@ -493,9 +493,9 @@ export class CursorEditor {
             return;
         }
 
-        const tree = (item as import("../../schema/app-schema").Item)?.tree;
-        const key = (item as import("../../schema/app-schema").Item)?.key
-            ?? (item as import("../../schema/app-schema").Item)?.id;
+        const tree = (item as any)?.tree;
+        const key = (item as any)?.key
+            ?? (item as any)?.id;
         if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
 
         const value = tree.getNodeValueFromKey(key);
@@ -520,13 +520,13 @@ export class CursorEditor {
             return;
         }
 
-        const key = (item as import("../../schema/app-schema").Item)?.key
-            ?? (item as import("../../schema/app-schema").Item)?.id;
+        const key = (item as any)?.key
+            ?? (item as any)?.id;
         if (!key) return;
 
         const treeCandidates = [
-            (item as import("../../schema/app-schema").Item)?.tree,
-            (item as import("../../schema/app-schema").Item)?.parent?.tree,
+            (item as any)?.tree,
+            (item as any)?.parent?.tree,
             (generalStore as { project?: { tree?: unknown; }; })?.project?.tree,
         ];
 
@@ -542,7 +542,7 @@ export class CursorEditor {
 
     private runInTransaction(participants: import("../../schema/app-schema").Item[], action: () => void) {
         const doc = participants
-            .map(item => (item as import("../../schema/app-schema").Item)?.ydoc)
+            .map(item => (item as any)?.ydoc)
             .find(candidate => candidate && typeof candidate.transact === "function");
 
         if (doc) {
@@ -563,11 +563,11 @@ export class CursorEditor {
         const nextItem = findNextItem(cursor.itemId);
         if (!nextItem) return;
 
-        const currentText = (currentItem as import("../../schema/app-schema").Item).text || "";
-        const nextText = (nextItem as import("../../schema/app-schema").Item).text || "";
-        (currentItem as import("../../schema/app-schema").Item).updateText(currentText + nextText);
+        const currentText = (currentItem as any).text || "";
+        const nextText = (nextItem as any).text || "";
+        (currentItem as any).updateText(currentText + nextText);
 
-        (nextItem as import("../../schema/app-schema").Item).delete();
+        (nextItem as any).delete();
     }
 
     private deleteEmptyItem() {
@@ -596,7 +596,7 @@ export class CursorEditor {
         }
 
         store.clearCursorForItem(cursor.itemId);
-        (currentItem as import("../../schema/app-schema").Item).delete();
+        (currentItem as any).delete();
 
         cursor.itemId = targetItemId;
         cursor.offset = targetOffset;
@@ -624,8 +624,8 @@ export class CursorEditor {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        const startItem = searchItem(root as import("../../schema/app-schema").Item, selection.startItemId);
-        const endItem = searchItem(root as import("../../schema/app-schema").Item, selection.endItemId);
+        const startItem = searchItem(root as any, selection.startItemId);
+        const endItem = searchItem(root as any, selection.endItemId);
         if (!startItem || !endItem) return;
 
         const isReversed = !!selection.isReversed;
@@ -634,8 +634,8 @@ export class CursorEditor {
         const firstOffset = isReversed ? selection.endOffset : selection.startOffset;
         const lastOffset = isReversed ? selection.startOffset : selection.endOffset;
 
-        const parent = (firstItem as import("../../schema/app-schema").Item).parent;
-        if (!parent || parent !== (lastItem as import("../../schema/app-schema").Item).parent) return;
+        const parent = (firstItem as any).parent;
+        if (!parent || parent !== (lastItem as any).parent) return;
 
         const items = parent as unknown as Items;
         const firstIndex = items.indexOf(firstItem);
@@ -643,9 +643,9 @@ export class CursorEditor {
         if (firstIndex === -1 || lastIndex === -1) return;
 
         try {
-            const firstText = (firstItem as import("../../schema/app-schema").Item).text || "";
+            const firstText = (firstItem as any).text || "";
             const newFirstText = firstText.substring(0, firstOffset);
-            const lastText = (lastItem as import("../../schema/app-schema").Item).text || "";
+            const lastText = (lastItem as any).text || "";
             const newLastText = lastText.substring(lastOffset);
 
             const itemsToRemove: string[] = [];
@@ -658,13 +658,13 @@ export class CursorEditor {
                 store.clearCursorForItem(itemId);
             }
 
-            (firstItem as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
+            (firstItem as any).updateText(newFirstText + newLastText);
 
             for (let i = lastIndex; i > firstIndex; i--) {
-                (items as import("../../schema/app-schema").Items).removeAt(i);
+                (items as any).removeAt(i);
             }
 
-            cursor.itemId = (firstItem as import("../../schema/app-schema").Item).id;
+            cursor.itemId = (firstItem as any).id;
             cursor.offset = firstOffset;
             cursor.applyToStore();
 
@@ -779,10 +779,10 @@ export class CursorEditor {
         while (walker.currentNode) {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
-            const item = searchItem(generalStore.currentPage as import("../../schema/app-schema").Page, itemId);
+            const item = searchItem(generalStore.currentPage as any, itemId);
             if (!item) continue;
 
-            const text = (item as import("../../schema/app-schema").Item).text || "";
+            const text = (item as any).text || "";
 
             if (current === firstEl && current === lastEl) {
                 const start = isReversed ? endOffset : startOffset;
@@ -809,7 +809,7 @@ export class CursorEditor {
                 }
 
                 const newText = text.substring(0, start) + formattedText + text.substring(end);
-                (item as import("../../schema/app-schema").Item).updateText(newText);
+                (item as any).updateText(newText);
             } else {
                 // Detailed formatting for selection ranges spanning multiple items is not supported
             }

@@ -226,7 +226,7 @@ export class CursorTextOperations {
         prevItem.updateText(prevText + currentText);
 
         // Delete the current item
-        (currentItem as import("../../schema/app-schema").Item).delete();
+        (currentItem as any).delete();
 
         // Update cursor position
         const oldItemId = this.cursor.itemId;
@@ -261,7 +261,7 @@ export class CursorTextOperations {
         currentItem.updateText(currentText + nextText);
 
         // Delete the next item
-        (nextItem as import("../../schema/app-schema").Item).delete();
+        (nextItem as any).delete();
 
         // Cursor position remains unchanged (at the end of the current item)
     }
@@ -305,7 +305,7 @@ export class CursorTextOperations {
         store.clearCursorForItem(this.cursor.itemId);
 
         // Delete the item
-        (currentItem as import("../../schema/app-schema").Item).delete();
+        (currentItem as any).delete();
 
         // Set the cursor to the new position
         this.cursor.itemId = targetItemId;
@@ -338,7 +338,7 @@ export function deleteEmptyItem(current?: Item) {
 
         // Clear cursor for the current item and delete it
         store.clearCursorForItem(current.id);
-        (current as import("../../schema/app-schema").Item).delete();
+        (current as any).delete();
 
         // Move active item focus
         const target = next ?? prev ?? undefined;
@@ -364,8 +364,8 @@ export function mergeWithNextItem(current?: Item) {
 
         const a = current.text?.toString?.() ?? "";
         const b = next.text?.toString?.() ?? "";
-        current.updateText(a + b);
-        (next as import("../../schema/app-schema").Item).delete();
+        (current as any).updateText(a + b);
+        (next as any).delete();
 
         store.setActiveItem(current.id);
         store.startCursorBlink();
@@ -387,7 +387,7 @@ export function mergeWithPreviousItem(current?: Item) {
         const b = current.text?.toString?.() ?? "";
         prev.updateText(a + b);
         const prevId = prev.id;
-        (current as import("../../schema/app-schema").Item).delete();
+        (current as any).delete();
 
         store.setActiveItem(prevId);
         store.startCursorBlink();

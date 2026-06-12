@@ -92,7 +92,7 @@ export class YjsClient {
         } | null,
     ) {
         if (!this._awareness) return;
-        yjsService.setPresence(this._awareness, state);
+        yjsService.setPresence(this._awareness, state as any);
     }
 
     public getAwareness(): Awareness | undefined | null {
@@ -136,20 +136,20 @@ export class YjsClient {
                     : (it as Record<number, unknown>)[i];
                 if (!item) continue;
                 const node: Record<string, unknown> = {
-                    id: item.id,
-                    text: item.text?.toString?.() ?? "",
+                    id: (item as any).id,
+                    text: (item as any).text?.toString?.() ?? "",
                     author: (item as { author?: string; }).author,
                     votes: [...((item as { votes?: string[]; }).votes ?? [])],
                     created: (item as { created?: number; }).created,
                     lastChanged: (item as { lastChanged?: number; }).lastChanged,
                 };
-                const children = item.items as Items;
+                const children = (item as any).items as Items;
                 if (children && ((children as { length?: number; }).length ?? 0) > 0) {
                     node.items = collect(children);
                 }
                 arr.push(node);
             }
-            return { itemCount: arr.length, items: arr };
+            return { itemCount: arr.length, items: arr } as any;
         };
         return collect(items);
     }
@@ -160,8 +160,8 @@ export class YjsClient {
         const parts = path.split(".");
         let result: unknown = treeData;
         for (const part of parts) {
-            if (result === undefined || result === null) return null;
-            result = result[part];
+            if (result === undefined || result === null) return null as any;
+            result = (result as any)[part];
         }
         return result;
     }
@@ -182,7 +182,7 @@ export class YjsClient {
             configuration?: { token: string | (() => string | Promise<string>); };
         };
         const config = provider?.configuration;
-        const wsProvider = config?.websocketProvider;
+        const wsProvider = (config as any)?.websocketProvider;
 
         return {
             clientId: this.clientId,
@@ -198,9 +198,9 @@ export class YjsClient {
                 : null,
             provider: this._provider
                 ? {
-                    url: provider.url || config?.url || wsProvider?.url,
-                    name: provider.name || config?.name,
-                    connected: provider.connected || wsProvider?.status === "connected",
+                    url: (provider as any).url || (config as any)?.url || (wsProvider as any)?.url,
+                    name: (provider as any).name || (config as any)?.name,
+                    connected: (provider as any).connected || (wsProvider as any)?.status === 'connected',
                 }
                 : null,
         };

@@ -125,7 +125,7 @@ onMount(() => {
         const isCandidate = !isPageTitle && (index === 1 || gs.openCommentItemIndex === index);
 
         if (isCandidate) {
-            const cp = gs?.currentPage;
+            const cp = (gs as any)?.currentPage;
             const items = cp?.items as unknown as { iterateUnordered?: () => Iterable<unknown> };
             const targetId = gs?.openCommentItemId;
             let exists = false;
@@ -133,7 +133,7 @@ onMount(() => {
                 // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
                 // Use iterateUnordered if available for O(N) instead of O(N log N)
                 const iter = items.iterateUnordered ? items.iterateUnordered() : items as unknown as Iterable<unknown>;
-                for (const it of iter as unknown) {
+                for (const it of iter as any) {
                     if (it?.id === targetId) { exists = true; break; }
                 }
             }
@@ -290,8 +290,8 @@ let commentCountLocal = $state(0);
  * Get normalized comment count from Yjs comments array
  */
 function normalizeCommentCount(arr: unknown ): number {
-    if (!arr || typeof arr.length !== "number") return 0;
-    return Number(arr.length);
+    if (!arr || typeof (arr as any).length !== "number") return 0;
+    return Number((arr as any).length);
 }
 
 /**
@@ -300,18 +300,18 @@ function normalizeCommentCount(arr: unknown ): number {
 function ensureCommentsArray(): unknown[] {
     try {
         const it = item as unknown;
-        if (!it) return null as unknown;
-        let arr: unknown[] = it.comments;
+        if (!it) return null as any;
+        let arr: unknown[] = (it as any).comments;
         if (!arr) {
             // Initialize if comments property does not exist
-            if (typeof it.setComments === "function") {
-                it.setComments([]);
-                arr = it.comments;
+            if (typeof (it as any).setComments === "function") {
+                (it as any).setComments([]);
+                arr = (it as any).comments;
             }
         }
         return arr;
     } catch {
-        return null as unknown;
+        return null as any;
     }
 }
 
@@ -321,7 +321,7 @@ function ensureCommentsArray(): unknown[] {
 function syncCommentCountFromItem() {
     try {
         const arr: unknown[] = ensureCommentsArray();
-        if (arr && typeof arr.length === "number") {
+        if (arr && typeof (arr as any).length === "number") {
             const newCount = normalizeCommentCount(arr);
             if (commentCountLocal !== newCount) {
                 commentCountLocal = newCount;
@@ -360,13 +360,13 @@ function applyCommentCount(arrOrCount: unknown) {
 function attachCommentObserver(): (() => void) | null {
     try {
         const arr: unknown[] = ensureCommentsArray();
-        if (arr && typeof arr.observe === "function") {
+        if (arr && typeof (arr as any).observe === "function") {
             const observer = () => applyCommentCount(arr);
-            arr.observe(observer);
-            return () => arr.unobserve(observer);
+            (arr as any).observe(observer);
+            return () => (arr as any).unobserve(observer);
         }
     } catch {}
-    return null as unknown;
+    return null as any;
     }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -387,10 +387,10 @@ onMount(() => {
         try {
             const detail: unknown  = (event as CustomEvent<unknown>)?.detail;
             if (!detail) return;
-            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
+            const targetId = (detail as any).id ?? (detail as any).itemId ?? (detail as any).nodeId ?? (detail as any).targetId;
             if (targetId == null) return;
             if (String(targetId) !== String(model?.id)) return;
-            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
+            const possibleCount = (detail as any).count ?? (detail as any).value ?? (detail as any).len ?? (detail as any).length;
             applyCommentCount(possibleCount);
         } catch {}
     };
@@ -438,18 +438,18 @@ onMount(() => {
     try {
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
         const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as unknown;
-        if (ymap && typeof ymap.observe === 'function') {
+        if (ymap && typeof (ymap as any).observe === 'function') {
             const obs = (e?: unknown ) => {
                 try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
-                        aliasTargetId = ymap.get?.('aliasTargetId');
+                    if (!e || ((e as any).keysChanged && (e as any).keysChanged.has && (e as any).keysChanged.has('aliasTargetId'))) {
+                        aliasTargetId = (ymap as any).get?.('aliasTargetId');
                     }
                 } catch {}
             };
-            ymap.observe(obs);
+            (ymap as any).observe(obs);
             // Initial reflection
             obs();
-            onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
+            onDestroy(() => { try { (ymap as any).unobserve(obs); } catch {} });
         }
     } catch {}
 });
@@ -465,7 +465,7 @@ let aliasLastConfirmedPulse = $derived.by(() => {
     if (li && lt && la && (Date.now() - la < 6000) && li === model.id) {
         return { itemId: li, targetId: lt, at: la };
     }
-    return null as unknown;
+    return null as any;
     });
 
 // Update DOM attributes when aliasLastConfirmedPulse changes
@@ -615,8 +615,8 @@ function handleComponentTypeChange(newType: string) {
 
     const setMapField = (it: unknown , key: string, value: unknown) => {
         try {
-            const tree = it?.tree;
-            const nodeKey = it?.key;
+            const tree = (it as any)?.tree;
+            const nodeKey = (it as any)?.key;
             const m = tree?.getNodeValueFromKey?.(nodeKey);
             if (m && typeof m.set === "function") {
                 m.set(key, value);
@@ -658,7 +658,7 @@ onMount(() => {
         if (m && typeof m.observe === "function") {
             const h2 = (e?: { keysChanged?: { has: (k: string) => boolean } }) => {
                 try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
+                    if (!e || ((e as any).keysChanged && (e as any).keysChanged.has && (e as any).keysChanged.has('componentType'))) {
                         compTypeValue = m.get?.("componentType") as string | undefined;
                     }
                 } catch {}
@@ -999,8 +999,8 @@ function toggleVote() {
 function toggleComments() {
     const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
     if (gs.openCommentItemId === model.id) {
-        gs.openCommentItemId = null;
-        gs.openCommentItemIndex = null;
+        gs.openCommentItemId = undefined;
+        gs.openCommentItemIndex = undefined;
         try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
     } else {
         gs.openCommentItemId = model.id;
@@ -1666,7 +1666,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         const url = await uploadAttachment(containerId, model.id, file);
                         
                         if (!dropTargetPosition || dropTargetPosition === "middle") {
-                            addAttachmentToDomTargetOrModel(event as unknown, url);
+                            addAttachmentToDomTargetOrModel(event as any, url);
                             // Reflect to Doc after connection
                             try { mirrorAttachment(url); } catch {}
                         } else {
@@ -1718,7 +1718,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
-                        addAttachmentToDomTargetOrModel(event as unknown, localUrl);
+                        addAttachmentToDomTargetOrModel(event as any, localUrl);
                         try { mirrorAttachment(localUrl); } catch {}
 
                     } catch {}
@@ -1860,7 +1860,7 @@ onMount(() => {
                 (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
             } else {
                 const prev: unknown   = (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__;
-                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
+                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { (prev as any)(el); } catch {} ; try { selfInvoker(el); } catch {} };
             }
 
             // E2E: Test-only helper to add attachment directly (deterministically reproduce final result of DnD)
@@ -1889,7 +1889,7 @@ onMount(() => {
                 (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
             } else {
                 const prevAdd: unknown   = (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__;
-                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
+                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { (prevAdd as any)(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
             }
         }
 

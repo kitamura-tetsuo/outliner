@@ -259,7 +259,7 @@ export class UserManager {
     // User sign-in process
     private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<void> {
         try {
-            logger.debug("handleUserSignedIn started", { uid: firebaseUser.uid });
+            logger.debug({ uid: firebaseUser.uid }, 'handleUserSignedIn started');
 
             // Create user object
             const providerIds = firebaseUser.providerData
@@ -277,10 +277,10 @@ export class UserManager {
                 providerIds: providerIds.length > 0 ? providerIds : undefined,
             };
 
-            logger.info("Notifying listeners of successful authentication", {
+            logger.info({
                 userId: user.id,
                 listenerCount: this.listeners.length,
-            });
+            }, 'Notifying listeners of successful authentication');
 
             // Notify listeners of authentication result
             this.notifyListeners({
@@ -355,14 +355,14 @@ export class UserManager {
 
             this.unsubscribeAuth = onIdTokenChanged(auth, async firebaseUser => {
                 // ... existing logic ...
-                logger.debug("onIdTokenChanged triggered", {
+                logger.debug({
                     hasUser: !!firebaseUser,
                     userId: firebaseUser?.uid,
                     email: firebaseUser?.email,
-                });
+                }, 'onIdTokenChanged triggered');
 
                 if (firebaseUser) {
-                    logger.info("User signed in/token refreshed via onIdTokenChanged", { userId: firebaseUser.uid });
+                    logger.info({ userId: firebaseUser.uid }, 'User signed in/token refreshed via onIdTokenChanged');
                     await this.handleUserSignedIn(firebaseUser);
                 } else {
                     logger.info("User signed out via onIdTokenChanged");
@@ -412,22 +412,22 @@ export class UserManager {
                     // Try standard Firebase authentication first
                     logger.debug("[UserManager] Calling signInWithEmailAndPassword");
                     const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-                    logger.info("[UserManager] Email/password login successful via Firebase Auth", {
+                    logger.info({
                         userId: userCredential.user.uid,
-                    });
+                    }, '[UserManager] Email/password login successful via Firebase Auth');
                     return;
                 } catch (firebaseError) {
                     const errorObj = firebaseError as { message?: string; code?: string; };
-                    logger.warn("[UserManager] Firebase Auth login failed:", errorObj.message);
+                    logger.warn({ error: errorObj.message }, '[UserManager] Firebase Auth login failed:');
 
                     // Attempt to create user if not exists
                     if (errorObj.code === "auth/user-not-found") {
                         try {
                             logger.info("[UserManager] User not found, attempting to create user");
                             const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
-                            logger.info("[UserManager] New user created and logged in successfully", {
+                            logger.info({
                                 userId: userCredential.user.uid,
-                            });
+                            }, '[UserManager] New user created and logged in successfully');
                             return;
                         } catch (createError) {
                             logger.error({ error: createError as Error }, "[UserManager] Failed to create new user");
@@ -473,9 +473,9 @@ export class UserManager {
         } else if (this.auth.currentUser) {
             const user = this.getCurrentUser();
             if (user) {
-                logger.debug("addEventListener: User already authenticated, notifying immediately", {
+                logger.debug({
                     userId: user.id,
-                });
+                }, 'addEventListener: User already authenticated, notifying immediately');
                 listener({
                     user,
                 });

@@ -2,7 +2,7 @@ import type { Item } from "../../schema/yjs-schema";
 import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
-    const items = node.items as Iterable<Item> | undefined;
+    const items = node.items as any;
     if (!items || typeof (items as Record<symbol, unknown>)[Symbol.iterator] !== "function") {
         return [];
     }
