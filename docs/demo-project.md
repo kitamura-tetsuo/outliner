@@ -17,10 +17,18 @@ account.
   ([`server/src/demo-api.ts`](../server/src/demo-api.ts)) re-seeds the shared
   document when it is empty, when its content is older than 24 hours, or when
   `DEMO_TEMPLATE_VERSION` has changed.
+- The demo project page also shows a "Reset demo content" button that sends
+  `POST /api/seed-demo` with `{ "force": true }`, triggering the same reset
+  immediately regardless of the 24-hour schedule (FTR-784f295f).
 - Tests:
   - `server/tests/demo-seed-content.test.ts` validates the template structure.
+  - `server/tests/demo-manual-reset.test.ts` validates the reset policy
+    (including the forced reset) and that repeated reseeds keep the shared
+    document loadable.
   - `client/e2e/core/dmo-demo-project-feature-tour-7d3e9a1c.spec.ts` validates
     the `/demo` route end to end.
+  - `client/e2e/core/dmo-demo-manual-reset-784f295f.spec.ts` validates the
+    manual reset button.
 - Feature spec: `docs/client-features/dmo-demo-project-feature-tour-7d3e9a1c.yaml`
   (FTR-7d3e9a1c).
 

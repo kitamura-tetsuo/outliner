@@ -20,8 +20,11 @@ function resolveApiBaseUrl(): string {
  * Seed (or reset) the public demo project via the backend API.
  * Failures are logged but never thrown: the demo should still open
  * with whatever content is currently in the shared document.
+ *
+ * Pass `{ force: true }` to trigger the 24h reset manually, regardless of
+ * when the demo content was last seeded.
  */
-export async function seedDemo(): Promise<void> {
+export async function seedDemo(options: { force?: boolean; } = {}): Promise<void> {
     try {
         const apiBaseUrl = resolveApiBaseUrl();
         // Append /api/seed-demo, ensuring we don't double up on slashes
@@ -34,6 +37,7 @@ export async function seedDemo(): Promise<void> {
             headers: {
                 "Content-Type": "application/json",
             },
+            body: JSON.stringify({ force: options.force === true }),
         });
         if (!response.ok) {
             logger.warn(`Failed to seed demo: ${response.statusText}`);

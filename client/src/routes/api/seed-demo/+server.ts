@@ -1,8 +1,16 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-export const POST: RequestHandler = async () => {
+export const POST: RequestHandler = async ({ request }) => {
     try {
+        let force = false;
+        try {
+            const body = await request.json();
+            force = body?.force === true;
+        } catch {
+            // No/invalid JSON body: treat as a regular (non-forced) seed request
+        }
+
         let apiBaseUrl = process.env.VITE_YJS_API_URL;
 
         // Fallback to deriving the API URL from the WebSocket URL if available
@@ -20,7 +28,7 @@ export const POST: RequestHandler = async () => {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({}),
+            body: JSON.stringify({ force }),
         });
 
         if (!response.ok) {
