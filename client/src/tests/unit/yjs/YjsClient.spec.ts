@@ -56,6 +56,7 @@ describe("YjsClient", () => {
         client = new YjsClient({
             clientId,
             projectId,
+            // @ts-expect-error - mock for tests
             project,
             doc,
             provider,

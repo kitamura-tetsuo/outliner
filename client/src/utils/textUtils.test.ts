@@ -16,6 +16,7 @@ beforeAll(() => {
         HTMLElement?: typeof HTMLElement;
         Node?: typeof Node;
     };
+    // @ts-expect-error - mock for tests
     globalAny.window = dom.window as unknown as Window;
     globalAny.document = dom.window.document;
     globalAny.Element = dom.window.Element;

@@ -18,7 +18,7 @@ function computeDisplayed(ids: string[], def?: string) {
 onMount(() => {
     const apply = () => {
         try {
-            const u = (storeRef as { userProject?: unknown })?.userProject;
+            const u = (storeRef as { userProject?: { accessibleProjectIds?: string[], defaultProjectId?: string } })?.userProject;
             idsLocal = Array.from(u?.accessibleProjectIds ?? []);
             defaultIdLocal = u?.defaultProjectId;
         } catch {}

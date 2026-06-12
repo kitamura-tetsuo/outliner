@@ -16,7 +16,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<unknown>) => {
     };
 
     return {
-        ...actual,
+        ...(actual as object),
         getLogger: (componentName = "TestComponent") => {
             // Create a simple logger mock
             const logger: LoggerMock = {
@@ -96,6 +96,7 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<unknown>) => {
 import { getLogger } from "../lib/logger";
 
 // Set global mock for window object (required when testing without jsdom)
+// @ts-expect-error - mock for tests
 global.window = {
     console: console,
 } as unknown as Window;

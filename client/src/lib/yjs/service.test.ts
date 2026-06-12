@@ -31,7 +31,7 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         yjsService.setPresence(awareness, { cursor: { itemId: "i1", offset: 0 } });
         const presence = yjsService.getPresence(awareness);
-        expect(presence.cursor.itemId).toBe("i1");
+        expect(presence?.cursor?.itemId).toBe("i1");
     });
 
     it("binds project presence to store", () => {
@@ -93,12 +93,20 @@ describe("yjsService", () => {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } },
         });
-        awareness.emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
+        (awareness.emit as (...args: unknown[]) => void)("change", [{
+            added: new Set([42]),
+            updated: new Set(),
+            removed: new Set(),
+        }, "test"]);
 
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
-        awareness.emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
+        (awareness.emit as (...args: unknown[]) => void)("change", [{
+            added: new Set(),
+            updated: new Set(),
+            removed: new Set([42]),
+        }, "test"]);
         unbind();
     });
 });

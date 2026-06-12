@@ -72,7 +72,7 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
                 offset: 0,
                 isActive: true,
                 userId: "u1",
-            } as import("../stores/EditorOverlayStore.svelte").SelectionState,
+            } as { itemId: string; offset: number; isActive: boolean; userId: string; },
         );
 
         // Ensure no exception is thrown and the target is found
