@@ -29,8 +29,8 @@ let connectionStatus = $state("Disconnected");
 let isConnected = $state(false);
 
 // Handle authentication success
-async function handleAuthSuccess(authResult: unknown) {
-    logger.info("Authentication success:", authResult);
+async function handleAuthSuccess() {
+    logger.info("Authentication success:");
     isAuthenticated = true;
 
     // Automatically initialize Fluid client after authentication success

@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock module
 // Provide a local mock instead of importing .svelte.ts in tests
-const mockCursor: import("./editorOverlayStore.svelte.ts").CursorModel = {
+const mockCursor: { itemId: string; offset: number; findTarget: any; applyToStore: any; } = {
     itemId: "test-item",
     offset: 5,
     findTarget: vi.fn(() => ({ text: "hello/", updateText: vi.fn() })),
@@ -10,20 +11,20 @@ const mockCursor: import("./editorOverlayStore.svelte.ts").CursorModel = {
 };
 const mockEditorOverlayStore = {
     getCursorInstances: vi.fn(() => [mockCursor]),
-} as unknown as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
+} as any as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
 vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 
 // Access global store if available; otherwise provide a local minimal implementation
 const commandPaletteStore = (() => {
-    const g = globalThis as typeof globalThis & { commandPaletteStore?: unknown; };
+    const g = globalThis as typeof globalThis & { commandPaletteStore?: any; };
     if (g.commandPaletteStore) {
         return g.commandPaletteStore as {
             hide: () => void;
-            show: (pos: unknown) => void;
+            show: (pos: any) => void;
             handleCommandInput: (c: string) => void;
             handleCommandBackspace: () => void;
             isVisible: boolean;
-            position: unknown;
+            position: any;
             query: string;
             selectedIndex: number;
             filtered: { label: string; }[];
@@ -32,7 +33,7 @@ const commandPaletteStore = (() => {
     // Minimal replica sufficient for this test
     const state = {
         isVisible: false,
-        position: { top: 0, left: 0 } as unknown,
+        position: { top: 0, left: 0 } as any,
         query: "",
         selectedIndex: 0,
         _cmdItemId: null as string | null,
@@ -47,7 +48,7 @@ const commandPaletteStore = (() => {
             const q = state.query.toLowerCase();
             return state.commands.filter((c: { label: string; }) => c.label.toLowerCase().includes(q));
         },
-        show(pos: unknown) {
+        show(pos: any) {
             state.position = pos;
             state.query = "";
             state.selectedIndex = 0;
@@ -119,7 +120,7 @@ describe("CommandPaletteStore", () => {
         vi.clearAllMocks();
 
         // reset spies/state on our local mocks
-        mockEditorOverlayStore.getCursorInstances.mockClear?.();
+        (mockEditorOverlayStore.getCursorInstances as any).mockClear?.();
         mockCursor.findTarget.mockClear();
         mockCursor.applyToStore.mockClear();
     });

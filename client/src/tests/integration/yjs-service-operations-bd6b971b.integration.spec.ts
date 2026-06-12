@@ -35,7 +35,9 @@ describe("Yjs service basic operations", () => {
         expect(project.items.length).toBe(1);
 
         const awareness = new Awareness(new Y.Doc());
-        yjsService.setPresence(awareness, { cursor: { itemId: second.key, offset: 1 } });
-        expect(yjsService.getPresence(awareness)?.cursor.itemId).toBe(second.key);
+        yjsService.setPresence(awareness, {
+            cursor: { cursorId: "test", itemId: second.key, offset: 1, isActive: true },
+        });
+        expect(yjsService.getPresence(awareness)?.cursor?.itemId).toBe(second.key);
     });
 });
