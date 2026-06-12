@@ -85,7 +85,9 @@ describe("yjsService", () => {
 
         // seed local state (ignored by overlay sync)
         awareness.setLocalStateField("user", { userId: "self", name: "Self" });
-        awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } as import("y-protocols/awareness").PresenceCursor });
+        awareness.setLocalStateField("presence", {
+            cursor: { itemId: "root", offset: 0 } as import("y-protocols/awareness").PresenceCursor,
+        });
 
         // simulate remote collaborator
         const states = awareness.getStates();
@@ -93,7 +95,7 @@ describe("yjsService", () => {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } as import("y-protocols/awareness").PresenceCursor },
         });
-        (awareness as unknown as { emit: (event: string, args: unknown[]) => void }).emit("change", [{
+        (awareness as unknown as { emit: (event: string, args: unknown[]) => void; }).emit("change", [{
             added: new Set([42]),
             updated: new Set(),
             removed: new Set(),
@@ -102,7 +104,7 @@ describe("yjsService", () => {
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
-        (awareness as unknown as { emit: (event: string, args: unknown[]) => void }).emit("change", [{
+        (awareness as unknown as { emit: (event: string, args: unknown[]) => void; }).emit("change", [{
             added: new Set(),
             updated: new Set(),
             removed: new Set([42]),

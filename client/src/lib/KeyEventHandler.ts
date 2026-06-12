@@ -158,12 +158,18 @@ export class KeyEventHandler {
                         // Confirm directly from the store's selected index first (independent of DOM)
                         try {
                             const w: unknown = window as unknown;
-                            const ap: unknown = (w as unknown as { aliasPickerStore?: unknown })?.aliasPickerStore ?? aliasPickerStore;
-                            const opts: unknown[] = Array.isArray((ap as unknown as { options?: unknown[] })?.options) ? (ap as unknown as { options: unknown[] }).options : [];
-                            let si: number = typeof (ap as unknown as { selectedIndex?: number })?.selectedIndex === "number" ? (ap as unknown as { selectedIndex: number }).selectedIndex : 0;
+                            const ap: unknown = (w as unknown as { aliasPickerStore?: unknown; })?.aliasPickerStore
+                                ?? aliasPickerStore;
+                            const opts: unknown[] = Array.isArray((ap as unknown as { options?: unknown[]; })?.options)
+                                ? (ap as unknown as { options: unknown[]; }).options
+                                : [];
+                            let si: number =
+                                typeof (ap as unknown as { selectedIndex?: number; })?.selectedIndex === "number"
+                                    ? (ap as unknown as { selectedIndex: number; }).selectedIndex
+                                    : 0;
                             if (opts.length > 0) {
                                 si = Math.max(0, Math.min(si, opts.length - 1));
-                                const tid = (opts[si] as unknown as { id?: string })?.id;
+                                const tid = (opts[si] as unknown as { id?: string; })?.id;
                                 if (tid) {
                                     try {
                                         console.log("KeyEventHandler(Enter@Picker): confirmById via store", {
@@ -204,26 +210,30 @@ export class KeyEventHandler {
                         try {
                             const w: unknown = window as unknown;
                             const gs: unknown = w.generalStore || w.appStore;
-                            const root = (gs as unknown as { currentPage?: unknown })?.currentPage;
+                            const root = (gs as unknown as { currentPage?: unknown; })?.currentPage;
                             const picker = (w.aliasPickerStore ?? aliasPickerStore) as unknown;
-                            const aliasId: string | null = (picker as unknown as { itemId?: string })?.itemId ?? null;
-                            const firstContent: unknown = (root as unknown as { items?: unknown })?.items && ((root as unknown as { items: unknown }).items as unknown).length > 0
-                                ? (((root as unknown as { items: unknown }).items as unknown).at
-                                    ? ((root as unknown as { items: unknown }).items as unknown).at(0)
-                                    : ((root as unknown as { items: unknown }).items as unknown)[0])
+                            const aliasId: string | null = (picker as unknown as { itemId?: string; })?.itemId ?? null;
+                            const firstContent: unknown = (root as unknown as { items?: unknown; })?.items
+                                    && ((root as unknown as { items: unknown; }).items as unknown).length > 0
+                                ? (((root as unknown as { items: unknown; }).items as unknown).at
+                                    ? ((root as unknown as { items: unknown; }).items as unknown).at(0)
+                                    : ((root as unknown as { items: unknown; }).items as unknown)[0])
                                 : null;
-                            if (root && aliasId && (firstContent as unknown as { id?: string })?.id) {
+                            if (root && aliasId && (firstContent as unknown as { id?: string; })?.id) {
                                 const find = (node: unknown, id: string): unknown => {
                                     if (!node) return null;
-                                    if ((node as unknown as { id?: string }).id === id) return node;
-                                    const ch: unknown = (node as unknown as { items?: unknown }).items;
-                                    if (ch && typeof (ch as unknown as Iterable<unknown>)[Symbol.iterator] === "function") {
+                                    if ((node as unknown as { id?: string; }).id === id) return node;
+                                    const ch: unknown = (node as unknown as { items?: unknown; }).items;
+                                    if (
+                                        ch
+                                        && typeof (ch as unknown as Iterable<unknown>)[Symbol.iterator] === "function"
+                                    ) {
                                         for (const c of (ch as unknown as Iterable<unknown>)) {
                                             const r = find(c, id);
                                             if (r) return r;
                                         }
                                     } else {
-                                        const len = (ch as unknown as { length?: number })?.length ?? 0;
+                                        const len = (ch as unknown as { length?: number; })?.length ?? 0;
                                         for (let i = 0; i < len; i++) {
                                             const c = ch.at ? ch.at(i) : ch[i];
                                             const r = find(c, id);
@@ -233,7 +243,7 @@ export class KeyEventHandler {
                                     return null;
                                 };
                                 const aliasItem = find(root, aliasId);
-                                if (aliasItem && !(aliasItem as unknown as { aliasTargetId?: string }).aliasTargetId) {
+                                if (aliasItem && !(aliasItem as unknown as { aliasTargetId?: string; }).aliasTargetId) {
                                     try {
                                         console.log(
                                             "KeyEventHandler: fallback setting aliasTargetId on",
@@ -242,7 +252,8 @@ export class KeyEventHandler {
                                             firstContent.id,
                                         );
                                     } catch {}
-                                    (aliasItem as unknown as { aliasTargetId?: string }).aliasTargetId = firstContent.id;
+                                    (aliasItem as unknown as { aliasTargetId?: string; }).aliasTargetId =
+                                        firstContent.id;
                                 }
                                 try {
                                     const aliasEl = document.querySelector(
@@ -290,7 +301,10 @@ export class KeyEventHandler {
                                     // Fallback setting on model side for the last item as well
                                     if (lastId && lastId !== aliasId) {
                                         const aliasItem2 = find(root, lastId);
-                                        if (aliasItem2 && !(aliasItem2 as unknown as { aliasTargetId?: string }).aliasTargetId) {
+                                        if (
+                                            aliasItem2
+                                            && !(aliasItem2 as unknown as { aliasTargetId?: string; }).aliasTargetId
+                                        ) {
                                             try {
                                                 console.log(
                                                     "KeyEventHandler: fallback setting aliasTargetId on lastId",
@@ -299,7 +313,8 @@ export class KeyEventHandler {
                                                     firstContent.id,
                                                 );
                                             } catch {}
-                                            (aliasItem2 as unknown as { aliasTargetId?: string }).aliasTargetId = firstContent.id;
+                                            (aliasItem2 as unknown as { aliasTargetId?: string; }).aliasTargetId =
+                                                firstContent.id;
                                         }
                                     }
                                 } catch {}
@@ -320,12 +335,13 @@ export class KeyEventHandler {
         console.log(
             `KeyEventHandler.handleKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}, altKey=${event.altKey}`,
         );
-        const tgt = (event.target as unknown as { tagName?: string })?.tagName || typeof (event.target as unknown as { nodeName?: string })?.nodeName === "string"
-            ? (event.target as unknown as { nodeName: string }).nodeName
+        const tgt = (event.target as unknown as { tagName?: string; })?.tagName
+                || typeof (event.target as unknown as { nodeName?: string; })?.nodeName === "string"
+            ? (event.target as unknown as { nodeName: string; }).nodeName
             : typeof event.target;
-        const ae = (document.activeElement as unknown as { tagName?: string })?.tagName
-                || typeof (document.activeElement as unknown as { nodeName?: string })?.nodeName === "string"
-            ? (document.activeElement as unknown as { nodeName: string }).nodeName
+        const ae = (document.activeElement as unknown as { tagName?: string; })?.tagName
+                || typeof (document.activeElement as unknown as { nodeName?: string; })?.nodeName === "string"
+            ? (document.activeElement as unknown as { nodeName: string; }).nodeName
             : typeof document.activeElement;
         console.log(`KeyEventHandler.handleKeyDown: target=${tgt}, active=${ae}`);
         console.log(`Current cursor instances: ${cursorInstances.length}`);
@@ -336,8 +352,10 @@ export class KeyEventHandler {
         if (event.key === "Enter" && cursorInstances.length > 0) {
             const cursor = cursorInstances[0];
             const node = cursor.findTarget();
-            const rawText: unknown = (node as unknown as { text?: unknown })?.text;
-            const text: string = typeof rawText === "string" ? rawText : ((rawText as unknown as { toString?: () => string })?.toString?.() ?? "");
+            const rawText: unknown = (node as unknown as { text?: unknown; })?.text;
+            const text: string = typeof rawText === "string"
+                ? rawText
+                : ((rawText as unknown as { toString?: () => string; })?.toString?.() ?? "");
             const before = text.slice(0, cursor.offset);
             earlyBeforeForLog = before;
             const lastSlash = before.lastIndexOf("/");
@@ -346,7 +364,8 @@ export class KeyEventHandler {
             const gsAny: unknown = typeof window !== "undefined"
                 ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
                 : null;
-            const ta: HTMLTextAreaElement | undefined = (gsAny as unknown as { textareaRef?: unknown })?.textareaRef as unknown;
+            const ta: HTMLTextAreaElement | undefined = (gsAny as unknown as { textareaRef?: unknown; })
+                ?.textareaRef as unknown;
             const taValue: string | null = ta?.value ?? null;
             const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
             const source = typeof taValue === "string" ? taValue : text;
@@ -436,8 +455,9 @@ export class KeyEventHandler {
             } else if (event.key === "Enter") {
                 // Palette Visible: Always prioritize Alias if filter includes Alias
                 try {
-                    const filtered: unknown[] = (commandPaletteStore as unknown as { filtered?: unknown[] }).filtered ?? [];
-                    const hasAlias = filtered.some(c => (c as unknown as { type?: string })?.type === "alias");
+                    const filtered: unknown[] = (commandPaletteStore as unknown as { filtered?: unknown[]; }).filtered
+                        ?? [];
+                    const hasAlias = filtered.some(c => (c as unknown as { type?: string; })?.type === "alias");
                     if (hasAlias) {
                         try {
                             console.log(
@@ -474,44 +494,66 @@ export class KeyEventHandler {
                         const gs: unknown = typeof window !== "undefined"
                             ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
                             : null;
-                        const items: unknown = ((gs as unknown as { currentPage?: unknown })?.currentPage as unknown as { items?: unknown })?.items;
-                        if (items && typeof (items as unknown as { addNode?: (userId: string, i?: number) => unknown }).addNode === "function") {
+                        const items: unknown =
+                            ((gs as unknown as { currentPage?: unknown; })?.currentPage as unknown as {
+                                items?: unknown;
+                            })?.items;
+                        if (
+                            items
+                            && typeof (items as unknown as { addNode?: (userId: string, i?: number) => unknown; })
+                                    .addNode === "function"
+                        ) {
                             const userId = cursor.userId || "local";
                             let newItem: unknown = null;
                             try {
                                 // addNode returns the new item
-                                newItem = (items as unknown as { addNode: (userId: string, i?: number) => unknown }).addNode(userId);
+                                newItem = (items as unknown as { addNode: (userId: string, i?: number) => unknown; })
+                                    .addNode(userId);
                             } catch {
                                 try {
                                     // Fallback if no-arg fails
-                                    const prevLen = typeof (items as unknown as { length?: number }).length === "number" ? (items as unknown as { length: number }).length : 0;
-                                    newItem = (items as unknown as { addNode: (userId: string, i?: number) => unknown }).addNode(userId, prevLen);
+                                    const prevLen =
+                                        typeof (items as unknown as { length?: number; }).length === "number"
+                                            ? (items as unknown as { length: number; }).length
+                                            : 0;
+                                    newItem =
+                                        (items as unknown as { addNode: (userId: string, i?: number) => unknown; })
+                                            .addNode(userId, prevLen);
                                 } catch {}
                             }
 
                             // Fallback if addNode didn't return item (old behavior fallback)
                             if (!newItem) {
-                                const lastIndex = ((items as unknown as { length?: number }).length ?? 0) - 1;
-                                newItem = (typeof (items as unknown as { at?: (i: number) => unknown }).at === "function" ? (items as unknown as { at: (i: number) => unknown }).at(lastIndex) : (items as unknown as { [key: number]: Item })[lastIndex]);
+                                const lastIndex = ((items as unknown as { length?: number; }).length ?? 0) - 1;
+                                newItem =
+                                    typeof (items as unknown as { at?: (i: number) => unknown; }).at === "function"
+                                        ? (items as unknown as { at: (i: number) => unknown; }).at(lastIndex)
+                                        : (items as unknown as { [key: number]: Item; })[lastIndex];
                             }
 
                             if (newItem) {
-                                (newItem as unknown as { text?: string }).text = "";
+                                (newItem as unknown as { text?: string; }).text = "";
                                 (newItem as unknown).aliasTargetId = undefined;
                                 try {
-                                    console.log("KeyEventHandler(Palette): showing AliasPicker for", (newItem as unknown as { id: string }).id);
+                                    console.log(
+                                        "KeyEventHandler(Palette): showing AliasPicker for",
+                                        (newItem as unknown as { id: string; }).id,
+                                    );
                                 } catch {}
                                 {
                                     const w: unknown = typeof window !== "undefined"
                                         ? (window as Window & typeof globalThis & { [key: string]: unknown; })
                                         : null;
-                                    (((w as unknown as { aliasPickerStore?: unknown })?.aliasPickerStore ?? aliasPickerStore) as unknown as { show: (id: string) => void }).show((newItem as unknown as { id: string }).id);
+                                    (((w as unknown as { aliasPickerStore?: unknown; })?.aliasPickerStore
+                                        ?? aliasPickerStore) as unknown as { show: (id: string) => void; }).show(
+                                            (newItem as unknown as { id: string; }).id,
+                                        );
                                 }
                                 // Move cursor
                                 store.clearCursorAndSelection(userId);
-                                cursor.itemId = (newItem as unknown as { id: string }).id;
+                                cursor.itemId = (newItem as unknown as { id: string; }).id;
                                 cursor.offset = 0;
-                                store.setActiveItem((newItem as unknown as { id: string }).id);
+                                store.setActiveItem((newItem as unknown as { id: string; }).id);
                                 cursor.applyToStore();
                                 store.startCursorBlink();
 
@@ -566,7 +608,8 @@ export class KeyEventHandler {
                 const gs: unknown = typeof window !== "undefined"
                     ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
                     : null;
-                const ta: HTMLTextAreaElement | undefined = (gs as unknown as { textareaRef?: unknown })?.textareaRef as unknown;
+                const ta: HTMLTextAreaElement | undefined = (gs as unknown as { textareaRef?: unknown; })
+                    ?.textareaRef as unknown;
                 const taValue: string | null = ta?.value ?? null;
                 const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
                 const source = typeof taValue === "string" ? taValue : text;
@@ -592,42 +635,60 @@ export class KeyEventHandler {
                     // NOTE: Skipping '/alias' text removal as it is not mandatory (E2E verifies picker display)
 
                     // Add new item to end
-                    const items: unknown = ((gs as unknown as { currentPage?: unknown })?.currentPage as unknown as { items?: unknown })?.items;
-                    if (items && typeof (items as unknown as { addNode?: (userId: string, i?: number) => unknown }).addNode === "function") {
+                    const items: unknown =
+                        ((gs as unknown as { currentPage?: unknown; })?.currentPage as unknown as { items?: unknown; })
+                            ?.items;
+                    if (
+                        items
+                        && typeof (items as unknown as { addNode?: (userId: string, i?: number) => unknown; }).addNode
+                            === "function"
+                    ) {
                         const userId = cursor.userId || "local";
                         let newItem: unknown = null;
                         try {
-                            newItem = (items as unknown as { addNode: (userId: string, i?: number) => unknown }).addNode(userId);
+                            newItem = (items as unknown as { addNode: (userId: string, i?: number) => unknown; })
+                                .addNode(userId);
                         } catch {
                             try {
-                                const prevLen = typeof (items as unknown as { length?: number }).length === "number" ? (items as unknown as { length: number }).length : 0;
-                                newItem = (items as unknown as { addNode: (userId: string, i?: number) => unknown }).addNode(userId, prevLen);
+                                const prevLen = typeof (items as unknown as { length?: number; }).length === "number"
+                                    ? (items as unknown as { length: number; }).length
+                                    : 0;
+                                newItem = (items as unknown as { addNode: (userId: string, i?: number) => unknown; })
+                                    .addNode(userId, prevLen);
                             } catch {}
                         }
 
                         // Fallback
                         if (!newItem) {
-                            const lastIndex = ((items as unknown as { length?: number }).length ?? 0) - 1;
-                            newItem = (typeof (items as unknown as { at?: (i: number) => unknown }).at === "function" ? (items as unknown as { at: (i: number) => unknown }).at(lastIndex) : (items as unknown as { [key: number]: Item })[lastIndex]);
+                            const lastIndex = ((items as unknown as { length?: number; }).length ?? 0) - 1;
+                            newItem = typeof (items as unknown as { at?: (i: number) => unknown; }).at === "function"
+                                ? (items as unknown as { at: (i: number) => unknown; }).at(lastIndex)
+                                : (items as unknown as { [key: number]: Item; })[lastIndex];
                         }
 
                         if (newItem) {
-                            (newItem as unknown as { text?: string }).text = "";
+                            (newItem as unknown as { text?: string; }).text = "";
                             (newItem as unknown).aliasTargetId = undefined;
                             try {
-                                console.log("KeyEventHandler: showing AliasPicker for", (newItem as unknown as { id: string }).id);
+                                console.log(
+                                    "KeyEventHandler: showing AliasPicker for",
+                                    (newItem as unknown as { id: string; }).id,
+                                );
                             } catch {}
                             {
                                 const w: unknown = typeof window !== "undefined"
                                     ? (window as Window & typeof globalThis & { [key: string]: unknown; })
                                     : null;
-                                (((w as unknown as { aliasPickerStore?: unknown })?.aliasPickerStore ?? aliasPickerStore) as unknown as { show: (id: string) => void }).show((newItem as unknown as { id: string }).id);
+                                (((w as unknown as { aliasPickerStore?: unknown; })?.aliasPickerStore
+                                    ?? aliasPickerStore) as unknown as { show: (id: string) => void; }).show(
+                                        (newItem as unknown as { id: string; }).id,
+                                    );
                             }
                             // Move cursor
                             store.clearCursorAndSelection(userId);
-                            cursor.itemId = (newItem as unknown as { id: string }).id;
+                            cursor.itemId = (newItem as unknown as { id: string; }).id;
                             cursor.offset = 0;
-                            store.setActiveItem((newItem as unknown as { id: string }).id);
+                            store.setActiveItem((newItem as unknown as { id: string; }).id);
                             cursor.applyToStore();
                             store.startCursorBlink();
 
@@ -681,7 +742,10 @@ export class KeyEventHandler {
                                 try {
                                     const activeId = store.getActiveItem?.();
                                     if (activeId) {
-                                        (((w as unknown as { aliasPickerStore?: unknown })?.aliasPickerStore ?? aliasPickerStore) as unknown as { show: (id: string) => void }).show(activeId);
+                                        (((w as unknown as { aliasPickerStore?: unknown; })?.aliasPickerStore
+                                            ?? aliasPickerStore) as unknown as { show: (id: string) => void; }).show(
+                                                activeId,
+                                            );
                                         try {
                                             console.log(
                                                 "KeyEventHandler(Post): showing AliasPicker for activeId",
@@ -759,7 +823,10 @@ export class KeyEventHandler {
                                 try {
                                     const activeId = store.getActiveItem?.();
                                     if (activeId) {
-                                        (((w as unknown as { aliasPickerStore?: unknown })?.aliasPickerStore ?? aliasPickerStore) as unknown as { show: (id: string) => void }).show(activeId);
+                                        (((w as unknown as { aliasPickerStore?: unknown; })?.aliasPickerStore
+                                            ?? aliasPickerStore) as unknown as { show: (id: string) => void; }).show(
+                                                activeId,
+                                            );
                                         try {
                                             console.log(
                                                 "KeyEventHandler(Post2): showing AliasPicker for activeId",
@@ -830,7 +897,7 @@ export class KeyEventHandler {
             const w: unknown = typeof window !== "undefined"
                 ? (window as Window & typeof globalThis & { [key: string]: unknown; })
                 : null;
-            const gs: unknown = (w as unknown as { generalStore?: unknown })?.generalStore ?? {};
+            const gs: unknown = (w as unknown as { generalStore?: unknown; })?.generalStore ?? {};
             const ch: string = typeof inputEvent.data === "string" ? inputEvent.data : "";
             gs.__lastInputStream = (gs.__lastInputStream || "") + ch;
             if (gs.__lastInputStream.length > 256) {
@@ -858,7 +925,9 @@ export class KeyEventHandler {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
                 const rawText: unknown = node?.text;
-                const text: string = typeof rawText === "string" ? rawText : ((rawText as unknown as { toString?: () => string })?.toString?.() ?? "");
+                const text: string = typeof rawText === "string"
+                    ? rawText
+                    : ((rawText as unknown as { toString?: () => string; })?.toString?.() ?? "");
                 const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
 
                 // Do not show command palette if immediately after [ or already inside internal link starting with [
@@ -1970,20 +2039,24 @@ export class KeyEventHandler {
 
             // If VS Code multi-cursor text is included
             if (
-                vscodeMetadata && Array.isArray((vscodeMetadata as unknown as { multicursorText?: unknown[] }).multicursorText)
-                && (vscodeMetadata as unknown as { multicursorText?: unknown[] }).multicursorText.length > 0
+                vscodeMetadata
+                && Array.isArray((vscodeMetadata as unknown as { multicursorText?: unknown[]; }).multicursorText)
+                && (vscodeMetadata as unknown as { multicursorText?: unknown[]; }).multicursorText.length > 0
             ) {
                 // Debug info
                 if (
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    console.log(`VS Code multicursor text detected:`, (vscodeMetadata as unknown as { multicursorText?: unknown[] }).multicursorText);
+                    console.log(
+                        `VS Code multicursor text detected:`,
+                        (vscodeMetadata as unknown as { multicursorText?: unknown[]; }).multicursorText,
+                    );
                 }
 
-                const multicursorText = (vscodeMetadata as unknown as { multicursorText?: unknown[] }).multicursorText;
+                const multicursorText = (vscodeMetadata as unknown as { multicursorText?: unknown[]; }).multicursorText;
                 const cursorInstances = store.getCursorInstances();
-                const pasteMode = (vscodeMetadata as unknown as { pasteMode?: string }).pasteMode || "spread"; // Default is spread
+                const pasteMode = (vscodeMetadata as unknown as { pasteMode?: string; }).pasteMode || "spread"; // Default is spread
 
                 // pasteMode: 'spread' - Insert different text for each cursor
                 // pasteMode: 'full' - Insert same text for each cursor
@@ -2154,8 +2227,9 @@ export class KeyEventHandler {
             // If pasting from box selection
             // In VS Code, copy from box selection contains special metadata
             if (
-                vscodeMetadata && (vscodeMetadata as unknown as { isFromEmptySelection?: boolean }).isFromEmptySelection === false
-                && (vscodeMetadata as unknown as { mode?: string }).mode === "plaintext" && text.includes("\n")
+                vscodeMetadata
+                && (vscodeMetadata as unknown as { isFromEmptySelection?: boolean; }).isFromEmptySelection === false
+                && (vscodeMetadata as unknown as { mode?: string; }).mode === "plaintext" && text.includes("\n")
             ) {
                 // Process as paste from box selection
                 const lines = text.split(/\r?\n/);
