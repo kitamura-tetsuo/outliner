@@ -5,9 +5,9 @@ description: Convert bracketed URL and label pairs into links that display only 
 category: text-formatting
 status: implemented
 acceptance:
+- Bracketed URLs without a label, like [URL], are converted to clickable links showing the URL text. Bare URLs outside brackets are not auto-linked.
 - Bracketed pairs [URL label] render the label text linked to the URL.
 - No URL text remains visible when a label is provided.
-- Plain URLs are converted to clickable links.
 tests:
 - client/e2e/core/fmt-url-label-links-a391b6c2.spec.ts
 - client/src/tests/integration/linkFormat.test.ts

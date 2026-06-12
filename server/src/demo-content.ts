@@ -9,7 +9,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 5;
+export const DEMO_TEMPLATE_VERSION = 6;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -52,11 +52,12 @@ export const demoPages: DemoPageTemplate[] = [
             "Click an item to see its raw text with the control characters visible.",
             "Examples:",
             "  You can make text [[bold]] using double brackets.",
-            "  You can make text [/italic] using a slash bracket.",
+            "  You can make text [/ italic] using a slash bracket with a space after the slash.",
             "  You can [-strike through] text using a dash bracket.",
             "  Inline `code` uses backticks.",
-            "  Formats can be combined, like [[bold with [/italic]]] inside.",
-            "URLs become clickable links: https://github.com/yjs/yjs",
+            "  Formats can be combined, like [[bold with [/ italic] inside]].",
+            "Bracketed URLs become clickable links: [https://github.com/yjs/yjs]",
+            "Add a label after the URL to show friendly text: [https://github.com/yjs/yjs Yjs on GitHub]",
             "Try editing any line above to see the syntax behind it.",
         ],
     },
