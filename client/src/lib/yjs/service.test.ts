@@ -93,7 +93,7 @@ describe("yjsService", () => {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } },
         });
-        (awareness.emit as (...args: unknown[]) => void)("change", [{
+        awareness.emit("change", [{
             added: new Set([42]),
             updated: new Set(),
             removed: new Set(),
@@ -102,7 +102,7 @@ describe("yjsService", () => {
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
-        (awareness.emit as (...args: unknown[]) => void)("change", [{
+        awareness.emit("change", [{
             added: new Set(),
             updated: new Set(),
             removed: new Set([42]),

@@ -88,7 +88,7 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
 
     // Apply styles
     Object.entries(PREVIEW_STYLES).forEach(([key, value]) => {
-        previewElement.style[key as keyof CSSStyleDeclaration] = value;
+        previewElement.style.setProperty(key, value as string);
     });
 
     // Handle internal project links

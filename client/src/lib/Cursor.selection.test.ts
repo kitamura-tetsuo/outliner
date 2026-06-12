@@ -5,7 +5,7 @@ import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { Cursor } from "./Cursor";
 
 // Helper to manage mock selection state
-let mockSelection: import("../stores/EditorOverlayStore.svelte").SelectionState | undefined = undefined;
+let mockSelection: import("../stores/EditorOverlayStore.svelte").SelectionRange | undefined = undefined;
 
 // Mocks for stores
 vi.mock("../stores/EditorOverlayStore.svelte", () => ({
@@ -162,7 +162,7 @@ describe("Cursor Selection Reproduction", () => {
                 endOffset: 1,
                 isReversed: false,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionRange;
             cursor.offset = 1;
 
             cursor.extendSelectionRight();
@@ -188,7 +188,7 @@ describe("Cursor Selection Reproduction", () => {
                 endOffset: 1,
                 isReversed: true,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionRange;
             cursor.offset = 1;
 
             cursor.extendSelectionRight();
@@ -255,7 +255,7 @@ describe("Cursor Selection Reproduction", () => {
                 endOffset: 4,
                 isReversed: true,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionRange;
             cursor.offset = 4;
 
             cursor.extendSelectionLeft();
@@ -281,7 +281,7 @@ describe("Cursor Selection Reproduction", () => {
                 endOffset: 1,
                 isReversed: false,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionRange;
             cursor.offset = 1;
 
             cursor.extendSelectionLeft();
@@ -330,7 +330,7 @@ describe("Cursor Selection Reproduction", () => {
                 endOffset: 1, // Focus at 1 (shrunk)
                 isReversed: false,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionRange;
             cursor.offset = 1;
 
             // Move left past anchor (1)
@@ -357,7 +357,7 @@ describe("Cursor Selection Reproduction", () => {
                 endOffset: 1,
                 isReversed: true,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionRange;
             cursor.offset = 1;
 
             // Move right past anchor

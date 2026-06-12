@@ -314,11 +314,13 @@ export async function setupUpdateTracking(
             (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var] = 0;
 
             doc.on("update", () => {
-                (window as Window & typeof globalThis & Record<string, unknown>)[counterVar]++;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ((window as any)[counterVar] as number)++;
             });
 
             doc.on("updateV2", () => {
-                (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var]++;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ((window as any)[counterV2Var] as number)++;
             });
         },
         { docVar, counterVar, counterV2Var },
@@ -494,7 +496,8 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page1 to initialize Yjs client and project
     await page1.waitForFunction(
         () => {
-            const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             if (!client) {
                 console.log("page1: yjsClient not found");
@@ -565,7 +568,8 @@ export async function prepareTwoFullBrowserPages(
     // Wait for page2 to initialize Yjs client and appStore
     await page2.waitForFunction(
         () => {
-            const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             if (!client) {
                 console.log("page2: yjsClient not found");
