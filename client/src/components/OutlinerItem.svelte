@@ -65,7 +65,7 @@ onMount(() => {
                 document.querySelector = ((sel: string) => {
                     try {
                         if (/^\[data-item-id="/.test(sel)) {
-                            const ap = (W as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+                            const ap = (W as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as unknown as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
                             const li = ap?.lastConfirmedItemId;
                             if (li) {
                                 const el = origQS(`[data-item-id="${li}"]`);
@@ -90,7 +90,7 @@ onMount(() => {
                 Element.prototype.getAttribute = function(this: HTMLElement, name: string): string | null {
                     try {
                         if (name === 'data-alias-target-id') {
-                            const ap = (window as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+                            const ap = (window as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as unknown as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
                             const itemId = (this as HTMLElement).getAttribute('data-item-id');
                             if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
                                 return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
@@ -108,7 +108,7 @@ onMount(() => {
 
 onMount(() => {
     try {
-        const gs = generalStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+        const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
         if (!isPageTitle && index === 0 && (gs.openCommentItemId == null)) {
             gs.openCommentItemId = model.id;
             logger.debug(undefined, '[OutlinerItem] auto-open comment thread for id=' + model.id);
@@ -119,7 +119,7 @@ onMount(() => {
     // If openCommentItemId does not exist in the current page due to Yjs connection switching, etc.
         // Automatically reopen comment thread prioritizing index (E2E stabilization)
     try {
-        const gs = generalStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+        const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
         // Optimization: Only perform the expensive existence check if this item is a candidate for auto-reopen
         // This avoids O(N^2) complexity where every item iterates the full list on mount
         const isCandidate = !isPageTitle && (index === 1 || gs.openCommentItemIndex === index);
@@ -133,7 +133,7 @@ onMount(() => {
                 // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
                 // Use iterateUnordered if available for O(N) instead of O(N log N)
                 const iter = items.iterateUnordered ? items.iterateUnordered() : items as unknown as Iterable<unknown>;
-                for (const it of iter as any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
+                for (const it of iter as unknown) {
                     if (it?.id === targetId) { exists = true; break; }
                 }
             }
@@ -289,7 +289,7 @@ let commentCountLocal = $state(0);
 /**
  * Get normalized comment count from Yjs comments array
  */
-function normalizeCommentCount(arr: any /* eslint-disable-line @typescript-eslint/no-explicit-any */): number {
+function normalizeCommentCount(arr: unknown ): number {
     if (!arr || typeof arr.length !== "number") return 0;
     return Number(arr.length);
 }
@@ -299,9 +299,9 @@ function normalizeCommentCount(arr: any /* eslint-disable-line @typescript-eslin
  */
 function ensureCommentsArray(): unknown[] {
     try {
-        const it = item as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-        if (!it) return null as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
-        let arr: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = it.comments;
+        const it = item as unknown;
+        if (!it) return null as unknown;
+        let arr: unknown[] = it.comments;
         if (!arr) {
             // Initialize if comments property does not exist
             if (typeof it.setComments === "function") {
@@ -311,7 +311,7 @@ function ensureCommentsArray(): unknown[] {
         }
         return arr;
     } catch {
-        return null as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+        return null as unknown;
     }
 }
 
@@ -320,7 +320,7 @@ function ensureCommentsArray(): unknown[] {
  */
 function syncCommentCountFromItem() {
     try {
-        const arr: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = ensureCommentsArray();
+        const arr: unknown[] = ensureCommentsArray();
         if (arr && typeof arr.length === "number") {
             const newCount = normalizeCommentCount(arr);
             if (commentCountLocal !== newCount) {
@@ -359,14 +359,14 @@ function applyCommentCount(arrOrCount: unknown) {
  */
 function attachCommentObserver(): (() => void) | null {
     try {
-        const arr: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = ensureCommentsArray();
+        const arr: unknown[] = ensureCommentsArray();
         if (arr && typeof arr.observe === "function") {
             const observer = () => applyCommentCount(arr);
             arr.observe(observer);
             return () => arr.unobserve(observer);
         }
     } catch {}
-    return null as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+    return null as unknown;
     }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -385,7 +385,7 @@ onMount(() => {
 
     const handleWindowEvent = (event: Event) => {
         try {
-            const detail: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = (event as CustomEvent<any>)?.detail;
+            const detail: unknown  = (event as CustomEvent<unknown>)?.detail;
             if (!detail) return;
             const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
             if (targetId == null) return;
@@ -437,9 +437,9 @@ onMount(() => {
     aliasTargetId = item.aliasTargetId;
     try {
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
-        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as unknown;
         if (ymap && typeof ymap.observe === 'function') {
-            const obs = (e?: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => {
+            const obs = (e?: unknown ) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
                         aliasTargetId = ymap.get?.('aliasTargetId');
@@ -457,7 +457,7 @@ onMount(() => {
 // This replaces the polling approach with proper Svelte 5 reactivity
 let aliasLastConfirmedPulse = $derived.by(() => {
     // Subscribe to aliasPickerStore changes
-    const ap = aliasPickerStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+    const ap = aliasPickerStore as unknown as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
     const li = ap?.lastConfirmedItemId;
     const lt = ap?.lastConfirmedTargetId;
     const la = ap?.lastConfirmedAt as number | null;
@@ -465,7 +465,7 @@ let aliasLastConfirmedPulse = $derived.by(() => {
     if (li && lt && la && (Date.now() - la < 6000) && li === model.id) {
         return { itemId: li, targetId: lt, at: la };
     }
-    return null as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+    return null as unknown;
     });
 
 // Update DOM attributes when aliasLastConfirmedPulse changes
@@ -613,7 +613,7 @@ let componentType = $state<string | undefined>(undefined);
 function handleComponentTypeChange(newType: string) {
     if (!item) return;
 
-    const setMapField = (it: any /* eslint-disable-line @typescript-eslint/no-explicit-any */, key: string, value: unknown) => {
+    const setMapField = (it: unknown , key: string, value: unknown) => {
         try {
             const tree = it?.tree;
             const nodeKey = it?.key;
@@ -997,7 +997,7 @@ function toggleVote() {
 }
 
 function toggleComments() {
-    const gs = generalStore as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+    const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
     if (gs.openCommentItemId === model.id) {
         gs.openCommentItemId = null;
         gs.openCommentItemIndex = null;
@@ -1625,7 +1625,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
 
     // Get drop data (provide fallback for missing event.dataTransfer in Playwright isolated world)
-    const dt = (event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).dataTransfer as DataTransfer | null;
+    const dt = (event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null;
 
     // File drop (Support both DataTransfer.files and DataTransfer.items(kind=file), or E2E fallback)
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
@@ -1666,7 +1666,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         const url = await uploadAttachment(containerId, model.id, file);
                         
                         if (!dropTargetPosition || dropTargetPosition === "middle") {
-                            addAttachmentToDomTargetOrModel(event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */, url);
+                            addAttachmentToDomTargetOrModel(event as unknown, url);
                             // Reflect to Doc after connection
                             try { mirrorAttachment(url); } catch {}
                         } else {
@@ -1718,7 +1718,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
-                        addAttachmentToDomTargetOrModel(event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */, localUrl);
+                        addAttachmentToDomTargetOrModel(event as unknown, localUrl);
                         try { mirrorAttachment(localUrl); } catch {}
 
                     } catch {}
@@ -1744,9 +1744,9 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
     // Non-file drop (text or in-app data)
     try {
-        const plainText = ((event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
-        const selectionData = ((event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
-        const itemId = ((event as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
+        const plainText = ((event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
+        const selectionData = ((event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
+        const itemId = ((event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
 
         // Fire drop event
         dispatch("drop", {
@@ -1856,11 +1856,11 @@ onMount(() => {
                     }
                 } catch {}
             };
-            if (!(anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_FORCE_HANDLE_DROP__) {
-                (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
+            if (!(anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__) {
+                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
             } else {
-                const prev: any   = (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_FORCE_HANDLE_DROP__;
-                (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
+                const prev: unknown   = (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__;
+                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
             }
 
             // E2E: Test-only helper to add attachment directly (deterministically reproduce final result of DnD)
@@ -1875,9 +1875,9 @@ onMount(() => {
                         try {
                             // Test environment immediate mirror update - attachmentsMirror is handled in OutlinerItemAttachments component
                             // if (IS_TEST) {
-                            //     const arr: any /* eslint-disable-line @typescript-eslint/no-explicit-any */[] = ((model?.original as any /* eslint-disable-line @typescript-eslint/no-explicit-any */)?.attachments?.toArray?.() ?? []);
+                            //     const arr: unknown[][] = ((model?.original as unknown)?.attachments?.toArray?.() ?? []);
                             //     if (arr.length > 0) {
-                            //         attachmentsMirror = arr.map((u: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => Array.isArray(u) ? u[0] : u);
+                            //         attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
                             //     }
                             // }
                         } catch {}
@@ -1885,11 +1885,11 @@ onMount(() => {
                     }
                 } catch {}
             };
-            if (!(anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_ADD_ATTACHMENT__) {
-                (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
+            if (!(anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__) {
+                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
             } else {
-                const prevAdd: any   = (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_ADD_ATTACHMENT__;
-                (anyWin as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
+                const prevAdd: unknown   = (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__;
+                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
             }
         }
 
