@@ -119,13 +119,13 @@ describe("CommandPaletteStore", () => {
         vi.clearAllMocks();
 
         // reset spies/state on our local mocks
-        if (typeof (mockEditorOverlayStore.getCursorInstances as any).mockClear === 'function') {
+        if (typeof (mockEditorOverlayStore.getCursorInstances as any).mockClear === "function") {
             (mockEditorOverlayStore.getCursorInstances as any).mockClear();
         }
-        if (typeof (mockCursor.findTarget as any).mockClear === 'function') {
+        if (typeof (mockCursor.findTarget as any).mockClear === "function") {
             (mockCursor.findTarget as any).mockClear();
         }
-        if (typeof (mockCursor.applyToStore as any).mockClear === 'function') {
+        if (typeof (mockCursor.applyToStore as any).mockClear === "function") {
             (mockCursor.applyToStore as any).mockClear();
         }
     });

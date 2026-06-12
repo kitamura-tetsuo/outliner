@@ -47,7 +47,8 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
 
 describe("KeyEventHandler.handlePaste", () => {
     // Get mocked functions from global
-    const testMocks = (globalThis as Window & typeof globalThis & { __testMocks: Record<string, unknown>; }).__testMocks;
+    const testMocks =
+        (globalThis as Window & typeof globalThis & { __testMocks: Record<string, unknown>; }).__testMocks;
     const mockInsertText = testMocks.mockInsertText as ReturnType<typeof vi.fn>;
 
     beforeEach(() => {

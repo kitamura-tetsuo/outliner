@@ -1,9 +1,9 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { SyncWorker, type SqlJsDatabase } from "../services/syncWorker";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type SqlJsDatabase, SyncWorker } from "../services/syncWorker";
 
 describe("SyncWorker", () => {
-    let mockStmt: { run: ReturnType<typeof vi.fn>; free: ReturnType<typeof vi.fn> };
-    let mockDb: { prepare: ReturnType<typeof vi.fn> };
+    let mockStmt: { run: ReturnType<typeof vi.fn>; free: ReturnType<typeof vi.fn>; };
+    let mockDb: { prepare: ReturnType<typeof vi.fn>; };
 
     beforeEach(() => {
         mockStmt = {
