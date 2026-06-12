@@ -12,8 +12,8 @@ const debugLog = (...args: unknown[]) => {
 
 const isItemLike = (obj: unknown): boolean => {
     try {
-        const id = obj?.id;
-        const txt = obj?.text;
+        const id = (obj as unknown as { id?: string })?.id;
+        const txt = (obj as unknown as { text?: unknown })?.text;
         return typeof id === "string" && id.length > 0
             && (typeof txt === "string" || typeof txt?.toString === "function");
     } catch {

@@ -290,8 +290,8 @@ let commentCountLocal = $state(0);
  * Get normalized comment count from Yjs comments array
  */
 function normalizeCommentCount(arr: unknown ): number {
-    if (!arr || typeof arr.length !== "number") return 0;
-    return Number(arr.length);
+    if (!arr || typeof (arr as unknown as { length?: number }).length !== "number") return 0;
+    return Number((arr as unknown as { length: number }).length);
 }
 
 /**
@@ -301,12 +301,12 @@ function ensureCommentsArray(): unknown[] {
     try {
         const it = item as unknown;
         if (!it) return null as unknown;
-        let arr: unknown[] = it.comments;
+        let arr: unknown[] = (it as unknown as { comments?: unknown[] }).comments ?? [];
         if (!arr) {
             // Initialize if comments property does not exist
-            if (typeof it.setComments === "function") {
-                it.setComments([]);
-                arr = it.comments;
+            if (typeof (it as unknown as { setComments?: (arr: unknown[]) => void }).setComments === "function") {
+                (it as unknown as { setComments: (arr: unknown[]) => void }).setComments([]);
+                arr = (it as unknown as { comments?: unknown[] }).comments ?? [];
             }
         }
         return arr;
@@ -387,10 +387,10 @@ onMount(() => {
         try {
             const detail: unknown  = (event as CustomEvent<unknown>)?.detail;
             if (!detail) return;
-            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
+            const targetId = (detail as unknown as { id?: string }).id ?? (detail as unknown as { itemId?: string }).itemId ?? (detail as unknown as { nodeId?: string }).nodeId ?? (detail as unknown as { targetId?: string }).targetId;
             if (targetId == null) return;
             if (String(targetId) !== String(model?.id)) return;
-            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
+            const possibleCount = (detail as unknown as { count?: number }).count ?? (detail as unknown as { value?: number }).value ?? (detail as unknown as { len?: number }).len ?? (detail as unknown as { length?: number }).length;
             applyCommentCount(possibleCount);
         } catch {}
     };
@@ -437,19 +437,19 @@ onMount(() => {
     aliasTargetId = item.aliasTargetId;
     try {
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
-        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as unknown;
-        if (ymap && typeof ymap.observe === 'function') {
+        const ymap = anyItem?.(tree as unknown as { getNodeValueFromKey?: (k: string) => unknown })?.getNodeValueFromKey?.(anyItem.key) as unknown;
+        if (ymap && typeof (ymap as unknown as { observe?: (cb: unknown) => void }).observe === "function") {
             const obs = (e?: unknown ) => {
                 try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
+                    if (!e || ((e as unknown as { keysChanged?: Set<string> })?.keysChanged && (e as unknown as { keysChanged?: Set<string> })?.keysChanged.has && (e as unknown as { keysChanged?: Set<string> })?.keysChanged.has('aliasTargetId'))) {
                         aliasTargetId = ymap.get?.('aliasTargetId');
                     }
                 } catch {}
             };
-            ymap.observe(obs);
+            (ymap as unknown as { observe: (cb: unknown) => void }).observe(obs);
             // Initial reflection
             obs();
-            onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
+            onDestroy(() => { try { (ymap as unknown as { unobserve: (cb: unknown) => void }).unobserve(obs); } catch {} });
         }
     } catch {}
 });
@@ -471,7 +471,7 @@ let aliasLastConfirmedPulse = $derived.by(() => {
 // Update DOM attributes when aliasLastConfirmedPulse changes
 $effect(() => {
     if (aliasLastConfirmedPulse && itemRef) {
-        const { itemId, targetId } = aliasLastConfirmedPulse;
+        const { itemId, targetId } = aliasLastConfirmedPulse as unknown as { itemId: string, targetId: string };
         try {
             // Set attribute on this item
             (itemRef as HTMLElement)?.setAttribute?.('data-alias-target-id', String(targetId));
@@ -536,8 +536,8 @@ const aliasTargetIdEffective = $derived.by(() => {
         if (isE2E && isEmpty) return lastTargetId;
     }
     // Check pulse for recent confirmations
-    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
-        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
+    if (aliasLastConfirmedPulse && (Date.now() - (aliasLastConfirmedPulse as unknown as { at: number }).at < 2000)) {
+        if ((aliasLastConfirmedPulse as unknown as { itemId: string }).itemId === model.id) return (aliasLastConfirmedPulse as unknown as { targetId: string }).targetId;
     }
     return undefined;
 });
@@ -615,12 +615,12 @@ function handleComponentTypeChange(newType: string) {
 
     const setMapField = (it: unknown , key: string, value: unknown) => {
         try {
-            const tree = it?.tree;
-            const nodeKey = it?.key;
-            const m = tree?.getNodeValueFromKey?.(nodeKey);
-            if (m && typeof m.set === "function") {
-                m.set(key, value);
-                if (key !== "lastChanged") m.set("lastChanged", Date.now());
+            const tree = (it as unknown as { tree?: unknown })?.tree;
+            const nodeKey = (it as unknown as { key?: string })?.key;
+            const m = (tree as unknown as { getNodeValueFromKey?: (k: string) => unknown })?.getNodeValueFromKey?.(nodeKey);
+            if (m && typeof (m as unknown as { set?: (k: string, v: unknown) => void }).set === "function") {
+                (m as unknown as { set: (k: string, v: unknown) => void }).set(key, value);
+                if (key !== "lastChanged") (m as unknown as { set: (k: string, v: unknown) => void }).set("lastChanged", Date.now());
                 return true;
             }
         } catch {}
@@ -647,7 +647,7 @@ onMount(() => {
     try {
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
         const tree = anyItem?.tree; const key = anyItem?.key;
-        const m = tree?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
+        const m = (tree as unknown as { getNodeValueFromKey?: (k: string) => unknown })?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
         const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
         if (t && typeof t.observe === "function") {
             const h1 = () => { try { textString = t.toString?.() ?? ""; } catch {} };
@@ -658,7 +658,7 @@ onMount(() => {
         if (m && typeof m.observe === "function") {
             const h2 = (e?: { keysChanged?: { has: (k: string) => boolean } }) => {
                 try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
+                    if (!e || ((e as unknown as { keysChanged?: Set<string> })?.keysChanged && (e as unknown as { keysChanged?: Set<string> })?.keysChanged.has && (e as unknown as { keysChanged?: Set<string> })?.keysChanged.has('componentType'))) {
                         compTypeValue = m.get?.("componentType") as string | undefined;
                     }
                 } catch {}
@@ -2010,7 +2010,7 @@ export function setSelectionPosition(start: number, end: number = start) {
           (aliasTargetIdEffective
             || (((aliasPickerStore as unknown as { lastConfirmedItemId?: string })?.lastConfirmedItemId === model.id)
                 && (aliasPickerStore as unknown as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId)
-            || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
+            || (aliasLastConfirmedPulse && (aliasLastConfirmedPulse as unknown as { itemId: string }).itemId === model.id && (aliasLastConfirmedPulse as unknown as { targetId: string }).targetId)
             || "") ][1]
     }
 >

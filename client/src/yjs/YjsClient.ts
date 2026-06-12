@@ -136,14 +136,14 @@ export class YjsClient {
                     : (it as Record<number, unknown>)[i];
                 if (!item) continue;
                 const node: Record<string, unknown> = {
-                    id: item.id,
-                    text: item.text?.toString?.() ?? "",
+                    id: (item as unknown as { id: string }).id,
+                    text: (item as unknown as { text?: { toString?: () => string } }).text?.toString?.() ?? "",
                     author: (item as { author?: string; }).author,
                     votes: [...((item as { votes?: string[]; }).votes ?? [])],
                     created: (item as { created?: number; }).created,
                     lastChanged: (item as { lastChanged?: number; }).lastChanged,
                 };
-                const children = item.items as Items;
+                const children = (item as unknown as { items?: Items }).items as Items;
                 if (children && ((children as { length?: number; }).length ?? 0) > 0) {
                     node.items = collect(children);
                 }

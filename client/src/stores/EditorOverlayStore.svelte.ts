@@ -1276,8 +1276,8 @@ export class EditorOverlayStore {
                                 .iterateUnordered()
                             : currentPage.items;
                         for (const item of iter) {
-                            if (item && item.id === itemId) {
-                                return item.text || "";
+                            if (item && (item as unknown as { id: string }).id === itemId) {
+                                return (item as unknown as { text?: string }).text || "";
                             }
                         }
                     }
@@ -1320,12 +1320,12 @@ export class EditorOverlayStore {
                     appStore?: { currentPage?: unknown; };
                     editorOverlayStore?: unknown;
                 }).itemsStore;
-                if (itemsStore && itemsStore.allItems) {
+                if (itemsStore && (itemsStore as unknown as { allItems?: unknown }).allItems) {
                     // Attempt to find the item in the items store
-                    for (let i = 0; i < itemsStore.allItems.length; i++) {
-                        const item = itemsStore.allItems[i];
-                        if (item && item.id === itemId) {
-                            return item.text || "";
+                    for (let i = 0; i < (itemsStore as unknown as { allItems: unknown[] }).allItems.length; i++) {
+                        const item = (itemsStore as unknown as { allItems: unknown[] }).allItems[i];
+                        if (item && (item as unknown as { id: string }).id === itemId) {
+                            return (item as unknown as { text?: string }).text || "";
                         }
                     }
                 }
@@ -1373,7 +1373,7 @@ export class EditorOverlayStore {
                         it.id === itemId
                     );
                     if (item) {
-                        return item.text || "";
+                        return (item as unknown as { text?: string }).text || "";
                     }
                 }
             }
@@ -1816,7 +1816,7 @@ export class EditorOverlayStore {
                 appStore?: { currentPage?: unknown; };
                 editorOverlayStore?: unknown;
             }).appStore?.currentPage;
-            const pageId = currentPage?.id;
+            const pageId = (currentPage as unknown as { id?: string })?.id;
             if (!pageId) {
                 console.log("[pushPresenceState] No pageId", { currentPage });
                 return;
