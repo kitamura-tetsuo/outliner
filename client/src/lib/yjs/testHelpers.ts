@@ -1,3 +1,4 @@
+import * as Y from "yjs";
 /**
  * Yjs Test Helpers
  *
@@ -464,7 +465,7 @@ export async function prepareTwoFullBrowserPages(
     browser: Browser,
     testInfo: { title: string; },
     initialItems: string[],
-    TestHelpers: { seedProjectAndNavigate: any; expectEmptyOutliner: (page: Page) => Promise<void>; },
+    TestHelpers: { seedProjectAndNavigate: unknown; expectEmptyOutliner: (page: Page) => Promise<void>; },
 ): Promise<TwoFullBrowserPagesResult> {
     // Create first browser context
     const context1 = await browser.newContext();

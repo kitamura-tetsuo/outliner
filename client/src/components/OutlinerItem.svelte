@@ -437,7 +437,7 @@ onMount(() => {
     aliasTargetId = item.aliasTargetId;
     try {
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
-        const ymap = anyItem?.(tree as unknown as { getNodeValueFromKey?: (k: string) => unknown })?.getNodeValueFromKey?.(anyItem.key) as unknown;
+        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as unknown;
         if (ymap && typeof (ymap as unknown as { observe?: (cb: unknown) => void }).observe === "function") {
             const obs = (e?: unknown ) => {
                 try {

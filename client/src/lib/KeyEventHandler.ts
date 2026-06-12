@@ -528,7 +528,7 @@ export class KeyEventHandler {
                                 newItem =
                                     typeof (items as unknown as { at?: (i: number) => unknown; }).at === "function"
                                         ? (items as unknown as { at: (i: number) => unknown; }).at(lastIndex)
-                                        : (items as unknown as { [key: number]: Item; })[lastIndex];
+                                        : (items as unknown as { [key: number]: unknown; })[lastIndex];
                             }
 
                             if (newItem) {
@@ -663,7 +663,7 @@ export class KeyEventHandler {
                             const lastIndex = ((items as unknown as { length?: number; }).length ?? 0) - 1;
                             newItem = typeof (items as unknown as { at?: (i: number) => unknown; }).at === "function"
                                 ? (items as unknown as { at: (i: number) => unknown; }).at(lastIndex)
-                                : (items as unknown as { [key: number]: Item; })[lastIndex];
+                                : (items as unknown as { [key: number]: unknown; })[lastIndex];
                         }
 
                         if (newItem) {
