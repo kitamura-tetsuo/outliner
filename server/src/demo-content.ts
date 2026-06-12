@@ -9,7 +9,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 7;
+export const DEMO_TEMPLATE_VERSION = 8;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -59,6 +59,7 @@ export const demoPages: DemoPageTemplate[] = [
             "Bare URLs become clickable links automatically: https://github.com/yjs/yjs",
             "Bracketed URLs are links too: [https://github.com/yjs/yjs]",
             "Add a label after the URL to show friendly text: [https://github.com/yjs/yjs Yjs on GitHub]",
+            "The label can also come first: [Yjs on GitHub https://github.com/yjs/yjs]",
             "Try editing any line above to see the syntax behind it.",
         ],
     },
