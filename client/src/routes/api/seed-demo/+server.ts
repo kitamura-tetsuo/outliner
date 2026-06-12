@@ -20,10 +20,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
         // Final fallback to the default API server URL
         if (!apiBaseUrl) {
-            apiBaseUrl = process.env.VITE_API_SERVER_URL || "http://127.0.0.1:7091";
+            apiBaseUrl = process.env.VITE_API_SERVER_URL || "http://127.0.0.1:7093";
         }
 
-        const response = await fetch(`${apiBaseUrl}/api/seed-demo`, {
+        const endpoint = apiBaseUrl.endsWith("/")
+            ? `${apiBaseUrl}api/seed-demo`
+            : `${apiBaseUrl}/api/seed-demo`;
+
+        const response = await fetch(endpoint, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
