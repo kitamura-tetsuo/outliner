@@ -238,6 +238,13 @@ export class ScrapboxFormatter {
             }
         });
 
+        // Bare URLs (not wrapped in brackets). URLs inside bracketed links or
+        // code spans start later than the enclosing match, so the overlap
+        // resolution below discards them in favor of the bracketed construct.
+        for (const { start, end, url } of ScrapboxFormatter.matchBareUrls(text)) {
+            matches.push({ type: "link", start, end, content: url, url });
+        }
+
         // Sort matches by start position
         matches.sort((a, b) => a.start - b.start);
 
@@ -448,6 +455,28 @@ export class ScrapboxFormatter {
     private static readonly RX_HTML_CODE = /`(.*?)`/g;
     private static readonly RX_HTML_EXT_LINK = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
     private static readonly RX_HTML_INT_LINK = /\[([^[\]]+?)\]/g;
+
+    // Bare URL auto-link. Excludes whitespace, brackets and the \x01 placeholder
+    // marker so already-processed constructs are never re-matched.
+    // eslint-disable-next-line no-control-regex
+    private static readonly RX_BARE_URL = /https?:\/\/[^\s\x01<>[\]"]+/g;
+
+    /**
+     * Matches bare (non-bracketed) URLs in plain text.
+     * Trailing sentence punctuation is excluded from the URL.
+     */
+    private static matchBareUrls(text: string): Array<{ start: number; end: number; url: string; }> {
+        if (!text.includes("://")) return [];
+
+        const matches: Array<{ start: number; end: number; url: string; }> = [];
+        ScrapboxFormatter.RX_BARE_URL.lastIndex = 0;
+        let match;
+        while ((match = ScrapboxFormatter.RX_BARE_URL.exec(text)) !== null) {
+            const url = match[0].replace(/[.,;:!?]+$/, "");
+            matches.push({ start: match.index, end: match.index + url.length, url });
+        }
+        return matches;
+    }
 
     /**
      * Function to match italics considering bracket balance
@@ -683,6 +712,26 @@ export class ScrapboxFormatter {
                 });
             }
 
+            // Bare URL auto-link - bracketed URLs and code spans were already
+            // replaced by placeholders above, so only plain-text URLs remain
+            if (input.includes("://")) {
+                const urlMatches = ScrapboxFormatter.matchBareUrls(input);
+                if (urlMatches.length > 0) {
+                    let result = "";
+                    let lastIndex = 0;
+                    for (const match of urlMatches) {
+                        result += input.substring(lastIndex, match.start);
+                        const escapedUrl = this.escapeHtml(ScrapboxFormatter.sanitizeUrl(match.url));
+                        const html =
+                            `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
+                        result += createPlaceholder(html);
+                        lastIndex = match.end;
+                    }
+                    result += input.substring(lastIndex);
+                    input = result;
+                }
+            }
+
             // Escape plain text parts
             input = this.escapeHtml(input);
 
@@ -909,6 +958,7 @@ export class ScrapboxFormatter {
             /<u>(.*?)<\/u>/.source, // Underline
             /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/.source, // External link
             /\[([^[\]/][^[\]]*?)\]/.source, // Internal link
+            /https?:\/\/\S+/.source, // Bare URL
             /^>\s(.*?)$/m.source, // Quote
         ].join("|"),
         "m",
@@ -927,7 +977,8 @@ export class ScrapboxFormatter {
         const mightHaveFormat = text.includes("[")
             || text.includes("`")
             || text.includes("<")
-            || text.includes(">");
+            || text.includes(">")
+            || text.includes("://");
 
         if (!mightHaveFormat) return false;
 
