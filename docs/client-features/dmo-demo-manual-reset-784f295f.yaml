@@ -1,0 +1,21 @@
+id: FTR-784f295f
+title: Demo Manual Reset Button
+description: The /demo route has a reset button that manually triggers the same demo content reset that otherwise runs automatically every 24 hours.
+category: demo
+status: implemented
+components:
+- src/lib/demoSeed.ts
+- src/routes/api/seed-demo/+server.ts
+- src/routes/demo/+page.svelte
+services:
+- server/src/demo-api.ts
+tests:
+- client/e2e/core/dmo-demo-manual-reset-784f295f.spec.ts
+- server/tests/demo-manual-reset.test.ts
+acceptance:
+- Clicking the button sends a forced seed request (POST /api/seed-demo with force=true) and re-seeds the demo content immediately, even if the last reset was less than 24 hours ago
+- Repeated resets keep the shared demo document loadable (the template is rebuilt with sequential writes in the live document, so the YTree root marker survives)
+- The /demo project page shows a "Reset demo content" button
+- The button is disabled while the reset is in progress and a confirmation message is shown when it completes
+- Without force, the seeding behavior is unchanged (reset only when empty, older than 24 hours, or template version changed)
+title-ja: デモ手動初期化ボタン

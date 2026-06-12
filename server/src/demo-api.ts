@@ -1,19 +1,39 @@
 import express from "express";
 import * as Y from "yjs";
-import { buildDemoProject, DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION } from "./demo-content.js";
+import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
+import { Project } from "./schema/app-schema.js";
 
 type HocuspocusInstance = any;
 
 const DEMO_PROJECT_ID = "demo";
 const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+export interface DemoResetState {
+    isEmpty: boolean;
+    lastReset: number | undefined;
+    templateVersion: number | undefined;
+    now: number;
+    force: boolean;
+}
+
+// Decide whether the shared demo document must be re-seeded. `force` is the
+// manual trigger of the same reset that otherwise runs on the 24h schedule.
+export function shouldResetDemo(state: DemoResetState): boolean {
+    return state.force
+        || state.isEmpty
+        || !state.lastReset
+        || (state.now - state.lastReset > RESET_INTERVAL_MS)
+        || state.templateVersion !== DEMO_TEMPLATE_VERSION;
+}
+
 export function createDemoRouter(hocuspocus: HocuspocusInstance) {
     const router = express.Router();
 
     router.post("/seed-demo", async (req, res): Promise<void> => {
         try {
-            logger.info({ event: "seed_demo_request" });
+            const force = req.body?.force === true;
+            logger.info({ event: "seed_demo_request", force });
 
             const projectRoom = `projects/${DEMO_PROJECT_ID}`;
 
@@ -28,7 +48,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                     throw new Error("Failed to get document from direct connection");
                 }
 
-                let shouldReset = false;
                 const now = Date.now();
 
                 const metadata = doc.getMap("metadata") as Y.Map<any>;
@@ -39,17 +58,10 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 const keys = Array.from(orderedTree.keys());
                 const isEmpty = keys.length === 0 || (keys.length === 1 && keys[0] === "root");
 
-                if (
-                    isEmpty
-                    || !lastReset
-                    || (now - lastReset > RESET_INTERVAL_MS)
-                    || templateVersion !== DEMO_TEMPLATE_VERSION
-                ) {
-                    shouldReset = true;
-                }
+                const shouldReset = shouldResetDemo({ isEmpty, lastReset, templateVersion, now, force });
 
                 if (shouldReset) {
-                    logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now });
+                    logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
 
                     await directConnection.transact((document: any) => {
                         const ydoc = document as unknown as Y.Doc;
@@ -68,12 +80,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
-                        // Build the full demo project (all feature pages) in a
-                        // temporary valid instance first
-                        const tempProject = buildDemoProject("seed-server");
-
-                        // Apply the properly initialized project document into the real shared document
-                        Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(tempProject.ydoc));
+                        // Rebuild the template directly in the live document.
+                        // The orderedTree map is empty at this point, so
+                        // Project.fromDoc re-initializes the YTree as a
+                        // sequential write of this client (see demo-content.ts
+                        // for why applying a fresh doc's update is unsafe).
+                        const project = Project.fromDoc(ydoc);
+                        populateDemoProject(project, "seed-server");
                     });
                 } else {
                     logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });

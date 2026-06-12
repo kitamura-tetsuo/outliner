@@ -3,12 +3,14 @@
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../lib/demoSeed";
-    import { getYjsClientByProjectTitle } from "../../services";
+    import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../services";
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import { resolvePath } from "../../utils/pathUtils";
 
     let isLoading = $state(true);
+    let isResetting = $state(false);
+    let resetDone = $state(false);
     let error: string | undefined = $state(undefined);
 
     // Reactive page list (depends on store.pagesVersion)
@@ -39,6 +41,25 @@
             error = err instanceof Error ? err.message : "An error occurred while loading the demo.";
         } finally {
             isLoading = false;
+        }
+    }
+
+    // Manually trigger the reset that otherwise runs every 24 hours, then
+    // reconnect with a fresh client so the page list reflects the reseeded
+    // content instead of relying on live sync into the old document state.
+    async function resetDemo() {
+        if (isResetting) return;
+        try {
+            isResetting = true;
+            resetDone = false;
+            await seedDemo({ force: true });
+            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
+            yjsStore.yjsClient = undefined;
+            store.project = undefined;
+            await initializeDemo();
+            resetDone = error === undefined;
+        } finally {
+            isResetting = false;
         }
     }
 
@@ -81,10 +102,23 @@
 
         <div class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">Public Demo Project</h1>
+            <button
+                onclick={resetDemo}
+                disabled={isResetting || isLoading}
+                data-testid="demo-reset-button"
+                class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+                {isResetting ? "Resetting..." : "Reset demo content"}
+            </button>
         </div>
         <p class="mt-1 text-sm text-gray-500">
-            This is a public, collaborative demo project. Each page demonstrates a group of features. Content resets every 24 hours.
+            This is a public, collaborative demo project. Each page demonstrates a group of features. Content resets every 24 hours, or immediately with the reset button.
         </p>
+        {#if resetDone}
+            <p class="mt-1 text-sm text-green-600" data-testid="demo-reset-done">
+                Demo content has been reset.
+            </p>
+        {/if}
     </div>
 
     {#if isLoading}

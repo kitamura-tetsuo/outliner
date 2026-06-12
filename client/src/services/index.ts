@@ -15,6 +15,7 @@ export {
     createClient as createYjsClient,
     createNewProject as createNewYjsProject,
     getClientByProjectTitle as getYjsClientByProjectTitle,
+    removeClientByProjectId as removeYjsClientByProjectId,
 } from "../lib/yjsService.svelte";
 
 // SnapshotService

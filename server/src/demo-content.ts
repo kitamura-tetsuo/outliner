@@ -9,7 +9,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 4;
+export const DEMO_TEMPLATE_VERSION = 5;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -29,6 +29,7 @@ export const demoPages: DemoPageTemplate[] = [
         lines: [
             "Welcome to the Outliner Demo!",
             "This is a public, collaborative demo project. Anyone can edit it, and the content resets every 24 hours.",
+            'You can also reset the content right now with the "Reset demo content" button at the top of the demo project page.',
             "Each page of this project demonstrates a group of features. Follow the links below to take the tour.",
             "Feature tour:",
             "  [Formatting]: bold, italic, strike-through, code, and links.",
@@ -172,13 +173,23 @@ export const demoPages: DemoPageTemplate[] = [
     },
 ];
 
-// Build a fully populated demo project from the template above.
-export function buildDemoProject(author = "seed-server"): Project {
-    const project = Project.createInstance(DEMO_PROJECT_TITLE);
+// Populate an existing, empty project with the demo template pages.
+// The reset endpoint calls this against the live shared document so that all
+// writes (including YTree re-initialization) are sequential operations of the
+// server client. Applying a fresh document's update instead would make the
+// YTree "root" marker a concurrent write, which can lose against tombstoned
+// entries from earlier resets and corrupt the tree.
+export function populateDemoProject(project: Project, author = "seed-server"): void {
     for (const pageTemplate of demoPages) {
         const page = project.addPage(pageTemplate.title, author);
         addLinesToPage(page, pageTemplate.lines, author);
     }
+}
+
+// Build a fully populated demo project from the template above.
+export function buildDemoProject(author = "seed-server"): Project {
+    const project = Project.createInstance(DEMO_PROJECT_TITLE);
+    populateDemoProject(project, author);
     return project;
 }
 

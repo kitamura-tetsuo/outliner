@@ -49,6 +49,10 @@ class Registry {
         this.map.set(this.key(k), v);
     }
 
+    delete(k: ClientKey) {
+        this.map.delete(this.key(k));
+    }
+
     entries() {
         return Array.from(this.map.entries());
     }
@@ -466,6 +470,22 @@ export function cleanupClient() {
         yjsStore.yjsClient?.dispose();
     } catch {}
     yjsStore.yjsClient = undefined;
+}
+
+/**
+ * Dispose the registered client for a project and drop it from the registry,
+ * so the next getClientByProjectTitle() call creates a fresh connection.
+ * Used by the demo manual reset to re-sync after the server reseeds the doc.
+ */
+export function removeClientByProjectId(projectId: string): void {
+    const key = keyFor(undefined, projectId);
+    const entry = registry.get(key);
+    if (entry) {
+        try {
+            entry[0]?.dispose();
+        } catch {}
+        registry.delete(key);
+    }
 }
 
 export async function deleteProject(projectId: string): Promise<boolean> {
