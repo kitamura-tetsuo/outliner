@@ -9,6 +9,10 @@ const { mockInsertText } = vi.hoisted(() => ({
 // Svelte store mock
 vi.mock("../stores/EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
+        getCursorInstances: vi.fn(() => [{
+            insertText: mockInsertText,
+        }]),
+        cursorInstances: new Map(),
         insertText: mockInsertText,
         clearSelections: vi.fn(),
         startCursorBlink: vi.fn(),

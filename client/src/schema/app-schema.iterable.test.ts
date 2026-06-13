@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { Cursor } from "../lib/Cursor";
+import { store } from "../stores/store.svelte";
 import { Item, Project } from "./yjs-schema";
 
 describe("Cursor.searchItem recursion over Large Trees", () => {
     it("should find the target item in a tree using findTarget", () => {
         const project = Project.createInstance("test-project");
+        store.project = project;
         const rootItems = project.items;
 
         // Build a tree
