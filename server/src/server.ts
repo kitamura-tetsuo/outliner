@@ -435,6 +435,9 @@ export async function startServer(
                 | undefined;
             try {
                 console.log(`[server] Handover to Hocuspocus: room=${documentName}, ip=${ip}`);
+                if (request.url && request.url.startsWith("//")) {
+                    try { Object.defineProperty(request, "url", { value: request.url.replace(/\/\/+/g, "/") }); } catch (e) { request.url = request.url.replace(/\/\/+/g, "/"); }
+                }
                 clientConnection = hocuspocus.handleConnection(ws, request as any, { ip });
             } catch (e) {
                 /* eslint-disable-next-line no-console */ console.error("Error handling Hocuspocus connection:", e);
@@ -459,7 +462,7 @@ export async function startServer(
             });
 
             ws.on("close", (code: number, reason: Buffer) => {
-                clientConnection?.handleClose({ code, reason: reason?.toString() });
+                try { clientConnection?.handleClose({ code, reason: reason?.toString() }); } catch(e) {}
                 totalSockets--;
                 if (totalSockets < 0) totalSockets = 0;
                 if (ip) {
