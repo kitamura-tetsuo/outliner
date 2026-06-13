@@ -54,10 +54,10 @@
                 store.project = client.getProject() as unknown as import("../../../schema/app-schema").Project;
             }
 
-            // Wait for sync until the page is found (5 seconds max)
+            // Wait for sync until the page is found (15 seconds max, aligns with regular project page loader)
             let targetPage = findPage(name);
             let retries = 0;
-            while (!targetPage && retries < 50) {
+            while (!targetPage && retries < 150) {
                 await new Promise(r => setTimeout(r, 100));
                 targetPage = findPage(name);
                 retries++;
