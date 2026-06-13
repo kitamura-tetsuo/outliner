@@ -22,8 +22,13 @@
     let isSearchPanelVisible = $state(false);
     let isResetting = $state(false);
     let resetDone = $state(false);
+    let activePageId = $state<string | undefined>(undefined);
 
     function findPage(name: string): Item | undefined {
+        if (activePageId && store.project) {
+            const item = store.project.findPage(activePageId);
+            if (item) return item as unknown as Item;
+        }
         const items = store.project?.items;
         if (!items) return undefined;
         const len = items.length || 0;
@@ -107,6 +112,7 @@
             }
 
             store.currentPage = targetPage;
+            activePageId = targetPage.id;
         } catch (err) {
             console.error("Failed to load demo page:", err);
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
@@ -150,6 +156,7 @@ let resetEpochCache = $state(0);
             resetEpochCache = store.resetEpoch;
             // nullify immediately to disconnect old tree node references
             store.currentPage = undefined;
+            activePageId = undefined;
             // The tree was rebuilt, we must force a remount and reload page logic
             if (pageName && !isLoading) {
                 setTimeout(() => {
@@ -167,6 +174,7 @@ let resetEpochCache = $state(0);
             const name = $p.params?.page ?? "";
             if (!name || name === lastLoaded) return;
             lastLoaded = name;
+            activePageId = undefined; // reset active id on route change
             loadDemoPage(name);
         });
         return () => unsub();
@@ -178,6 +186,7 @@ let resetEpochCache = $state(0);
             yjsStore.yjsClient = undefined;
             store.project = undefined;
             store.currentPage = undefined;
+            activePageId = undefined;
         } catch {}
     });
 </script>
