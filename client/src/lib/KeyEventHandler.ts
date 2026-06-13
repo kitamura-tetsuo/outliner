@@ -160,10 +160,12 @@ export class KeyEventHandler {
                             const w: any = window as any;
                             const ap: any = (w as any)?.aliasPickerStore ?? aliasPickerStore;
                             const opts: any[] = Array.isArray((ap as any)?.options) ? (ap as any).options : [];
-                            let si: number = typeof (ap as any)?.selectedIndex === 'number' ? (ap as any).selectedIndex : 0;
+                            let si: number = typeof (ap as any)?.selectedIndex === "number"
+                                ? (ap as any).selectedIndex
+                                : 0;
                             if (opts.length > 0) {
                                 si = Math.max(0, Math.min(si, opts.length - 1));
-                                const tid = opts[si]?.id;
+                                const tid = (opts[si] as unknown as { id?: string; })?.id;
                                 if (tid) {
                                     try {
                                         console.log("KeyEventHandler(Enter@Picker): confirmById via store", {
@@ -217,7 +219,7 @@ export class KeyEventHandler {
                                     if (!node) return null;
                                     if ((node as any).id === id) return node;
                                     const ch: any = (node as any).items;
-                                    if (ch && typeof (ch as any)[Symbol.iterator] === 'function') {
+                                    if (ch && typeof (ch as any)[Symbol.iterator] === "function") {
                                         for (const c of ch as any) {
                                             const r = find(c, id);
                                             if (r) return r;
@@ -484,7 +486,9 @@ export class KeyEventHandler {
                             } catch {
                                 try {
                                     // Fallback if no-arg fails
-                                    const prevLen = typeof (items as any).length === "number" ? (items as any).length : 0;
+                                    const prevLen = typeof (items as any).length === "number"
+                                        ? (items as any).length
+                                        : 0;
                                     newItem = (items as any).addNode(userId, prevLen);
                                 } catch {}
                             }
@@ -499,7 +503,10 @@ export class KeyEventHandler {
                                 (newItem as any).text = "";
                                 (newItem as any).aliasTargetId = undefined;
                                 try {
-                                    console.log("KeyEventHandler(Palette): showing AliasPicker for", (newItem as any).id);
+                                    console.log(
+                                        "KeyEventHandler(Palette): showing AliasPicker for",
+                                        (newItem as any).id,
+                                    );
                                 } catch {}
                                 {
                                     const w: unknown = typeof window !== "undefined"
@@ -858,7 +865,9 @@ export class KeyEventHandler {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
                 const rawText: unknown = node?.text;
-                const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
+                const text: string = typeof rawText === "string"
+                    ? rawText
+                    : ((rawText as unknown as { toString?: () => string; })?.toString?.() ?? "");
                 const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
 
                 // Do not show command palette if immediately after [ or already inside internal link starting with [
@@ -1909,7 +1918,8 @@ export class KeyEventHandler {
                 !text && typeof window !== "undefined"
                 && (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText
             ) {
-                text = ((window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText as string) || '';
+                text = ((window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText as string)
+                    || "";
                 console.log(`Using text from global variable: "${text}"`);
             }
 

@@ -178,7 +178,7 @@ export class OutlinerViewModel {
                 original: item,
                 text: item.text.toString(),
                 votes: [...((item as unknown as { votes?: string[]; }).votes || [])],
-                author: (item as any).author || '',
+                author: (item as any).author || "",
                 created: (item as any).created || 0,
                 lastChanged: (item as any).lastChanged || 0,
                 commentCount: (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0,

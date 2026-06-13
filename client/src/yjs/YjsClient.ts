@@ -200,7 +200,7 @@ export class YjsClient {
                 ? {
                     url: (provider as any).url || (config as any)?.url || (wsProvider as any)?.url,
                     name: (provider as any).name || (config as any)?.name,
-                    connected: (provider as any).connected || (wsProvider as any)?.status === 'connected',
+                    connected: (provider as any).connected || (wsProvider as any)?.status === "connected",
                 }
                 : null,
         };

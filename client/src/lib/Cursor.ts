@@ -364,8 +364,6 @@ export class Cursor implements CursorEditingContext {
             if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                 // Create the parent Item from the parentKey
                 parentItemInstance = new (currentTarget!.constructor as any)(
-
-
                     currentTarget!.ydoc,
                     currentTarget!.tree,
                     parentCollection.parentKey,
@@ -1480,8 +1478,6 @@ export class Cursor implements CursorEditingContext {
                         if (prevItemId && prevItemId !== this.itemId) {
                             prevItem = searchItem(generalStore.currentPage as any, prevItemId) as any;
 
-
-
                             newItemId = prevItemId;
                             const treeTextLength = prevItem
                                 ? this.getTargetText(prevItem as any).length
@@ -1720,8 +1716,6 @@ export class Cursor implements CursorEditingContext {
                 // Get the parent Item by creating it from parentKey (skip "root" as it's the project level)
                 if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                     prevItem = new (currentTarget!.constructor as any)(
-
-
                         currentTarget!.ydoc,
                         currentTarget!.tree,
                         parentCollection.parentKey,

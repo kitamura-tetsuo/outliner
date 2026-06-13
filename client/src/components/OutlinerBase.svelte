@@ -152,7 +152,7 @@
                             if (!arr) {
                                 const fallback = new Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>>();
                                 // Do not write to map in getter to avoid infinite loops in Observers
-                                return new Comments(fallback);
+                                return new Comments(fallback as Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>>);
                             }
                             return new Comments(arr as Y.Array<Y.Map<import("../types/yjs-types.js").CommentValueType>>);
                         },

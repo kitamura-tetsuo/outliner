@@ -29,7 +29,10 @@ describe("yjsService", () => {
 
     it("sets presence state", () => {
         const awareness = new Awareness(new Y.Doc());
-        yjsService.setPresence(awareness, { cursor: { itemId: "i1", offset: 0, cursorId: "1", isActive: true } } as any);
+        yjsService.setPresence(
+            awareness,
+            { cursor: { itemId: "i1", offset: 0, cursorId: "1", isActive: true } } as any,
+        );
         const presence = yjsService.getPresence(awareness);
         expect(presence?.cursor?.itemId).toBe("i1");
     });
@@ -85,13 +88,15 @@ describe("yjsService", () => {
 
         // seed local state (ignored by overlay sync)
         awareness.setLocalStateField("user", { userId: "self", name: "Self" });
-        awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
+        awareness.setLocalStateField("presence", {
+            cursor: { itemId: "root", offset: 0 } as import("y-protocols/awareness").PresenceCursor,
+        });
 
         // simulate remote collaborator
         const states = awareness.getStates();
         states.set(42, {
             user: { userId: "u2", name: "Bob" },
-            presence: { cursor: { itemId: "i1", offset: 0 } },
+            presence: { cursor: { itemId: "i1", offset: 0 } as import("y-protocols/awareness").PresenceCursor },
         });
         (awareness as any).emit("change", [{
             added: new Set([42]),

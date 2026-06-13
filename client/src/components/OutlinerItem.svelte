@@ -471,7 +471,7 @@ let aliasLastConfirmedPulse = $derived.by(() => {
 // Update DOM attributes when aliasLastConfirmedPulse changes
 $effect(() => {
     if (aliasLastConfirmedPulse && itemRef) {
-        const { itemId, targetId } = aliasLastConfirmedPulse;
+        const { itemId, targetId } = aliasLastConfirmedPulse as unknown as { itemId: string, targetId: string };
         try {
             // Set attribute on this item
             (itemRef as HTMLElement)?.setAttribute?.('data-alias-target-id', String(targetId));
@@ -536,8 +536,8 @@ const aliasTargetIdEffective = $derived.by(() => {
         if (isE2E && isEmpty) return lastTargetId;
     }
     // Check pulse for recent confirmations
-    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
-        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
+    if (aliasLastConfirmedPulse && (Date.now() - (aliasLastConfirmedPulse as unknown as { at: number }).at < 2000)) {
+        if ((aliasLastConfirmedPulse as unknown as { itemId: string }).itemId === model.id) return (aliasLastConfirmedPulse as unknown as { targetId: string }).targetId;
     }
     return undefined;
 });
@@ -647,7 +647,7 @@ onMount(() => {
     try {
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
         const tree = anyItem?.tree; const key = anyItem?.key;
-        const m = tree?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
+        const m = (tree as unknown as { getNodeValueFromKey?: (k: string) => unknown })?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
         const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
         if (t && typeof t.observe === "function") {
             const h1 = () => { try { textString = t.toString?.() ?? ""; } catch {} };
@@ -2010,7 +2010,7 @@ export function setSelectionPosition(start: number, end: number = start) {
           (aliasTargetIdEffective
             || (((aliasPickerStore as unknown as { lastConfirmedItemId?: string })?.lastConfirmedItemId === model.id)
                 && (aliasPickerStore as unknown as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId)
-            || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
+            || (aliasLastConfirmedPulse && (aliasLastConfirmedPulse as unknown as { itemId: string }).itemId === model.id && (aliasLastConfirmedPulse as unknown as { targetId: string }).targetId)
             || "") ][1]
     }
 >

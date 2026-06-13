@@ -1586,7 +1586,7 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = items.at(targetIndex + i);
+                const newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as unknown as { [key: number]: Item })[targetIndex + i]);
                 if (newItem) {
                     newItem.updateText(lines[i]);
                 }
@@ -1603,7 +1603,7 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = items.at(targetIndex + i);
+                const newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as unknown as { [key: number]: Item })[targetIndex + i]);
                 if (newItem) {
                     newItem.updateText(lines[i]);
                 }

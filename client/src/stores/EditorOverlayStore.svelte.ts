@@ -1270,9 +1270,9 @@ export class EditorOverlayStore {
                     // Use iterator to avoid O(N^2) complexity with indexed access on Items
                     if (currentPage.items) {
                         // Use iterateUnordered if available to avoid O(N log N) sorting
-                        const iter = ((currentPage as any).items)
+                        const iter = (currentPage as any).items
                                 .iterateUnordered
-                            ? ((currentPage as any).items)
+                            ? (currentPage as any).items
                                 .iterateUnordered()
                             : currentPage.items;
                         for (const item of iter) {
@@ -1816,7 +1816,7 @@ export class EditorOverlayStore {
                 appStore?: { currentPage?: unknown; };
                 editorOverlayStore?: unknown;
             }).appStore?.currentPage;
-            const pageId = currentPage?.id;
+            const pageId = (currentPage as unknown as { id?: string; })?.id;
             if (!pageId) {
                 console.log("[pushPresenceState] No pageId", { currentPage });
                 return;

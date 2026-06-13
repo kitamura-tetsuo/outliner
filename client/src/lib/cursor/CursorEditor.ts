@@ -1,5 +1,6 @@
-import type { Item } from "../../schema/yjs-schema";
-import { Items } from "../../schema/yjs-schema";
+import { Item as AppItem, Items as AppItems } from "../../schema/app-schema";
+import { Item as YjsItem, Items as YjsItems } from "../../schema/yjs-schema";
+
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
@@ -22,7 +23,7 @@ export interface CursorEditingContext {
     isActive: boolean;
     clearSelection(): void;
     applyToStore(): void;
-    findTarget(): Item | undefined;
+    findTarget(): AppItem | undefined;
 }
 
 export class CursorEditor {
@@ -176,12 +177,12 @@ export class CursorEditor {
         const text: string = (target.text as unknown as { toString?: () => string; })?.toString?.() ?? "";
         const beforeText = text.slice(0, cursor.offset);
         const afterText = text.slice(cursor.offset);
-        const pageTitle = isPageItem(target);
+        const pageTitle = isPageItem(target as unknown as YjsItem);
 
         if (pageTitle) {
-            if (target.items && target.items instanceof Items) {
+            if (target.items && target.items instanceof YjsItems) {
                 target.updateText(beforeText);
-                const newItem = target.items.addNode(cursor.userId, 0);
+                const newItem = (target.items as unknown as YjsItems).addNode(cursor.userId, 0);
                 newItem.updateText(afterText);
 
                 store.clearCursorAndSelection(cursor.userId);
@@ -208,7 +209,7 @@ export class CursorEditor {
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : parent?.items;
+                    : (parent as unknown as { items?: AppItems; })?.items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -216,7 +217,8 @@ export class CursorEditor {
                     : undefined;
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
-                    const currentIndex = itemsCollection.indexOf(target);
+                    const currentIndex = (itemsCollection as unknown as { indexOf: (item: unknown) => number; })
+                        .indexOf(target);
                     target.updateText(beforeText);
                     const newItem = addNode(cursor.userId, currentIndex + 1);
                     if (!newItem) return;
@@ -264,11 +266,11 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const pageTitle = isPageItem(target);
+        const pageTitle = isPageItem(target as unknown as YjsItem);
 
         if (pageTitle) {
-            if (target.items && target.items instanceof Items) {
-                const newItem = target.items.addNode(cursor.userId, 0);
+            if (target.items && target.items instanceof YjsItems) {
+                const newItem = (target.items as unknown as YjsItems).addNode(cursor.userId, 0);
 
                 store.clearCursorAndSelection(cursor.userId);
 
@@ -294,7 +296,7 @@ export class CursorEditor {
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : parent?.items;
+                    : (parent as unknown as { items?: AppItems; })?.items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -302,7 +304,8 @@ export class CursorEditor {
                     : undefined;
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
-                    const currentIndex = itemsCollection.indexOf(target);
+                    const currentIndex = (itemsCollection as unknown as { indexOf: (item: unknown) => number; })
+                        .indexOf(target);
                     // Add below without updating current text
                     const newItem = addNode(cursor.userId, currentIndex + 1);
                     if (!newItem) return;
@@ -468,7 +471,7 @@ export class CursorEditor {
         store.startCursorBlink();
     }
 
-    private getPlainText(item: import("../../schema/app-schema").Item): string {
+    private getPlainText(item: AppItem): string {
         if (!item) return "";
         const textValue = (item as any).text;
         if (typeof textValue === "string") return textValue;
@@ -486,10 +489,10 @@ export class CursorEditor {
         return "";
     }
 
-    private updateItemText(item: import("../../schema/app-schema").Item, text: string) {
+    private updateItemText(item: unknown, text: string) {
         if (!item) return;
-        if (typeof item.updateText === "function") {
-            item.updateText(text);
+        if (typeof (item as unknown as { updateText?: unknown; }).updateText === "function") {
+            (item as unknown as { updateText: (t: string) => void; }).updateText(text);
             return;
         }
 
@@ -498,25 +501,28 @@ export class CursorEditor {
             ?? (item as any)?.id;
         if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
 
-        const value = tree.getNodeValueFromKey(key);
+        const value = tree.getNodeValueFromKey(key) as import("yjs").Map<unknown>;
         const yText = value?.get?.("text");
         try {
-            if (yText && typeof yText.delete === "function" && typeof yText.insert === "function") {
-                yText.delete(0, yText.length);
-                if (text) yText.insert(0, text);
+            if (
+                yText && typeof (yText as unknown as import("yjs").Text).delete === "function"
+                && typeof (yText as unknown as import("yjs").Text).insert === "function"
+            ) {
+                (yText as unknown as import("yjs").Text).delete(0, (yText as unknown as import("yjs").Text).length);
+                if (text) (yText as unknown as import("yjs").Text).insert(0, text);
             } else if (value && typeof value.set === "function") {
-                value.set("text", text);
+                (value as unknown as { set: (k: string, v: unknown) => void; }).set("text", text);
             }
             if (value && typeof value.set === "function") {
-                value.set("lastChanged", Date.now());
+                (value as unknown as { set: (k: string, v: unknown) => void; }).set("lastChanged", Date.now());
             }
         } catch {}
     }
 
-    private deleteItemNode(item: import("../../schema/app-schema").Item) {
+    private deleteItemNode(item: unknown) {
         if (!item) return;
-        if (typeof item.delete === "function") {
-            item.delete();
+        if (typeof (item as unknown as { delete?: () => void; }).delete === "function") {
+            (item as unknown as { delete: () => void; }).delete();
             return;
         }
 
@@ -531,9 +537,15 @@ export class CursorEditor {
         ];
 
         for (const tree of treeCandidates) {
-            if (tree && typeof tree.deleteNodeAndDescendants === "function") {
+            if (
+                tree
+                && typeof (tree as unknown as { deleteNodeAndDescendants: (k: string) => void; })
+                        .deleteNodeAndDescendants === "function"
+            ) {
                 try {
-                    tree.deleteNodeAndDescendants(key);
+                    (tree as unknown as { deleteNodeAndDescendants: (k: string) => void; }).deleteNodeAndDescendants(
+                        key,
+                    );
                     return;
                 } catch {}
             }
@@ -637,9 +649,9 @@ export class CursorEditor {
         const parent = (firstItem as any).parent;
         if (!parent || parent !== (lastItem as any).parent) return;
 
-        const items = parent as unknown as Items;
-        const firstIndex = items.indexOf(firstItem);
-        const lastIndex = items.indexOf(lastItem);
+        const items = parent as unknown as AppItems;
+        const firstIndex = items.indexOf(firstItem as unknown as AppItem);
+        const lastIndex = items.indexOf(lastItem as unknown as AppItem);
         if (firstIndex === -1 || lastIndex === -1) return;
 
         try {
