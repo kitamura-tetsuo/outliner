@@ -1,24 +1,8 @@
-import { HocuspocusProvider } from "@hocuspocus/provider";
 import { type TestInfo } from "@playwright/test";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
+import { waitForSyncedAndDataForTest } from "./browserTestHelpers";
 
-export async function waitForSyncedAndDataForTest(
-    provider: HocuspocusProvider,
-    checkDataAvailable: () => boolean,
-    options: { timeoutMs?: number; pollIntervalMs?: number; label?: string; } = {},
-): Promise<boolean> {
-    const { timeoutMs = 30000, pollIntervalMs = 100 } = options;
-    const maxIterations = Math.floor(timeoutMs / pollIntervalMs);
-    for (let i = 0; i < maxIterations; i++) {
-        if (provider.isSynced === true) break;
-        await new Promise((r) => setTimeout(r, pollIntervalMs));
-    }
-    for (let i = 0; i < maxIterations; i++) {
-        if (checkDataAvailable()) return true;
-        await new Promise((r) => setTimeout(r, pollIntervalMs));
-    }
-    return false;
-}
+export { waitForSyncedAndDataForTest };
 
 export async function initializeBrowserPage(
     browser: Browser,

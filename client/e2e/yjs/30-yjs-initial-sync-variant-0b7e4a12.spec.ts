@@ -121,7 +121,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
     // Wait for both provider.synced and actual data to be available using the test utility function
     const v = await p2.evaluate(async () => {
         // @ts-expect-error - Browser context import resolved by Vite
-        const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
+        const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/browserTestHelpers.ts");
 
         const prov = (window as any).__PROVIDER2__;
 
