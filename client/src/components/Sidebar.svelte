@@ -161,11 +161,13 @@
                                             >{page.text || "Untitled page"}</span
                                         >
                                     </span>
-                                    <span class="page-date"
-                                        >{new Date(
-                                            page.lastChanged,
-                                        ).toLocaleDateString()}</span
-                                    >
+                                    {#if Number.isFinite(page.lastChanged) && page.lastChanged > 0}
+                                        <span class="page-date"
+                                            >{new Date(
+                                                page.lastChanged,
+                                            ).toLocaleDateString()}</span
+                                        >
+                                    {/if}
                                 </a>
                             </li>
                         {/each}
