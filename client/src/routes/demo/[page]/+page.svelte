@@ -29,7 +29,7 @@
         let decodedName = name;
         try {
             decodedName = decodeURIComponent(name);
-        } catch(e) {}
+        } catch {}
 
         for (let i = 0; i < len; i++) {
             const item = items.at?.(i);

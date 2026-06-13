@@ -155,7 +155,7 @@
                     let decodedName = pageName;
                     try {
                         decodedName = decodeURIComponent(pageName);
-                    } catch(e) {}
+                    } catch {}
 
                     for (let i = 0; i < len; i++) {
                         const p = items.at(i);
