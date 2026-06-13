@@ -224,7 +224,7 @@ describe("Sidebar", () => {
                         lastChanged: 0,
                         items: { length: 0 },
                     },
-                ]
+                ],
             } as unknown as typeof store.pages;
 
             const { rerender } = render(Sidebar, { isOpen: true });
