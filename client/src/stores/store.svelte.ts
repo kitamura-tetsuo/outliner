@@ -137,8 +137,9 @@ export class GeneralStore {
     public get project(): Project | undefined {
         return this._project;
     }
-    // Explicit signal for pages updates to ensure Svelte 5 reactivity
+// Explicit signal for pages updates to ensure Svelte 5 reactivity
     pagesVersion = $state(0);
+    resetEpoch = $state(0);
 
     // Cache of page names (normalized to lowercase) for O(1) lookup
     private _pageNamesCache = new SvelteSet<string>();
@@ -280,7 +281,14 @@ export class GeneralStore {
 
         // Monitor both the orderedTree (content) and items (page list) for changes
         try {
-            ymap?.observeDeep?.(handler);
+ymap?.observeDeep?.(handler);
+            const metadataMap = project?.ydoc?.getMap?.("metadata");
+            metadataMap?.observe?.((event: Y.YMapEvent<unknown>) => {
+                if (event.keysChanged.has("lastReset")) {
+                    this.resetEpoch = metadataMap.get("lastReset") as number || 0;
+                    this._currentPage = undefined;
+                }
+            });
             if (project?.items && "observeDeep" in project.items) {
                 (project.items as {
                     observeDeep?: (
