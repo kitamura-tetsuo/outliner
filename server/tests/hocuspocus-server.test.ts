@@ -81,7 +81,9 @@ describe("Hocuspocus Server", () => {
             let doneCalled = false;
             const timeout = setTimeout(() => {
                 if (doneCalled) return;
-                try { provider.disconnect(); } catch (e) {}
+                try {
+                    provider.disconnect();
+                } catch (e) {}
                 reject(new Error("Timed out waiting for auth failure"));
             }, 500);
 
@@ -89,7 +91,9 @@ describe("Hocuspocus Server", () => {
                 if (doneCalled) return;
                 doneCalled = true;
                 clearTimeout(timeout);
-                try { provider.disconnect(); } catch (e) {}
+                try {
+                    provider.disconnect();
+                } catch (e) {}
                 resolve();
             };
 
