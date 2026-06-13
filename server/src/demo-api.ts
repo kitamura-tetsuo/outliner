@@ -71,36 +71,60 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         size: orderedTree.size,
                     });
 
-                    // Apply the reset directly on the live document — do NOT wrap it in
-                    // directConnection.transact(). Since @hocuspocus/server 4.x that helper
-                    // runs the callback inside a single Yjs transaction, but yjs-orderedtree
-                    // relies on its observeDeep handler firing between successive tree
-                    // mutations to refresh its internal computedMap. Batching the
-                    // populateDemoProject() tree writes (createNode + setNodeOrderToEnd) into
-                    // one transaction leaves new nodes missing from that map and throws
-                    // "Cannot read properties of undefined (reading 'parent')". Running each
-                    // tree operation as its own transaction (3.x behaviour) keeps it in sync;
-                    // the directConnection.disconnect() in the finally block persists the result.
                     const ydoc = doc as unknown as Y.Doc;
 
-                    // Clear orderedTree completely
-                    ydoc.getMap("orderedTree").clear();
+                    // Tear the tree down and re-create its root, capturing the Project
+                    // wrapper for the populate step below.
+                    //
+                    // Three YTree quirks force this exact shape (clear, then atomic root
+                    // re-init, then unbatched populate — each a separate transaction):
+                    //   1. Atomic teardown + root re-init. #3020 rebuilds the root as a fresh
+                    //      sequential write of this client (Project.fromDoc re-initializes the
+                    //      YTree because the cleared orderedTree is empty). That root creation
+                    //      is otherwise NOT transactional, so when this runs on the live demo
+                    //      document a stale observeDeep handler — left attached by an earlier
+                    //      Project.fromDoc() on the same doc — fires while "root" exists but its
+                    //      "_parentHistory" has not been set yet, throwing
+                    //      "Cannot read properties of undefined (reading 'entries')". Wrapping
+                    //      the re-init in a transaction makes that observer fire once, after the
+                    //      root is complete. (Repeated forced resets reproduce this; it is also
+                    //      latent on @hocuspocus/server 3.x.)
+                    let project!: Project;
+                    // Clear in a transaction SEPARATE from the root re-init below. The two
+                    // must not share a transaction: deleting and re-adding the "root" key in
+                    // one transaction makes Yjs treat it as an update, which YTree rejects with
+                    // "[ytree] The node should not be updated" (#3020 relies on root being a
+                    // fresh add, not an update).
+                    ydoc.transact(() => {
+                        // Clear orderedTree completely
+                        ydoc.getMap("orderedTree").clear();
 
-                    // Clear items map completely (if it exists from previous versions)
-                    ydoc.getMap("items").clear();
+                        // Clear items map completely (if it exists from previous versions)
+                        ydoc.getMap("items").clear();
 
-                    // Re-initialize metadata
-                    const meta = ydoc.getMap("metadata");
-                    meta.set("title", DEMO_PROJECT_TITLE);
-                    meta.set("lastReset", now);
-                    meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+                        // Re-initialize metadata
+                        const meta = ydoc.getMap("metadata");
+                        meta.set("title", DEMO_PROJECT_TITLE);
+                        meta.set("lastReset", now);
+                        meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+                    });
 
-                    // Rebuild the template directly in the live document.
-                    // The orderedTree map is empty at this point, so
-                    // Project.fromDoc re-initializes the YTree as a
-                    // sequential write of this client (see demo-content.ts
-                    // for why applying a fresh doc's update is unsafe).
-                    const project = Project.fromDoc(ydoc);
+                    // Re-create the root atomically (its two internal writes batched), so a
+                    // stale observer never sees a half-built root.
+                    ydoc.transact(() => {
+                        project = Project.fromDoc(ydoc);
+                    });
+
+                    //   2. Populate OUTSIDE that transaction. yjs-orderedtree relies on its
+                    //      observeDeep handler firing between successive tree mutations to
+                    //      refresh its internal computedMap; batching addPage/addNode
+                    //      (createNode + setNodeOrderToEnd) into one transaction leaves new
+                    //      nodes missing from that map and throws
+                    //      "Cannot read properties of undefined (reading 'parent')". Each tree
+                    //      write must therefore be its own transaction. (This is also why we no
+                    //      longer use directConnection.transact(), which since 4.x wraps the
+                    //      whole callback in one transaction.) directConnection.disconnect() in
+                    //      the finally block persists the result.
                     populateDemoProject(project, "seed-server");
 
                     logger.info({ event: "seed_demo_populated", pages: project.items.length });

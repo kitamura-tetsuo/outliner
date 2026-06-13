@@ -96,4 +96,50 @@ describe("Seed via Hocuspocus direct connection (4.x regression)", () => {
         }
         expect(pageTitles).to.deep.equal(demoPages.map(p => p.title));
     });
+
+    // Repeated forced resets while a viewer keeps the demo document live in memory.
+    // This used to fail on the second reset with
+    // "Cannot read properties of undefined (reading 'entries')": a stale YTree
+    // observeDeep handler from an earlier Project.fromDoc() fired during the
+    // non-transactional root re-creation. The doc would then be stuck at size 1
+    // (root only), so every following reset failed too.
+    it("survives repeated forced resets with a viewer connected", async () => {
+        const forceReset = async () => {
+            const res = await fetch(`http://127.0.0.1:${port}/api/seed-demo`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ force: true }),
+            });
+            return { status: res.status, body: await res.json() as { success: boolean; reset: boolean; } };
+        };
+
+        // Seed once, then connect a viewer so the document stays loaded in memory.
+        await forceReset();
+        provider = new HocuspocusProvider({
+            url: `ws://127.0.0.1:${port}/projects/demo?token=1`,
+            name: "projects/demo",
+            document: new Y.Doc(),
+            token: "1",
+        });
+        await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("Timed out waiting for sync")), 8000);
+            provider!.on("synced", () => {
+                clearTimeout(timeout);
+                resolve();
+            });
+        });
+
+        // Every forced reset must succeed, not just the first.
+        for (let i = 0; i < 3; i++) {
+            const { status, body } = await forceReset();
+            expect(status, `reset ${i} status`).to.equal(200);
+            expect(body.success, `reset ${i} success`).to.equal(true);
+            expect(body.reset, `reset ${i} reset`).to.equal(true);
+        }
+
+        // The viewer must still see the full template after the resets.
+        await new Promise(r => setTimeout(r, 1000));
+        const items = Project.fromDoc(provider.document).items;
+        expect(items.length).to.equal(demoPages.length);
+    });
 });
