@@ -3,28 +3,21 @@ import { type Item } from "../schema/yjs-schema";
 import { Cursor } from "./Cursor";
 
 // Store module mock setup - prefer local type from PR branch to avoid .svelte imports
-type SelectionState = {
-    startItemId: string;
-    startOffset: number;
-    endItemId: string;
-    endOffset: number;
-    isReversed: boolean;
-    userId?: string;
-};
 
 const { mockSelections, mockSetSelection } = vi.hoisted(() => ({
-    mockSelections: {} as Record<string, any>,
+    mockSelections: {} as Record<string, unknown>,
     mockSetSelection: vi.fn(),
 }));
 
 vi.mock("../stores/EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
-        setSelection: (sel: any) => {
+        setSelection: (sel: unknown) => {
             mockSetSelection(sel);
-            if (sel && sel.userId) {
-                mockSelections[sel.userId] = sel;
+            const s = sel as { userId?: string; };
+            if (s && s.userId) {
+                mockSelections[s.userId] = s;
             } else {
-                mockSelections["test-user"] = sel;
+                mockSelections["test-user"] = s;
             }
         },
         clearSelectionForUser: (userId: string) => {
@@ -62,7 +55,7 @@ describe("Cursor Selection Navigation", () => {
 
         // Setup store
         const { store: generalStore } = await import("../stores/store.svelte");
-        (generalStore as any).currentPage = {
+        (generalStore as unknown as { currentPage: unknown; }).currentPage = {
             id: "page1",
             items: mockItems,
         } as unknown as Item;
@@ -100,7 +93,7 @@ describe("Cursor Selection Navigation", () => {
 
     describe("Shift+Right Selection", () => {
         it("should create new selection to the right within same item", async () => {
-            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+            await import("../stores/EditorOverlayStore.svelte");
 
             cursor.offset = 0;
             cursor.extendSelectionRight();

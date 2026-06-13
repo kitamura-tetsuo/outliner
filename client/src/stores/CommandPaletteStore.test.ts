@@ -23,7 +23,7 @@ const commandPaletteStore = (() => {
     if (g.commandPaletteStore) return g.commandPaletteStore;
     return {
         visible: false,
-        show: (pos: any) => {
+        show: () => {
             mockGetCursorInstances();
             const cursors = mockEditorOverlayStore.getCursorInstances();
             cursors.forEach((c: any) => c.findTarget());

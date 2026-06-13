@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { yjsService } from "../../lib/yjs/service";

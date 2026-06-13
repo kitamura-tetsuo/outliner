@@ -1,14 +1,13 @@
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { type TestInfo } from "@playwright/test";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
-import * as Y from "yjs";
 
 export async function waitForSyncedAndDataForTest(
     provider: HocuspocusProvider,
     checkDataAvailable: () => boolean,
     options: { timeoutMs?: number; pollIntervalMs?: number; label?: string; } = {},
 ): Promise<boolean> {
-    const { timeoutMs = 30000, pollIntervalMs = 100, label = "yjs-sync" } = options;
+    const { timeoutMs = 30000, pollIntervalMs = 100 } = options;
     const maxIterations = Math.floor(timeoutMs / pollIntervalMs);
     for (let i = 0; i < maxIterations; i++) {
         if (provider.isSynced === true) break;
@@ -25,7 +24,7 @@ export async function initializeBrowserPage(
     browser: Browser,
     options: { requireAuth?: boolean; disableIndexedDB?: boolean; consolePrefix?: string; } = {},
 ): Promise<{ context: BrowserContext; page: Page; }> {
-    const { requireAuth = true, disableIndexedDB = true, consolePrefix = "page" } = options;
+    const { requireAuth = true, disableIndexedDB = true } = options;
     const context = await browser.newContext();
     const page = await context.newPage();
     await page.addInitScript(({ requireAuth, disableIDB }) => {
@@ -43,15 +42,17 @@ export async function setupUpdateTracking(
 ): Promise<void> {
     const { docVar = "__DOC__", counterVar = "__UPDATES__", counterV2Var = "__UPDATES_V2__" } = options;
     await page.evaluate(({ docVar, counterVar, counterV2Var }) => {
-        const doc = (window as any)[docVar];
+        const win = window as unknown as Record<string, unknown>;
+        const doc = win[docVar] as { on: (name: string, cb: () => void) => void; } | undefined;
         if (!doc) return;
-        (window as any)[counterVar] = 0;
-        (window as any)[counterV2Var] = 0;
+        const counters = win as unknown as Record<string, number>;
+        counters[counterVar] = 0;
+        counters[counterV2Var] = 0;
         doc.on("update", () => {
-            (window as any)[counterVar]++;
+            counters[counterVar]++;
         });
         doc.on("updateV2", () => {
-            (window as any)[counterV2Var]++;
+            counters[counterV2Var]++;
         });
     }, { docVar, counterVar, counterV2Var });
 }
@@ -68,10 +69,17 @@ export async function prepareTwoFullBrowserPages(
             initialItems?: string[],
         ) => Promise<{ projectName: string; pageName: string; }>;
     },
-): Promise<any> {
+): Promise<{
+    context1: BrowserContext;
+    page1: Page;
+    context2: BrowserContext;
+    page2: Page;
+    projectName: string;
+    pageName: string;
+}> {
     const context1 = await browser.newContext();
     const page1 = await context1.newPage();
-    const { projectName, pageName } = await (TestHelpers as any).seedProjectAndNavigate(page1, testInfo, initialItems);
+    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page1, testInfo, initialItems);
     const pageUrl = page1.url();
     const context2 = await browser.newContext();
     const page2 = await context2.newPage();
