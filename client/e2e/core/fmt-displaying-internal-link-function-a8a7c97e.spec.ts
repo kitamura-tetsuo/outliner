@@ -28,6 +28,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
         }
 
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs = (window as any).generalStore || (window as any).appStore;
             return !!(gs?.currentPage?.items);
         }, { timeout });
@@ -42,10 +43,12 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         // Double check store availability just in case
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs = (window as any).generalStore || (window as any).appStore;
             return !!(gs?.currentPage?.items);
         }, { timeout: 30000 });
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs = (window as any).generalStore || (window as any).appStore;
             const items = gs?.currentPage?.items;
             if (items && typeof items.addNode === "function") {
@@ -57,6 +60,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
         });
         await page.waitForTimeout(200);
         const itemId = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs = (window as any).generalStore || (window as any).appStore;
             const items = gs?.currentPage?.items;
             if (!items) return null;
@@ -64,6 +68,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
             if (length === 0) return null;
             const lastItem = typeof items.at === "function"
                 ? items.at(length - 1)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 : (items as any)[length - 1];
             return lastItem?.id ?? null;
         });
@@ -75,12 +80,14 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
     const setItemText = async (page: Page, itemId: string, text: string): Promise<void> => {
         await page.evaluate(({ itemId, text }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs = (window as any).generalStore || (window as any).appStore;
             const items = gs?.currentPage?.items;
             if (!items) return;
             const length = typeof items.length === "number" ? items.length : items?.getLength?.();
             if (typeof length !== "number") return;
             for (let i = 0; i < length; i++) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const node = items.at ? items.at(i) : (items as any)[i];
                 if (node?.id === itemId) {
                     if (typeof node.updateText === "function") {
@@ -133,6 +140,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
         await page.waitForTimeout(500);
         await page.waitForFunction(
             (itemId) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 return store && store.getActiveItem && store.getActiveItem() !== itemId;
             },
@@ -177,6 +185,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
         await page.waitForTimeout(500);
         await page.waitForFunction(
             (itemId) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 return store && store.getActiveItem && store.getActiveItem() !== itemId;
             },
@@ -224,6 +233,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         await page.waitForFunction(
             (itemId) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 return store && store.getActiveItem && store.getActiveItem() !== itemId;
             },
@@ -258,6 +268,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorStore = (window as any).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
@@ -273,6 +284,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
         // Create cursor instance if it does not exist
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const editorStore = (window as any).editorOverlayStore;
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
@@ -290,6 +302,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         // Insert standard internal link using cursor.insertText()
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
@@ -309,6 +322,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         // Insert newline to create a new item
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
@@ -321,6 +335,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         // Insert project internal link
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();

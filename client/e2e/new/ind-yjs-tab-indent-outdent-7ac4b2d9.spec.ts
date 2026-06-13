@@ -91,6 +91,7 @@ test.describe("IND: Yjs Tab/Shift+Tab indent/outdent", () => {
 
         // Set up a multi-selection between the second and third items
         await page.evaluate(({ startId, endId }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store: any = (window as any).editorOverlayStore;
             store.setSelection({
                 startItemId: startId,

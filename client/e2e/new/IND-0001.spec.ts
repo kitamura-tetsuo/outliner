@@ -78,6 +78,7 @@ test.describe("IND-0001: Advanced indentation and selection", () => {
         const initialCount = await items.count();
 
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store: any = (window as any).editorOverlayStore;
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3 || !store) return;

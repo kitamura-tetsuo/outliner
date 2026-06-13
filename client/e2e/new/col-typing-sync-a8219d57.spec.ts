@@ -44,6 +44,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     // Wait for Yjs connection to avoid editing a provisional project with improved timeout handling
     try {
         // eslint-disable-next-line no-restricted-globals
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await page1.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
             timeout: 20000,
         });
@@ -89,18 +90,21 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
 
     // Wait for app to initialize before checking connection
     // eslint-disable-next-line no-restricted-globals
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await page2.waitForFunction(() => !!(window as any).__YJS_STORE__, null, { timeout: 10000 });
 
     // Wait for Yjs connection with improved timeout handling
     try {
         console.log("Waiting for page2 to be connected to Yjs...");
         // eslint-disable-next-line no-restricted-globals
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await page2.waitForFunction(() => (window as any).__YJS_STORE__?.getIsConnected?.() === true, null, {
             timeout: 30000,
         });
         console.log("page2 connected to Yjs");
     } catch {
         // eslint-disable-next-line no-restricted-globals
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const status = await page2.evaluate(() => (window as any).__YJS_STORE__?.getConnectionState?.());
         console.log(`YJS connection not established on page2 (status: ${status}), continuing with test`);
     }
@@ -110,6 +114,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     console.log("Waiting for 4 outliner items on page2...");
     // Force wait for connection state again just in case
     // eslint-disable-next-line no-restricted-globals
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await page2.waitForFunction(() => (window as any).__YJS_STORE__?.isConnected, { timeout: 30000 }).catch(() =>
         console.log("Page2 connection wait warning")
     );
@@ -128,8 +133,10 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     // Log debug info for both pages
     const page1Debug = await page1.evaluate(() => {
         // eslint-disable-next-line no-restricted-globals
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const y = (window as any).__YJS_STORE__;
         // eslint-disable-next-line no-restricted-globals
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const p = (window as any).generalStore?.project;
         return {
             projectId: y?.ydoc?.guid,
@@ -139,8 +146,10 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     });
     const page2Debug = await page2.evaluate(() => {
         // eslint-disable-next-line no-restricted-globals
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const y = (window as any).__YJS_STORE__;
         // eslint-disable-next-line no-restricted-globals
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const p = (window as any).generalStore?.project;
         return {
             projectId: y?.ydoc?.guid,
@@ -153,10 +162,12 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
         console.log("Page 2 has 0 items, waiting for sync...");
         try {
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await page2.waitForFunction(() => (window as any).generalStore?.project?.items?.length > 0, null, {
                 timeout: 30000,
             });
             // Refresh debug info via page2Debug variable update or just proceed as texts will be re-fetched
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const newItemCount = await page2.evaluate(() => (window as any).generalStore?.project?.items?.length);
             console.log(`Page 2 synced, item count: ${newItemCount}`);
         } catch (e) {
@@ -177,6 +188,7 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     await TestHelpers.setCursor(page1, itemId!);
     await page1.evaluate((itemId) => {
         // eslint-disable-next-line no-restricted-globals
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const editorStore = (window as any).editorOverlayStore;
         const cursor = editorStore?.getCursorInstances?.().find((c: any) => c.itemId === itemId);
         if (cursor) {

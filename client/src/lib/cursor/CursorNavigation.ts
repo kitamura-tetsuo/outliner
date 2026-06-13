@@ -1,4 +1,4 @@
-import type { Item } from "../../schema/yjs-schema";
+import type { Item } from "../../schema/app-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "./CursorTextUtils";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used

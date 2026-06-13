@@ -76,12 +76,14 @@ test.describe("Chromium Debug Test", () => {
                     localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                     localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
                     // eslint-disable-next-line no-restricted-globals
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).__E2E__ = true;
                 } catch {}
             });
 
             // Wait for the application to initialize
             await page.waitForFunction(() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return (window as any).generalStore || (window as any).appStore;
             }, { timeout: 10000 });
 

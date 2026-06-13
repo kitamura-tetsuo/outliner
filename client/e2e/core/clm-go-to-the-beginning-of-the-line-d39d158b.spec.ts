@@ -50,6 +50,7 @@ test.describe("CLM-0007: Move to the beginning of the line", () => {
 
         // Wait until cursor instance exists
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (!editorOverlayStore) return false;
             const cursorInstances = editorOverlayStore.getCursorInstances();
@@ -127,6 +128,7 @@ test.describe("CLM-0007: Move to the beginning of the line", () => {
 
         // Wait until cursor instance exists
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (!editorOverlayStore) return false;
             const cursorInstances = editorOverlayStore.getCursorInstances();

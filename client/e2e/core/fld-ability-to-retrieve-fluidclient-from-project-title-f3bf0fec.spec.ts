@@ -25,6 +25,7 @@ test.describe("YJS-0001: Project and page retrieval and verification", () => {
     test("Yjs project exists and pages can be created and searched", async ({ page }) => {
         // Create a page in the project
         await page.evaluate((title) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
             if (!gs?.project) throw new Error("generalStore.project not ready");
             const page = gs.project.addPage(title, "tester");
@@ -34,6 +35,7 @@ test.describe("YJS-0001: Project and page retrieval and verification", () => {
 
         // Verify that the page exists
         const found = await page.evaluate((title) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
             const pages: any = gs?.project?.items;
             const len = pages?.length ?? 0;
@@ -49,6 +51,7 @@ test.describe("YJS-0001: Project and page retrieval and verification", () => {
 
     test("Search for empty title is not detected (expected undefined)", async ({ page }) => {
         const result = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
             const pages: any = gs?.project?.items;
             const len = pages?.length ?? 0;
@@ -66,6 +69,7 @@ test.describe("YJS-0001: Project and page retrieval and verification", () => {
     test("Non-existent title is not found", async ({ page }) => {
         const result = await page.evaluate(() => {
             const title = "__not_exists__";
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
             const pages: any = gs?.project?.items;
             const len = pages?.length ?? 0;
@@ -81,6 +85,7 @@ test.describe("YJS-0001: Project and page retrieval and verification", () => {
 
     test("Project data can be accessed from generalStore", async ({ page }) => {
         const info = await page.evaluate(async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
             // Wait for items to be populated
             const start = Date.now();

@@ -56,7 +56,9 @@ test.describe("Box selection feedback", () => {
 
         // Enable debug mode to help troubleshoot
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             console.log("DEBUG_MODE enabled:", (window as any).DEBUG_MODE);
         });
 
@@ -64,7 +66,9 @@ test.describe("Box selection feedback", () => {
 
         // Check if KeyEventHandler is available and get cursor info
         const debugInfo = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const KeyEventHandler = (window as any).KeyEventHandler;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
 
             if (!KeyEventHandler) {
@@ -94,6 +98,7 @@ test.describe("Box selection feedback", () => {
         if (debugInfo.cursorCount === 0) {
             // Set cursor programmatically
             await page.evaluate(() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 const firstItem = document.querySelector(".outliner-item");
                 const itemId = firstItem?.getAttribute("data-item-id");
@@ -113,7 +118,9 @@ test.describe("Box selection feedback", () => {
 
         // Trigger box selection programmatically
         const result = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const KeyEventHandler = (window as any).KeyEventHandler;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             const event = new KeyboardEvent("keydown", {
                 key: "ArrowRight",
@@ -149,12 +156,15 @@ test.describe("Box selection feedback", () => {
 
         // Get detailed selection info
         const selectionInfo = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const aliasPickerStore = (window as any).aliasPickerStore;
             const selections = store.selections;
 
             return {
                 aliasPickerVisible: aliasPickerStore?.isVisible,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 navigatorWebdriver: (window as any).navigator?.webdriver,
                 selections: Object.entries(selections).map(([key, sel]: [string, any]) => ({
                     key,

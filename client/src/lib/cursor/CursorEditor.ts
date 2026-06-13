@@ -1,5 +1,5 @@
 import { Item as AppItem, Items as AppItems } from "../../schema/app-schema";
-import { Item as YjsItem, Items as YjsItems } from "../../schema/yjs-schema";
+import { Item as YjsItem, Items as YjsItems } from "../../schema/app-schema";
 
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";

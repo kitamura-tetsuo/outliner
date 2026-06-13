@@ -20,6 +20,7 @@ test("opens user menu and signs out from toolbar indicator", async ({ page }, te
             // Wait for UserManager to be available
             let attempts = 0;
             while (attempts < 50) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const mgr = (window as any).__USER_MANAGER__;
                 if (mgr?.loginWithEmailPassword) {
                     await mgr.loginWithEmailPassword("test@example.com", "password");

@@ -33,6 +33,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
 
         // Programmatically add a new container to the store
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fs: any = (window as any).__FIRESTORE_STORE__;
             if (fs?.userProject) {
                 fs.userProject.accessibleProjectIds.push("test-container-3");

@@ -141,7 +141,7 @@ export class Item {
         this.key = key;
     }
 
-    private get value(): Y.Map<ItemValueType> {
+    get value(): Y.Map<ItemValueType> {
         return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
     }
 
@@ -167,6 +167,10 @@ export class Item {
     get text(): string {
         const t = this.value.get("text") as Y.Text;
         return t ? t.toString() : "";
+    }
+
+    get ytext(): Y.Text {
+        return this.value.get("text") as Y.Text;
     }
 
     set text(v: string) {
@@ -215,6 +219,10 @@ export class Item {
         t.delete(0, t.length);
         if (text) t.insert(0, text);
         this.value.set("lastChanged", Date.now());
+    }
+
+    removeComment(commentId: string) {
+        this.comments.deleteComment(commentId);
     }
 
     get votes(): Y.Array<string> {
@@ -423,7 +431,7 @@ export class Items implements Iterable<Item> {
         this.parentKey = parentKey;
     }
 
-    private childrenKeys(): string[] {
+    childrenKeys(): string[] {
         const children = this.tree.getNodeChildrenFromKey(this.parentKey);
         return this.tree.sortChildrenByOrder(children, this.parentKey);
     }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
-import { Project } from "../../../schema/yjs-schema";
+import { Project } from "../../../schema/app-schema";
 import { YjsClient } from "../../../yjs/YjsClient";
 
 // Mock HocuspocusProvider
@@ -65,7 +65,6 @@ describe("YjsClient", () => {
         client = new YjsClient({
             clientId,
             projectId,
-            // @ts-expect-error - mock for tests
             project,
             doc,
             provider,

@@ -31,6 +31,7 @@ test.describe("SBD-ebaa03c1: search dropdown visibility", () => {
         // Wait for the page to be indexed for search
         // The search functionality needs the page to be in generalStore.project.items
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs = (window as any).generalStore;
             if (!gs?.project?.items) return false;
             const items = gs.project.items;

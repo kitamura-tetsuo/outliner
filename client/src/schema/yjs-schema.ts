@@ -80,7 +80,7 @@ export class Item {
         public readonly key: string,
     ) {}
 
-    private get value(): Y.Map<unknown> {
+    get value(): Y.Map<unknown> {
         return this.tree.getNodeValueFromKey(this.key) as Y.Map<unknown>;
     }
 
@@ -88,7 +88,11 @@ export class Item {
         return this.value.get("id") as string;
     }
 
-    get text(): Y.Text {
+    get text(): string {
+        return (this.value.get("text") as Y.Text).toString();
+    }
+
+    get ytext(): Y.Text {
         return this.value.get("text") as Y.Text;
     }
 
@@ -115,14 +119,13 @@ export class Item {
             this.value.set("preview", value);
         }
     }
-
     updateText(text: string) {
-        const t = this.text;
+        const t = this.ytext;
         if (t) {
             t.delete(0, t.length);
             if (text) t.insert(0, text);
+            this.value.set("lastChanged", Date.now());
         }
-        this.value.set("lastChanged", Date.now());
     }
 
     // Attachments: Ensure Y.Array<string> is returned
@@ -213,7 +216,7 @@ export class Items {
         public readonly parentKey: string,
     ) {}
 
-    private childrenKeys(): string[] {
+    childrenKeys(): string[] {
         try {
             const children = this.tree.getNodeChildrenFromKey(this.parentKey);
             return this.tree.sortChildrenByOrder(children, this.parentKey);

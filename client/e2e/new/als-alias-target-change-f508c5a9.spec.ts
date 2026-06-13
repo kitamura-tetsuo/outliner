@@ -54,6 +54,7 @@ test.describe("ALS-0001: Alias change target", () => {
 
         // Set initial target (secondId) - confirm via store without relying on UI
         await page.evaluate(({ aliasId, secondId }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store: any = (window as any).aliasPickerStore;
             if (store) {
                 store.show(aliasId);
@@ -84,6 +85,7 @@ test.describe("ALS-0001: Alias change target", () => {
 
         // Change alias target (change to thirdId) - confirm via store
         await page.evaluate(({ aliasId, thirdId }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store: any = (window as any).aliasPickerStore;
             if (store) {
                 store.show(aliasId);

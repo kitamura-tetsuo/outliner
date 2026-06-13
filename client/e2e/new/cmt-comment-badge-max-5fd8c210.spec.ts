@@ -17,6 +17,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
         // Explicitly clean up any comment data to ensure test isolation
         await page.evaluate(() => {
             // Clear comment data from the current page items if possible
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
             if (gs?.currentPage?.items) {
                 const items = gs.currentPage.items;
@@ -73,6 +74,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
                     return item?.dataset.itemId ?? null;
                 }
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return null as any;
         });
         if (!itemId) throw new Error("item id not found");
@@ -85,6 +87,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
 
         // Add comments via Yjs x2 - use the currentPage approach which should match what the UI is using
         const idList = await page.evaluate((id) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
 
             // Try accessing the item through the current page which is what the UI uses
@@ -138,6 +141,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
 
         // Delete 1 item
         await page.evaluate(([id, cid]) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
             // Helper to delete comment from item
             const deleteFromItem = (it: any) => {

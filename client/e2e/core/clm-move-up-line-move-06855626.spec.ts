@@ -33,6 +33,7 @@ test.describe("CLM-0004: Move Up", () => {
     test("Move cursor up one line", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
         });
 

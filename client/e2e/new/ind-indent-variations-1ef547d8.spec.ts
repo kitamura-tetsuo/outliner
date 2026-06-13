@@ -52,6 +52,7 @@ test.describe("IND-0001: Indentation variations", () => {
         const [, secondId, thirdId] = ids;
 
         await page.evaluate(({ startId, endId }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store: any = (window as any).editorOverlayStore;
             store.setSelection({
                 startItemId: startId,

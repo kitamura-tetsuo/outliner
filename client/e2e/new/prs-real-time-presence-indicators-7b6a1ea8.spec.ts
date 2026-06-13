@@ -34,6 +34,7 @@ test.describe("PRS-0001: presence indicators", () => {
 
         // Debug presence store state
         const presenceDebug = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).presenceStore;
             return {
                 presenceStoreExists: !!store,
@@ -48,6 +49,7 @@ test.describe("PRS-0001: presence indicators", () => {
 
         // Manually add a second user for testing
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).presenceStore;
             if (store) {
                 store.setUser({
@@ -69,6 +71,7 @@ test.describe("PRS-0001: presence indicators", () => {
 
         // Verify avatar count decreases after removing user
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).presenceStore;
             if (store) {
                 store.removeUser("test-user-2");

@@ -51,6 +51,7 @@ test.describe("System clipboard paste", () => {
         // Select all text using store directly for reliable E2E tests
         await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return;
             const items = document.querySelectorAll("[data-item-id]");
@@ -84,8 +85,10 @@ test.describe("System clipboard paste", () => {
         // The app sets `lastCopiedText` globally during E2E tests, so we check both.
         const clipboardText = await page.evaluate(async () => {
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((window as any).lastCopiedText) {
                 // eslint-disable-next-line no-restricted-globals
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return (window as any).lastCopiedText;
             }
             try {

@@ -79,7 +79,8 @@ export async function prepareTwoFullBrowserPages(
 }> {
     const context1 = await browser.newContext();
     const page1 = await context1.newPage();
-    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page1, testInfo, initialItems);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page1, testInfo as any, initialItems);
     const pageUrl = page1.url();
     const context2 = await browser.newContext();
     const page2 = await context2.newPage();

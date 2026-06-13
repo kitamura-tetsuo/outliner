@@ -29,11 +29,16 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
 
         // Save original clipboard methods for proper cleanup
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((navigator as any).clipboard) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if ((navigator as any).clipboard.readText) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (navigator as any).clipboard.readText.__original = (navigator as any).clipboard.readText;
                 }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if ((navigator as any).clipboard.writeText) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (navigator as any).clipboard.writeText.__original = (navigator as any).clipboard.writeText;
                 }
             }
@@ -45,27 +50,40 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         try {
             await page.evaluate(() => {
                 // Reset global debug mode
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).DEBUG_MODE = false;
 
                 // Clear clipboard-related global variables
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).lastCopiedText = undefined;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).lastPastedText = undefined;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).lastCopiedIsBoxSelection = undefined;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).lastVSCodeMetadata = undefined;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).lastBoxSelectionPaste = undefined;
 
                 // Reset clipboard API mocks
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if ((navigator as any).clipboard) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if ((navigator as any).clipboard.readText.__original) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (navigator as any).clipboard.readText = (navigator as any).clipboard.readText.__original;
                     }
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if ((navigator as any).clipboard.writeText.__original) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (navigator as any).clipboard.writeText = (navigator as any).clipboard.writeText.__original;
                     }
                 }
 
                 // Reset KeyEventHandler box selection state
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if ((window as any).__KEY_EVENT_HANDLER__) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const handler = (window as any).__KEY_EVENT_HANDLER__;
                     if (handler.boxSelectionState) {
                         handler.boxSelectionState = {
@@ -80,7 +98,9 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
                 }
 
                 // Clear editor overlay store selections
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if ((window as any).editorOverlayStore) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).editorOverlayStore.clearSelections();
                 }
             });
@@ -93,15 +113,20 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Enable debug mode and set clipboard mocks
         try {
             await page.evaluate(() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).DEBUG_MODE = true;
 
                 // Mock: readText returns lastCopiedText
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (navigator as any).clipboard.readText = async () => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     return (window as any).lastCopiedText || "";
                 };
 
                 // Mock: writeText updates lastCopiedText
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (navigator as any).clipboard.writeText = async (text: string) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).lastCopiedText = text;
                     console.log(`[Mock] writeText: ${text}`);
                     return Promise.resolve();
@@ -150,7 +175,9 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Verify that rectangular selection has been created (using waitForFunction)
         await page.waitForFunction(
             () => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if (!(window as any).editorOverlayStore) return false;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const selections = Object.values((window as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 1;
             },
@@ -164,6 +191,7 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Verify copied text (using waitForFunction)
         await page.waitForFunction(
             () => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const text = (window as any).lastCopiedText;
                 return text && text.length > 0;
             },
@@ -171,6 +199,7 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
             { timeout: 5000 },
         );
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const copiedText = await page.evaluate(() => (window as any).lastCopiedText);
         console.log(`Copied text: "${copiedText}"`);
 
@@ -180,14 +209,19 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Explicitly call cancelBoxSelection
         await page.evaluate(() => {
             if (
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).KeyEventHandler
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 && typeof (window as any).KeyEventHandler.cancelBoxSelection === "function"
             ) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).KeyEventHandler.cancelBoxSelection();
             }
 
             // Forcibly clear the selection range
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((window as any).editorOverlayStore) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).editorOverlayStore.clearSelections();
             }
         });
@@ -196,8 +230,10 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         await page.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if (!(window as any).editorOverlayStore) return true; // Treat as no selection if store is missing
                 // eslint-disable-next-line no-restricted-globals
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const selections = Object.values((window as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 0;
             },
@@ -220,7 +256,9 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Verify that rectangular selection has been created again (using waitForFunction)
         await page.waitForFunction(
             () => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if (!(window as any).editorOverlayStore) return false;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const selections = Object.values((window as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 1;
             },
@@ -235,6 +273,7 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Verify that paste succeeded (using waitForFunction)
         await page.waitForFunction(
             () => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const pasted = (window as any).lastPastedText || "";
                 return pasted.includes("First line") && pasted.length > 0;
             },
@@ -242,6 +281,7 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
             { timeout: 10000 },
         );
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pastedText = await page.evaluate(() => (window as any).lastPastedText || "");
         console.log(`Pasted text: "${pastedText}"`);
         expect(pastedText).toContain("First line");
@@ -250,7 +290,9 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Selection range should be cleared after pasting (using waitForFunction)
         await page.waitForFunction(
             () => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if (!(window as any).editorOverlayStore) return true;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const selections = Object.values((window as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 0;
             },

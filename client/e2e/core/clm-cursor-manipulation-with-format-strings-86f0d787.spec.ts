@@ -201,6 +201,7 @@ test.describe("Cursor manipulation within format strings", () => {
 
         // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorStore = (window as any).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
 

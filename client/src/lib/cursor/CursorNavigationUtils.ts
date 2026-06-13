@@ -1,9 +1,10 @@
-import type { Item } from "../../schema/yjs-schema";
+import type { Item } from "../../schema/app-schema";
 import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
-    const items = node.items as Iterable<Item> | undefined;
-    if (!items || typeof (items as Record<symbol, unknown>)[Symbol.iterator] !== "function") {
+    const items = node.items as unknown as Iterable<Item> | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!items || typeof (items as any)[Symbol.iterator] !== "function") {
         return [];
     }
 

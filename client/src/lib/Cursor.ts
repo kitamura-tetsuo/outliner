@@ -102,7 +102,8 @@ export class Cursor implements CursorEditingContext {
         if (typeof raw === "string") return raw;
         if (raw && typeof (raw as { toString?: () => string; }).toString === "function") {
             try {
-                return (raw as { toString?: () => string; }).toString();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return (raw as any).toString();
             } catch {}
         }
         return raw == null ? "" : String(raw);
@@ -1254,42 +1255,42 @@ export class Cursor implements CursorEditingContext {
     moveItemUp() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveItemUp(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveItemUp(project as unknown as import("../schema/app-schema").Project, this.itemId);
         }
     }
 
     moveItemDown() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveItemDown(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveItemDown(project as unknown as import("../schema/app-schema").Project, this.itemId);
         }
     }
 
     moveSubtreeUp() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveSubtreeUp(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveSubtreeUp(project as unknown as import("../schema/app-schema").Project, this.itemId);
         }
     }
 
     moveSubtreeDown() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveSubtreeDown(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveSubtreeDown(project as unknown as import("../schema/app-schema").Project, this.itemId);
         }
     }
 
     indent() {
         const project = generalStore.project;
         if (project) {
-            yjsService.indentItem(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.indentItem(project as unknown as import("../schema/app-schema").Project, this.itemId);
         }
     }
 
     outdent() {
         const project = generalStore.project;
         if (project) {
-            yjsService.outdentItem(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.outdentItem(project as unknown as import("../schema/app-schema").Project, this.itemId);
         }
     }
 
@@ -2085,7 +2086,7 @@ export class Cursor implements CursorEditingContext {
      */
     private findNextItemViaDOM(
         currentItemId: string,
-    ): import("../schema/app-schema").Item | import("../schema/yjs-schema").Item | undefined {
+    ): import("../schema/app-schema").Item | import("../schema/app-schema").Item | undefined {
         if (typeof document === "undefined") return undefined;
 
         // Find the current element in the DOM

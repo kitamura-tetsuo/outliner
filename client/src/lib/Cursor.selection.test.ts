@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Item } from "../schema/yjs-schema";
+import { type Item } from "../schema/app-schema";
 import { Cursor } from "./Cursor";
 
 // Store module mock setup - prefer local type from PR branch to avoid .svelte imports

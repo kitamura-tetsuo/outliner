@@ -1,5 +1,5 @@
 import { getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "./CursorTextUtils";
-// import type { Item } from "../../schema/yjs-schema"; // Not used
+// import type { Item } from "../../schema/app-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { escapeId } from "../../utils/domUtils";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used

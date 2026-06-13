@@ -136,7 +136,8 @@
                             (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__
                         ) {
                             console.log("OutlinerTree: observeDeep tick");
-                            events.forEach((e) => {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            events.forEach((e: any) => {
                                 console.log(
                                     " [Yjs Event]",
                                     e.path,
@@ -894,7 +895,8 @@
             const newIndex = itemIndex + i;
             let newItem = items.addNode(currentUser, newIndex);
             if (!newItem) {
-                newItem = (typeof items.at === "function" ? items.at(newIndex) : (items as unknown as { [key: number]: Item })[newIndex]);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                newItem = (typeof items.at === "function" ? items.at(newIndex) : (items as any)[newIndex]) as Item;
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
@@ -935,7 +937,8 @@
         }
 
         // Consider selection direction
-        const isReversed = selection.isReversed || false;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const isReversed = (selection as any).isReversed || false;
         const actualStartIndex = Math.min(startIndex, endIndex);
         const actualEndIndex = Math.max(startIndex, endIndex);
 
@@ -985,7 +988,8 @@
             }
             let newItem = items.addNode(currentUser, newIndex);
             if (!newItem) {
-                newItem = (typeof items.at === "function" ? items.at(newIndex) : (items as unknown as { [key: number]: Item })[newIndex]);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                newItem = (typeof items.at === "function" ? items.at(newIndex) : (items as any)[newIndex]) as Item;
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
@@ -1107,7 +1111,8 @@
 
                 let newItem = items.addNode(currentUser, newIndex);
                 if (!newItem) {
-                    newItem = (typeof items.at === "function" ? items.at(newIndex) : (items as unknown as { [key: number]: Item })[newIndex]);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    newItem = (typeof items.at === "function" ? items.at(newIndex) : (items as any)[newIndex]) as Item;
                 }
                 if (newItem) {
                     if (i === lines.length - 1) {
@@ -1573,7 +1578,8 @@
             for (let i = 1; i < lines.length; i++) {
                 let newItem = items.addNode(currentUser, targetIndex + i);
                 if (!newItem) {
-                    newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as unknown as { [key: number]: Item })[targetIndex + i]);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as any)[targetIndex + i]) as Item;
                 }
                 if (newItem) {
                     newItem.updateText(lines[i]);
@@ -1586,7 +1592,8 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as unknown as { [key: number]: Item })[targetIndex + i]);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as any)[targetIndex + i]) as Item;
                 if (newItem) {
                     newItem.updateText(lines[i]);
                 }
@@ -1603,7 +1610,8 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as unknown as { [key: number]: Item })[targetIndex + i]);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as any)[targetIndex + i]) as Item;
                 if (newItem) {
                     newItem.updateText(lines[i]);
                 }
@@ -1697,7 +1705,8 @@
         } catch {}
 
         try {
-            const tree = items.tree as unknown as import("../schema/app-schema").YTree & { getNodeParentFromKey?: (k: string) => string };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const tree = items.tree as unknown as any;
             const doc = pageItem?.ydoc;
             const sourceParent = tree.getNodeParentFromKey?.(sourceKey);
             const targetParent = tree.getNodeParentFromKey?.(targetKey);
@@ -1857,7 +1866,8 @@
             for (let i = 1; i < lines.length; i++) {
                 let newItem = items.addNode(currentUser, targetIndex + i);
                 if (!newItem) {
-                    newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as unknown as { [key: number]: Item })[targetIndex + i]);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as any)[targetIndex + i]) as Item;
                 }
                 if (newItem) {
                     newItem.text = lines[i];
@@ -1870,7 +1880,8 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as unknown as { [key: number]: Item })[targetIndex + i]);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as any)[targetIndex + i]) as Item;
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -1886,7 +1897,8 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as unknown as { [key: number]: Item })[targetIndex + i]);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const newItem = (typeof items.at === "function" ? items.at(targetIndex + i) : (items as any)[targetIndex + i]) as Item;
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -2225,7 +2237,8 @@
             if (!activeItemId) return;
             editorOverlayStore.setActiveItem(activeItemId);
             // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
-            const activeCursor = editorOverlayStore.getCursorForItem(activeItemId);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const activeCursor = (editorOverlayStore as any).getCursorForItem(activeItemId);
             if (activeCursor) {
                 // GlobalTextArea will handle key events, let's just dispatch to document
                 const event = new KeyboardEvent('keydown', {

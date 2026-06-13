@@ -25,9 +25,11 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
         );
         // Ensure store pages are ready
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs = (window as any).generalStore || (window as any).appStore;
             const pages = gs?.pages?.current;
             // Yjs Items are not an Array but have a length property
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return !!(pages && typeof (pages as any).length === "number" && (pages as any).length >= 1);
         }, { timeout: 30000 });
     });
@@ -39,12 +41,14 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
         // Verify that the ECharts library is loaded correctly
         const echartsLoaded = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return typeof (window as any).echarts !== "undefined";
         });
         expect(echartsLoaded).toBe(true);
 
         // Create a simple graph to verify that ECharts works
         const initResult = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const echarts = (window as any).echarts;
             if (!echarts) return { success: false, error: "ECharts not found" };
 
@@ -82,6 +86,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
         // Wait for the ECharts library to finish loading
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return typeof (window as any).echarts !== "undefined";
         }, { timeout: 5000 });
 
@@ -89,6 +94,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
         const graphInitResult = await page.evaluate(() => {
             try {
                 // Wait a tick for store readiness in case of slow hydration
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore || (window as any).appStore;
                 const ready = !!(gs && gs.pages && gs.project);
                 if (!ready) return { success: false, error: "Store not available" };
@@ -101,15 +107,18 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                 document.body.appendChild(graphDiv);
 
                 // Initialize ECharts
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const echarts = (window as any).echarts;
                 if (!echarts) {
                     return { success: false, error: "ECharts not available" };
                 }
 
                 const chart = echarts.init(graphDiv);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).__GRAPH_CHART__ = chart;
 
                 // Set the initial graph
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).appStore;
                 if (store && store.pages && store.project) {
                     const raw = store.pages.current || [];
@@ -125,6 +134,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                                 return r;
                             }
                         } catch {}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         return [] as any[];
                     };
                     const pages = toArray(raw);
@@ -156,6 +166,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
         // Wait until initial graph is ready with one node
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const chart = (window as any).__GRAPH_CHART__;
             if (!chart) return false;
             try {
@@ -171,12 +182,15 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
         // Create a page within the project (Yjs)
         const pageCreateResult = await page.evaluate(async () => {
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore || (window as any).appStore;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const chart = (window as any).__GRAPH_CHART__;
                 if (!gs?.project || !chart) return { success: false, error: "Store or chart not available" };
 
                 // Add a new page (Yjs)
                 const newPage = gs.project.addPage("test-link", "tester");
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const items = newPage.items as any;
                 items.addNode("tester").updateText("second page content");
 
@@ -196,6 +210,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                             return r;
                         }
                     } catch {}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     return [] as any[];
                 };
                 const pages = toArray(raw);
@@ -214,6 +229,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                                 return r;
                             }
                         } catch {}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         return [] as any[];
                     };
                     if (srcCand) {
@@ -224,6 +240,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                             )
                         );
                         if (!hasLink) {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const it = (srcCand.items as any)?.addNode?.("tester");
                             if (it?.updateText) it.updateText(`Ref: [${targetName}]`);
                             await new Promise(r => setTimeout(r, 50));
@@ -295,6 +312,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
         // Wait for the graph to update with the new node and link
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const chart = (window as any).__GRAPH_CHART__;
             if (!chart) return false;
             try {
@@ -310,6 +328,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
         const data = await page.evaluate(() => {
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const chart = (window as any).__GRAPH_CHART__;
                 if (!chart) return { error: "Chart not found" };
 

@@ -25,12 +25,14 @@ export class LinkTestHelpers {
 
         // Wait for Yjs backing store initialization
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore || (window as any).appStore;
             return !!(gs && gs.project);
         }, { timeout: 30000 });
 
         // Create via Yjs API
         await page.evaluate(({ projectName, pageName, content }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore || (window as any).appStore;
             if (!gs?.project) throw new Error("generalStore.project not ready");
 
@@ -52,6 +54,7 @@ export class LinkTestHelpers {
                 if (!target) target = gs.project.addPage(pageName, "tester");
                 else target.updateText(pageName);
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const items = target.items as any;
                 while ((items?.length ?? 0) > 0) items.removeAt(0);
                 for (const line of content) {
@@ -88,12 +91,14 @@ export class LinkTestHelpers {
 
         // Wait for Yjs initialization
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore || (window as any).appStore;
             return !!(gs && gs.project);
         }, { timeout: 30000 });
 
         // Prepare multiple pages in a single project
         await page.evaluate((projects) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore || (window as any).appStore;
             if (!gs?.project) throw new Error("generalStore.project not ready");
             try {
@@ -112,6 +117,7 @@ export class LinkTestHelpers {
                             }
                         }
                         if (!target) target = gs.project.addPage(pg.pageName, "tester");
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const items = target.items as any;
                         while ((items?.length ?? 0) > 0) items.removeAt(0);
                         const lines = pg.content || ["This is a test page.", "Internal link test: [test-link]"];
@@ -180,11 +186,13 @@ export class LinkTestHelpers {
 
         // Wait for Yjs initialization
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore || (window as any).appStore;
             return !!(gs && gs.project);
         }, { timeout: 30000 });
 
         await page.evaluate(({ projectName, pageName, content }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore || (window as any).appStore;
             if (!gs?.project) throw new Error("generalStore.project not ready");
             try {
@@ -201,6 +209,7 @@ export class LinkTestHelpers {
                     }
                 }
                 if (!target) target = gs.project.addPage(pageName, "tester");
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const items = target.items as any;
                 while ((items?.length ?? 0) > 0) items.removeAt(0);
                 for (const line of content) {
@@ -253,6 +262,7 @@ export class LinkTestHelpers {
      */
     static async forceCreateInternalLink(page: Page, itemId: string, linkText: string): Promise<void> {
         await page.evaluate(({ itemId, linkText }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore || (window as any).appStore;
             if (!gs?.project) return false;
             try {

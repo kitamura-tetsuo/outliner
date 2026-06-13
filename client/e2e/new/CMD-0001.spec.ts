@@ -62,14 +62,21 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // Debug: Check page state
         const debugInfo = await page.evaluate(() => {
             return {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 editorOverlayStore: !!(window as any).editorOverlayStore,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 keyEventHandler: !!(window as any).__KEY_EVENT_HANDLER__,
                 activeElement: document.activeElement?.tagName,
                 globalTextarea: !!document.querySelector(".global-textarea"),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 cursorCount: (window as any).editorOverlayStore?.getCursorInstances()?.length || 0,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 activeItemId: (window as any).editorOverlayStore?.activeItemId || null,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 treeAvailable: !!(window as any).Tree,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 itemsAvailable: !!(window as any).Items,
             };
         });
@@ -84,9 +91,13 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // Debug: Check selection state before Enter
         const beforeEnterInfo = await page.evaluate(() => {
             return {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 selectedIndex: (window as any).commandPaletteStore?.selectedIndex,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 filteredCommands: (window as any).commandPaletteStore?.filtered?.map((c: any) => c.type),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 selectedCommand: (window as any).commandPaletteStore?.filtered
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     ?.[(window as any).commandPaletteStore?.selectedIndex]
                     ?.type,
             };
@@ -96,6 +107,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // Record state before pressing Enter
         const beforeEnterInfo2 = await page.evaluate(() => {
             return {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
                 itemCount: document.querySelectorAll("[data-item-id]").length,
             };
@@ -104,7 +116,9 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // Add logs to confirm and insert methods
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const originalConfirm = (window as any).commandPaletteStore.confirm;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).commandPaletteStore.confirm = function(this: any) {
                 console.log("CommandPaletteStore.confirm called");
                 console.log("selectedIndex:", this.selectedIndex);
@@ -119,7 +133,9 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                 }
             };
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const originalInsert = (window as any).commandPaletteStore.insert;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).commandPaletteStore.insert = function(this: any, type: any) {
                 console.log("CommandPaletteStore.insert called with type:", type);
                 try {
@@ -135,15 +151,20 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // Check command palette state immediately before Enter
         const beforeEnterPaletteInfo = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const cursors = (window as any).editorOverlayStore?.getCursorInstances() || [];
             const cursor = cursors[0];
             const node = cursor?.findTarget();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const parent = node ? (window as any).Tree?.parent(node) : null;
             const currentIndex = parent ? parent.indexOf(node) : -1;
 
             return {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 isVisible: (window as any).commandPaletteStore?.isVisible,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 selectedIndex: (window as any).commandPaletteStore?.selectedIndex,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 filteredLength: (window as any).commandPaletteStore?.filtered?.length,
                 cursorItemId: cursor?.itemId,
                 currentNodeExists: !!node,
@@ -170,12 +191,19 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // Check details of Enter key processing
         const enterProcessInfo = await page.evaluate(() => {
             return {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 generalStoreExists: !!(window as any).generalStore,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 currentPageExists: !!(window as any).generalStore?.currentPage,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 pagesExists: !!(window as any).generalStore?.pages,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 pagesCurrentExists: !!(window as any).generalStore?.pages?.current,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 pagesCurrentLength: (window as any).generalStore?.pages?.current?.length || 0,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 keyEventHandlerExists: !!(window as any).__KEY_EVENT_HANDLER__,
             };
         });
@@ -199,9 +227,13 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                     el.textContent
                 ),
                 itemDetails: itemDetails,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 pagesCurrentLength: (window as any).generalStore?.pages?.current?.length || 0,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 currentPageItemsLength: (window as any).generalStore?.currentPage?.items?.length || 0,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 totalItemsInTree: (window as any).generalStore?.currentPage?.items?.length || 0,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 sharedTreeItems: Array.from((window as any).generalStore?.currentPage?.items || []).map((
                     item: any,
                 ) => ({
@@ -214,6 +246,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // Additional debug info: Check OutlinerItem component state
         const componentStateInfo = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const items = (window as any).generalStore?.currentPage?.items;
             if (!items) return { error: "No items found" };
 
@@ -260,6 +293,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // Wait for the store to reflect the correct state (this should work based on our store logic)
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const cp = (window as any).commandPaletteStore;
             return cp?.isVisible && cp?.query === "ch" && cp?.filtered?.length === 1
                 && cp?.filtered[0]?.type === "chart";

@@ -24,7 +24,9 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
         // Navigate to home page where ContainerSelector is rendered
         // seedProjectAndNavigateForProject already navigates to "/" with skipSync
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (window as any).__E2E__ === true && !!(window as any).__FIRESTORE_STORE__
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 && !!(window as any).__USER_MANAGER__;
         }, { timeout: 30000 });
         console.log("[E2E-DEBUG] Environment and Stores confirmed.");
@@ -43,6 +45,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
 
         // 0) Seed baseline container to observe a delta instead of placeholder option
         const baselineId = await page.evaluate(async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const svc: any = (window as any).__YJS_SERVICE__;
             if (!svc?.createClient) throw new Error("__YJS_SERVICE__.createClient is not available");
             const client = await svc.createClient();
@@ -50,7 +53,9 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
         });
 
         await page.evaluate(async (projectId) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fs: any = (window as any).__FIRESTORE_STORE__;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const um: any = (window as any).__USER_MANAGER__;
             const userId = um?.auth?.currentUser?.uid || "test-user-id";
             if (!fs) throw new Error("__FIRESTORE_STORE__ is not available");
@@ -90,6 +95,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
 
         // 1) Create a new client via fluid (Yjs) service to ensure a unique containerId
         const newId = await page.evaluate(async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const svc: any = (window as any).__YJS_SERVICE__;
             if (!svc?.createClient) throw new Error("__YJS_SERVICE__.createClient is not available");
             const client = await svc.createClient();
@@ -98,7 +104,9 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
 
         // 2) Replace userProject via store API (setUserProject) with baseline + new project
         await page.evaluate(async ([existingId, projectId]) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fs: any = (window as any).__FIRESTORE_STORE__;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const um: any = (window as any).__USER_MANAGER__;
             const userId = um?.auth?.currentUser?.uid || "test-user-id";
             if (!fs) throw new Error("__FIRESTORE_STORE__ is not available");

@@ -13,6 +13,7 @@ export class TreeValidator {
             // Check for debug function existence (Yjs)
             if (typeof window.getYjsTreeDebugData !== "function") {
                 // Fallback: Get basic data from appStore
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const appStore = (window as any).appStore;
                 if (appStore && appStore.pages && appStore.pages.current) {
                     return {
@@ -36,6 +37,7 @@ export class TreeValidator {
     static async waitForProjectReady(page: Page, timeout: number = 5000): Promise<void> {
         try {
             await page.waitForFunction(() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore || (window as any).appStore;
                 return !!(gs && gs.project);
             }, { timeout });
@@ -52,6 +54,7 @@ export class TreeValidator {
                 // Fallback: Implement basic path resolution
                 if (!path) return undefined;
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const appStore = (window as any).appStore;
                 if (appStore && appStore.pages && appStore.pages.current) {
                     const data = {

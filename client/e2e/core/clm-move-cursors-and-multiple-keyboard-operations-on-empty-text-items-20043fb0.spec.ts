@@ -19,6 +19,7 @@ test.describe("Cursor movement on empty text items", () => {
     test("Cursor movement and multiple keyboard operations on empty text items", async ({ page }) => {
         // Debug: Check page state and item count
         const debugInfo = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs = (window as any).generalStore;
             return {
                 hasGeneralStore: !!gs,

@@ -34,6 +34,7 @@ test.describe("Schedule Management UI", () => {
 
         // Log page state
         const pageId = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (window as any).appStore?.currentPage?.id || "undefined";
         });
         console.log("Test: Current page ID:", pageId);

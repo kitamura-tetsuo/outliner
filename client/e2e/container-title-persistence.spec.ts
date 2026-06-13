@@ -75,6 +75,7 @@ test.describe("Container Title Persistence Tests", () => {
         // Set container title in metaDoc (call setContainerTitleInMetaDoc)
         await page.evaluate((projectName) => {
             // Call metaDoc module function to set title
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Custom Container Title");
@@ -83,6 +84,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify that the title is set in metaDoc
         const storedTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -154,6 +156,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Set custom title in metaDoc
         await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Reload Persistence Test Title");
@@ -162,6 +165,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify set title can be retrieved
         let storedTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -177,6 +181,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify title is preserved after reload
         storedTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -205,6 +210,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Get title from metaDoc (verify it is empty)
         const metaDocTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -251,6 +257,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Set initial title
         await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Initial Title");
@@ -259,6 +266,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify initial title is set
         let storedTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -269,6 +277,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Update title
         await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Updated Title");
@@ -277,6 +286,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify updated title is reflected
         storedTitle = await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -307,6 +317,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Set title for Container 1
         await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Container 1 Title");
@@ -315,6 +326,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify Container 1 title is set
         let storedTitle1 = await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -337,6 +349,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Set title for Container 2
         await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Container 2 Title");
@@ -345,6 +358,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify Container 2 title is set
         const storedTitle2 = await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);
@@ -355,6 +369,7 @@ test.describe("Container Title Persistence Tests", () => {
 
         // Verify Container 1 title is unaffected
         storedTitle1 = await page.evaluate((projectName) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
                 return metaDocModule.getContainerTitleFromMetaDoc(projectName);

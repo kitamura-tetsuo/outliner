@@ -68,7 +68,8 @@
         const firstSeries = series[0] as GraphSeriesWithData | undefined;
         const data = firstSeries?.data;
         if (!Array.isArray(data)) return [];
-        return data.filter((node): node is GraphNodeWithLayout =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return data.filter((node: any): node is GraphNodeWithLayout =>
             Boolean(node?.id),
         );
     };
@@ -116,7 +117,8 @@
                     };
                 })
                 .filter(
-                    (node): node is GraphLayout["nodes"][number] =>
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (node: any): node is GraphLayout["nodes"][number] =>
                         typeof node.x === "number" &&
                         typeof node.y === "number",
                 ); // Only save nodes with defined positions
@@ -126,7 +128,9 @@
             // Merge: Start with existing nodes that are NOT in current, then add current
             const mergedNodes = existingNodes
                 .filter((n) => !currentNodesMap.has(n.id))
-                .concat(currentNodes);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .concat(currentNodes as any[]);
 
             const layoutData = { nodes: mergedNodes };
 
@@ -285,7 +289,8 @@
                 ymap.observeDeep(handler);
                 detachDocListener = () => {
                     try {
-                        ymap.unobserveDeep(handler);
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (ymap as any).unobserveDeep(handler);
                     } catch {}
                 };
             }

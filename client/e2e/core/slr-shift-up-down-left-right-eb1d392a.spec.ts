@@ -55,6 +55,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -70,6 +71,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const newSelectionText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -116,6 +118,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -131,6 +134,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const newSelectionText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -165,6 +169,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -205,6 +210,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();

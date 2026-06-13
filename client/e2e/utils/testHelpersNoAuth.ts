@@ -34,6 +34,7 @@ export class TestHelpersNoAuth {
             // Wait for UserManager initialization (optional)
             try {
                 await page.waitForFunction(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     () => (window as any).__USER_MANAGER__ !== undefined,
                     { timeout: 10000 },
                 );

@@ -51,6 +51,7 @@ test.describe("SLR-0004: Selection by dragging mouse", () => {
 
         // Get the selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -120,6 +121,7 @@ test.describe("SLR-0004: Selection by dragging mouse", () => {
 
         // Get the selection text (from the application's selection management system)
         const selectedText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();

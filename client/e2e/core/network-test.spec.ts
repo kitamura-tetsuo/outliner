@@ -89,6 +89,7 @@ test.describe("Network Connectivity Test", () => {
 
         // Wait until UserManager is initialized
         await page.waitForFunction(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             () => (window as any).__USER_MANAGER__ !== undefined,
             { timeout: 30000 },
         );
@@ -96,8 +97,10 @@ test.describe("Network Connectivity Test", () => {
         // Check Firebase settings
         const firebaseConfig = await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const userManager = (window as any).__USER_MANAGER__;
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const firebaseApp = (window as any).__firebase_client_app__;
 
             return {

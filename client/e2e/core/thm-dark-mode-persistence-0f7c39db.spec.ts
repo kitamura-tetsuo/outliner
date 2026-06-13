@@ -37,12 +37,14 @@ test.describe("THM-0002: Dark mode preference persists", () => {
         // wait for page to load completely and UserManager to be initialized
         await page.waitForLoadState("domcontentloaded");
         await page.waitForFunction(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             () => (window as any).__USER_MANAGER__ !== undefined,
             { timeout: 30000 },
         );
 
         // wait for UserPreferencesStore to be initialized with correct theme
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).userPreferencesStore;
             return store && store.theme === "dark";
         }, { timeout: 10000 });

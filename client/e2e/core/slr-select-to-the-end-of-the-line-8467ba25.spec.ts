@@ -60,6 +60,7 @@ test.describe("SLR-0003: Select to the end of the line", () => {
 
         // Get selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -107,6 +108,7 @@ test.describe("SLR-0003: Select to the end of the line", () => {
 
         // Get selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();

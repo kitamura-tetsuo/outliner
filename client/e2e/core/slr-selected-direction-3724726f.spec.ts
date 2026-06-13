@@ -14,6 +14,7 @@ test.describe("SLR-3724726f: Switch selection direction", () => {
     test("can switch the selection direction (forward/reverse)", async ({ page }) => {
         // Re-enable debug mode
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
@@ -33,6 +34,7 @@ test.describe("SLR-3724726f: Switch selection direction", () => {
 
         // Wait until the selection is created (Check Store state)
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             return store && Object.keys(store.selections).length > 0;
         });
@@ -42,8 +44,10 @@ test.describe("SLR-3724726f: Switch selection direction", () => {
 
         // Check Store state (skip checking DOM visibility as it may be environment dependent, check Store consistency instead)
         const forwardSelectionDirection = await page.evaluate<boolean | null>(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             const selection = Object.values<any>(store.selections)[0];
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return selection ? (selection as any).isReversed : null;
         });
 
@@ -69,6 +73,7 @@ test.describe("SLR-3724726f: Switch selection direction", () => {
 
         // Wait until the selection is created (Check Store state)
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             return store && Object.keys(store.selections).length > 0;
         });
@@ -78,8 +83,10 @@ test.describe("SLR-3724726f: Switch selection direction", () => {
 
         // Check Store state (skip checking DOM visibility as it may be environment dependent, check Store consistency instead)
         const reverseSelectionDirection = await page.evaluate<boolean | null>(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             const selection = Object.values<any>(store.selections)[0];
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return selection ? (selection as any).isReversed : null;
         });
 

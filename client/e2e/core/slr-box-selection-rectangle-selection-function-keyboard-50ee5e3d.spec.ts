@@ -33,6 +33,7 @@ test.describe("Selection management test", () => {
         // Enable debug mode
         try {
             await page.evaluate(() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).DEBUG_MODE = true;
             });
         } catch (error) {
@@ -64,10 +65,12 @@ test.describe("Selection management test", () => {
 
         // Verify that a rectangular selection is created
         const boxSelectionCount1 = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!(window as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const selections = Object.values((window as any).editorOverlayStore.selections);
             console.log("All selections:", selections);
             return selections.filter((s: any) => s.isBoxSelection).length;
@@ -76,9 +79,11 @@ test.describe("Selection management test", () => {
 
         // Verify that a normal selection is created if the rectangular selection feature is not implemented
         const normalSelectionCount = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!(window as any).editorOverlayStore) {
                 return 0;
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const selections = Object.values((window as any).editorOverlayStore.selections);
             return selections.length;
         });
@@ -93,10 +98,12 @@ test.describe("Selection management test", () => {
 
         // Verify that the rectangular selection range is expanded
         const boxSelectionRanges = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!(window as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const selections = Object.values((window as any).editorOverlayStore.selections);
             const boxSelection = selections.find((s: any) => s.isBoxSelection);
             // Verify if a rectangular selection exists
@@ -113,9 +120,12 @@ test.describe("Selection management test", () => {
         // Explicitly call cancelBoxSelection
         await page.evaluate(() => {
             if (
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).KeyEventHandler
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 && typeof (window as any).KeyEventHandler.cancelBoxSelection === "function"
             ) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).KeyEventHandler.cancelBoxSelection();
                 console.log("Explicitly called KeyEventHandler.cancelBoxSelection()");
             } else {
@@ -123,7 +133,9 @@ test.describe("Selection management test", () => {
             }
 
             // Forcibly clear the selection
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((window as any).editorOverlayStore) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).editorOverlayStore.clearSelections();
                 console.log("Explicitly called editorOverlayStore.clearSelections()");
             }
@@ -134,10 +146,12 @@ test.describe("Selection management test", () => {
 
         // Verify that the rectangular selection is cancelled
         const boxSelectionCount2 = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!(window as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const selections = Object.values((window as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
             console.log("Current selections after cancel:", selections);
@@ -148,9 +162,11 @@ test.describe("Selection management test", () => {
 
         // Verify that the selection is cleared (also clears normal selection if rectangular selection feature is not implemented)
         const totalSelectionsAfterCancel = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!(window as any).editorOverlayStore) {
                 return 0;
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const selections = Object.values((window as any).editorOverlayStore.selections);
             return selections.length;
         });

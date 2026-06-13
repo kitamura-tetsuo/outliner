@@ -14,6 +14,7 @@ test.describe("SLR-0010: Change selection format", () => {
         // Enable debug mode
         await page.evaluate(() => {
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
         });
 
@@ -59,6 +60,7 @@ test.describe("SLR-0010: Change selection format", () => {
         await page.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
@@ -66,6 +68,7 @@ test.describe("SLR-0010: Change selection format", () => {
             { timeout: 3000 },
         ).catch(async () => {
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
@@ -110,6 +113,7 @@ test.describe("SLR-0010: Change selection format", () => {
         await page.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
@@ -117,6 +121,7 @@ test.describe("SLR-0010: Change selection format", () => {
             { timeout: 3000 },
         ).catch(async () => {
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
@@ -150,6 +155,7 @@ test.describe("SLR-0010: Change selection format", () => {
         await page.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
@@ -157,6 +163,7 @@ test.describe("SLR-0010: Change selection format", () => {
             { timeout: 3000 },
         ).catch(async () => {
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
@@ -196,6 +203,7 @@ test.describe("SLR-0010: Change selection format", () => {
         await page.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
@@ -203,6 +211,7 @@ test.describe("SLR-0010: Change selection format", () => {
             { timeout: 3000 },
         ).catch(async () => {
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
@@ -237,6 +246,7 @@ test.describe("SLR-0010: Change selection format", () => {
         await page.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
@@ -244,6 +254,7 @@ test.describe("SLR-0010: Change selection format", () => {
             { timeout: 3000 },
         ).catch(async () => {
             // eslint-disable-next-line no-restricted-globals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });

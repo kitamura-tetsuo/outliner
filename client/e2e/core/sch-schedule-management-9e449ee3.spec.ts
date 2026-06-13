@@ -17,6 +17,7 @@ test.describe("Schedule Management", () => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
         const pageId = await TestHelpers.getItemIdByIndex(page, 0);
         const idToken = await page.evaluate(async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const userManager = (window as any).__USER_MANAGER__;
             return await userManager?.auth?.currentUser?.getIdToken();
         });

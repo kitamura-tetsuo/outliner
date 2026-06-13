@@ -19,6 +19,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
     test("Can paste copied text to another location", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
@@ -32,6 +33,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
 
         // Create selection manually
         await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
@@ -62,6 +64,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
 
         // Get the selected text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -76,6 +79,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
 
         // Manually trigger a copy event
         const selectedText = await page.evaluate<string>(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -125,6 +129,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
             }
 
             // Set globally (for testing)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).testClipboardText = selectedText;
             console.log("Stored test clipboard text:", selectedText);
         }, selectedText);
@@ -167,6 +172,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
             });
 
             // Call KeyEventHandler.handlePaste directly
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
                 await KeyEventHandler.handlePaste(clipboardEvent);

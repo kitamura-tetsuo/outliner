@@ -63,17 +63,20 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
             // Wait up to 5 seconds for aliasPickerStore and itemId to be available
             const startTime = Date.now();
             while (Date.now() - startTime < 5000) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).aliasPickerStore;
                 if (store && store.itemId) {
                     return store.itemId;
                 }
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (window as any).aliasPickerStore?.itemId ?? null;
         });
         if (!aliasId) throw new Error("alias itemId not found on aliasPickerStore");
         // expose aliasId for debug in page context
         await page.evaluate((id) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__aliasIdForDebug = id;
         }, aliasId);
         const optionCount = await page.locator(".alias-picker").first().locator("li").count();
@@ -170,10 +173,12 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
         const apState = await page.evaluate(async () => {
             // Wait for aliasPickerStore to be available with a timeout
             const startTime = Date.now();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             while (!(window as any).aliasPickerStore && Date.now() - startTime < 2000) {
                 await new Promise(resolve => setTimeout(resolve, 50));
             }
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const w: any = window as any;
             const ap: any = w.aliasPickerStore;
             const gs: any = w.generalStore || w.appStore;
@@ -190,6 +195,7 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
                 }
                 return null;
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const node = root ? find(root, (w as any).__aliasIdForDebug || "") : null;
             return {
                 ap: {

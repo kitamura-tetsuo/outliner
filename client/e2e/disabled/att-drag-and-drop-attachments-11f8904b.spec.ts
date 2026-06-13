@@ -27,6 +27,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
             const file = new File([blob], "hello.txt", { type: "text/plain" });
             dt.items.add(file);
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).__E2E_LAST_FILES__ = [file];
             } catch {}
             return dt;
@@ -35,11 +36,13 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
         // E2E specific: Directly add attachment to displayRef using __E2E_ADD_ATTACHMENT__
         // (deterministically reproduce DnD UI result instead of actual DnD event)
         // Wait for helper exposure
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await page.waitForFunction(() => !!(window as any).__E2E_ADD_ATTACHMENT__, null, { timeout: 5000 });
         // Get target element and add directly
         await page.evaluate(() => {
             const el = document.querySelector(".outliner-item .item-content") as Element | null;
             if (!el) throw new Error("item-content not found");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__E2E_ADD_ATTACHMENT__?.(el, "hello");
         });
         // Wait for preview to appear on DOM (depends on pure Yjs display)
@@ -50,14 +53,17 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
             new Promise<void>(resolve => {
                 const handler = () => {
                     try {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         window.removeEventListener("item-attachments-changed", handler as any);
                     } catch {}
                     resolve();
                 };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 window.addEventListener("item-attachments-changed", handler as any, { once: true } as any);
                 // Fallback: Continue after a short timeout even if event doesn't come because it's already reflected
                 setTimeout(() => {
                     try {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         window.removeEventListener("item-attachments-changed", handler as any);
                     } catch {}
                     resolve();
@@ -73,11 +79,14 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
 
         // Add attachment twice with E2E specific helper (deterministically reproduce final result of DnD)
         // Call __E2E_ADD_ATTACHMENT__ twice
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await page.waitForFunction(() => !!(window as any).__E2E_ADD_ATTACHMENT__, null, { timeout: 5000 });
         await page.evaluate(() => {
             const el = document.querySelector(".outliner-item .item-content") as Element | null;
             if (!el) throw new Error("item-content not found");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__E2E_ADD_ATTACHMENT__?.(el, "a");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__E2E_ADD_ATTACHMENT__?.(el, "b");
         });
         // Wait for DOM reflection (at least 2 previews should be displayed in the same item)

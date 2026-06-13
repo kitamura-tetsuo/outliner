@@ -49,6 +49,7 @@ test.describe("Multi-Page Schedule Management", () => {
         try {
             await page.evaluate(() => {
                 try {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const win: any = window as any;
                     // Clear any schedule-related global variables
                     if (win.__SCHEDULE_STATE__) {
@@ -121,6 +122,7 @@ test.describe("Multi-Page Schedule Management", () => {
             // Clear any global state that might interfere with other tests
             await page.evaluate(() => {
                 try {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const win: any = window as any;
                     // Clear any schedule-related global variables
                     if (win.__SCHEDULE_STATE__) {
@@ -168,6 +170,7 @@ test.describe("Multi-Page Schedule Management", () => {
         const ensureConnectedPage = async () => {
             // First wait for the basic page structure to be ready
             await page.waitForFunction(() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const win = window as any;
                 // Check for basic page readiness
                 return win.generalStore?.project !== undefined;
@@ -175,6 +178,7 @@ test.describe("Multi-Page Schedule Management", () => {
 
             // Then wait for YJS client to be connected (might take additional time for WebSocket)
             await page.waitForFunction(() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const win = window as any;
                 const client = win.__YJS_STORE__?.yjsClient;
                 const gs = win.generalStore;

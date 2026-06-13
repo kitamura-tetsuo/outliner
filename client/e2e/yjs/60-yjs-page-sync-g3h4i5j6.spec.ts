@@ -29,6 +29,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
             localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
             localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__E2E__ = true;
         });
 
@@ -38,6 +39,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         await page1.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return !!(window as any).__USER_MANAGER__;
             },
             null,
@@ -45,6 +47,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         );
 
         await page1.evaluate(async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const mgr = (window as any).__USER_MANAGER__;
             if (mgr?.loginWithEmailPassword) {
                 await mgr.loginWithEmailPassword("test@example.com", "password");
@@ -52,6 +55,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         });
 
         await page1.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
         }, { timeout: 30000 });
@@ -65,12 +69,14 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             const { Project } = await import("/src/schema/app-schema.ts");
 
             const conn = await createProjectConnection(pid);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__TEST_CONN__ = conn;
 
             const project = Project.fromDoc(conn.doc);
             const page = project.addPage("Test Page", "tester");
 
             // Add test items to the page
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const pageItems = page.items as any;
             const item1 = pageItems.addNode("tester");
             item1.updateText("Test Item 1");
@@ -90,15 +96,19 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
         // Wait for WebSocket to connect
         await page1.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const conn = (window as any).__TEST_CONN__;
             return conn?.provider?.isSynced === true
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 || (conn?.provider as any)?.websocketProvider?.status === "connected";
         }, { timeout: 15000 });
 
         const page1WsInfo = await page1.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const conn = (window as any).__TEST_CONN__;
             return {
                 roomname: conn?.provider?.configuration?.name,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 wsconnected: (conn?.provider as any)?.websocketProvider?.status === "connected",
                 url: conn?.provider?.configuration?.url,
             };
@@ -111,10 +121,12 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
         // Verify page1 still has the page after WebSocket connection
         const page1VerifyInfo = await page1.evaluate(async ({ pageId }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const conn = (window as any).__TEST_CONN__;
             // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
             const { Project } = await import("/src/schema/app-schema.ts");
             const project = Project.fromDoc(conn.doc);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const items = project.items as any;
             const len = items?.length ?? 0;
             const pageIds: string[] = [];
@@ -151,6 +163,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
             localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
             localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__E2E__ = true;
         });
 
@@ -160,6 +173,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         await page2.waitForFunction(
             () => {
                 // eslint-disable-next-line no-restricted-globals
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return !!(window as any).__USER_MANAGER__;
             },
             null,
@@ -167,6 +181,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         );
 
         await page2.evaluate(async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const mgr = (window as any).__USER_MANAGER__;
             if (mgr?.loginWithEmailPassword) {
                 await mgr.loginWithEmailPassword("test@example.com", "password");
@@ -174,6 +189,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         });
 
         await page2.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
         }, { timeout: 30000 });
@@ -187,6 +203,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             const { Project } = await import("/src/schema/app-schema.ts");
 
             const conn = await createProjectConnection(pid);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__TEST_CONN__ = conn;
 
             // Instrument provider events for debugging
@@ -201,15 +218,19 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
         // Wait for WebSocket to connect
         await page2.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const conn = (window as any).__TEST_CONN__;
             return conn?.provider?.isSynced === true
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 || (conn?.provider as any)?.websocketProvider?.status === "connected";
         }, { timeout: 15000 });
 
         const page2WsInfo = await page2.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const conn = (window as any).__TEST_CONN__;
             return {
                 roomname: conn?.provider?.configuration?.name,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 wsconnected: (conn?.provider as any)?.websocketProvider?.status === "connected",
                 url: conn?.provider?.configuration?.url,
             };
@@ -220,15 +241,18 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Trigger a change in page1 to force sync
         console.log("Triggering a change in page1 to force sync...");
         await page1.evaluate(async ({ pageId }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const conn = (window as any).__TEST_CONN__;
             // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
             const { Project } = await import("/src/schema/app-schema.ts");
             const project = Project.fromDoc(conn.doc);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const items = project.items as any;
             for (let i = 0; i < items.length; i++) {
                 const page = items.at ? items.at(i) : items[i];
                 if (page && page.id === pageId) {
                     // Add then immediately delete an item to trigger sync without changing final count
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const pageItems = page.items as any;
                     const item = pageItems.addNode("tester");
                     item.updateText("Sync trigger item");
@@ -249,6 +273,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         // Wait for page to appear and get its data in one go
         const page2Data = await page2.waitForFunction(
             async ({ pageId }) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const conn = (window as any).__TEST_CONN__;
                 if (!conn || !conn.doc) {
                     console.log("page2: Connection not ready");
@@ -260,11 +285,13 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
                     const { Project } = await import("/src/schema/app-schema.ts");
                     const project = Project.fromDoc(conn.doc);
 
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const items = project.items as any;
                     const len = items?.length ?? 0;
 
                     // Log every 2 seconds
                     const now = Date.now();
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if (!((window as any).__lastPageCheckLog) || now - (window as any).__lastPageCheckLog > 2000) {
                         console.log(`page2: Checking for page ${pageId}, current pageCount=${len}`);
                         const pageIds: string[] = [];
@@ -275,6 +302,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
                             }
                         }
                         console.log(`page2: Current page IDs: ${pageIds.join(", ")}`);
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (window as any).__lastPageCheckLog = now;
                     }
 
@@ -283,6 +311,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
                         if (page && page.id === pageId) {
                             console.log(`page2: Found page with ID ${pageId}`);
                             // Return the page data immediately
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const pageItems = page.items as any;
                             const itemCount = pageItems?.length ?? 0;
                             const itemTexts: string[] = [];

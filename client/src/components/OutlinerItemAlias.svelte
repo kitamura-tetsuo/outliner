@@ -29,17 +29,19 @@ onMount(() => {
             const obs = (e?: { keysChanged?: { has?: (key: string) => boolean } }) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
-                        const newValue = ymap.get?.('aliasTargetId');
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const newValue = (ymap as any).get?.('aliasTargetId');
                         if (newValue !== aliasTargetId) {
                             aliasTargetId = newValue;
-                            logger.debug("OutlinerItemAlias: aliasTargetId updated via observe", { itemId: modelId, newValue });
+                            logger.debug({ itemId: modelId, newValue }, "OutlinerItemAlias: aliasTargetId updated via observe");
                         }
                     }
                 } catch {}
             };
             ymap.observe(obs);
             obs(); // Initial reflection
-            onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onDestroy(() => { try { (ymap as any).unobserve(obs); } catch {} });
         }
     } catch {}
 });
@@ -51,9 +53,12 @@ onMount(() => {
     const iv = setInterval(() => {
         try {
             const ap = (typeof window !== "undefined") ? (window as Window & typeof globalThis & { aliasPickerStore?: { confirmById?: (id: string) => void, show?: (id: string) => void } }).aliasPickerStore : null;
-            const li = ap?.lastConfirmedItemId;
-            const lt = ap?.lastConfirmedTargetId;
-            const la = ap?.lastConfirmedAt as number | null;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const li = (ap as any)?.lastConfirmedItemId;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const lt = (ap as any)?.lastConfirmedTargetId;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const la = (ap as any)?.lastConfirmedAt as number | null;
             if (li && lt && la && (Date.now() - la < 6000) && li === modelId) {
                 aliasLastConfirmedPulse = { itemId: li, targetId: lt, at: la };
             }

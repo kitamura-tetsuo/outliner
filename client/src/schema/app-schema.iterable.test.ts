@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Cursor } from "../lib/Cursor";
 import { store } from "../stores/store.svelte";
-import { Item, Project } from "./yjs-schema";
+import { Item, Project } from "./app-schema";
 
 describe("Cursor.searchItem recursion over Large Trees", () => {
     it("should find the target item in a tree using findTarget", () => {

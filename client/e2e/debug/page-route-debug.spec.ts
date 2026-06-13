@@ -26,10 +26,12 @@ test.describe("Page Route Debug", () => {
         await page.reload();
 
         // Wait for UserManager initialization
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await page.waitForFunction(() => (window as any).__USER_MANAGER__ !== undefined, { timeout: 30000 });
 
         // Execute authentication
         const authResult = await page.evaluate(async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const userManager = (window as any).__USER_MANAGER__;
             return await userManager.signInWithEmailAndPassword("test@example.com", "password123");
         });
@@ -38,6 +40,7 @@ test.describe("Page Route Debug", () => {
 
         // Wait for global variable setting
         await page.waitForFunction(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (window as any).__SVELTE_GOTO__;
         }, { timeout: 30000 });
 
@@ -58,6 +61,7 @@ test.describe("Page Route Debug", () => {
         // Check page state periodically
         for (let i = 0; i < 30; i++) {
             const state = await page.evaluate((i) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const generalStore = (window as any).generalStore;
 
                 return {
@@ -88,6 +92,7 @@ test.describe("Page Route Debug", () => {
 
         // Verify final state
         const finalState = await page.evaluate(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const generalStore = (window as any).generalStore;
 
             return {

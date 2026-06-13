@@ -7,22 +7,29 @@ import { fileURLToPath } from "url";
 // Svelte 5 runes shim for E2E tests
 // When running E2E tests, Svelte 5 runes are not available at module load time.
 // This shim provides a minimal fallback that allows the stores to initialize.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 if (typeof (globalThis as any).$state === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).$state = function<T>(value: T): T {
         return value;
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).$derived = function<T>(value: T): T {
         return value;
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).$effect = function(): void {
         // No-op for E2E tests
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).$props = function(): any {
         return {};
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).$bindable = function<T>(value?: T): any {
         return value;
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).$inspect = function<T>(value: T): T {
         return value;
     };

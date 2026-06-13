@@ -47,6 +47,7 @@ test.describe("ITM-multi-line-input-6dcdbeef: Multi-line text input", () => {
 
         // Clear existing text to simulate fresh start if needed, or just type
         await page.evaluate(async ({ itemId }) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorOverlayStore = (window as any).editorOverlayStore;
             const cursorInstances = editorOverlayStore.getCursorInstances();
             const cursor = cursorInstances.find((c: any) => c.itemId === itemId);
