@@ -207,6 +207,38 @@ describe("Sidebar", () => {
             expect(screen.getByText("Test Page 2")).toBeInTheDocument();
         });
 
+        it("should format valid lastChanged date correctly", () => {
+            render(Sidebar, { isOpen: true });
+            const dateStr = new Date("2024-01-01").toLocaleDateString();
+            // It will find the date strings for Test Page 1
+            expect(screen.getAllByText(dateStr).length).toBeGreaterThan(0);
+        });
+
+        it("should not render invalid date when lastChanged is undefined/0", () => {
+            const originalPages = store.pages;
+            store.pages = {
+                current: [
+                    {
+                        id: "page-invalid-date",
+                        text: "Test Page Invalid Date",
+                        lastChanged: 0,
+                        items: { length: 0 },
+                    },
+                ]
+            } as unknown as typeof store.pages;
+
+            const { rerender } = render(Sidebar, { isOpen: true });
+
+            expect(screen.getByText("Test Page Invalid Date")).toBeInTheDocument();
+            expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
+
+            // Restore
+            if (originalPages) {
+                store.pages = originalPages;
+            }
+            rerender({ isOpen: true });
+        });
+
         it("should render 'No pages available' when project has no items", () => {
             // Temporarily override the mock
             const originalProject = store.project;
