@@ -82,7 +82,23 @@
         isSearchPanelVisible = !isSearchPanelVisible;
     }
 
+let resetEpochCache = $state(0);
+    $effect(() => {
+        if (store.resetEpoch !== resetEpochCache) {
+            resetEpochCache = store.resetEpoch;
+            // nullify immediately to disconnect old tree node references
+            store.currentPage = undefined;
+            // The tree was rebuilt, we must force a remount and reload page logic
+            if (pageName && !isLoading) {
+                setTimeout(() => {
+                    loadDemoPage(pageName);
+                }, 100);
+            }
+        }
+    });
+
     onMount(() => {
+
         // Follow route parameter changes (e.g. internal links between demo pages)
         let lastLoaded: string | undefined;
         const unsub = page.subscribe(($p) => {
@@ -186,7 +202,8 @@
                 </div>
             </div>
         </div>
-    {:else}
+{:else}
+        {#key `${store.project?.ydoc?.guid || "demo"}-${store.resetEpoch}`}
         <OutlinerBase
             pageItem={store.currentPage}
             projectName={DEMO_PROJECT_NAME}
@@ -198,6 +215,7 @@
 
         <!-- Backlink Panel -->
         <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
+        {/key}
     {/if}
 
     <!-- Search Panel -->

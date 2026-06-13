@@ -124,6 +124,17 @@ describe("ScrapboxFormatter", () => {
                 );
                 expect(result).toContain('data-page="test-page-name"');
             });
+            it("should handle text that looks like checkboxes (prevent internal link formatting)", () => {
+                const input1 = "[ ] empty checkbox";
+                const input2 = "[x] checked checkbox";
+                const input3 = "[X] checked uppercase";
+                const input4 = "[ x ] with spaces";
+
+                expect(ScrapboxFormatter.formatToHtml(input1)).toBe("[ ] empty checkbox");
+                expect(ScrapboxFormatter.formatToHtml(input2)).toBe("[x] checked checkbox");
+                expect(ScrapboxFormatter.formatToHtml(input3)).toBe("[X] checked uppercase");
+                expect(ScrapboxFormatter.formatToHtml(input4)).toBe("[ x ] with spaces");
+            });
 
             it("should generate correct HTML for project internal links", () => {
                 const input = "[/project-name/page-name]";
@@ -407,6 +418,15 @@ describe("ScrapboxFormatter", () => {
                 // Verify that it is not recognized as an internal link
                 expect(result).not.toContain('class="internal-link');
             });
+        });
+    });
+
+    describe("whitespace handling", () => {
+        it("should not contain newlines or excessive whitespace in link output", () => {
+            const input = "like [Formatting].";
+            const result = ScrapboxFormatter.formatToHtml(input);
+            expect(result).not.toContain("\n");
+            expect(result).not.toMatch(/ {2,}/);
         });
     });
 

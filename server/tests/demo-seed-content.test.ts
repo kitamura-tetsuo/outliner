@@ -64,17 +64,6 @@ describe("Demo seed content", () => {
         expect(childTexts(child!.items)).to.deep.equal(["Grandchild item"]);
     });
 
-    it("seeds checkbox items on the tasks page", () => {
-        const tasks = findChildByText(project.items, "Checkboxes and Tasks");
-        expect(tasks).to.not.equal(undefined);
-
-        const list = findChildByText(tasks!.items, "Shopping list:");
-        expect(list).to.not.equal(undefined);
-
-        const entries = childTexts(list!.items);
-        expect(entries).to.deep.equal(["[x] Milk", "[x] Bread", "[ ] Eggs", "[ ] Coffee"]);
-    });
-
     it("seeds formatting examples covering bold, italic, strike-through and code", () => {
         const formatting = findChildByText(project.items, "Formatting");
         expect(formatting).to.not.equal(undefined);

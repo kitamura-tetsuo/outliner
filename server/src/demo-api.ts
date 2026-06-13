@@ -55,24 +55,30 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 const templateVersion = metadata.get("templateVersion") as number | undefined;
 
                 const orderedTree = doc.getMap("orderedTree");
-                const keys = Array.from(orderedTree.keys());
-                const isEmpty = keys.length === 0 || (keys.length === 1 && keys[0] === "root");
+                // In yjs-orderedtree 1.x, an empty tree might still have internal keys,
+                // but for seeding purposes, if it has very few keys it's effectively empty.
+                const isEmpty = orderedTree.size <= 1;
 
                 const shouldReset = shouldResetDemo({ isEmpty, lastReset, templateVersion, now, force });
 
                 if (shouldReset) {
-                    logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
+                    logger.info({
+                        event: "seed_demo_resetting",
+                        lastReset,
+                        templateVersion,
+                        now,
+                        force,
+                        size: orderedTree.size,
+                    });
 
-                    await directConnection.transact((document: any) => {
+                    await directConnection.transact(async (document: any) => {
                         const ydoc = document as unknown as Y.Doc;
 
                         // Clear orderedTree completely
-                        const orderedTree = ydoc.getMap("orderedTree");
-                        Array.from(orderedTree.keys()).forEach(key => orderedTree.delete(key));
+                        ydoc.getMap("orderedTree").clear();
 
-                        // Clear items map completely
-                        const itemsMap = ydoc.getMap("items");
-                        Array.from(itemsMap.keys()).forEach(key => itemsMap.delete(key));
+                        // Clear items map completely (if it exists from previous versions)
+                        ydoc.getMap("items").clear();
 
                         // Re-initialize metadata
                         const meta = ydoc.getMap("metadata");
@@ -87,6 +93,8 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         // for why applying a fresh doc's update is unsafe).
                         const project = Project.fromDoc(ydoc);
                         populateDemoProject(project, "seed-server");
+
+                        logger.info({ event: "seed_demo_populated", pages: project.items.length });
                     });
                 } else {
                     logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });
@@ -99,8 +107,11 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error({ error: new Error(errorMessage), event: "seed_demo_error" }, "An error occurred");
-            res.status(500).json({ error: "Demo seeding failed", message: errorMessage });
+            logger.error(
+                { error: new Error(errorMessage), event: "seed_demo_error" },
+                "An error occurred during demo seeding",
+            );
+            res.status(500).json({ success: false, error: "Demo seeding failed", message: errorMessage });
         }
     });
 
