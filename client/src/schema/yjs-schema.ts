@@ -328,7 +328,7 @@ export class Project {
         return new Project(doc, tree);
     }
 
-static fromDoc(doc: Y.Doc): Project {
+    static fromDoc(doc: Y.Doc): Project {
         const ymap = doc.getMap("orderedTree");
 
         const tree = new YTree(ymap);
@@ -384,7 +384,6 @@ static fromDoc(doc: Y.Doc): Project {
 
         return new Project(doc, tree);
     }
-
 
     get title(): string {
         try {

@@ -1,5 +1,5 @@
 import "../utils/registerAfterEachSnapshot";
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
@@ -30,8 +30,12 @@ test.describe("Demo reset recovery", () => {
         const apiPage = await apiContext.newPage();
         await apiPage.goto("/demo");
         const resetResp = await apiPage.evaluate(async () => {
-             const res = await fetch("/api/seed-demo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true }) });
-             return await res.json();
+            const res = await fetch("/api/seed-demo", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ force: true }),
+            });
+            return await res.json();
         });
         expect(resetResp.success).toBe(true);
         expect(resetResp.reset).toBe(true);
@@ -43,7 +47,10 @@ test.describe("Demo reset recovery", () => {
         await expect(viewerPage.getByTestId("demo-page-list")).toBeVisible({ timeout: 60000 });
 
         // No ytree node lookup errors should be thrown
-        const ytreeErrors = errors.filter(e => e.includes("[ytree] node with key") || e.includes("Cannot read properties of undefined (reading 'children')"));
+        const ytreeErrors = errors.filter(e =>
+            e.includes("[ytree] node with key")
+            || e.includes("Cannot read properties of undefined (reading 'children')")
+        );
         console.log("Found YTree Errors:", ytreeErrors);
         expect(ytreeErrors.length).toBe(0);
         await apiContext.close();

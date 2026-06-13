@@ -137,7 +137,7 @@ export class GeneralStore {
     public get project(): Project | undefined {
         return this._project;
     }
-// Explicit signal for pages updates to ensure Svelte 5 reactivity
+    // Explicit signal for pages updates to ensure Svelte 5 reactivity
     pagesVersion = $state(0);
     resetEpoch = $state(0);
 
@@ -281,7 +281,7 @@ export class GeneralStore {
 
         // Monitor both the orderedTree (content) and items (page list) for changes
         try {
-ymap?.observeDeep?.(handler);
+            ymap?.observeDeep?.(handler);
             const metadataMap = project?.ydoc?.getMap?.("metadata");
             metadataMap?.observe?.((event: Y.YMapEvent<unknown>) => {
                 if (event.keysChanged.has("lastReset")) {
