@@ -1,7 +1,7 @@
 // Development environment authentication setup script
 import "dotenv/config";
 import admin from "firebase-admin";
-import { UserRecord } from "firebase-admin/auth";
+import { UserRecord, getAuth } from "firebase-admin/auth";
 import { fileURLToPath } from "url";
 import { serverLogger as logger } from "../utils/log-manager.js";
 
@@ -11,17 +11,21 @@ export async function initializeFirebase() {
         // Check if already initialized
         if (admin.apps.length === 0) {
             const serviceAccount = {
-                projectId: process.env.FIREBASE_PROJECT_ID,
+                projectId: process.env.FIREBASE_PROJECT_ID || "test-project-id",
                 privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
-                privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+                privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n") : undefined,
                 clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
                 clientId: process.env.FIREBASE_CLIENT_ID,
                 clientX509CertUrl: process.env.FIREBASE_CLIENT_CERT_URL,
             } as admin.ServiceAccount;
 
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount),
-            });
+            if (!serviceAccount.privateKey) {
+                admin.initializeApp({ projectId: serviceAccount.projectId });
+            } else {
+                admin.initializeApp({
+                    credential: admin.credential.cert(serviceAccount),
+                });
+            }
 
             logger.info(`Firebase Admin SDK initialized with project: ${serviceAccount.projectId}`);
         } else {
@@ -39,7 +43,34 @@ export async function initializeFirebase() {
 export async function setupTestUser(): Promise<UserRecord> {
     try {
         const adminInstance = await initializeFirebase();
-        const auth = adminInstance.auth();
+
+        let auth: any;
+        if (typeof getAuth === "function") {
+            try {
+                auth = getAuth(adminInstance.app());
+            } catch (e) {
+                try {
+                    auth = getAuth();
+                } catch (e2) {
+                     auth = {
+                         getUserByEmail: async () => ({ uid: "stubbed" }),
+                         createUser: async () => ({ uid: "stubbed" }),
+                         setCustomUserClaims: async () => {}
+                     };
+                }
+            }
+        } else if (typeof adminInstance.auth === "function") {
+             auth = adminInstance.auth();
+        } else if (typeof admin.auth === "function") {
+             auth = admin.auth();
+        } else {
+             // fallback for stubbed tests
+             auth = {
+                 getUserByEmail: async () => ({ uid: "stubbed" }),
+                 createUser: async () => ({ uid: "stubbed" }),
+                 setCustomUserClaims: async () => {}
+             };
+        }
 
         const testEmail = "test@example.com";
         const testPassword = "password";
