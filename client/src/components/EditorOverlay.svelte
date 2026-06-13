@@ -829,7 +829,7 @@ function getTextByItemId(itemId: string): string {
     const items = page?.items;
     const len = items?.length ?? 0;
     for (let i = 0; i < len; i++) {
-      const it = items.at ? items.at(i) : items[i];
+      const it = (typeof items.at === "function" ? items.at(i) : (items as unknown as { [key: number]: unknown })[i]);
       if (it?.id === itemId) {
         return String(it?.text ?? "");
       }

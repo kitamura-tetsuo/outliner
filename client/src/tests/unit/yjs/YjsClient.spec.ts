@@ -49,7 +49,12 @@ describe("YjsClient", () => {
 
         // Create a simple mock for Project since we don't need its full logic for this test
         project = {
-            title: "Test Project",
+            title: "Test Project", // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            metadata: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            rootFolder: {} as any,
+            dispose: () => {},
+
             items: { length: 0 },
             ydoc: doc,
             tree: {},
@@ -60,6 +65,7 @@ describe("YjsClient", () => {
         client = new YjsClient({
             clientId,
             projectId,
+            // @ts-expect-error - mock for tests
             project,
             doc,
             provider,

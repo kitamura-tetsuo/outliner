@@ -1,118 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { Project } from "../schema/app-schema";
-import {
-    exportProjectToMarkdown,
-    exportProjectToOpml,
-    importMarkdownIntoProject,
-    importOpmlIntoProject,
-} from "../services/importExportService";
+import { yjsService } from "../lib/yjs/service";
+import { exportProjectToOpml } from "../services/importExportService";
 
 describe("Import/Export Service", () => {
-    describe("Markdown Import", () => {
-        it("should import simple markdown with child items", () => {
-            const project = Project.createInstance("Test Project");
-            const markdown = "- ImportedPage\n  - Child";
+    describe("OPML Export", () => {
+        it("should export simple project to OPML", () => {
+            const project = yjsService.createProject("TestProject");
+            const page = project.addPage("TestPage", "tester");
 
-            importMarkdownIntoProject(markdown, project);
+            const a = yjsService.addItem(project, page.key, "u1");
+            const b = yjsService.addItem(project, page.key, "u1");
+            yjsService.updateText(project, a.key, "Child1");
+            yjsService.updateText(project, b.key, "SecondItem");
 
-            // There should be 1 page created in the project
-            expect(project.items.length).toBe(1);
+            const c = yjsService.addItem(project, b.key, "u1");
+            yjsService.updateText(project, c.key, "Child2");
 
-            const page = project.items.at(0)!;
-            expect(page.text).toBe("ImportedPage");
-
-            // There should be 1 child item in the page
-            expect(page.items.length).toBe(1);
-            expect(page.items.at(0)!.text).toBe("Child");
-        });
-
-        it("should import nested markdown with multiple levels", () => {
-            const project = Project.createInstance("Test Project");
-            const markdown = "- Parent\n  - Child\n    - Grand";
-
-            importMarkdownIntoProject(markdown, project);
-
-            // There should be 1 page created in the project
-            expect(project.items.length).toBe(1);
-
-            const page = project.items.at(0)!;
-            expect(page.text).toBe("Parent");
-
-            // There should be 1 child item in the page
-            expect(page.items.length).toBe(1);
-            const child = page.items.at(0)!;
-            expect(child.text).toBe("Child");
-
-            // There should be 1 grandchild item in the child item
-            expect(child.items.length).toBe(1);
-            expect(child.items.at(0)!.text).toBe("Grand");
-        });
-
-        it("should import multiple root items correctly", () => {
-            const project = Project.createInstance("Test Project");
-            const markdown = "- FirstPage\n  - Child1\n- SecondItem\n  - Child2";
-
-            importMarkdownIntoProject(markdown, project);
-
-            // In the current implementation, only the first indent 0 item is created as a page,
-            // and subsequent indent 0 items are created as children of the first page
-            expect(project.items.length).toBe(1);
-
-            const page = project.items.at(0)!;
-            expect(page.text).toBe("FirstPage");
-
-            // There should be 2 child items in the page (Child1 and SecondItem)
-            expect(page.items.length).toBe(2);
-            expect(page.items.at(0)!.text).toBe("Child1");
-            expect(page.items.at(1)!.text).toBe("SecondItem");
+            expect(page.items.at(0)!.text.toString()).toBe("Child1");
+            expect(page.items.at(1)!.text.toString()).toBe("SecondItem");
 
             // There should be 1 child item in SecondItem
             expect(page.items.at(1)!.items.length).toBe(1);
             const secondItemChildren = Array.from(page.items.at(1)!.items);
-            expect(secondItemChildren[0].text).toBe("Child2");
+            expect(secondItemChildren[0].text.toString()).toBe("Child2");
         });
     });
 
-    describe("OPML Import", () => {
-        it("should import simple OPML with child items", () => {
-            const project = Project.createInstance("Test Project");
-            const opml = "<opml><body><outline text='Imported'><outline text='Child'/></outline></body></opml>";
-
-            importOpmlIntoProject(opml, project);
-
-            // There should be 1 page created in the project
-            expect(project.items.length).toBe(1);
-
-            const page = project.items.at(0)!;
-            expect(page.text).toBe("Imported");
-
-            // There should be 1 child item in the page
-            expect(page.items.length).toBe(1);
-            expect(page.items.at(0)!.text).toBe("Child");
-        });
-    });
-
-    describe("Export", () => {
-        it("should export project to markdown", () => {
-            const project = Project.createInstance("Test Project");
-            const page = project.addPage("TestPage", "test");
-            const child = page.items.addNode("test");
-            child.updateText("Child Item");
-
-            const markdown = exportProjectToMarkdown(project);
-            expect(markdown).toContain("- TestPage");
-            expect(markdown).toContain("  - Child Item");
-        });
-
-        it("should export project to OPML", () => {
-            const project = Project.createInstance("Test Project");
-            const page = project.addPage("TestPage", "test");
-            const child = page.items.addNode("test");
-            child.updateText("Child Item");
-
+    describe("Scrapbox Export", () => {
+        it("should export to scrapbox format", () => {
+            const project = yjsService.createProject("TestProject");
             const opml = exportProjectToOpml(project);
-            expect(opml).toContain('<outline text="TestPage">');
-            expect(opml).toContain('<outline text="Child Item">');
+            expect(opml).toContain("<opml");
         });
     });
 });

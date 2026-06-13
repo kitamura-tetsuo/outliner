@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { yjsService } from "../../lib/yjs/service";
@@ -21,10 +20,6 @@ describe("YjsService Complex Operations", () => {
         const state = Y.encodeStateAsUpdate(project1.ydoc);
         Y.applyUpdate(doc1, state);
 
-        // Perform operations on both clients
-        // ... (Simulate edits, moves, indents, outdents)
-        // ... Wait for sync
-
         // Verify final state matches on both
         expect(Y.encodeStateAsUpdate(doc1)).toEqual(Y.encodeStateAsUpdate(doc2));
     });
@@ -38,7 +33,9 @@ describe("YjsService Complex Operations", () => {
         second.updateText("Second Item");
 
         const awareness = new Awareness(new Y.Doc());
-        yjsService.setPresence(awareness, { cursor: { itemId: second.key, offset: 1 } } as any);
+        yjsService.setPresence(awareness, {
+            cursor: { cursorId: "test", itemId: second.key, offset: 1, isActive: true },
+        });
         expect(yjsService.getPresence(awareness)?.cursor?.itemId).toBe(second.key);
     });
 });

@@ -236,6 +236,126 @@ describe("ScrapboxFormatter", () => {
             });
         });
 
+        describe("label-first external links: [label URL]", () => {
+            it("should render the label linked to the URL", () => {
+                const input = "[Example Site https://example.com]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    '<a href="https://example.com" target="_blank" rel="noopener noreferrer">Example Site</a>',
+                );
+            });
+
+            it("should support multi-word labels", () => {
+                const input = "See [Yjs on GitHub https://github.com/yjs/yjs] for details";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    'See <a href="https://github.com/yjs/yjs" target="_blank" rel="noopener noreferrer">Yjs on GitHub</a> for details',
+                );
+            });
+
+            it("should fall back to URL text when the label is empty", () => {
+                const input = "[ https://example.com]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    '<a href="https://example.com" target="_blank" rel="noopener noreferrer">https://example.com</a>',
+                );
+            });
+
+            it("should let the URL-first pattern win when both parts are URLs", () => {
+                const input = "[https://a.example https://b.example]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    '<a href="https://a.example" target="_blank" rel="noopener noreferrer">https://b.example</a>',
+                );
+            });
+
+            it("should render an image when the URL points to an image", () => {
+                const input = "[My Image https://example.com/pic.png]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    '<img src="https://example.com/pic.png" alt="My Image" class="scrapbox-image" />',
+                );
+            });
+
+            it("should process formatting inside the label", () => {
+                const input = "[[[bold]] https://example.com]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    '<a href="https://example.com" target="_blank" rel="noopener noreferrer"><strong>bold</strong></a>',
+                );
+            });
+        });
+
+        describe("bare URL auto-link", () => {
+            it("should convert a bare URL to a clickable link", () => {
+                const input = "Visit https://example.com for details";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    'Visit <a href="https://example.com" target="_blank" rel="noopener noreferrer">https://example.com</a> for details',
+                );
+            });
+
+            it("should link a bare URL with a path and query string", () => {
+                const input = "See https://example.com/a/b?q=1&x=2 now";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    'See <a href="https://example.com/a/b?q=1&amp;x=2" target="_blank" rel="noopener noreferrer">https://example.com/a/b?q=1&amp;x=2</a> now',
+                );
+            });
+
+            it("should exclude trailing sentence punctuation from the URL", () => {
+                const input = "Read https://example.com/page.";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    'Read <a href="https://example.com/page" target="_blank" rel="noopener noreferrer">https://example.com/page</a>.',
+                );
+            });
+
+            it("should link multiple bare URLs in one line", () => {
+                const input = "http://a.example and https://b.example";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    '<a href="http://a.example" target="_blank" rel="noopener noreferrer">http://a.example</a>'
+                        + ' and <a href="https://b.example" target="_blank" rel="noopener noreferrer">https://b.example</a>',
+                );
+            });
+
+            it("should not double-process URLs inside bracketed links", () => {
+                const input = "[https://example.com Example Site]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    '<a href="https://example.com" target="_blank" rel="noopener noreferrer">Example Site</a>',
+                );
+            });
+
+            it("should not link URLs inside code spans", () => {
+                const input = "`https://example.com`";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe("<code>https://example.com</code>");
+            });
+
+            it("should link bare URLs inside bold text", () => {
+                const input = "[[see https://example.com here]]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+
+                expect(result).toBe(
+                    '<strong>see <a href="https://example.com" target="_blank" rel="noopener noreferrer">https://example.com</a> here</strong>',
+                );
+            });
+        });
+
         describe("formatting combinations", () => {
             it("should handle bold text with internal links", () => {
                 const input = "[[bold text with [internal-link]]]";
@@ -359,6 +479,49 @@ describe("ScrapboxFormatter", () => {
             expect(tokens[0].content).toBe("https://example.com");
             expect(tokens[0].url).toBe("https://example.com");
         });
+
+        it("should tokenize bare URLs as links", () => {
+            const input = "Visit https://example.com now";
+            const tokens = ScrapboxFormatter.tokenize(input);
+
+            expect(tokens).toHaveLength(3);
+            expect(tokens[0].type).toBe("text");
+            expect(tokens[0].content).toBe("Visit ");
+            expect(tokens[1].type).toBe("link");
+            expect(tokens[1].content).toBe("https://example.com");
+            expect(tokens[1].url).toBe("https://example.com");
+            expect(tokens[2].type).toBe("text");
+            expect(tokens[2].content).toBe(" now");
+        });
+
+        it("should not emit a duplicate token for the URL inside a bracketed link", () => {
+            const input = "[https://example.com Example Site]";
+            const tokens = ScrapboxFormatter.tokenize(input);
+
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe("link");
+            expect(tokens[0].url).toBe("https://example.com");
+        });
+
+        it("should tokenize label-first links [label URL]", () => {
+            const input = "[Example Site https://example.com]";
+            const tokens = ScrapboxFormatter.tokenize(input);
+
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe("link");
+            expect(tokens[0].content).toBe("Example Site");
+            expect(tokens[0].url).toBe("https://example.com");
+        });
+
+        it("should prefer the URL-first pattern when both parts are URLs", () => {
+            const input = "[https://a.example https://b.example]";
+            const tokens = ScrapboxFormatter.tokenize(input);
+
+            expect(tokens).toHaveLength(1);
+            expect(tokens[0].type).toBe("link");
+            expect(tokens[0].url).toBe("https://a.example");
+            expect(tokens[0].content).toBe("https://b.example");
+        });
     });
 
     describe("hasFormatting", () => {
@@ -372,6 +535,10 @@ describe("ScrapboxFormatter", () => {
 
         it("should return false for plain text", () => {
             expect(ScrapboxFormatter.hasFormatting("plain text")).toBe(false);
+        });
+
+        it("should detect bare URLs", () => {
+            expect(ScrapboxFormatter.hasFormatting("Visit https://example.com now")).toBe(true);
         });
     });
 });

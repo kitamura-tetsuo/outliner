@@ -190,6 +190,15 @@ export class ScrapboxFormatter {
                 // Parse URL and optional label (allow if label is whitespace only)
                 regex: /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g,
             },
+            {
+                type: "link",
+                start: "[",
+                end: "]",
+                // Reversed order: [label URL]. Listed after the URL-first
+                // pattern so that pattern wins when both could match.
+                regex: /\[([^[\]]*?)\s+(https?:\/\/[^\s\]]+)\]/g,
+                urlLast: true,
+            },
             // Normal internal link (page-name format) - allow page names with hyphens
             { type: "internalLink", start: "[", end: "]", regex: /\[([^[\]]+?)\]/g },
             { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm },
@@ -216,8 +225,9 @@ export class ScrapboxFormatter {
 
                 // Save URL and label for links
                 if (pattern.type === "link") {
-                    const url = match[1];
-                    const rawLabel = match[2];
+                    const urlLast = "urlLast" in pattern && pattern.urlLast === true;
+                    const url = urlLast ? match[2] : match[1];
+                    const rawLabel = urlLast ? match[1] : match[2];
                     const label = rawLabel && rawLabel.trim() !== "" ? rawLabel.trim() : url;
                     matches.push({
                         type: pattern.type,
@@ -237,6 +247,13 @@ export class ScrapboxFormatter {
                 }
             }
         });
+
+        // Bare URLs (not wrapped in brackets). URLs inside bracketed links or
+        // code spans start later than the enclosing match, so the overlap
+        // resolution below discards them in favor of the bracketed construct.
+        for (const { start, end, url } of ScrapboxFormatter.matchBareUrls(text)) {
+            matches.push({ type: "link", start, end, content: url, url });
+        }
 
         // Sort matches by start position
         matches.sort((a, b) => a.start - b.start);
@@ -447,7 +464,30 @@ export class ScrapboxFormatter {
     private static readonly RX_HTML_STRIKETHROUGH = /\[-(.*?)\]/g;
     private static readonly RX_HTML_CODE = /`(.*?)`/g;
     private static readonly RX_HTML_EXT_LINK = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
+    private static readonly RX_HTML_EXT_LINK_REV = /\[([^[\]]*?)\s+(https?:\/\/[^\s\]]+)\]/g;
     private static readonly RX_HTML_INT_LINK = /\[([^[\]]+?)\]/g;
+
+    // Bare URL auto-link. Excludes whitespace, brackets and the \x01 placeholder
+    // marker so already-processed constructs are never re-matched.
+    // eslint-disable-next-line no-control-regex
+    private static readonly RX_BARE_URL = /https?:\/\/[^\s\x01<>[\]"]+/g;
+
+    /**
+     * Matches bare (non-bracketed) URLs in plain text.
+     * Trailing sentence punctuation is excluded from the URL.
+     */
+    private static matchBareUrls(text: string): Array<{ start: number; end: number; url: string; }> {
+        if (!text.includes("://")) return [];
+
+        const matches: Array<{ start: number; end: number; url: string; }> = [];
+        ScrapboxFormatter.RX_BARE_URL.lastIndex = 0;
+        let match;
+        while ((match = ScrapboxFormatter.RX_BARE_URL.exec(text)) !== null) {
+            const url = match[0].replace(/[.,;:!?]+$/, "");
+            matches.push({ start: match.index, end: match.index + url.length, url });
+        }
+        return matches;
+    }
 
     /**
      * Function to match italics considering bracket balance
@@ -536,11 +576,22 @@ export class ScrapboxFormatter {
             return placeholder;
         };
 
-        // Function to process formatting recursively
-        const processFormat = (input: string): string => {
-            // Fast path: if no formatting characters, just escape and return
+        // Restore placeholders to their stored HTML
+        const restorePlaceholders = (input: string): string => {
+            return input.replace(ScrapboxFormatter.RX_PLACEHOLDER, (match) => {
+                return globalPlaceholders.get(match) || match;
+            });
+        };
+
+        // Function to process formatting recursively.
+        // linkifyBareUrls is false when rendering link labels, where a bare
+        // URL must stay plain text instead of producing a nested anchor.
+        const processFormat = (input: string, linkifyBareUrls = true): string => {
+            // Fast path: if no formatting characters, just escape and return.
+            // Placeholders from outer passes (e.g. bold inside a link label)
+            // still need to be restored.
             if (!ScrapboxFormatter.hasFormatting(input)) {
-                return this.escapeHtml(input);
+                return restorePlaceholders(this.escapeHtml(input));
             }
 
             // Bold - process first, then recursively process content
@@ -642,22 +693,36 @@ export class ScrapboxFormatter {
             }
 
             // External link (allow if label is whitespace only)
-            if (input.includes("[http")) {
-                input = input.replace(ScrapboxFormatter.RX_HTML_EXT_LINK, (match, url, label) => {
-                    const trimmedLabel = label?.trim();
-                    const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
-                    const escapedUrl = this.escapeHtml(safeUrl);
+            const renderExternalLink = (url: string, label: string | undefined): string => {
+                const trimmedLabel = label?.trim();
+                const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
+                const escapedUrl = this.escapeHtml(safeUrl);
 
-                    if (ScrapboxFormatter.isImageUrl(safeUrl)) {
-                        const altText = trimmedLabel ? this.escapeHtml(trimmedLabel) : escapedUrl;
-                        const html = `<img src="${escapedUrl}" alt="${altText}" class="scrapbox-image" />`;
-                        return createPlaceholder(html);
-                    }
-
-                    const text = trimmedLabel ? processFormat(trimmedLabel) : escapedUrl;
-                    const html = `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                if (ScrapboxFormatter.isImageUrl(safeUrl)) {
+                    const altText = trimmedLabel ? this.escapeHtml(trimmedLabel) : escapedUrl;
+                    const html = `<img src="${escapedUrl}" alt="${altText}" class="scrapbox-image" />`;
                     return createPlaceholder(html);
-                });
+                }
+
+                const text = trimmedLabel ? processFormat(trimmedLabel, false) : escapedUrl;
+                const html = `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                return createPlaceholder(html);
+            };
+
+            if (input.includes("[http")) {
+                input = input.replace(
+                    ScrapboxFormatter.RX_HTML_EXT_LINK,
+                    (match, url, label) => renderExternalLink(url, label),
+                );
+            }
+
+            // External link with the label first: [label URL]
+            // Must run after the URL-first pattern and before internal links
+            if (input.includes("[") && input.includes("://")) {
+                input = input.replace(
+                    ScrapboxFormatter.RX_HTML_EXT_LINK_REV,
+                    (match, label, url) => renderExternalLink(url, label),
+                );
             }
 
             // Project internal links processed above
@@ -683,14 +748,32 @@ export class ScrapboxFormatter {
                 });
             }
 
+            // Bare URL auto-link - bracketed URLs and code spans were already
+            // replaced by placeholders above, so only plain-text URLs remain
+            if (linkifyBareUrls && input.includes("://")) {
+                const urlMatches = ScrapboxFormatter.matchBareUrls(input);
+                if (urlMatches.length > 0) {
+                    let result = "";
+                    let lastIndex = 0;
+                    for (const match of urlMatches) {
+                        result += input.substring(lastIndex, match.start);
+                        const escapedUrl = this.escapeHtml(ScrapboxFormatter.sanitizeUrl(match.url));
+                        const html =
+                            `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
+                        result += createPlaceholder(html);
+                        lastIndex = match.end;
+                    }
+                    result += input.substring(lastIndex);
+                    input = result;
+                }
+            }
+
             // Escape plain text parts
             input = this.escapeHtml(input);
 
             // Restore placeholders to HTML tags
             // Optimization: Replace all placeholders in a single pass O(N) instead of O(N*M)
-            input = input.replace(ScrapboxFormatter.RX_PLACEHOLDER, (match) => {
-                return globalPlaceholders.get(match) || match;
-            });
+            input = restorePlaceholders(input);
 
             return input;
         };
@@ -909,6 +992,7 @@ export class ScrapboxFormatter {
             /<u>(.*?)<\/u>/.source, // Underline
             /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/.source, // External link
             /\[([^[\]/][^[\]]*?)\]/.source, // Internal link
+            /https?:\/\/\S+/.source, // Bare URL
             /^>\s(.*?)$/m.source, // Quote
         ].join("|"),
         "m",
@@ -927,7 +1011,8 @@ export class ScrapboxFormatter {
         const mightHaveFormat = text.includes("[")
             || text.includes("`")
             || text.includes("<")
-            || text.includes(">");
+            || text.includes(">")
+            || text.includes("://");
 
         if (!mightHaveFormat) return false;
 
