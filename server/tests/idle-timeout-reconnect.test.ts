@@ -1,12 +1,12 @@
 import { jest } from "@jest/globals";
 jest.setTimeout(30000);
+import { HocuspocusProvider as WebsocketProvider } from "@hocuspocus/provider";
 import { expect } from "chai";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
 import sinon from "sinon";
 import WebSocket from "ws";
-import { HocuspocusProvider as WebsocketProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import "ts-node/register";
 import admin from "firebase-admin";

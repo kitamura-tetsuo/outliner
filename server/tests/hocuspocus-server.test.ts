@@ -53,7 +53,9 @@ describe("Hocuspocus Server", () => {
     });
 
     afterEach(async () => {
-        try { provider?.destroy(); } catch(e){}
+        try {
+            provider?.destroy();
+        } catch (e) {}
         if (shutdown) await shutdown();
         sinon.restore();
         await fs.remove(dbDir);
@@ -74,18 +76,22 @@ describe("Hocuspocus Server", () => {
         return new Promise<void>((resolve, reject) => {
             let handled = false;
             const timeout = setTimeout(() => {
-                if(!handled) {
+                if (!handled) {
                     handled = true;
-                    try{ provider.destroy(); }catch(e){}
+                    try {
+                        provider.destroy();
+                    } catch (e) {}
                     reject(new Error("Timed out waiting for auth failure"));
                 }
             }, 3000);
 
             const cleanup = (event?: any) => {
-                if(!handled) {
+                if (!handled) {
                     handled = true;
                     clearTimeout(timeout);
-                    try{ provider.destroy(); }catch(e){}
+                    try {
+                        provider.destroy();
+                    } catch (e) {}
                     resolve();
                 }
             };
