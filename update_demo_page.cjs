@@ -1,14 +1,20 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const filePath = path.join(__dirname, 'client/src/routes/demo/[page]/+page.svelte');
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = path.join(__dirname, "client/src/routes/demo/[page]/+page.svelte");
+let content = fs.readFileSync(filePath, "utf8");
 
 // Add import
-content = content.replace('import { getYjsClientByProjectTitle } from "../../../services";', 'import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../services";');
+content = content.replace(
+    'import { getYjsClientByProjectTitle } from "../../../services";',
+    'import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../services";',
+);
 
 // Add reset state
-content = content.replace('let isSearchPanelVisible = $state(false);', `let isSearchPanelVisible = $state(false);\n    let isResetting = $state(false);\n    let resetDone = $state(false);`);
+content = content.replace(
+    "let isSearchPanelVisible = $state(false);",
+    `let isSearchPanelVisible = $state(false);\n    let isResetting = $state(false);\n    let resetDone = $state(false);`,
+);
 
 // Add resetDemo function
 const resetDemoFunc = `
@@ -28,7 +34,7 @@ const resetDemoFunc = `
         }
     }
 `;
-content = content.replace('function toggleSearchPanel() {', resetDemoFunc + '\n    function toggleSearchPanel() {');
+content = content.replace("function toggleSearchPanel() {", resetDemoFunc + "\n    function toggleSearchPanel() {");
 
 // Update buttons
 const oldButtons = `<div class="flex items-center space-x-2" data-testid="demo-page-toolbar">
@@ -75,5 +81,5 @@ const newMsg = `<p class="mt-1 text-sm text-gray-500">
     </div>`;
 content = content.replace(oldMsg, newMsg);
 
-fs.writeFileSync(filePath, content, 'utf8');
-console.log('Updated', filePath);
+fs.writeFileSync(filePath, content, "utf8");
+console.log("Updated", filePath);
