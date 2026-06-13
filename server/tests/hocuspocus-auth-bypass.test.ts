@@ -17,12 +17,14 @@ process.on("unhandledRejection", (reason: any) => {
 class SafeWebSocket extends WebSocket {
     constructor(...args: any[]) {
         super(...(args as [any]));
-        this.on('error', (e: any) => {
+        this.on("error", (e: any) => {
             if (e.message === "WebSocket was closed before the connection was established") return;
         });
     }
     close(code?: number, reason?: string | Buffer) {
-        try { super.close(code, reason); } catch(e) {}
+        try {
+            super.close(code, reason);
+        } catch (e) {}
     }
 }
 (global as any).WebSocket = SafeWebSocket;
@@ -67,7 +69,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
             name: path.replace(/^\/+/, ""), // clean name
             document: new Y.Doc(),
             WebSocketPolyfill: SafeWebSocket,
-            maxRetries: 0
+            maxRetries: 0,
         });
 
         await new Promise<void>((resolve, reject) => {
@@ -89,6 +91,9 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
     };
 
     it("should BLOCK connection to non-project path without auth (FIXED)", createBypassTest("/bypassed-document"));
-    it("should BLOCK connection to project-like path if obscured (e.g. //projects) (FIXED)", createBypassTest("//projects/123"));
+    it(
+        "should BLOCK connection to project-like path if obscured (e.g. //projects) (FIXED)",
+        createBypassTest("//projects/123"),
+    );
     it("should BLOCK connection to normal /projects path without auth", createBypassTest("/projects/123"));
 });
