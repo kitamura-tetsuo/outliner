@@ -464,6 +464,11 @@ export class Items implements Iterable<Item> {
         value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
+        // Force recompute of internal map so newly created node is immediately accessible
+        // in the same transaction. yjs-orderedtree's observeDeep only fires after transaction.
+        if (typeof this.tree.recomputeParentsAndChildren === "function") {
+            this.tree.recomputeParentsAndChildren();
+        }
 
         if (index === undefined) {
             this.tree.setNodeOrderToEnd(nodeKey);
@@ -482,6 +487,11 @@ export class Items implements Iterable<Item> {
             } else {
                 this.tree.setNodeAfter(nodeKey, existingKeys[normalized - 1]!);
             }
+        }
+
+        // Final recompute to ensure any order changes are also reflected
+        if (typeof this.tree.recomputeParentsAndChildren === "function") {
+            this.tree.recomputeParentsAndChildren();
         }
 
         return new Item(this.ydoc, this.tree, nodeKey);

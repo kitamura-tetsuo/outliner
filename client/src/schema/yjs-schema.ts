@@ -252,6 +252,12 @@ export class Items {
         value.set("comments", new Y.Array<Y.Map<any>>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
+        // Force recompute of internal map so newly created node is immediately accessible
+        // in the same transaction. yjs-orderedtree's observeDeep only fires after transaction.
+        const treeWithRecompute = this.tree as unknown as { recomputeParentsAndChildren?: () => void; };
+        if (typeof treeWithRecompute.recomputeParentsAndChildren === "function") {
+            treeWithRecompute.recomputeParentsAndChildren();
+        }
 
         if (index === undefined) {
             this.tree.setNodeOrderToEnd(nodeKey);
@@ -262,6 +268,12 @@ export class Items {
             if (!target) this.tree.setNodeOrderToEnd(nodeKey);
             else if (clamped === 0) this.tree.setNodeBefore(nodeKey, target);
             else this.tree.setNodeAfter(nodeKey, keys[clamped - 1]);
+        }
+
+        // Final recompute to ensure any order changes are also reflected
+        const finalTreeWithRecompute = this.tree as unknown as { recomputeParentsAndChildren?: () => void; };
+        if (typeof finalTreeWithRecompute.recomputeParentsAndChildren === "function") {
+            finalTreeWithRecompute.recomputeParentsAndChildren();
         }
 
         return new Item(this.ydoc, this.tree, nodeKey);
