@@ -76,6 +76,7 @@
             isLoading = true;
             error = undefined;
             pageNotFound = false;
+            resetDone = false;
 
             // Connect once; page switches within /demo reuse the same client
             if (!yjsStore.yjsClient || !store.project || store.project.title !== DEMO_PROJECT_NAME) {
@@ -126,6 +127,14 @@
             store.project = undefined;
             await loadDemoPage(pageName);
             resetDone = error === undefined;
+            if (resetDone) {
+                setTimeout(() => {
+                    resetDone = false;
+                }, 3000);
+            }
+        } catch (err) {
+            console.error("Failed to reset demo:", err);
+            error = err instanceof Error ? err.message : "An error occurred while resetting the demo.";
         } finally {
             isResetting = false;
         }
