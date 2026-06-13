@@ -410,7 +410,6 @@ describe("ScrapboxFormatter", () => {
         });
     });
 
-
     describe("whitespace handling", () => {
         it("should not contain newlines or excessive whitespace in link output", () => {
             const input = "like [Formatting].";

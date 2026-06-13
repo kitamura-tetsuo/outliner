@@ -399,7 +399,8 @@ export class ScrapboxFormatter {
 
                             const escapedProjectName = this.escapeHtml(projectName);
                             const escapedPageName = this.escapeHtml(pageName);
-                            html += `<span class="link-preview-wrapper"><a href="/${escapedNormalized}" class="internal-link project-link ${existsClassTokens}" data-project="${escapedProjectName}" data-page="${escapedPageName}">${escapedNormalized}</a></span>`;
+                            html +=
+                                `<span class="link-preview-wrapper"><a href="/${escapedNormalized}" class="internal-link project-link ${existsClassTokens}" data-project="${escapedProjectName}" data-page="${escapedPageName}">${escapedNormalized}</a></span>`;
                         } else {
                             html +=
                                 `<a href="/${escapedNormalized}" class="internal-link project-link">${escapedNormalized}</a>`;
@@ -407,7 +408,8 @@ export class ScrapboxFormatter {
                     } else {
                         const existsClass = this.checkPageExists(rawContent) ? "page-exists" : "page-not-exists";
                         const projectPrefix = this.getProjectPrefix();
-                        html += `<span class="link-preview-wrapper"><a href="${projectPrefix}/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a></span>`;
+                        html +=
+                            `<span class="link-preview-wrapper"><a href="${projectPrefix}/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a></span>`;
                     }
                     break;
                 }
@@ -660,9 +662,11 @@ export class ScrapboxFormatter {
                     } else {
                         // Case of single page name (project internal link)
                         const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
-                        html = `<span class="link-preview-wrapper"><a href="/${this.escapeHtml(path)}" class="internal-link ${existsClass}" data-page="${
+                        html = `<span class="link-preview-wrapper"><a href="/${
                             this.escapeHtml(path)
-                        }">${this.escapeHtml(path)}</a></span>`;
+                        }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(path)}">${
+                            this.escapeHtml(path)
+                        }</a></span>`;
                     }
                     return createPlaceholder(html);
                 });
