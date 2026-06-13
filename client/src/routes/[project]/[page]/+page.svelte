@@ -151,11 +151,17 @@
                 if (items) {
                     const len = items.length ?? 0;
                     const titles: string[] = [];
+
+                    let decodedName = pageName;
+                    try {
+                        decodedName = decodeURIComponent(pageName);
+                    } catch {}
+
                     for (let i = 0; i < len; i++) {
                         const p = items.at(i);
                         const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                         titles.push(t);
-                        if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
+                        if (String(t).toLowerCase() === String(decodedName).toLowerCase()) {
                             return p as unknown as import("../../../schema/app-schema").Item;
                         }
                     }

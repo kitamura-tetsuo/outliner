@@ -67,7 +67,7 @@
     function handlePageSelected(event: CustomEvent<{ pageId: string; pageName: string; }>) {
         const pageName = event.detail.pageName;
         if (pageName) {
-            goto(resolvePath(`/demo/${pageName}`));
+            goto(resolvePath(`/demo/${encodeURIComponent(pageName)}`));
         }
     }
 

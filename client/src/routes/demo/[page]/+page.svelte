@@ -25,13 +25,47 @@
         const items = store.project?.items;
         if (!items) return undefined;
         const len = items.length || 0;
+
+        let decodedName = name;
+        try {
+            decodedName = decodeURIComponent(name);
+        } catch {}
+
         for (let i = 0; i < len; i++) {
             const item = items.at?.(i);
             const text = item?.text?.toString?.() ?? String(item?.text ?? "");
-            if (String(text).toLowerCase() === String(name).toLowerCase()) {
+
+            // Check direct match
+            if (String(text).toLowerCase() === String(decodedName).toLowerCase()) {
+                return item as unknown as Item;
+            }
+
+            // Fallback for demo pages: The first line of the item text in PageList
+            const title = String(text).split('\n')[0].trim().toLowerCase();
+            const targetTitle = String(decodedName).split('\n')[0].trim().toLowerCase();
+            if (title === targetTitle) {
                 return item as unknown as Item;
             }
         }
+
+        // Also look through children of the first level items because the demo project creates the actual pages as top-level children
+        for (let i = 0; i < len; i++) {
+            const item = items.at?.(i);
+            const childItems = item?.items;
+            if (childItems) {
+                 const childLen = childItems.length || 0;
+                 for (let j = 0; j < childLen; j++) {
+                     const childItem = childItems.at?.(j);
+                     const childText = childItem?.text?.toString?.() ?? String(childItem?.text ?? "");
+                     const childTitle = String(childText).split('\n')[0].trim().toLowerCase();
+                     const targetTitle = String(decodedName).split('\n')[0].trim().toLowerCase();
+                     if (childTitle === targetTitle) {
+                         return childItem as unknown as Item;
+                     }
+                 }
+            }
+        }
+
         return undefined;
     }
 
@@ -42,7 +76,7 @@
             pageNotFound = false;
 
             // Connect once; page switches within /demo reuse the same client
-            if (!yjsStore.yjsClient || !store.project) {
+            if (!yjsStore.yjsClient || !store.project || store.project.title !== DEMO_PROJECT_NAME) {
                 // Seed demo project via API (no-op when already seeded)
                 await seedDemo();
 
@@ -213,9 +247,12 @@ let resetEpochCache = $state(0);
             onEdit={undefined}
         />
 
-        <!-- Backlink Panel -->
-        <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
         {/key}
+
+        <!-- Backlink Panel -->
+        {#if store.currentPage}
+            <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
+        {/if}
     {/if}
 
     <!-- Search Panel -->
