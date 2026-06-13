@@ -1,7 +1,7 @@
 // Development environment authentication setup script
 import "dotenv/config";
 import admin from "firebase-admin";
-import { UserRecord, getAuth } from "firebase-admin/auth";
+import { getAuth, UserRecord } from "firebase-admin/auth";
 import { fileURLToPath } from "url";
 import { serverLogger as logger } from "../utils/log-manager.js";
 
@@ -13,7 +13,9 @@ export async function initializeFirebase() {
             const serviceAccount = {
                 projectId: process.env.FIREBASE_PROJECT_ID || "test-project-id",
                 privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n") : undefined,
+                privateKey: process.env.FIREBASE_PRIVATE_KEY
+                    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
+                    : undefined,
                 clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
                 clientId: process.env.FIREBASE_CLIENT_ID,
                 clientX509CertUrl: process.env.FIREBASE_CLIENT_CERT_URL,
@@ -52,24 +54,24 @@ export async function setupTestUser(): Promise<UserRecord> {
                 try {
                     auth = getAuth();
                 } catch (e2) {
-                     auth = {
-                         getUserByEmail: async () => ({ uid: "stubbed" }),
-                         createUser: async () => ({ uid: "stubbed" }),
-                         setCustomUserClaims: async () => {}
-                     };
+                    auth = {
+                        getUserByEmail: async () => ({ uid: "stubbed" }),
+                        createUser: async () => ({ uid: "stubbed" }),
+                        setCustomUserClaims: async () => {},
+                    };
                 }
             }
         } else if (typeof adminInstance.auth === "function") {
-             auth = adminInstance.auth();
+            auth = adminInstance.auth();
         } else if (typeof admin.auth === "function") {
-             auth = admin.auth();
+            auth = admin.auth();
         } else {
-             // fallback for stubbed tests
-             auth = {
-                 getUserByEmail: async () => ({ uid: "stubbed" }),
-                 createUser: async () => ({ uid: "stubbed" }),
-                 setCustomUserClaims: async () => {}
-             };
+            // fallback for stubbed tests
+            auth = {
+                getUserByEmail: async () => ({ uid: "stubbed" }),
+                createUser: async () => ({ uid: "stubbed" }),
+                setCustomUserClaims: async () => {},
+            };
         }
 
         const testEmail = "test@example.com";
