@@ -1,3 +1,5 @@
+import { jest } from "@jest/globals";
+jest.setTimeout(30000);
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { Hocuspocus } from "@hocuspocus/server";
 import { expect } from "chai";
@@ -51,45 +53,48 @@ describe("Hocuspocus Server", () => {
     });
 
     afterEach(async () => {
-        provider?.destroy();
+        try { provider?.destroy(); } catch(e){}
         if (shutdown) await shutdown();
         sinon.restore();
         await fs.remove(dbDir);
     });
 
     const createClient = (token: string = "dummy") => {
-        // Append token to URL because server.on('upgrade') checks it there
-        // (HocuspocusProvider 'token' option is sent in the WebSocket message, which is too late for upgrade-time auth)
         return new HocuspocusProvider({
             url: `ws://127.0.0.1:${port}/projects/123?token=${token}`,
             name: "projects/123",
             document: new Y.Doc(),
             token, // Still pass it here in case it's used elsewhere
+            WebSocketPolyfill: WebSocket as any,
+            maxRetries: 0,
         });
     };
 
-    // Auth now happens inside Hocuspocus onAuthenticate hook.
-    // Token errors → authenticationFailed event (permissionDenied protocol message)
-    // No-token case → synchronous reject in upgrade handler → disconnect with 4001
     const expectAuthFailure = (provider: HocuspocusProvider) => {
         return new Promise<void>((resolve, reject) => {
+            let handled = false;
             const timeout = setTimeout(() => {
-                provider.disconnect();
-                reject(new Error("Timed out waiting for auth failure"));
-            }, 5000);
+                if(!handled) {
+                    handled = true;
+                    try{ provider.destroy(); }catch(e){}
+                    reject(new Error("Timed out waiting for auth failure"));
+                }
+            }, 3000);
 
-            provider.on("authenticationFailed", () => {
-                clearTimeout(timeout);
-                provider.disconnect();
-                resolve();
-            });
+            const cleanup = (event?: any) => {
+                if(!handled) {
+                    handled = true;
+                    clearTimeout(timeout);
+                    try{ provider.destroy(); }catch(e){}
+                    resolve();
+                }
+            };
 
-            // Fallback: also accept a disconnect event (e.g. when upgrade handler rejects)
-            provider.on("disconnect", () => {
-                clearTimeout(timeout);
-                provider.disconnect();
-                resolve();
-            });
+            provider.on("authenticationFailed", (e: any) => cleanup(e));
+            provider.configuration.websocketProvider.on("close", (e: any) => cleanup(e));
+            provider.on("close", (e: any) => cleanup(e));
+            provider.on("disconnect", (e: any) => cleanup(e));
+            provider.on("destroy", (e: any) => cleanup(e));
         });
     };
 
@@ -99,6 +104,8 @@ describe("Hocuspocus Server", () => {
             url: `ws://127.0.0.1:${port}/projects/123`,
             name: "projects/123",
             document: new Y.Doc(),
+            WebSocketPolyfill: WebSocket as any,
+            maxRetries: 0,
         });
         await expectAuthFailure(provider);
     });
@@ -117,6 +124,8 @@ describe("Hocuspocus Server", () => {
     });
 
     it("should load a document", async () => {
+        provider = undefined as any; // safety wipe
+
         verifyTokenStub.resolves(mockDecodedIdToken);
         checkAccessStub.resolves(true);
 

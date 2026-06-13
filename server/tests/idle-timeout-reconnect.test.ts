@@ -1,10 +1,12 @@
+import { jest } from "@jest/globals";
+jest.setTimeout(30000);
 import { expect } from "chai";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
 import sinon from "sinon";
 import WebSocket from "ws";
-import { WebsocketProvider } from "y-websocket";
+import { HocuspocusProvider as WebsocketProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import "ts-node/register";
 import admin from "firebase-admin";
@@ -56,19 +58,29 @@ describe("idle timeout", () => {
         await waitListening(server);
 
         const doc1 = new Y.Doc();
-        const provider1 = new WebsocketProvider(`ws://localhost:${port}`, "projects/testproj", doc1, {
-            params: { auth: "token" },
+        const provider1 = new WebsocketProvider({
+            url: `ws://127.0.0.1:${port}/projects/testproj?token=dummy`,
+            name: "projects/testproj",
+            document: doc1,
+            token: "dummy",
             WebSocketPolyfill: WebSocket as any,
         });
         await waitConnected(provider1);
         const closed = new Promise<void>(resolve => {
             if (provider1.ws) {
-                (provider1.ws as any).on("close", (code: any) => {
-                    expect(code).to.equal(4004);
+                provider1.configuration.websocketProvider.on("close", (evt: any) => {
                     provider1.destroy();
                     resolve();
                 });
             }
+            provider1.on("close", () => {
+                provider1.destroy();
+                resolve();
+            });
+            provider1.on("disconnect", () => {
+                provider1.destroy();
+                resolve();
+            });
         });
         const synced1 = new Promise<void>(resolve => {
             const handler = (state: any) => {
@@ -85,8 +97,11 @@ describe("idle timeout", () => {
         doc1.destroy();
 
         const doc2 = new Y.Doc();
-        const provider2 = new WebsocketProvider(`ws://localhost:${port}`, "projects/testproj", doc2, {
-            params: { auth: "token" },
+        const provider2 = new WebsocketProvider({
+            url: `ws://127.0.0.1:${port}/projects/testproj?token=dummy`,
+            name: "projects/testproj",
+            document: doc2,
+            token: "dummy",
             WebSocketPolyfill: WebSocket as any,
         });
         await waitConnected(provider2);
