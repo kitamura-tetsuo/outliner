@@ -1,3 +1,4 @@
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { type TestInfo } from "@playwright/test";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { waitForSyncedAndDataForTest } from "./browserTestHelpers";
