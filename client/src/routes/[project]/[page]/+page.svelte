@@ -37,6 +37,7 @@
     let isLoading = $state(true);
     let isAuthenticated = $state(false);
     let pageNotFound = $state(false);
+    let activePageId = $state<string | undefined>(undefined);
 
     let isSearchPanelVisible = $state(false); // Search panel visibility state
 
@@ -147,6 +148,10 @@
 
             // Helper to find page by name
             const findPage = () => {
+                if (activePageId && project) {
+                    const item = project.findPage(activePageId);
+                    if (item) return item as unknown as import("../../../schema/app-schema").Item;
+                }
                 const items = project?.items;
                 if (items) {
                     const len = items.length ?? 0;
@@ -213,6 +218,7 @@
             // 5. Set current page and hydration
             if (targetPage) {
                 store.currentPage = targetPage;
+            activePageId = targetPage.id;
 
                 // Wait for page list store update (optional)
                 if (!store.pages) {
@@ -288,9 +294,19 @@
         } catch {}
 
         // Monitor route parameter changes
+        let lastRoutePj: string | undefined;
+        let lastRoutePg: string | undefined;
         const unsub = page.subscribe(($p) => {
             const pj = $p.params?.project ?? projectName;
             const pg = $p.params?.page ?? pageName;
+
+            // if route changed, reset activePageId
+            if (lastRoutePj !== undefined && (lastRoutePj !== pj || lastRoutePg !== pg)) {
+                activePageId = undefined; // reset active id on route change
+            }
+            lastRoutePj = pj;
+            lastRoutePg = pg;
+
             scheduleLoadIfNeeded({ project: pj, page: pg });
         });
         onDestroy(unsub);
@@ -392,6 +408,7 @@ let resetEpochCache = $state(0);
             resetEpochCache = store.resetEpoch;
             // nullify immediately to disconnect old tree node references
             store.currentPage = undefined;
+            activePageId = undefined;
             // The tree was rebuilt, we must force a remount and reload page logic
             if (projectName && pageName && !isLoading) {
                 setTimeout(() => {
