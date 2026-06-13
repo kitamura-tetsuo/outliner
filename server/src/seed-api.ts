@@ -138,45 +138,57 @@ export function createSeedRouter(
                     throw new Error("Failed to get document from direct connection");
                 }
 
-                // Use transact for proper change handling
+                // Apply the seed mutations directly on the live document — do NOT
+                // wrap them in directConnection.transact(). Since @hocuspocus/server 4.x
+                // that helper runs the callback inside a single Yjs transaction, but
+                // yjs-orderedtree relies on its observeDeep handler firing between
+                // successive tree mutations to refresh its internal computedMap. Batching
+                // addPage/addNode (createNode + setNodeOrderToEnd) into one transaction
+                // leaves the new node missing from that map and throws
+                // "Cannot read properties of undefined (reading 'parent')". Running each
+                // tree operation as its own transaction (3.x behaviour) keeps it in sync;
+                // document updates still flow through the normal onStoreDocument path.
                 // Pages are stored directly within the single project document's YTree.
-                await directConnection.transact((document: any) => {
-                    const ydoc = document as unknown as Y.Doc;
+                const ydoc = doc as unknown as Y.Doc;
 
-                    // Set project title directly in metadata
-                    const metadata = ydoc.getMap("metadata");
-                    if (!metadata.get("title")) {
-                        metadata.set("title", projectName);
-                    }
+                // Set project title directly in metadata
+                const metadata = ydoc.getMap("metadata");
+                if (!metadata.get("title")) {
+                    metadata.set("title", projectName);
+                }
 
-                    // Create Project wrapper for YTree access
-                    const project = Project.fromDoc(ydoc);
-                    const items = project.items; // Items wrapper for YTree
+                // Create Project wrapper for YTree access
+                const project = Project.fromDoc(ydoc);
 
-                    // Create pages and add content
-                    for (const pageData of pages) {
-                        logger.info({ event: "seed_page", pageName: pageData.name });
+                // Create pages and add content
+                for (const pageData of pages) {
+                    logger.info({ event: "seed_page", pageName: pageData.name });
 
-                        // Create page node directly in the YTree
-                        const page = project.addPage(pageData.name, "seed-server");
+                    // Create page node directly in the YTree
+                    const page = project.addPage(pageData.name, "seed-server");
 
-                        // Add content items (lines) as children of the page
-                        if (pageData.lines && pageData.lines.length > 0) {
-                            const pageItems = page.items;
+                    // Add content items (lines) as children of the page
+                    if (pageData.lines && pageData.lines.length > 0) {
+                        const pageItems = page.items;
 
-                            for (const line of pageData.lines) {
-                                const item = pageItems.addNode("seed-server");
-                                item.text = line;
-                            }
-
-                            logger.info({
-                                event: "seed_items_added",
-                                pageName: pageData.name,
-                                itemCount: pageData.lines.length,
-                            });
+                        for (const line of pageData.lines) {
+                            const item = pageItems.addNode("seed-server");
+                            item.text = line;
                         }
+
+                        logger.info({
+                            event: "seed_items_added",
+                            pageName: pageData.name,
+                            itemCount: pageData.lines.length,
+                        });
                     }
-                });
+                }
+
+                // Flush the debounced onStoreDocument so the seed is persisted even
+                // though we keep the connection open below.
+                if (typeof (hocuspocus as any).flushPendingStores === "function") {
+                    (hocuspocus as any).flushPendingStores();
+                }
 
                 logger.info({ event: "seed_complete", projectName, pageCount: pages.length });
                 res.json({ success: true, projectName, pageCount: pages.length });

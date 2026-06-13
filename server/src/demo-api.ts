@@ -71,31 +71,39 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         size: orderedTree.size,
                     });
 
-                    await directConnection.transact(async (document: any) => {
-                        const ydoc = document as unknown as Y.Doc;
+                    // Apply the reset directly on the live document — do NOT wrap it in
+                    // directConnection.transact(). Since @hocuspocus/server 4.x that helper
+                    // runs the callback inside a single Yjs transaction, but yjs-orderedtree
+                    // relies on its observeDeep handler firing between successive tree
+                    // mutations to refresh its internal computedMap. Batching the
+                    // populateDemoProject() tree writes (createNode + setNodeOrderToEnd) into
+                    // one transaction leaves new nodes missing from that map and throws
+                    // "Cannot read properties of undefined (reading 'parent')". Running each
+                    // tree operation as its own transaction (3.x behaviour) keeps it in sync;
+                    // the directConnection.disconnect() in the finally block persists the result.
+                    const ydoc = doc as unknown as Y.Doc;
 
-                        // Clear orderedTree completely
-                        ydoc.getMap("orderedTree").clear();
+                    // Clear orderedTree completely
+                    ydoc.getMap("orderedTree").clear();
 
-                        // Clear items map completely (if it exists from previous versions)
-                        ydoc.getMap("items").clear();
+                    // Clear items map completely (if it exists from previous versions)
+                    ydoc.getMap("items").clear();
 
-                        // Re-initialize metadata
-                        const meta = ydoc.getMap("metadata");
-                        meta.set("title", DEMO_PROJECT_TITLE);
-                        meta.set("lastReset", now);
-                        meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+                    // Re-initialize metadata
+                    const meta = ydoc.getMap("metadata");
+                    meta.set("title", DEMO_PROJECT_TITLE);
+                    meta.set("lastReset", now);
+                    meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
-                        // Rebuild the template directly in the live document.
-                        // The orderedTree map is empty at this point, so
-                        // Project.fromDoc re-initializes the YTree as a
-                        // sequential write of this client (see demo-content.ts
-                        // for why applying a fresh doc's update is unsafe).
-                        const project = Project.fromDoc(ydoc);
-                        populateDemoProject(project, "seed-server");
+                    // Rebuild the template directly in the live document.
+                    // The orderedTree map is empty at this point, so
+                    // Project.fromDoc re-initializes the YTree as a
+                    // sequential write of this client (see demo-content.ts
+                    // for why applying a fresh doc's update is unsafe).
+                    const project = Project.fromDoc(ydoc);
+                    populateDemoProject(project, "seed-server");
 
-                        logger.info({ event: "seed_demo_populated", pages: project.items.length });
-                    });
+                    logger.info({ event: "seed_demo_populated", pages: project.items.length });
                 } else {
                     logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });
                 }
