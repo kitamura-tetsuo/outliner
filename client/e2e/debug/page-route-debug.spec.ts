@@ -26,11 +26,11 @@ test.describe("Page Route Debug", () => {
         await page.reload();
 
         // Wait for UserManager initialization
-        await page.waitForFunction(() => (window as any).__USER_MANAGER__ !== undefined, { timeout: 30000 });
+        await page.waitForFunction(() => (globalThis as any).__USER_MANAGER__ !== undefined, { timeout: 30000 });
 
         // Execute authentication
         const authResult = await page.evaluate(async () => {
-            const userManager = (window as any).__USER_MANAGER__;
+            const userManager = (globalThis as any).__USER_MANAGER__;
             return await userManager.signInWithEmailAndPassword("test@example.com", "password123");
         });
 
@@ -38,7 +38,7 @@ test.describe("Page Route Debug", () => {
 
         // Wait for global variable setting
         await page.waitForFunction(() => {
-            return (window as any).__SVELTE_GOTO__;
+            return (globalThis as any).__SVELTE_GOTO__;
         }, { timeout: 30000 });
 
         // Create project and page
@@ -58,7 +58,7 @@ test.describe("Page Route Debug", () => {
         // Check page state periodically
         for (let i = 0; i < 30; i++) {
             const state = await page.evaluate((i) => {
-                const generalStore = (window as any).generalStore;
+                const generalStore = (globalThis as any).generalStore;
 
                 return {
                     iteration: i as number,
@@ -71,7 +71,7 @@ test.describe("Page Route Debug", () => {
                     projectTitle: generalStore?.project?.title || "none",
                     outlinerBaseExists: !!document.querySelector('[data-testid="outliner-base"]'),
                     pageTitle: document.title,
-                    url: window.location.href,
+                    url: globalThis.location.href,
                 };
             }, i);
 
@@ -88,7 +88,7 @@ test.describe("Page Route Debug", () => {
 
         // Verify final state
         const finalState = await page.evaluate(() => {
-            const generalStore = (window as any).generalStore;
+            const generalStore = (globalThis as any).generalStore;
 
             return {
                 hasGeneralStore: !!generalStore,

@@ -52,7 +52,7 @@ test.describe("IND-0001: Indentation variations", () => {
         const [, secondId, thirdId] = ids;
 
         await page.evaluate(({ startId, endId }) => {
-            const store: any = (window as any).editorOverlayStore;
+            const store: any = (globalThis as any).editorOverlayStore;
             store.setSelection({
                 startItemId: startId,
                 startOffset: 0,

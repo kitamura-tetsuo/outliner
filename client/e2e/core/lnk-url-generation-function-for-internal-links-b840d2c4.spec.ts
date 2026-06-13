@@ -63,8 +63,7 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
         // Get the actual page name (more reliable method)
         const actualPageName = await page.evaluate(() => {
             // First try to get from store
-            // eslint-disable-next-line no-restricted-globals
-            const store = (window as any).store;
+            const store = (globalThis as any).store;
             if (store && store.currentPage && store.currentPage.text) {
                 return store.currentPage.text;
             }
@@ -146,8 +145,7 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
         // NOTE: The replacement in evaluate above is incomplete,
         // so actually use updateText to update.
         await page.evaluate(({ pageName }) => {
-            // eslint-disable-next-line no-restricted-globals
-            const store = (window as any).generalStore || (window as any).appStore;
+            const store = (globalThis as any).generalStore || (globalThis as any).appStore;
             const items = store?.currentPage?.items;
             if (!items) return;
             // Get the 2nd item (index 1)
@@ -174,14 +172,12 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
         // Test ScrapboxFormatter behavior
         const formatterTest = await page.evaluate(pageName => {
             // Check if ScrapboxFormatter is available
-            // eslint-disable-next-line no-restricted-globals
-            if (typeof window.ScrapboxFormatter === "undefined") {
+            if (typeof globalThis.ScrapboxFormatter === "undefined") {
                 return { error: "ScrapboxFormatter not available" };
             }
 
             const testText = `[${pageName}]`;
-            // eslint-disable-next-line no-restricted-globals
-            const result = window.ScrapboxFormatter.formatToHtml(testText);
+            const result = globalThis.ScrapboxFormatter.formatToHtml(testText);
 
             return {
                 input: testText,
@@ -194,14 +190,12 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
 
         // Test project internal link
         const projectLinkTestResult = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            if (typeof window.ScrapboxFormatter === "undefined") {
+            if (typeof globalThis.ScrapboxFormatter === "undefined") {
                 return { error: "ScrapboxFormatter not available" };
             }
 
             const testText = `[/project-name/page-name]`;
-            // eslint-disable-next-line no-restricted-globals
-            const result = window.ScrapboxFormatter.formatToHtml(testText);
+            const result = globalThis.ScrapboxFormatter.formatToHtml(testText);
 
             return {
                 input: testText,
@@ -330,8 +324,7 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
         await TestHelpers.waitForItemCount(page, 4, 30000); // Title + 3 seeded lines
 
         await page.evaluate(dynamicPageName => {
-            // eslint-disable-next-line no-restricted-globals
-            const store = (window as any).generalStore || (window as any).appStore;
+            const store = (globalThis as any).generalStore || (globalThis as any).appStore;
             const items = store?.currentPage?.items;
             if (!items) return;
             const firstItem = items.at ? items.at(0) : (items as any)[0];

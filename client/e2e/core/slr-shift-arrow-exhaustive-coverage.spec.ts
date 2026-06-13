@@ -49,8 +49,7 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
 
             // Check selection exists
             const selectionText = await page.evaluate(() => {
-                // eslint-disable-next-line no-restricted-globals
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return store ? store.getSelectedText() : "";
             });
             // Selection length should be at least i+1 because we started at 0 selection and press Shift+Right
@@ -74,8 +73,7 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
             await CursorValidator.assertCursorCount(page, 1);
 
             const selectionText = await page.evaluate(() => {
-                // eslint-disable-next-line no-restricted-globals
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return store ? store.getSelectedText() : "";
             });
             // Selection grows
@@ -94,8 +92,7 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
 
         // Verify multiple lines selected
         const selectionText = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             return store ? store.getSelectedText() : "";
         });
         // Check for presence of newline or multiple items selected
@@ -110,8 +107,7 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
         await CursorValidator.assertCursorCount(page, 1);
 
         const newSelectionText = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             return store ? store.getSelectedText() : "";
         });
         expect(newSelectionText.length).toBeGreaterThan(selectionText.length);

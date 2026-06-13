@@ -37,8 +37,7 @@ test.describe("SEA-0001: page title search box", () => {
         // Explicitly wait for project items to be loaded from Yjs BEFORE typing
         // This ensures the SearchBox has data to search against
         await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const gs = (window as any).generalStore || (window as any).appStore;
+            const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const items = gs?.project?.items;
             // Handle Proxy/AppSchema items - verify using iterator or Array.from
             const itemsArray = Array.from(items as any);
@@ -58,8 +57,7 @@ test.describe("SEA-0001: page title search box", () => {
             // Dump debug info carefully
             try {
                 const debugInfo = await page.evaluate(() => {
-                    // eslint-disable-next-line no-restricted-globals
-                    const gs = (window as any).generalStore;
+                    const gs = (globalThis as any).generalStore;
                     const items = gs?.project?.items;
                     // Items is a Proxy, need to convert
                     const itemsArr = items ? Array.from(items as any) : [];
@@ -83,8 +81,7 @@ test.describe("SEA-0001: page title search box", () => {
             await page.reload();
             try {
                 await page.waitForLoadState("domcontentloaded");
-                // eslint-disable-next-line no-restricted-globals
-                await page.waitForFunction(() => !!(window as any).generalStore, { timeout: 10000 });
+                await page.waitForFunction(() => !!(globalThis as any).generalStore, { timeout: 10000 });
             } catch (e) {
                 console.log("Warning: Reload wait failed", e);
             }
@@ -92,8 +89,7 @@ test.describe("SEA-0001: page title search box", () => {
             // Wait again after reload
             await page.waitForFunction(() => {
                 try {
-                    // eslint-disable-next-line no-restricted-globals
-                    const gs = (window as any).generalStore;
+                    const gs = (globalThis as any).generalStore;
                     const items = gs?.project?.items;
                     // Handle Proxy for array
                     if (!items) return false;
@@ -132,7 +128,7 @@ test.describe("SEA-0001: page title search box", () => {
                     if (count === 0) {
                         // Force a state update if not found yet (Svelte 5 signal tweak)
                         await page.evaluate(() => {
-                            const store = (window as any).generalStore;
+                            const store = (globalThis as any).generalStore;
                             if (store) store.pagesVersion++;
                         }).catch(() => {});
                     }

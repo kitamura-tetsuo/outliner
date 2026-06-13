@@ -48,7 +48,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
 
     test("download contains upcoming schedule metadata", async ({ page }, testInfo) => {
         const idToken = await page.evaluate(async () => {
-            const userManager = (window as any).__USER_MANAGER__;
+            const userManager = (globalThis as any).__USER_MANAGER__;
             return await userManager?.auth?.currentUser?.getIdToken();
         });
         expect.soft(idToken).toBeTruthy();
@@ -100,8 +100,8 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         // Refresh the page after creating a schedule to get the new schedule
         console.log(`[E2E] Refreshing schedules after creating schedule...`);
         await page.evaluate(async (pid) => {
-            if (typeof window !== "undefined" && (window as any).refreshSchedules) {
-                await (window as any).refreshSchedules(pid);
+            if (typeof globalThis !== "undefined" && (globalThis as any).refreshSchedules) {
+                await (globalThis as any).refreshSchedules(pid);
             }
         }, resolvedPageId);
 

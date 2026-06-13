@@ -44,7 +44,7 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
         // Get cursor information using CursorValidator
         const cursorData = await page.evaluate(() => {
             // Get EditorOverlayStore instance
-            const editorOverlayStore = (window as any).editorOverlayStore;
+            const editorOverlayStore = (globalThis as any).editorOverlayStore;
             if (!editorOverlayStore) {
                 return { cursorCount: 0, activeCursors: 0 };
             }
@@ -86,21 +86,21 @@ export async function setupCursorDebugger(page: Page): Promise<void> {
 
     // Fallback: ensure stub functions exist to avoid runtime errors in tests
     await page.evaluate(() => {
-        if (typeof window.getCursorDebugData !== "function") {
-            window.getCursorDebugData = () => ({ error: "Cursor debugger unavailable" });
+        if (typeof globalThis.getCursorDebugData !== "function") {
+            globalThis.getCursorDebugData = () => ({ error: "Cursor debugger unavailable" });
         }
-        if (typeof window.getCursorPathData !== "function") {
-            window.getCursorPathData = () => ({ error: "Cursor path debugger unavailable" });
+        if (typeof globalThis.getCursorPathData !== "function") {
+            globalThis.getCursorPathData = () => ({ error: "Cursor path debugger unavailable" });
         }
     });
 }
 
-// NOTE: In e2e, window structure on Playwright/JSDOM changes at runtime,
-// so we intentionally use any casts like (window as any). This is a test-specific relaxation
+// NOTE: In e2e, globalThis structure on Playwright/JSDOM changes at runtime,
+// so we intentionally use any casts like (globalThis as any). This is a test-specific relaxation
 // prioritizing reproducibility/stability of real browser behavior over type safety.
 // We do not bring any casts into production code.
 
-// Extend global type definitions (add functionality to window object for tests)
+// Extend global type definitions (add functionality to globalThis object for tests)
 declare global {
     interface Window {
         mockUser?: { id: string; name: string; email?: string; };

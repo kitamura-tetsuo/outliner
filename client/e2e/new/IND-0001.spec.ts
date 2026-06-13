@@ -78,7 +78,7 @@ test.describe("IND-0001: Advanced indentation and selection", () => {
         const initialCount = await items.count();
 
         await page.evaluate(() => {
-            const store: any = (window as any).editorOverlayStore;
+            const store: any = (globalThis as any).editorOverlayStore;
             const items = document.querySelectorAll("[data-item-id]");
             if (items.length < 3 || !store) return;
             const startId = items[1].getAttribute("data-item-id")!;

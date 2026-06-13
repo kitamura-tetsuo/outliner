@@ -21,7 +21,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
             const urlObj = new URL(url);
             const parts = urlObj.pathname.split("/").filter(Boolean);
             // URL format: /{projectTitle}/{pageTitle}
-            // Container ID should be in window object or derive from project title
+            // Container ID should be in globalThis object or derive from project title
             return parts.length > 0 ? parts[0] : "";
         } catch {
             return "";
@@ -34,7 +34,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
     async function getCurrentPageTexts(page: any): Promise<string[]> {
         return await page.evaluate(() => {
             try {
-                const gs = (window as any).generalStore || (window as any).appStore;
+                const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
                 if (!gs?.currentPage?.items) return [];
 
                 const items = gs.currentPage.items as any[];
@@ -57,7 +57,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
     async function getProjectTitle(page: any): Promise<string> {
         return await page.evaluate(() => {
             try {
-                const gs = (window as any).generalStore || (window as any).appStore;
+                const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
                 return gs?.project?.title ?? "";
             } catch {
                 return "";
@@ -78,7 +78,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
         test("should restore container content after page reload", async ({ page }) => {
             // Verify initial content exists
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 10000 });
 
@@ -92,7 +92,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Wait for the page to reload and reinitialize
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
 
@@ -106,7 +106,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
         test("should persist edits while offline", async ({ page, context }) => {
             // Verify initial state
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 10000 });
 
@@ -116,7 +116,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Make edits while offline
             await page.evaluate(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 const pageRef = gs?.currentPage;
                 const items = pageRef?.items as any;
                 if (items && items.length > 0) {
@@ -128,7 +128,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Add a new item while offline
             await page.evaluate(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 const pageRef = gs?.currentPage;
                 const items = pageRef?.items as any;
                 if (items && typeof items.addNode === "function") {
@@ -148,7 +148,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Wait for reinitialization
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
 
@@ -175,11 +175,11 @@ test.describe("Y.Doc persistence and offline editing", () => {
             // Get title from metadata or current state
             const displayedTitle = await page.evaluate(() => {
                 try {
-                    const gs = (window as any).generalStore;
-                    const yjsService = (window as any).__YJS_SERVICE__;
+                    const gs = (globalThis as any).generalStore;
+                    const yjsService = (globalThis as any).__YJS_SERVICE__;
                     if (yjsService?.getProjectTitle) {
                         // Try to get from current URL or state
-                        const pathParts = window.location.pathname.split("/").filter(Boolean);
+                        const pathParts = globalThis.location.pathname.split("/").filter(Boolean);
                         if (pathParts.length > 0) {
                             const containerId = pathParts[0];
                             return yjsService.getProjectTitle(containerId);
@@ -202,7 +202,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
             // Verify title is still correct after reload (metadata Y.Doc is working)
             const restoredTitle = await page.evaluate(() => {
                 try {
-                    const gs = (window as any).generalStore;
+                    const gs = (globalThis as any).generalStore;
                     return gs?.project?.title ?? "";
                 } catch {
                     return "";
@@ -237,14 +237,14 @@ test.describe("Y.Doc persistence and offline editing", () => {
             const urlB = `/${encodeURIComponent(containerBTitle)}/${encodeURIComponent(containerBPageName)}`;
 
             await page.evaluate((targetUrl) => {
-                window.location.href = targetUrl;
+                globalThis.location.href = targetUrl;
             }, new URL(urlB, page.url()).toString());
 
             await page.waitForURL(`**/${encodeURIComponent(containerBTitle)}/**`, { timeout: 15000 });
 
             // Seed Container B with different content
             await page.evaluate(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 if (gs?.project && !gs.currentPage) {
                     const pageRef = gs.project.addPage("Container B Page", "tester");
                     gs.currentPage = pageRef;
@@ -252,7 +252,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
             });
 
             await page.evaluate(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 const pageRef = gs?.currentPage;
                 const items = pageRef?.items as any;
                 if (items) {
@@ -284,7 +284,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
             // Reload the page
             await page.reload({ waitUntil: "domcontentloaded" });
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
 
@@ -297,14 +297,14 @@ test.describe("Y.Doc persistence and offline editing", () => {
             // Navigate back to Container A
             const urlA = `/${encodeURIComponent(containerATitle)}/${encodeURIComponent(containerAInfo.pageName)}`;
             await page.evaluate((targetUrl) => {
-                window.location.href = targetUrl;
+                globalThis.location.href = targetUrl;
             }, new URL(urlA, page.url()).toString());
 
             await page.waitForURL(`**/${encodeURIComponent(containerATitle)}/**`, { timeout: 15000 });
 
             // Wait for Container A to load
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
 
@@ -324,7 +324,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Verify initial state
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 10000 });
 
@@ -332,7 +332,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
             await context.setOffline(true);
 
             await page.evaluate(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 const pageRef = gs?.currentPage;
                 const items = pageRef?.items as any;
 
@@ -355,7 +355,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
             // Reload offline
             await page.reload({ waitUntil: "domcontentloaded" });
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
 
@@ -397,13 +397,13 @@ test.describe("Y.Doc persistence and offline editing", () => {
             const url2 = `/${encodeURIComponent(title2)}/${encodeURIComponent(pageName2)}`;
 
             await page.evaluate((targetUrl) => {
-                window.location.href = targetUrl;
+                globalThis.location.href = targetUrl;
             }, new URL(url2, page.url()).toString());
 
             await page.waitForURL(`**/${encodeURIComponent(title2)}/**`, { timeout: 15000 });
 
             await page.evaluate(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 if (gs?.project && !gs.currentPage) {
                     const pageRef = gs.project.addPage("Container 2 Page", "tester");
                     gs.currentPage = pageRef;
@@ -411,7 +411,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
             });
 
             await page.evaluate(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 const pageRef = gs?.currentPage;
                 const items = pageRef?.items as any;
                 if (items) {
@@ -436,13 +436,13 @@ test.describe("Y.Doc persistence and offline editing", () => {
             // Navigate back to first container
             const url1 = `/${encodeURIComponent(title1)}/${encodeURIComponent(pageName1)}`;
             await page.evaluate((targetUrl) => {
-                window.location.href = targetUrl;
+                globalThis.location.href = targetUrl;
             }, new URL(url1, page.url()).toString());
 
             await page.waitForURL(`**/${encodeURIComponent(title1)}/**`, { timeout: 15000 });
 
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
 

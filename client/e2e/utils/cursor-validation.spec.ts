@@ -28,17 +28,17 @@ test.describe("CursorValidator: Cursor Information Validation Utility", () => {
 
         // Verify that editorOverlayStore is globally exposed
         await page.evaluate(() => {
-            if (typeof window.editorOverlayStore === "undefined") {
-                console.error("editorOverlayStore is not defined in window");
+            if (typeof globalThis.editorOverlayStore === "undefined") {
+                console.error("editorOverlayStore is not defined in globalThis");
             } else {
-                console.log("editorOverlayStore is available:", window.editorOverlayStore);
+                console.log("editorOverlayStore is available:", globalThis.editorOverlayStore);
             }
         });
 
         // Verify that getCursorDebugData function is available
         await page.evaluate(() => {
-            if (typeof window.getCursorDebugData !== "function") {
-                console.error("getCursorDebugData is not defined in window");
+            if (typeof globalThis.getCursorDebugData !== "function") {
+                console.error("getCursorDebugData is not defined in globalThis");
             } else {
                 console.log("getCursorDebugData is available");
             }

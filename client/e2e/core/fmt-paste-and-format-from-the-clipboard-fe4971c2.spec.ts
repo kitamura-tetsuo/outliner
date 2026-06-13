@@ -165,7 +165,7 @@ test.describe("Input and display of formatted strings", () => {
             // Method 1: Use global variable
             await page.evaluate(text => {
                 // Save to global variable
-                (window as any).lastCopiedText = text;
+                (globalThis as any).lastCopiedText = text;
 
                 // Create ClipboardEvent
                 const clipboardEvent = new ClipboardEvent("paste", {
@@ -286,7 +286,7 @@ test.describe("Input and display of formatted strings", () => {
             // Method 1: Use global variable
             await page.evaluate(text => {
                 // Save to global variable
-                (window as any).lastCopiedText = text;
+                (globalThis as any).lastCopiedText = text;
 
                 // Create ClipboardEvent
                 const clipboardEvent = new ClipboardEvent("paste", {

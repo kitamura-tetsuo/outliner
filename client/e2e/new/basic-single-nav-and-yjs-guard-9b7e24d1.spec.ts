@@ -38,13 +38,10 @@ test.describe("Basic: single navigation & Yjs guard", () => {
 
         // Prepare Yjs write detection probe early (wrap after generalStore is ready)
         await page.addInitScript(() => {
-            // eslint-disable-next-line no-restricted-globals
-            (window as any).__E2E_WRITES = [] as Array<{ method: string; ts: number; }>; // Write log
-            // eslint-disable-next-line no-restricted-globals
-            (window as any).__E2E_INSTALL_WRITES__ = function install() {
+            (globalThis as any).__E2E_WRITES = [] as Array<{ method: string; ts: number; }>; // Write log
+            (globalThis as any).__E2E_INSTALL_WRITES__ = function install() {
                 try {
-                    // eslint-disable-next-line no-restricted-globals
-                    const gs: any = (window as any).generalStore;
+                    const gs: any = (globalThis as any).generalStore;
                     if (!gs?.project) return false;
                     const proj: any = gs.project;
                     if (!proj || (proj as any).__e2eWrapped) return !!proj;
@@ -54,8 +51,7 @@ test.describe("Basic: single navigation & Yjs guard", () => {
                             if (typeof orig !== "function") return;
                             obj[name] = function(...args: any[]) {
                                 try {
-                                    // eslint-disable-next-line no-restricted-globals
-                                    (window as any).__E2E_WRITES.push({ method: name, ts: Date.now() });
+                                    (globalThis as any).__E2E_WRITES.push({ method: name, ts: Date.now() });
                                 } catch {}
                                 return orig.apply(this, args);
                             };
@@ -76,14 +72,12 @@ test.describe("Basic: single navigation & Yjs guard", () => {
 
         // Install write probe when generalStore becomes available
         await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const gs: any = (window as any).generalStore;
+            const gs: any = (globalThis as any).generalStore;
             return !!(gs && gs.project);
         });
         await page.evaluate(() => {
             try {
-                // eslint-disable-next-line no-restricted-globals
-                (window as any).__E2E_INSTALL_WRITES__?.();
+                (globalThis as any).__E2E_INSTALL_WRITES__?.();
             } catch {}
         });
 
@@ -99,8 +93,7 @@ test.describe("Basic: single navigation & Yjs guard", () => {
         expect(mainPaths.size).toBe(1);
 
         // Verification 2: No Yjs writes other than seedProjectAndNavigate before display completion
-        // eslint-disable-next-line no-restricted-globals
-        const writes = await page.evaluate(() => (window as any).__E2E_WRITES as Array<any>);
+        const writes = await page.evaluate(() => (globalThis as any).__E2E_WRITES as Array<any>);
         expect(Array.isArray(writes)).toBe(true);
         expect(writes.length).toBe(0);
     });

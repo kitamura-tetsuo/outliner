@@ -24,17 +24,17 @@ test("Tailwind classes are applied correctly", async ({ page }) => {
     await page.waitForFunction(() => {
         const h1 = document.querySelector("h1");
         if (!h1) return false;
-        const size = parseFloat(window.getComputedStyle(h1).fontSize);
+        const size = parseFloat(globalThis.getComputedStyle(h1).fontSize);
         return size > 25 && size < 35;
     }, { timeout: 30000 });
 
     // Check font-size (text-3xl should be 1.875rem = 30px, assuming 16px base)
-    const fontSize = await element.evaluate((el) => window.getComputedStyle(el).fontSize);
+    const fontSize = await element.evaluate((el) => globalThis.getComputedStyle(el).fontSize);
     const sizeValue = parseFloat(fontSize);
     expect(sizeValue).toBeGreaterThan(25);
     expect(sizeValue).toBeLessThan(35);
 
     // Check font-weight (font-bold should be 700)
-    const fontWeight = await element.evaluate((el) => window.getComputedStyle(el).fontWeight);
+    const fontWeight = await element.evaluate((el) => globalThis.getComputedStyle(el).fontWeight);
     expect(parseInt(fontWeight)).toBeGreaterThanOrEqual(600);
 });

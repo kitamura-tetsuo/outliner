@@ -2,13 +2,13 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature IME-0004
- *  Title   : IME candidate window remains fixed during composition
+ *  Title   : IME candidate globalThis remains fixed during composition
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("IME-0004: IME candidate window remains fixed during composition", () => {
+test.describe("IME-0004: IME candidate globalThis remains fixed during composition", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });

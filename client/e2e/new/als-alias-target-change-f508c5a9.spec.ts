@@ -54,7 +54,7 @@ test.describe("ALS-0001: Alias change target", () => {
 
         // Set initial target (secondId) - confirm via store without relying on UI
         await page.evaluate(({ aliasId, secondId }) => {
-            const store: any = (window as any).aliasPickerStore;
+            const store: any = (globalThis as any).aliasPickerStore;
             if (store) {
                 store.show(aliasId);
                 store.confirmById(secondId);
@@ -84,7 +84,7 @@ test.describe("ALS-0001: Alias change target", () => {
 
         // Change alias target (change to thirdId) - confirm via store
         await page.evaluate(({ aliasId, thirdId }) => {
-            const store: any = (window as any).aliasPickerStore;
+            const store: any = (globalThis as any).aliasPickerStore;
             if (store) {
                 store.show(aliasId);
                 store.confirmById(thirdId);

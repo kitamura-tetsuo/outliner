@@ -263,8 +263,7 @@ test.describe("Sidebar Navigation", () => {
         // Wait for pages to be loaded in store
         console.log("Waiting for pages in store (60s)...");
         await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const gs = (window as any).generalStore || (window as any).appStore;
+            const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const count = gs?.pages?.current?.length;
             console.log("[E2E] pages count in store:", count);
             return count > 0;
@@ -403,8 +402,7 @@ test.describe("Sidebar Navigation", () => {
 
         // Explicitly reload the projectStore in case of desync
         await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const ps = (window as any).__PROJECT_STORE__;
+            const ps = (globalThis as any).__PROJECT_STORE__;
             if (ps && ps.syncFromFirestore) {
                 ps.syncFromFirestore();
             }

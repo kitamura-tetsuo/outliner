@@ -25,7 +25,7 @@ test.describe("SLR-0013: Select Current Line", () => {
     test("Ctrl+L selects entire line", async ({ page }) => {
         // Check initial state
         const initialState = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
             return {
                 storeExists: !!store,
@@ -44,7 +44,7 @@ test.describe("SLR-0013: Select Current Line", () => {
 
         // Check state after selection
         const afterSelectionState = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
             return {
                 storeExists: !!store,
@@ -68,7 +68,7 @@ test.describe("SLR-0013: Select Current Line", () => {
             await page.waitForTimeout(200);
 
             const basicSelectionState = await page.evaluate(() => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return {
                     selectedText: store ? store.getSelectedText() : "",
                 };

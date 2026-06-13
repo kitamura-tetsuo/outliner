@@ -43,7 +43,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
     test("Can create a selection spanning multiple items using Shift + Up/Down keys", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            (globalThis as any).DEBUG_MODE = true;
         });
 
         // Wait until the cursor is visible
@@ -65,7 +65,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Check current cursor position
         const initialCursorInfo = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return null;
             const cursor = Object.values(store.cursors)[0] as any;
             return cursor ? { itemId: cursor.itemId, offset: cursor.offset } : null;
@@ -107,11 +107,11 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
         await page.evaluate(() => {
             console.log(
                 "Selections after second arrow down:",
-                Object.values((window as any).editorOverlayStore.selections),
+                Object.values((globalThis as any).editorOverlayStore.selections),
             );
 
             // Display detailed selection information
-            const sel = Object.values((window as any).editorOverlayStore.selections)[0] as any;
+            const sel = Object.values((globalThis as any).editorOverlayStore.selections)[0] as any;
             if (sel) {
                 const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
                 const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
@@ -130,7 +130,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Get selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -151,14 +151,14 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Disable debug mode
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = false;
+            (globalThis as any).DEBUG_MODE = false;
         });
     });
 
     test("Can create a selection spanning multiple items by mouse drag", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            (globalThis as any).DEBUG_MODE = true;
         });
 
         // Wait until the cursor is visible
@@ -186,11 +186,11 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
         await page.evaluate(() => {
             console.log(
                 "Selections after keyboard selection:",
-                Object.values((window as any).editorOverlayStore.selections),
+                Object.values((globalThis as any).editorOverlayStore.selections),
             );
 
             // Display detailed selection information
-            const sel = Object.values((window as any).editorOverlayStore.selections)[0] as any;
+            const sel = Object.values((globalThis as any).editorOverlayStore.selections)[0] as any;
             if (sel) {
                 const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
                 const allItemIds = allItems.map(el => el.getAttribute("data-item-id")!);
@@ -218,7 +218,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Get selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -234,7 +234,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Disable debug mode
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = false;
+            (globalThis as any).DEBUG_MODE = false;
         });
     });
 
@@ -267,7 +267,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Check the style of the selection element
         const backgroundColor = await selectionElements.first().evaluate(el => {
-            return window.getComputedStyle(el).backgroundColor;
+            return globalThis.getComputedStyle(el).backgroundColor;
         });
 
         // Verify that background color is set (rgba format value)

@@ -95,7 +95,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                (window as Window & Record<string, any>).__E2E__ = true;
+                (globalThis as Window & Record<string, any>).__E2E__ = true;
                 console.log("[E2E] Test environment flags set in localStorage");
             } catch {}
         });
@@ -140,7 +140,7 @@ export class TestHelpers {
             try {
                 await page.waitForFunction(
                     () => {
-                        const y = (window as any).__YJS_STORE__;
+                        const y = (globalThis as any).__YJS_STORE__;
                         return y && y.isConnected;
                     },
                     { timeout: 30000 },
@@ -153,7 +153,7 @@ export class TestHelpers {
             // Wait for store initialization
             try {
                 await page.waitForFunction(
-                    () => !!(window as any).generalStore?.project,
+                    () => !!(globalThis as any).generalStore?.project,
                     { timeout: 30000 },
                 );
                 TestHelpers.slog("generalStore initialized");
@@ -193,7 +193,7 @@ export class TestHelpers {
     ): Promise<void> {
         TestHelpers.slog(`Manual login attempt for ${email}`);
         await page.evaluate(async ({ e, p }) => {
-            const um = (window as any).__USER_MANAGER__;
+            const um = (globalThis as any).__USER_MANAGER__;
             if (um && typeof um.loginWithEmailPassword === "function") {
                 await um.loginWithEmailPassword(e, p);
             } else {
@@ -203,7 +203,7 @@ export class TestHelpers {
         }, { e: email, p: password });
 
         // Wait for authentication state propagation
-        await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 15 * 1000 });
+        await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 15 * 1000 });
         TestHelpers.slog("Manual login successful");
     }
 
@@ -222,14 +222,14 @@ export class TestHelpers {
         // Wait for Firestore store to be initialized
         try {
             await page.waitForFunction(
-                () => !!(window as any).__FIRESTORE_STORE__ && !!(window as any).__USER_MANAGER__,
+                () => !!(globalThis as any).__FIRESTORE_STORE__ && !!(globalThis as any).__USER_MANAGER__,
                 { timeout: 15000 },
             );
 
             // Wait for user login
             TestHelpers.slog("setAccessibleProjects: Waiting for currentUser...");
             const hasUser = await page.evaluate(() => {
-                const um = (window as any).__USER_MANAGER__;
+                const um = (globalThis as any).__USER_MANAGER__;
                 return !!um?.auth?.currentUser;
             });
 
@@ -239,20 +239,20 @@ export class TestHelpers {
             }
 
             // Final check
-            await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 10000 });
+            await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 10000 });
             TestHelpers.slog("setAccessibleProjects: Auth confirmed.");
         } catch (e) {
             console.error("setAccessibleProjects: CRITICAL: Could not establish authentication.", e);
             throw e; // Fail the test early
         }
 
-        const currentUserId = await page.evaluate(() => (window as any).__USER_MANAGER__?.auth?.currentUser?.uid);
+        const currentUserId = await page.evaluate(() => (globalThis as any).__USER_MANAGER__?.auth?.currentUser?.uid);
         TestHelpers.slog(
             `[setAccessibleProjects] Setting projects for userId=${currentUserId}: ids=${JSON.stringify(projectNames)}`,
         );
         await page.evaluate(async ({ projects }) => {
-            const fs = (window as any).__FIRESTORE_STORE__;
-            const um = (window as any).__USER_MANAGER__;
+            const fs = (globalThis as any).__FIRESTORE_STORE__;
+            const um = (globalThis as any).__USER_MANAGER__;
             const userId = um?.auth?.currentUser?.uid;
 
             if (!userId) {
@@ -281,7 +281,7 @@ export class TestHelpers {
                     updatedAt: new Date(),
                 };
             }
-            const ps = (window as any).__PROJECT_STORE__;
+            const ps = (globalThis as any).__PROJECT_STORE__;
 
             if (ps && typeof ps.syncFromFirestore === "function") {
                 ps.syncFromFirestore();
@@ -340,7 +340,7 @@ export class TestHelpers {
                         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                         localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                         localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                        (window as Window & Record<string, any>).__E2E__ = true;
+                        (globalThis as Window & Record<string, any>).__E2E__ = true;
                     } catch {}
                 });
             } catch (e) {
@@ -396,7 +396,7 @@ export class TestHelpers {
         TestHelpers.slog("Waiting for __YJS_STORE__ to be connected...");
         await page.waitForFunction(
             () => {
-                const y = (window as any).__YJS_STORE__;
+                const y = (globalThis as any).__YJS_STORE__;
                 return y && y.isConnected;
             },
             { timeout: 30000 },
@@ -416,7 +416,7 @@ export class TestHelpers {
         const targetPageName = pageName; // Capture for closure
         await page.waitForFunction(
             (targetName) => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 if (!gs?.project) {
                     console.log(`[TestHelpers] Waiting for project... gs=${!!gs}`);
                     return false;
@@ -440,7 +440,7 @@ export class TestHelpers {
             // Extensive Debugging info
             try {
                 const debugState = await page.evaluate(() => {
-                    const win = window as any;
+                    const win = globalThis as any;
                     return {
                         pageState: win.__PAGE_STATE__,
                         generalStore: !!win.generalStore,
@@ -538,7 +538,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                (window as Window & Record<string, any>).__E2E__ = true;
+                (globalThis as Window & Record<string, any>).__E2E__ = true;
             } catch {}
         });
 
@@ -595,8 +595,8 @@ export class TestHelpers {
      */
     public static async getPageTexts(page: Page): Promise<Array<{ id: string; text: string; }>> {
         return await page.evaluate(() => {
-            const store = (window as Window & Record<string, any>).appStore
-                || (window as Window & Record<string, any>).generalStore;
+            const store = (globalThis as Window & Record<string, any>).appStore
+                || (globalThis as Window & Record<string, any>).generalStore;
             if (!store || !store.pages) return [] as Array<{ id: string; text: string; }>;
 
             const toArray = (p: unknown) => {
@@ -640,9 +640,9 @@ export class TestHelpers {
         try {
             await page.evaluate(() => {
                 // Add debug function to global object
-                window.getCursorDebugData = function() {
+                globalThis.getCursorDebugData = function() {
                     // Get EditorOverlayStore instance
-                    const editorOverlayStore = window.editorOverlayStore;
+                    const editorOverlayStore = globalThis.editorOverlayStore;
                     if (!editorOverlayStore) {
                         console.error("EditorOverlayStore instance not found");
                         return { error: "EditorOverlayStore instance not found" };
@@ -690,16 +690,16 @@ export class TestHelpers {
                 };
 
                 // Extended debug function - Get data only for a specific path
-                window.getCursorPathData = function(path) {
+                globalThis.getCursorPathData = function(path) {
                     // Get EditorOverlayStore instance
-                    const editorOverlayStore = window.editorOverlayStore;
+                    const editorOverlayStore = globalThis.editorOverlayStore;
                     if (!editorOverlayStore) {
                         return { error: "EditorOverlayStore instance not found" };
                     }
 
                     try {
                         // Get cursor data using own function
-                        const cursorData = window.getCursorDebugData ? window.getCursorDebugData() : null;
+                        const cursorData = globalThis.getCursorDebugData ? globalThis.getCursorDebugData() : null;
                         if (!cursorData) return null;
                         if (!path) return cursorData;
 
@@ -721,7 +721,7 @@ export class TestHelpers {
         }
 
         // Verify EditorOverlayStore is globally exposed
-        // await page.waitForFunction(() => window.editorOverlayStore, { timeout: 5000 });
+        // await page.waitForFunction(() => globalThis.editorOverlayStore, { timeout: 5000 });
     }
 
     /**
@@ -734,7 +734,7 @@ export class TestHelpers {
                 // Add Yjs / app-store based debug function
                 const buildYjsSnapshot = () => {
                     try {
-                        const gs = (window as any).generalStore || (window as any).appStore;
+                        const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
                         const proj = gs?.project;
                         if (!proj) return { error: "project not initialized" };
 
@@ -772,10 +772,10 @@ export class TestHelpers {
                     }
                 };
 
-                (window as any).getYjsTreeDebugData = function() {
+                (globalThis as any).getYjsTreeDebugData = function() {
                     return buildYjsSnapshot();
                 };
-                (window as any).getYjsTreePathData = function(path?: string) {
+                (globalThis as any).getYjsTreePathData = function(path?: string) {
                     const data = buildYjsSnapshot();
                     if (!path || (data as any)?.error) return data;
                     const parts = String(path).split(".");
@@ -809,8 +809,8 @@ export class TestHelpers {
             // Verify cursor existence using CursorValidator
             await page.waitForFunction(
                 () => {
-                    if (typeof window === "undefined") return false;
-                    const editorOverlayStore = (window as any)?.editorOverlayStore;
+                    if (typeof globalThis === "undefined") return false;
+                    const editorOverlayStore = (globalThis as any)?.editorOverlayStore;
                     if (!editorOverlayStore) {
                         return false;
                     }
@@ -938,14 +938,14 @@ export class TestHelpers {
         userId: string = "local",
     ): Promise<void> {
         await page.waitForFunction(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             return !!store && typeof store.setCursor === "function";
         }, { timeout: 15000 }).catch(() => {
             throw new Error("TestHelpers.setCursor: editorOverlayStore.setCursor is not available within timeout");
         });
 
         const setSucceeded = await page.evaluate(({ itemId, offset, userId }) => {
-            const editorOverlayStore = (window as any).editorOverlayStore;
+            const editorOverlayStore = (globalThis as any).editorOverlayStore;
             if (editorOverlayStore && typeof editorOverlayStore.setCursor === "function") {
                 console.log(
                     `TestHelpers.setCursor: Setting cursor for itemId=${itemId}, offset=${offset}, userId=${userId}`,
@@ -991,7 +991,7 @@ export class TestHelpers {
         userId: string = "local",
     ): Promise<void> {
         await page.evaluate(async ({ itemId, text, userId }) => {
-            const editorOverlayStore = (window as any).editorOverlayStore;
+            const editorOverlayStore = (globalThis as any).editorOverlayStore;
             if (editorOverlayStore && editorOverlayStore.getCursorInstances) {
                 const cursorInstances = editorOverlayStore.getCursorInstances();
                 const cursor = cursorInstances.find((c: any) => c.itemId === itemId && c.userId === userId);
@@ -1023,9 +1023,9 @@ export class TestHelpers {
         // Skip authentication check if skipAuthCheck is true, or if we're in an E2E test environment
         // The E2E check must be inside waitForFunction to run in browser context
         const shouldSkipAuth = skipAuthCheck || await page.waitForFunction(() => {
-            return (window as any).__E2E__ === true
-                || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
-                || window.location.search.includes("isTest=true");
+            return (globalThis as any).__E2E__ === true
+                || globalThis.localStorage?.getItem?.("VITE_IS_TEST") === "true"
+                || globalThis.location.search.includes("isTest=true");
         }, { timeout: 5000 }).catch(() => false);
 
         if (shouldSkipAuth) {
@@ -1033,20 +1033,20 @@ export class TestHelpers {
         } else {
             // Wait for authentication
             await page.waitForFunction(() => {
-                const userManager = (window as any).__USER_MANAGER__;
+                const userManager = (globalThis as any).__USER_MANAGER__;
                 return !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
             }, { timeout: 30000 });
             TestHelpers.slog("Authentication is ready");
         }
 
         // Wait for generalStore to be available
-        await page.waitForFunction(() => !!(window as any).generalStore, { timeout: 60000 });
+        await page.waitForFunction(() => !!(globalThis as any).generalStore, { timeout: 60000 });
         TestHelpers.slog("generalStore is available");
 
         // Wait for project and page to be loaded in the store
         try {
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 if (!gs) return false;
                 const hasProject = !!gs.project;
                 const hasPages = gs.pages?.current?.length > 0;
@@ -1058,7 +1058,7 @@ export class TestHelpers {
                 // Dump state on timeout
                 console.log("waitForAppReady timed out. Dumping state:");
                 await page.evaluate(() => {
-                    const gs = (window as any).generalStore;
+                    const gs = (globalThis as any).generalStore;
                     console.log("GS:", !!gs);
                     if (gs) {
                         console.log("GS.project:", gs.project);
@@ -1066,7 +1066,7 @@ export class TestHelpers {
                         console.log("GS.pages.current:", gs.pages?.current);
                         console.log("GS.currentPage:", gs.currentPage);
                     }
-                    console.log("YJS.isConnected:", (window as any).__YJS_STORE__?.isConnected);
+                    console.log("YJS.isConnected:", (globalThis as any).__YJS_STORE__?.isConnected);
                 });
                 throw e;
             });
@@ -1108,7 +1108,7 @@ export class TestHelpers {
                 const hasData = await page.evaluate(async (targetPageName) => {
                     try {
                         // First check if Yjs is connected
-                        const yjsStore = (window as any).__YJS_STORE__;
+                        const yjsStore = (globalThis as any).__YJS_STORE__;
                         const isConnected = yjsStore?.getIsConnected?.() === true;
                         if (!isConnected) {
                             return {
@@ -1118,7 +1118,7 @@ export class TestHelpers {
                             };
                         }
 
-                        const gs = (window as any).generalStore;
+                        const gs = (globalThis as any).generalStore;
                         if (!gs) {
                             return { ready: false, reason: "no generalStore" };
                         }
@@ -1196,13 +1196,13 @@ export class TestHelpers {
                     try {
                         const debugInfo = await page.evaluate(() => {
                             return {
-                                yjsStoreKeys: (window as any).__YJS_STORE__
-                                    ? Object.keys((window as any).__YJS_STORE__)
+                                yjsStoreKeys: (globalThis as any).__YJS_STORE__
+                                    ? Object.keys((globalThis as any).__YJS_STORE__)
                                     : "no yjsStore",
-                                generalStoreKeys: (window as any).generalStore
-                                    ? Object.keys((window as any).generalStore).filter(k => !k.startsWith("_"))
+                                generalStoreKeys: (globalThis as any).generalStore
+                                    ? Object.keys((globalThis as any).generalStore).filter(k => !k.startsWith("_"))
                                     : "no gs",
-                                url: window.location.href,
+                                url: globalThis.location.href,
                             };
                         });
                         TestHelpers.slog("waitForPageData: debug info", { pageName, debug: debugInfo });
@@ -1252,7 +1252,7 @@ export class TestHelpers {
             let yjsConnected = false;
             try {
                 yjsConnected = await page.evaluate(() => {
-                    const y = (window as any).__YJS_STORE__;
+                    const y = (globalThis as any).__YJS_STORE__;
                     return !!(y && y.isConnected);
                 });
             } catch {
@@ -1371,7 +1371,7 @@ export class TestHelpers {
         try {
             await page.waitForFunction(
                 () => {
-                    const gs = (window as any).generalStore;
+                    const gs = (globalThis as any).generalStore;
                     const pages = gs?.pages?.current;
                     return pages && pages.length > 0;
                 },
@@ -1420,16 +1420,16 @@ export class TestHelpers {
                 return await page.evaluate(i => {
                     // Prefer AliasPickerStore.itemId while picker is visible (robust for newly created alias)
                     try {
-                        const ap: any = (window as any).aliasPickerStore;
+                        const ap: any = (globalThis as any).aliasPickerStore;
                         if (ap && ap.isVisible && typeof ap.itemId === "string" && ap.itemId) {
                             const chosen = ap.itemId as string;
                             try {
-                                const gs: any = (window as any).generalStore;
+                                const gs: any = (globalThis as any).generalStore;
                                 const proj = encodeURIComponent(gs?.project?.title ?? "");
-                                const parts = (window.location.pathname || "/").split("/").filter(Boolean);
+                                const parts = (globalThis.location.pathname || "/").split("/").filter(Boolean);
                                 const pageTitle = decodeURIComponent(parts[1] || "");
                                 const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
-                                window.sessionStorage?.setItem(key, chosen);
+                                globalThis.sessionStorage?.setItem(key, chosen);
                             } catch {}
                             return chosen;
                         }
@@ -1439,12 +1439,12 @@ export class TestHelpers {
                     const chosen = target?.dataset.itemId ?? null;
                     try {
                         if (chosen) {
-                            const gs: any = (window as any).generalStore;
+                            const gs: any = (globalThis as any).generalStore;
                             const proj = encodeURIComponent(gs?.project?.title ?? "");
-                            const parts = (window.location.pathname || "/").split("/").filter(Boolean);
+                            const parts = (globalThis.location.pathname || "/").split("/").filter(Boolean);
                             const pageTitle = decodeURIComponent(parts[1] || "");
                             const key = `schedule:lastPageChildId:${proj}:${encodeURIComponent(pageTitle)}`;
-                            window.sessionStorage?.setItem(key, chosen);
+                            globalThis.sessionStorage?.setItem(key, chosen);
                         }
                     } catch {}
                     return chosen;
@@ -1501,7 +1501,7 @@ export class TestHelpers {
             const mouseEnterEvent = new MouseEvent("mouseenter", {
                 bubbles: true,
                 cancelable: true,
-                view: window,
+                view: globalThis,
             });
             element.dispatchEvent(mouseEnterEvent);
 
@@ -1509,7 +1509,7 @@ export class TestHelpers {
             const mouseMoveEvent = new MouseEvent("mousemove", {
                 bubbles: true,
                 cancelable: true,
-                view: window,
+                view: globalThis,
             });
             element.dispatchEvent(mouseMoveEvent);
 
@@ -1557,7 +1557,7 @@ export class TestHelpers {
             const mouseLeaveEvent = new MouseEvent("mouseleave", {
                 bubbles: true,
                 cancelable: true,
-                view: window,
+                view: globalThis,
             });
             element.dispatchEvent(mouseLeaveEvent);
 
@@ -1601,7 +1601,7 @@ export class TestHelpers {
      */
     public static async confirmAliasOption(page: Page, itemId: string): Promise<void> {
         await page.evaluate(id => {
-            const store = (window as any).aliasPickerStore;
+            const store = (globalThis as any).aliasPickerStore;
             if (store && typeof store.confirmById === "function") {
                 store.confirmById(id);
             }
@@ -1616,7 +1616,7 @@ export class TestHelpers {
         let hid = false;
         try {
             await page.evaluate((id) => {
-                const store: any = (window as any).aliasPickerStore;
+                const store: any = (globalThis as any).aliasPickerStore;
                 if (store && typeof store.confirmById === "function") {
                     store.confirmById(id);
                 }
@@ -1644,7 +1644,7 @@ export class TestHelpers {
     public static async setAliasTarget(page: Page, itemId: string, targetId: string): Promise<void> {
         // Change target of existing alias item (call AliasPickerStore directly)
         await page.evaluate(id => {
-            const store = (window as any).aliasPickerStore;
+            const store = (globalThis as any).aliasPickerStore;
             if (store && typeof store.show === "function") {
                 store.show(id);
             }
@@ -1687,7 +1687,7 @@ export class TestHelpers {
                 if (stillVisible) {
                     console.log("Alias picker still visible, forcing hide via store");
                     await page.evaluate(() => {
-                        const store = (window as any).aliasPickerStore;
+                        const store = (globalThis as any).aliasPickerStore;
                         if (store && typeof store.hide === "function") {
                             store.hide();
                         }
@@ -1700,7 +1700,7 @@ export class TestHelpers {
     public static async showAliasPicker(page: Page, itemId: string): Promise<void> {
         // Prefer calling the store directly to avoid pointer interception issues.
         await page.evaluate((id) => {
-            const store = (window as any).aliasPickerStore;
+            const store = (globalThis as any).aliasPickerStore;
             if (store && typeof store.show === "function") {
                 store.show(id);
             }
@@ -1717,7 +1717,7 @@ export class TestHelpers {
         // Robust: read from model state directly to avoid DOM/virtualization flakiness
         const modelId = await page.evaluate((id) => {
             try {
-                const gs: any = (window as any).generalStore || (window as any).appStore;
+                const gs: any = (globalThis as any).generalStore || (globalThis as any).appStore;
                 const currentPage = gs?.currentPage;
                 if (!currentPage) return null;
 
@@ -1756,7 +1756,7 @@ export class TestHelpers {
 
                     // If still not found, check lastConfirmedTargetId as fallback
                     if (!value) {
-                        const store: any = (window as any).aliasPickerStore;
+                        const store: any = (globalThis as any).aliasPickerStore;
                         const lastItemId = store?.lastConfirmedItemId;
                         const lastTargetId = store?.lastConfirmedTargetId;
                         const lastAt = store?.lastConfirmedAt as number | null;
@@ -1803,7 +1803,7 @@ export class TestHelpers {
                         const el = document.querySelector(sel) as HTMLElement | null;
                         if (!el) return false;
                         const rect = el.getBoundingClientRect();
-                        const style = window.getComputedStyle(el);
+                        const style = globalThis.getComputedStyle(el);
                         return rect.height > 0 && rect.width > 0
                             && style.visibility !== "hidden"
                             && style.display !== "none";
@@ -1846,7 +1846,7 @@ export class TestHelpers {
                         const el = document.querySelector(sel) as HTMLElement | null;
                         if (!el) return false;
                         const rect = el.getBoundingClientRect();
-                        const style = window.getComputedStyle(el);
+                        const style = globalThis.getComputedStyle(el);
                         return rect.height > 0 && rect.width > 0 && style.visibility !== "hidden"
                             && style.display !== "none";
                     }, subtreeSel);
@@ -1910,7 +1910,7 @@ export class TestHelpers {
 
             // 2) Active textarea
             try {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 const ta = store?.getTextareaRef?.();
                 const activeId = store?.getActiveItem?.();
                 if (ta && activeId === id) {
@@ -1920,7 +1920,7 @@ export class TestHelpers {
 
             // 3) Explore generalStore
             try {
-                const gs = (window as any).generalStore;
+                const gs = (globalThis as any).generalStore;
                 const page = gs?.currentPage;
                 const items = page?.items;
                 const len = items?.length ?? 0;
@@ -2018,7 +2018,7 @@ export class TestHelpers {
                     const rect = element.getBoundingClientRect();
 
                     // Check style
-                    const style = window.getComputedStyle(element);
+                    const style = globalThis.getComputedStyle(element);
                     const isVisibleStyle = style.display !== "none"
                         && style.visibility !== "hidden"
                         && style.opacity !== "0"
@@ -2030,7 +2030,7 @@ export class TestHelpers {
                     let isParentVisible = true;
 
                     while (parent) {
-                        const parentStyle = window.getComputedStyle(parent);
+                        const parentStyle = globalThis.getComputedStyle(parent);
                         if (
                             parentStyle.display === "none"
                             || parentStyle.visibility === "hidden"
@@ -2120,25 +2120,25 @@ export class TestHelpers {
             // Reset global stores
             await page.evaluate(() => {
                 // Reset project and page info in generalStore
-                if ((window as any).generalStore) {
-                    (window as any).generalStore.project = null;
-                    (window as any).generalStore.pages = null;
-                    (window as any).generalStore.currentPage = null;
+                if ((globalThis as any).generalStore) {
+                    (globalThis as any).generalStore.project = null;
+                    (globalThis as any).generalStore.pages = null;
+                    (globalThis as any).generalStore.currentPage = null;
                 }
 
                 // Reset project and page info in appStore
-                if ((window as any).appStore) {
-                    (window as any).appStore.project = null;
-                    (window as any).appStore.pages = null;
-                    (window as any).appStore.currentPage = null;
+                if ((globalThis as any).appStore) {
+                    (globalThis as any).appStore.project = null;
+                    (globalThis as any).appStore.pages = null;
+                    (globalThis as any).appStore.currentPage = null;
                 }
 
                 // Reset cursor info in editorOverlayStore
-                if ((window as any).editorOverlayStore) {
-                    (window as any).editorOverlayStore.cursors = {};
-                    (window as any).editorOverlayStore.cursorInstances = new Map();
-                    (window as any).editorOverlayStore.activeItemId = null;
-                    (window as any).editorOverlayStore.cursorVisible = false;
+                if ((globalThis as any).editorOverlayStore) {
+                    (globalThis as any).editorOverlayStore.cursors = {};
+                    (globalThis as any).editorOverlayStore.cursorInstances = new Map();
+                    (globalThis as any).editorOverlayStore.activeItemId = null;
+                    (globalThis as any).editorOverlayStore.cursorVisible = false;
                 }
             });
 
@@ -2319,7 +2319,7 @@ export class TestHelpers {
  * Helpers dependent on old implementation have been removed
  */
 
-// Extend global type definition (add functionality to window object for testing)
+// Extend global type definition (add functionality to globalThis object for testing)
 declare global {
     interface Window {
         getCursorDebugData?: () => any;

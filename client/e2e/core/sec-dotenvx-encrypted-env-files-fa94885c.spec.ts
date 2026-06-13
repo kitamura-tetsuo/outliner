@@ -26,7 +26,7 @@ test.describe("SEC-0001: Dotenvx encrypted env files", () => {
             // Test if Vite environment variables are available
             // Since import.meta cannot be accessed directly in the browser environment,
             // check for the existence of environment variables injected by Vite instead
-            return typeof window !== "undefined";
+            return typeof globalThis !== "undefined";
         });
         expect(hasEnvVars).toBe(true);
     });

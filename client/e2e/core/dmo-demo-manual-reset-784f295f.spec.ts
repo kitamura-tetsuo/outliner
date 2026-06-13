@@ -17,7 +17,7 @@ test.describe("Demo manual reset button", () => {
         await expect(resetButton).toBeEnabled();
 
         // The forced reset must report reset=true even though the demo was
-        // just seeded by opening the route (i.e. well within the 24h window).
+        // just seeded by opening the route (i.e. well within the 24h globalThis).
         const [response] = await Promise.all([
             page.waitForResponse(resp => resp.url().includes("/api/seed-demo") && resp.request().method() === "POST", {
                 timeout: 30000,

@@ -25,7 +25,7 @@ test.describe("CMT-0001: comment threads", () => {
             await page.evaluate(() => {
                 try {
                     // Clear comment data from the current page items if possible
-                    const gs: any = (window as any).generalStore;
+                    const gs: any = (globalThis as any).generalStore;
                     if (gs?.currentPage?.items) {
                         const items = gs.currentPage.items;
                         const len = items?.length ?? 0;
@@ -51,7 +51,7 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Also clear any existing Yjs comment data
                     try {
-                        const yjsStore: any = (window as any).__YJS_STORE__;
+                        const yjsStore: any = (globalThis as any).__YJS_STORE__;
                         if (yjsStore?.yjsClient) {
                             const client = yjsStore.yjsClient;
                             // Clear any pending comment operations
@@ -65,7 +65,7 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Clear any global state that might interfere with this test
                     try {
-                        const win: any = window as any;
+                        const win: any = globalThis as any;
                         // Clear any comment-related global variables
                         if (win.__COMMENT_THREAD_STATE__) {
                             win.__COMMENT_THREAD_STATE__ = {};
@@ -263,7 +263,7 @@ test.describe("CMT-0001: comment threads", () => {
             await page.evaluate(() => {
                 try {
                     // Clear comment data from the current page items if possible
-                    const gs: any = (window as any).generalStore;
+                    const gs: any = (globalThis as any).generalStore;
                     if (gs?.currentPage?.items) {
                         const items = gs.currentPage.items;
                         const len = items?.length ?? 0;
@@ -289,7 +289,7 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Also clear any existing Yjs comment data
                     try {
-                        const yjsStore: any = (window as any).__YJS_STORE__;
+                        const yjsStore: any = (globalThis as any).__YJS_STORE__;
                         if (yjsStore?.yjsClient) {
                             const client = yjsStore.yjsClient;
                             // Clear any pending comment operations
@@ -303,7 +303,7 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Clear any global state that might interfere with this test
                     try {
-                        const win: any = window as any;
+                        const win: any = globalThis as any;
                         // Clear any comment-related global variables
                         if (win.__COMMENT_THREAD_STATE__) {
                             win.__COMMENT_THREAD_STATE__ = {};

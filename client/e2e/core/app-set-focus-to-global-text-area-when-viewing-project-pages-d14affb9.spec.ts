@@ -62,7 +62,7 @@ test.describe("Focus settings when viewing project page", () => {
 
         // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
-            const editorStore = (window as {
+            const editorStore = (globalThis as {
                 editorOverlayStore?: {
                     getActiveItem: () => string | null;
                     getCursorInstances: () => { id: string; }[];
@@ -84,7 +84,7 @@ test.describe("Focus settings when viewing project page", () => {
         if (cursorState.cursorInstancesCount === 0) {
             console.log("No cursor instances found, creating cursor");
             await page.evaluate(() => {
-                const editorStore = (window as {
+                const editorStore = (globalThis as {
                     editorOverlayStore?: {
                         getActiveItem: () => string | null;
                         setCursor: (
@@ -110,7 +110,7 @@ test.describe("Focus settings when viewing project page", () => {
         // Verify that text input is possible (using cursor.insertText())
         const testText = "Test text";
         await page.evaluate(text => {
-            const editorStore = (window as {
+            const editorStore = (globalThis as {
                 editorOverlayStore?: {
                     getCursorInstances: () => {
                         findTarget: () => { updateText: (text: string) => void; } | null;

@@ -37,10 +37,6 @@ export default ts.config(
             },
         },
     },
-    // Temporary: Convert strict rules to warnings to allow CI to pass
-    // These rules were causing 3831 errors across 299 files
-    // TODO: Fix these issues incrementally and convert back to errors
-    // See issue #733 for tracking
     {
         rules: {
             "@typescript-eslint/no-explicit-any": "error",
@@ -183,7 +179,7 @@ export default ts.config(
                 },
             ],
             "no-restricted-globals": [
-                "warn",
+                "error",
                 {
                     name: "window",
                     message:

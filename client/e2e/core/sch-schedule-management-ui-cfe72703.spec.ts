@@ -34,7 +34,7 @@ test.describe("Schedule Management UI", () => {
 
         // Log page state
         const pageId = await page.evaluate(() => {
-            return (window as any).appStore?.currentPage?.id || "undefined";
+            return (globalThis as any).appStore?.currentPage?.id || "undefined";
         });
         console.log("Test: Current page ID:", pageId);
 

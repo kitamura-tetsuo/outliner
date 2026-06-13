@@ -19,7 +19,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
     test("Can paste copied text to another location", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            (globalThis as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
 
@@ -32,7 +32,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
 
         // Create selection manually
         await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return;
 
             // Select the second and third items
@@ -62,7 +62,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
 
         // Get the selected text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -76,7 +76,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
 
         // Manually trigger a copy event
         const selectedText = await page.evaluate<string>(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -125,7 +125,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
             }
 
             // Set globally (for testing)
-            (window as any).testClipboardText = selectedText;
+            (globalThis as any).testClipboardText = selectedText;
             console.log("Stored test clipboard text:", selectedText);
         }, selectedText);
 
@@ -167,7 +167,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
             });
 
             // Call KeyEventHandler.handlePaste directly
-            const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
+            const KeyEventHandler = (globalThis as any).__KEY_EVENT_HANDLER__;
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
                 await KeyEventHandler.handlePaste(clipboardEvent);
                 console.log("KeyEventHandler.handlePaste called successfully");

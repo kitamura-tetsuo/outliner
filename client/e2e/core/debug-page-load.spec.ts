@@ -15,9 +15,9 @@ test.describe("Debug Page Load", () => {
 
         // Check the final state of the page
         const finalState = await page.evaluate(() => {
-            const generalStore = (window as any).generalStore;
+            const generalStore = (globalThis as any).generalStore;
             return {
-                url: window.location.href,
+                url: globalThis.location.href,
                 outlinerBase: !!document.querySelector('[data-testid="outliner-base"]'),
                 outlinerItems: document.querySelectorAll(".outliner-item").length,
                 addButton: !!Array.from(document.querySelectorAll("button")).find(btn =>

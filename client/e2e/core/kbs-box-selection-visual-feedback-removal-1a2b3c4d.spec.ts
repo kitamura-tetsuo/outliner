@@ -56,16 +56,16 @@ test.describe("Box selection feedback", () => {
 
         // Enable debug mode to help troubleshoot
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
-            console.log("DEBUG_MODE enabled:", (window as any).DEBUG_MODE);
+            (globalThis as any).DEBUG_MODE = true;
+            console.log("DEBUG_MODE enabled:", (globalThis as any).DEBUG_MODE);
         });
 
         await page.waitForTimeout(100); // Wait for DEBUG_MODE to be set
 
         // Check if KeyEventHandler is available and get cursor info
         const debugInfo = await page.evaluate(() => {
-            const KeyEventHandler = (window as any).KeyEventHandler;
-            const store = (window as any).editorOverlayStore;
+            const KeyEventHandler = (globalThis as any).KeyEventHandler;
+            const store = (globalThis as any).editorOverlayStore;
 
             if (!KeyEventHandler) {
                 return { error: "KeyEventHandler not found" };
@@ -94,7 +94,7 @@ test.describe("Box selection feedback", () => {
         if (debugInfo.cursorCount === 0) {
             // Set cursor programmatically
             await page.evaluate(() => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 const firstItem = document.querySelector(".outliner-item");
                 const itemId = firstItem?.getAttribute("data-item-id");
 
@@ -113,8 +113,8 @@ test.describe("Box selection feedback", () => {
 
         // Trigger box selection programmatically
         const result = await page.evaluate(() => {
-            const KeyEventHandler = (window as any).KeyEventHandler;
-            const store = (window as any).editorOverlayStore;
+            const KeyEventHandler = (globalThis as any).KeyEventHandler;
+            const store = (globalThis as any).editorOverlayStore;
             const event = new KeyboardEvent("keydown", {
                 key: "ArrowRight",
                 altKey: true,
@@ -149,13 +149,13 @@ test.describe("Box selection feedback", () => {
 
         // Get detailed selection info
         const selectionInfo = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
-            const aliasPickerStore = (window as any).aliasPickerStore;
+            const store = (globalThis as any).editorOverlayStore;
+            const aliasPickerStore = (globalThis as any).aliasPickerStore;
             const selections = store.selections;
 
             return {
                 aliasPickerVisible: aliasPickerStore?.isVisible,
-                navigatorWebdriver: (window as any).navigator?.webdriver,
+                navigatorWebdriver: (globalThis as any).navigator?.webdriver,
                 selections: Object.entries(selections).map(([key, sel]: [string, any]) => ({
                     key,
                     startItemId: sel.startItemId,

@@ -27,21 +27,21 @@ test.describe("Yjs client attach and DOM reflect", () => {
     test("attaches Yjs project and renders seeded lines", async ({ page }) => {
         // Verify project is backed by a Y.Doc (guid present)
         await page.waitForFunction(() => {
-            const gs = (window as { generalStore?: { project?: { ydoc?: { guid?: string; }; }; }; }).generalStore;
+            const gs = (globalThis as { generalStore?: { project?: { ydoc?: { guid?: string; }; }; }; }).generalStore;
             const guid = gs?.project?.ydoc?.guid ?? null;
             return typeof guid === "string" && guid.length > 0;
         }, { timeout: 30000 });
 
         // Wait for currentPage to be set
         await page.waitForFunction(() => {
-            const gs = (window as { generalStore?: { currentPage?: Record<string, unknown>; }; }).generalStore;
+            const gs = (globalThis as { generalStore?: { currentPage?: Record<string, unknown>; }; }).generalStore;
             return !!(gs && gs.currentPage);
         }, { timeout: 15000 });
 
         // Ensure items are seeded in model (fallback for race conditions)
         await page.evaluate((lines) => {
             const gs =
-                (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; }).generalStore;
+                (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; }).generalStore;
             const p = gs?.currentPage;
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;

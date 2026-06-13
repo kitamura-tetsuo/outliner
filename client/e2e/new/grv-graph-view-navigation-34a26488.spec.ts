@@ -28,12 +28,12 @@ test.describe("GRV-0001: Graph View navigation", () => {
 
         // Wait until the chart is initialized
         await page.waitForFunction(() => {
-            return typeof (window as any).__GRAPH_CHART__ !== "undefined";
+            return typeof (globalThis as any).__GRAPH_CHART__ !== "undefined";
         }, { timeout: 5000 });
 
         // Initialize the graph with mock data (similar to other tests)
         await page.evaluate(() => {
-            const chart = (window as any).__GRAPH_CHART__;
+            const chart = (globalThis as any).__GRAPH_CHART__;
             if (chart) {
                 const mockNodes = [
                     { id: "page1", name: "Page1" },
@@ -57,7 +57,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
 
         // Wait until data is set on the graph
         await page.waitForFunction(() => {
-            const chart = (window as any).__GRAPH_CHART__;
+            const chart = (globalThis as any).__GRAPH_CHART__;
             if (!chart) return false;
             try {
                 const option = chart.getOption();
@@ -73,7 +73,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
 
         // Get the first page name and project name from mock data
         const { firstPageName, projectName } = await page.evaluate(() => {
-            const chart = (window as any).__GRAPH_CHART__;
+            const chart = (globalThis as any).__GRAPH_CHART__;
             if (!chart) throw new Error("Chart not available");
 
             const option = chart.getOption();
@@ -81,7 +81,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
             if (!nodes || nodes.length === 0) throw new Error("No nodes available");
 
             // Get project name from appStore
-            const appStore = (window as any).appStore;
+            const appStore = (globalThis as any).appStore;
             const projectName = appStore?.project?.title;
 
             return {
@@ -101,7 +101,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
 
         // Wait for Yjs connection on the new page
         await page.waitForFunction(() => {
-            const y = (window as any).__YJS_STORE__;
+            const y = (globalThis as any).__YJS_STORE__;
             return y && y.isConnected;
         }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait timed out after navigation"));
 

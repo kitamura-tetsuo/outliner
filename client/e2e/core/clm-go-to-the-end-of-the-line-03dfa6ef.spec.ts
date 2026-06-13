@@ -112,7 +112,7 @@ test.describe("CLM-0008: Move to the end of the line", () => {
             const cursorOffset = await page.evaluate(() => {
                 const cursor = document.querySelector(".editor-overlay .cursor");
                 if (!cursor) return null;
-                const style = window.getComputedStyle(cursor);
+                const style = globalThis.getComputedStyle(cursor);
                 return {
                     left: parseFloat(style.left),
                     top: parseFloat(style.top),

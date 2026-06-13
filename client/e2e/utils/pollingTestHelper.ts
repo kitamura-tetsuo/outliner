@@ -37,15 +37,15 @@ export async function initPollingMonitor(page: Page) {
             private disablePatterns: RegExp[] = [];
 
             constructor() {
-                this.originalSetInterval = window.setInterval.bind(window);
-                this.originalSetTimeout = window.setTimeout.bind(window);
+                this.originalSetInterval = globalThis.setInterval.bind(globalThis);
+                this.originalSetTimeout = globalThis.setTimeout.bind(globalThis);
             }
 
             start() {
                 if (this.enabled) return;
                 this.enabled = true;
 
-                window.setInterval = (callback: any, delay?: number, ...args: any[]): any => {
+                globalThis.setInterval = (callback: any, delay?: number, ...args: any[]): any => {
                     const stack = new Error().stack || "";
                     const id = this.nextId++;
                     const disabled = this.disablePatterns.some(p => p.test(stack));
@@ -77,7 +77,7 @@ export async function initPollingMonitor(page: Page) {
                     return this.originalSetInterval(wrappedCallback, delay, ...args);
                 };
 
-                window.setTimeout = ((callback: any, delay?: number, ...args: any[]): any => {
+                globalThis.setTimeout = ((callback: any, delay?: number, ...args: any[]): any => {
                     const stack = new Error().stack || "";
                     const id = this.nextId++;
                     const disabled = this.disablePatterns.some(p => p.test(stack));
@@ -108,7 +108,7 @@ export async function initPollingMonitor(page: Page) {
                     };
 
                     return this.originalSetTimeout(wrappedCallback, delay, ...args);
-                }) as unknown as typeof window.setTimeout;
+                }) as unknown as typeof globalThis.setTimeout;
             }
 
             addDisablePattern(pattern: RegExp) {
@@ -135,7 +135,7 @@ export async function initPollingMonitor(page: Page) {
             }
         }
 
-        (window as any).__pollingMonitor = new PollingMonitor();
+        (globalThis as any).__pollingMonitor = new PollingMonitor();
     });
 }
 
@@ -144,7 +144,7 @@ export async function initPollingMonitor(page: Page) {
  */
 export async function startPollingMonitor(page: Page) {
     await page.evaluate(() => {
-        (window as any).__pollingMonitor?.start();
+        (globalThis as any).__pollingMonitor?.start();
     });
 }
 
@@ -153,7 +153,7 @@ export async function startPollingMonitor(page: Page) {
  */
 export async function getPollingStats(page: Page) {
     return await page.evaluate(() => {
-        return (window as any).__pollingMonitor?.getStats();
+        return (globalThis as any).__pollingMonitor?.getStats();
     });
 }
 
@@ -163,7 +163,7 @@ export async function getPollingStats(page: Page) {
 export async function disablePollingPattern(page: Page, pattern: RegExp) {
     await page.evaluate((patternStr) => {
         const regex = new RegExp(patternStr);
-        (window as any).__pollingMonitor?.addDisablePattern(regex);
+        (globalThis as any).__pollingMonitor?.addDisablePattern(regex);
     }, pattern.source);
 }
 
@@ -172,7 +172,7 @@ export async function disablePollingPattern(page: Page, pattern: RegExp) {
  */
 export async function clearDisablePatterns(page: Page) {
     await page.evaluate(() => {
-        (window as any).__pollingMonitor?.clearDisablePatterns();
+        (globalThis as any).__pollingMonitor?.clearDisablePatterns();
     });
 }
 
@@ -181,7 +181,7 @@ export async function clearDisablePatterns(page: Page) {
  */
 export async function resetPollingMonitor(page: Page) {
     await page.evaluate(() => {
-        (window as any).__pollingMonitor?.reset();
+        (globalThis as any).__pollingMonitor?.reset();
     });
 }
 

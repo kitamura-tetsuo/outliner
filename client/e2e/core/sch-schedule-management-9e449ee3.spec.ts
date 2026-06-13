@@ -17,7 +17,7 @@ test.describe("Schedule Management", () => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
         const pageId = await TestHelpers.getItemIdByIndex(page, 0);
         const idToken = await page.evaluate(async () => {
-            const userManager = (window as any).__USER_MANAGER__;
+            const userManager = (globalThis as any).__USER_MANAGER__;
             return await userManager?.auth?.currentUser?.getIdToken();
         });
         await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/createSchedule", {

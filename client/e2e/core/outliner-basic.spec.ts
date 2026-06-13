@@ -66,9 +66,9 @@ test.describe("Outliner Basic Test (No Auth)", () => {
         // Check for the existence of UserManager
         const userManagerExists = await page.evaluate(() => {
             return {
-                userManagerExists: typeof (window as any).__USER_MANAGER__ !== "undefined",
-                userManagerType: typeof (window as any).__USER_MANAGER__,
-                windowKeys: Object.keys(window).filter(key => key.startsWith("__")),
+                userManagerExists: typeof (globalThis as any).__USER_MANAGER__ !== "undefined",
+                userManagerType: typeof (globalThis as any).__USER_MANAGER__,
+                windowKeys: Object.keys(globalThis).filter(key => key.startsWith("__")),
                 globalThis: typeof globalThis !== "undefined",
             };
         });
@@ -77,7 +77,7 @@ test.describe("Outliner Basic Test (No Auth)", () => {
 
         // Check the state of global variables
         const globalVars = await page.evaluate(() => {
-            const win = window as any;
+            const win = globalThis as any;
             return {
                 userManager: typeof win.__USER_MANAGER__,
                 svelteGoto: typeof win.__SVELTE_GOTO__,
@@ -100,7 +100,7 @@ test.describe("Outliner Basic Test (No Auth)", () => {
         try {
             await page.waitForFunction(
                 () => {
-                    const win = window as any;
+                    const win = globalThis as any;
                     const hasUserManager = typeof win.__USER_MANAGER__ !== "undefined";
                     console.log("Checking initialization - UserManager:", hasUserManager);
                     return hasUserManager;
@@ -113,11 +113,11 @@ test.describe("Outliner Basic Test (No Auth)", () => {
 
             // Check the state at timeout
             const state = await page.evaluate(() => {
-                const win = window as any;
+                const win = globalThis as any;
                 return {
                     userManager: typeof win.__USER_MANAGER__,
                     readyState: document.readyState,
-                    location: window.location.href,
+                    location: globalThis.location.href,
                     errors: win.__INIT_ERRORS__ || [],
                 };
             });

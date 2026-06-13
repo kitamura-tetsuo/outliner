@@ -9,7 +9,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 async function setItemTextByIndex(page, index: number, text: string) {
     await page.evaluate(({ index, text }) => {
-        const gs = (window as any).generalStore;
+        const gs = (globalThis as any).generalStore;
         if (!gs || !gs.currentPage) return;
         const pageItem = gs.currentPage;
         if (index === 0) {
@@ -32,7 +32,7 @@ async function getItemTextByIndex(page, index: number): Promise<string> {
 
 async function getActiveCursorInfo(page) {
     return await page.evaluate(() => {
-        const store = (window as any).editorOverlayStore;
+        const store = (globalThis as any).editorOverlayStore;
         if (!store) return { activeCount: 0, activeItemId: null, total: 0 };
         const cursors = Object.values(store.cursors || {});
         const active = cursors.filter((c: any) => c.isActive);
@@ -69,7 +69,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         // Alt+ArrowUp: Cannot move above title -> No change
         await page.keyboard.press("Alt+ArrowUp");
         await page.waitForFunction(() => {
-            const s: any = (window as any).editorOverlayStore;
+            const s: any = (globalThis as any).editorOverlayStore;
             if (!s) return false;
             const act = Object.values(s.cursors || {}).filter((c: any) => c.isActive);
             return act.length === 1;
@@ -83,7 +83,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         // Alt+ArrowDown: Cannot move below bottom -> No change
         await page.keyboard.press("Alt+ArrowDown");
         await page.waitForFunction(() => {
-            const s: any = (window as any).editorOverlayStore;
+            const s: any = (globalThis as any).editorOverlayStore;
             if (!s) return false;
             const act = Object.values(s.cursors || {}).filter((c: any) => c.isActive);
             return act.length === 1;
@@ -138,7 +138,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
 
         // Wait for state stability
         await page.waitForFunction(() => {
-            const s: any = (window as any).editorOverlayStore;
+            const s: any = (globalThis as any).editorOverlayStore;
             if (!s) return false;
             const act = Object.values(s.cursors || {}).filter((c: any) => c.isActive);
             return act.length === 1;
@@ -166,7 +166,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
 
         // State stable
         await page.waitForFunction(() => {
-            const s: any = (window as any).editorOverlayStore;
+            const s: any = (globalThis as any).editorOverlayStore;
             if (!s) return false;
             const act = Object.values(s.cursors || {}).filter((c: any) => c.isActive);
             return act.length === 1 && !!s.activeItemId;
@@ -176,7 +176,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         const info = await getActiveCursorInfo(page);
         expect(info.activeCount).toBe(1);
         const state = await page.evaluate(() => {
-            const s: any = (window as any).editorOverlayStore;
+            const s: any = (globalThis as any).editorOverlayStore;
             const cursors = s.cursors as Record<string, any>;
             const active = Object.values(cursors).find((c: any) => c.isActive) as any | undefined;
             const lastHistory = s.cursorHistory?.[s.cursorHistory.length - 1];
@@ -201,7 +201,7 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         await page.keyboard.press("Alt+ArrowUp");
 
         await page.waitForFunction(() => {
-            const s: any = (window as any).editorOverlayStore;
+            const s: any = (globalThis as any).editorOverlayStore;
             if (!s) return false;
             const act = Object.values(s.cursors || {}).filter((c: any) => c.isActive);
             return act.length === 1;

@@ -2,13 +2,13 @@ import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature IME-0002
- *  Title   : IME candidate window follows active cursor
+ *  Title   : IME candidate globalThis follows active cursor
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("IME-0002: IME candidate window follows active cursor", () => {
+test.describe("IME-0002: IME candidate globalThis follows active cursor", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
@@ -40,9 +40,9 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
             if (itemId) {
                 await page.evaluate(itemId => {
                     // Enable debug mode
-                    (window as any).DEBUG_MODE = true;
+                    (globalThis as any).DEBUG_MODE = true;
 
-                    const store = (window as any).editorOverlayStore;
+                    const store = (globalThis as any).editorOverlayStore;
                     if (store) {
                         console.log("Setting cursor manually for IME test, item:", itemId);
                         const cursorId = store.setCursor({
@@ -65,13 +65,13 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
         } else {
             // Enable debug mode even if the cursor is displayed
             await page.evaluate(() => {
-                (window as any).DEBUG_MODE = true;
+                (globalThis as any).DEBUG_MODE = true;
             });
         }
 
         // If the cursor is not set, force it to be set
         let hasValidCursor = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             return store && store.getLastActiveCursor() !== null;
         });
 
@@ -84,7 +84,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
 
             if (firstItemId) {
                 await page.evaluate(itemId => {
-                    const store = (window as any).editorOverlayStore;
+                    const store = (globalThis as any).editorOverlayStore;
                     if (store) {
                         console.log("Force setting cursor for IME test, item:", itemId);
                         const cursorId = store.setCursor({
@@ -109,7 +109,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
 
                 // Reconfirm whether the cursor was set correctly
                 hasValidCursor = await page.evaluate(() => {
-                    const store = (window as any).editorOverlayStore;
+                    const store = (globalThis as any).editorOverlayStore;
                     const cursor = store ? store.getLastActiveCursor() : null;
                     console.log("Cursor verification:", cursor);
                     return !!cursor;
@@ -121,7 +121,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
 
         // Enable debug mode and check the behavior of $effect
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            (globalThis as any).DEBUG_MODE = true;
         });
 
         // Wait for the textarea position to be automatically updated on the implementation side
@@ -129,7 +129,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
 
         // Check if $effect is working
         const effectDebugInfo = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return { error: "store not found" };
 
             const lastCursor = store.getLastActiveCursor();

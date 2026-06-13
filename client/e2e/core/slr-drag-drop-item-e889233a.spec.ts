@@ -11,11 +11,11 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SLR-0009: Item Drag and Drop", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            (globalThis as any).DEBUG_MODE = true;
         });
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            (globalThis as any).DEBUG_MODE = true;
         });
         const item = page.locator(".outliner-item.page-title");
         if (await item.count() === 0) {

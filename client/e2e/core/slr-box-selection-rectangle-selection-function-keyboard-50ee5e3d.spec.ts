@@ -33,7 +33,7 @@ test.describe("Selection management test", () => {
         // Enable debug mode
         try {
             await page.evaluate(() => {
-                (window as any).DEBUG_MODE = true;
+                (globalThis as any).DEBUG_MODE = true;
             });
         } catch (error) {
             console.log(`An error occurred while setting up debug mode: ${error}`);
@@ -64,11 +64,11 @@ test.describe("Selection management test", () => {
 
         // Verify that a rectangular selection is created
         const boxSelectionCount1 = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
+            if (!(globalThis as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
-            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const selections = Object.values((globalThis as any).editorOverlayStore.selections);
             console.log("All selections:", selections);
             return selections.filter((s: any) => s.isBoxSelection).length;
         });
@@ -76,10 +76,10 @@ test.describe("Selection management test", () => {
 
         // Verify that a normal selection is created if the rectangular selection feature is not implemented
         const normalSelectionCount = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
+            if (!(globalThis as any).editorOverlayStore) {
                 return 0;
             }
-            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const selections = Object.values((globalThis as any).editorOverlayStore.selections);
             return selections.length;
         });
         console.log(`Number of normal selections: ${normalSelectionCount}`);
@@ -93,11 +93,11 @@ test.describe("Selection management test", () => {
 
         // Verify that the rectangular selection range is expanded
         const boxSelectionRanges = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
+            if (!(globalThis as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
-            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const selections = Object.values((globalThis as any).editorOverlayStore.selections);
             const boxSelection = selections.find((s: any) => s.isBoxSelection);
             // Verify if a rectangular selection exists
             return boxSelection ? 1 : selections.length;
@@ -113,18 +113,18 @@ test.describe("Selection management test", () => {
         // Explicitly call cancelBoxSelection
         await page.evaluate(() => {
             if (
-                (window as any).KeyEventHandler
-                && typeof (window as any).KeyEventHandler.cancelBoxSelection === "function"
+                (globalThis as any).KeyEventHandler
+                && typeof (globalThis as any).KeyEventHandler.cancelBoxSelection === "function"
             ) {
-                (window as any).KeyEventHandler.cancelBoxSelection();
+                (globalThis as any).KeyEventHandler.cancelBoxSelection();
                 console.log("Explicitly called KeyEventHandler.cancelBoxSelection()");
             } else {
                 console.log("KeyEventHandler.cancelBoxSelection not available");
             }
 
             // Forcibly clear the selection
-            if ((window as any).editorOverlayStore) {
-                (window as any).editorOverlayStore.clearSelections();
+            if ((globalThis as any).editorOverlayStore) {
+                (globalThis as any).editorOverlayStore.clearSelections();
                 console.log("Explicitly called editorOverlayStore.clearSelections()");
             }
         });
@@ -134,11 +134,11 @@ test.describe("Selection management test", () => {
 
         // Verify that the rectangular selection is cancelled
         const boxSelectionCount2 = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
+            if (!(globalThis as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
-            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const selections = Object.values((globalThis as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
             console.log("Current selections after cancel:", selections);
             console.log("Box selections after cancel:", boxSelections);
@@ -148,10 +148,10 @@ test.describe("Selection management test", () => {
 
         // Verify that the selection is cleared (also clears normal selection if rectangular selection feature is not implemented)
         const totalSelectionsAfterCancel = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
+            if (!(globalThis as any).editorOverlayStore) {
                 return 0;
             }
-            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const selections = Object.values((globalThis as any).editorOverlayStore.selections);
             return selections.length;
         });
         console.log(`Total number of selections after cancel: ${totalSelectionsAfterCancel}`);

@@ -51,7 +51,7 @@ test.describe("SLR-0004: Selection by dragging mouse", () => {
 
         // Get the selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -87,7 +87,7 @@ test.describe("SLR-0004: Selection by dragging mouse", () => {
 
         // Check the style of the selection element
         const backgroundColor = await selectionElement.evaluate(el => {
-            return window.getComputedStyle(el).backgroundColor;
+            return globalThis.getComputedStyle(el).backgroundColor;
         });
 
         // Verify that the background color is set (rgba format)
@@ -120,7 +120,7 @@ test.describe("SLR-0004: Selection by dragging mouse", () => {
 
         // Get the selection text (from the application's selection management system)
         const selectedText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });

@@ -26,7 +26,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
             const file = new File([pngHeader], name, { type: "image/png" });
 
             // Set fallback for E2E
-            (window as any).__E2E_LAST_FILES__ = [file];
+            (globalThis as any).__E2E_LAST_FILES__ = [file];
 
             const target = document.querySelector(sel);
             if (!target) throw new Error(`Target ${sel} not found`);
@@ -101,7 +101,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
             const dt = new DataTransfer();
             const pngHeader = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
             const file = new File([pngHeader], "end-drop.png", { type: "image/png" });
-            (window as any).__E2E_LAST_FILES__ = [file];
+            (globalThis as any).__E2E_LAST_FILES__ = [file];
 
             const target = document.querySelector(".tree-container");
             if (!target) throw new Error("tree-container not found");

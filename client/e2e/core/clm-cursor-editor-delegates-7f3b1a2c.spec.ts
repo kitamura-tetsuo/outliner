@@ -18,7 +18,7 @@ async function performCursorAction(
     options: { value?: string; offset?: number; } = {},
 ): Promise<string | number | void> {
     return page.evaluate(({ itemId, action, options, userId }) => {
-        const editorOverlayStore = (window as {
+        const editorOverlayStore = (globalThis as {
             editorOverlayStore?: {
                 getCursorInstances: () => {
                     itemId: string;

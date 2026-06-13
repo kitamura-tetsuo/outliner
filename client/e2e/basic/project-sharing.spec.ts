@@ -41,7 +41,7 @@ test.describe("Project Sharing E2E", () => {
 
         // Ensure project exists in Firestore (required for sharing) with the HASHED ID
         await page.evaluate(async ({ projectId, projectName }) => {
-            const userManager = (window as any).__USER_MANAGER__;
+            const userManager = (globalThis as any).__USER_MANAGER__;
             if (!userManager) throw new Error("UserManager not found");
 
             const token = await userManager.auth.currentUser?.getIdToken();
@@ -112,7 +112,7 @@ test.describe("Project Sharing E2E", () => {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                (window as any).__E2E__ = true;
+                (globalThis as any).__E2E__ = true;
             } catch {}
         });
 
@@ -129,7 +129,7 @@ test.describe("Project Sharing E2E", () => {
         await pageB.waitForLoadState("domcontentloaded");
 
         // Wait for UserManager to be available
-        await pageB.waitForFunction(() => !!(window as any).__USER_MANAGER__, { timeout: 15000 });
+        await pageB.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__, { timeout: 15000 });
 
         // Login
         await TestHelpers.login(pageB, "test2@example.com", "password");
@@ -154,7 +154,7 @@ test.describe("Project Sharing E2E", () => {
         await pageB.evaluate(() => {
             return new Promise((resolve) => {
                 const check = () => {
-                    const user = (window as any).__USER_MANAGER__?.auth?.currentUser;
+                    const user = (globalThis as any).__USER_MANAGER__?.auth?.currentUser;
                     if (user) resolve(true);
                     else setTimeout(check, 100);
                 };
@@ -179,7 +179,7 @@ test.describe("Project Sharing E2E", () => {
         // We use a shorter timeout for the first attempt to fail fast and retry
         try {
             await pageB.waitForFunction(() => {
-                const y = (window as any).__YJS_STORE__;
+                const y = (globalThis as any).__YJS_STORE__;
                 return y && y.isConnected;
             }, { timeout: 15000 });
         } catch {
@@ -188,7 +188,7 @@ test.describe("Project Sharing E2E", () => {
             await TestHelpers.waitForAppReady(pageB);
             // Try waiting again with a standard timeout
             await pageB.waitForFunction(() => {
-                const y = (window as any).__YJS_STORE__;
+                const y = (globalThis as any).__YJS_STORE__;
                 return y && y.isConnected;
             }, { timeout: 30000 }).catch(() => console.log("[User B] Yjs connect wait timed out again, continuing..."));
         }

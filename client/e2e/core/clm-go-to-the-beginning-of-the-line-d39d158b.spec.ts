@@ -50,7 +50,7 @@ test.describe("CLM-0007: Move to the beginning of the line", () => {
 
         // Wait until cursor instance exists
         await page.waitForFunction(() => {
-            const editorOverlayStore = (window as any).editorOverlayStore;
+            const editorOverlayStore = (globalThis as any).editorOverlayStore;
             if (!editorOverlayStore) return false;
             const cursorInstances = editorOverlayStore.getCursorInstances();
             return cursorInstances && cursorInstances.length > 0;
@@ -127,7 +127,7 @@ test.describe("CLM-0007: Move to the beginning of the line", () => {
 
         // Wait until cursor instance exists
         await page.waitForFunction(() => {
-            const editorOverlayStore = (window as any).editorOverlayStore;
+            const editorOverlayStore = (globalThis as any).editorOverlayStore;
             if (!editorOverlayStore) return false;
             const cursorInstances = editorOverlayStore.getCursorInstances();
             return cursorInstances && cursorInstances.length > 0;

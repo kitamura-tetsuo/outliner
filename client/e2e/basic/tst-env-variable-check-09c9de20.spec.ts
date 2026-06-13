@@ -10,7 +10,7 @@ test("VITE_IS_TEST is true in client runtime", async ({ page }) => {
     // Navigate directly to home page - no project/page context needed
     await page.goto("/", { waitUntil: "networkidle" });
     const value = await page.evaluate(() => {
-        return (window as any).VITE_IS_TEST || (window as any)["import.meta.env"]?.VITE_IS_TEST;
+        return (globalThis as any).VITE_IS_TEST || (globalThis as any)["import.meta.env"]?.VITE_IS_TEST;
     });
     expect(value).toBeUndefined();
 });

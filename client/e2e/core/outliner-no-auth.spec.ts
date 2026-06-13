@@ -63,7 +63,7 @@ test.describe("Outliner No Auth Test", () => {
 
         // Check application state
         const appState = await page.evaluate(() => {
-            const win = window as any;
+            const win = globalThis as any;
             return {
                 // Check global variables
                 userManager: typeof win.__USER_MANAGER__,
@@ -72,7 +72,7 @@ test.describe("Outliner No Auth Test", () => {
 
                 // Check DOM state
                 readyState: document.readyState,
-                location: window.location.href,
+                location: globalThis.location.href,
 
                 // Check basic DOM elements
                 bodyExists: !!document.body,

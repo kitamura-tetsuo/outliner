@@ -12,11 +12,11 @@ test.describe("Yjs connection", () => {
     test("store exposes connection state", async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const isDefined = await page.evaluate(() => {
-            return typeof (window as any).__YJS_STORE__ !== "undefined";
+            return typeof (globalThis as any).__YJS_STORE__ !== "undefined";
         });
         expect(isDefined).toBe(true);
         const connected = await page.evaluate(() => {
-            const store = (window as any).__YJS_STORE__;
+            const store = (globalThis as any).__YJS_STORE__;
             return store ? store.getIsConnected?.() : undefined;
         });
         expect(typeof connected).toBe("boolean");

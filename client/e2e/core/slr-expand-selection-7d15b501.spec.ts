@@ -24,7 +24,7 @@ test.describe("SLR-0011: Expand selection", () => {
     test("Shift+Alt+Right expands selection", async ({ page }) => {
         // Check initial state
         const initialState = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
             return {
                 storeExists: !!store,
@@ -45,7 +45,7 @@ test.describe("SLR-0011: Expand selection", () => {
 
         // Check state after selection
         const afterSelectionState = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
             return {
                 storeExists: !!store,
@@ -69,7 +69,7 @@ test.describe("SLR-0011: Expand selection", () => {
             await page.waitForTimeout(200);
 
             const basicSelectionState = await page.evaluate(() => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return {
                     selectedText: store ? store.getSelectedText() : "",
                 };

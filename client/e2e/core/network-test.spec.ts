@@ -89,16 +89,14 @@ test.describe("Network Connectivity Test", () => {
 
         // Wait until UserManager is initialized
         await page.waitForFunction(
-            () => (window as any).__USER_MANAGER__ !== undefined,
+            () => (globalThis as any).__USER_MANAGER__ !== undefined,
             { timeout: 30000 },
         );
 
         // Check Firebase settings
         const firebaseConfig = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            const userManager = (window as any).__USER_MANAGER__;
-            // eslint-disable-next-line no-restricted-globals
-            const firebaseApp = (window as any).__firebase_client_app__;
+            const userManager = (globalThis as any).__USER_MANAGER__;
+            const firebaseApp = (globalThis as any).__firebase_client_app__;
 
             return {
                 userManagerExists: !!userManager,

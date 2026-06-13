@@ -17,7 +17,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
         // Explicitly clean up any comment data to ensure test isolation
         await page.evaluate(() => {
             // Clear comment data from the current page items if possible
-            const gs: any = (window as any).generalStore;
+            const gs: any = (globalThis as any).generalStore;
             if (gs?.currentPage?.items) {
                 const items = gs.currentPage.items;
                 const len = items?.length ?? 0;
@@ -85,7 +85,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
 
         // Add comments via Yjs x2 - use the currentPage approach which should match what the UI is using
         const idList = await page.evaluate((id) => {
-            const gs: any = (window as any).generalStore;
+            const gs: any = (globalThis as any).generalStore;
 
             // Try accessing the item through the current page which is what the UI uses
             if (gs?.currentPage) {
@@ -138,7 +138,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
 
         // Delete 1 item
         await page.evaluate(([id, cid]) => {
-            const gs: any = (window as any).generalStore;
+            const gs: any = (globalThis as any).generalStore;
             // Helper to delete comment from item
             const deleteFromItem = (it: any) => {
                 if (typeof it.deleteComment === "function") {

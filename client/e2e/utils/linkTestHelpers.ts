@@ -25,13 +25,13 @@ export class LinkTestHelpers {
 
         // Wait for Yjs backing store initialization
         await page.waitForFunction(() => {
-            const gs: any = (window as any).generalStore || (window as any).appStore;
+            const gs: any = (globalThis as any).generalStore || (globalThis as any).appStore;
             return !!(gs && gs.project);
         }, { timeout: 30000 });
 
         // Create via Yjs API
         await page.evaluate(({ projectName, pageName, content }) => {
-            const gs: any = (window as any).generalStore || (window as any).appStore;
+            const gs: any = (globalThis as any).generalStore || (globalThis as any).appStore;
             if (!gs?.project) throw new Error("generalStore.project not ready");
 
             try {
@@ -88,13 +88,13 @@ export class LinkTestHelpers {
 
         // Wait for Yjs initialization
         await page.waitForFunction(() => {
-            const gs: any = (window as any).generalStore || (window as any).appStore;
+            const gs: any = (globalThis as any).generalStore || (globalThis as any).appStore;
             return !!(gs && gs.project);
         }, { timeout: 30000 });
 
         // Prepare multiple pages in a single project
         await page.evaluate((projects) => {
-            const gs: any = (window as any).generalStore || (window as any).appStore;
+            const gs: any = (globalThis as any).generalStore || (globalThis as any).appStore;
             if (!gs?.project) throw new Error("generalStore.project not ready");
             try {
                 if (projects.length > 0) gs.project.title = projects[0].projectName;
@@ -180,12 +180,12 @@ export class LinkTestHelpers {
 
         // Wait for Yjs initialization
         await page.waitForFunction(() => {
-            const gs: any = (window as any).generalStore || (window as any).appStore;
+            const gs: any = (globalThis as any).generalStore || (globalThis as any).appStore;
             return !!(gs && gs.project);
         }, { timeout: 30000 });
 
         await page.evaluate(({ projectName, pageName, content }) => {
-            const gs: any = (window as any).generalStore || (window as any).appStore;
+            const gs: any = (globalThis as any).generalStore || (globalThis as any).appStore;
             if (!gs?.project) throw new Error("generalStore.project not ready");
             try {
                 gs.project.title = projectName;
@@ -253,7 +253,7 @@ export class LinkTestHelpers {
      */
     static async forceCreateInternalLink(page: Page, itemId: string, linkText: string): Promise<void> {
         await page.evaluate(({ itemId, linkText }) => {
-            const gs: any = (window as any).generalStore || (window as any).appStore;
+            const gs: any = (globalThis as any).generalStore || (globalThis as any).appStore;
             if (!gs?.project) return false;
             try {
                 const findById = (parent: any): any => {
@@ -334,8 +334,8 @@ export class LinkTestHelpers {
     ): Promise<void> {
         await page.evaluate(({ pageName, projectName, pageExists }) => {
             // Create global function if not exists
-            if (!window.__testShowLinkPreview) {
-                window.__testShowLinkPreview = (pageName, projectName, pageExists) => {
+            if (!globalThis.__testShowLinkPreview) {
+                globalThis.__testShowLinkPreview = (pageName, projectName, pageExists) => {
                     console.log(`Forcing link preview for page: ${pageName} (exists: ${pageExists})`);
 
                     // Create preview popup
@@ -381,7 +381,7 @@ export class LinkTestHelpers {
             }
 
             // Show preview
-            return window.__testShowLinkPreview(pageName, projectName, pageExists);
+            return globalThis.__testShowLinkPreview(pageName, projectName, pageExists);
         }, { pageName, projectName, pageExists });
 
         // Wait for preview to appear
@@ -511,7 +511,7 @@ export class LinkTestHelpers {
             const linksWithListeners = setupLinkEventListeners();
 
             // Check if MutationObserver exists
-            const hasMutationObserver = !!window.__linkPreviewMutationObserver;
+            const hasMutationObserver = !!globalThis.__linkPreviewMutationObserver;
 
             // Create MutationObserver if not exists
             if (!hasMutationObserver) {
@@ -555,7 +555,7 @@ export class LinkTestHelpers {
                 });
 
                 // Save to global variable
-                window.__linkPreviewMutationObserver = observer;
+                globalThis.__linkPreviewMutationObserver = observer;
             }
 
             return {

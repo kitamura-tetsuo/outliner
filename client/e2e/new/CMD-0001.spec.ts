@@ -62,15 +62,15 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // Debug: Check page state
         const debugInfo = await page.evaluate(() => {
             return {
-                commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
-                editorOverlayStore: !!(window as any).editorOverlayStore,
-                keyEventHandler: !!(window as any).__KEY_EVENT_HANDLER__,
+                commandPaletteVisible: (globalThis as any).commandPaletteStore?.isVisible,
+                editorOverlayStore: !!(globalThis as any).editorOverlayStore,
+                keyEventHandler: !!(globalThis as any).__KEY_EVENT_HANDLER__,
                 activeElement: document.activeElement?.tagName,
                 globalTextarea: !!document.querySelector(".global-textarea"),
-                cursorCount: (window as any).editorOverlayStore?.getCursorInstances()?.length || 0,
-                activeItemId: (window as any).editorOverlayStore?.activeItemId || null,
-                treeAvailable: !!(window as any).Tree,
-                itemsAvailable: !!(window as any).Items,
+                cursorCount: (globalThis as any).editorOverlayStore?.getCursorInstances()?.length || 0,
+                activeItemId: (globalThis as any).editorOverlayStore?.activeItemId || null,
+                treeAvailable: !!(globalThis as any).Tree,
+                itemsAvailable: !!(globalThis as any).Items,
             };
         });
         console.log("Debug info:", debugInfo);
@@ -84,10 +84,10 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // Debug: Check selection state before Enter
         const beforeEnterInfo = await page.evaluate(() => {
             return {
-                selectedIndex: (window as any).commandPaletteStore?.selectedIndex,
-                filteredCommands: (window as any).commandPaletteStore?.filtered?.map((c: any) => c.type),
-                selectedCommand: (window as any).commandPaletteStore?.filtered
-                    ?.[(window as any).commandPaletteStore?.selectedIndex]
+                selectedIndex: (globalThis as any).commandPaletteStore?.selectedIndex,
+                filteredCommands: (globalThis as any).commandPaletteStore?.filtered?.map((c: any) => c.type),
+                selectedCommand: (globalThis as any).commandPaletteStore?.filtered
+                    ?.[(globalThis as any).commandPaletteStore?.selectedIndex]
                     ?.type,
             };
         });
@@ -96,7 +96,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // Record state before pressing Enter
         const beforeEnterInfo2 = await page.evaluate(() => {
             return {
-                commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
+                commandPaletteVisible: (globalThis as any).commandPaletteStore?.isVisible,
                 itemCount: document.querySelectorAll("[data-item-id]").length,
             };
         });
@@ -104,8 +104,8 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // Add logs to confirm and insert methods
         await page.evaluate(() => {
-            const originalConfirm = (window as any).commandPaletteStore.confirm;
-            (window as any).commandPaletteStore.confirm = function(this: any) {
+            const originalConfirm = (globalThis as any).commandPaletteStore.confirm;
+            (globalThis as any).commandPaletteStore.confirm = function(this: any) {
                 console.log("CommandPaletteStore.confirm called");
                 console.log("selectedIndex:", this.selectedIndex);
                 console.log("filtered:", this.filtered);
@@ -119,8 +119,8 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                 }
             };
 
-            const originalInsert = (window as any).commandPaletteStore.insert;
-            (window as any).commandPaletteStore.insert = function(this: any, type: any) {
+            const originalInsert = (globalThis as any).commandPaletteStore.insert;
+            (globalThis as any).commandPaletteStore.insert = function(this: any, type: any) {
                 console.log("CommandPaletteStore.insert called with type:", type);
                 try {
                     const result = originalInsert.call(this, type);
@@ -135,16 +135,16 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // Check command palette state immediately before Enter
         const beforeEnterPaletteInfo = await page.evaluate(() => {
-            const cursors = (window as any).editorOverlayStore?.getCursorInstances() || [];
+            const cursors = (globalThis as any).editorOverlayStore?.getCursorInstances() || [];
             const cursor = cursors[0];
             const node = cursor?.findTarget();
-            const parent = node ? (window as any).Tree?.parent(node) : null;
+            const parent = node ? (globalThis as any).Tree?.parent(node) : null;
             const currentIndex = parent ? parent.indexOf(node) : -1;
 
             return {
-                isVisible: (window as any).commandPaletteStore?.isVisible,
-                selectedIndex: (window as any).commandPaletteStore?.selectedIndex,
-                filteredLength: (window as any).commandPaletteStore?.filtered?.length,
+                isVisible: (globalThis as any).commandPaletteStore?.isVisible,
+                selectedIndex: (globalThis as any).commandPaletteStore?.selectedIndex,
+                filteredLength: (globalThis as any).commandPaletteStore?.filtered?.length,
                 cursorItemId: cursor?.itemId,
                 currentNodeExists: !!node,
                 parentExists: !!parent,
@@ -170,13 +170,13 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // Check details of Enter key processing
         const enterProcessInfo = await page.evaluate(() => {
             return {
-                commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
-                generalStoreExists: !!(window as any).generalStore,
-                currentPageExists: !!(window as any).generalStore?.currentPage,
-                pagesExists: !!(window as any).generalStore?.pages,
-                pagesCurrentExists: !!(window as any).generalStore?.pages?.current,
-                pagesCurrentLength: (window as any).generalStore?.pages?.current?.length || 0,
-                keyEventHandlerExists: !!(window as any).__KEY_EVENT_HANDLER__,
+                commandPaletteVisible: (globalThis as any).commandPaletteStore?.isVisible,
+                generalStoreExists: !!(globalThis as any).generalStore,
+                currentPageExists: !!(globalThis as any).generalStore?.currentPage,
+                pagesExists: !!(globalThis as any).generalStore?.pages,
+                pagesCurrentExists: !!(globalThis as any).generalStore?.pages?.current,
+                pagesCurrentLength: (globalThis as any).generalStore?.pages?.current?.length || 0,
+                keyEventHandlerExists: !!(globalThis as any).__KEY_EVENT_HANDLER__,
             };
         });
         console.log("Enter process info:", enterProcessInfo);
@@ -199,10 +199,10 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                     el.textContent
                 ),
                 itemDetails: itemDetails,
-                pagesCurrentLength: (window as any).generalStore?.pages?.current?.length || 0,
-                currentPageItemsLength: (window as any).generalStore?.currentPage?.items?.length || 0,
-                totalItemsInTree: (window as any).generalStore?.currentPage?.items?.length || 0,
-                sharedTreeItems: Array.from((window as any).generalStore?.currentPage?.items || []).map((
+                pagesCurrentLength: (globalThis as any).generalStore?.pages?.current?.length || 0,
+                currentPageItemsLength: (globalThis as any).generalStore?.currentPage?.items?.length || 0,
+                totalItemsInTree: (globalThis as any).generalStore?.currentPage?.items?.length || 0,
+                sharedTreeItems: Array.from((globalThis as any).generalStore?.currentPage?.items || []).map((
                     item: any,
                 ) => ({
                     id: item.id,
@@ -214,7 +214,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // Additional debug info: Check OutlinerItem component state
         const componentStateInfo = await page.evaluate(() => {
-            const items = (window as any).generalStore?.currentPage?.items;
+            const items = (globalThis as any).generalStore?.currentPage?.items;
             if (!items) return { error: "No items found" };
 
             const itemsArray = Array.from(items);
@@ -260,7 +260,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
 
         // Wait for the store to reflect the correct state (this should work based on our store logic)
         await page.waitForFunction(() => {
-            const cp = (window as any).commandPaletteStore;
+            const cp = (globalThis as any).commandPaletteStore;
             return cp?.isVisible && cp?.query === "ch" && cp?.filtered?.length === 1
                 && cp?.filtered[0]?.type === "chart";
         }, { timeout: 10000 });

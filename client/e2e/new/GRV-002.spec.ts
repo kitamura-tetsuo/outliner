@@ -25,7 +25,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
         );
         // Ensure store pages are ready
         await page.waitForFunction(() => {
-            const gs = (window as any).generalStore || (window as any).appStore;
+            const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const pages = gs?.pages?.current;
             // Yjs Items are not an Array but have a length property
             return !!(pages && typeof (pages as any).length === "number" && (pages as any).length >= 1);
@@ -39,13 +39,13 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
         // Verify that the ECharts library is loaded correctly
         const echartsLoaded = await page.evaluate(() => {
-            return typeof (window as any).echarts !== "undefined";
+            return typeof (globalThis as any).echarts !== "undefined";
         });
         expect(echartsLoaded).toBe(true);
 
         // Create a simple graph to verify that ECharts works
         const initResult = await page.evaluate(() => {
-            const echarts = (window as any).echarts;
+            const echarts = (globalThis as any).echarts;
             if (!echarts) return { success: false, error: "ECharts not found" };
 
             try {
@@ -82,14 +82,14 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
         // Wait for the ECharts library to finish loading
         await page.waitForFunction(() => {
-            return typeof (window as any).echarts !== "undefined";
+            return typeof (globalThis as any).echarts !== "undefined";
         }, { timeout: 5000 });
 
         // Dynamically add a Graph View component within the project page and test
         const graphInitResult = await page.evaluate(() => {
             try {
                 // Wait a tick for store readiness in case of slow hydration
-                const gs = (window as any).generalStore || (window as any).appStore;
+                const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
                 const ready = !!(gs && gs.pages && gs.project);
                 if (!ready) return { success: false, error: "Store not available" };
                 // Dynamically create the Graph View component
@@ -101,16 +101,16 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                 document.body.appendChild(graphDiv);
 
                 // Initialize ECharts
-                const echarts = (window as any).echarts;
+                const echarts = (globalThis as any).echarts;
                 if (!echarts) {
                     return { success: false, error: "ECharts not available" };
                 }
 
                 const chart = echarts.init(graphDiv);
-                (window as any).__GRAPH_CHART__ = chart;
+                (globalThis as any).__GRAPH_CHART__ = chart;
 
                 // Set the initial graph
-                const store = (window as any).appStore;
+                const store = (globalThis as any).appStore;
                 if (store && store.pages && store.project) {
                     const raw = store.pages.current || [];
                     // Support non-Array types (Yjs Items)
@@ -156,7 +156,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
         // Wait until initial graph is ready with one node
         await page.waitForFunction(() => {
-            const chart = (window as any).__GRAPH_CHART__;
+            const chart = (globalThis as any).__GRAPH_CHART__;
             if (!chart) return false;
             try {
                 const option = chart.getOption();
@@ -171,8 +171,8 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
         // Create a page within the project (Yjs)
         const pageCreateResult = await page.evaluate(async () => {
             try {
-                const gs = (window as any).generalStore || (window as any).appStore;
-                const chart = (window as any).__GRAPH_CHART__;
+                const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
+                const chart = (globalThis as any).__GRAPH_CHART__;
                 if (!gs?.project || !chart) return { success: false, error: "Store or chart not available" };
 
                 // Add a new page (Yjs)
@@ -295,7 +295,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
         // Wait for the graph to update with the new node and link
         await page.waitForFunction(() => {
-            const chart = (window as any).__GRAPH_CHART__;
+            const chart = (globalThis as any).__GRAPH_CHART__;
             if (!chart) return false;
             try {
                 const option = chart.getOption();
@@ -310,7 +310,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
         const data = await page.evaluate(() => {
             try {
-                const chart = (window as any).__GRAPH_CHART__;
+                const chart = (globalThis as any).__GRAPH_CHART__;
                 if (!chart) return { error: "Chart not found" };
 
                 const opt = chart.getOption();

@@ -14,10 +14,10 @@ test.describe("SLR-0009: Drag and drop selection", () => {
         await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
         await page.evaluate(async () => {
-            (window as any).DEBUG_MODE = true;
+            (globalThis as any).DEBUG_MODE = true;
             // Clear global variables to avoid affecting other tests
-            delete (window as any).lastCopiedText;
-            delete (window as any).lastPastedText;
+            delete (globalThis as any).lastCopiedText;
+            delete (globalThis as any).lastPastedText;
 
             // Also clear navigator.clipboard
             try {
@@ -28,7 +28,7 @@ test.describe("SLR-0009: Drag and drop selection", () => {
         });
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            (globalThis as any).DEBUG_MODE = true;
         });
         const item = page.locator(".outliner-item.page-title");
         if (await item.count() === 0) {
@@ -88,7 +88,7 @@ test.describe("SLR-0009: Drag and drop selection", () => {
         expect(selectionExists).toBe(true);
 
         const selectedText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -119,7 +119,7 @@ test.describe("SLR-0009: Drag and drop selection", () => {
 
         // Check global variable before paste
         const globalText = await page.evaluate(() => {
-            return (window as any).lastCopiedText || "not found";
+            return (globalThis as any).lastCopiedText || "not found";
         });
         console.log(`Global text before paste: "${globalText}"`);
 
@@ -128,7 +128,7 @@ test.describe("SLR-0009: Drag and drop selection", () => {
 
         // Check global variable after paste
         const pastedText = await page.evaluate(() => {
-            return (window as any).lastPastedText || "not found";
+            return (globalThis as any).lastPastedText || "not found";
         });
         console.log(`Pasted text: "${pastedText}"`);
 

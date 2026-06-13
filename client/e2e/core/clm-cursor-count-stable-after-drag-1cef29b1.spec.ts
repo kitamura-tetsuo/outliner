@@ -25,7 +25,7 @@ test.describe("CLM-1cef29b1: Cursor count remains stable after drag", () => {
         const thirdId = await TestHelpers.getItemIdByIndex(page, 3);
 
         const cursorCountBefore = await page.evaluate(() => {
-            return (window as { editorOverlayStore?: { getCursorInstances: () => any[]; }; }).editorOverlayStore!
+            return (globalThis as { editorOverlayStore?: { getCursorInstances: () => any[]; }; }).editorOverlayStore!
                 .getCursorInstances().length;
         });
 
@@ -42,7 +42,7 @@ test.describe("CLM-1cef29b1: Cursor count remains stable after drag", () => {
         await page.waitForTimeout(300);
 
         const cursorCountAfter = await page.evaluate(() => {
-            return (window as { editorOverlayStore?: { getCursorInstances: () => any[]; }; }).editorOverlayStore!
+            return (globalThis as { editorOverlayStore?: { getCursorInstances: () => any[]; }; }).editorOverlayStore!
                 .getCursorInstances().length;
         });
 

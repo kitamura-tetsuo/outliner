@@ -102,7 +102,7 @@ export const test = base.extend({
                     };
                 }
 
-                // Also ensure the VITE_IS_TEST is available as a direct property on window
+                // Also ensure the VITE_IS_TEST is available as a direct property on globalThis
                 if (!globalObj.VITE_IS_TEST) {
                     globalObj.VITE_IS_TEST = "true";
                 }

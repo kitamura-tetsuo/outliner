@@ -24,8 +24,8 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
         // Navigate to home page where ContainerSelector is rendered
         // seedProjectAndNavigateForProject already navigates to "/" with skipSync
         await page.waitForFunction(() => {
-            return (window as any).__E2E__ === true && !!(window as any).__FIRESTORE_STORE__
-                && !!(window as any).__USER_MANAGER__;
+            return (globalThis as any).__E2E__ === true && !!(globalThis as any).__FIRESTORE_STORE__
+                && !!(globalThis as any).__USER_MANAGER__;
         }, { timeout: 30000 });
         console.log("[E2E-DEBUG] Environment and Stores confirmed.");
 
@@ -43,15 +43,15 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
 
         // 0) Seed baseline container to observe a delta instead of placeholder option
         const baselineId = await page.evaluate(async () => {
-            const svc: any = (window as any).__YJS_SERVICE__;
+            const svc: any = (globalThis as any).__YJS_SERVICE__;
             if (!svc?.createClient) throw new Error("__YJS_SERVICE__.createClient is not available");
             const client = await svc.createClient();
             return (client.projectId || client.containerId) as string;
         });
 
         await page.evaluate(async (projectId) => {
-            const fs: any = (window as any).__FIRESTORE_STORE__;
-            const um: any = (window as any).__USER_MANAGER__;
+            const fs: any = (globalThis as any).__FIRESTORE_STORE__;
+            const um: any = (globalThis as any).__USER_MANAGER__;
             const userId = um?.auth?.currentUser?.uid || "test-user-id";
             if (!fs) throw new Error("__FIRESTORE_STORE__ is not available");
             const apply = () => {
@@ -90,7 +90,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
 
         // 1) Create a new client via fluid (Yjs) service to ensure a unique containerId
         const newId = await page.evaluate(async () => {
-            const svc: any = (window as any).__YJS_SERVICE__;
+            const svc: any = (globalThis as any).__YJS_SERVICE__;
             if (!svc?.createClient) throw new Error("__YJS_SERVICE__.createClient is not available");
             const client = await svc.createClient();
             return (client.projectId || client.containerId) as string;
@@ -98,8 +98,8 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
 
         // 2) Replace userProject via store API (setUserProject) with baseline + new project
         await page.evaluate(async ([existingId, projectId]) => {
-            const fs: any = (window as any).__FIRESTORE_STORE__;
-            const um: any = (window as any).__USER_MANAGER__;
+            const fs: any = (globalThis as any).__FIRESTORE_STORE__;
+            const um: any = (globalThis as any).__USER_MANAGER__;
             const userId = um?.auth?.currentUser?.uid || "test-user-id";
             if (!fs) throw new Error("__FIRESTORE_STORE__ is not available");
             const apply = () => {

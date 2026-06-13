@@ -29,7 +29,7 @@ export class DataValidationHelpers {
                 if (!page.isClosed()) {
                     // Dump E2E logs if present
                     const logs = await page.evaluate(() => {
-                        const w: any = window as any;
+                        const w: any = globalThis as any;
                         return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
                     }, { timeout: 2000 });
                     if (Array.isArray(logs) && logs.length) {
@@ -62,7 +62,7 @@ export class DataValidationHelpers {
             await page.evaluate(() => {
                 try {
                     // Clear any existing E2E logs
-                    const w: any = window as any;
+                    const w: any = globalThis as any;
                     if (Array.isArray(w.E2E_LOGS)) {
                         w.E2E_LOGS.length = 0;
                     }
@@ -162,7 +162,7 @@ export class DataValidationHelpers {
         // Wait for the project to be available in the store
         try {
             await page.waitForFunction(() => {
-                const store = (window as any).generalStore || (window as any).appStore;
+                const store = (globalThis as any).generalStore || (globalThis as any).appStore;
                 return !!(store && store.project);
             }, { timeout: 30000 });
         } catch (e) {
@@ -189,9 +189,9 @@ export class DataValidationHelpers {
                     }
                 }
 
-                const store = (window as any).generalStore || (window as any).appStore;
+                const store = (globalThis as any).generalStore || (globalThis as any).appStore;
                 if (!store || !store.project) {
-                    throw new Error("Project not available on window.generalStore/appStore");
+                    throw new Error("Project not available on globalThis.generalStore/appStore");
                 }
 
                 const project = store.project;
