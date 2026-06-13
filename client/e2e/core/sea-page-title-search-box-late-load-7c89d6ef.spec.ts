@@ -48,10 +48,10 @@ test.describe("SEA-0001: page title search box", () => {
             // Check specifically for the second page
             const hasSecondPage = itemsArray.some((item: any) => item.text && item.text.includes("second-page"));
 
-            if (!hasSecondPage) {
-                // Return false to keep waiting
-                return false;
+            if (hasSecondPage) {
+                return true;
             }
+            return false;
         }, { timeout: 30000 }).catch(async () => {
             console.log(
                 "[Test] Warning: Timeout waiting for 'second-page' in live sync. Attempting reload to verify persistence...",
