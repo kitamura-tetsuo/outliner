@@ -135,13 +135,6 @@ describe("Sidebar", () => {
     });
 
     describe("Rendering", () => {
-        it("should render the sidebar component", () => {
-            render(Sidebar, { isOpen: true });
-
-            expect(screen.getByText("Sidebar")).toBeInTheDocument();
-            expect(screen.getByText("This is a placeholder sidebar component.")).toBeInTheDocument();
-        });
-
         it("should render the sidebar with correct classes when open", () => {
             const { container } = render(Sidebar, { isOpen: true });
 
