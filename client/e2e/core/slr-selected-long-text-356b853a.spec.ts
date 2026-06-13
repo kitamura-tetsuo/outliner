@@ -49,7 +49,6 @@ test.describe("SLR-356b853a: Long text selection range", () => {
 
         // Reliable copy via page.evaluate
         const textToCopy = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (editorOverlayStore) {
                 const selections = Object.values(editorOverlayStore.selections);
@@ -75,7 +74,6 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         await page.waitForTimeout(100);
 
         await page.evaluate((textToPaste) => {
-            // eslint-disable-next-line no-restricted-globals
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (editorOverlayStore && textToPaste) {
                 const cursorInstances = editorOverlayStore.getCursorInstances();

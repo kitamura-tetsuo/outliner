@@ -125,6 +125,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
             }
 
             // Set globally (for testing)
+
             (window as any).testClipboardText = selectedText;
             console.log("Stored test clipboard text:", selectedText);
         }, selectedText);
@@ -167,6 +168,7 @@ test.describe("SLR-20a382d6: Paste copied text", () => {
             });
 
             // Call KeyEventHandler.handlePaste directly
+
             const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
                 await KeyEventHandler.handlePaste(clipboardEvent);

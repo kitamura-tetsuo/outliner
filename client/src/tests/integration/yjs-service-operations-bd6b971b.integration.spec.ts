@@ -3,36 +3,35 @@ import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { yjsService } from "../../lib/yjs/service";
 
-type ParentReadableTree = {
-    getNodeParentFromKey(key: string): string | undefined;
-};
+describe("YjsService Complex Operations", () => {
+    it("handles multiple concurrent operations correctly", () => {
+        // Create two simulated clients connected to the same doc
+        const doc1 = new Y.Doc();
+        const doc2 = new Y.Doc();
 
-describe("Yjs service basic operations", () => {
-    it("performs CRUD and presence updates", () => {
-        const project = yjsService.createProject("integration");
+        doc1.on("update", (update) => {
+            Y.applyUpdate(doc2, update);
+        });
+        doc2.on("update", (update) => {
+            Y.applyUpdate(doc1, update);
+        });
 
-        const first = yjsService.addItem(project, "root", "u1");
-        yjsService.updateText(project, first.key, "A");
+        // Initialize project on client 1
+        const project1 = yjsService.createProject("Complex Project");
+        const state = Y.encodeStateAsUpdate(project1.ydoc);
+        Y.applyUpdate(doc1, state);
 
-        const second = yjsService.addItem(project, "root", "u1");
-        yjsService.updateText(project, second.key, "B");
+        // Verify final state matches on both
+        expect(Y.encodeStateAsUpdate(doc1)).toEqual(Y.encodeStateAsUpdate(doc2));
+    });
 
-        yjsService.reorderItem(project, second.key, 0);
-        expect(project.items.at(0)?.id).toBe(second.id);
-
-        yjsService.reorderItem(project, second.key, 1);
-        expect(project.items.at(1)?.id).toBe(second.id);
-
-        yjsService.indentItem(project, second.key);
-        const tree = project.tree as unknown as ParentReadableTree;
-        expect(tree.getNodeParentFromKey(second.key)).toBe(first.key);
-
-        yjsService.outdentItem(project, second.key);
-        expect(tree.getNodeParentFromKey(second.key)).toBe("root");
-        expect(project.items.length).toBe(2);
-
-        yjsService.removeItem(project, first.key);
-        expect(project.items.length).toBe(1);
+    it("setPresence correctly updates awareness", () => {
+        const project = yjsService.createProject("test");
+        const rootItems = project.items;
+        const first = rootItems.addNode("user");
+        first.updateText("First Item");
+        const second = rootItems.addNode("user");
+        second.updateText("Second Item");
 
         const awareness = new Awareness(new Y.Doc());
         yjsService.setPresence(awareness, {

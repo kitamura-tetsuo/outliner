@@ -75,6 +75,7 @@ test.describe("Container Title Persistence Tests", () => {
         // Set container title in metaDoc (call setContainerTitleInMetaDoc)
         await page.evaluate((projectName) => {
             // Call metaDoc module function to set title
+
             const metaDocModule = (window as any).__META_DOC_MODULE__;
             if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
                 metaDocModule.setContainerTitleInMetaDoc(projectName, "Custom Container Title");

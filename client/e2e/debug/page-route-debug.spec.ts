@@ -26,6 +26,7 @@ test.describe("Page Route Debug", () => {
         await page.reload();
 
         // Wait for UserManager initialization
+
         await page.waitForFunction(() => (window as any).__USER_MANAGER__ !== undefined, { timeout: 30000 });
 
         // Execute authentication

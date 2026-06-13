@@ -13,7 +13,6 @@ test.describe("SLR-0010: Change selection format", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
             (window as any).DEBUG_MODE = true;
         });
 
@@ -58,14 +57,12 @@ test.describe("SLR-0010: Change selection format", () => {
         // Wait for the application's selection state to sync with the DOM
         await page.waitForFunction(
             () => {
-                // eslint-disable-next-line no-restricted-globals
                 const store = (window as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
             null,
             { timeout: 3000 },
         ).catch(async () => {
-            // eslint-disable-next-line no-restricted-globals
             const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
@@ -109,14 +106,12 @@ test.describe("SLR-0010: Change selection format", () => {
         // Wait for the application's selection state to sync with the DOM
         await page.waitForFunction(
             () => {
-                // eslint-disable-next-line no-restricted-globals
                 const store = (window as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
             null,
             { timeout: 3000 },
         ).catch(async () => {
-            // eslint-disable-next-line no-restricted-globals
             const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
@@ -149,14 +144,12 @@ test.describe("SLR-0010: Change selection format", () => {
         // Wait for the application's selection state to sync with the DOM
         await page.waitForFunction(
             () => {
-                // eslint-disable-next-line no-restricted-globals
                 const store = (window as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
             null,
             { timeout: 3000 },
         ).catch(async () => {
-            // eslint-disable-next-line no-restricted-globals
             const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
@@ -195,14 +188,12 @@ test.describe("SLR-0010: Change selection format", () => {
         // Wait for the application's selection state to sync with the DOM
         await page.waitForFunction(
             () => {
-                // eslint-disable-next-line no-restricted-globals
                 const store = (window as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
             null,
             { timeout: 3000 },
         ).catch(async () => {
-            // eslint-disable-next-line no-restricted-globals
             const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
@@ -236,14 +227,12 @@ test.describe("SLR-0010: Change selection format", () => {
         // Wait for the application's selection state to sync with the DOM
         await page.waitForFunction(
             () => {
-                // eslint-disable-next-line no-restricted-globals
                 const store = (window as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
             null,
             { timeout: 3000 },
         ).catch(async () => {
-            // eslint-disable-next-line no-restricted-globals
             const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });

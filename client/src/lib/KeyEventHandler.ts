@@ -157,19 +157,25 @@ export class KeyEventHandler {
                     try {
                         // Confirm directly from the store's selected index first (independent of DOM)
                         try {
-                            const w: unknown = window as unknown;
-                            const ap: unknown = (w as unknown as { aliasPickerStore?: unknown; })?.aliasPickerStore
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const w: any = window as any;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const ap: any = (w as any).aliasPickerStore
                                 ?? aliasPickerStore;
-                            const opts: unknown[] = Array.isArray((ap as unknown as { options?: unknown[]; })?.options)
-                                ? (ap as unknown as { options: unknown[]; }).options
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const opts: unknown[] = Array.isArray((ap as any)?.options)
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                ? (ap as any).options
                                 : [];
-                            let si: number =
-                                typeof (ap as unknown as { selectedIndex?: number; })?.selectedIndex === "number"
-                                    ? (ap as unknown as { selectedIndex: number; }).selectedIndex
-                                    : 0;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            let si: number = typeof (ap as any)?.selectedIndex === "number"
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                ? (ap as any).selectedIndex
+                                : 0;
                             if (opts.length > 0) {
                                 si = Math.max(0, Math.min(si, opts.length - 1));
-                                const tid = (opts[si] as unknown as { id?: string; })?.id;
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                const tid = (opts[si] as any)?.id;
                                 if (tid) {
                                     try {
                                         console.log("KeyEventHandler(Enter@Picker): confirmById via store", {
@@ -178,7 +184,8 @@ export class KeyEventHandler {
                                             opts: opts.length,
                                         });
                                     } catch {}
-                                    ap.confirmById(tid);
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    (ap as any).confirmById(tid);
                                     event.preventDefault();
                                     return;
                                 }
@@ -208,32 +215,48 @@ export class KeyEventHandler {
                         // Fallback if unable to confirm via click path:
                         // Set the first content line (= test's secondId) as target
                         try {
-                            const w: unknown = window as unknown;
-                            const gs: unknown = w.generalStore || w.appStore;
-                            const root = (gs as unknown as { currentPage?: unknown; })?.currentPage;
-                            const picker = (w.aliasPickerStore ?? aliasPickerStore) as unknown;
-                            const aliasId: string | null = (picker as unknown as { itemId?: string; })?.itemId ?? null;
-                            const firstContent: unknown = (root as unknown as { items?: unknown; })?.items
-                                    && ((root as unknown as { items: unknown; }).items as unknown).length > 0
-                                ? (((root as unknown as { items: unknown; }).items as unknown).at
-                                    ? ((root as unknown as { items: unknown; }).items as unknown).at(0)
-                                    : ((root as unknown as { items: unknown; }).items as unknown)[0])
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const w: any = window as any;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const gs: any = w.generalStore || w.appStore;
+                            const root = gs?.currentPage;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const picker = (w.aliasPickerStore ?? aliasPickerStore) as any;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const aliasId: string | null = (picker as any)?.itemId ?? null;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const firstContent: any = (root as any)?.items
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    && ((root as any).items as any).length > 0
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                ? (((root as any).items as any).at
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    ? ((root as any).items as any).at(0)
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    : ((root as any).items as any)[0])
                                 : null;
-                            if (root && aliasId && (firstContent as unknown as { id?: string; })?.id) {
-                                const find = (node: unknown, id: string): unknown => {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            if (root && aliasId && (firstContent as any)?.id) {
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                const find = (node: any, id: string): any => {
                                     if (!node) return null;
-                                    if ((node as unknown as { id?: string; }).id === id) return node;
-                                    const ch: unknown = (node as unknown as { items?: unknown; }).items;
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    if ((node as any).id === id) return node;
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    const ch: any = (node as any).items;
                                     if (
                                         ch
-                                        && typeof (ch as unknown as Iterable<unknown>)[Symbol.iterator] === "function"
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        && typeof (ch as Iterable<any>)[Symbol.iterator] === "function"
                                     ) {
-                                        for (const c of (ch as unknown as Iterable<unknown>)) {
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        for (const c of (ch as Iterable<any>)) {
                                             const r = find(c, id);
                                             if (r) return r;
                                         }
                                     } else {
-                                        const len = (ch as unknown as { length?: number; })?.length ?? 0;
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        const len = (ch as any)?.length ?? 0;
                                         for (let i = 0; i < len; i++) {
                                             const c = ch.at ? ch.at(i) : ch[i];
                                             const r = find(c, id);
@@ -243,7 +266,8 @@ export class KeyEventHandler {
                                     return null;
                                 };
                                 const aliasItem = find(root, aliasId);
-                                if (aliasItem && !(aliasItem as unknown as { aliasTargetId?: string; }).aliasTargetId) {
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                if (aliasItem && !(aliasItem as any).aliasTargetId) {
                                     try {
                                         console.log(
                                             "KeyEventHandler: fallback setting aliasTargetId on",
@@ -252,8 +276,8 @@ export class KeyEventHandler {
                                             firstContent.id,
                                         );
                                     } catch {}
-                                    (aliasItem as unknown as { aliasTargetId?: string; }).aliasTargetId =
-                                        firstContent.id;
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    (aliasItem as any).aliasTargetId = firstContent.id;
                                 }
                                 try {
                                     const aliasEl = document.querySelector(
@@ -364,8 +388,9 @@ export class KeyEventHandler {
             const gsAny: unknown = typeof window !== "undefined"
                 ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
                 : null;
-            const ta: HTMLTextAreaElement | undefined = (gsAny as unknown as { textareaRef?: unknown; })
-                ?.textareaRef as unknown;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const ta: HTMLTextAreaElement | undefined = (gsAny as any)
+                ?.textareaRef;
             const taValue: string | null = ta?.value ?? null;
             const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
             const source = typeof taValue === "string" ? taValue : text;
@@ -486,7 +511,9 @@ export class KeyEventHandler {
                         commandPaletteStore.hide();
                         // Remove command string
                         const newText = text.slice(0, lastSlash) + text.slice(cursor.offset);
-                        node.updateText(newText);
+                        if (node) {
+                            node.updateText(newText);
+                        }
                         cursor.offset = lastSlash;
                         cursor.applyToStore();
 
@@ -532,8 +559,10 @@ export class KeyEventHandler {
                             }
 
                             if (newItem) {
-                                (newItem as unknown as { text?: string; }).text = "";
-                                (newItem as unknown).aliasTargetId = undefined;
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (newItem as any).text = "";
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (newItem as any).aliasTargetId = undefined;
                                 try {
                                     console.log(
                                         "KeyEventHandler(Palette): showing AliasPicker for",
@@ -608,8 +637,9 @@ export class KeyEventHandler {
                 const gs: unknown = typeof window !== "undefined"
                     ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
                     : null;
-                const ta: HTMLTextAreaElement | undefined = (gs as unknown as { textareaRef?: unknown; })
-                    ?.textareaRef as unknown;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const ta: HTMLTextAreaElement | undefined = (gs as any)
+                    ?.textareaRef;
                 const taValue: string | null = ta?.value ?? null;
                 const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
                 const source = typeof taValue === "string" ? taValue : text;
@@ -667,8 +697,10 @@ export class KeyEventHandler {
                         }
 
                         if (newItem) {
-                            (newItem as unknown as { text?: string; }).text = "";
-                            (newItem as unknown).aliasTargetId = undefined;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            (newItem as any).text = "";
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            (newItem as any).aliasTargetId = undefined;
                             try {
                                 console.log(
                                     "KeyEventHandler: showing AliasPicker for",
@@ -897,7 +929,8 @@ export class KeyEventHandler {
             const w: unknown = typeof window !== "undefined"
                 ? (window as Window & typeof globalThis & { [key: string]: unknown; })
                 : null;
-            const gs: unknown = (w as unknown as { generalStore?: unknown; })?.generalStore ?? {};
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const gs: any = (w as unknown as { generalStore?: unknown; })?.generalStore ?? {};
             const ch: string = typeof inputEvent.data === "string" ? inputEvent.data : "";
             gs.__lastInputStream = (gs.__lastInputStream || "") + ch;
             if (gs.__lastInputStream.length > 256) {
@@ -1226,8 +1259,10 @@ export class KeyEventHandler {
                     typeof navigator !== "undefined"
                     && (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
                         .clipboard
-                    && (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
-                        .clipboard.writeText
+                    && typeof (navigator as Navigator & {
+                            clipboard?: { writeText: (text: string) => Promise<void>; };
+                        })
+                            .clipboard?.writeText === "function"
                 ) {
                     (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
                         .clipboard.writeText(selectedText).catch((err: unknown) => {
@@ -1976,9 +2011,11 @@ export class KeyEventHandler {
             // Required because Clipboard API may be restricted in E2E test environments
             if (
                 !text && typeof window !== "undefined"
-                && (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                && (window as any).lastCopiedText
             ) {
-                text = (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                text = (window as any).lastCopiedText || "";
                 console.log(`Using text from global variable: "${text}"`);
             }
 
@@ -2040,8 +2077,10 @@ export class KeyEventHandler {
             // If VS Code multi-cursor text is included
             if (
                 vscodeMetadata
-                && Array.isArray((vscodeMetadata as unknown as { multicursorText?: unknown[]; }).multicursorText)
-                && (vscodeMetadata as unknown as { multicursorText?: unknown[]; }).multicursorText.length > 0
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                && Array.isArray((vscodeMetadata as any).multicursorText)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                && (vscodeMetadata as any).multicursorText.length > 0
             ) {
                 // Debug info
                 if (
@@ -2054,9 +2093,11 @@ export class KeyEventHandler {
                     );
                 }
 
-                const multicursorText = (vscodeMetadata as unknown as { multicursorText?: unknown[]; }).multicursorText;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const multicursorText = (vscodeMetadata as any).multicursorText as any[];
                 const cursorInstances = store.getCursorInstances();
-                const pasteMode = (vscodeMetadata as unknown as { pasteMode?: string; }).pasteMode || "spread"; // Default is spread
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const pasteMode = (vscodeMetadata as any).pasteMode || "spread"; // Default is spread
 
                 // pasteMode: 'spread' - Insert different text for each cursor
                 // pasteMode: 'full' - Insert same text for each cursor
@@ -2407,8 +2448,10 @@ export class KeyEventHandler {
                     typeof navigator !== "undefined"
                     && (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
                         .clipboard
-                    && (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
-                        .clipboard.writeText
+                    && typeof (navigator as Navigator & {
+                            clipboard?: { writeText: (text: string) => Promise<void>; };
+                        })
+                            .clipboard?.writeText === "function"
                 ) {
                     (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
                         .clipboard.writeText(selectedText).catch((err: unknown) => {

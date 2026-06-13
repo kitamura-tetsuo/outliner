@@ -49,7 +49,6 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
 
             // Check selection exists
             const selectionText = await page.evaluate(() => {
-                // eslint-disable-next-line no-restricted-globals
                 const store = (window as any).editorOverlayStore;
                 return store ? store.getSelectedText() : "";
             });
@@ -74,7 +73,6 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
             await CursorValidator.assertCursorCount(page, 1);
 
             const selectionText = await page.evaluate(() => {
-                // eslint-disable-next-line no-restricted-globals
                 const store = (window as any).editorOverlayStore;
                 return store ? store.getSelectedText() : "";
             });
@@ -94,7 +92,6 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
 
         // Verify multiple lines selected
         const selectionText = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).editorOverlayStore;
             return store ? store.getSelectedText() : "";
         });
@@ -110,7 +107,6 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
         await CursorValidator.assertCursorCount(page, 1);
 
         const newSelectionText = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
             const store = (window as any).editorOverlayStore;
             return store ? store.getSelectedText() : "";
         });

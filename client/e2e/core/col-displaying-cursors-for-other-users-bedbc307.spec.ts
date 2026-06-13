@@ -18,6 +18,7 @@ test.describe("COL-bedbc307: remote cursor display", () => {
         await TestHelpers.setCursor(page, id!, 0, "local");
         await TestHelpers.setCursor(page, id!, 0, "remote");
         await TestHelpers.waitForCursorVisible(page);
+
         const count = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
         expect(count).toBe(2);
     });

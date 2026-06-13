@@ -28,6 +28,7 @@ test.describe("SRE-001: Advanced Search & Replace", () => {
         let hits = Number((hitsText || "").replace(/[^0-9]/g, ""));
         if (!hits) {
             // fallback to internal counter in case DOM not updated yet
+
             hits = await page.evaluate(() => (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0);
         }
         expect(hits).toBe(2);

@@ -37,10 +37,13 @@
         return projectsFromUserProject(firestoreStore.userProject);
     });
     $effect(() => {
-        logger.info("ProjectSelector - projects len", {
-            len: projects.length,
-            ucv: firestoreStore.ucVersion,
-        });
+        logger.info(
+            {
+                len: projects.length,
+                ucv: firestoreStore.ucVersion,
+            },
+            "ProjectSelector - projects len",
+        );
     });
 
     // Display current loading project ID
@@ -129,7 +132,7 @@
                 try {
                     clean();
                 } catch (err) {
-                    logger.warn("ProjectSelector cleanup failed", err);
+                    logger.warn(err, "ProjectSelector cleanup failed");
                 }
             }
         };
@@ -149,8 +152,8 @@
         const currentUser = userManagerInstance.getCurrentUser();
         const authUser = userManagerInstance.auth?.currentUser;
 
-        logger.info("ProjectSelector - Current user:", currentUser);
-        logger.info("ProjectSelector - Auth user:", authUser);
+        logger.info({ currentUser }, "ProjectSelector - Current user:");
+        logger.info({ authUser }, "ProjectSelector - Auth user:");
 
         if (!currentUser && !authUser) {
             logger.info("ProjectSelector - No user found, attempting login...");
@@ -172,7 +175,7 @@
                     );
                 }, 1000);
             } catch (err) {
-                logger.error("ProjectSelector - Login failed:", err);
+                logger.error(err, "ProjectSelector - Login failed:");
             }
         }
     }
@@ -196,7 +199,7 @@
             // Emit event with selected project ID and name
             onProjectSelected(selectedProjectId, selectedProject.name);
         } catch (err) {
-            logger.error("Project selection error:", err);
+            logger.error(err, "Project selection error:");
             error =
                 err instanceof Error
                     ? err.message

@@ -73,7 +73,7 @@ async function rotateLogFiles() {
             if (response.ok) {
                 const result = await response.json();
                 if (import.meta.env.DEV) {
-                    logger.info("Log rotation completed", result);
+                    logger.info(result, "Log rotation completed");
                 }
                 return;
             }

@@ -57,7 +57,9 @@ test.describe("ALS-8a1f2c30: alias fallback shows path within 2s", () => {
             ap.lastConfirmedTargetId = targetId;
             ap.lastConfirmedAt = Date.now();
             // Slightly modify target item text to trigger re-render and ensure dependency recalculation
+
             const gs: any = (window as any).generalStore;
+
             const items = gs?.currentPage?.items as any;
             const len = items?.length ?? 0;
             for (let i = 0; i < len; i++) {

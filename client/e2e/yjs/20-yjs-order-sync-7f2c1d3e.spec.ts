@@ -60,8 +60,10 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
     // Wait for both provider.synced and actual data to be available using the test utility function
     const value = await p2.evaluate(async () => {
         // @ts-expect-error - Browser context import resolved by Vite
-        const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
+        const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/browserTestHelpers.ts");
+
         const provider = (window as any).__PROVIDER2__;
+
         const m = (window as any).__DOC2__.getMap("m");
 
         // Use the test-specific utility to wait for sync and data
@@ -75,6 +77,7 @@ test("order: p1 connect->set then p2 connect for initial sync", async ({ browser
     });
 
     const updates2 = await p2.evaluate(() => (window as any).__UPDATES2__);
+
     const updates2v2 = await p2.evaluate(() => (window as any).__UPDATES2_V2__ ?? 0);
     console.log("[yjs-order] p2 update events:", updates2, "updateV2:", updates2v2);
 

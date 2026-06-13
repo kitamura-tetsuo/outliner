@@ -67,6 +67,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
         const initialCursorInfo = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
             if (!store) return null;
+
             const cursor = Object.values(store.cursors)[0] as any;
             return cursor ? { itemId: cursor.itemId, offset: cursor.offset } : null;
         });
@@ -111,6 +112,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
             );
 
             // Display detailed selection information
+
             const sel = Object.values((window as any).editorOverlayStore.selections)[0] as any;
             if (sel) {
                 const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
@@ -190,6 +192,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
             );
 
             // Display detailed selection information
+
             const sel = Object.values((window as any).editorOverlayStore.selections)[0] as any;
             if (sel) {
                 const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];

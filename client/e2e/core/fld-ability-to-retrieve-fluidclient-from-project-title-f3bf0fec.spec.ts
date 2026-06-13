@@ -66,6 +66,7 @@ test.describe("YJS-0001: Project and page retrieval and verification", () => {
     test("Non-existent title is not found", async ({ page }) => {
         const result = await page.evaluate(() => {
             const title = "__not_exists__";
+
             const gs: any = (window as any).generalStore;
             const pages: any = gs?.project?.items;
             const len = pages?.length ?? 0;

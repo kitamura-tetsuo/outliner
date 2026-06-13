@@ -17,6 +17,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
         // Explicitly clean up any comment data to ensure test isolation
         await page.evaluate(() => {
             // Clear comment data from the current page items if possible
+
             const gs: any = (window as any).generalStore;
             if (gs?.currentPage?.items) {
                 const items = gs.currentPage.items;
@@ -73,6 +74,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
                     return item?.dataset.itemId ?? null;
                 }
             }
+
             return null as any;
         });
         if (!itemId) throw new Error("item id not found");

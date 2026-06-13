@@ -36,7 +36,6 @@ test.describe("Cursor sync between tabs", () => {
         // Wait for Yjs connection to be established
         try {
             await page1.waitForFunction(
-                // eslint-disable-next-line no-restricted-globals
                 () => (window as any).__YJS_STORE__?.getIsConnected?.() === true,
                 null,
                 {
@@ -59,6 +58,7 @@ test.describe("Cursor sync between tabs", () => {
             localStorage.setItem("VITE_IS_TEST", "true");
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
             localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+
             (window as any).__E2E__ = true;
         });
 
@@ -67,12 +67,10 @@ test.describe("Cursor sync between tabs", () => {
 
         // Wait for UserManager and authenticate on page2 (required for Yjs connection)
         await page2.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
             return !!(window as any).__USER_MANAGER__;
         }, { timeout: 10000 });
 
         await page2.evaluate(async () => {
-            // eslint-disable-next-line no-restricted-globals
             const mgr = (window as any).__USER_MANAGER__;
             if (mgr?.loginWithEmailPassword) {
                 await mgr.loginWithEmailPassword("test@example.com", "password");
@@ -80,14 +78,12 @@ test.describe("Cursor sync between tabs", () => {
         });
 
         await page2.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
             const mgr = (window as any).__USER_MANAGER__;
             return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
         }, { timeout: 10000 });
 
         // Wait for Yjs connection to be established on page2
         let page2Connected = await page2.waitForFunction(
-            // eslint-disable-next-line no-restricted-globals
             () => (window as any).__YJS_STORE__?.getIsConnected?.() === true,
             null,
             {
@@ -100,7 +96,6 @@ test.describe("Cursor sync between tabs", () => {
             await page2.reload();
             await TestHelpers.waitForAppReady(page2);
             page2Connected = await page2.waitForFunction(
-                // eslint-disable-next-line no-restricted-globals
                 () => (window as any).__YJS_STORE__?.getIsConnected?.() === true,
                 null,
                 {
@@ -173,7 +168,6 @@ test.describe("Cursor sync between tabs", () => {
         // Use editorOverlayStore cursor APIs for reliable editing (similar to working test)
         await TestHelpers.setCursor(page1, itemId!);
         await page1.evaluate((itemId) => {
-            // eslint-disable-next-line no-restricted-globals
             const editorStore = (window as any).editorOverlayStore;
             const cursor = editorStore?.getCursorInstances?.().find((c: any) => c.itemId === itemId);
             if (cursor) {

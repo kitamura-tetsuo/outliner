@@ -13,6 +13,7 @@ export class TreeValidator {
             // Check for debug function existence (Yjs)
             if (typeof window.getYjsTreeDebugData !== "function") {
                 // Fallback: Get basic data from appStore
+
                 const appStore = (window as any).appStore;
                 if (appStore && appStore.pages && appStore.pages.current) {
                     return {

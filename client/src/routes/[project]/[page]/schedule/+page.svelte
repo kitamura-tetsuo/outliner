@@ -18,7 +18,7 @@ import {
 import { store } from "../../../../stores/store.svelte";
 import { yjsStore } from "../../../../stores/yjsStore.svelte";
 import type { Item as AppItem } from "../../../../schema/app-schema";
-import type { Item as YjsItem } from "../../../../schema/yjs-schema";
+import type { Item as YjsItem } from "../../../../schema/app-schema";
 type Item = AppItem | YjsItem;
 
 // Import the load function from parent scope

@@ -44,6 +44,7 @@ export async function waitForCursorVisible(page: Page, timeout: number = 10000):
         // Get cursor information using CursorValidator
         const cursorData = await page.evaluate(() => {
             // Get EditorOverlayStore instance
+
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (!editorOverlayStore) {
                 return { cursorCount: 0, activeCursors: 0 };

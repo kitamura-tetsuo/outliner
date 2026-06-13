@@ -67,6 +67,7 @@ test.describe("Outliner Basic Test (No Auth)", () => {
         const userManagerExists = await page.evaluate(() => {
             return {
                 userManagerExists: typeof (window as any).__USER_MANAGER__ !== "undefined",
+
                 userManagerType: typeof (window as any).__USER_MANAGER__,
                 windowKeys: Object.keys(window).filter(key => key.startsWith("__")),
                 globalThis: typeof globalThis !== "undefined",

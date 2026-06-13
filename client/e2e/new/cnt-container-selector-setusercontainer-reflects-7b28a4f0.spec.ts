@@ -51,6 +51,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
 
         await page.evaluate(async (projectId) => {
             const fs: any = (window as any).__FIRESTORE_STORE__;
+
             const um: any = (window as any).__USER_MANAGER__;
             const userId = um?.auth?.currentUser?.uid || "test-user-id";
             if (!fs) throw new Error("__FIRESTORE_STORE__ is not available");
@@ -99,6 +100,7 @@ test.describe("CNT-7b28a4f0: Eventless ContainerSelector", () => {
         // 2) Replace userProject via store API (setUserProject) with baseline + new project
         await page.evaluate(async ([existingId, projectId]) => {
             const fs: any = (window as any).__FIRESTORE_STORE__;
+
             const um: any = (window as any).__USER_MANAGER__;
             const userId = um?.auth?.currentUser?.uid || "test-user-id";
             if (!fs) throw new Error("__FIRESTORE_STORE__ is not available");

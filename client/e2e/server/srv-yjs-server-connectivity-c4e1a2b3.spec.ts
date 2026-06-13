@@ -96,6 +96,7 @@ test.describe("Yjs server", () => {
 
         // The server should be accessible and at least acknowledge connection attempts
         // A 1006 error indicates the server is not accessible at the network level
+
         if ((wsServerResponse as any).connected === false && (wsServerResponse as any).code === 1006) {
             expect((wsServerResponse as any).connected).toBe(true);
         }
@@ -104,10 +105,13 @@ test.describe("Yjs server", () => {
         // 1. Connection was established (onopen called) OR
         // 2. Connection was acknowledged by server (close code != 1006)
         // The key is that the server is running and responding, even if it subsequently closes the connection
+
         if ((wsServerResponse as any).connected === false) {
             // Check if we at least got a response from the server (even if it was a rejection)
+
             if ((wsServerResponse as any).code && (wsServerResponse as any).code !== 1006) {
                 // Server responded with a rejection code, which means it's running
+
                 console.log(`Server responded with code ${(wsServerResponse as any).code}, indicating it's running`);
             } else {
                 console.error(`Server did not respond properly. Response:`, wsServerResponse);

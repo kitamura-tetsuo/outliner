@@ -19,20 +19,23 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
-    await p1.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
-    // eslint-disable-next-line no-restricted-globals
+    await p1.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
+
     await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 60000 });
     await p1.evaluate(async () => {
         const mgr = (window as any).__USER_MANAGER__;
         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
     });
+
     await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 60000 });
 
     const p1Connected = await p1.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite
         const { createMinimalProjectConnection } = await import("/src/lib/yjs/connection.ts");
         const conn = await createMinimalProjectConnection(pid);
+
         (window as any).__DOC__ = conn.doc;
+
         (window as any).__PROVIDER__ = conn.provider;
         conn.provider.on("status", (e: any) => console.log("[p1] status", e.status));
         conn.provider.on("synced", (data: { state: boolean; }) => console.log("[p1] sync", data.state));
@@ -42,6 +45,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
             }
             await new Promise(r => setTimeout(r, 100));
         }
+
         return conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected";
     }, projectId);
     expect(p1Connected).toBeTruthy();
@@ -51,6 +55,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         const d = (window as any).__DOC__;
         d.getMap("m").set("k", "v0");
     });
+
     const p1Local = await p1.evaluate(() => (window as any).__DOC__.getMap("m").get("k"));
     console.log("[variant] p1 local:", p1Local);
 
@@ -65,22 +70,27 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
-    await p2.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
-    // eslint-disable-next-line no-restricted-globals
+    await p2.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
+
     await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 60000 });
     await p2.evaluate(async () => {
         const mgr = (window as any).__USER_MANAGER__;
         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
     });
+
     await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 60000 });
 
     const p2Connected = await p2.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite
         const { createMinimalProjectConnection } = await import("/src/lib/yjs/connection.ts");
         const conn = await createMinimalProjectConnection(pid);
+
         (window as any).__DOC2__ = conn.doc;
+
         (window as any).__PROVIDER2__ = conn.provider;
+
         (window as any).__UPDATES2__ = 0;
+
         (window as any).__UPDATES2_V2__ = 0;
         conn.doc.on("update", () => {
             (window as any).__UPDATES2__++;
@@ -103,6 +113,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
             }
             await new Promise(r => setTimeout(r, 100));
         }
+
         return conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected";
     }, projectId);
     expect(p2Connected).toBeTruthy();
@@ -110,8 +121,10 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
     // Wait for both provider.synced and actual data to be available using the test utility function
     const v = await p2.evaluate(async () => {
         // @ts-expect-error - Browser context import resolved by Vite
-        const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
+        const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/browserTestHelpers.ts");
+
         const prov = (window as any).__PROVIDER2__;
+
         const m = (window as any).__DOC2__.getMap("m");
 
         // Use the test-specific utility to wait for sync and data
@@ -123,7 +136,9 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
 
         return m.get("k");
     });
+
     const updates2 = await p2.evaluate(() => (window as any).__UPDATES2__);
+
     const updates2v2 = await p2.evaluate(() => (window as any).__UPDATES2_V2__ ?? 0);
     console.log("[variant] p2 value:", v, "updates:", updates2, "updateV2:", updates2v2);
 

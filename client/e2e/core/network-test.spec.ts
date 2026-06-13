@@ -95,9 +95,8 @@ test.describe("Network Connectivity Test", () => {
 
         // Check Firebase settings
         const firebaseConfig = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
             const userManager = (window as any).__USER_MANAGER__;
-            // eslint-disable-next-line no-restricted-globals
+
             const firebaseApp = (window as any).__firebase_client_app__;
 
             return {

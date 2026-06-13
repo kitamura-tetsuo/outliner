@@ -93,6 +93,7 @@ test.describe("Box Selection Test via Mouse", () => {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
+
             const selections = Object.values((window as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
             return boxSelections.length;
@@ -169,6 +170,7 @@ test.describe("Box Selection Test via Mouse", () => {
             }
 
             // Force clear selection range
+
             if ((window as any).editorOverlayStore) {
                 (window as any).editorOverlayStore.clearSelections();
                 console.log("Explicitly called editorOverlayStore.clearSelections()");
@@ -184,6 +186,7 @@ test.describe("Box Selection Test via Mouse", () => {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
+
             const selections = Object.values((window as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
             console.log("Current selections after cancel:", selections);

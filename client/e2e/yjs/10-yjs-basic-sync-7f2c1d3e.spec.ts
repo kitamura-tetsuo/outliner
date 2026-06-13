@@ -25,7 +25,9 @@ test("basic map value sync via hocuspocus", async ({ browser }) => {
     });
 
     const url1 = await p1.evaluate(() => (window as any).__PROVIDER__?.url ?? "");
+
     const p1synced = await p1.evaluate(() => (window as any).__PROVIDER__?.isSynced ?? false);
+
     const p2synced = await p2.evaluate(() => (window as any).__PROVIDER2__?.isSynced ?? false);
     console.log("[yjs-basic] p1 synced:", p1synced, "p2 synced:", p2synced);
 
@@ -34,22 +36,24 @@ test("basic map value sync via hocuspocus", async ({ browser }) => {
     console.log("[yjs-basic] p2 url:", (url2 as string).slice(0, 100));
 
     // wait up to ~8s for initial sync to complete on both sides
+
     await p1.waitForFunction(() => (window as any).__PROVIDER__?.isSynced === true, null, { timeout: 8000 }).catch(() =>
         undefined
     );
+
     await p2.waitForFunction(() => (window as any).__PROVIDER2__?.isSynced === true, null, { timeout: 8000 }).catch(
         () => undefined,
     );
 
-    // eslint-disable-next-line no-restricted-globals
     await p1.waitForFunction(() => !!(window as any).__DOC__, null, { timeout: 10000 });
-    // eslint-disable-next-line no-restricted-globals
+
     await p2.waitForFunction(() => !!(window as any).__DOC2__, null, { timeout: 10000 });
 
     await p1.evaluate(() => {
         const d = (window as any).__DOC__;
         d.getMap("m").set("k", "v1");
     });
+
     const localValue = await p1.evaluate(() => (window as any).__DOC__.getMap("m").get("k"));
     console.log("[yjs-basic] p1 local value:", localValue);
 
@@ -64,6 +68,7 @@ test("basic map value sync via hocuspocus", async ({ browser }) => {
     });
 
     const updates2 = await p2.evaluate(() => (window as any).__UPDATES2__);
+
     const updates2v2 = await p2.evaluate(() => (window as any).__UPDATES2_V2__ ?? 0);
     console.log("[yjs-basic] p2 update events:", updates2, "updateV2:", updates2v2);
 

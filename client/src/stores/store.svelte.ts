@@ -211,6 +211,8 @@ export class GeneralStore {
         if (!v) {
             this._project = undefined;
             this._pageNamesCache.clear();
+            this._pagesData.items = undefined;
+            this.pagesVersion++;
             return;
         }
 
@@ -224,6 +226,8 @@ export class GeneralStore {
         // Monitor the root tree with Yjs observeDeep and bridge to Svelte subscription
         const project = v;
         const ymap = project?.ydoc?.getMap?.("orderedTree");
+
+        this.pagesVersion++; // Trigger signal for new project assignment
 
         // Setup observer immediately on the project itself
         const handler = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars

@@ -12,7 +12,7 @@ import { store } from "../../stores/store.svelte";
 let { data, children } = $props();
 
 import type { Project as AppProject } from "../../schema/app-schema";
-import type { Project as YjsProject } from "../../schema/yjs-schema";
+import type { Project as YjsProject } from "../../schema/app-schema";
 type Project = AppProject | YjsProject;
 import type { YjsClient } from "../../yjs/YjsClient";
 

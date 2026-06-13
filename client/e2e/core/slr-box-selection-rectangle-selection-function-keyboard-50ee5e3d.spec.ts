@@ -68,6 +68,7 @@ test.describe("Selection management test", () => {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
+
             const selections = Object.values((window as any).editorOverlayStore.selections);
             console.log("All selections:", selections);
             return selections.filter((s: any) => s.isBoxSelection).length;
@@ -79,6 +80,7 @@ test.describe("Selection management test", () => {
             if (!(window as any).editorOverlayStore) {
                 return 0;
             }
+
             const selections = Object.values((window as any).editorOverlayStore.selections);
             return selections.length;
         });
@@ -97,6 +99,7 @@ test.describe("Selection management test", () => {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
+
             const selections = Object.values((window as any).editorOverlayStore.selections);
             const boxSelection = selections.find((s: any) => s.isBoxSelection);
             // Verify if a rectangular selection exists
@@ -123,6 +126,7 @@ test.describe("Selection management test", () => {
             }
 
             // Forcibly clear the selection
+
             if ((window as any).editorOverlayStore) {
                 (window as any).editorOverlayStore.clearSelections();
                 console.log("Explicitly called editorOverlayStore.clearSelections()");
@@ -138,6 +142,7 @@ test.describe("Selection management test", () => {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
+
             const selections = Object.values((window as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
             console.log("Current selections after cancel:", selections);
@@ -151,6 +156,7 @@ test.describe("Selection management test", () => {
             if (!(window as any).editorOverlayStore) {
                 return 0;
             }
+
             const selections = Object.values((window as any).editorOverlayStore.selections);
             return selections.length;
         });

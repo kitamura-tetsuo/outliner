@@ -2,7 +2,7 @@
 import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
-import { Project } from "../schema/yjs-schema";
+import { Project } from "../schema/app-schema";
 import { firestoreStore, saveProjectIdToServer } from "../stores/firestoreStore.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";

@@ -178,9 +178,12 @@ export class OutlinerViewModel {
                 original: item,
                 text: item.text.toString(),
                 votes: [...((item as unknown as { votes?: string[]; }).votes || [])],
-                author: (item as unknown as { author?: string; }).author,
-                created: (item as unknown as { created?: number; }).created,
-                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                author: (item as unknown as { author?: string; }).author as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                created: (item as unknown as { created?: number; }).created as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged as any,
                 commentCount: (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0,
             });
             debugLog(

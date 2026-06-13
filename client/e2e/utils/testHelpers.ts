@@ -203,6 +203,7 @@ export class TestHelpers {
         }, { e: email, p: password });
 
         // Wait for authentication state propagation
+
         await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 15 * 1000 });
         TestHelpers.slog("Manual login successful");
     }
@@ -239,6 +240,7 @@ export class TestHelpers {
             }
 
             // Final check
+
             await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 10000 });
             TestHelpers.slog("setAccessibleProjects: Auth confirmed.");
         } catch (e) {
@@ -252,6 +254,7 @@ export class TestHelpers {
         );
         await page.evaluate(async ({ projects }) => {
             const fs = (window as any).__FIRESTORE_STORE__;
+
             const um = (window as any).__USER_MANAGER__;
             const userId = um?.auth?.currentUser?.uid;
 
@@ -281,6 +284,7 @@ export class TestHelpers {
                     updatedAt: new Date(),
                 };
             }
+
             const ps = (window as any).__PROJECT_STORE__;
 
             if (ps && typeof ps.syncFromFirestore === "function") {
@@ -603,6 +607,7 @@ export class TestHelpers {
                 if (!p) return [] as any[];
                 try {
                     if (Array.isArray(p)) return p;
+
                     if (typeof p === "object" && p !== null && typeof (p as any)[Symbol.iterator] === "function") {
                         return Array.from(p as Iterable<unknown>);
                     }
@@ -775,8 +780,10 @@ export class TestHelpers {
                 (window as any).getYjsTreeDebugData = function() {
                     return buildYjsSnapshot();
                 };
+
                 (window as any).getYjsTreePathData = function(path?: string) {
                     const data = buildYjsSnapshot();
+
                     if (!path || (data as any)?.error) return data;
                     const parts = String(path).split(".");
                     let res: any = data;
@@ -810,6 +817,7 @@ export class TestHelpers {
             await page.waitForFunction(
                 () => {
                     if (typeof window === "undefined") return false;
+
                     const editorOverlayStore = (window as any)?.editorOverlayStore;
                     if (!editorOverlayStore) {
                         return false;
@@ -1040,6 +1048,7 @@ export class TestHelpers {
         }
 
         // Wait for generalStore to be available
+
         await page.waitForFunction(() => !!(window as any).generalStore, { timeout: 60000 });
         TestHelpers.slog("generalStore is available");
 
@@ -1066,6 +1075,7 @@ export class TestHelpers {
                         console.log("GS.pages.current:", gs.pages?.current);
                         console.log("GS.currentPage:", gs.currentPage);
                     }
+
                     console.log("YJS.isConnected:", (window as any).__YJS_STORE__?.isConnected);
                 });
                 throw e;
@@ -1108,6 +1118,7 @@ export class TestHelpers {
                 const hasData = await page.evaluate(async (targetPageName) => {
                     try {
                         // First check if Yjs is connected
+
                         const yjsStore = (window as any).__YJS_STORE__;
                         const isConnected = yjsStore?.getIsConnected?.() === true;
                         if (!isConnected) {
@@ -1199,6 +1210,7 @@ export class TestHelpers {
                                 yjsStoreKeys: (window as any).__YJS_STORE__
                                     ? Object.keys((window as any).__YJS_STORE__)
                                     : "no yjsStore",
+
                                 generalStoreKeys: (window as any).generalStore
                                     ? Object.keys((window as any).generalStore).filter(k => !k.startsWith("_"))
                                     : "no gs",
@@ -2120,24 +2132,34 @@ export class TestHelpers {
             // Reset global stores
             await page.evaluate(() => {
                 // Reset project and page info in generalStore
+
                 if ((window as any).generalStore) {
                     (window as any).generalStore.project = null;
+
                     (window as any).generalStore.pages = null;
+
                     (window as any).generalStore.currentPage = null;
                 }
 
                 // Reset project and page info in appStore
+
                 if ((window as any).appStore) {
                     (window as any).appStore.project = null;
+
                     (window as any).appStore.pages = null;
+
                     (window as any).appStore.currentPage = null;
                 }
 
                 // Reset cursor info in editorOverlayStore
+
                 if ((window as any).editorOverlayStore) {
                     (window as any).editorOverlayStore.cursors = {};
+
                     (window as any).editorOverlayStore.cursorInstances = new Map();
+
                     (window as any).editorOverlayStore.activeItemId = null;
+
                     (window as any).editorOverlayStore.cursorVisible = false;
                 }
             });

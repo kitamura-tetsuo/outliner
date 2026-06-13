@@ -145,7 +145,7 @@ export class Item {
         this.key = key;
     }
 
-    private get value(): Y.Map<ItemValueType> {
+    get value(): Y.Map<ItemValueType> {
         return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
     }
 
@@ -171,6 +171,10 @@ export class Item {
     get text(): string {
         const t = this.value.get("text") as Y.Text;
         return t ? t.toString() : "";
+    }
+
+    get ytext(): Y.Text {
+        return this.value.get("text") as Y.Text;
     }
 
     set text(v: string) {
@@ -431,7 +435,7 @@ export class Items implements Iterable<Item> {
         this.parentKey = parentKey;
     }
 
-    private childrenKeys(): string[] {
+    childrenKeys(): string[] {
         const children = this.tree.getNodeChildrenFromKey(this.parentKey);
         return this.tree.sortChildrenByOrder(children, this.parentKey);
     }
@@ -584,15 +588,17 @@ export class Project {
                 return originalGetNodeParent.call(this, key);
             } catch (e) {
                 if (e instanceof Error && e.message.includes("does not exist")) {
-                    return null;
+                    return undefined;
                 }
                 throw e;
             }
         };
 
         // Suppress recompute errors
-        const originalRecompute = tree.recomputeParentsAndChildren;
-        tree.recomputeParentsAndChildren = function() {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const treeAny = tree as any;
+        const originalRecompute = treeAny.recomputeParentsAndChildren;
+        treeAny.recomputeParentsAndChildren = function() {
             try {
                 return originalRecompute.call(this);
             } catch (e) {

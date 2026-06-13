@@ -1264,16 +1264,16 @@ export class EditorOverlayStore {
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
                     appStore?: { currentPage?: unknown; };
                     editorOverlayStore?: unknown;
-                }).generalStore.currentPage;
+                }).generalStore?.currentPage;
                 if (currentPage && currentPage.items) {
                     // Try to find the item by ID in the current page's items
                     // Use iterator to avoid O(N^2) complexity with indexed access on Items
                     if (currentPage.items) {
                         // Use iterateUnordered if available to avoid O(N log N) sorting
-                        const iter = (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
-                                .iterateUnordered
-                            ? (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
-                                .iterateUnordered()
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const iter = (currentPage.items as any).iterateUnordered
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            ? (currentPage.items as any).iterateUnordered()
                             : currentPage.items;
                         for (const item of iter) {
                             if (item && (item as unknown as { id: string; }).id === itemId) {
@@ -1822,11 +1822,13 @@ export class EditorOverlayStore {
                 return;
             }
 
-            const pageAwareness = client.getPageAwareness?.(pageId);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const pageAwareness = (client as any).getPageAwareness?.(pageId);
             if (!pageAwareness) {
                 console.log("[pushPresenceState] No pageAwareness", {
                     pageId,
-                    hasGetPageAwareness: !!client.getPageAwareness,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    hasGetPageAwareness: !!(client as any).getPageAwareness,
                 });
                 return;
             }
@@ -1836,7 +1838,14 @@ export class EditorOverlayStore {
             const selection = this.getLocalPrimarySelection();
 
             const presenceState = {
-                cursor: cursor ? { itemId: cursor.itemId, offset: cursor.offset } : undefined,
+                cursor: cursor
+                    ? {
+                        itemId: cursor.itemId,
+                        offset: cursor.offset,
+                        cursorId: cursor.cursorId,
+                        isActive: cursor.isActive,
+                    }
+                    : undefined,
                 selection: selection
                     ? {
                         startItemId: selection.startItemId,
@@ -1851,7 +1860,8 @@ export class EditorOverlayStore {
             };
 
             // Set directly to page-level awareness
-            yjsService.setPresence(pageAwareness, (!cursor && !selection) ? null : presenceState);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            yjsService.setPresence(pageAwareness, (!cursor && !selection) ? null : presenceState as any);
         } catch {
             // Skip presence sync in environments where Awareness is not available
         }

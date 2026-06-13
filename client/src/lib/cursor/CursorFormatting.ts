@@ -1,5 +1,5 @@
 import { searchItem } from "./CursorNavigationUtils";
-// import type { Item } from "../../schema/yjs-schema"; // Not used
+// import type { Item } from "../../schema/app-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
@@ -114,7 +114,8 @@ export class CursorFormatting {
      * Apply Scrapbox syntax formatting to selection spanning multiple items
      */
     private applyScrapboxFormattingToMultipleItems(
-        selection: import("../stores/EditorOverlayStore.svelte.ts").SelectionRange,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        selection: any,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
         // Get start and end item IDs
@@ -156,7 +157,7 @@ export class CursorFormatting {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
             const item = searchItem(
-                generalStore.currentPage! as unknown as import("../../schema/yjs-schema").Item,
+                generalStore.currentPage! as unknown as import("../../schema/app-schema").Item,
                 itemId,
             );
 

@@ -16,7 +16,9 @@ test.describe("SLR-0009: Drag and drop selection", () => {
         await page.evaluate(async () => {
             (window as any).DEBUG_MODE = true;
             // Clear global variables to avoid affecting other tests
+
             delete (window as any).lastCopiedText;
+
             delete (window as any).lastPastedText;
 
             // Also clear navigator.clipboard

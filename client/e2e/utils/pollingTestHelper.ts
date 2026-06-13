@@ -163,6 +163,7 @@ export async function getPollingStats(page: Page) {
 export async function disablePollingPattern(page: Page, pattern: RegExp) {
     await page.evaluate((patternStr) => {
         const regex = new RegExp(patternStr);
+
         (window as any).__pollingMonitor?.addDisablePattern(regex);
     }, pattern.source);
 }

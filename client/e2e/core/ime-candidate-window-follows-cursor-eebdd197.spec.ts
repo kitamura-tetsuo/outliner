@@ -40,6 +40,7 @@ test.describe("IME-0002: IME candidate window follows active cursor", () => {
             if (itemId) {
                 await page.evaluate(itemId => {
                     // Enable debug mode
+
                     (window as any).DEBUG_MODE = true;
 
                     const store = (window as any).editorOverlayStore;

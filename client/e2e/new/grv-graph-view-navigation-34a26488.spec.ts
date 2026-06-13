@@ -81,6 +81,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
             if (!nodes || nodes.length === 0) throw new Error("No nodes available");
 
             // Get project name from appStore
+
             const appStore = (window as any).appStore;
             const projectName = appStore?.project?.title;
 

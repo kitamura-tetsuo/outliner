@@ -44,6 +44,7 @@ test.describe("SLR-3724726f: Switch selection direction", () => {
         const forwardSelectionDirection = await page.evaluate<boolean | null>(() => {
             const store = (window as any).editorOverlayStore;
             const selection = Object.values<any>(store.selections)[0];
+
             return selection ? (selection as any).isReversed : null;
         });
 
@@ -80,6 +81,7 @@ test.describe("SLR-3724726f: Switch selection direction", () => {
         const reverseSelectionDirection = await page.evaluate<boolean | null>(() => {
             const store = (window as any).editorOverlayStore;
             const selection = Object.values<any>(store.selections)[0];
+
             return selection ? (selection as any).isReversed : null;
         });
 

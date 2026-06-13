@@ -38,9 +38,11 @@ test.describe("ALS-0001: Alias node", () => {
         await expect(page.locator(".alias-picker").first()).toBeVisible();
         const aliasId = await page.evaluate(async () => {
             const timeout = Date.now() + 5000;
+
             while (!(window as any).aliasPickerStore && Date.now() < timeout) {
                 await new Promise(resolve => setTimeout(resolve, 50));
             }
+
             return (window as any).aliasPickerStore?.itemId ?? null;
         });
         if (!aliasId) throw new Error("alias item not found on aliasPickerStore");

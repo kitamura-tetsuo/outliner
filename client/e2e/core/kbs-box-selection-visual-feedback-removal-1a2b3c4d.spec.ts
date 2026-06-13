@@ -57,6 +57,7 @@ test.describe("Box selection feedback", () => {
         // Enable debug mode to help troubleshoot
         await page.evaluate(() => {
             (window as any).DEBUG_MODE = true;
+
             console.log("DEBUG_MODE enabled:", (window as any).DEBUG_MODE);
         });
 
@@ -65,6 +66,7 @@ test.describe("Box selection feedback", () => {
         // Check if KeyEventHandler is available and get cursor info
         const debugInfo = await page.evaluate(() => {
             const KeyEventHandler = (window as any).KeyEventHandler;
+
             const store = (window as any).editorOverlayStore;
 
             if (!KeyEventHandler) {
@@ -114,6 +116,7 @@ test.describe("Box selection feedback", () => {
         // Trigger box selection programmatically
         const result = await page.evaluate(() => {
             const KeyEventHandler = (window as any).KeyEventHandler;
+
             const store = (window as any).editorOverlayStore;
             const event = new KeyboardEvent("keydown", {
                 key: "ArrowRight",
@@ -150,11 +153,13 @@ test.describe("Box selection feedback", () => {
         // Get detailed selection info
         const selectionInfo = await page.evaluate(() => {
             const store = (window as any).editorOverlayStore;
+
             const aliasPickerStore = (window as any).aliasPickerStore;
             const selections = store.selections;
 
             return {
                 aliasPickerVisible: aliasPickerStore?.isVisible,
+
                 navigatorWebdriver: (window as any).navigator?.webdriver,
                 selections: Object.entries(selections).map(([key, sel]: [string, any]) => ({
                     key,

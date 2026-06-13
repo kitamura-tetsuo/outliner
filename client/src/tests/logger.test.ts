@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite
 
 // Mock logger module first to mock useConsoleAPI
 vi.mock("../lib/logger", async (importOriginal: () => Promise<unknown>) => {
-    const actual = await importOriginal();
+    const actual = await importOriginal() as Record<string, unknown>;
 
     // Define logger as custom type
     type LoggerMock = {
@@ -96,10 +96,9 @@ vi.mock("../lib/logger", async (importOriginal: () => Promise<unknown>) => {
 import { getLogger } from "../lib/logger";
 
 // Set global mock for window object (required when testing without jsdom)
-// @ts-expect-error - mock for tests
 global.window = {
     console: console,
-} as unknown as Window;
+} as unknown as Window & typeof globalThis;
 
 // Mock fetch
 global.fetch = vi.fn(() =>

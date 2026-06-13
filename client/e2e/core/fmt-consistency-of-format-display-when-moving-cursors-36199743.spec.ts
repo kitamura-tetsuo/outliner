@@ -309,6 +309,7 @@ test.afterEach(async ({ page }) => {
     // Reset editor state to prevent test interference
     await page.evaluate(() => {
         // Clear any remaining editor state
+
         if ((window as any).editorOverlayStore) {
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore.reset) {
@@ -329,6 +330,7 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear any other potential shared state
+
         if ((window as any).aliasPickerStore) {
             const aliasPickerStore = (window as any).aliasPickerStore;
             if (aliasPickerStore.reset) {
@@ -342,6 +344,7 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear command palette state if it exists
+
         if ((window as any).commandPaletteStore) {
             const commandPaletteStore = (window as any).commandPaletteStore;
             if (commandPaletteStore.reset) {
@@ -354,6 +357,7 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear any potential global state that could affect other tests
+
         if ((window as any).userPreferencesStore) {
             const userPreferencesStore = (window as any).userPreferencesStore;
             if (userPreferencesStore.reset) {
@@ -367,6 +371,7 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear any potential shared tree state
+
         if ((window as any).generalStore) {
             const generalStore = (window as any).generalStore;
             // Reset cursor-related state in general store if it exists

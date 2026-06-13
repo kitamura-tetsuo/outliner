@@ -43,11 +43,13 @@ test.describe("Yjs data is reflected in UI", () => {
             // Overwrite existing items
             for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
                 const it = (items as any).at ? (items as any).at(i) : (items as any)[i];
+
                 (it as any)?.updateText?.(lines[i]);
             }
             // Add missing items
             for (let i = existing as number; i < lines.length; i++) {
                 const node = (items as any).addNode?.("tester");
+
                 (node as any)?.updateText?.(lines[i]);
             }
         }, lines);
@@ -92,10 +94,12 @@ test.describe("Yjs data is reflected in UI", () => {
             await page.evaluate((lines) => {
                 const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
                     .generalStore;
+
                 const items = gs?.currentPage?.items as any;
                 if (!items) return;
                 for (let i = 0; i < lines.length; i++) {
                     const it = items.at ? items.at(i) : items[i];
+
                     (it as any)?.updateText?.(lines[i]);
                 }
             }, lines);

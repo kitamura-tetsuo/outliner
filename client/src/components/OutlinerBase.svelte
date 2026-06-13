@@ -196,7 +196,8 @@
                         result = origAdd.call(this, author, text);
                     } else {
                         const wrapper = ensureCommentsArrayOn(this) as Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>> | undefined;
-                        const comments = wrapper ? new Comments(wrapper) : null;
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const comments = wrapper ? new Comments(wrapper as any) : null;
                         result = comments?.addComment?.(author, text);
                     }
                     broadcastCommentCount(this);
@@ -213,7 +214,8 @@
                         result = origDel.call(this, commentId);
                     } else {
                         const wrapper = ensureCommentsArrayOn(this) as Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>> | undefined;
-                        const comments = wrapper ? new Comments(wrapper) : null;
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const comments = wrapper ? new Comments(wrapper as any) : null;
                         comments?.deleteComment?.(commentId);
                         result = undefined;
                     }
@@ -282,7 +284,8 @@
                                         const wrapper =
                                             ensureCommentsArrayOn(this);
                                         const comments = wrapper
-                                            ? new Comments(wrapper)
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            ? new Comments(wrapper as any)
                                             : null;
                                         const res = comments?.addComment?.(
                                             author,
@@ -311,7 +314,8 @@
                                         const wrapper =
                                             ensureCommentsArrayOn(this);
                                         const comments = wrapper
-                                            ? new Comments(wrapper)
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            ? new Comments(wrapper as any)
                                             : null;
                                         comments?.deleteComment?.(commentId);
                                         broadcastCommentCount(this);

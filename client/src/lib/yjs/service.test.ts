@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
-import { Items } from "../../schema/yjs-schema";
+import { Items } from "../../schema/app-schema";
 import { yjsService } from "./service";
 
 describe("yjsService", () => {
@@ -29,7 +29,10 @@ describe("yjsService", () => {
 
     it("sets presence state", () => {
         const awareness = new Awareness(new Y.Doc());
-        yjsService.setPresence(awareness, { cursor: { itemId: "i1", offset: 0, cursorId: "1", isActive: true } });
+        yjsService.setPresence(
+            awareness,
+            { cursor: { itemId: "i1", offset: 0, isActive: true, cursorId: "c1" } },
+        );
         const presence = yjsService.getPresence(awareness);
         expect(presence?.cursor?.itemId).toBe("i1");
     });
@@ -57,7 +60,7 @@ describe("yjsService", () => {
     });
 
     it("binds page presence to overlay", () => {
-        const awareness = new Awareness(new Y.Doc());
+        const awareness = new Awareness(new Y.Doc()) as Awareness & { emit(event: string, args: unknown[]): void; };
         // Provide a minimal global overlay store
         type CursorState = { itemId: string; offset: number; userId: string; };
         const editorOverlayStore = {

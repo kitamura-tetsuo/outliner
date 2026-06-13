@@ -35,11 +35,13 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
         // E2E specific: Directly add attachment to displayRef using __E2E_ADD_ATTACHMENT__
         // (deterministically reproduce DnD UI result instead of actual DnD event)
         // Wait for helper exposure
+
         await page.waitForFunction(() => !!(window as any).__E2E_ADD_ATTACHMENT__, null, { timeout: 5000 });
         // Get target element and add directly
         await page.evaluate(() => {
             const el = document.querySelector(".outliner-item .item-content") as Element | null;
             if (!el) throw new Error("item-content not found");
+
             (window as any).__E2E_ADD_ATTACHMENT__?.(el, "hello");
         });
         // Wait for preview to appear on DOM (depends on pure Yjs display)
@@ -54,6 +56,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
                     } catch {}
                     resolve();
                 };
+
                 window.addEventListener("item-attachments-changed", handler as any, { once: true } as any);
                 // Fallback: Continue after a short timeout even if event doesn't come because it's already reflected
                 setTimeout(() => {
@@ -73,11 +76,14 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
 
         // Add attachment twice with E2E specific helper (deterministically reproduce final result of DnD)
         // Call __E2E_ADD_ATTACHMENT__ twice
+
         await page.waitForFunction(() => !!(window as any).__E2E_ADD_ATTACHMENT__, null, { timeout: 5000 });
         await page.evaluate(() => {
             const el = document.querySelector(".outliner-item .item-content") as Element | null;
             if (!el) throw new Error("item-content not found");
+
             (window as any).__E2E_ADD_ATTACHMENT__?.(el, "a");
+
             (window as any).__E2E_ADD_ATTACHMENT__?.(el, "b");
         });
         // Wait for DOM reflection (at least 2 previews should be displayed in the same item)

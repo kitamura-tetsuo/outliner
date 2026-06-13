@@ -112,6 +112,7 @@ test.describe("Project Sharing E2E", () => {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
+
                 (window as any).__E2E__ = true;
             } catch {}
         });
@@ -129,6 +130,7 @@ test.describe("Project Sharing E2E", () => {
         await pageB.waitForLoadState("domcontentloaded");
 
         // Wait for UserManager to be available
+
         await pageB.waitForFunction(() => !!(window as any).__USER_MANAGER__, { timeout: 15000 });
 
         // Login

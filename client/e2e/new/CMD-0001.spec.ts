@@ -63,13 +63,19 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         const debugInfo = await page.evaluate(() => {
             return {
                 commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
+
                 editorOverlayStore: !!(window as any).editorOverlayStore,
+
                 keyEventHandler: !!(window as any).__KEY_EVENT_HANDLER__,
                 activeElement: document.activeElement?.tagName,
                 globalTextarea: !!document.querySelector(".global-textarea"),
+
                 cursorCount: (window as any).editorOverlayStore?.getCursorInstances()?.length || 0,
+
                 activeItemId: (window as any).editorOverlayStore?.activeItemId || null,
+
                 treeAvailable: !!(window as any).Tree,
+
                 itemsAvailable: !!(window as any).Items,
             };
         });
@@ -85,7 +91,9 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         const beforeEnterInfo = await page.evaluate(() => {
             return {
                 selectedIndex: (window as any).commandPaletteStore?.selectedIndex,
+
                 filteredCommands: (window as any).commandPaletteStore?.filtered?.map((c: any) => c.type),
+
                 selectedCommand: (window as any).commandPaletteStore?.filtered
                     ?.[(window as any).commandPaletteStore?.selectedIndex]
                     ?.type,
@@ -105,6 +113,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         // Add logs to confirm and insert methods
         await page.evaluate(() => {
             const originalConfirm = (window as any).commandPaletteStore.confirm;
+
             (window as any).commandPaletteStore.confirm = function(this: any) {
                 console.log("CommandPaletteStore.confirm called");
                 console.log("selectedIndex:", this.selectedIndex);
@@ -120,6 +129,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
             };
 
             const originalInsert = (window as any).commandPaletteStore.insert;
+
             (window as any).commandPaletteStore.insert = function(this: any, type: any) {
                 console.log("CommandPaletteStore.insert called with type:", type);
                 try {
@@ -138,12 +148,15 @@ test.describe("CMD-0001: Inline Command Palette", () => {
             const cursors = (window as any).editorOverlayStore?.getCursorInstances() || [];
             const cursor = cursors[0];
             const node = cursor?.findTarget();
+
             const parent = node ? (window as any).Tree?.parent(node) : null;
             const currentIndex = parent ? parent.indexOf(node) : -1;
 
             return {
                 isVisible: (window as any).commandPaletteStore?.isVisible,
+
                 selectedIndex: (window as any).commandPaletteStore?.selectedIndex,
+
                 filteredLength: (window as any).commandPaletteStore?.filtered?.length,
                 cursorItemId: cursor?.itemId,
                 currentNodeExists: !!node,
@@ -171,11 +184,17 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         const enterProcessInfo = await page.evaluate(() => {
             return {
                 commandPaletteVisible: (window as any).commandPaletteStore?.isVisible,
+
                 generalStoreExists: !!(window as any).generalStore,
+
                 currentPageExists: !!(window as any).generalStore?.currentPage,
+
                 pagesExists: !!(window as any).generalStore?.pages,
+
                 pagesCurrentExists: !!(window as any).generalStore?.pages?.current,
+
                 pagesCurrentLength: (window as any).generalStore?.pages?.current?.length || 0,
+
                 keyEventHandlerExists: !!(window as any).__KEY_EVENT_HANDLER__,
             };
         });
@@ -199,9 +218,13 @@ test.describe("CMD-0001: Inline Command Palette", () => {
                     el.textContent
                 ),
                 itemDetails: itemDetails,
+
                 pagesCurrentLength: (window as any).generalStore?.pages?.current?.length || 0,
+
                 currentPageItemsLength: (window as any).generalStore?.currentPage?.items?.length || 0,
+
                 totalItemsInTree: (window as any).generalStore?.currentPage?.items?.length || 0,
+
                 sharedTreeItems: Array.from((window as any).generalStore?.currentPage?.items || []).map((
                     item: any,
                 ) => ({

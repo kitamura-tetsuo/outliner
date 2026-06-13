@@ -148,6 +148,7 @@ test.describe("SLR-0006: Copy and paste selection across multiple items", () => 
             });
 
             // Call KeyEventHandler.handlePaste directly
+
             const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
                 await KeyEventHandler.handlePaste(clipboardEvent);

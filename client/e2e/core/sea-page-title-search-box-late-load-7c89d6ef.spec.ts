@@ -37,19 +37,19 @@ test.describe("SEA-0001: page title search box", () => {
         // Explicitly wait for project items to be loaded from Yjs BEFORE typing
         // This ensures the SearchBox has data to search against
         await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
             const gs = (window as any).generalStore || (window as any).appStore;
             const items = gs?.project?.items;
             // Handle Proxy/AppSchema items - verify using iterator or Array.from
+
             const itemsArray = Array.from(items as any);
 
             // Check specifically for the second page
             const hasSecondPage = itemsArray.some((item: any) => item.text && item.text.includes("second-page"));
 
-            if (!hasSecondPage) {
-                // Return false to keep waiting
-                return false;
+            if (hasSecondPage) {
+                return true;
             }
+            return false;
         }, { timeout: 30000 }).catch(async () => {
             console.log(
                 "[Test] Warning: Timeout waiting for 'second-page' in live sync. Attempting reload to verify persistence...",
@@ -58,10 +58,10 @@ test.describe("SEA-0001: page title search box", () => {
             // Dump debug info carefully
             try {
                 const debugInfo = await page.evaluate(() => {
-                    // eslint-disable-next-line no-restricted-globals
                     const gs = (window as any).generalStore;
                     const items = gs?.project?.items;
                     // Items is a Proxy, need to convert
+
                     const itemsArr = items ? Array.from(items as any) : [];
                     return {
                         hasGs: !!gs,
@@ -83,7 +83,7 @@ test.describe("SEA-0001: page title search box", () => {
             await page.reload();
             try {
                 await page.waitForLoadState("domcontentloaded");
-                // eslint-disable-next-line no-restricted-globals
+
                 await page.waitForFunction(() => !!(window as any).generalStore, { timeout: 10000 });
             } catch (e) {
                 console.log("Warning: Reload wait failed", e);
@@ -92,11 +92,11 @@ test.describe("SEA-0001: page title search box", () => {
             // Wait again after reload
             await page.waitForFunction(() => {
                 try {
-                    // eslint-disable-next-line no-restricted-globals
                     const gs = (window as any).generalStore;
                     const items = gs?.project?.items;
                     // Handle Proxy for array
                     if (!items) return false;
+
                     const arr = Array.from(items as any);
                     return arr.some((item: any) => {
                         const t = item?.text?.toString ? item.text.toString() : String(item?.text || "");

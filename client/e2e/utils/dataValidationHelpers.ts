@@ -62,6 +62,7 @@ export class DataValidationHelpers {
             await page.evaluate(() => {
                 try {
                     // Clear any existing E2E logs
+
                     const w: any = window as any;
                     if (Array.isArray(w.E2E_LOGS)) {
                         w.E2E_LOGS.length = 0;
@@ -198,12 +199,14 @@ export class DataValidationHelpers {
                 const pages: Array<{ title: string; items: Array<{ text: string; }>; }> = [];
 
                 // project.items is proxied array-like; iterate by length
+
                 const len = (project.items as any)?.length ?? 0;
                 for (let i = 0; i < len; i++) {
                     const pageItem = (project.items as any).at(i);
                     if (!pageItem) continue;
                     const pageTitle = yTextToString(pageItem.text);
                     const children: Array<{ text: string; }> = [];
+
                     const clen = (pageItem.items as any)?.length ?? 0;
                     for (let j = 0; j < clen; j++) {
                         const child = (pageItem.items as any).at(j);
