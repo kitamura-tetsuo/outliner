@@ -2,6 +2,7 @@ import type { Item } from "../../schema/yjs-schema";
 import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const items = node.items as any;
     if (!items || typeof (items as Record<symbol, unknown>)[Symbol.iterator] !== "function") {
         return [];

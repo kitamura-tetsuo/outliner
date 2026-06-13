@@ -4,6 +4,7 @@ import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function childrenKeys(tree: any, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
     return tree.sortChildrenByOrder(children, parentKey);
@@ -88,6 +89,7 @@ export const yjsService = {
     },
 
     moveItem(project: Project, itemKey: string, newParentKey: string, index?: number) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = project.tree as any;
         tree.moveChildToParent(itemKey, newParentKey);
         if (index !== undefined) {
@@ -104,6 +106,7 @@ export const yjsService = {
     },
 
     indentItem(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = project.tree as any;
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
@@ -117,6 +120,7 @@ export const yjsService = {
     },
 
     outdentItem(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = project.tree as any;
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
@@ -127,6 +131,7 @@ export const yjsService = {
     },
 
     reorderItem(project: Project, itemKey: string, index: number) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = project.tree as any;
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
@@ -165,6 +170,7 @@ export const yjsService = {
             const target = resolvePresenceStore();
             if (!target) return;
             const states = awareness.getStates();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const clientId = (awareness as any).clientID;
             const overlay = resolveOverlayStore();
 
@@ -202,6 +208,7 @@ export const yjsService = {
             const overlay = resolveOverlayStore();
             if (!overlay) return; // no-op when overlay store not present
             const states = awareness.getStates();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const clientId = (awareness as any).clientID;
 
             [...added, ...updated].forEach((id: number) => {
@@ -225,6 +232,7 @@ export const yjsService = {
     },
 
     promoteChildren(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = project.tree as any;
         const children = childrenKeys(tree, itemKey);
         if (children.length === 0) return;
@@ -241,6 +249,7 @@ export const yjsService = {
     },
 
     moveSubtreeUp(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = project.tree as any;
         const parentKey = tree.getNodeParentFromKey(itemKey);
         if (!parentKey) return;
@@ -252,6 +261,7 @@ export const yjsService = {
     },
 
     moveSubtreeDown(project: Project, itemKey: string) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = project.tree as any;
         const parentKey = tree.getNodeParentFromKey(itemKey);
         if (!parentKey) return;

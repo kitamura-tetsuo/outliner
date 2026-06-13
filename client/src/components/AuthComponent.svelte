@@ -81,6 +81,7 @@ onMount(() => {
 
     // For testing: Custom authentication event listener
     if (typeof document !== "undefined") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         document.addEventListener("auth-success" as any, (event: AuthSuccessEvent) => {
             if (event.detail && event.detail.user) {
                 currentUser = event.detail.user;

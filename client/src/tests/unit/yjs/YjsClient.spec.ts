@@ -49,12 +49,19 @@ describe("YjsClient", () => {
 
         // Create a simple mock for Project since we don't need its full logic for this test
         project = {
-            title: "Test Project",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             metadata: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             rootFolder: {} as any,
             dispose: () => {},
+            title: "Test Project", // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            metadata: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            rootFolder: {} as any,
+            dispose: () => {},
+
             items: { length: 0 },
-        } as any;
+        } as unknown as Project;
 
         client = new YjsClient({
             clientId,

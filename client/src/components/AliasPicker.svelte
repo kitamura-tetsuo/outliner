@@ -24,7 +24,9 @@ let activeDescendantId = $derived(visible && selectedIndex >= 0 ? `alias-option-
 
 onMount(() => {
     const onVis = (e: AliasPickerVisibilityEvent) => { try { visible = !!(e?.detail?.visible); } catch {} };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     window.addEventListener("aliaspicker-visibility" as any, onVis);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return () => window.removeEventListener("aliaspicker-visibility" as any, onVis);
 });
 

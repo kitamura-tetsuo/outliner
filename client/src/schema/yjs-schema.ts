@@ -88,14 +88,6 @@ export class Item {
         return this.value.get("id") as string;
     }
 
-    get created(): number {
-        return (this.value.get("created") as number) ?? 0;
-    }
-
-    get lastChanged(): number {
-        return (this.value.get("lastChanged") as number) ?? 0;
-    }
-
     get text(): Y.Text {
         return this.value.get("text") as Y.Text;
     }

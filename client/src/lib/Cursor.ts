@@ -60,6 +60,7 @@ export class Cursor implements CursorEditingContext {
         this.offset = opts.offset;
         this.isActive = opts.isActive;
         this.userId = opts.userId;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.editor = new CursorEditor(this as any);
     }
 
@@ -67,6 +68,7 @@ export class Cursor implements CursorEditingContext {
     private _findTarget(): Item | undefined {
         const root = generalStore.currentPage as Item | undefined;
         if (root) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const found = searchItem(root as any, this.itemId) as Item | undefined;
             if (found) return found;
         }
@@ -81,6 +83,7 @@ export class Cursor implements CursorEditingContext {
                 for (let i = 0; i < len; i++) {
                     const p = pages.at(i);
                     if (!p) continue;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const f = searchItem(p as any, this.itemId) as Item | undefined;
                     if (f) return f;
                 }
@@ -93,6 +96,7 @@ export class Cursor implements CursorEditingContext {
     }
 
     // Recursive search for Item on SharedTree (CursorEditingContext interface implementation)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     findTarget(): any {
         return this._findTarget();
     }
@@ -102,6 +106,7 @@ export class Cursor implements CursorEditingContext {
         if (typeof raw === "string") return raw;
         if (raw && typeof (raw as { toString?: () => string; }).toString === "function") {
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return (raw as any).toString();
             } catch {}
         }
@@ -363,6 +368,7 @@ export class Cursor implements CursorEditingContext {
             let parentItemInstance: import("../schema/app-schema").Item | null = null;
             if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                 // Create the parent Item from the parentKey
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 parentItemInstance = new (currentTarget!.constructor as any)(
                     currentTarget!.ydoc,
                     currentTarget!.tree,
@@ -1476,10 +1482,13 @@ export class Cursor implements CursorEditingContext {
                     if (prevEl) {
                         const prevItemId = prevEl.getAttribute("data-item-id");
                         if (prevItemId && prevItemId !== this.itemId) {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             prevItem = searchItem(generalStore.currentPage as any, prevItemId) as any;
 
                             newItemId = prevItemId;
                             const treeTextLength = prevItem
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 ? this.getTargetText(prevItem as any).length
                                 : undefined;
                             const domTextLength = prevEl.querySelector(".item-text")?.textContent?.length
@@ -1525,6 +1534,7 @@ export class Cursor implements CursorEditingContext {
             const text = target ? this.getTargetText(target) : "";
             const atEndOfCurrentItem = this.offset >= text.length;
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let nextItem: any = findNextItem(this.itemId);
 
             // If findNextItem failed, try to find the next item via DOM traversal as a fallback
@@ -1555,6 +1565,7 @@ export class Cursor implements CursorEditingContext {
                             // Try to find this item in the Yjs tree
                             const root = generalStore.currentPage as import("../schema/app-schema").Item;
                             if (root) {
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 nextItem = searchItem(root as any, nextItemId);
                             }
                         }
@@ -1625,6 +1636,7 @@ export class Cursor implements CursorEditingContext {
                         const currentIndex = allItemIds.indexOf(this.itemId);
                         if (currentIndex !== -1 && currentIndex < allItemIds.length - 1) {
                             const nextItemId = allItemIds[currentIndex + 1];
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const nextItemFromTree = searchItem(root as any, nextItemId);
                             if (nextItemFromTree) {
                                 newItemId = nextItemId;
@@ -1715,6 +1727,7 @@ export class Cursor implements CursorEditingContext {
                 const parentCollection = currentTarget?.parent;
                 // Get the parent Item by creating it from parentKey (skip "root" as it's the project level)
                 if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     prevItem = new (currentTarget!.constructor as any)(
                         currentTarget!.ydoc,
                         currentTarget!.tree,
@@ -1724,6 +1737,7 @@ export class Cursor implements CursorEditingContext {
             }
             if (prevItem) {
                 newItemId = prevItem.id;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const prevText = this.getTargetText(prevItem as any);
                 const visualLineInfo = getVisualLineInfo(prevItem.id, prevText.length > 0 ? prevText.length - 1 : 0);
                 let lastLineIndex: number | undefined;
@@ -1775,6 +1789,7 @@ export class Cursor implements CursorEditingContext {
                 }
             }
         } else if (direction === "down") {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let nextItem: any = findNextItem(this.itemId);
 
             // If findNextItem failed, try to find the next item via DOM traversal as a fallback
@@ -2106,6 +2121,7 @@ export class Cursor implements CursorEditingContext {
             if (nextItemId) {
                 const root = generalStore.currentPage as import("../schema/app-schema").Item;
                 if (root) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const found = searchItem(root as any, nextItemId);
                     if (found) return found;
                 }

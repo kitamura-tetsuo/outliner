@@ -215,7 +215,7 @@ onMount(() => {
                     // If filter result is unique and is an Alias, insert directly and close (ensure picker is shown)
                     const list = cps.filtered ?? [];
                     const sel = list?.[cps.selectedIndex ?? 0];
-                    const q = String(cps.query || ((cps as any).deriveQueryFromDoc?.() || "")).toLowerCase();
+                    const q = String(cps.query || (cps.deriveQueryFromDoc?.() || "")).toLowerCase();
                     const isAliasOnly = Array.isArray(list) && list.length === 1 && (list[0]?.type === "alias");
                     const looksAlias = q === "alias" || /^(?:al|ali|alia|alias)$/.test(q);
 

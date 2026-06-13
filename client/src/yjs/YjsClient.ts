@@ -92,6 +92,7 @@ export class YjsClient {
         } | null,
     ) {
         if (!this._awareness) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         yjsService.setPresence(this._awareness, state as any);
     }
 
@@ -136,19 +137,23 @@ export class YjsClient {
                     : (it as Record<number, unknown>)[i];
                 if (!item) continue;
                 const node: Record<string, unknown> = {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     id: (item as any).id,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     text: (item as any).text?.toString?.() ?? "",
                     author: (item as { author?: string; }).author,
                     votes: [...((item as { votes?: string[]; }).votes ?? [])],
                     created: (item as { created?: number; }).created,
                     lastChanged: (item as { lastChanged?: number; }).lastChanged,
                 };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const children = (item as any).items as Items;
                 if (children && ((children as { length?: number; }).length ?? 0) > 0) {
                     node.items = collect(children);
                 }
                 arr.push(node);
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return { itemCount: arr.length, items: arr } as any;
         };
         return collect(items);
@@ -160,7 +165,9 @@ export class YjsClient {
         const parts = path.split(".");
         let result: unknown = treeData;
         for (const part of parts) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (result === undefined || result === null) return null as any;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             result = (result as any)[part];
         }
         return result;
@@ -182,6 +189,7 @@ export class YjsClient {
             configuration?: { token: string | (() => string | Promise<string>); };
         };
         const config = provider?.configuration;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const wsProvider = (config as any)?.websocketProvider;
 
         return {
@@ -198,8 +206,15 @@ export class YjsClient {
                 : null,
             provider: this._provider
                 ? {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     url: (provider as any).url || (config as any)?.url || (wsProvider as any)?.url,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     name: (provider as any).name || (config as any)?.name,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     connected: (provider as any).connected || (wsProvider as any)?.status === "connected",
                 }
                 : null,

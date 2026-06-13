@@ -32,7 +32,7 @@ async function run() {
         
         // Run the query
         await initDb();
-        runQuery(sql as string);
+        runQuery(sql);
     } catch (error) {
           console.error("Error running query:", error);
     }

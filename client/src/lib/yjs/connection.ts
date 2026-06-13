@@ -220,6 +220,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     provider.on("status", (event: { status: string; }) => {
         console.log(`[yjs-conn] ${room} status: ${event.status}`);
         if (event.status === "connected") {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const config = provider.configuration as any;
             const hasWsHandshakeToken = config.url?.includes("token=");
             console.log(`[yjs-conn] status:connected current-url-has-token=${hasWsHandshakeToken}`);

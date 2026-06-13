@@ -226,6 +226,7 @@ export class CursorTextOperations {
         prevItem.updateText(prevText + currentText);
 
         // Delete the current item
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (currentItem as any).delete();
 
         // Update cursor position
@@ -261,6 +262,7 @@ export class CursorTextOperations {
         currentItem.updateText(currentText + nextText);
 
         // Delete the next item
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (nextItem as any).delete();
 
         // Cursor position remains unchanged (at the end of the current item)
@@ -305,6 +307,7 @@ export class CursorTextOperations {
         store.clearCursorForItem(this.cursor.itemId);
 
         // Delete the item
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (currentItem as any).delete();
 
         // Set the cursor to the new position
@@ -338,6 +341,7 @@ export function deleteEmptyItem(current?: Item) {
 
         // Clear cursor for the current item and delete it
         store.clearCursorForItem(current.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (current as any).delete();
 
         // Move active item focus
@@ -364,7 +368,9 @@ export function mergeWithNextItem(current?: Item) {
 
         const a = current.text?.toString?.() ?? "";
         const b = next.text?.toString?.() ?? "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (current as any).updateText(a + b);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (next as any).delete();
 
         store.setActiveItem(current.id);
@@ -387,6 +393,7 @@ export function mergeWithPreviousItem(current?: Item) {
         const b = current.text?.toString?.() ?? "";
         prev.updateText(a + b);
         const prevId = prev.id;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (current as any).delete();
 
         store.setActiveItem(prevId);

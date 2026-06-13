@@ -1,6 +1,5 @@
-import { Item as AppItem, Items as AppItems } from "../../schema/app-schema";
-import { Item as YjsItem, Items as YjsItems } from "../../schema/yjs-schema";
-
+import type { Item } from "../../schema/yjs-schema";
+import { Items } from "../../schema/yjs-schema";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
@@ -23,7 +22,7 @@ export interface CursorEditingContext {
     isActive: boolean;
     clearSelection(): void;
     applyToStore(): void;
-    findTarget(): AppItem | undefined;
+    findTarget(): Item | undefined;
 }
 
 export class CursorEditor {
@@ -177,12 +176,12 @@ export class CursorEditor {
         const text: string = (target.text as unknown as { toString?: () => string; })?.toString?.() ?? "";
         const beforeText = text.slice(0, cursor.offset);
         const afterText = text.slice(cursor.offset);
-        const pageTitle = isPageItem(target as unknown as YjsItem);
+        const pageTitle = isPageItem(target);
 
         if (pageTitle) {
-            if (target.items && target.items instanceof YjsItems) {
+            if (target.items && target.items instanceof Items) {
                 target.updateText(beforeText);
-                const newItem = (target.items as unknown as YjsItems).addNode(cursor.userId, 0);
+                const newItem = target.items.addNode(cursor.userId, 0);
                 newItem.updateText(afterText);
 
                 store.clearCursorAndSelection(cursor.userId);
@@ -205,11 +204,12 @@ export class CursorEditor {
                 return;
             }
         } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const parent = target.parent as any;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : (parent as unknown as { items?: AppItems; })?.items;
+                    : parent?.items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -217,8 +217,7 @@ export class CursorEditor {
                     : undefined;
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
-                    const currentIndex = (itemsCollection as unknown as { indexOf: (item: unknown) => number; })
-                        .indexOf(target);
+                    const currentIndex = itemsCollection.indexOf(target);
                     target.updateText(beforeText);
                     const newItem = addNode(cursor.userId, currentIndex + 1);
                     if (!newItem) return;
@@ -266,11 +265,11 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const pageTitle = isPageItem(target as unknown as YjsItem);
+        const pageTitle = isPageItem(target);
 
         if (pageTitle) {
-            if (target.items && target.items instanceof YjsItems) {
-                const newItem = (target.items as unknown as YjsItems).addNode(cursor.userId, 0);
+            if (target.items && target.items instanceof Items) {
+                const newItem = target.items.addNode(cursor.userId, 0);
 
                 store.clearCursorAndSelection(cursor.userId);
 
@@ -292,11 +291,12 @@ export class CursorEditor {
                 return;
             }
         } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const parent = target.parent as any;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : (parent as unknown as { items?: AppItems; })?.items;
+                    : parent?.items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -304,8 +304,7 @@ export class CursorEditor {
                     : undefined;
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
-                    const currentIndex = (itemsCollection as unknown as { indexOf: (item: unknown) => number; })
-                        .indexOf(target);
+                    const currentIndex = itemsCollection.indexOf(target);
                     // Add below without updating current text
                     const newItem = addNode(cursor.userId, currentIndex + 1);
                     if (!newItem) return;
@@ -449,16 +448,23 @@ export class CursorEditor {
         const prevItem = findPreviousItem(cursor.itemId);
         if (!prevItem) return;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const prevText = this.getPlainText(prevItem as any);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentText = this.getPlainText(currentItem as any);
         const combinedText = `${prevText}${currentText}`;
 
         const oldItemId = cursor.itemId;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const prevId = (prevItem as any)?.id ?? cursor.itemId;
         const newOffset = prevText.length;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.runInTransaction([prevItem as any, currentItem as any], () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             this.updateItemText(prevItem as any, combinedText);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             this.deleteItemNode(currentItem as any);
         });
 
@@ -471,17 +477,22 @@ export class CursorEditor {
         store.startCursorBlink();
     }
 
-    private getPlainText(item: AppItem): string {
+    private getPlainText(item: import("../../schema/app-schema").Item): string {
         if (!item) return "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const textValue = (item as any).text;
         if (typeof textValue === "string") return textValue;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (textValue && typeof (textValue as any).toString === "function") {
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return (textValue as any).toString();
             } catch {}
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (typeof (item as any).getText === "function") {
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const result = (item as any).getText();
                 if (typeof result === "string") return result;
             } catch {}
@@ -489,63 +500,61 @@ export class CursorEditor {
         return "";
     }
 
-    private updateItemText(item: unknown, text: string) {
+    private updateItemText(item: import("../../schema/app-schema").Item, text: string) {
         if (!item) return;
-        if (typeof (item as unknown as { updateText?: unknown; }).updateText === "function") {
-            (item as unknown as { updateText: (t: string) => void; }).updateText(text);
+        if (typeof item.updateText === "function") {
+            item.updateText(text);
             return;
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tree = (item as any)?.tree;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const key = (item as any)?.key
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ?? (item as any)?.id;
         if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
 
-        const value = tree.getNodeValueFromKey(key) as import("yjs").Map<unknown>;
+        const value = tree.getNodeValueFromKey(key);
         const yText = value?.get?.("text");
         try {
-            if (
-                yText && typeof (yText as unknown as import("yjs").Text).delete === "function"
-                && typeof (yText as unknown as import("yjs").Text).insert === "function"
-            ) {
-                (yText as unknown as import("yjs").Text).delete(0, (yText as unknown as import("yjs").Text).length);
-                if (text) (yText as unknown as import("yjs").Text).insert(0, text);
+            if (yText && typeof yText.delete === "function" && typeof yText.insert === "function") {
+                yText.delete(0, yText.length);
+                if (text) yText.insert(0, text);
             } else if (value && typeof value.set === "function") {
-                (value as unknown as { set: (k: string, v: unknown) => void; }).set("text", text);
+                value.set("text", text);
             }
             if (value && typeof value.set === "function") {
-                (value as unknown as { set: (k: string, v: unknown) => void; }).set("lastChanged", Date.now());
+                value.set("lastChanged", Date.now());
             }
         } catch {}
     }
 
-    private deleteItemNode(item: unknown) {
+    private deleteItemNode(item: import("../../schema/app-schema").Item) {
         if (!item) return;
-        if (typeof (item as unknown as { delete?: () => void; }).delete === "function") {
-            (item as unknown as { delete: () => void; }).delete();
+        if (typeof item.delete === "function") {
+            item.delete();
             return;
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const key = (item as any)?.key
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ?? (item as any)?.id;
         if (!key) return;
 
         const treeCandidates = [
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (item as any)?.tree,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (item as any)?.parent?.tree,
             (generalStore as { project?: { tree?: unknown; }; })?.project?.tree,
         ];
 
         for (const tree of treeCandidates) {
-            if (
-                tree
-                && typeof (tree as unknown as { deleteNodeAndDescendants: (k: string) => void; })
-                        .deleteNodeAndDescendants === "function"
-            ) {
+            if (tree && typeof tree.deleteNodeAndDescendants === "function") {
                 try {
-                    (tree as unknown as { deleteNodeAndDescendants: (k: string) => void; }).deleteNodeAndDescendants(
-                        key,
-                    );
+                    tree.deleteNodeAndDescendants(key);
                     return;
                 } catch {}
             }
@@ -554,6 +563,7 @@ export class CursorEditor {
 
     private runInTransaction(participants: import("../../schema/app-schema").Item[], action: () => void) {
         const doc = participants
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .map(item => (item as any)?.ydoc)
             .find(candidate => candidate && typeof candidate.transact === "function");
 
@@ -575,10 +585,14 @@ export class CursorEditor {
         const nextItem = findNextItem(cursor.itemId);
         if (!nextItem) return;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentText = (currentItem as any).text || "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const nextText = (nextItem as any).text || "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (currentItem as any).updateText(currentText + nextText);
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (nextItem as any).delete();
     }
 
@@ -608,6 +622,7 @@ export class CursorEditor {
         }
 
         store.clearCursorForItem(cursor.itemId);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (currentItem as any).delete();
 
         cursor.itemId = targetItemId;
@@ -636,7 +651,9 @@ export class CursorEditor {
         const root = generalStore.currentPage;
         if (!root) return;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const startItem = searchItem(root as any, selection.startItemId);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const endItem = searchItem(root as any, selection.endItemId);
         if (!startItem || !endItem) return;
 
@@ -646,17 +663,21 @@ export class CursorEditor {
         const firstOffset = isReversed ? selection.endOffset : selection.startOffset;
         const lastOffset = isReversed ? selection.startOffset : selection.endOffset;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const parent = (firstItem as any).parent;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (!parent || parent !== (lastItem as any).parent) return;
 
-        const items = parent as unknown as AppItems;
-        const firstIndex = items.indexOf(firstItem as unknown as AppItem);
-        const lastIndex = items.indexOf(lastItem as unknown as AppItem);
+        const items = parent as unknown as Items;
+        const firstIndex = items.indexOf(firstItem);
+        const lastIndex = items.indexOf(lastItem);
         if (firstIndex === -1 || lastIndex === -1) return;
 
         try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const firstText = (firstItem as any).text || "";
             const newFirstText = firstText.substring(0, firstOffset);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const lastText = (lastItem as any).text || "";
             const newLastText = lastText.substring(lastOffset);
 
@@ -670,12 +691,15 @@ export class CursorEditor {
                 store.clearCursorForItem(itemId);
             }
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (firstItem as any).updateText(newFirstText + newLastText);
 
             for (let i = lastIndex; i > firstIndex; i--) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (items as any).removeAt(i);
             }
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             cursor.itemId = (firstItem as any).id;
             cursor.offset = firstOffset;
             cursor.applyToStore();
@@ -791,9 +815,11 @@ export class CursorEditor {
         while (walker.currentNode) {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const item = searchItem(generalStore.currentPage as any, itemId);
             if (!item) continue;
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const text = (item as any).text || "";
 
             if (current === firstEl && current === lastEl) {
@@ -821,6 +847,7 @@ export class CursorEditor {
                 }
 
                 const newText = text.substring(0, start) + formattedText + text.substring(end);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (item as any).updateText(newText);
             } else {
                 // Detailed formatting for selection ranges spanning multiple items is not supported

@@ -26,64 +26,112 @@ let isInitialized = $state(false);
 
 onMount(() => {
     let unsub = () => {};
+    let isMounted = true;
+
     (async () => {
         try {
             await initDb();
+            if (!isMounted) return;
+
             isInitialized = true;
+
             chart = echarts.init(chartDiv);
+
+            // If an item is provided and has a chartQuery, run it
             if (item && item.chartQuery) {
                 runQuery(item.chartQuery);
             }
+
             unsub = queryStore.subscribe(update);
         } catch (error) {
-            console.error("Error initializing chart:", error);
+              console.error("Error initializing chart:", error);
         }
     })();
     return () => {
+        isMounted = false;
         unsub();
         chart?.dispose();
     };
 });
-// Function to run the item's query when needed
-async function runItemQuery() {
-    if (item && item.chartQuery && isInitialized) {
-        try {
-            await initDb();
-            runQuery(item.chartQuery);
-        } catch (error) {
-              console.error("Error running item query:", error);
+
+function update(result: QueryResult | null) {
+    if (!result || result.rows.length === 0 || !isInitialized) {
+        hasData = false;
+        if (chart) {
+            chart.clear();
         }
-    }
-}
-
-// Run the query when the item changes
-$effect(() => {
-    if (item) {
-        runItemQuery();
-    }
-});
-
-function update(data: QueryResult) {
-    if (!chart) return;
-    hasData = data.rows.length > 0;
-    if (!hasData) {
-        chart.clear();
         return;
     }
-    const columns = data.columnsMeta.map((c: ColumnMeta) => c.name);
+
+    const { rows, columnsMeta } = result;
+
+    if (!columnsMeta || columnsMeta.length < 2) {
+        hasData = false;
+        return;
+    }
+
+    const firstColName = columnsMeta[0].name;
+    const xAxisData = rows.map((row) => String(row[firstColName]));
+
+    const seriesData = columnsMeta.slice(1).map((col) => {
+        return {
+            name: col.name,
+            type: "bar",
+            data: rows.map((row) => Number(row[col.name]) || 0),
+        };
+    });
+
     const option = {
-        xAxis: { type: "category", data: data.rows.map((_: Record<string, unknown>, i: number) => i.toString()) },
-        yAxis: { type: "value" },
-        series: columns.map(col => ({ type: "bar", data: data.rows.map((r: Record<string, unknown>) => r[col]) })),
+        tooltip: {
+            trigger: "axis",
+            axisPointer: { type: "shadow" },
+        },
+        legend: {
+            data: columnsMeta.slice(1).map((c) => c.name),
+        },
+        grid: {
+            left: "3%",
+            right: "4%",
+            bottom: "3%",
+            containLabel: true,
+        },
+        xAxis: {
+            type: "category",
+            data: xAxisData,
+        },
+        yAxis: {
+            type: "value",
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        series: seriesData as any,
     };
-    chart.setOption(option, { notMerge: true });
+
+    hasData = true;
+    if (chart) {
+        chart.setOption(option);
+        chart.resize();
+    }
 }
 </script>
 
-<div class="chart-panel" bind:this={chartDiv} style="width: 100%; height: 300px; position: relative">
-    {#if !isInitialized}
-        <p class="loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%)">Loading...</p>
-    {:else if !hasData}
-        <p class="no-data" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%)">No data</p>
-    {/if}
+<div class="chart-container" class:has-data={hasData}>
+    <div bind:this={chartDiv} class="chart-element"></div>
 </div>
+
+<style>
+    .chart-container {
+        width: 100%;
+        height: 0; /* Hidden initially */
+        overflow: hidden;
+        transition: height 0.3s ease;
+    }
+
+    .chart-container.has-data {
+        height: 300px;
+    }
+
+    .chart-element {
+        width: 100%;
+        height: 100%;
+    }
+</style>

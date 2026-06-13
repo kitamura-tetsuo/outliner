@@ -84,7 +84,7 @@ describe("Demo seed content", () => {
 
         const texts = childTexts(examples!.items).join("\n");
         expect(texts).to.contain("[[bold]]");
-        expect(texts).to.contain("[/ italic]");
+        expect(texts).to.contain("[/italic]");
         expect(texts).to.contain("[-strike through]");
         expect(texts).to.contain("`code`");
     });

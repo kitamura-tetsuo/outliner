@@ -38,10 +38,6 @@ export class Comments {
         return { id: c.get("id") as string };
     }
 
-    removeComment(commentId: string) {
-        return this.deleteComment(commentId);
-    }
-
     deleteComment(commentId: string) {
         let idx = 0;
         for (const m of this.yArray) {
@@ -365,10 +361,6 @@ export class Item {
             } catch {}
         } catch {}
         return res;
-    }
-
-    removeComment(commentId: string) {
-        return this.deleteComment(commentId);
     }
 
     deleteComment(commentId: string) {

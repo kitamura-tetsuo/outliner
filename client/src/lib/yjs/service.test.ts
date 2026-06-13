@@ -31,6 +31,7 @@ describe("yjsService", () => {
         const awareness = new Awareness(new Y.Doc());
         yjsService.setPresence(
             awareness,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             { cursor: { itemId: "i1", offset: 0, cursorId: "1", isActive: true } } as any,
         );
         const presence = yjsService.getPresence(awareness);
@@ -88,16 +89,15 @@ describe("yjsService", () => {
 
         // seed local state (ignored by overlay sync)
         awareness.setLocalStateField("user", { userId: "self", name: "Self" });
-        awareness.setLocalStateField("presence", {
-            cursor: { itemId: "root", offset: 0 } as import("y-protocols/awareness").PresenceCursor,
-        });
+        awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
 
         // simulate remote collaborator
         const states = awareness.getStates();
         states.set(42, {
             user: { userId: "u2", name: "Bob" },
-            presence: { cursor: { itemId: "i1", offset: 0 } as import("y-protocols/awareness").PresenceCursor },
+            presence: { cursor: { itemId: "i1", offset: 0 } },
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (awareness as any).emit("change", [{
             added: new Set([42]),
             updated: new Set(),
@@ -107,6 +107,7 @@ describe("yjsService", () => {
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (awareness as any).emit("change", [{
             added: new Set(),
             updated: new Set(),
