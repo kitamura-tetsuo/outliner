@@ -6,7 +6,7 @@
     import SearchPanel from "../../../components/SearchPanel.svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
     import { getLogger } from "../../../lib/logger";
-    import { getYjsClientByProjectTitle } from "../../../services";
+    import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../services";
     import type { Item } from "../../../schema/app-schema";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
@@ -20,6 +20,8 @@
     let error: string | undefined = $state(undefined);
     let pageNotFound = $state(false);
     let isSearchPanelVisible = $state(false);
+    let isResetting = $state(false);
+    let resetDone = $state(false);
 
     function findPage(name: string): Item | undefined {
         const items = store.project?.items;
@@ -112,6 +114,23 @@
         }
     }
 
+
+    async function resetDemo() {
+        if (isResetting) return;
+        try {
+            isResetting = true;
+            resetDone = false;
+            await seedDemo({ force: true });
+            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
+            yjsStore.yjsClient = undefined;
+            store.project = undefined;
+            await loadDemoPage(pageName);
+            resetDone = error === undefined;
+        } finally {
+            isResetting = false;
+        }
+    }
+
     function toggleSearchPanel() {
         isSearchPanelVisible = !isSearchPanelVisible;
     }
@@ -183,8 +202,16 @@ let resetEpochCache = $state(0);
             </h1>
             <div class="flex items-center space-x-2" data-testid="demo-page-toolbar">
                 <button
+                    onclick={resetDemo}
+                    disabled={isResetting || isLoading}
+                    data-testid="demo-reset-button"
+                    class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    {isResetting ? "Resetting..." : "Reset demo content"}
+                </button>
+                <button
                     onclick={toggleSearchPanel}
-                    class="search-btn rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    class="search-btn rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     data-testid="search-toggle-button"
                 >
                     Search
@@ -194,6 +221,11 @@ let resetEpochCache = $state(0);
         <p class="mt-1 text-sm text-gray-500">
             This is a public, collaborative demo space. Content resets every 24 hours.
         </p>
+        {#if resetDone}
+            <p class="mt-1 text-sm text-green-600" data-testid="demo-reset-done">
+                Demo content has been reset.
+            </p>
+        {/if}
     </div>
 
     {#if isLoading}
