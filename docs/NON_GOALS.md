@@ -25,3 +25,9 @@ Offline editing will not be implemented. The Fluid Framework used for collaborat
 ### EXT-NON Plugin Architecture
 
 Outliner does not provide a plugin system or extension API. Loading or executing user-defined plugins is outside the project's scope.
+
+## Editing
+
+### Outline-item Checkboxes
+
+The application does not currently support `[ ]` or `[x]` inline checkboxes for outline items with completion rollups. (Standalone checklists exist as a separate feature, but are not integrated into the main Outliner outline items.)

@@ -200,7 +200,7 @@ export class ScrapboxFormatter {
                 urlLast: true,
             },
             // Normal internal link (page-name format) - allow page names with hyphens
-            { type: "internalLink", start: "[", end: "]", regex: /\[([^[\]]+?)\]/g },
+            { type: "internalLink", start: "[", end: "]", regex: /\[(?!(?:\s*|\s*[xX]\s*)\])([^[\]]+?)\]/g },
             { type: "quote", start: "> ", end: "", regex: /^>\s(.*?)$/gm },
         ];
 
@@ -465,7 +465,7 @@ export class ScrapboxFormatter {
     private static readonly RX_HTML_CODE = /`(.*?)`/g;
     private static readonly RX_HTML_EXT_LINK = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
     private static readonly RX_HTML_EXT_LINK_REV = /\[([^[\]]*?)\s+(https?:\/\/[^\s\]]+)\]/g;
-    private static readonly RX_HTML_INT_LINK = /\[([^[\]]+?)\]/g;
+    private static readonly RX_HTML_INT_LINK = /\[(?!(?:\s*|\s*[xX]\s*)\])([^[\]]+?)\]/g;
 
     // Bare URL auto-link. Excludes whitespace, brackets and the \x01 placeholder
     // marker so already-processed constructs are never re-matched.
@@ -824,7 +824,7 @@ export class ScrapboxFormatter {
     private static readonly RX_CTRL_ITALIC = /(\[)(\/)(\s+)([^\]]*)(\])/g;
     private static readonly RX_CTRL_PROJECT_LINK = /(\[\/)([^\s\]]+)(\])/g;
     private static readonly RX_CTRL_EXT_LINK = /(\[)(https?:\/\/[^\s\]]+)(?:\s+([^\]]+))?(\])/g;
-    private static readonly RX_CTRL_INT_LINK = /(\[)([^[\]/-][^[\]]*?)(\])/g;
+    private static readonly RX_CTRL_INT_LINK = /(\[)(?!(?:\s*|\s*[xX]\s*)\])([^[\]/-][^[\]]*?)(\])/g;
     private static readonly RX_CTRL_QUOTE = /(^>\s)(.*?)$/gm;
 
     /**
