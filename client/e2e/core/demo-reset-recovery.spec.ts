@@ -4,7 +4,7 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
 test.describe("Demo reset recovery", () => {
-    test("connected viewer recovers content without errors after reset", async ({ browser, context, page }) => {
+    test("connected viewer recovers content without errors after reset", async ({ browser, page }) => {
         // viewerPage will just use the default page
         const viewerPage = page;
 

@@ -37,13 +37,15 @@ export const POST: RequestHandler = async ({ request }) => {
 
         if (!response.ok) {
             const errorText = await response.text();
-            return json({ error: `API error: ${response.status} ${errorText}` }, { status: response.status });
+            return json({ success: false, error: `API error: ${response.status} ${errorText}` }, {
+                status: response.status,
+            });
         }
 
         const result = await response.json();
         return json(result);
     } catch (error) {
         console.error("Seed demo API error:", error);
-        return json({ error: "Internal server error" }, { status: 500 });
+        return json({ success: false, error: "Internal server error" }, { status: 500 });
     }
 };
