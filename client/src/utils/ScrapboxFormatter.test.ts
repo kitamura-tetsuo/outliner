@@ -410,6 +410,15 @@ describe("ScrapboxFormatter", () => {
         });
     });
 
+    describe("whitespace handling", () => {
+        it("should not contain newlines or excessive whitespace in link output", () => {
+            const input = "like [Formatting].";
+            const result = ScrapboxFormatter.formatToHtml(input);
+            expect(result).not.toContain("\n");
+            expect(result).not.toMatch(/ {2,}/);
+        });
+    });
+
     describe("tokenize", () => {
         it("should correctly tokenize internal links", () => {
             const input = "[test-page]";
