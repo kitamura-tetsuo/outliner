@@ -36,7 +36,7 @@ export async function initializeBrowserPage(
         if (disableIDB) localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
         if (requireAuth) localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     }, { requireAuth, disableIDB: disableIndexedDB });
-    await page.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
+    await page.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
 
     // Authenticate if required
     if (requireAuth) {
@@ -227,13 +227,23 @@ export async function prepareTwoBrowserPages(
 
 export async function prepareTwoFullBrowserPages(
     browser: Browser,
-    testInfo: { title: string; },
+    testInfo: TestInfo,
     initialItems: string[],
     TestHelpers: {
         seedProjectAndNavigate: (
             page: Page,
-            testInfo: TestInfo,
-            initialItems?: string[],
+            testInfo?: { workerIndex?: number; } | null,
+            lines?: string[],
+            _browser?: Browser,
+            options?: {
+                projectName?: string;
+                pageName?: string;
+                skipSeed?: boolean;
+                doNotSeed?: boolean;
+                doNotNavigate?: boolean;
+                ws?: string;
+                skipAppReady?: boolean;
+            },
         ) => Promise<{ projectName: string; pageName: string; }>;
     },
 ): Promise<{
@@ -246,11 +256,16 @@ export async function prepareTwoFullBrowserPages(
 }> {
     const context1 = await browser.newContext();
     const page1 = await context1.newPage();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page1, testInfo as any, initialItems);
-    const pageUrl = page1.url();
+    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page1, testInfo, initialItems);
+
     const context2 = await browser.newContext();
     const page2 = await context2.newPage();
-    await page2.goto(pageUrl, { waitUntil: "domcontentloaded" });
+    // Use seedProjectAndNavigate for page2 too, but skip seeding since it's already done
+    await TestHelpers.seedProjectAndNavigate(page2, testInfo, [], undefined, {
+        projectName,
+        pageName,
+        skipSeed: true,
+    });
+
     return { context1, page1, context2, page2, projectName, pageName };
 }

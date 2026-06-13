@@ -19,7 +19,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
-    await p1.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
+    await p1.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
 
     await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 60000 });
     await p1.evaluate(async () => {
@@ -70,7 +70,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
-    await p2.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
+    await p2.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
 
     await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 60000 });
     await p2.evaluate(async () => {

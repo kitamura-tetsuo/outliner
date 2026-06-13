@@ -37,9 +37,11 @@ if (typeof window !== "undefined") {
 export async function initDb() {
     if (db) return;
 
-    const isTest = typeof process !== "undefined"
+    // Detect if we are in a Node.js environment (for Vitest/unit tests)
+    const isNode = typeof process !== "undefined" && process.versions && !!process.versions.node;
+    const isTest = isNode
         && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production");
-    const isViteTest = import.meta.env && import.meta.env.MODE === "test";
+    const isViteTest = isNode && import.meta.env && import.meta.env.MODE === "test";
 
     // Load WASM from appropriate path in test or production environment
     if (isTest || isViteTest) {
