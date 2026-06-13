@@ -124,7 +124,7 @@ describe("ScrapboxFormatter", () => {
                 );
                 expect(result).toContain('data-page="test-page-name"');
             });
-it("should handle text that looks like checkboxes (prevent internal link formatting)", () => {
+            it("should handle text that looks like checkboxes (prevent internal link formatting)", () => {
                 const input1 = "[ ] empty checkbox";
                 const input2 = "[x] checked checkbox";
                 const input3 = "[X] checked uppercase";
@@ -135,7 +135,6 @@ it("should handle text that looks like checkboxes (prevent internal link formatt
                 expect(ScrapboxFormatter.formatToHtml(input3)).toBe("[X] checked uppercase");
                 expect(ScrapboxFormatter.formatToHtml(input4)).toBe("[ x ] with spaces");
             });
-
 
             it("should generate correct HTML for project internal links", () => {
                 const input = "[/project-name/page-name]";
