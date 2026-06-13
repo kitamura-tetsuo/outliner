@@ -171,10 +171,12 @@ let resetEpochCache = $state(0);
         // Follow route parameter changes (e.g. internal links between demo pages)
         let lastLoaded: string | undefined;
         const unsub = page.subscribe(($p) => {
-            const name = $p.params?.page ?? "";
+            const name = $p.params?.page ?? pageName;
             if (!name || name === lastLoaded) return;
+            if (lastLoaded !== undefined && lastLoaded !== name) {
+                activePageId = undefined; // reset active id on route change
+            }
             lastLoaded = name;
-            activePageId = undefined; // reset active id on route change
             loadDemoPage(name);
         });
         return () => unsub();

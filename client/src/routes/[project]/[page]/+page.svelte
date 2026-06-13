@@ -294,9 +294,19 @@
         } catch {}
 
         // Monitor route parameter changes
+        let lastRoutePj: string | undefined;
+        let lastRoutePg: string | undefined;
         const unsub = page.subscribe(($p) => {
             const pj = $p.params?.project ?? projectName;
             const pg = $p.params?.page ?? pageName;
+
+            // if route changed, reset activePageId
+            if (lastRoutePj !== undefined && (lastRoutePj !== pj || lastRoutePg !== pg)) {
+                activePageId = undefined; // reset active id on route change
+            }
+            lastRoutePj = pj;
+            lastRoutePg = pg;
+
             scheduleLoadIfNeeded({ project: pj, page: pg });
         });
         onDestroy(unsub);
