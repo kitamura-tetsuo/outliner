@@ -207,14 +207,28 @@ export async function startServer(
         extensions: extensions as any[],
         debounce: 500,
         async onConnect(data: any) {
-            console.log(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${data.request.socket.remoteAddress}`);
+            const ip = data.context?.ip || "unknown";
+            console.log(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
         },
         async onAuthenticate(data: any) {
+            // Bypass authentication for seeding or other direct internal connections
+            if (data.context?.isSeeding) {
+                console.log(`[Hocuspocus] onAuthenticate: Internal seeding access for room=${data.documentName}`);
+                return {
+                    ...data.context,
+                    user: { uid: "seed-server" },
+                };
+            }
+
             // Perform async auth (token verification + access check) HERE inside the Hocuspocus hook.
             // We cannot do this before handleConnection because the client immediately sends the Auth message
             // after the WS handshake, and if we await async operations first the message would be lost
             // (no listener registered yet), causing a 30-second timeout.
             const request = data.request;
+            if (!request) {
+                throw Object.assign(new Error("Authentication failed: No request provided"), { code: 4001 });
+            }
+
             const token = extractAuthToken(request);
             console.log(`[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${token ? "FOUND" : "MISSING"}`);
 
