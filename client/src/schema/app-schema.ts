@@ -38,10 +38,6 @@ export class Comments {
         return { id: c.get("id") as string };
     }
 
-    removeComment(commentId: string) {
-        return this.deleteComment(commentId);
-    }
-
     deleteComment(commentId: string) {
         const idx = this.yArray.toArray().findIndex((m) => m.get("id") === commentId);
         if (idx >= 0) {
@@ -358,10 +354,6 @@ export class Item {
             } catch {}
         } catch {}
         return res;
-    }
-
-    removeComment(commentId: string) {
-        return this.deleteComment(commentId);
     }
 
     deleteComment(commentId: string) {
