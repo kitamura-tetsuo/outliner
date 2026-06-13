@@ -15,7 +15,6 @@ const mockCursor: any = {
 };
 const mockEditorOverlayStore = {
     getCursorInstances: mockGetCursorInstances,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any;
 vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 

@@ -43,7 +43,6 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
     test("Can create a selection spanning multiple items using Shift + Up/Down keys", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
         });
 
@@ -66,10 +65,9 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Check current cursor position
         const initialCursorInfo = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return null;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const cursor = Object.values(store.cursors)[0] as any;
             return cursor ? { itemId: cursor.itemId, offset: cursor.offset } : null;
         });
@@ -110,12 +108,11 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
         await page.evaluate(() => {
             console.log(
                 "Selections after second arrow down:",
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 Object.values((window as any).editorOverlayStore.selections),
             );
 
             // Display detailed selection information
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const sel = Object.values((window as any).editorOverlayStore.selections)[0] as any;
             if (sel) {
                 const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
@@ -135,7 +132,6 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Get selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -157,7 +153,6 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Disable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = false;
         });
     });
@@ -165,7 +160,6 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
     test("Can create a selection spanning multiple items by mouse drag", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
         });
 
@@ -194,12 +188,11 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
         await page.evaluate(() => {
             console.log(
                 "Selections after keyboard selection:",
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 Object.values((window as any).editorOverlayStore.selections),
             );
 
             // Display detailed selection information
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const sel = Object.values((window as any).editorOverlayStore.selections)[0] as any;
             if (sel) {
                 const allItems = Array.from(document.querySelectorAll("[data-item-id]")) as HTMLElement[];
@@ -228,7 +221,6 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Get selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -245,7 +237,6 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
 
         // Disable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = false;
         });
     });

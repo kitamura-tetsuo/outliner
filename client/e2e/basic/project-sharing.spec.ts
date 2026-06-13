@@ -41,7 +41,6 @@ test.describe("Project Sharing E2E", () => {
 
         // Ensure project exists in Firestore (required for sharing) with the HASHED ID
         await page.evaluate(async ({ projectId, projectName }) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const userManager = (window as any).__USER_MANAGER__;
             if (!userManager) throw new Error("UserManager not found");
 
@@ -113,7 +112,7 @@ test.describe("Project Sharing E2E", () => {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 (window as any).__E2E__ = true;
             } catch {}
         });
@@ -131,7 +130,7 @@ test.describe("Project Sharing E2E", () => {
         await pageB.waitForLoadState("domcontentloaded");
 
         // Wait for UserManager to be available
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         await pageB.waitForFunction(() => !!(window as any).__USER_MANAGER__, { timeout: 15000 });
 
         // Login
@@ -157,7 +156,6 @@ test.describe("Project Sharing E2E", () => {
         await pageB.evaluate(() => {
             return new Promise((resolve) => {
                 const check = () => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const user = (window as any).__USER_MANAGER__?.auth?.currentUser;
                     if (user) resolve(true);
                     else setTimeout(check, 100);
@@ -183,7 +181,6 @@ test.describe("Project Sharing E2E", () => {
         // We use a shorter timeout for the first attempt to fail fast and retry
         try {
             await pageB.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const y = (window as any).__YJS_STORE__;
                 return y && y.isConnected;
             }, { timeout: 15000 });
@@ -193,7 +190,6 @@ test.describe("Project Sharing E2E", () => {
             await TestHelpers.waitForAppReady(pageB);
             // Try waiting again with a standard timeout
             await pageB.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const y = (window as any).__YJS_STORE__;
                 return y && y.isConnected;
             }, { timeout: 30000 }).catch(() => console.log("[User B] Yjs connect wait timed out again, continuing..."));

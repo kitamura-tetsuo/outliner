@@ -63,7 +63,6 @@ test.describe("Outliner No Auth Test", () => {
 
         // Check application state
         const appState = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const win = window as any;
             return {
                 // Check global variables

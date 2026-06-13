@@ -15,7 +15,6 @@ test.describe("Debug Page Load", () => {
 
         // Check the final state of the page
         const finalState = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const generalStore = (window as any).generalStore;
             return {
                 url: window.location.href,

@@ -46,20 +46,17 @@ test.describe("Yjs client attach and DOM reflect", () => {
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const existing = (items as any).length ?? 0;
             // Overwrite existing items
             for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const it = (items as any).at ? (items as any).at(i) : (items as any)[i];
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 (it as any)?.updateText?.(lines[i]);
             }
             // Add missing items
             for (let i = existing as number; i < lines.length; i++) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const node = (items as any).addNode?.("tester");
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 (node as any)?.updateText?.(lines[i]);
             }
         }, lines);

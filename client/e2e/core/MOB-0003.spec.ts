@@ -33,7 +33,6 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         const itemId = await contentItem.getAttribute("data-item-id");
         await page.evaluate((id) => {
             if (typeof globalThis !== "undefined") {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (globalThis as any).editorOverlayStore;
                 if (store && id) {
                     store.setActiveItem(id);
@@ -69,7 +68,6 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly via editorOverlayStore
         await page.evaluate((itemId) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
@@ -120,7 +118,6 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly to the indented item
         await page.evaluate((itemId) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
@@ -143,7 +140,6 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
@@ -165,7 +161,6 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);
@@ -184,7 +179,6 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
 
         // Set the active item directly
         await page.evaluate((itemId) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (store && typeof store.setActiveItem === "function") {
                 store.setActiveItem(itemId);

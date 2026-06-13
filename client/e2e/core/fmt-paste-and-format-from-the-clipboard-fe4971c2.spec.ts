@@ -165,7 +165,7 @@ test.describe("Input and display of formatted strings", () => {
             // Method 1: Use global variable
             await page.evaluate(text => {
                 // Save to global variable
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 (window as any).lastCopiedText = text;
 
                 // Create ClipboardEvent
@@ -287,7 +287,7 @@ test.describe("Input and display of formatted strings", () => {
             // Method 1: Use global variable
             await page.evaluate(text => {
                 // Save to global variable
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 (window as any).lastCopiedText = text;
 
                 // Create ClipboardEvent

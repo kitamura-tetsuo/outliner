@@ -445,9 +445,9 @@ let aliasTargetId = $state<string | undefined>();
 onMount(() => {
     aliasTargetId = item.aliasTargetId;
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as unknown;
         if (ymap && typeof (ymap as unknown as { observe?: (cb: unknown) => void }).observe === "function") {
             const obs = (e?: unknown ) => {
@@ -664,9 +664,9 @@ let compTypeValue = $state<string | undefined>(undefined);
 onMount(() => {
     let unsubs: Array<() => void> = [];
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const tree = anyItem?.tree; const key = anyItem?.key;
         const m = (tree as unknown as { getNodeValueFromKey?: (k: string) => unknown })?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
         const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
@@ -1863,10 +1863,10 @@ onMount(() => {
 // E2E: Receive direct notification from dispatchEvent hook, execute handleDrop if target element is under own displayRef
 onMount(() => {
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const anyWin = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { __E2E_DROP_HANDLERS__?: ((el: Element, ev: DragEvent) => void)[], __E2E__?: boolean }) : undefined;
         if (!anyWin) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as ((el: Element, ev: DragEvent) => void)[];
         const fn = (el: Element, ev: DragEvent) => {
             try {
@@ -1875,7 +1875,7 @@ onMount(() => {
                 }
             } catch {}
         };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         anyWin.__E2E_DROP_HANDLERS__.push(fn);
 
         // E2E: Global function to forcibly trigger handleDrop (test only). If element is under self, synthesize drop and process.
@@ -1935,7 +1935,7 @@ onMount(() => {
 
         onDestroy(() => {
             try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 const arr = anyWin.__E2E_DROP_HANDLERS__ as ((el: Element, ev: DragEvent) => void)[];
                 const i = arr.indexOf(fn);
                 if (i >= 0) arr.splice(i, 1);

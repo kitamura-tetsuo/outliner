@@ -12,12 +12,10 @@ test.describe("Yjs connection", () => {
     test("store exposes connection state", async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
         const isDefined = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return typeof (window as any).__YJS_STORE__ !== "undefined";
         });
         expect(isDefined).toBe(true);
         const connected = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).__YJS_STORE__;
             return store ? store.getIsConnected?.() : undefined;
         });

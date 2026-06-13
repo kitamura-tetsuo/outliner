@@ -227,7 +227,6 @@ test.describe("Consistency of format display when moving cursors", () => {
 
         // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorStore = (window as any).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
@@ -243,7 +242,6 @@ test.describe("Consistency of format display when moving cursors", () => {
         // Create cursor instance if it does not exist
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const editorStore = (window as any).editorOverlayStore;
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
@@ -261,7 +259,6 @@ test.describe("Consistency of format display when moving cursors", () => {
 
         // Insert text using cursor.insertText()
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
@@ -312,9 +309,8 @@ test.afterEach(async ({ page }) => {
     // Reset editor state to prevent test interference
     await page.evaluate(() => {
         // Clear any remaining editor state
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         if ((window as any).editorOverlayStore) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorStore = (window as any).editorOverlayStore;
             if (editorStore.reset) {
                 editorStore.reset();
@@ -334,9 +330,8 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear any other potential shared state
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         if ((window as any).aliasPickerStore) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const aliasPickerStore = (window as any).aliasPickerStore;
             if (aliasPickerStore.reset) {
                 aliasPickerStore.reset();
@@ -349,9 +344,8 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear command palette state if it exists
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         if ((window as any).commandPaletteStore) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const commandPaletteStore = (window as any).commandPaletteStore;
             if (commandPaletteStore.reset) {
                 commandPaletteStore.reset();
@@ -363,9 +357,8 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear any potential global state that could affect other tests
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         if ((window as any).userPreferencesStore) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const userPreferencesStore = (window as any).userPreferencesStore;
             if (userPreferencesStore.reset) {
                 userPreferencesStore.reset();
@@ -378,9 +371,8 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear any potential shared tree state
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         if ((window as any).generalStore) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const generalStore = (window as any).generalStore;
             // Reset cursor-related state in general store if it exists
             if (generalStore.setCursor) {

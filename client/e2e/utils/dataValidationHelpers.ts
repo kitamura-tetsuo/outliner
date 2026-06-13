@@ -29,7 +29,6 @@ export class DataValidationHelpers {
                 if (!page.isClosed()) {
                     // Dump E2E logs if present
                     const logs = await page.evaluate(() => {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const w: any = window as any;
                         return Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS.slice(-200) : [];
                     }, { timeout: 2000 });
@@ -63,7 +62,7 @@ export class DataValidationHelpers {
             await page.evaluate(() => {
                 try {
                     // Clear any existing E2E logs
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     const w: any = window as any;
                     if (Array.isArray(w.E2E_LOGS)) {
                         w.E2E_LOGS.length = 0;
@@ -164,7 +163,6 @@ export class DataValidationHelpers {
         // Wait for the project to be available in the store
         try {
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).generalStore || (window as any).appStore;
                 return !!(store && store.project);
             }, { timeout: 30000 });
@@ -192,7 +190,6 @@ export class DataValidationHelpers {
                     }
                 }
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).generalStore || (window as any).appStore;
                 if (!store || !store.project) {
                     throw new Error("Project not available on window.generalStore/appStore");
@@ -202,18 +199,16 @@ export class DataValidationHelpers {
                 const pages: Array<{ title: string; items: Array<{ text: string; }>; }> = [];
 
                 // project.items is proxied array-like; iterate by length
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 const len = (project.items as any)?.length ?? 0;
                 for (let i = 0; i < len; i++) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const pageItem = (project.items as any).at(i);
                     if (!pageItem) continue;
                     const pageTitle = yTextToString(pageItem.text);
                     const children: Array<{ text: string; }> = [];
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     const clen = (pageItem.items as any)?.length ?? 0;
                     for (let j = 0; j < clen; j++) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const child = (pageItem.items as any).at(j);
                         if (!child) continue;
                         children.push({ text: yTextToString(child.text) });

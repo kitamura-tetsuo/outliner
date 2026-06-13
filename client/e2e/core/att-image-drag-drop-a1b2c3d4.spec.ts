@@ -26,7 +26,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
             const file = new File([pngHeader], name, { type: "image/png" });
 
             // Set fallback for E2E
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             (window as any).__E2E_LAST_FILES__ = [file];
 
             const target = document.querySelector(sel);
@@ -47,7 +47,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
                 clientX,
                 clientY,
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             (dragOverEvent as any).dataTransfer = dt;
             target.dispatchEvent(dragOverEvent);
 
@@ -58,7 +58,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
                 clientX,
                 clientY,
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             (event as any).dataTransfer = dt;
             target.dispatchEvent(event);
         }, { sel: selector, name: fileName, pos: position });
@@ -104,7 +104,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
             const dt = new DataTransfer();
             const pngHeader = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
             const file = new File([pngHeader], "end-drop.png", { type: "image/png" });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             (window as any).__E2E_LAST_FILES__ = [file];
 
             const target = document.querySelector(".tree-container");
@@ -116,7 +116,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
                 clientX: target.getBoundingClientRect().left + 10,
                 clientY: target.getBoundingClientRect().bottom - 10,
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             (event as any).dataTransfer = dt;
             target.dispatchEvent(event);
         });

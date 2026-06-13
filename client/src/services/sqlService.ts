@@ -37,24 +37,27 @@ if (typeof window !== "undefined") {
 export async function initDb() {
     if (db) return;
 
+    const isTest = typeof process !== "undefined"
+        && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production");
+    const isViteTest = import.meta.env && import.meta.env.MODE === "test";
+
     // Load WASM from appropriate path in test or production environment
-    if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
+    if (isTest || isViteTest) {
         const fs = await import("fs");
         const path = await import("path");
         // Try multiple possible paths for the WASM file
         const possiblePaths = [
             path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm"),
+            path.resolve(process.cwd(), "client/node_modules/sql.js/dist/sql-wasm.wasm"),
             path.resolve(__dirname, "../../node_modules/sql.js/dist/sql-wasm.wasm"),
             path.resolve(__dirname, "../node_modules/sql.js/dist/sql-wasm.wasm"),
         ];
 
         let wasmBinary: Uint8Array | null = null;
-        let wasmPath = "";
         for (const possiblePath of possiblePaths) {
             try {
                 const buffer = fs.readFileSync(possiblePath);
                 wasmBinary = new Uint8Array(buffer);
-                wasmPath = possiblePath;
                 break;
             } catch {
                 // Continue to next path
@@ -62,17 +65,13 @@ export async function initDb() {
         }
 
         if (!wasmBinary) {
-            throw new Error("Could not find sql-wasm.wasm file in any expected location");
+            throw new Error(
+                `Could not find sql-wasm.wasm file in any expected location. Tried: ${possiblePaths.join(", ")}`,
+            );
         }
 
         SQL = await initSqlJs({
             wasmBinary: wasmBinary,
-            locateFile: (file: string) => {
-                if (file.endsWith(".wasm")) {
-                    return wasmPath;
-                }
-                return file;
-            },
         });
     } else {
         // Load WASM from Vite's public directory in development environment

@@ -41,9 +41,8 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
         // Add attachment via Yjs
         const url1 = "https://example.com/a.png";
         await page.evaluate(([id, url]) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const items = gs?.currentPage?.items as any;
             if (!items) throw new Error("items not found");
             const len = items.length ?? 0;
@@ -62,9 +61,8 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
         // Add 2nd attachment
         const url2 = "https://example.com/b.png";
         await page.evaluate(([id, url]) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const items = gs?.currentPage?.items as any;
             const len = items?.length ?? 0;
             for (let i = 0; i < len; i++) {
@@ -80,9 +78,8 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
 
         // Remove 1 attachment
         await page.evaluate(([id, url]) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs: any = (window as any).generalStore;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const items = gs?.currentPage?.items as any;
             const len = items?.length ?? 0;
             for (let i = 0; i < len; i++) {

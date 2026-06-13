@@ -10,7 +10,6 @@ import { TestHelpers } from "../utils/testHelpers";
 test("VITE_IS_TEST is true in client runtime", async ({ page }, testInfo) => {
     await TestHelpers.seedProjectAndNavigate(page, testInfo);
     const value = await page.evaluate(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (window as any).VITE_IS_TEST || (window as any)["import.meta.env"]?.VITE_IS_TEST;
     });
     expect(value).toBeUndefined();

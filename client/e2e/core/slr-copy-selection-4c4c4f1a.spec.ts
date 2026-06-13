@@ -45,7 +45,6 @@ test.describe("SLR-0006: Copy and paste selection across multiple items", () => 
 
         // Re-enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
@@ -61,7 +60,6 @@ test.describe("SLR-0006: Copy and paste selection across multiple items", () => 
 
         // Enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
@@ -74,7 +72,6 @@ test.describe("SLR-0006: Copy and paste selection across multiple items", () => 
         // Press Shift + Down Arrow to select two items
         // Create selection manually
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
@@ -108,7 +105,6 @@ test.describe("SLR-0006: Copy and paste selection across multiple items", () => 
 
         // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -152,7 +148,7 @@ test.describe("SLR-0006: Copy and paste selection across multiple items", () => 
             });
 
             // Call KeyEventHandler.handlePaste directly
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const KeyEventHandler = (window as any).__KEY_EVENT_HANDLER__;
             if (KeyEventHandler && KeyEventHandler.handlePaste) {
                 await KeyEventHandler.handlePaste(clipboardEvent);

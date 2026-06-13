@@ -23,7 +23,6 @@ test.describe("YJS-f2g3h4i5: Yjs project data sync", () => {
 
         // Get project info from page1
         const page1Info = await page1.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const project = client?.getProject?.();
@@ -39,11 +38,10 @@ test.describe("YJS-f2g3h4i5: Yjs project data sync", () => {
 
         // Wait for page1 WebSocket to connect
         await page1.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             return (provider as any)?.websocketProvider?.status === "connected" || provider?.isSynced === true;
         }, { timeout: 15000 });
 
@@ -51,7 +49,6 @@ test.describe("YJS-f2g3h4i5: Yjs project data sync", () => {
 
         // Get project info from page2
         const page2Info = await page2.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const project = client?.getProject?.();
@@ -68,11 +65,10 @@ test.describe("YJS-f2g3h4i5: Yjs project data sync", () => {
 
         // Wait for page2 WebSocket to connect
         await page2.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             return (provider as any)?.websocketProvider?.status === "connected" || provider?.isSynced === true;
         }, { timeout: 15000 });
 

@@ -10,7 +10,6 @@ test.describe("FSE-9d3f2b1c: Firestore store exposes itself to window", () => {
     });
 
     test("firestoreStore is attached to window", async ({ page }) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const exists = await page.evaluate(() => typeof (window as any).__FIRESTORE_STORE__ !== "undefined");
         expect(exists).toBe(true);
     });

@@ -66,9 +66,8 @@ test.describe("Outliner Basic Test (No Auth)", () => {
         // Check for the existence of UserManager
         const userManagerExists = await page.evaluate(() => {
             return {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 userManagerExists: typeof (window as any).__USER_MANAGER__ !== "undefined",
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 userManagerType: typeof (window as any).__USER_MANAGER__,
                 windowKeys: Object.keys(window).filter(key => key.startsWith("__")),
                 globalThis: typeof globalThis !== "undefined",
@@ -79,7 +78,6 @@ test.describe("Outliner Basic Test (No Auth)", () => {
 
         // Check the state of global variables
         const globalVars = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const win = window as any;
             return {
                 userManager: typeof win.__USER_MANAGER__,
@@ -103,7 +101,6 @@ test.describe("Outliner Basic Test (No Auth)", () => {
         try {
             await page.waitForFunction(
                 () => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const win = window as any;
                     const hasUserManager = typeof win.__USER_MANAGER__ !== "undefined";
                     console.log("Checking initialization - UserManager:", hasUserManager);
@@ -117,7 +114,6 @@ test.describe("Outliner Basic Test (No Auth)", () => {
 
             // Check the state at timeout
             const state = await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const win = window as any;
                 return {
                     userManager: typeof win.__USER_MANAGER__,

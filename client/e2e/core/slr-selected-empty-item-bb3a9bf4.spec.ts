@@ -12,7 +12,6 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
         });
 
@@ -24,7 +23,6 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
 
         // Enable debug mode (after page load)
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
         });
 
@@ -50,7 +48,6 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
 
         // Re-enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
@@ -62,7 +59,6 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
 
         // Manually create selection range (including empty items)
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
@@ -101,7 +97,6 @@ test.describe("SLR-0008: Selection Range Edge Cases", () => {
 
         // Get the text of the selection range (from the application's selection range management system)
         const selectionText = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();

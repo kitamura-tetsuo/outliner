@@ -14,12 +14,11 @@ test.describe("SLR-0009: Drag and drop selection", () => {
         await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
         await page.evaluate(async () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             // Clear global variables to avoid affecting other tests
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             delete (window as any).lastCopiedText;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             delete (window as any).lastPastedText;
 
             // Also clear navigator.clipboard
@@ -31,7 +30,6 @@ test.describe("SLR-0009: Drag and drop selection", () => {
         });
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
         });
         const item = page.locator(".outliner-item.page-title");
@@ -92,7 +90,6 @@ test.describe("SLR-0009: Drag and drop selection", () => {
         expect(selectionExists).toBe(true);
 
         const selectedText = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
@@ -124,7 +121,6 @@ test.describe("SLR-0009: Drag and drop selection", () => {
 
         // Check global variable before paste
         const globalText = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (window as any).lastCopiedText || "not found";
         });
         console.log(`Global text before paste: "${globalText}"`);
@@ -134,7 +130,6 @@ test.describe("SLR-0009: Drag and drop selection", () => {
 
         // Check global variable after paste
         const pastedText = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (window as any).lastPastedText || "not found";
         });
         console.log(`Pasted text: "${pastedText}"`);

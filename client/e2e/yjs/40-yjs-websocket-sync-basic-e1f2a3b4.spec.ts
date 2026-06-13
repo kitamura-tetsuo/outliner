@@ -23,12 +23,11 @@ test.describe("YJS-e1f2a3b4: Yjs WebSocket sync basic", () => {
 
         // Wait for page1 WebSocket to connect
         await page1.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
             if (!provider) return false;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const wsConnected = (provider as any).websocketProvider?.status === "connected" || provider.isSynced;
             console.log(`page1: wsConnected: ${wsConnected}`);
             return wsConnected === true;
@@ -38,12 +37,11 @@ test.describe("YJS-e1f2a3b4: Yjs WebSocket sync basic", () => {
 
         // Wait for page2 WebSocket to connect
         await page2.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
             if (!provider) return false;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const wsConnected = (provider as any).websocketProvider?.status === "connected" || provider.isSynced;
             console.log(`page2: wsConnected: ${wsConnected}`);
             return wsConnected === true;
@@ -55,20 +53,18 @@ test.describe("YJS-e1f2a3b4: Yjs WebSocket sync basic", () => {
         // Note: We're checking wsconnected instead of synced because synced may not
         // become true immediately in test environments
         const page1Connected = await page1.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             return (provider as any)?.websocketProvider?.status === "connected" || provider?.isSynced === true;
         });
 
         const page2Connected = await page2.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const yjsStore = (window as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             return (provider as any)?.websocketProvider?.status === "connected" || provider?.isSynced === true;
         });
 

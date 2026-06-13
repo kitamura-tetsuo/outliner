@@ -34,11 +34,9 @@ test.describe("Y.Doc persistence and offline editing", () => {
     async function getCurrentPageTexts(page: any): Promise<string[]> {
         return await page.evaluate(() => {
             try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore || (window as any).appStore;
                 if (!gs?.currentPage?.items) return [];
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const items = gs.currentPage.items as any[];
                 const texts: string[] = [];
                 for (let i = 0; i < items.length; i++) {
@@ -59,7 +57,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
     async function getProjectTitle(page: any): Promise<string> {
         return await page.evaluate(() => {
             try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore || (window as any).appStore;
                 return gs?.project?.title ?? "";
             } catch {
@@ -81,7 +78,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
         test("should restore container content after page reload", async ({ page }) => {
             // Verify initial content exists
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 10000 });
@@ -96,7 +92,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Wait for the page to reload and reinitialize
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
@@ -111,7 +106,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
         test("should persist edits while offline", async ({ page, context }) => {
             // Verify initial state
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 10000 });
@@ -122,10 +116,9 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Make edits while offline
             await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 const pageRef = gs?.currentPage;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 const items = pageRef?.items as any;
                 if (items && items.length > 0) {
                     // Modify the first item
@@ -136,10 +129,9 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Add a new item while offline
             await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 const pageRef = gs?.currentPage;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 const items = pageRef?.items as any;
                 if (items && typeof items.addNode === "function") {
                     const newItem = items.addNode("tester");
@@ -158,7 +150,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Wait for reinitialization
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
@@ -186,9 +177,8 @@ test.describe("Y.Doc persistence and offline editing", () => {
             // Get title from metadata or current state
             const displayedTitle = await page.evaluate(() => {
                 try {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const gs = (window as any).generalStore;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     const yjsService = (window as any).__YJS_SERVICE__;
                     if (yjsService?.getProjectTitle) {
                         // Try to get from current URL or state
@@ -215,7 +205,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             // Verify title is still correct after reload (metadata Y.Doc is working)
             const restoredTitle = await page.evaluate(() => {
                 try {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const gs = (window as any).generalStore;
                     return gs?.project?.title ?? "";
                 } catch {
@@ -258,7 +247,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Seed Container B with different content
             await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 if (gs?.project && !gs.currentPage) {
                     const pageRef = gs.project.addPage("Container B Page", "tester");
@@ -267,10 +255,9 @@ test.describe("Y.Doc persistence and offline editing", () => {
             });
 
             await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 const pageRef = gs?.currentPage;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 const items = pageRef?.items as any;
                 if (items) {
                     // Clear existing
@@ -301,7 +288,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             // Reload the page
             await page.reload({ waitUntil: "domcontentloaded" });
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
@@ -322,7 +308,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Wait for Container A to load
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
@@ -343,7 +328,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Verify initial state
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 10000 });
@@ -352,10 +336,9 @@ test.describe("Y.Doc persistence and offline editing", () => {
             await context.setOffline(true);
 
             await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 const pageRef = gs?.currentPage;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 const items = pageRef?.items as any;
 
                 // Modify first item
@@ -377,7 +360,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             // Reload offline
             await page.reload({ waitUntil: "domcontentloaded" });
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });
@@ -426,7 +408,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             await page.waitForURL(`**/${encodeURIComponent(title2)}/**`, { timeout: 15000 });
 
             await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 if (gs?.project && !gs.currentPage) {
                     const pageRef = gs.project.addPage("Container 2 Page", "tester");
@@ -435,10 +416,9 @@ test.describe("Y.Doc persistence and offline editing", () => {
             });
 
             await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 const pageRef = gs?.currentPage;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 const items = pageRef?.items as any;
                 if (items) {
                     const len = items.length ?? 0;
@@ -468,7 +448,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             await page.waitForURL(`**/${encodeURIComponent(title1)}/**`, { timeout: 15000 });
 
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 15000 });

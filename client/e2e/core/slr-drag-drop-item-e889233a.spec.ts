@@ -11,12 +11,10 @@ import { TestHelpers } from "../utils/testHelpers";
 test.describe("SLR-0009: Item Drag and Drop", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
         });
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
         });
         const item = page.locator(".outliner-item.page-title");

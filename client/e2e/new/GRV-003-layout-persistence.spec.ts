@@ -69,15 +69,13 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Wait until the chart is initialized first
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return typeof (window as any).__GRAPH_CHART__ !== "undefined";
         }, { timeout: 30000 });
 
         // Wait for data initialization once the chart is available
         const chartInitResult = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const chart = (window as any).__GRAPH_CHART__;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const store = (window as any).appStore || (window as any).generalStore;
 
             return {
@@ -91,7 +89,6 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Force mock data setting because the graph might not update even if store has page data
         const mockDataResult = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const chart = (window as any).__GRAPH_CHART__;
             if (chart) {
                 // Initialize graph with mock data
@@ -122,7 +119,6 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Wait until data is set in the graph
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const chart = (window as any).__GRAPH_CHART__;
             if (!chart) return false;
             try {
@@ -137,7 +133,6 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         // Manually set graph node positions (test layout persistence)
         const layoutSetResult = await page.evaluate(() => {
             try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const chart = (window as any).__GRAPH_CHART__;
                 if (!chart) return { success: false, error: "Chart not found" };
 
@@ -207,9 +202,8 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         console.log("Layout set result:", layoutSetResult);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((layoutSetResult as any).success).toBe(true);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         expect((layoutSetResult as any).firstNodePosition).toEqual({ x: 200, y: 200 });
 
         // Reload page (stay on graph page)
@@ -217,7 +211,6 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Wait for Yjs connection after reload to ensure stores are hydrated
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const y = (window as any).__YJS_STORE__;
             return y && y.isConnected && y.yjsClient;
         }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait after reload failed"));
@@ -227,13 +220,11 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Wait until chart is re-initialized
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return typeof (window as any).__GRAPH_CHART__ !== "undefined";
         }, { timeout: 30000 });
 
         // Set mock data and apply saved layout even after reload
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const chart = (window as any).__GRAPH_CHART__;
             if (chart) {
                 const mockNodes: any[] = [
@@ -287,7 +278,6 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Wait until data is set in the graph
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const chart = (window as any).__GRAPH_CHART__;
             if (!chart) return false;
             try {
@@ -316,7 +306,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                     }
 
                     const layoutData = JSON.parse(savedLayout);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     const chart = (window as any).__GRAPH_CHART__;
                     if (!chart) {
                         console.log(`Retry ${i}: Chart not found`);
@@ -376,9 +366,9 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         console.log("Layout restore result:", layoutRestoreResult);
 
         expect(layoutRestoreResult.success).toBe(true);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         expect((layoutRestoreResult as any).restoredPosition).toEqual({ x: 200, y: 200 });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         expect((layoutRestoreResult as any).layoutRestored).toBe(true);
     });
 });

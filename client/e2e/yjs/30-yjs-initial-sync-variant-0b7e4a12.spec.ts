@@ -20,46 +20,42 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
     await p1.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
-    // eslint-disable-next-line no-restricted-globals
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 60000 });
     await p1.evaluate(async () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mgr = (window as any).__USER_MANAGER__;
         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     await p1.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 60000 });
 
     const p1Connected = await p1.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite
         const { createMinimalProjectConnection } = await import("/src/lib/yjs/connection.ts");
         const conn = await createMinimalProjectConnection(pid);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (window as any).__DOC__ = conn.doc;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (window as any).__PROVIDER__ = conn.provider;
         conn.provider.on("status", (e: any) => console.log("[p1] status", e.status));
         conn.provider.on("synced", (data: { state: boolean; }) => console.log("[p1] sync", data.state));
         for (let i = 0; i < 80; i++) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected") {
                 break;
             }
             await new Promise(r => setTimeout(r, 100));
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         return conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected";
     }, projectId);
     expect(p1Connected).toBeTruthy();
 
     // p1 updates before p2 joins
     await p1.evaluate(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const d = (window as any).__DOC__;
         d.getMap("m").set("k", "v0");
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const p1Local = await p1.evaluate(() => (window as any).__DOC__.getMap("m").get("k"));
     console.log("[variant] p1 local:", p1Local);
 
@@ -75,36 +71,32 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
     await p2.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
-    // eslint-disable-next-line no-restricted-globals
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__, null, { timeout: 60000 });
     await p2.evaluate(async () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mgr = (window as any).__USER_MANAGER__;
         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     await p2.waitForFunction(() => !!(window as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 60000 });
 
     const p2Connected = await p2.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite
         const { createMinimalProjectConnection } = await import("/src/lib/yjs/connection.ts");
         const conn = await createMinimalProjectConnection(pid);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (window as any).__DOC2__ = conn.doc;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (window as any).__PROVIDER2__ = conn.provider;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (window as any).__UPDATES2__ = 0;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (window as any).__UPDATES2_V2__ = 0;
         conn.doc.on("update", () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__UPDATES2__++;
             console.log("[p2] doc update");
         });
         conn.doc.on("updateV2", (_update: Uint8Array) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__UPDATES2_V2__++;
             console.log("[p2] doc updateV2", _update.length);
         });
@@ -116,13 +108,12 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         console.log(`[p2] initial provider.isSynced=${conn.provider.isSynced}`);
 
         for (let i = 0; i < 80; i++) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected") {
                 break;
             }
             await new Promise(r => setTimeout(r, 100));
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         return conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected";
     }, projectId);
     expect(p2Connected).toBeTruthy();
@@ -131,9 +122,9 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
     const v = await p2.evaluate(async () => {
         // @ts-expect-error - Browser context import resolved by Vite
         const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const prov = (window as any).__PROVIDER2__;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const m = (window as any).__DOC2__.getMap("m");
 
         // Use the test-specific utility to wait for sync and data
@@ -145,9 +136,9 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
 
         return m.get("k");
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const updates2 = await p2.evaluate(() => (window as any).__UPDATES2__);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const updates2v2 = await p2.evaluate(() => (window as any).__UPDATES2_V2__ ?? 0);
     console.log("[variant] p2 value:", v, "updates:", updates2, "updateV2:", updates2v2);
 

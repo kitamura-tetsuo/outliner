@@ -63,8 +63,7 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
         // Get the actual page name (more reliable method)
         const actualPageName = await page.evaluate(() => {
             // First try to get from store
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const store = (window as any).store;
             if (store && store.currentPage && store.currentPage.text) {
                 return store.currentPage.text;
@@ -147,13 +146,11 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
         // NOTE: The replacement in evaluate above is incomplete,
         // so actually use updateText to update.
         await page.evaluate(({ pageName }) => {
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).generalStore || (window as any).appStore;
             const items = store?.currentPage?.items;
             if (!items) return;
             // Get the 2nd item (index 1)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const targetItem = items.at ? items.at(1) : (items as any)[1];
             if (targetItem && typeof targetItem.updateText === "function") {
                 targetItem.updateText(`[${pageName}]`);
@@ -333,12 +330,10 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
         await TestHelpers.waitForItemCount(page, 4, 30000); // Title + 3 seeded lines
 
         await page.evaluate(dynamicPageName => {
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).generalStore || (window as any).appStore;
             const items = store?.currentPage?.items;
             if (!items) return;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const firstItem = items.at ? items.at(0) : (items as any)[0];
             if (firstItem && typeof firstItem.updateText === "function") {
                 firstItem.updateText(`[${dynamicPageName}]`);

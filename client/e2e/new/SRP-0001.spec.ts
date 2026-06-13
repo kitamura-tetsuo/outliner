@@ -35,19 +35,15 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         // Ensure store pages are ready
         // First wait for Yjs connection to be established
         await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (window as any).__YJS_STORE__?.isConnected;
         }, { timeout: 30000 }).catch(() => console.log("Yjs connection check timed out, proceeding anyway..."));
 
         // Wait for pages to appear in store with a shorter polling interval
         await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs = (window as any).generalStore || (window as any).appStore;
             const pages = gs?.pages?.current;
             // Handle both Array and Yjs Items
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const count = pages ? (pages.length !== undefined ? pages.length : (pages as any).size) : 0;
             // Debug if count is staying at 1
             // if (count === 1) console.log("Still waiting for second page...");
@@ -55,34 +51,27 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         }, { timeout: 60000, polling: 1000 }).catch(async (e) => {
             console.log("[Test] Warning: Timeout waiting for 2 pages. dumping current pages:", e);
             await page.evaluate(() => {
-                // eslint-disable-next-line no-restricted-globals
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore || (window as any).appStore;
                 console.log("Current pages in store:", gs?.pages?.current);
                 console.log("Pages length:", gs?.pages?.current?.length);
-                // eslint-disable-next-line no-restricted-globals
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 console.log("Is connected:", (window as any).__YJS_STORE__?.isConnected);
             });
         });
 
         // Final check (verify current page status regardless of creation success)
         const finalCheck = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).appStore;
             const toArray = (p: any) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if (!p) return [] as any[];
                 try {
                     if (Array.isArray(p)) return p;
                     if (typeof p[Symbol.iterator] === "function") return Array.from(p);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     const len = (p as any).length;
                     if (typeof len === "number" && len >= 0) {
                         const r: any[] = [];
                         for (let i = 0; i < len; i++) {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const v = (p as any).at ? p.at(i) : p[i];
                             if (typeof v !== "undefined") r.push(v);
                         }
@@ -113,8 +102,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             const searchBtn = document.querySelector('[data-testid="search-toggle-button"]');
             return {
                 searchBtnExists: !!searchBtn,
-                // eslint-disable-next-line no-restricted-globals
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 searchImplemented: typeof (window as any).__SEARCH_SERVICE__ !== "undefined",
             };
         });
@@ -142,13 +130,11 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         }
 
         // Force open (always call)
-        // eslint-disable-next-line no-restricted-globals
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         await page.evaluate(() => (window as any).__OPEN_SEARCH__?.());
 
         // Confirm opened
-        // eslint-disable-next-line no-restricted-globals
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         await page.waitForFunction(() => (window as any).__SEARCH_PANEL_VISIBLE__ === true, { timeout: 4000 }).catch(
             () => {
                 console.log("__SEARCH_PANEL_VISIBLE__ was not set to true within timeout");
@@ -181,21 +167,17 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         // Verify actual data
         const dataCheck = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).appStore;
             const toArray = (p: any) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if (!p) return [] as any[];
                 try {
                     if (Array.isArray(p)) return p;
                     if (typeof p[Symbol.iterator] === "function") return Array.from(p);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     const len = (p as any).length;
                     if (typeof len === "number" && len >= 0) {
                         const r: any[] = [];
                         for (let i = 0; i < len; i++) {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const v = (p as any).at ? p.at(i) : p[i];
                             if (typeof v !== "undefined") r.push(v);
                         }
@@ -227,8 +209,6 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         // Investigate store structure in detail
         const storeDebug = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).appStore;
             console.log("Store debug info:");
             console.log("- store exists:", !!store);
@@ -262,8 +242,6 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         // If mock data is set, also set mock data in SearchPanel
         const mockDataSetup = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).appStore;
 
             // More detailed debug info
@@ -357,15 +335,13 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                 '[data-testid="search-result-item"], .search-results .result-item',
             );
             const domCount = resultItems.length;
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const fallbackCount = (window as any).__E2E_LAST_MATCH_COUNT__ ?? 0;
             return {
                 count: domCount, // After replacement, rely on DOM only
                 items: Array.from(resultItems).map(item => item.textContent),
                 domCount,
                 fallbackCount,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any;
         });
 

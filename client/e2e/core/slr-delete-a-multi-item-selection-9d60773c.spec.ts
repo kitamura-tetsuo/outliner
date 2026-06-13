@@ -12,7 +12,6 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
         });
 
@@ -35,7 +34,6 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
 
         // Re-enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
@@ -44,7 +42,6 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
     test("Can delete selection spanning multiple items with Backspace key", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
@@ -58,7 +55,6 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
 
         // Manually create selection
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
@@ -120,7 +116,6 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
     test("Can delete selection spanning multiple items with Delete key", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
@@ -134,7 +129,6 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
 
         // Manually create selection
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
@@ -204,7 +198,6 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
     test("Items are properly merged after deletion", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
@@ -218,7 +211,6 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
 
         // Manually create selection
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 
@@ -282,7 +274,6 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
     test("Cursor position is properly updated", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).DEBUG_MODE = true;
             console.log("Debug mode enabled in test");
         });
@@ -296,7 +287,6 @@ test.describe("SLR-0007: Delete Multi-Item Selection", () => {
 
         // Manually create selection
         await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             if (!store) return;
 

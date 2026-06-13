@@ -9,7 +9,6 @@ import { TestHelpers } from "../utils/testHelpers";
 
 async function setItemTextByIndex(page, index: number, text: string) {
     await page.evaluate(({ index, text }) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const gs = (window as any).generalStore;
         if (!gs || !gs.currentPage) return;
         const pageItem = gs.currentPage;
@@ -33,7 +32,6 @@ async function getItemTextByIndex(page, index: number): Promise<string> {
 
 async function getActiveCursorInfo(page) {
     return await page.evaluate(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const store = (window as any).editorOverlayStore;
         if (!store) return { activeCount: 0, activeItemId: null, total: 0 };
         const cursors = Object.values(store.cursors || {});
@@ -71,7 +69,6 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         // Alt+ArrowUp: Cannot move above title -> No change
         await page.keyboard.press("Alt+ArrowUp");
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const s: any = (window as any).editorOverlayStore;
             if (!s) return false;
             const act = Object.values(s.cursors || {}).filter((c: any) => c.isActive);
@@ -86,7 +83,6 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         // Alt+ArrowDown: Cannot move below bottom -> No change
         await page.keyboard.press("Alt+ArrowDown");
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const s: any = (window as any).editorOverlayStore;
             if (!s) return false;
             const act = Object.values(s.cursors || {}).filter((c: any) => c.isActive);
@@ -142,7 +138,6 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
 
         // Wait for state stability
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const s: any = (window as any).editorOverlayStore;
             if (!s) return false;
             const act = Object.values(s.cursors || {}).filter((c: any) => c.isActive);
@@ -171,7 +166,6 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
 
         // State stable
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const s: any = (window as any).editorOverlayStore;
             if (!s) return false;
             const act = Object.values(s.cursors || {}).filter((c: any) => c.isActive);
@@ -182,13 +176,12 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         const info = await getActiveCursorInfo(page);
         expect(info.activeCount).toBe(1);
         const state = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const s: any = (window as any).editorOverlayStore;
             const cursors = s.cursors as Record<string, any>;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const active = Object.values(cursors).find((c: any) => c.isActive) as any | undefined;
             const lastHistory = s.cursorHistory?.[s.cursorHistory.length - 1];
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const activeId = active ? (active as any).cursorId : undefined;
             return { activeId, lastHistory } as { activeId?: string; lastHistory?: string; };
         });
@@ -210,7 +203,6 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         await page.keyboard.press("Alt+ArrowUp");
 
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const s: any = (window as any).editorOverlayStore;
             if (!s) return false;
             const act = Object.values(s.cursors || {}).filter((c: any) => c.isActive);

@@ -24,7 +24,6 @@ test.describe("SLR-0011: Expand selection", () => {
     test("Shift+Alt+Right expands selection", async ({ page }) => {
         // Check initial state
         const initialState = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
             return {
@@ -46,7 +45,6 @@ test.describe("SLR-0011: Expand selection", () => {
 
         // Check state after selection
         const afterSelectionState = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             const textarea = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null;
             return {
@@ -71,7 +69,6 @@ test.describe("SLR-0011: Expand selection", () => {
             await page.waitForTimeout(200);
 
             const basicSelectionState = await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 return {
                     selectedText: store ? store.getSelectedText() : "",

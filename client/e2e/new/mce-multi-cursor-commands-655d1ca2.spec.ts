@@ -24,7 +24,7 @@ test.describe("MCE-0002: multi-cursor commands", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // Verify state before adding cursor
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const countBefore = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
         expect(countBefore).toBe(1);
 
@@ -33,13 +33,13 @@ test.describe("MCE-0002: multi-cursor commands", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // Verify state after adding cursor
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const countAfter = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
         expect(countAfter).toBe(2);
 
         // Remove cursor using Undo
         await page.keyboard.press("Control+Shift+z");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const countUndo = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
         expect(countUndo).toBe(1);
     });

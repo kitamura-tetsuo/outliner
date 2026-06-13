@@ -135,7 +135,6 @@ export async function initPollingMonitor(page: Page) {
             }
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__pollingMonitor = new PollingMonitor();
     });
 }
@@ -145,7 +144,6 @@ export async function initPollingMonitor(page: Page) {
  */
 export async function startPollingMonitor(page: Page) {
     await page.evaluate(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__pollingMonitor?.start();
     });
 }
@@ -155,7 +153,6 @@ export async function startPollingMonitor(page: Page) {
  */
 export async function getPollingStats(page: Page) {
     return await page.evaluate(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (window as any).__pollingMonitor?.getStats();
     });
 }
@@ -166,7 +163,7 @@ export async function getPollingStats(page: Page) {
 export async function disablePollingPattern(page: Page, pattern: RegExp) {
     await page.evaluate((patternStr) => {
         const regex = new RegExp(patternStr);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (window as any).__pollingMonitor?.addDisablePattern(regex);
     }, pattern.source);
 }
@@ -176,7 +173,6 @@ export async function disablePollingPattern(page: Page, pattern: RegExp) {
  */
 export async function clearDisablePatterns(page: Page) {
     await page.evaluate(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__pollingMonitor?.clearDisablePatterns();
     });
 }
@@ -186,7 +182,6 @@ export async function clearDisablePatterns(page: Page) {
  */
 export async function resetPollingMonitor(page: Page) {
     await page.evaluate(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__pollingMonitor?.reset();
     });
 }

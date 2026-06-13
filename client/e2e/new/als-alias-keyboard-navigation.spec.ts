@@ -63,20 +63,18 @@ test.describe("ALS-0001: Alias picker keyboard navigation", () => {
             // Wait up to 5 seconds for aliasPickerStore and itemId to be available
             const startTime = Date.now();
             while (Date.now() - startTime < 5000) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).aliasPickerStore;
                 if (store && store.itemId) {
                     return store.itemId;
                 }
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             return (window as any).aliasPickerStore?.itemId ?? null;
         });
         if (!aliasId) throw new Error("alias itemId not found on aliasPickerStore");
         // expose aliasId for debug in page context
         await page.evaluate((id) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).__aliasIdForDebug = id;
         }, aliasId);
         const optionCount = await page.locator(".alias-picker").first().locator("li").count();

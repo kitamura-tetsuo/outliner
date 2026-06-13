@@ -21,7 +21,7 @@ test.describe("MCE-37b78b62: multi-cursor editing", () => {
         await TestHelpers.insertText(page, firstId!, "x", "local");
         await TestHelpers.insertText(page, secondId!, "y", "remote");
         await TestHelpers.waitForCursorVisible(page);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const count = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
         expect(count).toBe(2);
     });

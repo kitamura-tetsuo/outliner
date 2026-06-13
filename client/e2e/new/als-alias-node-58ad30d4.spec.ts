@@ -22,7 +22,6 @@ test.describe("ALS-0001: Alias node", () => {
 
         await TestHelpers.setCursor(page, firstId);
         await page.evaluate(({ itemId }) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             const cursor = store?.getCursorInstances?.().find((c: any) => c.itemId === itemId);
             const target = cursor?.findTarget?.();
@@ -39,11 +38,11 @@ test.describe("ALS-0001: Alias node", () => {
         await expect(page.locator(".alias-picker").first()).toBeVisible();
         const aliasId = await page.evaluate(async () => {
             const timeout = Date.now() + 5000;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             while (!(window as any).aliasPickerStore && Date.now() < timeout) {
                 await new Promise(resolve => setTimeout(resolve, 50));
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             return (window as any).aliasPickerStore?.itemId ?? null;
         });
         if (!aliasId) throw new Error("alias item not found on aliasPickerStore");

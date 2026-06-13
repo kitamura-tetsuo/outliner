@@ -33,7 +33,6 @@ test.describe("Box Selection Test via Mouse", () => {
         // Enable debug mode
         try {
             await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).DEBUG_MODE = true;
             });
         } catch (error) {
@@ -90,12 +89,11 @@ test.describe("Box Selection Test via Mouse", () => {
 
         // Verify that box selection is created
         const boxSelectionCount = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!(window as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const selections = Object.values((window as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
             return boxSelections.length;
@@ -113,7 +111,6 @@ test.describe("Box Selection Test via Mouse", () => {
 
         // Get copied text (directly from global variable)
         const copiedText = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (window as any).lastCopiedText || "";
         });
         console.log(`Copied text: "${copiedText}"`);
@@ -163,12 +160,9 @@ test.describe("Box Selection Test via Mouse", () => {
         // Explicitly call cancelBoxSelection
         await page.evaluate(() => {
             if (
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).KeyEventHandler
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 && typeof (window as any).KeyEventHandler.cancelBoxSelection === "function"
             ) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).KeyEventHandler.cancelBoxSelection();
                 console.log("Explicitly called KeyEventHandler.cancelBoxSelection()");
             } else {
@@ -176,9 +170,8 @@ test.describe("Box Selection Test via Mouse", () => {
             }
 
             // Force clear selection range
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             if ((window as any).editorOverlayStore) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).editorOverlayStore.clearSelections();
                 console.log("Explicitly called editorOverlayStore.clearSelections()");
             }
@@ -189,12 +182,11 @@ test.describe("Box Selection Test via Mouse", () => {
 
         // Verify that box selection is cancelled
         const boxSelectionCount2 = await page.evaluate(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!(window as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const selections = Object.values((window as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
             console.log("Current selections after cancel:", selections);

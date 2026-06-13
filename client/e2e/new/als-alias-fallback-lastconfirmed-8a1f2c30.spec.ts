@@ -51,16 +51,15 @@ test.describe("ALS-8a1f2c30: alias fallback shows path within 2s", () => {
 
         // Set aliasPickerStore's last confirmed information (within 2 seconds)
         await page.evaluate(([itemId, targetId]) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const ap: any = (window as any).aliasPickerStore;
             if (!ap) throw new Error("aliasPickerStore not found");
             ap.lastConfirmedItemId = itemId;
             ap.lastConfirmedTargetId = targetId;
             ap.lastConfirmedAt = Date.now();
             // Slightly modify target item text to trigger re-render and ensure dependency recalculation
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const gs: any = (window as any).generalStore;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const items = gs?.currentPage?.items as any;
             const len = items?.length ?? 0;
             for (let i = 0; i < len; i++) {

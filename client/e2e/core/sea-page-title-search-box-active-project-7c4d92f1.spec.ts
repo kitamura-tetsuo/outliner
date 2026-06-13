@@ -37,8 +37,6 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         // This ensures the SearchBox has data to search against
 
         await page.waitForFunction(() => {
-            // eslint-disable-next-line no-restricted-globals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const gs = (window as any).generalStore || (window as any).appStore;
             const items = gs?.project?.items;
             return items && items.length >= 2; // Should have at least current page + Page2

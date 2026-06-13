@@ -140,7 +140,6 @@ export class TestHelpers {
             try {
                 await page.waitForFunction(
                     () => {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const y = (window as any).__YJS_STORE__;
                         return y && y.isConnected;
                     },
@@ -154,7 +153,6 @@ export class TestHelpers {
             // Wait for store initialization
             try {
                 await page.waitForFunction(
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     () => !!(window as any).generalStore?.project,
                     { timeout: 30000 },
                 );
@@ -195,7 +193,6 @@ export class TestHelpers {
     ): Promise<void> {
         TestHelpers.slog(`Manual login attempt for ${email}`);
         await page.evaluate(async ({ e, p }) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const um = (window as any).__USER_MANAGER__;
             if (um && typeof um.loginWithEmailPassword === "function") {
                 await um.loginWithEmailPassword(e, p);
@@ -206,7 +203,7 @@ export class TestHelpers {
         }, { e: email, p: password });
 
         // Wait for authentication state propagation
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 15 * 1000 });
         TestHelpers.slog("Manual login successful");
     }
@@ -226,7 +223,6 @@ export class TestHelpers {
         // Wait for Firestore store to be initialized
         try {
             await page.waitForFunction(
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 () => !!(window as any).__FIRESTORE_STORE__ && !!(window as any).__USER_MANAGER__,
                 { timeout: 15000 },
             );
@@ -234,7 +230,6 @@ export class TestHelpers {
             // Wait for user login
             TestHelpers.slog("setAccessibleProjects: Waiting for currentUser...");
             const hasUser = await page.evaluate(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const um = (window as any).__USER_MANAGER__;
                 return !!um?.auth?.currentUser;
             });
@@ -245,7 +240,7 @@ export class TestHelpers {
             }
 
             // Final check
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             await page.waitForFunction(() => !!(window as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 10000 });
             TestHelpers.slog("setAccessibleProjects: Auth confirmed.");
         } catch (e) {
@@ -253,15 +248,13 @@ export class TestHelpers {
             throw e; // Fail the test early
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentUserId = await page.evaluate(() => (window as any).__USER_MANAGER__?.auth?.currentUser?.uid);
         TestHelpers.slog(
             `[setAccessibleProjects] Setting projects for userId=${currentUserId}: ids=${JSON.stringify(projectNames)}`,
         );
         await page.evaluate(async ({ projects }) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fs = (window as any).__FIRESTORE_STORE__;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const um = (window as any).__USER_MANAGER__;
             const userId = um?.auth?.currentUser?.uid;
 
@@ -291,7 +284,7 @@ export class TestHelpers {
                     updatedAt: new Date(),
                 };
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             const ps = (window as any).__PROJECT_STORE__;
 
             if (ps && typeof ps.syncFromFirestore === "function") {
@@ -407,7 +400,6 @@ export class TestHelpers {
         TestHelpers.slog("Waiting for __YJS_STORE__ to be connected...");
         await page.waitForFunction(
             () => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const y = (window as any).__YJS_STORE__;
                 return y && y.isConnected;
             },
@@ -428,7 +420,6 @@ export class TestHelpers {
         const targetPageName = pageName; // Capture for closure
         await page.waitForFunction(
             (targetName) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 if (!gs?.project) {
                     console.log(`[TestHelpers] Waiting for project... gs=${!!gs}`);
@@ -453,7 +444,6 @@ export class TestHelpers {
             // Extensive Debugging info
             try {
                 const debugState = await page.evaluate(() => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const win = window as any;
                     return {
                         pageState: win.__PAGE_STATE__,
@@ -614,11 +604,10 @@ export class TestHelpers {
             if (!store || !store.pages) return [] as Array<{ id: string; text: string; }>;
 
             const toArray = (p: unknown) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if (!p) return [] as any[];
                 try {
                     if (Array.isArray(p)) return p;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     if (typeof p === "object" && p !== null && typeof (p as any)[Symbol.iterator] === "function") {
                         return Array.from(p as Iterable<unknown>);
                     }
@@ -626,7 +615,6 @@ export class TestHelpers {
                     if (typeof len === "number" && len >= 0) {
                         const r: any[] = [];
                         for (let i = 0; i < len; i++) {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const anyVal = p as any;
                             const v = typeof anyVal.at === "function" ? anyVal.at(i) : anyVal[i];
                             if (typeof v !== "undefined") r.push(v);
@@ -642,7 +630,6 @@ export class TestHelpers {
             const pages = toArray(store.pages.current);
             return pages.map((p: any) => {
                 const textVal = (p?.text && typeof (p.text as { toString?: unknown; }).toString === "function")
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     ? (p.text as any).toString()
                     : String(p?.text ?? "");
                 return { id: String(p.id), text: textVal };
@@ -735,7 +722,6 @@ export class TestHelpers {
                 };
             });
         } catch (e) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             console.log("TestHelper: setupCursorDebugger injection skipped:", (e as any)?.message ?? e);
         }
 
@@ -753,7 +739,6 @@ export class TestHelpers {
                 // Add Yjs / app-store based debug function
                 const buildYjsSnapshot = () => {
                     try {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const gs = (window as any).generalStore || (window as any).appStore;
                         const proj = gs?.project;
                         if (!proj) return { error: "project not initialized" };
@@ -765,12 +750,10 @@ export class TestHelpers {
                         if (currentPage && currentPage.items) {
                             root = currentPage.items;
                         } else {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             root = proj.items as any;
                         }
 
                         const toPlain = (item: any): any => {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const children = item.items as any;
                             const asArray: any[] = [];
                             const len = children?.length ?? 0;
@@ -794,14 +777,13 @@ export class TestHelpers {
                     }
                 };
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (window as any).getYjsTreeDebugData = function() {
                     return buildYjsSnapshot();
                 };
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 (window as any).getYjsTreePathData = function(path?: string) {
                     const data = buildYjsSnapshot();
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     if (!path || (data as any)?.error) return data;
                     const parts = String(path).split(".");
                     let res: any = data;
@@ -815,7 +797,6 @@ export class TestHelpers {
                 // (Yjs based)
             });
         } catch (e) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             console.log("TestHelper: setupTreeDebugger injection skipped:", (e as any)?.message ?? e);
         }
     }
@@ -836,7 +817,7 @@ export class TestHelpers {
             await page.waitForFunction(
                 () => {
                     if (typeof window === "undefined") return false;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     const editorOverlayStore = (window as any)?.editorOverlayStore;
                     if (!editorOverlayStore) {
                         return false;
@@ -965,7 +946,6 @@ export class TestHelpers {
         userId: string = "local",
     ): Promise<void> {
         await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).editorOverlayStore;
             return !!store && typeof store.setCursor === "function";
         }, { timeout: 15000 }).catch(() => {
@@ -973,7 +953,6 @@ export class TestHelpers {
         });
 
         const setSucceeded = await page.evaluate(({ itemId, offset, userId }) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (editorOverlayStore && typeof editorOverlayStore.setCursor === "function") {
                 console.log(
@@ -1020,7 +999,6 @@ export class TestHelpers {
         userId: string = "local",
     ): Promise<void> {
         await page.evaluate(async ({ itemId, text, userId }) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const editorOverlayStore = (window as any).editorOverlayStore;
             if (editorOverlayStore && editorOverlayStore.getCursorInstances) {
                 const cursorInstances = editorOverlayStore.getCursorInstances();
@@ -1053,7 +1031,6 @@ export class TestHelpers {
         // Skip authentication check if skipAuthCheck is true, or if we're in an E2E test environment
         // The E2E check must be inside waitForFunction to run in browser context
         const shouldSkipAuth = skipAuthCheck || await page.waitForFunction(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (window as any).__E2E__ === true
                 || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
                 || window.location.search.includes("isTest=true");
@@ -1064,7 +1041,6 @@ export class TestHelpers {
         } else {
             // Wait for authentication
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const userManager = (window as any).__USER_MANAGER__;
                 return !!(userManager && userManager.getCurrentUser && userManager.getCurrentUser());
             }, { timeout: 30000 });
@@ -1072,14 +1048,13 @@ export class TestHelpers {
         }
 
         // Wait for generalStore to be available
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         await page.waitForFunction(() => !!(window as any).generalStore, { timeout: 60000 });
         TestHelpers.slog("generalStore is available");
 
         // Wait for project and page to be loaded in the store
         try {
             await page.waitForFunction(() => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 if (!gs) return false;
                 const hasProject = !!gs.project;
@@ -1092,7 +1067,6 @@ export class TestHelpers {
                 // Dump state on timeout
                 console.log("waitForAppReady timed out. Dumping state:");
                 await page.evaluate(() => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const gs = (window as any).generalStore;
                     console.log("GS:", !!gs);
                     if (gs) {
@@ -1101,7 +1075,7 @@ export class TestHelpers {
                         console.log("GS.pages.current:", gs.pages?.current);
                         console.log("GS.currentPage:", gs.currentPage);
                     }
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     console.log("YJS.isConnected:", (window as any).__YJS_STORE__?.isConnected);
                 });
                 throw e;
@@ -1144,7 +1118,7 @@ export class TestHelpers {
                 const hasData = await page.evaluate(async (targetPageName) => {
                     try {
                         // First check if Yjs is connected
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                         const yjsStore = (window as any).__YJS_STORE__;
                         const isConnected = yjsStore?.getIsConnected?.() === true;
                         if (!isConnected) {
@@ -1155,7 +1129,6 @@ export class TestHelpers {
                             };
                         }
 
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const gs = (window as any).generalStore;
                         if (!gs) {
                             return { ready: false, reason: "no generalStore" };
@@ -1234,14 +1207,11 @@ export class TestHelpers {
                     try {
                         const debugInfo = await page.evaluate(() => {
                             return {
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 yjsStoreKeys: (window as any).__YJS_STORE__
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     ? Object.keys((window as any).__YJS_STORE__)
                                     : "no yjsStore",
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                                 generalStoreKeys: (window as any).generalStore
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     ? Object.keys((window as any).generalStore).filter(k => !k.startsWith("_"))
                                     : "no gs",
                                 url: window.location.href,
@@ -1294,7 +1264,6 @@ export class TestHelpers {
             let yjsConnected = false;
             try {
                 yjsConnected = await page.evaluate(() => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const y = (window as any).__YJS_STORE__;
                     return !!(y && y.isConnected);
                 });
@@ -1414,7 +1383,6 @@ export class TestHelpers {
         try {
             await page.waitForFunction(
                 () => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const gs = (window as any).generalStore;
                     const pages = gs?.pages?.current;
                     return pages && pages.length > 0;
@@ -1464,12 +1432,10 @@ export class TestHelpers {
                 return await page.evaluate(i => {
                     // Prefer AliasPickerStore.itemId while picker is visible (robust for newly created alias)
                     try {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const ap: any = (window as any).aliasPickerStore;
                         if (ap && ap.isVisible && typeof ap.itemId === "string" && ap.itemId) {
                             const chosen = ap.itemId as string;
                             try {
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 const gs: any = (window as any).generalStore;
                                 const proj = encodeURIComponent(gs?.project?.title ?? "");
                                 const parts = (window.location.pathname || "/").split("/").filter(Boolean);
@@ -1485,7 +1451,6 @@ export class TestHelpers {
                     const chosen = target?.dataset.itemId ?? null;
                     try {
                         if (chosen) {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const gs: any = (window as any).generalStore;
                             const proj = encodeURIComponent(gs?.project?.title ?? "");
                             const parts = (window.location.pathname || "/").split("/").filter(Boolean);
@@ -1648,7 +1613,6 @@ export class TestHelpers {
      */
     public static async confirmAliasOption(page: Page, itemId: string): Promise<void> {
         await page.evaluate(id => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).aliasPickerStore;
             if (store && typeof store.confirmById === "function") {
                 store.confirmById(id);
@@ -1664,7 +1628,6 @@ export class TestHelpers {
         let hid = false;
         try {
             await page.evaluate((id) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store: any = (window as any).aliasPickerStore;
                 if (store && typeof store.confirmById === "function") {
                     store.confirmById(id);
@@ -1693,7 +1656,6 @@ export class TestHelpers {
     public static async setAliasTarget(page: Page, itemId: string, targetId: string): Promise<void> {
         // Change target of existing alias item (call AliasPickerStore directly)
         await page.evaluate(id => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).aliasPickerStore;
             if (store && typeof store.show === "function") {
                 store.show(id);
@@ -1737,7 +1699,6 @@ export class TestHelpers {
                 if (stillVisible) {
                     console.log("Alias picker still visible, forcing hide via store");
                     await page.evaluate(() => {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const store = (window as any).aliasPickerStore;
                         if (store && typeof store.hide === "function") {
                             store.hide();
@@ -1751,7 +1712,6 @@ export class TestHelpers {
     public static async showAliasPicker(page: Page, itemId: string): Promise<void> {
         // Prefer calling the store directly to avoid pointer interception issues.
         await page.evaluate((id) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const store = (window as any).aliasPickerStore;
             if (store && typeof store.show === "function") {
                 store.show(id);
@@ -1769,7 +1729,6 @@ export class TestHelpers {
         // Robust: read from model state directly to avoid DOM/virtualization flakiness
         const modelId = await page.evaluate((id) => {
             try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs: any = (window as any).generalStore || (window as any).appStore;
                 const currentPage = gs?.currentPage;
                 if (!currentPage) return null;
@@ -1799,7 +1758,6 @@ export class TestHelpers {
                     // If not found in model, try Y.Map directly
                     if (!value) {
                         try {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const anyItem: any = node as any;
                             const ymap: any = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
                             if (ymap && typeof ymap.get === "function") {
@@ -1810,7 +1768,6 @@ export class TestHelpers {
 
                     // If still not found, check lastConfirmedTargetId as fallback
                     if (!value) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const store: any = (window as any).aliasPickerStore;
                         const lastItemId = store?.lastConfirmedItemId;
                         const lastTargetId = store?.lastConfirmedTargetId;
@@ -1965,7 +1922,6 @@ export class TestHelpers {
 
             // 2) Active textarea
             try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const store = (window as any).editorOverlayStore;
                 const ta = store?.getTextareaRef?.();
                 const activeId = store?.getActiveItem?.();
@@ -1976,7 +1932,6 @@ export class TestHelpers {
 
             // 3) Explore generalStore
             try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const gs = (window as any).generalStore;
                 const page = gs?.currentPage;
                 const items = page?.items;
@@ -2177,37 +2132,34 @@ export class TestHelpers {
             // Reset global stores
             await page.evaluate(() => {
                 // Reset project and page info in generalStore
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 if ((window as any).generalStore) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).generalStore.project = null;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     (window as any).generalStore.pages = null;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     (window as any).generalStore.currentPage = null;
                 }
 
                 // Reset project and page info in appStore
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 if ((window as any).appStore) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).appStore.project = null;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     (window as any).appStore.pages = null;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     (window as any).appStore.currentPage = null;
                 }
 
                 // Reset cursor info in editorOverlayStore
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 if ((window as any).editorOverlayStore) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (window as any).editorOverlayStore.cursors = {};
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     (window as any).editorOverlayStore.cursorInstances = new Map();
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     (window as any).editorOverlayStore.activeItemId = null;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     (window as any).editorOverlayStore.cursorVisible = false;
                 }
             });

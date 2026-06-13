@@ -25,7 +25,7 @@ test.describe("CMT-0001: comment threads", () => {
             await page.evaluate(() => {
                 try {
                     // Clear comment data from the current page items if possible
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     const gs: any = (window as any).generalStore;
                     if (gs?.currentPage?.items) {
                         const items = gs.currentPage.items;
@@ -52,7 +52,6 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Also clear any existing Yjs comment data
                     try {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const yjsStore: any = (window as any).__YJS_STORE__;
                         if (yjsStore?.yjsClient) {
                             const client = yjsStore.yjsClient;
@@ -67,7 +66,6 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Clear any global state that might interfere with this test
                     try {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const win: any = window as any;
                         // Clear any comment-related global variables
                         if (win.__COMMENT_THREAD_STATE__) {
@@ -232,7 +230,7 @@ test.describe("CMT-0001: comment threads", () => {
             await page.evaluate(() => {
                 try {
                     // Clear comment data from the current page items if possible
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     const gs: any = (window as any).generalStore;
                     if (gs?.currentPage?.items) {
                         const items = gs.currentPage.items;
@@ -259,7 +257,6 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Also clear any existing Yjs comment data
                     try {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const yjsStore: any = (window as any).__YJS_STORE__;
                         if (yjsStore?.yjsClient) {
                             const client = yjsStore.yjsClient;
@@ -274,7 +271,6 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Clear any global state that might interfere with this test
                     try {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const win: any = window as any;
                         // Clear any comment-related global variables
                         if (win.__COMMENT_THREAD_STATE__) {
