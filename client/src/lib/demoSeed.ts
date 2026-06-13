@@ -11,7 +11,7 @@ function resolveApiBaseUrl(): string {
         apiBaseUrl = import.meta.env.VITE_YJS_WS_URL.replace(/^ws(s)?:\/\//, "http$1://");
     }
     if (!apiBaseUrl) {
-        apiBaseUrl = import.meta.env.VITE_API_SERVER_URL || "http://127.0.0.1:7091";
+        apiBaseUrl = import.meta.env.VITE_API_SERVER_URL || "http://127.0.0.1:7093";
     }
     return apiBaseUrl;
 }

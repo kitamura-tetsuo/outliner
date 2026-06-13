@@ -380,7 +380,23 @@
         );
     }
 
+let resetEpochCache = $state(0);
+    $effect(() => {
+        if (store.resetEpoch !== resetEpochCache) {
+            resetEpochCache = store.resetEpoch;
+            // nullify immediately to disconnect old tree node references
+            store.currentPage = undefined;
+            // The tree was rebuilt, we must force a remount and reload page logic
+            if (projectName && pageName && !isLoading) {
+                setTimeout(() => {
+                    loadProjectAndPage();
+                }, 100);
+            }
+        }
+    });
+
     onMount(async () => {
+
         // Check UserManager auth state (async support)
         logger.info(
             `onMount: Starting for project="${projectName}", page="${pageName}"`,
@@ -573,8 +589,9 @@
         />
     </div>
 
-    <!-- Always mount OutlinerBase, switch display internally based on pageItem presence -->
+<!-- Always mount OutlinerBase, switch display internally based on pageItem presence -->
     {#if !error}
+        {#key `${store.project?.ydoc?.guid || projectName || "project"}-${store.resetEpoch}`}
         <OutlinerBase
             pageItem={store.currentPage}
             projectName={projectName || ""}
@@ -585,6 +602,7 @@
                 : false}
             onEdit={undefined}
         />
+        {/key}
     {/if}
 
     <!-- Backlink Panel (Hidden when temporary page) -->
