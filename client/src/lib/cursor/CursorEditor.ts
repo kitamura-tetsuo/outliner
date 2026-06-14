@@ -454,7 +454,10 @@ export class CursorEditor {
         const prevId = (prevItem as unknown as import("../../schema/app-schema").Item)?.id ?? cursor.itemId;
         const newOffset = prevText.length;
 
-        this.runInTransaction([prevItem as unknown as import("../../schema/app-schema").Item, currentItem as unknown as import("../../schema/app-schema").Item], () => {
+        this.runInTransaction([
+            prevItem as unknown as import("../../schema/app-schema").Item,
+            currentItem as unknown as import("../../schema/app-schema").Item,
+        ], () => {
             this.updateItemText(prevItem as unknown as import("../../schema/app-schema").Item, combinedText);
             this.deleteItemNode(currentItem as unknown as import("../../schema/app-schema").Item);
         });
@@ -779,7 +782,10 @@ export class CursorEditor {
         while (walker.currentNode) {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
-            const item = searchItem(generalStore.currentPage as unknown as import("../../schema/yjs-schema").Item, itemId);
+            const item = searchItem(
+                generalStore.currentPage as unknown as import("../../schema/yjs-schema").Item,
+                itemId,
+            );
             if (!item) continue;
 
             const text = (item as unknown as import("../../schema/app-schema").Item).text || "";
