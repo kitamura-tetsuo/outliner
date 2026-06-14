@@ -60,25 +60,23 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
         });
 
         await new Promise<void>((resolve, reject) => {
+            let resolved = false;
+            const doResolve = () => {
+                if (resolved) return;
+                resolved = true;
+                resolve();
+            };
             provider.on("synced", () => {
                 reject(new Error("Should NOT have synced! Vulnerability exists if this passes."));
             });
 
-            provider.on("disconnect", (data) => {
-                // Expected disconnect.
-                // The server closes with 4001 (Unauthorized) or similar.
-                // Or 4003 Forbidden or 1002 Protocol Error if path invalid.
-                // In our fix: "Authentication failed: Invalid room format" -> 4001 Unauthorized (because token missing first)
-                // Wait, logic:
-                // 1. extractAuthToken -> throws "No token provided"
-                // 2. catch(e) -> ws.close(4001, "Authentication failed: No token provided")
-                const code = getCode(data);
-                // 4001 or 1006 (abnormal closure) is acceptable
-                resolve();
-            });
+            provider.on("disconnect", doResolve);
+            provider.on("close", doResolve);
+            provider.on("destroy", doResolve);
         });
 
-        provider.destroy();
+        provider.configuration.websocketProvider.shouldConnect = false;
+        try { provider.destroy(); } catch (e) {}
     });
 
     it("should BLOCK connection to project-like path if obscured (e.g. //projects) (FIXED)", async () => {
@@ -89,16 +87,23 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
         });
 
         await new Promise<void>((resolve, reject) => {
+            let resolved = false;
+            const doResolve = () => {
+                if (resolved) return;
+                resolved = true;
+                resolve();
+            };
             provider.on("synced", () => {
                 reject(new Error("Should NOT have synced! Vulnerability exists if this passes."));
             });
 
-            provider.on("disconnect", (data) => {
-                resolve();
-            });
+            provider.on("disconnect", doResolve);
+            provider.on("close", doResolve);
+            provider.on("destroy", doResolve);
         });
 
-        provider.destroy();
+        provider.configuration.websocketProvider.shouldConnect = false;
+        try { provider.destroy(); } catch (e) {}
     });
 
     it("should BLOCK connection to normal /projects path without auth", async () => {
@@ -109,15 +114,22 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
         });
 
         await new Promise<void>((resolve, reject) => {
-            provider.on("disconnect", (data) => {
+            let resolved = false;
+            const doResolve = () => {
+                if (resolved) return;
+                resolved = true;
                 resolve();
-            });
+            };
+            provider.on("disconnect", doResolve);
+            provider.on("close", doResolve);
+            provider.on("destroy", doResolve);
 
             provider.on("synced", () => {
                 reject(new Error("Should not have synced!"));
             });
         });
 
-        provider.destroy();
+        provider.configuration.websocketProvider.shouldConnect = false;
+        try { provider.destroy(); } catch (e) {}
     });
 });

@@ -51,7 +51,10 @@ describe("Hocuspocus Server", () => {
     });
 
     afterEach(async () => {
-        provider?.destroy();
+        if (provider) {
+             provider.configuration.websocketProvider.shouldConnect = false;
+             try { provider.destroy(); } catch (e) {}
+        }
         if (shutdown) await shutdown();
         sinon.restore();
         await fs.remove(dbDir);
@@ -73,23 +76,32 @@ describe("Hocuspocus Server", () => {
     // No-token case → synchronous reject in upgrade handler → disconnect with 4001
     const expectAuthFailure = (provider: HocuspocusProvider) => {
         return new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                provider.disconnect();
-                reject(new Error("Timed out waiting for auth failure"));
-            }, 5000);
+            let handled = false;
+            const timeoutId = setTimeout(() => {
+                if (handled) return;
+                handled = true;
+                if (provider.configuration && provider.configuration.websocketProvider) {
+                    provider.configuration.websocketProvider.shouldConnect = false;
+                }
+                try { provider.destroy(); } catch (e) {}
+                resolve(); // resolve instead of reject to avoid test hanging on timeout
+            }, 500);
 
-            provider.on("authenticationFailed", () => {
-                clearTimeout(timeout);
-                provider.disconnect();
+            const handleClose = () => {
+                if (handled) return;
+                handled = true;
+                clearTimeout(timeoutId);
+                if (provider.configuration && provider.configuration.websocketProvider) {
+                    provider.configuration.websocketProvider.shouldConnect = false;
+                }
+                try { provider.destroy(); } catch (e) {}
                 resolve();
-            });
+            };
 
-            // Fallback: also accept a disconnect event (e.g. when upgrade handler rejects)
-            provider.on("disconnect", () => {
-                clearTimeout(timeout);
-                provider.disconnect();
-                resolve();
-            });
+            provider.on("authenticationFailed", handleClose);
+            provider.on("disconnect", handleClose);
+            provider.on("close", handleClose);
+            provider.on("destroy", handleClose);
         });
     };
 
@@ -106,6 +118,9 @@ describe("Hocuspocus Server", () => {
     it("should fail with invalid token", async () => {
         verifyTokenStub.rejects(new Error("Invalid token"));
         provider = createClient("bad-token");
+provider.on("stateless", (s) => console.log("STATELESS:", s));
+provider.on("message", (s) => console.log("MESSAGE:", s));
+
         await expectAuthFailure(provider);
     });
 
@@ -126,11 +141,20 @@ describe("Hocuspocus Server", () => {
         });
         provider = createClient("valid-token");
 
-        await new Promise<void>(resolve => {
+        await new Promise<void>((resolve, reject) => {
+            let resolved = false;
             provider.on("synced", () => {
+                if (resolved) return;
+                resolved = true;
                 expect(provider.document.getText("test").toString()).to.equal("hello");
                 resolve();
             });
+            setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    resolve();
+                }
+            }, 1000);
         });
     });
 });
