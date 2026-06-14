@@ -90,6 +90,16 @@ describe("yjsService", () => {
             global.fetch = originalFetch;
         });
 
+        let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+        beforeEach(() => {
+            consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            consoleSpy.mockRestore();
+        });
+
         it("should call deleteProject function with correct parameters", async () => {
             (global.fetch as Mock).mockResolvedValue({
                 ok: true,
