@@ -25,7 +25,9 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         const mgr = (globalThis as any).__USER_MANAGER__;
         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
     });
-    await p1.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 60000 });
+    await p1.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.getCurrentUser?.(), null, {
+        timeout: 60000,
+    });
 
     const p1Connected = await p1.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite
@@ -70,7 +72,9 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         const mgr = (globalThis as any).__USER_MANAGER__;
         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
     });
-    await p2.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 60000 });
+    await p2.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.getCurrentUser?.(), null, {
+        timeout: 60000,
+    });
 
     const p2Connected = await p2.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite

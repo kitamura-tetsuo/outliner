@@ -263,7 +263,9 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
                     // Log every 2 seconds
                     const now = Date.now();
-                    if (!((globalThis as any).__lastPageCheckLog) || now - (globalThis as any).__lastPageCheckLog > 2000) {
+                    if (
+                        !((globalThis as any).__lastPageCheckLog) || now - (globalThis as any).__lastPageCheckLog > 2000
+                    ) {
                         console.log(`page2: Checking for page ${pageId}, current pageCount=${len}`);
                         const pageIds: string[] = [];
                         for (let i = 0; i < len; i++) {

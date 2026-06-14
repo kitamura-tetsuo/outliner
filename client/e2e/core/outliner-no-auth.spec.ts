@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";

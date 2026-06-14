@@ -203,7 +203,9 @@ export class TestHelpers {
         }, { e: email, p: password });
 
         // Wait for authentication state propagation
-        await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 15 * 1000 });
+        await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.auth?.currentUser, {
+            timeout: 15 * 1000,
+        });
         TestHelpers.slog("Manual login successful");
     }
 
@@ -239,7 +241,9 @@ export class TestHelpers {
             }
 
             // Final check
-            await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 10000 });
+            await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.auth?.currentUser, {
+                timeout: 10000,
+            });
             TestHelpers.slog("setAccessibleProjects: Auth confirmed.");
         } catch (e) {
             console.error("setAccessibleProjects: CRITICAL: Could not establish authentication.", e);

@@ -129,11 +129,12 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         await page.evaluate(() => (globalThis as any).__OPEN_SEARCH__?.());
 
         // Confirm opened
-        await page.waitForFunction(() => (globalThis as any).__SEARCH_PANEL_VISIBLE__ === true, { timeout: 4000 }).catch(
-            () => {
-                console.log("__SEARCH_PANEL_VISIBLE__ was not set to true within timeout");
-            },
-        );
+        await page.waitForFunction(() => (globalThis as any).__SEARCH_PANEL_VISIBLE__ === true, { timeout: 4000 })
+            .catch(
+                () => {
+                    console.log("__SEARCH_PANEL_VISIBLE__ was not set to true within timeout");
+                },
+            );
 
         // Wait for appearance in DOM (existence)
         await page.waitForFunction(() => !!document.querySelector('[data-testid="search-panel"]'), { timeout: 7000 });

@@ -33,8 +33,8 @@ test.describe("Yjs data is reflected in UI", () => {
 
         // Just in case: align currentPage children with lines (generate missing ones, overwrite existing ones)
         await page.evaluate((lines) => {
-            const gs =
-                (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; }).generalStore;
+            const gs = (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
+                .generalStore;
             const p = gs?.currentPage;
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
@@ -79,8 +79,9 @@ test.describe("Yjs data is reflected in UI", () => {
             // Wait until the model count matches the expected count
             await page.waitForFunction(
                 (expectedLen) => {
-                    const gs = (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
-                        .generalStore;
+                    const gs =
+                        (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
+                            .generalStore;
                     const items = gs?.currentPage?.items;
                     return !!items && typeof items.length === "number" && items.length >= expectedLen;
                 },

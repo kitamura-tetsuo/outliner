@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
