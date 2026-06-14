@@ -66,9 +66,11 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                     await directConnection.transact((document: any) => {
                         const ydoc = document as unknown as Y.Doc;
 
-                        // Clear orderedTree completely
+                        // Clear orderedTree completely, except for the 'root' key
                         const orderedTree = ydoc.getMap("orderedTree");
-                        Array.from(orderedTree.keys()).forEach(key => orderedTree.delete(key));
+                        Array.from(orderedTree.keys()).forEach(key => {
+                            if (key !== "root") orderedTree.delete(key);
+                        });
 
                         // Clear items map completely
                         const itemsMap = ydoc.getMap("items");
