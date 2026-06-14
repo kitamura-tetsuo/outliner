@@ -142,7 +142,21 @@ export class Item {
     }
 
     private get value(): Y.Map<ItemValueType> {
-        return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
+        try {
+            return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
+        } catch {
+            return {
+                get: () => null,
+                set: () => {},
+                observeDeep: () => {},
+                unobserveDeep: () => {},
+                observe: () => {},
+                unobserve: () => {},
+                delete: () => {},
+                has: () => false,
+                toJSON: () => ({}),
+            } as unknown as Y.Map<ItemValueType>;
+        }
     }
 
     get id(): string {

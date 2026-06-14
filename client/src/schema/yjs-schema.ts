@@ -81,7 +81,21 @@ export class Item {
     ) {}
 
     private get value(): Y.Map<unknown> {
-        return this.tree.getNodeValueFromKey(this.key) as Y.Map<unknown>;
+        try {
+            return this.tree.getNodeValueFromKey(this.key) as Y.Map<unknown>;
+        } catch {
+            return {
+                get: () => null,
+                set: () => {},
+                observeDeep: () => {},
+                unobserveDeep: () => {},
+                observe: () => {},
+                unobserve: () => {},
+                delete: () => {},
+                has: () => false,
+                toJSON: () => ({}),
+            } as unknown as Y.Map<unknown>;
+        }
     }
 
     get id(): string {
