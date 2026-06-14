@@ -31,10 +31,10 @@ describe("firebase-init Secret Manager loading bypass", () => {
         sinon.stub(admin, "app").returns({
             delete: deleteAppStub,
             auth: () => ({
-                getUserByEmail: sinon.stub().rejects({ code: 'auth/user-not-found' }),
-                createUser: sinon.stub().resolves({ uid: 'test-uid', email: 'test@example.com' }),
-                setCustomUserClaims: sinon.stub().resolves()
-            })
+                getUserByEmail: sinon.stub().rejects({ code: "auth/user-not-found" }),
+                createUser: sinon.stub().resolves({ uid: "test-uid", email: "test@example.com" }),
+                setCustomUserClaims: sinon.stub().resolves(),
+            }),
         } as any);
         sinon.stub(admin, "apps").get(() => []);
 
