@@ -42,7 +42,7 @@ class CommandPaletteStore {
         return this.commands.filter(c => c.label.toLowerCase().includes(q));
     }
 
-    deriveQueryFromDoc(): string {
+    private deriveQueryFromDoc(): string {
         try {
             const w = typeof window !== "undefined"
                 ? (window as Window & typeof globalThis & { generalStore?: { __lastInputStream?: string; }; })

@@ -33,7 +33,6 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
                 if ((navigator as any).clipboard.readText) {
                     (navigator as any).clipboard.readText.__original = (navigator as any).clipboard.readText;
                 }
-
                 if ((navigator as any).clipboard.writeText) {
                     (navigator as any).clipboard.writeText.__original = (navigator as any).clipboard.writeText;
                 }
@@ -56,12 +55,10 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
                 (globalThis as any).lastBoxSelectionPaste = undefined;
 
                 // Reset clipboard API mocks
-
                 if ((navigator as any).clipboard) {
                     if ((navigator as any).clipboard.readText.__original) {
                         (navigator as any).clipboard.readText = (navigator as any).clipboard.readText.__original;
                     }
-
                     if ((navigator as any).clipboard.writeText.__original) {
                         (navigator as any).clipboard.writeText = (navigator as any).clipboard.writeText.__original;
                     }
@@ -99,13 +96,11 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
                 (globalThis as any).DEBUG_MODE = true;
 
                 // Mock: readText returns lastCopiedText
-
                 (navigator as any).clipboard.readText = async () => {
                     return (globalThis as any).lastCopiedText || "";
                 };
 
                 // Mock: writeText updates lastCopiedText
-
                 (navigator as any).clipboard.writeText = async (text: string) => {
                     (globalThis as any).lastCopiedText = text;
                     console.log(`[Mock] writeText: ${text}`);

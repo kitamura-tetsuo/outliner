@@ -47,8 +47,7 @@ function getText(v: unknown): string {
 }
 
 export function buildGraph(pagesMaybe: unknown, projectTitle: string): GraphData {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pages = toArray(pagesMaybe) as any[];
+    const pages = toArray(pagesMaybe);
     const normalizedProjectTitle = (projectTitle || "").toLowerCase();
 
     // Pre-calculate node names and their lowercase versions to avoid

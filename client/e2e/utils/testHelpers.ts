@@ -95,7 +95,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                (globalThis as unknown as Window & Record<string, any>).__E2E__ = true;
+                (globalThis as Window & Record<string, any>).__E2E__ = true;
                 console.log("[E2E] Test environment flags set in localStorage");
             } catch {}
         });
@@ -203,9 +203,7 @@ export class TestHelpers {
         }, { e: email, p: password });
 
         // Wait for authentication state propagation
-        await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.auth?.currentUser, {
-            timeout: 15 * 1000,
-        });
+        await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 15 * 1000 });
         TestHelpers.slog("Manual login successful");
     }
 
@@ -241,9 +239,7 @@ export class TestHelpers {
             }
 
             // Final check
-            await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.auth?.currentUser, {
-                timeout: 10000,
-            });
+            await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.auth?.currentUser, { timeout: 10000 });
             TestHelpers.slog("setAccessibleProjects: Auth confirmed.");
         } catch (e) {
             console.error("setAccessibleProjects: CRITICAL: Could not establish authentication.", e);
@@ -344,7 +340,7 @@ export class TestHelpers {
                         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                         localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                         localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                        (globalThis as unknown as Window & Record<string, any>).__E2E__ = true;
+                        (globalThis as Window & Record<string, any>).__E2E__ = true;
                     } catch {}
                 });
             } catch (e) {
@@ -542,7 +538,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                (globalThis as unknown as Window & Record<string, any>).__E2E__ = true;
+                (globalThis as Window & Record<string, any>).__E2E__ = true;
             } catch {}
         });
 
@@ -599,15 +595,14 @@ export class TestHelpers {
      */
     public static async getPageTexts(page: Page): Promise<Array<{ id: string; text: string; }>> {
         return await page.evaluate(() => {
-            const store = (globalThis as unknown as Window & Record<string, any>).appStore
-                || (globalThis as unknown as Window & Record<string, any>).generalStore;
+            const store = (globalThis as Window & Record<string, any>).appStore
+                || (globalThis as Window & Record<string, any>).generalStore;
             if (!store || !store.pages) return [] as Array<{ id: string; text: string; }>;
 
             const toArray = (p: unknown) => {
                 if (!p) return [] as any[];
                 try {
                     if (Array.isArray(p)) return p;
-
                     if (typeof p === "object" && p !== null && typeof (p as any)[Symbol.iterator] === "function") {
                         return Array.from(p as Iterable<unknown>);
                     }
@@ -782,7 +777,6 @@ export class TestHelpers {
                 };
                 (globalThis as any).getYjsTreePathData = function(path?: string) {
                     const data = buildYjsSnapshot();
-
                     if (!path || (data as any)?.error) return data;
                     const parts = String(path).split(".");
                     let res: any = data;
@@ -1507,7 +1501,7 @@ export class TestHelpers {
             const mouseEnterEvent = new MouseEvent("mouseenter", {
                 bubbles: true,
                 cancelable: true,
-                view: globalThis as any,
+                view: globalThis,
             });
             element.dispatchEvent(mouseEnterEvent);
 
@@ -1515,7 +1509,7 @@ export class TestHelpers {
             const mouseMoveEvent = new MouseEvent("mousemove", {
                 bubbles: true,
                 cancelable: true,
-                view: globalThis as any,
+                view: globalThis,
             });
             element.dispatchEvent(mouseMoveEvent);
 
@@ -1563,7 +1557,7 @@ export class TestHelpers {
             const mouseLeaveEvent = new MouseEvent("mouseleave", {
                 bubbles: true,
                 cancelable: true,
-                view: globalThis as any,
+                view: globalThis,
             });
             element.dispatchEvent(mouseLeaveEvent);
 

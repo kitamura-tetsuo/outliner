@@ -122,13 +122,11 @@ async function loadPreviewContent() {
 
 // Find page by name
 function findPageByName(name: string): Item | null {
-    if (!store.pages || !store.pages.current) return null;
+    if (!store.pages) return null;
 
     // Search for page with matching name
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const page of (store.pages.current as any)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (String((page as any).text || "").toLowerCase() === name.toLowerCase()) {
+    for (const page of store.pages.current) {
+        if (page.text.toLowerCase() === name.toLowerCase()) {
             return page;
         }
     }

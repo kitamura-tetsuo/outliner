@@ -72,8 +72,7 @@ if (process.env.NODE_ENV === "test") {
             if (!yjsStore.yjsClient) {
                 return { error: "YjsClient not initialized", items: [] };
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return (yjsStore.yjsClient as any).getAllData();
+            return (yjsStore.yjsClient as { getAllData: () => Record<string, unknown>; }).getAllData();
         };
 
         // Debug function to get data at a specific path
@@ -102,7 +101,7 @@ if (process.env.NODE_ENV === "test") {
             ): { id: string; text: string; items: unknown[]; } => {
                 const children = new Items(
                     project.ydoc as import("yjs").Doc,
-                    project.tree as import("yjs-orderedtree").YTree,
+                    project.tree as import("../schema/YTree").YTree,
                     item.key,
                 );
                 return {

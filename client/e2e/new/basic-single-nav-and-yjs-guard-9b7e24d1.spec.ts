@@ -44,7 +44,6 @@ test.describe("Basic: single navigation & Yjs guard", () => {
                     const gs: any = (globalThis as any).generalStore;
                     if (!gs?.project) return false;
                     const proj: any = gs.project;
-
                     if (!proj || (proj as any).__e2eWrapped) return !!proj;
                     const wrap = (obj: any, name: string) => {
                         try {
@@ -60,7 +59,6 @@ test.describe("Basic: single navigation & Yjs guard", () => {
                     };
                     // Wrap representative write APIs (strictly monitoring only project.addPage here)
                     wrap(proj, "addPage");
-
                     (proj as any).__e2eWrapped = true;
                     return true;
                 } catch {

@@ -22,7 +22,7 @@ test.describe("Multi-Page Schedule Management", () => {
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                (globalThis as unknown as Window & Record<string, any>).__E2E__ = true;
+                (globalThis as Window & Record<string, any>).__E2E__ = true;
             } catch {}
         });
 

@@ -28,7 +28,6 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
             const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const pages = gs?.pages?.current;
             // Yjs Items are not an Array but have a length property
-
             return !!(pages && typeof (pages as any).length === "number" && (pages as any).length >= 1);
         }, { timeout: 30000 });
     });
@@ -126,7 +125,6 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                                 return r;
                             }
                         } catch {}
-
                         return [] as any[];
                     };
                     const pages = toArray(raw);
@@ -179,7 +177,6 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
 
                 // Add a new page (Yjs)
                 const newPage = gs.project.addPage("test-link", "tester");
-
                 const items = newPage.items as any;
                 items.addNode("tester").updateText("second page content");
 
@@ -199,7 +196,6 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                             return r;
                         }
                     } catch {}
-
                     return [] as any[];
                 };
                 const pages = toArray(raw);
@@ -218,7 +214,6 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                                 return r;
                             }
                         } catch {}
-
                         return [] as any[];
                     };
                     if (srcCand) {

@@ -5,9 +5,5 @@ import { resolve as kitResolve } from "$app/paths";
  * 'Expected 2 arguments, but got 1' errors with dynamic paths.
  */
 export function resolvePath(path: string): string {
-    return kitResolve(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        path as any as Parameters<typeof kitResolve>[0],
-        undefined as unknown as Parameters<typeof kitResolve>[1],
-    );
+    return kitResolve(path as Parameters<typeof kitResolve>[0], undefined as Parameters<typeof kitResolve>[1]);
 }

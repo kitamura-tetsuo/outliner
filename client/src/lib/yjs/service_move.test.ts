@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Items } from "../../schema/app-schema";
+import { Items } from "../../schema/yjs-schema";
 
 // Mock store modules to avoid Svelte reactivity issues in tests
 vi.mock("../../stores/EditorOverlayStore.svelte", () => ({

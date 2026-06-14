@@ -16,7 +16,7 @@ beforeAll(() => {
         HTMLElement?: typeof HTMLElement;
         Node?: typeof Node;
     };
-    globalAny.window = dom.window as unknown as Window & typeof globalThis;
+    globalAny.window = dom.window as unknown as Window;
     globalAny.document = dom.window.document;
     globalAny.Element = dom.window.Element;
     globalAny.HTMLElement = dom.window.HTMLElement;

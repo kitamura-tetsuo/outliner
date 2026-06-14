@@ -1,11 +1,10 @@
 import type { Awareness } from "y-protocols/awareness";
-import { YTree } from "yjs-orderedtree";
-import { Item, Items, Project } from "../../schema/app-schema";
+import { Item, Items, Project } from "../../schema/yjs-schema";
 import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
 
-function childrenKeys(tree: YTree, parentKey: string): string[] {
+function childrenKeys(tree: import("../../schema/YTree").YTree, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
     return tree.sortChildrenByOrder(children, parentKey);
 }
@@ -166,8 +165,7 @@ export const yjsService = {
             const target = resolvePresenceStore();
             if (!target) return;
             const states = awareness.getStates();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const clientId = (awareness as any).clientID;
+            const clientId = awareness.clientID;
             const overlay = resolveOverlayStore();
 
             [...added, ...updated].forEach((id: number) => {
@@ -204,8 +202,7 @@ export const yjsService = {
             const overlay = resolveOverlayStore();
             if (!overlay) return; // no-op when overlay store not present
             const states = awareness.getStates();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const clientId = (awareness as any).clientID;
+            const clientId = awareness.clientID;
 
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);

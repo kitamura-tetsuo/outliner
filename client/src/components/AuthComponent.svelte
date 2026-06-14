@@ -8,7 +8,6 @@ import {
     userManager,
 } from "../auth/UserManager";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface AuthSuccessEvent {
     detail?: {
         user: IUser;
@@ -82,12 +81,11 @@ onMount(() => {
 
     // For testing: Custom authentication event listener
     if (typeof document !== "undefined") {
-        document.addEventListener("auth-success", (event: Event) => {
-            const detail = (event as CustomEvent<AuthSuccessDetail>).detail;
-            if (detail && detail.user) {
-                currentUser = detail.user;
+        document.addEventListener("auth-success", (event: AuthSuccessEvent) => {
+            if (event.detail && event.detail.user) {
+                currentUser = event.detail.user;
                 // Call the callback prop directly
-                if (onAuthSuccess) onAuthSuccess(detail);
+                if (onAuthSuccess) onAuthSuccess(event.detail);
             }
         });
     }

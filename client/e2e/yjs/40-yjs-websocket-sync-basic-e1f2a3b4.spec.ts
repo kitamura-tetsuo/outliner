@@ -27,7 +27,6 @@ test.describe("YJS-e1f2a3b4: Yjs WebSocket sync basic", () => {
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
             if (!provider) return false;
-
             const wsConnected = (provider as any).websocketProvider?.status === "connected" || provider.isSynced;
             console.log(`page1: wsConnected: ${wsConnected}`);
             return wsConnected === true;
@@ -41,7 +40,6 @@ test.describe("YJS-e1f2a3b4: Yjs WebSocket sync basic", () => {
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
             if (!provider) return false;
-
             const wsConnected = (provider as any).websocketProvider?.status === "connected" || provider.isSynced;
             console.log(`page2: wsConnected: ${wsConnected}`);
             return wsConnected === true;
@@ -56,7 +54,6 @@ test.describe("YJS-e1f2a3b4: Yjs WebSocket sync basic", () => {
             const yjsStore = (globalThis as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
-
             return (provider as any)?.websocketProvider?.status === "connected" || provider?.isSynced === true;
         });
 
@@ -64,7 +61,6 @@ test.describe("YJS-e1f2a3b4: Yjs WebSocket sync basic", () => {
             const yjsStore = (globalThis as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
-
             return (provider as any)?.websocketProvider?.status === "connected" || provider?.isSynced === true;
         });
 

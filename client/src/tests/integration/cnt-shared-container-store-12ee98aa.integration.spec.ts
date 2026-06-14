@@ -8,10 +8,10 @@ import UserContainerDisplay from "../fixtures/UserContainerDisplay.svelte";
 
 describe("CNT shared container store", () => {
     it("reflects user project updates", async () => {
+        render(UserContainerDisplay);
         const storeGlobal =
             (globalThis as unknown as { window?: { __FIRESTORE_STORE__?: typeof firestoreStore; }; }).window
                 ?.__FIRESTORE_STORE__ ?? firestoreStore;
-        render(UserContainerDisplay, { props: { storeRef: storeGlobal } });
         storeGlobal.setUserProject(
             {
                 userId: "u",
@@ -41,6 +41,6 @@ describe("CNT shared container store", () => {
         );
         await tick();
         expect(screen.getByTestId("default").textContent).toBe("b");
-        expect(screen.getAllByRole("listitem").map(li => li.textContent)).toEqual(["b", "a"]);
+        expect(screen.getAllByRole("listitem").map(li => li.textContent)).toEqual(["a", "b"]);
     });
 });

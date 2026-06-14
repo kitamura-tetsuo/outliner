@@ -118,7 +118,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             await page.evaluate(() => {
                 const gs = (globalThis as any).generalStore;
                 const pageRef = gs?.currentPage;
-
                 const items = pageRef?.items as any;
                 if (items && items.length > 0) {
                     // Modify the first item
@@ -131,7 +130,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             await page.evaluate(() => {
                 const gs = (globalThis as any).generalStore;
                 const pageRef = gs?.currentPage;
-
                 const items = pageRef?.items as any;
                 if (items && typeof items.addNode === "function") {
                     const newItem = items.addNode("tester");
@@ -256,7 +254,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             await page.evaluate(() => {
                 const gs = (globalThis as any).generalStore;
                 const pageRef = gs?.currentPage;
-
                 const items = pageRef?.items as any;
                 if (items) {
                     // Clear existing
@@ -337,7 +334,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             await page.evaluate(() => {
                 const gs = (globalThis as any).generalStore;
                 const pageRef = gs?.currentPage;
-
                 const items = pageRef?.items as any;
 
                 // Modify first item
@@ -417,7 +413,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             await page.evaluate(() => {
                 const gs = (globalThis as any).generalStore;
                 const pageRef = gs?.currentPage;
-
                 const items = pageRef?.items as any;
                 if (items) {
                     const len = items.length ?? 0;

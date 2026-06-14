@@ -202,7 +202,6 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         console.log("Layout set result:", layoutSetResult);
 
         expect((layoutSetResult as any).success).toBe(true);
-
         expect((layoutSetResult as any).firstNodePosition).toEqual({ x: 200, y: 200 });
 
         // Reload page (stay on graph page)
@@ -364,9 +363,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         console.log("Layout restore result:", layoutRestoreResult);
 
         expect(layoutRestoreResult.success).toBe(true);
-
         expect((layoutRestoreResult as any).restoredPosition).toEqual({ x: 200, y: 200 });
-
         expect((layoutRestoreResult as any).layoutRestored).toBe(true);
     });
 });

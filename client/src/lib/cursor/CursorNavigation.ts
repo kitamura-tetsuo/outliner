@@ -1,6 +1,5 @@
-import type { Item } from "../../schema/app-schema";
+import type { Item } from "../../schema/yjs-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-import { getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "./CursorTextUtils";
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
 
 // Define a generic cursor interface that we expect
@@ -103,9 +102,9 @@ export class CursorNavigation {
         if (!visualLineInfo) {
             // Fallback: Logical line processing (based on newline characters)
             const text = (target.text && typeof target.text.toString === "function") ? target.text.toString() : "";
-            const currentLineIndex = getCurrentLineIndex(text, this.cursor.offset);
+            const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
             if (currentLineIndex > 0) {
-                const prevLineStart = getLineStartOffset(text, currentLineIndex - 1);
+                const prevLineStart = this.cursor.getLineStartOffset(text, currentLineIndex - 1);
                 this.cursor.offset = prevLineStart;
                 this.cursor.applyToStore();
                 store.startCursorBlink();
@@ -207,9 +206,9 @@ export class CursorNavigation {
             // Fallback: Logical line processing (based on newline characters)
             const text = (target.text && typeof target.text.toString === "function") ? target.text.toString() : "";
             const lines = text.split("\n");
-            const currentLineIndex = getCurrentLineIndex(text, this.cursor.offset);
+            const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
             if (currentLineIndex < lines.length - 1) {
-                const nextLineStart = getLineStartOffset(text, currentLineIndex + 1);
+                const nextLineStart = this.cursor.getLineStartOffset(text, currentLineIndex + 1);
                 this.cursor.offset = nextLineStart;
                 this.cursor.applyToStore();
                 store.startCursorBlink();
@@ -374,8 +373,8 @@ export class CursorNavigation {
                     : "";
                 const prevLines = prevText.split("\n");
                 const lastLineIndex = prevLines.length - 1;
-                const lastLineStart = getLineStartOffset(prevText, lastLineIndex);
-                const lastLineEnd = getLineEndOffset(prevText, lastLineIndex);
+                const lastLineStart = this.cursor.getLineStartOffset(prevText, lastLineIndex);
+                const lastLineEnd = this.cursor.getLineEndOffset(prevText, lastLineIndex);
                 const lastLineLength = lastLineEnd - lastLineStart;
 
                 // Calculate the position with the smallest change in x-coordinate
@@ -422,8 +421,8 @@ export class CursorNavigation {
                     : "";
                 // const nextLines = nextText.split("\n"); // Not used
                 const firstLineIndex = 0;
-                const firstLineStart = getLineStartOffset(nextText, firstLineIndex);
-                const firstLineEnd = getLineEndOffset(nextText, firstLineIndex);
+                const firstLineStart = this.cursor.getLineStartOffset(nextText, firstLineIndex);
+                const firstLineEnd = this.cursor.getLineEndOffset(nextText, firstLineIndex);
                 const firstLineLength = firstLineEnd - firstLineStart;
 
                 // Calculate the position with the smallest change in x-coordinate

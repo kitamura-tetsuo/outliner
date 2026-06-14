@@ -46,7 +46,6 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
                 clientX,
                 clientY,
             });
-
             (dragOverEvent as any).dataTransfer = dt;
             target.dispatchEvent(dragOverEvent);
 
@@ -57,7 +56,6 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
                 clientX,
                 clientY,
             });
-
             (event as any).dataTransfer = dt;
             target.dispatchEvent(event);
         }, { sel: selector, name: fileName, pos: position });
@@ -114,7 +112,6 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
                 clientX: target.getBoundingClientRect().left + 10,
                 clientY: target.getBoundingClientRect().bottom - 10,
             });
-
             (event as any).dataTransfer = dt;
             target.dispatchEvent(event);
         });

@@ -149,7 +149,6 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
             const items = store?.currentPage?.items;
             if (!items) return;
             // Get the 2nd item (index 1)
-
             const targetItem = items.at ? items.at(1) : (items as any)[1];
             if (targetItem && typeof targetItem.updateText === "function") {
                 targetItem.updateText(`[${pageName}]`);
@@ -328,7 +327,6 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
             const store = (globalThis as any).generalStore || (globalThis as any).appStore;
             const items = store?.currentPage?.items;
             if (!items) return;
-
             const firstItem = items.at ? items.at(0) : (items as any)[0];
             if (firstItem && typeof firstItem.updateText === "function") {
                 firstItem.updateText(`[${dynamicPageName}]`);

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import { Project } from "../schema/app-schema";
+import { Project } from "../schema/yjs-schema";
 import { createNewProject, deleteProject, getClientByProjectTitle, stableIdFromTitle } from "./yjsService.svelte";
 
 // Define a type for the window object to avoid using 'any'

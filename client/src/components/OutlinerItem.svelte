@@ -108,8 +108,7 @@ onMount(() => {
 
 onMount(() => {
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const gs = generalStore as any;
+        const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
         if (!isPageTitle && index === 0 && (gs.openCommentItemId == null)) {
             gs.openCommentItemId = model.id;
             logger.debug(undefined, '[OutlinerItem] auto-open comment thread for id=' + model.id);
@@ -120,8 +119,7 @@ onMount(() => {
     // If openCommentItemId does not exist in the current page due to Yjs connection switching, etc.
         // Automatically reopen comment thread prioritizing index (E2E stabilization)
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const gs = generalStore as any;
+        const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
         // Optimization: Only perform the expensive existence check if this item is a candidate for auto-reopen
         // This avoids O(N^2) complexity where every item iterates the full list on mount
         const isCandidate = !isPageTitle && (index === 1 || gs.openCommentItemIndex === index);
@@ -135,8 +133,7 @@ onMount(() => {
                 // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
                 // Use iterateUnordered if available for O(N) instead of O(N log N)
                 const iter = items.iterateUnordered ? items.iterateUnordered() : items as unknown as Iterable<unknown>;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                for (const it of iter as Iterable<any>) {
+                for (const it of iter as unknown) {
                     if (it?.id === targetId) { exists = true; break; }
                 }
             }
@@ -293,30 +290,28 @@ let commentCountLocal = $state(0);
  * Get normalized comment count from Yjs comments array
  */
 function normalizeCommentCount(arr: unknown ): number {
-    if (!arr || typeof (arr as unknown as { length?: number }).length !== "number") return 0;
-    return Number((arr as unknown as { length: number }).length);
+    if (!arr || typeof arr.length !== "number") return 0;
+    return Number(arr.length);
 }
 
 /**
  * Ensure item.comments is a Y.Array, initialize if missing
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function ensureCommentsArray(): any {
+function ensureCommentsArray(): unknown[] {
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const it = item as any;
-        if (!it) return null;
-        let arr = it.comments ?? [];
+        const it = item as unknown;
+        if (!it) return null as unknown;
+        let arr: unknown[] = it.comments;
         if (!arr) {
             // Initialize if comments property does not exist
             if (typeof it.setComments === "function") {
                 it.setComments([]);
-                arr = it.comments ?? [];
+                arr = it.comments;
             }
         }
         return arr;
     } catch {
-        return null;
+        return null as unknown;
     }
 }
 
@@ -325,7 +320,7 @@ function ensureCommentsArray(): any {
  */
 function syncCommentCountFromItem() {
     try {
-        const arr = ensureCommentsArray();
+        const arr: unknown[] = ensureCommentsArray();
         if (arr && typeof arr.length === "number") {
             const newCount = normalizeCommentCount(arr);
             if (commentCountLocal !== newCount) {
@@ -364,17 +359,14 @@ function applyCommentCount(arrOrCount: unknown) {
  */
 function attachCommentObserver(): (() => void) | null {
     try {
-        const arr = ensureCommentsArray();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (arr && typeof (arr as any).observe === "function") {
+        const arr: unknown[] = ensureCommentsArray();
+        if (arr && typeof arr.observe === "function") {
             const observer = () => applyCommentCount(arr);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (arr as any).observe(observer);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return () => (arr as any).unobserve(observer);
+            arr.observe(observer);
+            return () => arr.unobserve(observer);
         }
     } catch {}
-    return null;
+    return null as unknown;
     }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -393,8 +385,7 @@ onMount(() => {
 
     const handleWindowEvent = (event: Event) => {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const detail: any  = (event as CustomEvent<any>)?.detail;
+            const detail: unknown  = (event as CustomEvent<unknown>)?.detail;
             if (!detail) return;
             const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
             if (targetId == null) return;
@@ -445,24 +436,20 @@ let aliasTargetId = $state<string | undefined>();
 onMount(() => {
     aliasTargetId = item.aliasTargetId;
     try {
-         
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
-         
         const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as unknown;
-        if (ymap && typeof (ymap as unknown as { observe?: (cb: unknown) => void }).observe === "function") {
+        if (ymap && typeof ymap.observe === 'function') {
             const obs = (e?: unknown ) => {
                 try {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if (!e || ((e as any)?.keysChanged?.has?.('aliasTargetId'))) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        aliasTargetId = (ymap as any).get?.('aliasTargetId');
+                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
+                        aliasTargetId = ymap.get?.('aliasTargetId');
                     }
                 } catch {}
             };
-            (ymap as unknown as { observe: (cb: unknown) => void }).observe(obs);
+            ymap.observe(obs);
             // Initial reflection
             obs();
-            onDestroy(() => { try { (ymap as unknown as { unobserve: (cb: unknown) => void }).unobserve(obs); } catch {} });
+            onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
         }
     } catch {}
 });
@@ -484,7 +471,7 @@ let aliasLastConfirmedPulse = $derived.by(() => {
 // Update DOM attributes when aliasLastConfirmedPulse changes
 $effect(() => {
     if (aliasLastConfirmedPulse && itemRef) {
-        const { itemId, targetId } = aliasLastConfirmedPulse as unknown as { itemId: string, targetId: string };
+        const { itemId, targetId } = aliasLastConfirmedPulse;
         try {
             // Set attribute on this item
             (itemRef as HTMLElement)?.setAttribute?.('data-alias-target-id', String(targetId));
@@ -549,8 +536,8 @@ const aliasTargetIdEffective = $derived.by(() => {
         if (isE2E && isEmpty) return lastTargetId;
     }
     // Check pulse for recent confirmations
-    if (aliasLastConfirmedPulse && (Date.now() - (aliasLastConfirmedPulse as unknown as { at: number }).at < 2000)) {
-        if ((aliasLastConfirmedPulse as unknown as { itemId: string }).itemId === model.id) return (aliasLastConfirmedPulse as unknown as { targetId: string }).targetId;
+    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
+        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
     }
     return undefined;
 });
@@ -628,18 +615,12 @@ function handleComponentTypeChange(newType: string) {
 
     const setMapField = (it: unknown , key: string, value: unknown) => {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const tree = (it as any)?.tree;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const nodeKey = (it as any)?.key;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const m = (tree as any)?.getNodeValueFromKey?.(nodeKey);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (m && typeof (m as any).set === "function") {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (m as any).set(key, value);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (key !== "lastChanged") (m as any).set("lastChanged", Date.now());
+            const tree = it?.tree;
+            const nodeKey = it?.key;
+            const m = tree?.getNodeValueFromKey?.(nodeKey);
+            if (m && typeof m.set === "function") {
+                m.set(key, value);
+                if (key !== "lastChanged") m.set("lastChanged", Date.now());
                 return true;
             }
         } catch {}
@@ -664,11 +645,9 @@ let compTypeValue = $state<string | undefined>(undefined);
 onMount(() => {
     let unsubs: Array<() => void> = [];
     try {
-         
         const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
-         
         const tree = anyItem?.tree; const key = anyItem?.key;
-        const m = (tree as unknown as { getNodeValueFromKey?: (k: string) => unknown })?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
+        const m = tree?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
         const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
         if (t && typeof t.observe === "function") {
             const h1 = () => { try { textString = t.toString?.() ?? ""; } catch {} };
@@ -679,8 +658,7 @@ onMount(() => {
         if (m && typeof m.observe === "function") {
             const h2 = (e?: { keysChanged?: { has: (k: string) => boolean } }) => {
                 try {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if (!e || ((e as any)?.keysChanged?.has?.('componentType'))) {
+                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
                         compTypeValue = m.get?.("componentType") as string | undefined;
                     }
                 } catch {}
@@ -1019,11 +997,10 @@ function toggleVote() {
 }
 
 function toggleComments() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const gs = generalStore as any;
+    const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
     if (gs.openCommentItemId === model.id) {
-        gs.openCommentItemId = undefined;
-        gs.openCommentItemIndex = undefined;
+        gs.openCommentItemId = null;
+        gs.openCommentItemIndex = null;
         try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
     } else {
         gs.openCommentItemId = model.id;
@@ -1611,7 +1588,7 @@ function handleDragLeave() {
 async function handleDrop(event: DragEvent | CustomEvent) {
     const maybeCustom = event as CustomEvent;
     if (maybeCustom?.detail && typeof maybeCustom.detail === "object" && "targetItemId" in maybeCustom.detail) {
-        logger.debug({ detail: maybeCustom.detail }, "OutlinerItem handleDrop: custom event detail");
+        logger.debug("OutlinerItem handleDrop: custom event detail", maybeCustom.detail);
         event.preventDefault?.();
         try { event.stopPropagation?.(); (event as Event).stopImmediatePropagation?.(); } catch {}
 
@@ -1689,8 +1666,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         const url = await uploadAttachment(containerId, model.id, file);
                         
                         if (!dropTargetPosition || dropTargetPosition === "middle") {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            addAttachmentToDomTargetOrModel(event as any, url);
+                            addAttachmentToDomTargetOrModel(event as unknown, url);
                             // Reflect to Doc after connection
                             try { mirrorAttachment(url); } catch {}
                         } else {
@@ -1707,8 +1683,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         try {
                             const localUrl = URL.createObjectURL(file);
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as any).attachments?.push?.([localUrl]); } catch {} }
+                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as unknown as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} }
                                 try { mirrorAttachment(localUrl); } catch {}
                                 // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
                                 try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
@@ -1721,16 +1696,14 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                             }
                             // Auxiliary reflection to Doc after connection (via ID map)
                             try {
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                const w = (typeof window !== 'undefined') ? (window as any) : null;
+                                const w = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string, addAttachment?: (u: string) => void }, [key: number]: { id?: string, text?: string, addAttachment?: (u: string) => void } } } }, __ITEM_ID_MAP__?: Record<string, string> }) : null;
                                 const map = w?.__ITEM_ID_MAP__;
                                 const mappedId = map ? map[String(model.id)] : undefined;
                                 const curPage = w?.generalStore?.currentPage;
                                 if (mappedId && curPage?.items) {
                                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                                         const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
-                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                        if (cand && String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as any).attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
+                                        if (cand && String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as unknown as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                                     }
                                 }
                             } catch {}
@@ -1741,13 +1714,11 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             } else {
                 // E2E final fallback: Add dummy attachment in test environment if file cannot be obtained from DataTransfer,
                 // to enable UI path (preview display) verification
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as any).__E2E__)) {
+                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E__)) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        addAttachmentToDomTargetOrModel(event as any, localUrl);
+                        addAttachmentToDomTargetOrModel(event as unknown, localUrl);
                         try { mirrorAttachment(localUrl); } catch {}
 
                     } catch {}
@@ -1863,10 +1834,8 @@ onMount(() => {
 // E2E: Receive direct notification from dispatchEvent hook, execute handleDrop if target element is under own displayRef
 onMount(() => {
     try {
-         
         const anyWin = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { __E2E_DROP_HANDLERS__?: ((el: Element, ev: DragEvent) => void)[], __E2E__?: boolean }) : undefined;
         if (!anyWin) return;
-         
         if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as ((el: Element, ev: DragEvent) => void)[];
         const fn = (el: Element, ev: DragEvent) => {
             try {
@@ -1875,7 +1844,6 @@ onMount(() => {
                 }
             } catch {}
         };
-         
         anyWin.__E2E_DROP_HANDLERS__.push(fn);
 
         // E2E: Global function to forcibly trigger handleDrop (test only). If element is under self, synthesize drop and process.
@@ -1888,15 +1856,11 @@ onMount(() => {
                     }
                 } catch {}
             };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (!(anyWin as any).__E2E_FORCE_HANDLE_DROP__) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (anyWin as any).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
+            if (!(anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__) {
+                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
             } else {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const prev: any = (anyWin as any).__E2E_FORCE_HANDLE_DROP__;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (anyWin as any).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
+                const prev: unknown   = (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__;
+                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
             }
 
             // E2E: Test-only helper to add attachment directly (deterministically reproduce final result of DnD)
@@ -1921,21 +1885,16 @@ onMount(() => {
                     }
                 } catch {}
             };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (!(anyWin as any).__E2E_ADD_ATTACHMENT__) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (anyWin as any).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
+            if (!(anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__) {
+                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
             } else {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const prevAdd: any = (anyWin as any).__E2E_ADD_ATTACHMENT__;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (anyWin as any).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
+                const prevAdd: unknown   = (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__;
+                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
             }
         }
 
         onDestroy(() => {
             try {
-                 
                 const arr = anyWin.__E2E_DROP_HANDLERS__ as ((el: Element, ev: DragEvent) => void)[];
                 const i = arr.indexOf(fn);
                 if (i >= 0) arr.splice(i, 1);
@@ -2051,7 +2010,7 @@ export function setSelectionPosition(start: number, end: number = start) {
           (aliasTargetIdEffective
             || (((aliasPickerStore as unknown as { lastConfirmedItemId?: string })?.lastConfirmedItemId === model.id)
                 && (aliasPickerStore as unknown as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId)
-            || (aliasLastConfirmedPulse && (aliasLastConfirmedPulse as unknown as { itemId: string }).itemId === model.id && (aliasLastConfirmedPulse as unknown as { targetId: string }).targetId)
+            || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
             || "") ][1]
     }
 >

@@ -20,7 +20,6 @@ export default ts.config(
             ".svelte-kit/types/**/*",
             ".svelte-kit/output/**/*",
             "playwright-report/**/*",
-            "src/lib/paraglide/**/*",
         ],
     },
     {

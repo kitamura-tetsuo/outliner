@@ -72,7 +72,6 @@ class YjsStore {
                             const prevPage: any = prevItems.at ? prevItems.at(i) : prevItems[i];
                             const title = prevPage?.text?.toString?.() ?? String(prevPage?.text ?? "");
                             if (!title) continue;
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const cp: any = connectedProject as any;
                             try {
                                 const newPage: any = (typeof cp.addPage === "function")
@@ -81,7 +80,6 @@ class YjsStore {
                                 if (!newPage) continue;
                                 // Inherit page ID
                                 try {
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     (newPage as any).value?.set?.("id", String(prevPage.id));
                                 } catch {}
                                 try {
@@ -89,7 +87,6 @@ class YjsStore {
                                 } catch {}
                                 // Inherit ID/text for child rows as well
                                 try {
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     const prevLines: any = prevPage?.items as any;
                                     const len = prevLines?.length ?? 0;
                                     for (let j = 0; j < len; j++) {
@@ -101,7 +98,6 @@ class YjsStore {
                                             : null;
                                         if (!newLine) continue;
                                         try {
-                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                             (newLine as any).value?.set?.("id", String(prevLine.id));
                                         } catch {}
                                         try {
@@ -133,14 +129,11 @@ class YjsStore {
                                 if (!matchPrev) continue;
                                 // Overwrite page ID
                                 try {
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     (curPage as any).value?.set?.("id", String(matchPrev.id));
                                 } catch {}
                                 // Overwrite ID of child rows with corresponding index
                                 try {
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     const prevLines: any = matchPrev?.items as any;
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     const newLines: any = curPage?.items as any;
                                     const len = Math.min(prevLines?.length ?? 0, newLines?.length ?? 0);
                                     for (let j = 0; j < len; j++) {
@@ -148,7 +141,6 @@ class YjsStore {
                                         const curLine: any = newLines.at ? newLines.at(j) : newLines[j];
                                         if (!prevLine || !curLine) continue;
                                         try {
-                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                             (curLine as any).value?.set?.("id", String(prevLine.id));
                                         } catch {}
                                     }

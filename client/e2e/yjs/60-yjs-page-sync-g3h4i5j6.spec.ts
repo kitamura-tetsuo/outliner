@@ -33,7 +33,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         });
 
         // Navigate to home and authenticate
-        await page1.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
+        await page1.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
 
         await page1.waitForFunction(
             () => {
@@ -70,7 +70,6 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             const page = project.addPage("Test Page", "tester");
 
             // Add test items to the page
-
             const pageItems = page.items as any;
             const item1 = pageItems.addNode("tester");
             item1.updateText("Test Item 1");
@@ -99,7 +98,6 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             const conn = (globalThis as any).__TEST_CONN__;
             return {
                 roomname: conn?.provider?.configuration?.name,
-
                 wsconnected: (conn?.provider as any)?.websocketProvider?.status === "connected",
                 url: conn?.provider?.configuration?.url,
             };
@@ -116,7 +114,6 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
             const { Project } = await import("/src/schema/app-schema.ts");
             const project = Project.fromDoc(conn.doc);
-
             const items = project.items as any;
             const len = items?.length ?? 0;
             const pageIds: string[] = [];
@@ -157,7 +154,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
         });
 
         // Navigate to home and authenticate
-        await page2.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
+        await page2.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
 
         await page2.waitForFunction(
             () => {
@@ -211,7 +208,6 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             const conn = (globalThis as any).__TEST_CONN__;
             return {
                 roomname: conn?.provider?.configuration?.name,
-
                 wsconnected: (conn?.provider as any)?.websocketProvider?.status === "connected",
                 url: conn?.provider?.configuration?.url,
             };
@@ -226,13 +222,11 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
             // @ts-expect-error - Dynamic imports in browser context require ts-expect-error
             const { Project } = await import("/src/schema/app-schema.ts");
             const project = Project.fromDoc(conn.doc);
-
             const items = project.items as any;
             for (let i = 0; i < items.length; i++) {
                 const page = items.at ? items.at(i) : items[i];
                 if (page && page.id === pageId) {
                     // Add then immediately delete an item to trigger sync without changing final count
-
                     const pageItems = page.items as any;
                     const item = pageItems.addNode("tester");
                     item.updateText("Sync trigger item");
@@ -269,9 +263,7 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
 
                     // Log every 2 seconds
                     const now = Date.now();
-                    if (
-                        !((globalThis as any).__lastPageCheckLog) || now - (globalThis as any).__lastPageCheckLog > 2000
-                    ) {
+                    if (!((globalThis as any).__lastPageCheckLog) || now - (globalThis as any).__lastPageCheckLog > 2000) {
                         console.log(`page2: Checking for page ${pageId}, current pageCount=${len}`);
                         const pageIds: string[] = [];
                         for (let i = 0; i < len; i++) {
@@ -289,7 +281,6 @@ test.describe("YJS-g3h4i5j6: Yjs page data sync", () => {
                         if (page && page.id === pageId) {
                             console.log(`page2: Found page with ID ${pageId}`);
                             // Return the page data immediately
-
                             const pageItems = page.items as any;
                             const itemCount = pageItems?.length ?? 0;
                             const itemTexts: string[] = [];

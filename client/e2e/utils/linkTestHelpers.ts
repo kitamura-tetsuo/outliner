@@ -112,7 +112,6 @@ export class LinkTestHelpers {
                             }
                         }
                         if (!target) target = gs.project.addPage(pg.pageName, "tester");
-
                         const items = target.items as any;
                         while ((items?.length ?? 0) > 0) items.removeAt(0);
                         const lines = pg.content || ["This is a test page.", "Internal link test: [test-link]"];
@@ -202,7 +201,6 @@ export class LinkTestHelpers {
                     }
                 }
                 if (!target) target = gs.project.addPage(pageName, "tester");
-
                 const items = target.items as any;
                 while ((items?.length ?? 0) > 0) items.removeAt(0);
                 for (const line of content) {
