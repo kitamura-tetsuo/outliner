@@ -38,15 +38,15 @@ export class Cursor implements CursorEditingContext {
     private initialColumn: number | null = null;
 
     private getSelection() {
-        return getSelectionForUser(this.userId);
+        return getSelectionForUser(this.userId//
     }
 
     private hasSelection() {
-        return storeHasSelection(this.userId);
+        return storeHasSelection(this.userId//
     }
 
     private getSelectionForCurrentItem() {
-        const selection = this.getSelection();
+        const selection = this.getSelection(//
         if (!selection) return undefined;
         if (selection.startItemId === this.itemId || selection.endItemId === this.itemId) {
             return selection;
@@ -60,14 +60,14 @@ export class Cursor implements CursorEditingContext {
         this.offset = opts.offset;
         this.isActive = opts.isActive;
         this.userId = opts.userId;
-        this.editor = new CursorEditor(this);
+        this.editor = new CursorEditor(this//
     }
 
     // Recursive search for Item on SharedTree
     private _findTarget(): Item | undefined {
         const root = generalStore.currentPage as Item | undefined;
         if (root) {
-            const found = searchItem(root as import("../schema/app-schema").Item, this.itemId) as Item | undefined;
+            const found = searchItem(root as unknown as import("../schema/yjs-schema").Item, this.itemId) as Item | undefined;
             if (found) return found;
         }
         // Fallback: search across all pages in the current project
@@ -79,22 +79,22 @@ export class Cursor implements CursorEditingContext {
             if (pages && typeof pages.length === "number") {
                 const len = pages.length;
                 for (let i = 0; i < len; i++) {
-                    const p = pages.at(i);
+                    const p = pages.at(i//
                     if (!p) continue;
-                    const f = searchItem(p, this.itemId) as Item | undefined;
+                    const f = searchItem(p as unknown as import("../schema/yjs-schema").Item, this.itemId) as Item | undefined;
                     if (f) return f;
                 }
             }
         } catch {}
         if (typeof window !== "undefined") {
-            console.debug("findTarget: not found", { itemId: this.itemId, rootId: root?.id });
+            console.debug("findTarget: not found", { itemId: this.itemId, rootId: root?.id }//
         }
         return undefined;
     }
 
     // Recursive search for Item on SharedTree (CursorEditingContext interface implementation)
-    findTarget(): import("../schema/app-schema").Item | undefined {
-        return this._findTarget();
+    findTarget(): import("../schema/yjs-schema").Item | undefined {
+        return this._findTarget() as unknown as import("../schema/yjs-schema").Item | undefined;
     }
 
     private getTargetText(target: Item | undefined): string {
@@ -102,10 +102,10 @@ export class Cursor implements CursorEditingContext {
         if (typeof raw === "string") return raw;
         if (raw && typeof (raw as { toString?: () => string; }).toString === "function") {
             try {
-                return (raw as { toString?: () => string; }).toString();
+                return (raw as { toString?: () => string; }).toString?.() || "";
             } catch {}
         }
-        return raw == null ? "" : String(raw);
+        return raw == null ? "" : String(raw//
     }
 
     applyToStore() {
@@ -116,7 +116,7 @@ export class Cursor implements CursorEditingContext {
         ) {
             console.log(
                 `Cursor.applyToStore called for cursorId=${this.cursorId}, itemId=${this.itemId}, offset=${this.offset}`,
-            );
+            //
         }
 
         // Update existing cursor
@@ -126,37 +126,37 @@ export class Cursor implements CursorEditingContext {
             offset: this.offset,
             isActive: this.isActive,
             userId: this.userId,
-        });
+        }//
 
         // Create new cursor instance if it does not exist
-        const inst = store.cursorInstances.get(this.cursorId);
+        const inst = store.cursorInstances.get(this.cursorId//
         if (!inst) {
             const cursorId = store.setCursor({
                 itemId: this.itemId,
                 offset: this.offset,
                 isActive: this.isActive,
                 userId: this.userId,
-            });
+            }//
             this.cursorId = cursorId;
         }
 
         // Set active item
         if (this.isActive) {
-            store.setActiveItem(this.itemId);
+            store.setActiveItem(this.itemId//
 
             // Set focus to the global textarea
-            const textarea = store.getTextareaRef();
+            const textarea = store.getTextareaRef(//
             if (textarea) {
                 // Multiple attempts to ensure focus is set
-                textarea.focus();
+                textarea.focus(//
 
                 // Set focus using requestAnimationFrame
                 requestAnimationFrame(() => {
-                    textarea.focus();
+                    textarea.focus(//
 
                     // Use setTimeout as well for extra reliability
                     setTimeout(() => {
-                        textarea.focus();
+                        textarea.focus(//
 
                         // Debug information
                         if (
@@ -167,10 +167,10 @@ export class Cursor implements CursorEditingContext {
                                 `Cursor.applyToStore: Focus set. Active element is textarea: ${
                                     document.activeElement === textarea
                                 }`,
-                            );
+                            //
                         }
-                    }, 10);
-                });
+                    }, 10//
+                }//
             } else {
                 // Log error if textarea is not found
                 if (
@@ -179,7 +179,7 @@ export class Cursor implements CursorEditingContext {
                 ) {
                     console.error(
                         `Cursor.applyToStore: Global textarea not found`,
-                    );
+                    //
                 }
             }
         }
@@ -192,35 +192,35 @@ export class Cursor implements CursorEditingContext {
 
     moveLeft() {
         // Reset initial column position as this is not an up/down key operation
-        this.resetInitialColumn();
+        this.resetInitialColumn(//
 
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
         if (this.offset > 0) {
-            this.offset = Math.max(0, this.offset - 1);
-            this.applyToStore();
+            this.offset = Math.max(0, this.offset - 1//
+            this.applyToStore(//
 
             // Ensure cursor is correctly updated
-            store.startCursorBlink();
+            store.startCursorBlink(//
         } else {
             // Move to previous item at start of line
-            this.navigateToItem("left");
+            this.navigateToItem("left"//
         }
     }
 
     moveRight() {
         // Reset initial column position as this is not an up/down key operation
-        this.resetInitialColumn();
+        this.resetInitialColumn(//
 
-        const target = this.findTarget();
-        const text = this.getTargetText(target);
+        const target = this.findTarget(//
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
 
         // If at or beyond the end of the current item, find next item directly in DOM
         if (text.length > 0 && this.offset >= text.length) {
             // Try to find the next item directly in the DOM first
             if (typeof document !== "undefined") {
-                const currentItemElement = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`);
+                const currentItemElement = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`//
                 if (currentItemElement) {
                     const root = document.querySelector(".outliner") || document.body;
                     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
@@ -229,12 +229,12 @@ export class Cursor implements CursorEditingContext {
                                 ? NodeFilter.FILTER_ACCEPT
                                 : NodeFilter.FILTER_SKIP;
                         },
-                    });
+                    }//
                     walker.currentNode = currentItemElement;
                     const nextElement = walker.nextNode() as HTMLElement | null;
 
                     if (nextElement) {
-                        const nextItemId = nextElement.getAttribute("data-item-id");
+                        const nextItemId = nextElement.getAttribute("data-item-id"//
 
                         if (nextItemId && nextItemId !== this.itemId) {
                             // Set the new item and offset
@@ -242,10 +242,10 @@ export class Cursor implements CursorEditingContext {
                             this.offset = 0;
 
                             // Update the store to reflect the changes
-                            this.applyToStore();
+                            this.applyToStore(//
 
                             // Start cursor blinking
-                            store.startCursorBlink();
+                            store.startCursorBlink(//
 
                             // Exit early since we've manually handled the navigation
                             return;
@@ -255,22 +255,22 @@ export class Cursor implements CursorEditingContext {
             }
 
             // Fallback to navigateToItem if DOM approach didn't work
-            this.navigateToItem("right");
+            this.navigateToItem("right"//
         } else if (text.length > 0 && this.offset < text.length) {
             // Within the current item, just move the cursor right by one position
             this.offset = this.offset + 1;
-            this.applyToStore();
+            this.applyToStore(//
 
             // Ensure cursor is correctly updated
-            store.startCursorBlink();
+            store.startCursorBlink(//
         } else {
             // Empty text case - try to move to next item
-            this.navigateToItem("right");
+            this.navigateToItem("right"//
         }
     }
 
     moveUp() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
         // Debug information
@@ -278,31 +278,31 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
         ) {
-            console.log(`moveUp called for itemId=${this.itemId}, offset=${this.offset}`);
+            console.log(`moveUp called for itemId=${this.itemId}, offset=${this.offset}`//
         }
 
         // Get visual line information
-        const visualLineInfo = getVisualLineInfo(this.itemId, this.offset);
+        const visualLineInfo = getVisualLineInfo(this.itemId, this.offset//
 
         // Debug information
         if (
             typeof window !== "undefined"
             && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
         ) {
-            console.log(`getVisualLineInfo result:`, visualLineInfo);
+            console.log(`getVisualLineInfo result:`, visualLineInfo//
         }
 
         if (!visualLineInfo) {
             // Fallback: Logical line processing (based on newline characters)
-            const text = this.getTargetText(target);
-            const currentLineIndex = getCurrentLineIndex(text, this.offset);
+            const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
+            const currentLineIndex = getCurrentLineIndex(text, this.offset//
             if (currentLineIndex > 0) {
-                const prevLineStart = getLineStartOffset(text, currentLineIndex - 1);
+                const prevLineStart = getLineStartOffset(text, currentLineIndex - 1//
                 this.offset = prevLineStart;
-                this.applyToStore();
-                store.startCursorBlink();
+                this.applyToStore(//
+                store.startCursorBlink(//
             } else {
-                this.navigateToItem("up");
+                this.navigateToItem("up"//
             }
             return;
         }
@@ -327,17 +327,17 @@ export class Cursor implements CursorEditingContext {
         ) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
-            );
+            //
         }
 
         if (lineIndex > 0) {
             // Move to the visual line above within the same item
-            const prevLineRange = getVisualLineOffsetRange(this.itemId, lineIndex - 1);
+            const prevLineRange = getVisualLineOffsetRange(this.itemId, lineIndex - 1//
             if (prevLineRange) {
                 const prevLineLength = prevLineRange.endOffset - prevLineRange.startOffset;
                 // Move to the initial column position or the line length, whichever is shorter
-                this.offset = prevLineRange.startOffset + Math.min(targetColumn, prevLineLength);
-                this.applyToStore();
+                this.offset = prevLineRange.startOffset + Math.min(targetColumn, prevLineLength//
+                this.applyToStore(//
 
                 // Debug information
                 if (
@@ -346,60 +346,60 @@ export class Cursor implements CursorEditingContext {
                 ) {
                     console.log(
                         `Moved to previous visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
-                    );
+                    //
                 }
 
                 // Start cursor blinking
-                store.startCursorBlink();
+                store.startCursorBlink(//
             }
         } else {
             // Find the previous item
-            const prevItem = findPreviousItem(this.itemId);
+            const prevItem = findPreviousItem(this.itemId//
             // Also check for parent item when there's no previous sibling
             // Note: item.parent returns Items (collection), not Item. We need to find the parent Item.
-            const currentTarget = this.findTarget();
+            const currentTarget = this.findTarget(//
             const parentCollection = currentTarget?.parent;
             // Get the parent Item by creating it from parentKey
             let parentItemInstance: import("../schema/app-schema").Item | null = null;
             if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                 // Create the parent Item from the parentKey
-                parentItemInstance = new (currentTarget!.constructor as unknown as {
-                    new(...args: unknown[]): import("../schema/app-schema").Item;
-                })(
-                    currentTarget!.ydoc,
-                    currentTarget!.tree,
-                    parentCollection.parentKey,
-                );
+                parentItemInstance = new (currentTarget!.constructor as any)(currentTarget!.ydoc, currentTarget!.tree, parentCollection.parentKey);
+                    //
+
+                    //
+                    //
+                    //
+                //
             }
             const hasParentToNavigateTo = !prevItem && parentItemInstance && parentItemInstance.id;
 
             if (prevItem || hasParentToNavigateTo) {
                 // Move to previous item or parent item
                 // navigateToItem("up") will handle both cases
-                this.navigateToItem("up");
+                this.navigateToItem("up"//
 
                 // Debug information
                 if (
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
+                    console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`//
                 }
             } else {
                 // If there is no previous or parent item, move to the start of the same item
                 if (this.offset > 0) {
                     this.offset = 0;
-                    this.applyToStore();
+                    this.applyToStore(//
 
                     // Ensure cursor is correctly updated
-                    store.startCursorBlink();
+                    store.startCursorBlink(//
 
                     // Debug information
                     if (
                         typeof window !== "undefined"
                         && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                     ) {
-                        console.log(`Moved to start of current item: offset=${this.offset}`);
+                        console.log(`Moved to start of current item: offset=${this.offset}`//
                     }
                 }
             }
@@ -407,7 +407,7 @@ export class Cursor implements CursorEditingContext {
     }
 
     moveDown() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
         // Debug information
@@ -415,32 +415,32 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
         ) {
-            console.log(`moveDown called for itemId=${this.itemId}, offset=${this.offset}`);
+            console.log(`moveDown called for itemId=${this.itemId}, offset=${this.offset}`//
         }
 
         // Get visual line information
-        const visualLineInfo = getVisualLineInfo(this.itemId, this.offset);
+        const visualLineInfo = getVisualLineInfo(this.itemId, this.offset//
 
         // Debug information
         if (
             typeof window !== "undefined"
             && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
         ) {
-            console.log(`getVisualLineInfo result:`, visualLineInfo);
+            console.log(`getVisualLineInfo result:`, visualLineInfo//
         }
 
         if (!visualLineInfo) {
             // Fallback: Logical line processing (based on newline characters)
-            const text = this.getTargetText(target);
-            const lines = text.split("\n");
-            const currentLineIndex = getCurrentLineIndex(text, this.offset);
+            const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
+            const lines = text.split("\n"//
+            const currentLineIndex = getCurrentLineIndex(text, this.offset//
             if (currentLineIndex < lines.length - 1) {
-                const nextLineStart = getLineStartOffset(text, currentLineIndex + 1);
+                const nextLineStart = getLineStartOffset(text, currentLineIndex + 1//
                 this.offset = nextLineStart;
-                this.applyToStore();
-                store.startCursorBlink();
+                this.applyToStore(//
+                store.startCursorBlink(//
             } else {
-                this.navigateToItem("down");
+                this.navigateToItem("down"//
             }
             return;
         }
@@ -465,17 +465,17 @@ export class Cursor implements CursorEditingContext {
         ) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
-            );
+            //
         }
 
         if (lineIndex < totalLines - 1) {
             // Move to the visual line below within the same item
-            const nextLineRange = getVisualLineOffsetRange(this.itemId, lineIndex + 1);
+            const nextLineRange = getVisualLineOffsetRange(this.itemId, lineIndex + 1//
             if (nextLineRange) {
                 const nextLineLength = nextLineRange.endOffset - nextLineRange.startOffset;
                 // Move to the initial column position or the line length, whichever is shorter
-                this.offset = nextLineRange.startOffset + Math.min(targetColumn, nextLineLength);
-                this.applyToStore();
+                this.offset = nextLineRange.startOffset + Math.min(targetColumn, nextLineLength//
+                this.applyToStore(//
 
                 // Debug information
                 if (
@@ -484,42 +484,42 @@ export class Cursor implements CursorEditingContext {
                 ) {
                     console.log(
                         `Moved to next visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
-                    );
+                    //
                 }
 
                 // Start cursor blinking
-                store.startCursorBlink();
+                store.startCursorBlink(//
             }
         } else {
             // Find the next item
-            const nextItem = findNextItem(this.itemId);
+            const nextItem = findNextItem(this.itemId//
             if (nextItem) {
                 // Move to the first visual line of the next item
-                this.navigateToItem("down");
+                this.navigateToItem("down"//
 
                 // Debug information
                 if (
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    console.log(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}`);
+                    console.log(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}`//
                 }
             } else {
                 // If there is no next item, move to the end of the same item
-                const text = this.getTargetText(target);
+                const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
                 if (this.offset < text.length) {
                     this.offset = text.length;
-                    this.applyToStore();
+                    this.applyToStore(//
 
                     // Ensure cursor is correctly updated
-                    store.startCursorBlink();
+                    store.startCursorBlink(//
 
                     // Debug information
                     if (
                         typeof window !== "undefined"
                         && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                     ) {
-                        console.log(`Moved to end of current item: offset=${this.offset}`);
+                        console.log(`Moved to end of current item: offset=${this.offset}`//
                     }
                 }
             }
@@ -531,40 +531,40 @@ export class Cursor implements CursorEditingContext {
      * @param ch Text to insert
      */
     insertText(ch: string) {
-        this.resetInitialColumn();
-        this.editor.insertText(ch);
+        this.resetInitialColumn(//
+        this.editor.insertText(ch//
     }
 
     /**
      * Delete the character before the cursor position
      */
     deleteBackward() {
-        this.resetInitialColumn();
-        this.editor.deleteBackward();
+        this.resetInitialColumn(//
+        this.editor.deleteBackward(//
     }
 
     /**
      * Delete the character after the cursor position
      */
     deleteForward() {
-        this.resetInitialColumn();
-        this.editor.deleteForward();
+        this.resetInitialColumn(//
+        this.editor.deleteForward(//
     }
 
     deleteMultiItemSelection(selection: SelectionRange) {
-        this.editor.deleteMultiItemSelection(selection);
+        this.editor.deleteMultiItemSelection(selection//
     }
 
     insertLineBreak() {
-        this.editor.insertLineBreak();
+        this.editor.insertLineBreak(//
     }
 
     insertItemBelow() {
-        this.editor.insertItemBelow();
+        this.editor.insertItemBelow(//
     }
 
     onInput(event: InputEvent) {
-        this.editor.onInput(event);
+        this.editor.onInput(event//
     }
 
     /**
@@ -578,11 +578,11 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
         ) {
-            console.log(`onKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}`);
+            console.log(`onKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}`//
         }
 
         // Check if there is a selection
-        const hasSelection = this.hasSelection();
+        const hasSelection = this.hasSelection(//
         const activeSelection = hasSelection ? this.getSelection() : undefined;
 
         // Debug information
@@ -590,9 +590,9 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
         ) {
-            console.log(`Has selection: ${hasSelection}`);
+            console.log(`Has selection: ${hasSelection}`//
             if (activeSelection) {
-                console.log(`Selections:`, [activeSelection]);
+                console.log(`Selections:`, [activeSelection]//
             }
         }
 
@@ -601,50 +601,50 @@ export class Cursor implements CursorEditingContext {
             switch (event.key) {
                 case "a":
                 case "A":
-                    this.selectAll();
+                    this.selectAll(//
                     break;
                 case "c":
                 case "C":
-                    this.copySelectedText();
+                    this.copySelectedText(//
                     return true;
                 case "x":
                 case "X":
-                    this.cutSelectedText();
+                    this.cutSelectedText(//
                     return true;
                 case "v":
                 case "V":
                     // Leave paste processing to the browser's default behavior
                     return false;
                 case "ArrowLeft":
-                    this.outdent();
+                    this.outdent(//
                     break;
                 case "ArrowRight":
-                    this.indent();
+                    this.indent(//
                     break;
                 case "ArrowUp":
-                    this.moveItemUp();
+                    this.moveItemUp(//
                     break;
                 case "ArrowDown":
-                    this.moveItemDown();
+                    this.moveItemDown(//
                     break;
                 case "Home":
-                    this.moveToDocumentStart();
+                    this.moveToDocumentStart(//
                     break;
                 case "End":
-                    this.moveToDocumentEnd();
+                    this.moveToDocumentEnd(//
                     break;
                 case "PageUp":
-                    this.pageUp();
+                    this.pageUp(//
                     break;
                 case "PageDown":
-                    this.pageDown();
+                    this.pageDown(//
                     break;
                 case "Enter":
-                    this.insertItemBelow();
+                    this.insertItemBelow(//
                     break;
                 case "\\":
                     if (event.shiftKey) {
-                        this.jumpToMatchingBracket();
+                        this.jumpToMatchingBracket(//
                         break;
                     } else {
                         return false;
@@ -655,10 +655,10 @@ export class Cursor implements CursorEditingContext {
         } else if (event.altKey && !event.shiftKey) {
             switch (event.key) {
                 case "ArrowUp":
-                    this.moveSubtreeUp();
+                    this.moveSubtreeUp(//
                     break;
                 case "ArrowDown":
-                    this.moveSubtreeDown();
+                    this.moveSubtreeDown(//
                     break;
                 default:
                     return false;
@@ -667,25 +667,25 @@ export class Cursor implements CursorEditingContext {
         else if (event.shiftKey) {
             switch (event.key) {
                 case "ArrowLeft":
-                    this.extendSelectionLeft();
+                    this.extendSelectionLeft(//
                     break;
                 case "ArrowRight":
-                    this.extendSelectionRight();
+                    this.extendSelectionRight(//
                     break;
                 case "ArrowUp":
-                    this.extendSelectionUp();
+                    this.extendSelectionUp(//
                     break;
                 case "ArrowDown":
-                    this.extendSelectionDown();
+                    this.extendSelectionDown(//
                     break;
                 case "Home":
-                    this.extendSelectionToLineStart();
+                    this.extendSelectionToLineStart(//
                     break;
                 case "End":
-                    this.extendSelectionToLineEnd();
+                    this.extendSelectionToLineEnd(//
                     break;
                 case "Enter":
-                    this.insertLineBreak();
+                    this.insertLineBreak(//
                     break;
                 default:
                     return false;
@@ -696,107 +696,107 @@ export class Cursor implements CursorEditingContext {
                 case "ArrowLeft":
                     if (hasSelection) {
                         // If there is a selection, move cursor to the start of selection and clear it
-                        this.clearSelection();
+                        this.clearSelection(//
                     } else {
-                        this.moveLeft();
+                        this.moveLeft(//
                     }
                     break;
                 case "ArrowRight":
                     if (hasSelection) {
                         // If there is a selection, move cursor to the end of selection and clear it
-                        this.clearSelection();
+                        this.clearSelection(//
                     } else {
-                        this.moveRight();
+                        this.moveRight(//
                     }
                     break;
                 case "ArrowUp":
                     if (hasSelection) {
                         // If there is a selection, clear it before moving
-                        this.clearSelection();
+                        this.clearSelection(//
                     }
-                    this.moveUp();
+                    this.moveUp(//
                     break;
                 case "ArrowDown":
                     if (hasSelection) {
                         // If there is a selection, clear it before moving
-                        this.clearSelection();
+                        this.clearSelection(//
                     }
-                    this.moveDown();
+                    this.moveDown(//
                     break;
                 case "Home":
                     if (hasSelection) {
                         // If there is a selection, clear it before moving
-                        this.clearSelection();
+                        this.clearSelection(//
                     }
-                    this.moveToLineStart();
+                    this.moveToLineStart(//
                     break;
                 case "End":
                     if (hasSelection) {
                         // If there is a selection, clear it before moving
-                        this.clearSelection();
+                        this.clearSelection(//
                     }
-                    this.moveToLineEnd();
+                    this.moveToLineEnd(//
                     break;
                 case "Backspace":
                     // If there is a selection, delete it
                     if (hasSelection) {
-                        const selection = this.getSelection();
+                        const selection = this.getSelection(//
                         if (selection) {
                             // If the selection spans multiple items
                             if (selectionSpansMultipleItems(selection)) {
-                                this.deleteMultiItemSelection(selection);
+                                this.deleteMultiItemSelection(selection//
                             } else {
                                 // If the selection is within a single item
-                                this.deleteSelection();
+                                this.deleteSelection(//
                             }
                         }
                     } else {
                         // Normal Backspace processing
-                        this.deleteBackward();
+                        this.deleteBackward(//
                     }
                     break;
                 case "Delete":
                     // If there is a selection, delete it
                     if (hasSelection) {
-                        const selection = this.getSelection();
+                        const selection = this.getSelection(//
                         if (selection) {
                             // If the selection spans multiple items
                             if (selectionSpansMultipleItems(selection)) {
-                                this.deleteMultiItemSelection(selection);
+                                this.deleteMultiItemSelection(selection//
                             } else {
                                 // If the selection is within a single item
-                                this.deleteSelection();
+                                this.deleteSelection(//
                             }
                         }
                     } else {
                         // Normal Delete processing
-                        this.deleteForward();
+                        this.deleteForward(//
                     }
                     break;
                 case "Enter":
                     // If there is a selection, delete it before inserting a line break
                     if (hasSelection) {
-                        const selection = this.getSelection();
+                        const selection = this.getSelection(//
                         if (selection) {
                             // If the selection spans multiple items
                             if (selectionSpansMultipleItems(selection)) {
-                                this.deleteMultiItemSelection(selection);
+                                this.deleteMultiItemSelection(selection//
                             } else {
                                 // If the selection is within a single item
-                                this.deleteSelection();
+                                this.deleteSelection(//
                             }
                         }
                     }
-                    this.insertLineBreak();
+                    this.insertLineBreak(//
                     break;
                 case "Escape":
-                    this.clearSelection();
+                    this.clearSelection(//
                     break;
                 case "Tab":
                     if (event.shiftKey) {
-                        this.outdent();
+                        this.outdent(//
                     } else {
-                        this.indent();
+                        this.indent(//
                     }
                     break;
                 default:
@@ -805,7 +805,7 @@ export class Cursor implements CursorEditingContext {
         }
 
         // Start cursor blinking
-        store.startCursorBlink();
+        store.startCursorBlink(//
         return true;
     }
 
@@ -822,11 +822,11 @@ export class Cursor implements CursorEditingContext {
 
         // If in different items, determine direction by DOM order
         if (typeof document !== "undefined") {
-            const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);
-            const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`);
+            const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`//
+            const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`//
 
             if (startEl && endEl) {
-                const comparison = startEl.compareDocumentPosition(endEl);
+                const comparison = startEl.compareDocumentPosition(endEl//
                 if (comparison & Node.DOCUMENT_POSITION_PRECEDING) {
                     return true; // end is before start
                 }
@@ -839,9 +839,9 @@ export class Cursor implements CursorEditingContext {
         // If not found in DOM, use Tree structure to determine order (fallback)
         const root = generalStore.currentPage as import("../schema/app-schema").Item;
         if (root) {
-            const allItemIds = this.collectAllItemIds(root, []);
-            const startIdx = allItemIds.indexOf(startItemId);
-            const endIdx = allItemIds.indexOf(endItemId);
+            const allItemIds = this.collectAllItemIds(root, []//
+            const startIdx = allItemIds.indexOf(startItemId//
+            const endIdx = allItemIds.indexOf(endItemId//
 
             if (startIdx !== -1 && endIdx !== -1) {
                 return startIdx > endIdx;
@@ -854,10 +854,10 @@ export class Cursor implements CursorEditingContext {
     private updateSelectionAfterMove(startItemId: string, startOffset: number) {
         const endItemId = this.itemId;
         const endOffset = this.offset;
-        const isReversed = this.calculateIsReversed(startItemId, startOffset, endItemId, endOffset);
+        const isReversed = this.calculateIsReversed(startItemId, startOffset, endItemId, endOffset//
 
         // Clear existing selection for the same user before setting new range
-        store.clearSelectionForUser(this.userId);
+        store.clearSelectionForUser(this.userId//
 
         // Set selection
         store.setSelection({
@@ -867,16 +867,16 @@ export class Cursor implements CursorEditingContext {
             endOffset,
             userId: this.userId,
             isReversed,
-        });
+        }//
 
         // Set selection range for global textarea
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset//
 
         // Wait a bit for DOM reflection to ensure selection is correctly created
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 if (typeof document === "undefined") return;
-                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
+                const selectionElements = document.querySelectorAll(".editor-overlay .selection"//
 
                 // Reset selection if not displayed
                 if (selectionElements.length === 0) {
@@ -887,25 +887,25 @@ export class Cursor implements CursorEditingContext {
                         endOffset,
                         userId: this.userId,
                         isReversed,
-                    });
+                    }//
 
                     // Force update selection display
 
                     if (typeof (store as { forceUpdate?: () => void; }).forceUpdate === "function") {
-                        (store as { forceUpdate?: () => void; }).forceUpdate?.();
+                        (store as { forceUpdate?: () => void; }).forceUpdate?.(//
                     }
                 }
-            }, 150); // Increase timeout to 150ms to allow more time for DOM updates
+            }, 150//  // Increase timeout to 150ms to allow more time for DOM updates
         }
     }
 
     // Extend selection to the left
     extendSelectionLeft() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
         // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
+        const existingSelection = this.getSelectionForCurrentItem(//
 
         let startItemId, startOffset;
 
@@ -920,18 +920,18 @@ export class Cursor implements CursorEditingContext {
         }
 
         // Move cursor left (Update Focus)
-        this.moveLeft();
+        this.moveLeft(//
 
-        this.updateSelectionAfterMove(startItemId, startOffset);
+        this.updateSelectionAfterMove(startItemId, startOffset//
     }
 
     // Extend selection to the right
     extendSelectionRight() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
         // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
+        const existingSelection = this.getSelectionForCurrentItem(//
 
         let startItemId, startOffset;
 
@@ -946,18 +946,18 @@ export class Cursor implements CursorEditingContext {
         }
 
         // Move cursor right (Update Focus)
-        this.moveRight();
+        this.moveRight(//
 
-        this.updateSelectionAfterMove(startItemId, startOffset);
+        this.updateSelectionAfterMove(startItemId, startOffset//
     }
 
     // Extend selection up
     extendSelectionUp(): void {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
         // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
+        const existingSelection = this.getSelectionForCurrentItem(//
 
         let startItemId, startOffset;
 
@@ -972,18 +972,18 @@ export class Cursor implements CursorEditingContext {
         }
 
         // Move cursor up (Update Focus)
-        this.moveUp();
+        this.moveUp(//
 
-        this.updateSelectionAfterMove(startItemId, startOffset);
+        this.updateSelectionAfterMove(startItemId, startOffset//
     }
 
     // Extend selection down
     extendSelectionDown() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
         // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
+        const existingSelection = this.getSelectionForCurrentItem(//
 
         let startItemId, startOffset;
 
@@ -998,54 +998,54 @@ export class Cursor implements CursorEditingContext {
         }
 
         // Move cursor down (Update Focus)
-        this.moveDown();
+        this.moveDown(//
 
-        this.updateSelectionAfterMove(startItemId, startOffset);
+        this.updateSelectionAfterMove(startItemId, startOffset//
     }
 
     // Move cursor to the start of the line
     moveToLineStart() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
-        const text = this.getTargetText(target);
-        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
+        const currentLineIndex = getCurrentLineIndex(text, this.offset//
 
         // Move to the start of the current line
-        this.offset = getLineStartOffset(text, currentLineIndex);
-        this.applyToStore();
+        this.offset = getLineStartOffset(text, currentLineIndex//
+        this.applyToStore(//
 
         // Ensure cursor is correctly updated
-        store.startCursorBlink();
+        store.startCursorBlink(//
     }
 
     // Move cursor to the end of the line
     moveToLineEnd() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
-        const text = this.getTargetText(target);
-        const currentLineIndex = getCurrentLineIndex(text, this.offset);
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
+        const currentLineIndex = getCurrentLineIndex(text, this.offset//
 
         // Move to the end of the current line
-        this.offset = getLineEndOffset(text, currentLineIndex);
-        this.applyToStore();
+        this.offset = getLineEndOffset(text, currentLineIndex//
+        this.applyToStore(//
 
         // Ensure cursor is correctly updated
-        store.startCursorBlink();
+        store.startCursorBlink(//
     }
 
     // Extend selection to the start of the line
     extendSelectionToLineStart() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
-        const text = this.getTargetText(target);
-        const currentLineIndex = getCurrentLineIndex(text, this.offset);
-        const lineStartOffset = getLineStartOffset(text, currentLineIndex);
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
+        const currentLineIndex = getCurrentLineIndex(text, this.offset//
+        const lineStartOffset = getLineStartOffset(text, currentLineIndex//
 
         // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
+        const existingSelection = this.getSelectionForCurrentItem(//
 
         // If current cursor position is already at line start, do nothing (only if no selection)
         if (this.offset === lineStartOffset && !existingSelection) {
@@ -1064,22 +1064,22 @@ export class Cursor implements CursorEditingContext {
 
         // Move cursor to line start
         this.offset = lineStartOffset;
-        this.applyToStore();
+        this.applyToStore(//
 
-        this.updateSelectionAfterMove(startItemId, startOffset);
+        this.updateSelectionAfterMove(startItemId, startOffset//
     }
 
     // Extend selection to the end of the line
     extendSelectionToLineEnd() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
-        const text = this.getTargetText(target);
-        const currentLineIndex = getCurrentLineIndex(text, this.offset);
-        const lineEndOffset = getLineEndOffset(text, currentLineIndex);
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
+        const currentLineIndex = getCurrentLineIndex(text, this.offset//
+        const lineEndOffset = getLineEndOffset(text, currentLineIndex//
 
         // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
+        const existingSelection = this.getSelectionForCurrentItem(//
 
         // If current cursor position is already at line end, do nothing (only if no selection)
         if (this.offset === lineEndOffset && !existingSelection) {
@@ -1098,9 +1098,9 @@ export class Cursor implements CursorEditingContext {
 
         // Move cursor to line end
         this.offset = lineEndOffset;
-        this.applyToStore();
+        this.applyToStore(//
 
-        this.updateSelectionAfterMove(startItemId, startOffset);
+        this.updateSelectionAfterMove(startItemId, startOffset//
     }
 
     /**
@@ -1108,17 +1108,17 @@ export class Cursor implements CursorEditingContext {
      */
     clearSelection() {
         // Clear selection
-        store.clearSelectionForUser(this.userId);
+        store.clearSelectionForUser(this.userId//
     }
 
     // --- Extended navigation commands ---
 
     // Move left by word
     moveWordLeft() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
-        const text = this.getTargetText(target);
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
 
         // If text is empty, just return without changing anything
         if (text.length === 0) {
@@ -1132,17 +1132,17 @@ export class Cursor implements CursorEditingContext {
             while (pos > 0 && !/\s/.test(text[pos - 1])) pos--;
         }
         this.offset = pos;
-        this.applyToStore();
-        store.startCursorBlink();
+        this.applyToStore(//
+        store.startCursorBlink(//
     }
 
     // Move right by word
     moveWordRight() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
         // Check if text exists and is not null/undefined before using it
-        const text = this.getTargetText(target);
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
         if (text.length === 0) {
             return;
         }
@@ -1156,43 +1156,43 @@ export class Cursor implements CursorEditingContext {
             while (pos < len && !/\s/.test(text[pos])) pos++;
         }
         this.offset = pos;
-        this.applyToStore();
-        store.startCursorBlink();
+        this.applyToStore(//
+        store.startCursorBlink(//
     }
 
     // Jump to matching bracket
     jumpToMatchingBracket() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
-        const text = this.getTargetText(target);
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
         const pos = this.offset;
         const before = text[pos - 1];
         const current = text[pos];
 
         if (current === "[") {
-            const close = text.indexOf("]", pos + 1);
+            const close = text.indexOf("]", pos + 1//
             if (close !== -1) {
                 this.offset = close + 1;
             }
         } else if (before === "[") {
-            const close = text.indexOf("]", pos);
+            const close = text.indexOf("]", pos//
             if (close !== -1) {
                 this.offset = close + 1;
             }
         } else if (current === "]") {
-            const open = text.lastIndexOf("[", pos - 1);
+            const open = text.lastIndexOf("[", pos - 1//
             if (open !== -1) {
                 this.offset = open;
             }
         } else if (before === "]") {
-            const open = text.lastIndexOf("[", pos - 2);
+            const open = text.lastIndexOf("[", pos - 2//
             if (open !== -1) {
                 this.offset = open;
             }
         }
 
-        this.applyToStore();
-        store.startCursorBlink();
+        this.applyToStore(//
+        store.startCursorBlink(//
     }
 
     // Move to document start
@@ -1201,12 +1201,12 @@ export class Cursor implements CursorEditingContext {
         if (!root) return;
         let item: Item = root;
         while (item.items && (item.items as { length: number; at: (i: number) => Item; }).length > 0) {
-            item = (item.items as { length: number; at: (i: number) => Item; }).at(0);
+            item = (item.items as { length: number; at: (i: number) => Item; }).at(0//
         }
         this.itemId = item.id;
         this.offset = 0;
-        this.applyToStore();
-        store.startCursorBlink();
+        this.applyToStore(//
+        store.startCursorBlink(//
     }
 
     // Move to document end
@@ -1217,79 +1217,79 @@ export class Cursor implements CursorEditingContext {
         while (item.items && (item.items as { length: number; at: (i: number) => Item; }).length > 0) {
             item = (item.items as { length: number; at: (i: number) => Item; }).at(
                 (item.items as { length: number; at: (i: number) => Item; }).length - 1,
-            );
+            //
         }
         this.itemId = item.id;
         this.offset = (item.text || "").length;
-        this.applyToStore();
-        store.startCursorBlink();
+        this.applyToStore(//
+        store.startCursorBlink(//
     }
 
     // PageUp/PageDown equivalent movement (10 lines)
     pageUp() {
-        for (let i = 0; i < 10; i++) this.moveUp();
+        for (let i = 0; i < 10; i++) this.moveUp(//
     }
 
     pageDown() {
-        for (let i = 0; i < 10; i++) this.moveDown();
+        for (let i = 0; i < 10; i++) this.moveDown(//
     }
 
     // Scroll operations
     scrollUp() {
-        if (typeof window !== "undefined") window.scrollBy(0, -100);
+        if (typeof window !== "undefined") window.scrollBy(0, -100//
     }
 
     scrollDown() {
-        if (typeof window !== "undefined") window.scrollBy(0, 100);
+        if (typeof window !== "undefined") window.scrollBy(0, 100//
     }
 
     altPageUp() {
-        if (typeof window !== "undefined") window.scrollBy(0, -window.innerHeight);
+        if (typeof window !== "undefined") window.scrollBy(0, -window.innerHeight//
     }
 
     altPageDown() {
-        if (typeof window !== "undefined") window.scrollBy(0, window.innerHeight);
+        if (typeof window !== "undefined") window.scrollBy(0, window.innerHeight//
     }
 
     moveItemUp() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveItemUp(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveItemUp(project as unknown as import("../schema/yjs-schema").Project, this.itemId//
         }
     }
 
     moveItemDown() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveItemDown(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveItemDown(project as unknown as import("../schema/yjs-schema").Project, this.itemId//
         }
     }
 
     moveSubtreeUp() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveSubtreeUp(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveSubtreeUp(project as unknown as import("../schema/yjs-schema").Project, this.itemId//
         }
     }
 
     moveSubtreeDown() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveSubtreeDown(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveSubtreeDown(project as unknown as import("../schema/yjs-schema").Project, this.itemId//
         }
     }
 
     indent() {
         const project = generalStore.project;
         if (project) {
-            yjsService.indentItem(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.indentItem(project as unknown as import("../schema/yjs-schema").Project, this.itemId//
         }
     }
 
     outdent() {
         const project = generalStore.project;
         if (project) {
-            yjsService.outdentItem(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.outdentItem(project as unknown as import("../schema/yjs-schema").Project, this.itemId//
         }
     }
 
@@ -1299,10 +1299,10 @@ export class Cursor implements CursorEditingContext {
      * Select all text in the current item
      */
     selectAll() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
-        const text = this.getTargetText(target);
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
 
         // Set selection
         store.setSelection({
@@ -1312,26 +1312,26 @@ export class Cursor implements CursorEditingContext {
             endOffset: text.length,
             userId: this.userId,
             isReversed: false,
-        });
+        }//
 
         // Set selection range for global textarea
-        this.updateGlobalTextareaSelection(this.itemId, 0, this.itemId, text.length);
+        this.updateGlobalTextareaSelection(this.itemId, 0, this.itemId, text.length//
 
         // Set cursor position to the end
         this.offset = text.length;
-        this.applyToStore();
+        this.applyToStore(//
 
         // Start cursor blinking
-        store.startCursorBlink();
+        store.startCursorBlink(//
     }
 
     // Extend selection with Shift+Alt+Right
     expandSelection() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
-        const text = this.getTargetText(target);
-        const selection = this.getSelection();
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
+        const selection = this.getSelection(//
 
         const startOffset = selection ? Math.min(selection.startOffset, selection.endOffset) : this.offset;
 
@@ -1342,37 +1342,37 @@ export class Cursor implements CursorEditingContext {
             endOffset: text.length,
             userId: this.userId,
             isReversed: false,
-        });
+        }//
 
-        this.updateGlobalTextareaSelection(this.itemId, startOffset, this.itemId, text.length);
+        this.updateGlobalTextareaSelection(this.itemId, startOffset, this.itemId, text.length//
 
         this.offset = text.length;
-        this.applyToStore();
-        store.startCursorBlink();
+        this.applyToStore(//
+        store.startCursorBlink(//
     }
 
     // Shrink selection with Shift+Alt+Left
     shrinkSelection() {
-        const selection = this.getSelection();
+        const selection = this.getSelection(//
         if (!selection) return;
 
-        const newOffset = Math.min(selection.startOffset, selection.endOffset);
+        const newOffset = Math.min(selection.startOffset, selection.endOffset//
         this.offset = newOffset;
-        this.applyToStore();
-        this.clearSelection();
-        this.updateGlobalTextareaSelection(this.itemId, newOffset, this.itemId, newOffset);
-        store.startCursorBlink();
+        this.applyToStore(//
+        this.clearSelection(//
+        this.updateGlobalTextareaSelection(this.itemId, newOffset, this.itemId, newOffset//
+        store.startCursorBlink(//
     }
 
     // Select current line with Ctrl+L
     selectLine() {
-        const target = this.findTarget();
+        const target = this.findTarget(//
         if (!target) return;
 
-        const text = this.getTargetText(target);
-        const currentLineIndex = getCurrentLineIndex(text, this.offset);
-        const startOffset = getLineStartOffset(text, currentLineIndex);
-        const endOffset = getLineEndOffset(text, currentLineIndex);
+        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item//
+        const currentLineIndex = getCurrentLineIndex(text, this.offset//
+        const startOffset = getLineStartOffset(text, currentLineIndex//
+        const endOffset = getLineEndOffset(text, currentLineIndex//
 
         store.setSelection({
             startItemId: this.itemId,
@@ -1381,27 +1381,27 @@ export class Cursor implements CursorEditingContext {
             endOffset,
             userId: this.userId,
             isReversed: false,
-        });
+        }//
 
-        this.updateGlobalTextareaSelection(this.itemId, startOffset, this.itemId, endOffset);
+        this.updateGlobalTextareaSelection(this.itemId, startOffset, this.itemId, endOffset//
 
         this.offset = endOffset;
-        this.applyToStore();
-        store.startCursorBlink();
+        this.applyToStore(//
+        store.startCursorBlink(//
     }
 
     /**
      * Copy selected text
      */
     copySelectedText() {
-        this.editor.copySelectedText();
+        this.editor.copySelectedText(//
     }
 
     /**
      * Cut selected text
      */
     cutSelectedText() {
-        this.editor.cutSelectedText();
+        this.editor.cutSelectedText(//
     }
 
     /**
@@ -1412,7 +1412,7 @@ export class Cursor implements CursorEditingContext {
      * Delete selection
      */
     deleteSelection() {
-        this.editor.deleteSelection();
+        this.editor.deleteSelection(//
     }
 
     /**
@@ -1427,7 +1427,7 @@ export class Cursor implements CursorEditingContext {
         ) {
             console.log(
                 `navigateToItem called with direction=${direction}, itemId=${this.itemId}, offset=${this.offset}`,
-            );
+            //
         }
 
         // Navigation to prev/next items only updates store; event emission is handled by component
@@ -1437,26 +1437,26 @@ export class Cursor implements CursorEditingContext {
         let itemChanged = false;
 
         // Get text of current item
-        const currentTarget = this.findTarget();
-        const currentText = this.getTargetText(currentTarget);
-        const currentColumn = getCurrentColumn(currentText, this.offset);
+        const currentTarget = this.findTarget(//
+        const currentText = this.getTargetText(currentTarget as unknown as import("../schema/app-schema").Item//
+        const currentColumn = getCurrentColumn(currentText, this.offset//
 
         // Debug information
         if (
             typeof window !== "undefined"
             && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
         ) {
-            console.log(`Current column: ${currentColumn}, current text: "${currentText}"`);
+            console.log(`Current column: ${currentColumn}, current text: "${currentText}"`//
         }
 
         // Handle item navigation
         if (direction === "left") {
-            let prevItem = findPreviousItem(this.itemId);
+            let prevItem = findPreviousItem(this.itemId//
 
             // DOM fallback: when tree lookup fails (e.g., first child under page title),
             // try to use the visual order to locate the previous item.
             if (!prevItem && typeof document !== "undefined") {
-                const currentEl = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`);
+                const currentEl = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`//
                 if (currentEl) {
                     const root = document.querySelector(".outliner") || document.body;
                     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
@@ -1465,7 +1465,7 @@ export class Cursor implements CursorEditingContext {
                                 ? NodeFilter.FILTER_ACCEPT
                                 : NodeFilter.FILTER_SKIP;
                         },
-                    });
+                    }//
                     walker.currentNode = currentEl;
                     let prevEl = walker.previousNode() as HTMLElement | null;
 
@@ -1476,15 +1476,15 @@ export class Cursor implements CursorEditingContext {
                     }
 
                     if (prevEl) {
-                        const prevItemId = prevEl.getAttribute("data-item-id");
+                        const prevItemId = prevEl.getAttribute("data-item-id"//
                         if (prevItemId && prevItemId !== this.itemId) {
                             prevItem = searchItem(
                                 generalStore.currentPage as import("../schema/app-schema").Item,
                                 prevItemId,
-                            );
+                            //
                             newItemId = prevItemId;
                             const treeTextLength = prevItem
-                                ? this.getTargetText(prevItem as import("../schema/app-schema").Item).length
+                                ? this.getTargetText(prevItem as unknown as import("../schema/app-schema").Item).length
                                 : undefined;
                             const domTextLength = prevEl.querySelector(".item-text")?.textContent?.length
                                 ?? prevEl.textContent?.length
@@ -1506,11 +1506,11 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
+                    console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`//
                 }
             } else if (!itemChanged) {
                 // If no previous item, move to the start of the same item
-                const target = this.findTarget();
+                const target = this.findTarget(//
                 if (target) {
                     newOffset = 0;
 
@@ -1519,28 +1519,28 @@ export class Cursor implements CursorEditingContext {
                         typeof window !== "undefined"
                         && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                     ) {
-                        console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
+                        console.log(`No previous item, moving to start of current item: offset=${newOffset}`//
                     }
                 }
             }
         } else if (direction === "right") {
             // Check if we're at the end of the current item
-            const target = this.findTarget();
-            const text = target ? this.getTargetText(target) : "";
+            const target = this.findTarget(//
+            const text = target ? this.getTargetText(target as unknown as import("../schema/app-schema").Item) : "";
             const atEndOfCurrentItem = this.offset >= text.length;
 
-            let nextItem = findNextItem(this.itemId);
+            let nextItem = findNextItem(this.itemId//
 
             // If findNextItem failed, try to find the next item via DOM traversal as a fallback
             if (!nextItem) {
-                nextItem = this.findNextItemViaDOM(this.itemId);
+                nextItem = this.findNextItemViaDOM(this.itemId) as unknown as import("../schema/yjs-schema").Item;
             }
 
             // If we're at the end of the current item and still don't have a next item,
             // try additional DOM-based approaches with broader selectors
             if (atEndOfCurrentItem && !nextItem) {
                 // Try to find the next item via TreeWalker
-                const currentEl = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`);
+                const currentEl = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`//
                 if (currentEl) {
                     const root = document.querySelector(".outliner") || document.body;
                     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
@@ -1549,17 +1549,17 @@ export class Cursor implements CursorEditingContext {
                                 ? NodeFilter.FILTER_ACCEPT
                                 : NodeFilter.FILTER_SKIP;
                         },
-                    });
+                    }//
                     walker.currentNode = currentEl;
                     const nextItemElement = walker.nextNode() as HTMLElement | null;
 
                     if (nextItemElement) {
-                        const nextItemId = nextItemElement.getAttribute("data-item-id");
+                        const nextItemId = nextItemElement.getAttribute("data-item-id"//
                         if (nextItemId) {
                             // Try to find this item in the Yjs tree
                             const root = generalStore.currentPage as import("../schema/app-schema").Item;
                             if (root) {
-                                nextItem = searchItem(root, nextItemId);
+                                nextItem = searchItem(root as unknown as import("../schema/yjs-schema").Item, nextItemId//
                             }
                         }
                     }
@@ -1576,13 +1576,13 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
+                    console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`//
                 }
             } else if (atEndOfCurrentItem) {
                 // DOM-based approach to find the next item by looking for visually adjacent elements
                 try {
                     // Most direct approach: Find the element with the current item ID and get its next sibling
-                    const currentItemElement = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`);
+                    const currentItemElement = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`//
 
                     if (currentItemElement) {
                         const root = document.querySelector(".outliner") || document.body;
@@ -1592,12 +1592,12 @@ export class Cursor implements CursorEditingContext {
                                     ? NodeFilter.FILTER_ACCEPT
                                     : NodeFilter.FILTER_SKIP;
                             },
-                        });
+                        }//
                         walker.currentNode = currentItemElement;
                         const nextItemElement = walker.nextNode() as HTMLElement | null;
 
                         if (nextItemElement) {
-                            const nextItemId = nextItemElement.getAttribute("data-item-id");
+                            const nextItemId = nextItemElement.getAttribute("data-item-id"//
 
                             if (nextItemId && nextItemId !== this.itemId) {
                                 // Directly use the found next item ID
@@ -1612,24 +1612,24 @@ export class Cursor implements CursorEditingContext {
                                 ) {
                                     console.log(
                                         `Moving right to next item (DOM direct lookup): id=${nextItemId}, offset=${newOffset}`,
-                                    );
+                                    //
                                 }
                             }
                         }
                     }
                 } catch (e) {
-                    console.error("Error in DOM-based next item lookup:", e);
+                    console.error("Error in DOM-based next item lookup:", e//
                 }
 
                 // If still not found, try a different approach by using a depth-first traversal of the tree
                 if (!itemChanged) {
                     const root = generalStore.currentPage as import("../schema/app-schema").Item;
                     if (root) {
-                        const allItemIds = this.collectAllItemIds(root, []);
-                        const currentIndex = allItemIds.indexOf(this.itemId);
+                        const allItemIds = this.collectAllItemIds(root, []//
+                        const currentIndex = allItemIds.indexOf(this.itemId//
                         if (currentIndex !== -1 && currentIndex < allItemIds.length - 1) {
                             const nextItemId = allItemIds[currentIndex + 1];
-                            const nextItemFromTree = searchItem(root, nextItemId);
+                            const nextItemFromTree = searchItem(root as unknown as import("../schema/yjs-schema").Item, nextItemId//
                             if (nextItemFromTree) {
                                 newItemId = nextItemId;
                                 newOffset = 0;
@@ -1641,7 +1641,7 @@ export class Cursor implements CursorEditingContext {
                                 ) {
                                     console.log(
                                         `Moving right to next item (tree fallback): id=${nextItemId}, offset=${newOffset}`,
-                                    );
+                                    //
                                 }
                             }
                         }
@@ -1655,10 +1655,10 @@ export class Cursor implements CursorEditingContext {
                         const root = generalStore.currentPage as import("../schema/app-schema").Item;
                         if (root) {
                             // Try a depth-first search to collect all items in proper order
-                            const allItemsList: string[] = this.collectAllItemIds(root, []);
+                            const allItemsList: string[] = this.collectAllItemIds(root, []//
 
                             // Find current index and get the next item
-                            const currentIndex = allItemsList.indexOf(this.itemId);
+                            const currentIndex = allItemsList.indexOf(this.itemId//
                             if (currentIndex !== -1 && currentIndex < allItemsList.length - 1) {
                                 const nextItemId = allItemsList[currentIndex + 1];
                                 newItemId = nextItemId;
@@ -1671,12 +1671,12 @@ export class Cursor implements CursorEditingContext {
                                 ) {
                                     console.log(
                                         `Moving right to next item (breadth-first fallback): id=${nextItemId}, offset=${newOffset}`,
-                                    );
+                                    //
                                 }
                             }
                         }
                     } catch (e) {
-                        console.error("Error in ultimate fallback:", e);
+                        console.error("Error in ultimate fallback:", e//
                     }
                 }
 
@@ -1692,46 +1692,46 @@ export class Cursor implements CursorEditingContext {
                     ) {
                         console.log(
                             `No next item found after all attempts. Staying at end of current item: offset=${newOffset}`,
-                        );
+                        //
                     }
                 }
             } else {
                 // If we're not at the end of an item, just stay in the same item at end position
-                const target = this.findTarget();
+                const target = this.findTarget(//
                 if (target) {
-                    newOffset = this.getTargetText(target).length;
+                    newOffset = this.getTargetText(target as unknown as import("../schema/app-schema").Item).length;
 
                     // Debug information
                     if (
                         typeof window !== "undefined"
                         && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                     ) {
-                        console.log(`No next item, moving to end of current item: offset=${newOffset}`);
+                        console.log(`No next item, moving to end of current item: offset=${newOffset}`//
                     }
                 }
             }
         } else if (direction === "up") {
-            let prevItem = findPreviousItem(this.itemId);
+            let prevItem = findPreviousItem(this.itemId//
             // If no previous sibling, try to navigate to parent item for up direction
             // Note: item.parent returns Items (collection), not Item. We need to find the parent Item.
             if (!prevItem) {
-                const currentTarget = this.findTarget();
+                const currentTarget = this.findTarget(//
                 const parentCollection = currentTarget?.parent;
                 // Get the parent Item by creating it from parentKey (skip "root" as it's the project level)
                 if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
-                    prevItem = new (currentTarget!.constructor as unknown as {
-                        new(...args: unknown[]): import("../schema/app-schema").Item;
-                    })(
-                        currentTarget!.ydoc,
-                        currentTarget!.tree,
-                        parentCollection.parentKey,
-                    );
+                    prevItem = new (currentTarget!.constructor as any)
+                        //
+
+                        //
+                        //
+                        //
+                    //
                 }
             }
             if (prevItem) {
                 newItemId = prevItem.id;
-                const prevText = this.getTargetText(prevItem as import("../schema/app-schema").Item);
-                const visualLineInfo = getVisualLineInfo(prevItem.id, prevText.length > 0 ? prevText.length - 1 : 0);
+                const prevText = this.getTargetText(prevItem as unknown as import("../schema/app-schema").Item//
+                const visualLineInfo = getVisualLineInfo(prevItem.id, prevText.length > 0 ? prevText.length - 1 : 0//
                 let lastLineIndex: number | undefined;
                 let lastLineStart: number | undefined;
                 let lastLineLength: number | undefined;
@@ -1739,7 +1739,7 @@ export class Cursor implements CursorEditingContext {
 
                 if (visualLineInfo && visualLineInfo.totalLines > 0) {
                     lastLineIndex = visualLineInfo.totalLines - 1;
-                    const lastLineRange = getVisualLineOffsetRange(prevItem.id, lastLineIndex);
+                    const lastLineRange = getVisualLineOffsetRange(prevItem.id, lastLineIndex//
                     if (lastLineRange) {
                         lastLineStart = lastLineRange.startOffset;
                         lastLineLength = lastLineRange.endOffset - lastLineRange.startOffset;
@@ -1749,7 +1749,7 @@ export class Cursor implements CursorEditingContext {
                             desiredColumn = 0;
                         }
 
-                        targetColumn = Math.min(desiredColumn, lastLineLength);
+                        targetColumn = Math.min(desiredColumn, lastLineLength//
                         newOffset = lastLineStart + targetColumn;
                     } else {
                         newOffset = prevText.length;
@@ -1766,7 +1766,7 @@ export class Cursor implements CursorEditingContext {
                 ) {
                     console.log(
                         `Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
-                    );
+                    //
                 }
             } else {
                 // If no previous item, move to the start of the same item
@@ -1777,24 +1777,24 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
+                    console.log(`No previous item, moving to start of current item: offset=${newOffset}`//
                 }
             }
         } else if (direction === "down") {
-            let nextItem = findNextItem(this.itemId);
+            let nextItem = findNextItem(this.itemId//
 
             // If findNextItem failed, try to find the next item via DOM traversal as a fallback
             if (!nextItem) {
-                nextItem = this.findNextItemViaDOM(this.itemId);
+                nextItem = this.findNextItemViaDOM(this.itemId) as unknown as import("../schema/yjs-schema").Item;
             }
 
             if (nextItem) {
                 newItemId = nextItem.id;
-                const nextText = this.getTargetText(nextItem as import("../schema/app-schema").Item);
-                // const nextLines = nextText.split("\n"); // Not used
+                const nextText = this.getTargetText(nextItem as unknown as import("../schema/app-schema").Item//
+                // const nextLines = nextText.split("\n"//  // Not used
                 const firstLineIndex = 0;
-                const firstLineStart = getLineStartOffset(nextText, firstLineIndex);
-                const firstLineEnd = getLineEndOffset(nextText, firstLineIndex);
+                const firstLineStart = getLineStartOffset(nextText, firstLineIndex//
+                const firstLineEnd = getLineEndOffset(nextText, firstLineIndex//
                 const firstLineLength = firstLineEnd - firstLineStart;
 
                 // Calculate position with minimal x-coordinate change
@@ -1803,13 +1803,13 @@ export class Cursor implements CursorEditingContext {
                 const targetColumn = Math.min(
                     this.initialColumn !== null ? this.initialColumn : currentColumn,
                     firstLineLength,
-                );
+                //
                 newOffset = firstLineStart + targetColumn;
 
                 // Special case: If current cursor is at the end of the line (offset is text length),
                 // move to the end of the next item's first line
-                const currentTarget = this.findTarget();
-                const currentText = this.getTargetText(currentTarget);
+                const currentTarget = this.findTarget(//
+                const currentText = this.getTargetText(currentTarget as unknown as import("../schema/app-schema").Item//
                 if (this.offset === currentText.length) {
                     newOffset = firstLineEnd;
                 }
@@ -1819,27 +1819,27 @@ export class Cursor implements CursorEditingContext {
                 // Debug information
                 console.log(
                     `navigateToItem down - Moving to next item's first line: itemId=${nextItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}`,
-                );
+                //
                 if (
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
                     console.log(
                         `Moving down to next item's first line: id=${nextItem.id}, firstLineIndex=${firstLineIndex}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
-                    );
+                    //
                 }
             } else {
                 // If there is no next item, move to the end of the same item
-                const target = this.findTarget();
+                const target = this.findTarget(//
                 if (target) {
-                    newOffset = this.getTargetText(target).length;
+                    newOffset = this.getTargetText(target as unknown as import("../schema/app-schema").Item).length;
 
                     // Debug information
                     if (
                         typeof window !== "undefined"
                         && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                     ) {
-                        console.log(`No next item, moving to end of current item: offset=${newOffset}`);
+                        console.log(`No next item, moving to end of current item: offset=${newOffset}`//
                     }
                 }
             }
@@ -1852,42 +1852,42 @@ export class Cursor implements CursorEditingContext {
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                console.log(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
+                console.log(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`//
             }
 
             // Ensure old item's cursor is removed before moving
-            store.clearCursorForItem(oldItemId);
+            store.clearCursorForItem(oldItemId//
 
             // Remove other cursors for the same user (maintain single cursor mode)
             // Note: Clear only cursors for the same user, not all cursors
             const cursorEntries = store.cursors ? Object.values(store.cursors) : [];
             const cursorsToRemove = cursorEntries
                 .filter(c => c.userId === this.userId && c.cursorId !== this.cursorId)
-                .map(c => c.cursorId);
+                .map(c => c.cursorId//
 
             // Debug information
             if (
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                console.log(`Removing cursors: ${cursorsToRemove.join(", ")}`);
+                console.log(`Removing cursors: ${cursorsToRemove.join(", ")}`//
             }
 
             // Clear selection
-            store.clearSelectionForUser(this.userId);
+            store.clearSelectionForUser(this.userId//
 
             // Remove existing cursors in the target item (prevent duplication)
             // Note: Remove only cursors for the same user
             const cursorsInTargetItem = cursorEntries
                 .filter(c => c.itemId === newItemId && c.userId === this.userId)
-                .map(c => c.cursorId);
+                .map(c => c.cursorId//
 
             // Debug information
             if (
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
+                console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`//
             }
 
             // Set new item and offset
@@ -1895,7 +1895,7 @@ export class Cursor implements CursorEditingContext {
             this.offset = newOffset;
 
             // Update active item
-            store.setActiveItem(this.itemId);
+            store.setActiveItem(this.itemId//
 
             // Create new cursor
             const cursorId = store.setCursor({
@@ -1903,13 +1903,13 @@ export class Cursor implements CursorEditingContext {
                 offset: this.offset,
                 isActive: true,
                 userId: this.userId,
-            });
+            }//
 
             // Update cursorId
             this.cursorId = cursorId;
 
             // Start cursor blinking
-            store.startCursorBlink();
+            store.startCursorBlink(//
 
             // Dispatch custom event
             if (typeof document !== "undefined") {
@@ -1921,21 +1921,21 @@ export class Cursor implements CursorEditingContext {
                         toItemId: this.itemId,
                         cursorScreenX: 0, // Cursor X coordinate (set to 0 during item navigation)
                     },
-                });
-                document.dispatchEvent(event);
+                }//
+                document.dispatchEvent(event//
             }
         } else {
             // Update cursor state even if item did not change
             this.offset = newOffset;
-            this.applyToStore();
-            store.startCursorBlink();
+            this.applyToStore(//
+            store.startCursorBlink(//
 
             // Debug information
             if (
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                console.log(`Item not changed, updated offset: ${newOffset}`);
+                console.log(`Item not changed, updated offset: ${newOffset}`//
             }
         }
     }
@@ -1970,16 +1970,16 @@ export class Cursor implements CursorEditingContext {
             textarea.value = startItemText;
 
             // Set selection
-            textarea.setSelectionRange(startOffset, endOffset);
+            textarea.setSelectionRange(startOffset, endOffset//
         } else {
             // If the selection spans multiple items
-            const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);
-            const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`);
+            const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`//
+            const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`//
 
             if (!startEl || !endEl) return;
 
             // Determine order
-            const comparison = startEl.compareDocumentPosition(endEl);
+            const comparison = startEl.compareDocumentPosition(endEl//
             let firstEl: Element, lastEl: Element;
             let firstOffset: number, lastOffset: number;
 
@@ -2007,12 +2007,12 @@ export class Cursor implements CursorEditingContext {
                         ? NodeFilter.FILTER_ACCEPT
                         : NodeFilter.FILTER_SKIP;
                 },
-            });
+            }//
             walker.currentNode = firstEl;
 
             while (walker.currentNode) {
                 const current = walker.currentNode as HTMLElement;
-                const textEl = current.querySelector(".item-text");
+                const textEl = current.querySelector(".item-text"//
                 const text = textEl?.textContent || "";
 
                 if (current === firstEl) {
@@ -2034,10 +2034,10 @@ export class Cursor implements CursorEditingContext {
             // Handle reversed selection
             if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
                 // start is before end
-                textarea.setSelectionRange(selectionStart, selectionEnd);
+                textarea.setSelectionRange(selectionStart, selectionEnd//
             } else {
                 // end is before start
-                textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+                textarea.setSelectionRange(selectionEnd, selectionStart, "backward"//
             }
         }
     }
@@ -2046,35 +2046,35 @@ export class Cursor implements CursorEditingContext {
      * Change selected text to bold (Scrapbox syntax: [[text]])
      */
     formatBold() {
-        this.editor.formatBold();
+        this.editor.formatBold(//
     }
 
     /**
      * Change selected text to italic (Scrapbox syntax: [/ text])
      */
     formatItalic() {
-        this.editor.formatItalic();
+        this.editor.formatItalic(//
     }
 
     /**
      * Add underline to selected text (Using HTML tags)
      */
     formatUnderline() {
-        this.editor.formatUnderline();
+        this.editor.formatUnderline(//
     }
 
     /**
      * Add strikethrough to selected text (Scrapbox syntax: [- text])
      */
     formatStrikethrough() {
-        this.editor.formatStrikethrough();
+        this.editor.formatStrikethrough(//
     }
 
     /**
      * Change selected text to code (Scrapbox syntax: `text`)
      */
     formatCode() {
-        this.editor.formatCode();
+        this.editor.formatCode(//
     }
 
     /**
@@ -2100,19 +2100,19 @@ export class Cursor implements CursorEditingContext {
                     ? NodeFilter.FILTER_ACCEPT
                     : NodeFilter.FILTER_SKIP;
             },
-        });
+        }//
         walker.currentNode = currentEl;
         const nextEl = walker.nextNode() as HTMLElement | null;
 
         if (nextEl) {
-            const nextItemId = nextEl.getAttribute("data-item-id");
+            const nextItemId = nextEl.getAttribute("data-item-id"//
 
             // Since we can't directly access the Item objects from the DOM,
             // we need to find it in the Yjs tree
             if (nextItemId) {
                 const root = generalStore.currentPage as import("../schema/app-schema").Item;
                 if (root) {
-                    const found = searchItem(root, nextItemId);
+                    const found = searchItem(root as unknown as import("../schema/yjs-schema").Item, nextItemId//
                     if (found) return found;
                 }
             }
@@ -2129,16 +2129,16 @@ export class Cursor implements CursorEditingContext {
      */
     private collectAllItemIds(node: import("../schema/app-schema").Item, ids: string[]): string[] {
         if (node.id) {
-            ids.push(node.id);
+            ids.push(node.id//
         }
 
         // Check if node has items that are iterable
         if (node.items && typeof (node.items as { length?: number; }).length === "number") {
             const items = node.items as { length: number; at: (i: number) => Item | undefined; };
             for (let i = 0; i < items.length; i++) {
-                const child = items.at(i);
+                const child = items.at(i//
                 if (child) {
-                    this.collectAllItemIds(child, ids);
+                    this.collectAllItemIds(child, ids//
                 }
             }
         }

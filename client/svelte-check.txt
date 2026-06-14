@@ -1,0 +1,2830 @@
+Loading svelte-check in workspace: /app/client
+Getting Svelte diagnostics...
+
+/app/client/src/lib/cursor/CursorNavigationUtils.ts:6:27
+Error: Conversion of type 'Iterable<Item>' to type 'Record<symbol, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'symbol' is missing in type 'Iterable<Item>'.
+    const items = node.items as Iterable<Item> | undefined;
+    if (!items || typeof (items as Record<symbol, unknown>)[Symbol.iterator] !== "function") {
+        return [];
+
+/app/client/src/lib/cursor/CursorEditor.ts:207:28
+Error: Conversion of type 'Items | null' to type 'Items' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'import("/app/client/src/schema/yjs-schema").Items' is not comparable to type 'import("/app/client/src/schema/app-schema").Items'.
+    Types have separate declarations of a private property 'childrenKeys'.
+        } else {
+            const parent = target.parent as import("../../schema/app-schema").Items;
+            if (parent) {
+
+/app/client/src/lib/cursor/CursorEditor.ts:211:31
+Error: Property 'items' does not exist on type 'Items'.
+                    ? parent
+                    : parent?.items;
+                const addNode = typeof parent.addNode === "function"
+
+/app/client/src/lib/cursor/CursorEditor.ts:293:28
+Error: Conversion of type 'Items | null' to type 'Items' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'import("/app/client/src/schema/yjs-schema").Items' is not comparable to type 'import("/app/client/src/schema/app-schema").Items'.
+    Types have separate declarations of a private property 'childrenKeys'.
+        } else {
+            const parent = target.parent as import("../../schema/app-schema").Items;
+            if (parent) {
+
+/app/client/src/lib/cursor/CursorEditor.ts:297:31
+Error: Property 'items' does not exist on type 'Items'.
+                    ? parent
+                    : parent?.items;
+                const addNode = typeof parent.addNode === "function"
+
+/app/client/src/lib/cursor/CursorEditor.ts:449:44
+Error: Argument of type 'import("/app/client/src/schema/yjs-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/app-schema").Item'.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+
+        const prevText = this.getPlainText(prevItem);
+        const currentText = this.getPlainText(currentItem);
+
+/app/client/src/lib/cursor/CursorEditor.ts:450:47
+Error: Argument of type 'import("/app/client/src/schema/yjs-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/app-schema").Item'.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        const prevText = this.getPlainText(prevItem);
+        const currentText = this.getPlainText(currentItem);
+        const combinedText = `${prevText}${currentText}`;
+
+/app/client/src/lib/cursor/CursorEditor.ts:454:25
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        const oldItemId = cursor.itemId;
+        const prevId = (prevItem as import("../../schema/app-schema").Item)?.id ?? cursor.itemId;
+        const newOffset = prevText.length;
+
+/app/client/src/lib/cursor/CursorEditor.ts:457:32
+Error: Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+
+        this.runInTransaction([prevItem, currentItem], () => {
+            this.updateItemText(prevItem, combinedText);
+
+/app/client/src/lib/cursor/CursorEditor.ts:457:42
+Error: Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+
+        this.runInTransaction([prevItem, currentItem], () => {
+            this.updateItemText(prevItem, combinedText);
+
+/app/client/src/lib/cursor/CursorEditor.ts:458:33
+Error: Argument of type 'import("/app/client/src/schema/yjs-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/app-schema").Item'.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        this.runInTransaction([prevItem, currentItem], () => {
+            this.updateItemText(prevItem, combinedText);
+            this.deleteItemNode(currentItem);
+
+/app/client/src/lib/cursor/CursorEditor.ts:459:33
+Error: Argument of type 'import("/app/client/src/schema/yjs-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/app-schema").Item'.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+            this.updateItemText(prevItem, combinedText);
+            this.deleteItemNode(currentItem);
+        });
+
+/app/client/src/lib/cursor/CursorEditor.ts:475:43
+Error: Property 'toString' does not exist on type 'never'.
+        if (typeof textValue === "string") return textValue;
+        if (textValue && typeof textValue.toString === "function") {
+            try {
+
+/app/client/src/lib/cursor/CursorEditor.ts:477:34
+Error: Property 'toString' does not exist on type 'never'.
+            try {
+                return textValue.toString();
+            } catch {}
+
+/app/client/src/lib/cursor/CursorEditor.ts:480:69
+Error: Property 'getText' does not exist on type 'Item'.
+        }
+        if (typeof (item as import("../../schema/app-schema").Item).getText === "function") {
+            try {
+
+/app/client/src/lib/cursor/CursorEditor.ts:482:81
+Error: Property 'getText' does not exist on type 'Item'.
+            try {
+                const result = (item as import("../../schema/app-schema").Item).getText();
+                if (typeof result === "string") return result;
+
+/app/client/src/lib/cursor/CursorEditor.ts:502:30
+Error: Property 'get' does not exist on type '{}'.
+        const value = tree.getNodeValueFromKey(key);
+        const yText = value?.get?.("text");
+        try {
+
+/app/client/src/lib/cursor/CursorEditor.ts:507:46
+Error: Property 'set' does not exist on type '{}'.
+                if (text) yText.insert(0, text);
+            } else if (value && typeof value.set === "function") {
+                value.set("text", text);
+
+/app/client/src/lib/cursor/CursorEditor.ts:508:23
+Error: Property 'set' does not exist on type '{}'.
+            } else if (value && typeof value.set === "function") {
+                value.set("text", text);
+            }
+
+/app/client/src/lib/cursor/CursorEditor.ts:510:39
+Error: Property 'set' does not exist on type '{}'.
+            }
+            if (value && typeof value.set === "function") {
+                value.set("lastChanged", Date.now());
+
+/app/client/src/lib/cursor/CursorEditor.ts:511:23
+Error: Property 'set' does not exist on type '{}'.
+            if (value && typeof value.set === "function") {
+                value.set("lastChanged", Date.now());
+            }
+
+/app/client/src/lib/cursor/CursorEditor.ts:534:37
+Error: Property 'deleteNodeAndDescendants' does not exist on type '{}'.
+        for (const tree of treeCandidates) {
+            if (tree && typeof tree.deleteNodeAndDescendants === "function") {
+                try {
+
+/app/client/src/lib/cursor/CursorEditor.ts:536:26
+Error: Property 'deleteNodeAndDescendants' does not exist on type '{}'.
+                try {
+                    tree.deleteNodeAndDescendants(key);
+                    return;
+
+/app/client/src/lib/cursor/CursorEditor.ts:566:30
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+
+        const currentText = (currentItem as import("../../schema/app-schema").Item).text || "";
+        const nextText = (nextItem as import("../../schema/app-schema").Item).text || "";
+
+/app/client/src/lib/cursor/CursorEditor.ts:567:27
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        const currentText = (currentItem as import("../../schema/app-schema").Item).text || "";
+        const nextText = (nextItem as import("../../schema/app-schema").Item).text || "";
+        (currentItem as import("../../schema/app-schema").Item).updateText(currentText + nextText);
+
+/app/client/src/lib/cursor/CursorEditor.ts:568:10
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        const nextText = (nextItem as import("../../schema/app-schema").Item).text || "";
+        (currentItem as import("../../schema/app-schema").Item).updateText(currentText + nextText);
+
+/app/client/src/lib/cursor/CursorEditor.ts:570:10
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+
+        (nextItem as import("../../schema/app-schema").Item).delete();
+    }
+
+/app/client/src/lib/cursor/CursorEditor.ts:599:10
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        store.clearCursorForItem(cursor.itemId);
+        (currentItem as import("../../schema/app-schema").Item).delete();
+
+/app/client/src/lib/cursor/CursorEditor.ts:627:38
+Error: Argument of type 'import("/app/client/src/schema/app-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/yjs-schema").Item'.
+  Types have separate declarations of a private property 'value'.
+
+        const startItem = searchItem(root as import("../../schema/app-schema").Item, selection.startItemId);
+        const endItem = searchItem(root as import("../../schema/app-schema").Item, selection.endItemId);
+
+/app/client/src/lib/cursor/CursorEditor.ts:628:36
+Error: Argument of type 'import("/app/client/src/schema/app-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/yjs-schema").Item'.
+  Types have separate declarations of a private property 'value'.
+        const startItem = searchItem(root as import("../../schema/app-schema").Item, selection.startItemId);
+        const endItem = searchItem(root as import("../../schema/app-schema").Item, selection.endItemId);
+        if (!startItem || !endItem) return;
+
+/app/client/src/lib/cursor/CursorEditor.ts:637:25
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+
+        const parent = (firstItem as import("../../schema/app-schema").Item).parent;
+        if (!parent || parent !== (lastItem as import("../../schema/app-schema").Item).parent) return;
+
+/app/client/src/lib/cursor/CursorEditor.ts:638:36
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        const parent = (firstItem as import("../../schema/app-schema").Item).parent;
+        if (!parent || parent !== (lastItem as import("../../schema/app-schema").Item).parent) return;
+
+/app/client/src/lib/cursor/CursorEditor.ts:646:32
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        try {
+            const firstText = (firstItem as import("../../schema/app-schema").Item).text || "";
+            const newFirstText = firstText.substring(0, firstOffset);
+
+/app/client/src/lib/cursor/CursorEditor.ts:648:31
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+            const newFirstText = firstText.substring(0, firstOffset);
+            const lastText = (lastItem as import("../../schema/app-schema").Item).text || "";
+            const newLastText = lastText.substring(lastOffset);
+
+/app/client/src/lib/cursor/CursorEditor.ts:661:14
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+
+            (firstItem as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
+
+/app/client/src/lib/cursor/CursorEditor.ts:664:18
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Items' to type 'import("/app/client/src/schema/app-schema").Items' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types have separate declarations of a private property 'childrenKeys'.
+            for (let i = lastIndex; i > firstIndex; i--) {
+                (items as import("../../schema/app-schema").Items).removeAt(i);
+            }
+
+/app/client/src/lib/cursor/CursorEditor.ts:667:30
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+
+            cursor.itemId = (firstItem as import("../../schema/app-schema").Item).id;
+            cursor.offset = firstOffset;
+
+/app/client/src/lib/cursor/CursorEditor.ts:782:99
+Error: Namespace '"/app/client/src/schema/app-schema"' has no exported member 'Page'.
+            const itemId = current.getAttribute("data-item-id")!;
+            const item = searchItem(generalStore.currentPage as import("../../schema/app-schema").Page, itemId);
+            if (!item) continue;
+
+/app/client/src/lib/cursor/CursorEditor.ts:785:27
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+
+            const text = (item as import("../../schema/app-schema").Item).text || "";
+
+/app/client/src/lib/cursor/CursorEditor.ts:812:18
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+                const newText = text.substring(0, start) + formattedText + text.substring(end);
+                (item as import("../../schema/app-schema").Item).updateText(newText);
+            } else {
+
+/app/client/src/lib/cursor/CursorTextOperations.ts:229:10
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        // Delete the current item
+        (currentItem as import("../../schema/app-schema").Item).delete();
+
+/app/client/src/lib/cursor/CursorTextOperations.ts:264:10
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        // Delete the next item
+        (nextItem as import("../../schema/app-schema").Item).delete();
+
+/app/client/src/lib/cursor/CursorTextOperations.ts:308:10
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        // Delete the item
+        (currentItem as import("../../schema/app-schema").Item).delete();
+
+/app/client/src/lib/cursor/CursorTextOperations.ts:341:10
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        store.clearCursorForItem(current.id);
+        (current as import("../../schema/app-schema").Item).delete();
+
+/app/client/src/lib/cursor/CursorTextOperations.ts:368:10
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        current.updateText(a + b);
+        (next as import("../../schema/app-schema").Item).delete();
+
+/app/client/src/lib/cursor/CursorTextOperations.ts:390:10
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+        const prevId = prev.id;
+        (current as import("../../schema/app-schema").Item).delete();
+
+/app/client/src/lib/yjs/service.ts:7:36
+Error: Cannot find module '../../schema/YTree' or its corresponding type declarations.
+
+function childrenKeys(tree: import("../../schema/YTree").YTree, parentKey: string): string[] {
+    const children = tree.getNodeChildrenFromKey(parentKey);
+
+/app/client/src/lib/yjs/service.ts:92:14
+Error: Property 'moveChildToParent' does not exist on type 'YTree'.
+        const tree = project.tree;
+        tree.moveChildToParent(itemKey, newParentKey);
+        if (index !== undefined) {
+
+/app/client/src/lib/yjs/service.ts:114:18
+Error: Property 'moveChildToParent' does not exist on type 'YTree'.
+            const newParent = siblings[idx - 1];
+            tree.moveChildToParent(itemKey, newParent);
+            tree.setNodeOrderToEnd(itemKey);
+
+/app/client/src/lib/yjs/service.ts:125:14
+Error: Property 'moveChildToParent' does not exist on type 'YTree'.
+        if (!grand) return;
+        tree.moveChildToParent(itemKey, grand);
+        tree.setNodeAfter(itemKey, parent);
+
+/app/client/src/lib/yjs/service.ts:174:40
+Error: Property 'clientID' does not exist on type 'Awareness'.
+            const states = awareness.getStates();
+            const clientId = awareness.clientID;
+            const overlay = resolveOverlayStore();
+
+/app/client/src/lib/yjs/service.ts:211:40
+Error: Property 'clientID' does not exist on type 'Awareness'.
+            const states = awareness.getStates();
+            const clientId = awareness.clientID;
+
+/app/client/src/lib/Cursor.ts:63:40
+Error: Argument of type 'this' is not assignable to parameter of type 'CursorEditingContext'.
+  Type 'Cursor' is not assignable to type 'CursorEditingContext'.
+    The types returned by 'findTarget()' are incompatible between these types.
+      Type 'import("/app/client/src/schema/app-schema").Item | undefined' is not assignable to type 'import("/app/client/src/schema/yjs-schema").Item | undefined'.
+        Type 'import("/app/client/src/schema/app-schema").Item' is not assignable to type 'import("/app/client/src/schema/yjs-schema").Item'.
+          Types have separate declarations of a private property 'value'.
+        this.userId = opts.userId;
+        this.editor = new CursorEditor(this);
+    }
+
+/app/client/src/lib/Cursor.ts:70:38
+Error: Argument of type 'import("/app/client/src/schema/app-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/yjs-schema").Item'.
+  Types have separate declarations of a private property 'value'.
+        if (root) {
+            const found = searchItem(root as import("../schema/app-schema").Item, this.itemId) as Item | undefined;
+            if (found) return found;
+
+/app/client/src/lib/Cursor.ts:84:42
+Error: Argument of type 'import("/app/client/src/schema/app-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/yjs-schema").Item'.
+  Types have separate declarations of a private property 'value'.
+                    if (!p) continue;
+                    const f = searchItem(p, this.itemId) as Item | undefined;
+                    if (f) return f;
+
+/app/client/src/lib/Cursor.ts:96:5
+Error: Property 'findTarget' in type 'Cursor' is not assignable to the same property in base type 'CursorEditingContext'.
+  Type '() => import("/app/client/src/schema/app-schema").Item | undefined' is not assignable to type '() => import("/app/client/src/schema/yjs-schema").Item | undefined'.
+    Type 'import("/app/client/src/schema/app-schema").Item | undefined' is not assignable to type 'import("/app/client/src/schema/yjs-schema").Item | undefined'.
+      Type 'import("/app/client/src/schema/app-schema").Item' is not assignable to type 'import("/app/client/src/schema/yjs-schema").Item'.
+        Types have separate declarations of a private property 'value'.
+    // Recursive search for Item on SharedTree (CursorEditingContext interface implementation)
+    findTarget(): import("../schema/app-schema").Item | undefined {
+        return this._findTarget();
+
+/app/client/src/lib/Cursor.ts:105:24
+Error: Cannot invoke an object which is possibly 'undefined'.
+            try {
+                return (raw as { toString?: () => string; }).toString();
+            } catch {}
+
+/app/client/src/lib/Cursor.ts:1482:33
+Error: Argument of type 'import("/app/client/src/schema/app-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/yjs-schema").Item'.
+  Types have separate declarations of a private property 'value'.
+                            prevItem = searchItem(
+                                generalStore.currentPage as import("../schema/app-schema").Item,
+                                prevItemId,
+
+/app/client/src/lib/Cursor.ts:1487:54
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+                            const treeTextLength = prevItem
+                                ? this.getTargetText(prevItem as import("../schema/app-schema").Item).length
+                                : undefined;
+
+/app/client/src/lib/Cursor.ts:1536:17
+Error: Type 'Item | Item | undefined' is not assignable to type 'Item | undefined'.
+  Type 'import("/app/client/src/schema/app-schema").Item' is not assignable to type 'import("/app/client/src/schema/yjs-schema").Item'.
+    Types have separate declarations of a private property 'value'.
+            if (!nextItem) {
+                nextItem = this.findNextItemViaDOM(this.itemId);
+            }
+
+/app/client/src/lib/Cursor.ts:1562:55
+Error: Argument of type 'import("/app/client/src/schema/app-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/yjs-schema").Item'.
+  Types have separate declarations of a private property 'value'.
+                            if (root) {
+                                nextItem = searchItem(root, nextItemId);
+                            }
+
+/app/client/src/lib/Cursor.ts:1632:65
+Error: Argument of type 'import("/app/client/src/schema/app-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/yjs-schema").Item'.
+  Types have separate declarations of a private property 'value'.
+                            const nextItemId = allItemIds[currentIndex + 1];
+                            const nextItemFromTree = searchItem(root, nextItemId);
+                            if (nextItemFromTree) {
+
+/app/client/src/lib/Cursor.ts:1722:21
+Error: Type 'import("/app/client/src/schema/app-schema").Item' is not assignable to type 'import("/app/client/src/schema/yjs-schema").Item'.
+  Types have separate declarations of a private property 'value'.
+                if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
+                    prevItem = new (currentTarget!.constructor as unknown as {
+                        new(...args: unknown[]): import("../schema/app-schema").Item;
+
+/app/client/src/lib/Cursor.ts:1733:53
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+                newItemId = prevItem.id;
+                const prevText = this.getTargetText(prevItem as import("../schema/app-schema").Item);
+                const visualLineInfo = getVisualLineInfo(prevItem.id, prevText.length > 0 ? prevText.length - 1 : 0);
+
+/app/client/src/lib/Cursor.ts:1788:17
+Error: Type 'Item | Item | undefined' is not assignable to type 'Item | undefined'.
+  Type 'import("/app/client/src/schema/app-schema").Item' is not assignable to type 'import("/app/client/src/schema/yjs-schema").Item'.
+    Types have separate declarations of a private property 'value'.
+            if (!nextItem) {
+                nextItem = this.findNextItemViaDOM(this.itemId);
+            }
+
+/app/client/src/lib/Cursor.ts:1793:53
+Error: Conversion of type 'import("/app/client/src/schema/yjs-schema").Item' to type 'import("/app/client/src/schema/app-schema").Item' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Item' is missing the following properties from type 'Item': author, created, lastChanged, componentType, and 7 more.
+                newItemId = nextItem.id;
+                const nextText = this.getTargetText(nextItem as import("../schema/app-schema").Item);
+                // const nextLines = nextText.split("\n"); // Not used
+
+/app/client/src/lib/Cursor.ts:2115:46
+Error: Argument of type 'import("/app/client/src/schema/app-schema").Item' is not assignable to parameter of type 'import("/app/client/src/schema/yjs-schema").Item'.
+  Types have separate declarations of a private property 'value'.
+                if (root) {
+                    const found = searchItem(root, nextItemId);
+                    if (found) return found;
+
+/app/client/src/auth/UserManager.ts:262:56
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "handleUserSignedIn started", msg?: undefined): void', gave the following error.
+    Argument of type '{ uid: string; }' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "handleUserSignedIn started", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type '{ uid: string; }' is not assignable to parameter of type 'undefined'.
+        try {
+            logger.debug("handleUserSignedIn started", { uid: firebaseUser.uid });
+
+/app/client/src/auth/UserManager.ts:280:77
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "Notifying listeners of successful authentication", msg?: undefined): void', gave the following error.
+    Argument of type '{ userId: string; listenerCount: number; }' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "Notifying listeners of successful authentication", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type '{ userId: string; listenerCount: number; }' is not assignable to parameter of type 'undefined'.
+
+            logger.info("Notifying listeners of successful authentication", {
+                userId: user.id,
+                listenerCount: this.listeners.length,
+            });
+
+/app/client/src/auth/UserManager.ts:358:60
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "onIdTokenChanged triggered", msg?: undefined): void', gave the following error.
+    Argument of type '{ hasUser: boolean; userId: string | undefined; email: string | null | undefined; }' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "onIdTokenChanged triggered", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type '{ hasUser: boolean; userId: string | undefined; email: string | null | undefined; }' is not assignable to parameter of type 'undefined'.
+                // ... existing logic ...
+                logger.debug("onIdTokenChanged triggered", {
+                    hasUser: !!firebaseUser,
+                    userId: firebaseUser?.uid,
+                    email: firebaseUser?.email,
+                });
+
+/app/client/src/auth/UserManager.ts:365:88
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "User signed in/token refreshed via onIdTokenChanged", msg?: undefined): void', gave the following error.
+    Argument of type '{ userId: string; }' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "User signed in/token refreshed via onIdTokenChanged", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type '{ userId: string; }' is not assignable to parameter of type 'undefined'.
+                if (firebaseUser) {
+                    logger.info("User signed in/token refreshed via onIdTokenChanged", { userId: firebaseUser.uid });
+                    await this.handleUserSignedIn(firebaseUser);
+
+/app/client/src/auth/UserManager.ts:415:100
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "[UserManager] Email/password login successful via Firebase Auth", msg?: undefined): void', gave the following error.
+    Argument of type '{ userId: string; }' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "[UserManager] Email/password login successful via Firebase Auth", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type '{ userId: string; }' is not assignable to parameter of type 'undefined'.
+                    const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
+                    logger.info("[UserManager] Email/password login successful via Firebase Auth", {
+                        userId: userCredential.user.uid,
+                    });
+                    return;
+
+/app/client/src/auth/UserManager.ts:421:78
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "[UserManager] Firebase Auth login failed:", msg?: undefined): void', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'undefined'.
+      Type 'string' is not assignable to type 'undefined'.
+  Overload 2 of 3, '(obj: "[UserManager] Firebase Auth login failed:", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'undefined'.
+      Type 'string' is not assignable to type 'undefined'.
+                    const errorObj = firebaseError as { message?: string; code?: string; };
+                    logger.warn("[UserManager] Firebase Auth login failed:", errorObj.message);
+
+/app/client/src/auth/UserManager.ts:428:102
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "[UserManager] New user created and logged in successfully", msg?: undefined): void', gave the following error.
+    Argument of type '{ userId: string; }' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "[UserManager] New user created and logged in successfully", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type '{ userId: string; }' is not assignable to parameter of type 'undefined'.
+                            const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
+                            logger.info("[UserManager] New user created and logged in successfully", {
+                                userId: userCredential.user.uid,
+                            });
+                            return;
+
+/app/client/src/auth/UserManager.ts:476:101
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "addEventListener: User already authenticated, notifying immediately", msg?: undefined): void', gave the following error.
+    Argument of type '{ userId: string; }' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "addEventListener: User already authenticated, notifying immediately", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type '{ userId: string; }' is not assignable to parameter of type 'undefined'.
+            if (user) {
+                logger.debug("addEventListener: User already authenticated, notifying immediately", {
+                    userId: user.id,
+                });
+                listener({
+
+/app/client/src/lib/yjs/connection.ts:224:48
+Error: Property 'url' does not exist on type '{ token: string | (() => string | Promise<string>); }'.
+            const config = provider.configuration as { token: string | (() => string | Promise<string>); };
+            const hasWsHandshakeToken = config.url?.includes("token=");
+            console.log(`[yjs-conn] status:connected current-url-has-token=${hasWsHandshakeToken}`);
+
+/app/client/src/yjs/YjsClient.ts:139:30
+Error: Property 'id' does not exist on type '{}'.
+                const node: Record<string, unknown> = {
+                    id: item.id,
+                    text: item.text?.toString?.() ?? "",
+
+/app/client/src/yjs/YjsClient.ts:140:32
+Error: Property 'text' does not exist on type '{}'.
+                    id: item.id,
+                    text: item.text?.toString?.() ?? "",
+                    author: (item as { author?: string; }).author,
+
+/app/client/src/yjs/YjsClient.ts:146:39
+Error: Property 'items' does not exist on type '{}'.
+                };
+                const children = item.items as Items;
+                if (children && ((children as { length?: number; }).length ?? 0) > 0) {
+
+/app/client/src/yjs/YjsClient.ts:152:22
+Error: Object literal may only specify known properties, and 'itemCount' does not exist in type 'Record<string, unknown>[]'.
+            }
+            return { itemCount: arr.length, items: arr };
+        };
+
+/app/client/src/yjs/YjsClient.ts:164:22
+Error: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+            if (result === undefined || result === null) return null;
+            result = result[part];
+        }
+
+/app/client/src/yjs/YjsClient.ts:185:36
+Error: Property 'websocketProvider' does not exist on type '{ token: string | (() => string | Promise<string>); }'.
+        const config = provider?.configuration;
+        const wsProvider = config?.websocketProvider;
+
+/app/client/src/yjs/YjsClient.ts:201:35
+Error: Property 'url' does not exist on type '{ disconnect?: (() => void) | undefined; configuration?: { token: string | (() => string | Promise<string>); } | undefined; }'.
+                ? {
+                    url: provider.url || config?.url || wsProvider?.url,
+                    name: provider.name || config?.name,
+
+/app/client/src/yjs/YjsClient.ts:201:50
+Error: Property 'url' does not exist on type '{ token: string | (() => string | Promise<string>); }'.
+                ? {
+                    url: provider.url || config?.url || wsProvider?.url,
+                    name: provider.name || config?.name,
+
+/app/client/src/yjs/YjsClient.ts:202:36
+Error: Property 'name' does not exist on type '{ disconnect?: (() => void) | undefined; configuration?: { token: string | (() => string | Promise<string>); } | undefined; }'.
+                    url: provider.url || config?.url || wsProvider?.url,
+                    name: provider.name || config?.name,
+                    connected: provider.connected || wsProvider?.status === "connected",
+
+/app/client/src/yjs/YjsClient.ts:202:52
+Error: Property 'name' does not exist on type '{ token: string | (() => string | Promise<string>); }'.
+                    url: provider.url || config?.url || wsProvider?.url,
+                    name: provider.name || config?.name,
+                    connected: provider.connected || wsProvider?.status === "connected",
+
+/app/client/src/yjs/YjsClient.ts:203:41
+Error: Property 'connected' does not exist on type '{ disconnect?: (() => void) | undefined; configuration?: { token: string | (() => string | Promise<string>); } | undefined; }'.
+                    name: provider.name || config?.name,
+                    connected: provider.connected || wsProvider?.status === "connected",
+                }
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts:1260:37
+Error: Object is possibly 'undefined'.
+            ) {
+                const currentPage = (window as Window & typeof globalThis & {
+                    DEBUG_MODE?: boolean;
+                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+                    itemsStore?: unknown;
+                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                    appStore?: { currentPage?: unknown; };
+                    editorOverlayStore?: unknown;
+                }).generalStore.currentPage;
+                if (currentPage && currentPage.items) {
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts:1275:31
+Error: Cannot invoke an object which is possibly 'undefined'.
+                                .iterateUnordered
+                            ? (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
+                                .iterateUnordered()
+                            : currentPage.items;
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts:1279:46
+Error: Property 'id' does not exist on type '{}'.
+                        for (const item of iter) {
+                            if (item && item.id === itemId) {
+                                return item.text || "";
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts:1280:45
+Error: Property 'text' does not exist on type '{}'.
+                            if (item && item.id === itemId) {
+                                return item.text || "";
+                            }
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts:1323:46
+Error: Property 'allItems' does not exist on type '{}'.
+                }).itemsStore;
+                if (itemsStore && itemsStore.allItems) {
+                    // Attempt to find the item in the items store
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts:1325:52
+Error: Property 'allItems' does not exist on type '{}'.
+                    // Attempt to find the item in the items store
+                    for (let i = 0; i < itemsStore.allItems.length; i++) {
+                        const item = itemsStore.allItems[i];
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts:1326:49
+Error: Property 'allItems' does not exist on type '{}'.
+                    for (let i = 0; i < itemsStore.allItems.length; i++) {
+                        const item = itemsStore.allItems[i];
+                        if (item && item.id === itemId) {
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts:1376:25
+Error: Type '{}' is not assignable to type 'string'.
+                    if (item) {
+                        return item.text || "";
+                    }
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts:1819:41
+Error: Property 'id' does not exist on type '{}'.
+            }).appStore?.currentPage;
+            const pageId = currentPage?.id;
+            if (!pageId) {
+
+/app/client/src/stores/EditorOverlayStore.svelte.ts:1825:42
+Error: This expression is not callable.
+  Type '{}' has no call signatures.
+
+            const pageAwareness = client.getPageAwareness?.(pageId);
+            if (!pageAwareness) {
+
+/app/client/src/components/AliasPicker.svelte:27:12
+Error: No overload matches this call.
+  Overload 1 of 2, '(type: keyof WindowEventMap, listener: (this: Window, ev: Event | InputEvent | UIEvent | KeyboardEvent | PromiseRejectionEvent | ... 27 more ... | StorageEvent) => any, options?: boolean | ... 1 more ... | undefined): void', gave the following error.
+    Argument of type '"aliaspicker-visibility"' is not assignable to parameter of type 'keyof WindowEventMap'.
+  Overload 2 of 2, '(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): void', gave the following error.
+    Argument of type '(e: AliasPickerVisibilityEvent) => void' is not assignable to parameter of type 'EventListenerOrEventListenerObject'.
+      Type '(e: AliasPickerVisibilityEvent) => void' is not assignable to type 'EventListener'.
+        Types of parameters 'e' and 'evt' are incompatible.
+          Type 'Event' has no properties in common with type 'AliasPickerVisibilityEvent'. (ts)
+    const onVis = (e: AliasPickerVisibilityEvent) => { try { visible = !!(e?.detail?.visible); } catch {} };
+    window.addEventListener("aliaspicker-visibility", onVis);
+    return () => window.removeEventListener("aliaspicker-visibility", onVis);
+
+/app/client/src/components/AliasPicker.svelte:28:25
+Error: No overload matches this call.
+  Overload 1 of 2, '(type: keyof WindowEventMap, listener: (this: Window, ev: Event | InputEvent | UIEvent | KeyboardEvent | PromiseRejectionEvent | ... 27 more ... | StorageEvent) => any, options?: boolean | ... 1 more ... | undefined): void', gave the following error.
+    Argument of type '"aliaspicker-visibility"' is not assignable to parameter of type 'keyof WindowEventMap'.
+  Overload 2 of 2, '(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions | undefined): void', gave the following error.
+    Argument of type '(e: AliasPickerVisibilityEvent) => void' is not assignable to parameter of type 'EventListenerOrEventListenerObject'.
+      Type '(e: AliasPickerVisibilityEvent) => void' is not assignable to type 'EventListener'.
+        Types of parameters 'e' and 'evt' are incompatible.
+          Type 'Event' has no properties in common with type 'AliasPickerVisibilityEvent'. (ts)
+    window.addEventListener("aliaspicker-visibility", onVis);
+    return () => window.removeEventListener("aliaspicker-visibility", onVis);
+});
+
+/app/client/src/components/AuthComponent.svelte:84:18
+Error: No overload matches this call.
+  Overload 1 of 2, '(type: keyof DocumentEventMap, listener: (this: Document, ev: Event | InputEvent | UIEvent | KeyboardEvent | CompositionEvent | ... 14 more ... | WheelEvent) => any, options?: boolean | ... 1 more ... | undefined): void', gave the following error.
+    Argument of type '"auth-success"' is not assignable to parameter of type 'keyof DocumentEventMap'.
+  Overload 2 of 2, '(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): void', gave the following error.
+    Argument of type '(event: AuthSuccessEvent) => void' is not assignable to parameter of type 'EventListenerOrEventListenerObject'.
+      Type '(event: AuthSuccessEvent) => void' is not assignable to type 'EventListener'.
+        Types of parameters 'event' and 'evt' are incompatible.
+          Type 'Event' has no properties in common with type 'AuthSuccessEvent'. (ts)
+    if (typeof document !== "undefined") {
+        document.addEventListener("auth-success", (event: AuthSuccessEvent) => {
+            if (event.detail && event.detail.user) {
+
+/app/client/src/utils/pathUtils.ts:8:65
+Error: Conversion of type 'undefined' to type 'Record<string, string>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+export function resolvePath(path: string): string {
+    return kitResolve(path as Parameters<typeof kitResolve>[0], undefined as Parameters<typeof kitResolve>[1]);
+}
+
+/app/client/src/components/ProjectSelector.svelte:40:55
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "ProjectSelector - projects len", msg?: undefined): void', gave the following error.
+    Argument of type '{ len: number; ucv: number; }' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "ProjectSelector - projects len", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type '{ len: number; ucv: number; }' is not assignable to parameter of type 'undefined'. (ts)
+    $effect(() => {
+        logger.info("ProjectSelector - projects len", {
+            len: projects.length,
+            ucv: firestoreStore.ucVersion,
+        });
+    });
+
+/app/client/src/components/ProjectSelector.svelte:132:67
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "ProjectSelector cleanup failed", msg?: undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "ProjectSelector cleanup failed", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'. (ts)
+                } catch (err) {
+                    logger.warn("ProjectSelector cleanup failed", err);
+                }
+
+/app/client/src/components/ProjectSelector.svelte:152:56
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "ProjectSelector - Current user:", msg?: undefined): void', gave the following error.
+    Argument of type 'IUser | null' is not assignable to parameter of type 'undefined'.
+      Type 'null' is not assignable to type 'undefined'.
+  Overload 2 of 3, '(obj: "ProjectSelector - Current user:", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'IUser | null' is not assignable to parameter of type 'undefined'.
+      Type 'null' is not assignable to type 'undefined'. (ts)
+
+        logger.info("ProjectSelector - Current user:", currentUser);
+        logger.info("ProjectSelector - Auth user:", authUser);
+
+/app/client/src/components/ProjectSelector.svelte:153:53
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "ProjectSelector - Auth user:", msg?: undefined): void', gave the following error.
+    Argument of type 'User | null' is not assignable to parameter of type 'undefined'.
+      Type 'null' is not assignable to type 'undefined'.
+  Overload 2 of 3, '(obj: "ProjectSelector - Auth user:", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'User | null' is not assignable to parameter of type 'undefined'.
+      Type 'null' is not assignable to type 'undefined'. (ts)
+        logger.info("ProjectSelector - Current user:", currentUser);
+        logger.info("ProjectSelector - Auth user:", authUser);
+
+/app/client/src/components/ProjectSelector.svelte:175:65
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "ProjectSelector - Login failed:", msg?: undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "ProjectSelector - Login failed:", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'. (ts)
+            } catch (err) {
+                logger.error("ProjectSelector - Login failed:", err);
+            }
+
+/app/client/src/components/ProjectSelector.svelte:199:54
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "Project selection error:", msg?: undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "Project selection error:", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'. (ts)
+        } catch (err) {
+            logger.error("Project selection error:", err);
+            error =
+
+/app/client/src/components/ChartPanel.svelte:27:9
+Error: Argument of type '() => Promise<(() => void) | undefined>' is not assignable to parameter of type '() => (() => any) | Promise<undefined> | undefined'.
+  Type 'Promise<(() => void) | undefined>' is not assignable to type '(() => any) | Promise<undefined> | undefined'.
+    Type 'Promise<(() => void) | undefined>' is not assignable to type 'Promise<undefined>'.
+      Type '(() => void) | undefined' is not assignable to type 'undefined'.
+        Type '() => void' is not assignable to type 'undefined'. (ts)
+
+onMount(async () => {
+    try {
+
+/app/client/src/components/ChartQueryEditor.svelte:35:18
+Error: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'. (ts)
+        await initDb();
+        runQuery(sql);
+    } catch (error) {
+
+/app/client/src/components/CommentThread.svelte:36:64
+Error: Property 'comments' does not exist on type 'ItemLike'. (ts)
+let props: Props = $props(); // eslint-disable-line svelte/no-unused-props
+let comments = $derived.by(() => props.comments ?? props.item?.comments);
+let onCountChanged = $derived.by(() => props.onCountChanged);
+
+/app/client/src/components/CommentThread.svelte:70:13
+Error: Type 'YArray<YMap<CommentValueType>> | undefined' is not assignable to type 'YArray<YMap<unknown>> | undefined'.
+  Type 'YArray<YMap<CommentValueType>>' is not assignable to type 'YArray<YMap<unknown>>'.
+    Types of property 'insert' are incompatible.
+      Type '(index: number, content: YMap<CommentValueType>[]) => void' is not assignable to type '(index: number, content: YMap<unknown>[]) => void'.
+        Types of parameters 'content' and 'content' are incompatible.
+          Type 'YMap<unknown>[]' is not assignable to type 'YMap<CommentValueType>[]'.
+            Type 'YMap<unknown>' is not assignable to type 'YMap<CommentValueType>'.
+              The types returned by 'values().next(...)' are incompatible between these types.
+                Type 'IteratorResult<unknown, any>' is not assignable to type 'IteratorResult<CommentValueType, any>'.
+                  Type 'IteratorYieldResult<unknown>' is not assignable to type 'IteratorResult<CommentValueType, any>'.
+                    Type 'IteratorYieldResult<unknown>' is not assignable to type 'IteratorYieldResult<CommentValueType>'.
+                      Type 'unknown' is not assignable to type 'CommentValueType'. (ts)
+        // 1) Get internal yArray if Comments wrapper exists (private but accessible in JS)
+        let yarr: Y.Array<Y.Map<unknown>> | undefined = (comments as Comments | undefined)?.yArray;
+        // 2) If not, ensure "comments" via item Y.Map
+
+/app/client/src/components/CommentThread.svelte:70:93
+Error: Property 'yArray' is private and only accessible within class 'Comments'. (ts)
+        // 1) Get internal yArray if Comments wrapper exists (private but accessible in JS)
+        let yarr: Y.Array<Y.Map<unknown>> | undefined = (comments as Comments | undefined)?.yArray;
+        // 2) If not, ensure "comments" via item Y.Map
+
+/app/client/src/components/CommentThread.svelte:221:75
+Error: Property 'comments' does not exist on type 'ItemLike'. (ts)
+    if (!text) return;
+    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
+    if (!commentsObj && props.item) {
+
+/app/client/src/components/CommentThread.svelte:235:44
+Error: Argument of type 'YArray<YMap<unknown>>' is not assignable to parameter of type 'YArray<YMap<CommentValueType>>'.
+  Types of property 'insert' are incompatible.
+    Type '(index: number, content: YMap<unknown>[]) => void' is not assignable to type '(index: number, content: YMap<CommentValueType>[]) => void'.
+      Types of parameters 'content' and 'content' are incompatible.
+        Type 'YMap<CommentValueType>[]' is not assignable to type 'YMap<unknown>[]'.
+          Type 'YMap<CommentValueType>' is not assignable to type 'YMap<unknown>'.
+            Types of property '_eH' are incompatible.
+              Type 'EventHandler<YMapEvent<CommentValueType>, Transaction>' is not assignable to type 'EventHandler<YMapEvent<unknown>, Transaction>'.
+                Type 'YMapEvent<unknown>' is not assignable to type 'YMapEvent<CommentValueType>'.
+                  The types returned by 'target.values().next(...)' are incompatible between these types.
+                    Type 'IteratorResult<unknown, any>' is not assignable to type 'IteratorResult<CommentValueType, any>'.
+                      Type 'IteratorYieldResult<unknown>' is not assignable to type 'IteratorResult<CommentValueType, any>'.
+                        Type 'IteratorYieldResult<unknown>' is not assignable to type 'IteratorYieldResult<CommentValueType>'.
+                          Type 'unknown' is not assignable to type 'CommentValueType'. (ts)
+                }
+                commentsObj = new Comments(arr);
+                logger.debug('[CommentThread] initialized comments via tree/key fallback');
+
+/app/client/src/components/CommentThread.svelte:239:83
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "[CommentThread] failed to ensure comments via fallback", msg?: undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "[CommentThread] failed to ensure comments via fallback", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'. (ts)
+        } catch (e) {
+            logger.warn('[CommentThread] failed to ensure comments via fallback', e);
+        }
+
+/app/client/src/components/CommentThread.svelte:244:59
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "[CommentThread] add comment, newText=", msg?: undefined): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "[CommentThread] add comment, newText=", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'undefined'. (ts)
+
+    logger.debug('[CommentThread] add comment, newText=', newText);
+    logger.debug('[CommentThread] comments object:', commentsObj, 'props.item?', !!props.item, 'item?.comments?', !!props.item?.comments);
+
+/app/client/src/components/CommentThread.svelte:245:54
+Error: Argument of type 'Comments | undefined' is not assignable to parameter of type 'undefined'.
+  Type 'Comments' is not assignable to type 'undefined'. (ts)
+    logger.debug('[CommentThread] add comment, newText=', newText);
+    logger.debug('[CommentThread] comments object:', commentsObj, 'props.item?', !!props.item, 'item?.comments?', !!props.item?.comments);
+
+/app/client/src/components/CommentThread.svelte:245:129
+Error: Property 'comments' does not exist on type 'ItemLike'. (ts)
+    logger.debug('[CommentThread] add comment, newText=', newText);
+    logger.debug('[CommentThread] comments object:', commentsObj, 'props.item?', !!props.item, 'item?.comments?', !!props.item?.comments);
+
+/app/client/src/components/CommentThread.svelte:253:67
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "[CommentThread] comment added to Yjs, id=", msg?: undefined): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "[CommentThread] comment added to Yjs, id=", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'undefined'. (ts)
+        id = res?.id || `local-${time}-${Math.random().toString(36).slice(2)}`;
+        logger.debug('[CommentThread] comment added to Yjs, id=', id);
+    } else {
+
+/app/client/src/components/CommentThread.svelte:291:53
+Error: Property 'comments' does not exist on type 'ItemLike'. (ts)
+            try {
+                if (props.item && typeof props.item.comments !== 'undefined') {
+                    const itemComments = props.item.comments;
+
+/app/client/src/components/CommentThread.svelte:292:53
+Error: Property 'comments' does not exist on type 'ItemLike'. (ts)
+                if (props.item && typeof props.item.comments !== 'undefined') {
+                    const itemComments = props.item.comments;
+                    if (typeof itemComments.length === 'number') {
+
+/app/client/src/components/CommentThread.svelte:335:75
+Error: Property 'comments' does not exist on type 'ItemLike'. (ts)
+function remove(id: string) {
+    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
+    if (!commentsObj && props.item) {
+
+/app/client/src/components/CommentThread.svelte:345:44
+Error: Argument of type 'YArray<YMap<unknown>>' is not assignable to parameter of type 'YArray<YMap<CommentValueType>>'.
+  Types of property 'insert' are incompatible.
+    Type '(index: number, content: YMap<unknown>[]) => void' is not assignable to type '(index: number, content: YMap<CommentValueType>[]) => void'.
+      Types of parameters 'content' and 'content' are incompatible.
+        Type 'YMap<CommentValueType>[]' is not assignable to type 'YMap<unknown>[]'.
+          Type 'YMap<CommentValueType>' is not assignable to type 'YMap<unknown>'.
+            Types of property '_eH' are incompatible.
+              Type 'EventHandler<YMapEvent<CommentValueType>, Transaction>' is not assignable to type 'EventHandler<YMapEvent<unknown>, Transaction>'.
+                Type 'YMapEvent<unknown>' is not assignable to type 'YMapEvent<CommentValueType>'.
+                  The types returned by 'target.values().next(...)' are incompatible between these types.
+                    Type 'IteratorResult<unknown, any>' is not assignable to type 'IteratorResult<CommentValueType, any>'.
+                      Type 'IteratorYieldResult<unknown>' is not assignable to type 'IteratorResult<CommentValueType, any>'.
+                        Type 'IteratorYieldResult<unknown>' is not assignable to type 'IteratorYieldResult<CommentValueType>'.
+                          Type 'unknown' is not assignable to type 'CommentValueType'. (ts)
+                if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
+                commentsObj = new Comments(arr);
+                logger.debug('[CommentThread] ensured comments for remove via tree/key');
+
+/app/client/src/components/CommentThread.svelte:349:81
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "[CommentThread] failed to ensure comments for remove", msg?: undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "[CommentThread] failed to ensure comments for remove", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'. (ts)
+        } catch (e) {
+            logger.warn('[CommentThread] failed to ensure comments for remove', e);
+        }
+
+/app/client/src/components/CommentThread.svelte:379:75
+Error: Property 'comments' does not exist on type 'ItemLike'. (ts)
+    // Removed to fix state_referenced_locally
+    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
+    if (!commentsObj && props.item) {
+
+/app/client/src/components/CommentThread.svelte:389:44
+Error: Argument of type 'YArray<YMap<unknown>>' is not assignable to parameter of type 'YArray<YMap<CommentValueType>>'.
+  Types of property 'insert' are incompatible.
+    Type '(index: number, content: YMap<unknown>[]) => void' is not assignable to type '(index: number, content: YMap<CommentValueType>[]) => void'.
+      Types of parameters 'content' and 'content' are incompatible.
+        Type 'YMap<CommentValueType>[]' is not assignable to type 'YMap<unknown>[]'.
+          Type 'YMap<CommentValueType>' is not assignable to type 'YMap<unknown>'.
+            Types of property '_eH' are incompatible.
+              Type 'EventHandler<YMapEvent<CommentValueType>, Transaction>' is not assignable to type 'EventHandler<YMapEvent<unknown>, Transaction>'.
+                Type 'YMapEvent<unknown>' is not assignable to type 'YMapEvent<CommentValueType>'.
+                  The types returned by 'target.values().next(...)' are incompatible between these types.
+                    Type 'IteratorResult<unknown, any>' is not assignable to type 'IteratorResult<CommentValueType, any>'.
+                      Type 'IteratorYieldResult<unknown>' is not assignable to type 'IteratorResult<CommentValueType, any>'.
+                        Type 'IteratorYieldResult<unknown>' is not assignable to type 'IteratorYieldResult<CommentValueType>'.
+                          Type 'unknown' is not assignable to type 'CommentValueType'. (ts)
+                if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
+                commentsObj = new Comments(arr);
+                logger.debug('[CommentThread] ensured comments for saveEdit via tree/key');
+
+/app/client/src/components/CommentThread.svelte:393:83
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "[CommentThread] failed to ensure comments for saveEdit", msg?: undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "[CommentThread] failed to ensure comments for saveEdit", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'. (ts)
+        } catch (e) {
+            logger.warn('[CommentThread] failed to ensure comments for saveEdit', e);
+        }
+
+/app/client/src/components/EditorOverlay.svelte:187:65
+Error: Argument of type 'number' is not assignable to parameter of type 'string'. (ts)
+            const viewportTop = treeContainerRect.top + pos.top;
+            const cursorHeight = itemInfo.lineHeight ? parseInt(itemInfo.lineHeight) : 20;
+            const viewportBottom = viewportTop + cursorHeight;
+
+/app/client/src/components/EditorOverlay.svelte:690:41
+Error: 'boxSel.boxSelectionRanges' is possibly 'undefined'. (ts)
+                        const lines: string[] = [];
+                        for (const r of boxSel.boxSelectionRanges) {
+                            const full = getTextByItemId(r.itemId);
+
+/app/client/src/components/EditorOverlay.svelte:832:18
+Error: 'items' is possibly 'undefined'. (ts)
+    for (let i = 0; i < len; i++) {
+      const it = items.at ? items.at(i) : items[i];
+      if (it?.id === itemId) {
+
+/app/client/src/components/EditorOverlay.svelte:832:29
+Error: 'items' is possibly 'undefined'. (ts)
+    for (let i = 0; i < len; i++) {
+      const it = items.at ? items.at(i) : items[i];
+      if (it?.id === itemId) {
+
+/app/client/src/components/EditorOverlay.svelte:832:43
+Error: 'items' is possibly 'undefined'. (ts)
+    for (let i = 0; i < len; i++) {
+      const it = items.at ? items.at(i) : items[i];
+      if (it?.id === itemId) {
+
+/app/client/src/components/EditorOverlay.svelte:832:43
+Error: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'Items'.
+  No index signature with a parameter of type 'number' was found on type 'Items'. (ts)
+    for (let i = 0; i < len; i++) {
+      const it = items.at ? items.at(i) : items[i];
+      if (it?.id === itemId) {
+
+/app/client/src/components/EditorOverlay.svelte:869:21
+Error: 'boxSel.boxSelectionRanges' is possibly 'undefined'. (ts)
+    const lines: string[] = [];
+    for (const r of boxSel.boxSelectionRanges) {
+      const full = getTextByItemId(r.itemId);
+
+/app/client/src/components/EditorOverlay.svelte:882:47
+Error: This condition will always return true since this function is always defined. Did you mean to call it instead? (ts)
+      }
+      if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
+        (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(rectText).catch(() => {});
+
+/app/client/src/components/EditorOverlay.svelte:1038:45
+Error: This condition will always return true since this function is always defined. Did you mean to call it instead? (ts)
+    // Write to navigator.clipboard as well (for Playwright compatibility)
+    if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
+      (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch(() => {});
+
+/app/client/src/components/EditorOverlay.svelte:1169:45
+Error: This condition will always return true since this function is always defined. Did you mean to call it instead? (ts)
+    // Write to navigator.clipboard as well (for Playwright compatibility)
+    if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
+      (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch(() => {});
+
+/app/client/src/lib/KeyEventHandler.ts:161:52
+Error: Property 'aliasPickerStore' does not exist on type '{}'.
+                            const w: unknown = window as unknown;
+                            const ap: unknown = w?.aliasPickerStore ?? aliasPickerStore;
+                            const opts: unknown[] = Array.isArray(ap?.options) ? ap.options : [];
+
+/app/client/src/lib/KeyEventHandler.ts:162:71
+Error: Property 'options' does not exist on type '{}'.
+                            const ap: unknown = w?.aliasPickerStore ?? aliasPickerStore;
+                            const opts: unknown[] = Array.isArray(ap?.options) ? ap.options : [];
+                            let si: number = typeof ap?.selectedIndex === "number" ? ap.selectedIndex : 0;
+
+/app/client/src/lib/KeyEventHandler.ts:162:85
+Error: Property 'options' does not exist on type '{}'.
+                            const ap: unknown = w?.aliasPickerStore ?? aliasPickerStore;
+                            const opts: unknown[] = Array.isArray(ap?.options) ? ap.options : [];
+                            let si: number = typeof ap?.selectedIndex === "number" ? ap.selectedIndex : 0;
+
+/app/client/src/lib/KeyEventHandler.ts:163:57
+Error: Property 'selectedIndex' does not exist on type '{}'.
+                            const opts: unknown[] = Array.isArray(ap?.options) ? ap.options : [];
+                            let si: number = typeof ap?.selectedIndex === "number" ? ap.selectedIndex : 0;
+                            if (opts.length > 0) {
+
+/app/client/src/lib/KeyEventHandler.ts:163:89
+Error: Property 'selectedIndex' does not exist on type '{}'.
+                            const opts: unknown[] = Array.isArray(ap?.options) ? ap.options : [];
+                            let si: number = typeof ap?.selectedIndex === "number" ? ap.selectedIndex : 0;
+                            if (opts.length > 0) {
+
+/app/client/src/lib/KeyEventHandler.ts:166:55
+Error: Property 'id' does not exist on type '{}'.
+                                si = Math.max(0, Math.min(si, opts.length - 1));
+                                const tid = opts[si]?.id;
+                                if (tid) {
+
+/app/client/src/lib/KeyEventHandler.ts:175:37
+Error: 'ap' is of type 'unknown'.
+                                    } catch {}
+                                    ap.confirmById(tid);
+                                    event.preventDefault();
+
+/app/client/src/lib/KeyEventHandler.ts:206:49
+Error: 'w' is of type 'unknown'.
+                            const w: unknown = window as unknown;
+                            const gs: unknown = w.generalStore || w.appStore;
+                            const root = gs?.currentPage;
+
+/app/client/src/lib/KeyEventHandler.ts:206:67
+Error: 'w' is of type 'unknown'.
+                            const w: unknown = window as unknown;
+                            const gs: unknown = w.generalStore || w.appStore;
+                            const root = gs?.currentPage;
+
+/app/client/src/lib/KeyEventHandler.ts:207:46
+Error: Property 'currentPage' does not exist on type '{}'.
+                            const gs: unknown = w.generalStore || w.appStore;
+                            const root = gs?.currentPage;
+                            const picker = (w.aliasPickerStore ?? aliasPickerStore) as unknown;
+
+/app/client/src/lib/KeyEventHandler.ts:208:45
+Error: 'w' is of type 'unknown'.
+                            const root = gs?.currentPage;
+                            const picker = (w.aliasPickerStore ?? aliasPickerStore) as unknown;
+                            const aliasId: string | null = picker?.itemId ?? null;
+
+/app/client/src/lib/KeyEventHandler.ts:209:68
+Error: Property 'itemId' does not exist on type '{}'.
+                            const picker = (w.aliasPickerStore ?? aliasPickerStore) as unknown;
+                            const aliasId: string | null = picker?.itemId ?? null;
+                            const firstContent: unknown = root?.items && (root.items as unknown).length > 0
+
+/app/client/src/lib/KeyEventHandler.ts:210:74
+Error: Object is of type 'unknown'.
+                            const aliasId: string | null = picker?.itemId ?? null;
+                            const firstContent: unknown = root?.items && (root.items as unknown).length > 0
+                                ? ((root.items as unknown).at
+
+/app/client/src/lib/KeyEventHandler.ts:211:36
+Error: Object is of type 'unknown'.
+                            const firstContent: unknown = root?.items && (root.items as unknown).length > 0
+                                ? ((root.items as unknown).at
+                                    ? (root.items as unknown).at(0)
+
+/app/client/src/lib/KeyEventHandler.ts:212:39
+Error: Object is of type 'unknown'.
+                                ? ((root.items as unknown).at
+                                    ? (root.items as unknown).at(0)
+                                    : (root.items as unknown)[0])
+
+/app/client/src/lib/KeyEventHandler.ts:213:39
+Error: Object is of type 'unknown'.
+                                    ? (root.items as unknown).at(0)
+                                    : (root.items as unknown)[0])
+                                : null;
+
+/app/client/src/lib/KeyEventHandler.ts:215:66
+Error: Property 'id' does not exist on type '{}'.
+                                : null;
+                            if (root && aliasId && firstContent?.id) {
+                                const find = (node: unknown, id: string): unknown => {
+
+/app/client/src/lib/KeyEventHandler.ts:218:46
+Error: Property 'id' does not exist on type '{}'.
+                                    if (!node) return null;
+                                    if (node.id === id) return node;
+                                    const ch: unknown = node.items;
+
+/app/client/src/lib/KeyEventHandler.ts:219:62
+Error: Property 'items' does not exist on type '{}'.
+                                    if (node.id === id) return node;
+                                    const ch: unknown = node.items;
+                                    if (ch && typeof ch[Symbol.iterator] === "function") {
+
+/app/client/src/lib/KeyEventHandler.ts:220:54
+Error: Element implicitly has an 'any' type because expression of type 'unique symbol' can't be used to index type '{}'.
+  Property '[SymbolConstructor.iterator]' does not exist on type '{}'.
+                                    const ch: unknown = node.items;
+                                    if (ch && typeof ch[Symbol.iterator] === "function") {
+                                        for (const c of ch) {
+
+/app/client/src/lib/KeyEventHandler.ts:221:57
+Error: Type '{}' must have a '[Symbol.iterator]()' method that returns an iterator.
+                                    if (ch && typeof ch[Symbol.iterator] === "function") {
+                                        for (const c of ch) {
+                                            const r = find(c, id);
+
+/app/client/src/lib/KeyEventHandler.ts:226:57
+Error: Property 'length' does not exist on type '{}'.
+                                    } else {
+                                        const len = ch?.length ?? 0;
+                                        for (let i = 0; i < len; i++) {
+
+/app/client/src/lib/KeyEventHandler.ts:228:55
+Error: 'ch' is of type 'unknown'.
+                                        for (let i = 0; i < len; i++) {
+                                            const c = ch.at ? ch.at(i) : ch[i];
+                                            const r = find(c, id);
+
+/app/client/src/lib/KeyEventHandler.ts:228:63
+Error: 'ch' is of type 'unknown'.
+                                        for (let i = 0; i < len; i++) {
+                                            const c = ch.at ? ch.at(i) : ch[i];
+                                            const r = find(c, id);
+
+/app/client/src/lib/KeyEventHandler.ts:228:74
+Error: 'ch' is of type 'unknown'.
+                                        for (let i = 0; i < len; i++) {
+                                            const c = ch.at ? ch.at(i) : ch[i];
+                                            const r = find(c, id);
+
+/app/client/src/lib/KeyEventHandler.ts:236:61
+Error: Property 'aliasTargetId' does not exist on type '{}'.
+                                const aliasItem = find(root, aliasId);
+                                if (aliasItem && !aliasItem.aliasTargetId) {
+                                    try {
+
+/app/client/src/lib/KeyEventHandler.ts:242:58
+Error: Property 'id' does not exist on type '{}'.
+                                            "to",
+                                            firstContent.id,
+                                        );
+
+/app/client/src/lib/KeyEventHandler.ts:245:47
+Error: Property 'aliasTargetId' does not exist on type '{}'.
+                                    } catch {}
+                                    aliasItem.aliasTargetId = firstContent.id;
+                                }
+
+/app/client/src/lib/KeyEventHandler.ts:245:76
+Error: Property 'id' does not exist on type '{}'.
+                                    } catch {}
+                                    aliasItem.aliasTargetId = firstContent.id;
+                                }
+
+/app/client/src/lib/KeyEventHandler.ts:258:106
+Error: Property 'id' does not exist on type '{}'.
+                                        } catch {}
+                                        aliasEl.setAttribute("data-alias-target-id", String(firstContent.id));
+                                    }
+
+/app/client/src/lib/KeyEventHandler.ts:287:103
+Error: Property 'id' does not exist on type '{}'.
+                                        } catch {}
+                                        last.setAttribute("data-alias-target-id", String(firstContent.id));
+                                    }
+
+/app/client/src/lib/KeyEventHandler.ts:293:71
+Error: Property 'aliasTargetId' does not exist on type '{}'.
+                                        const aliasItem2 = find(root, lastId);
+                                        if (aliasItem2 && !aliasItem2.aliasTargetId) {
+                                            try {
+
+/app/client/src/lib/KeyEventHandler.ts:299:66
+Error: Property 'id' does not exist on type '{}'.
+                                                    "to",
+                                                    firstContent.id,
+                                                );
+
+/app/client/src/lib/KeyEventHandler.ts:302:56
+Error: Property 'aliasTargetId' does not exist on type '{}'.
+                                            } catch {}
+                                            aliasItem2.aliasTargetId = firstContent.id;
+                                        }
+
+/app/client/src/lib/KeyEventHandler.ts:302:85
+Error: Property 'id' does not exist on type '{}'.
+                                            } catch {}
+                                            aliasItem2.aliasTargetId = firstContent.id;
+                                        }
+
+/app/client/src/lib/KeyEventHandler.ts:323:48
+Error: Property 'tagName' does not exist on type '{}'.
+        );
+        const tgt = (event.target as unknown)?.tagName || typeof (event.target as unknown)?.nodeName === "string"
+            ? (event.target as unknown).nodeName
+
+/app/client/src/lib/KeyEventHandler.ts:323:93
+Error: Property 'nodeName' does not exist on type '{}'.
+        );
+        const tgt = (event.target as unknown)?.tagName || typeof (event.target as unknown)?.nodeName === "string"
+            ? (event.target as unknown).nodeName
+
+/app/client/src/lib/KeyEventHandler.ts:324:15
+Error: Object is of type 'unknown'.
+        const tgt = (event.target as unknown)?.tagName || typeof (event.target as unknown)?.nodeName === "string"
+            ? (event.target as unknown).nodeName
+            : typeof event.target;
+
+/app/client/src/lib/KeyEventHandler.ts:326:57
+Error: Property 'tagName' does not exist on type '{}'.
+            : typeof event.target;
+        const ae = (document.activeElement as unknown)?.tagName
+                || typeof (document.activeElement as unknown)?.nodeName === "string"
+
+/app/client/src/lib/KeyEventHandler.ts:327:64
+Error: Property 'nodeName' does not exist on type '{}'.
+        const ae = (document.activeElement as unknown)?.tagName
+                || typeof (document.activeElement as unknown)?.nodeName === "string"
+            ? (document.activeElement as unknown).nodeName
+
+/app/client/src/lib/KeyEventHandler.ts:328:15
+Error: Object is of type 'unknown'.
+                || typeof (document.activeElement as unknown)?.nodeName === "string"
+            ? (document.activeElement as unknown).nodeName
+            : typeof document.activeElement;
+
+/app/client/src/lib/KeyEventHandler.ts:339:57
+Error: Property 'text' does not exist on type '{}'.
+            const node = cursor.findTarget();
+            const rawText: unknown = (node as unknown)?.text;
+            const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
+
+/app/client/src/lib/KeyEventHandler.ts:349:19
+Error: Type 'unknown' is not assignable to type 'HTMLTextAreaElement | undefined'.
+                : null;
+            const ta: HTMLTextAreaElement | undefined = gsAny?.textareaRef as unknown;
+            const taValue: string | null = ta?.value ?? null;
+
+/app/client/src/lib/KeyEventHandler.ts:349:64
+Error: Property 'textareaRef' does not exist on type '{}'.
+                : null;
+            const ta: HTMLTextAreaElement | undefined = gsAny?.textareaRef as unknown;
+            const taValue: string | null = ta?.value ?? null;
+
+/app/client/src/lib/KeyEventHandler.ts:439:49
+Error: Object is of type 'unknown'.
+                try {
+                    const filtered: unknown[] = (commandPaletteStore as unknown).filtered ?? [];
+                    const hasAlias = filtered.some(c => c?.type === "alias");
+
+/app/client/src/lib/KeyEventHandler.ts:440:60
+Error: Property 'type' does not exist on type '{}'.
+                    const filtered: unknown[] = (commandPaletteStore as unknown).filtered ?? [];
+                    const hasAlias = filtered.some(c => c?.type === "alias");
+                    if (hasAlias) {
+
+/app/client/src/lib/KeyEventHandler.ts:469:25
+Error: 'node' is possibly 'undefined'.
+                        const newText = text.slice(0, lastSlash) + text.slice(cursor.offset);
+                        node.updateText(newText);
+                        cursor.offset = lastSlash;
+
+/app/client/src/lib/KeyEventHandler.ts:477:52
+Error: Property 'currentPage' does not exist on type '{}'.
+                            : null;
+                        const items: unknown = gs?.currentPage?.items;
+                        if (items && typeof items.addNode === "function") {
+
+/app/client/src/lib/KeyEventHandler.ts:478:51
+Error: Property 'addNode' does not exist on type '{}'.
+                        const items: unknown = gs?.currentPage?.items;
+                        if (items && typeof items.addNode === "function") {
+                            const userId = cursor.userId || "local";
+
+/app/client/src/lib/KeyEventHandler.ts:483:49
+Error: Property 'addNode' does not exist on type '{}'.
+                                // addNode returns the new item
+                                newItem = items.addNode(userId);
+                            } catch {
+
+/app/client/src/lib/KeyEventHandler.ts:487:66
+Error: Property 'length' does not exist on type '{}'.
+                                    // Fallback if no-arg fails
+                                    const prevLen = typeof items.length === "number" ? items.length : 0;
+                                    newItem = items.addNode(userId, prevLen);
+
+/app/client/src/lib/KeyEventHandler.ts:487:94
+Error: Property 'length' does not exist on type '{}'.
+                                    // Fallback if no-arg fails
+                                    const prevLen = typeof items.length === "number" ? items.length : 0;
+                                    newItem = items.addNode(userId, prevLen);
+
+/app/client/src/lib/KeyEventHandler.ts:488:53
+Error: Property 'addNode' does not exist on type '{}'.
+                                    const prevLen = typeof items.length === "number" ? items.length : 0;
+                                    newItem = items.addNode(userId, prevLen);
+                                } catch {}
+
+/app/client/src/lib/KeyEventHandler.ts:494:58
+Error: Property 'length' does not exist on type '{}'.
+                            if (!newItem) {
+                                const lastIndex = (items.length ?? 0) - 1;
+                                newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+
+/app/client/src/lib/KeyEventHandler.ts:495:49
+Error: Property 'at' does not exist on type '{}'.
+                                const lastIndex = (items.length ?? 0) - 1;
+                                newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+                            }
+
+/app/client/src/lib/KeyEventHandler.ts:495:60
+Error: Property 'at' does not exist on type '{}'.
+                                const lastIndex = (items.length ?? 0) - 1;
+                                newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+                            }
+
+/app/client/src/lib/KeyEventHandler.ts:495:76
+Error: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type '{}'.
+  No index signature with a parameter of type 'number' was found on type '{}'.
+                                const lastIndex = (items.length ?? 0) - 1;
+                                newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+                            }
+
+/app/client/src/lib/KeyEventHandler.ts:499:41
+Error: Property 'text' does not exist on type '{}'.
+                            if (newItem) {
+                                newItem.text = "";
+                                (newItem as unknown).aliasTargetId = undefined;
+
+/app/client/src/lib/KeyEventHandler.ts:500:33
+Error: Object is of type 'unknown'.
+                                newItem.text = "";
+                                (newItem as unknown).aliasTargetId = undefined;
+                                try {
+
+/app/client/src/lib/KeyEventHandler.ts:502:110
+Error: Property 'id' does not exist on type '{}'.
+                                try {
+                                    console.log("KeyEventHandler(Palette): showing AliasPicker for", newItem.id);
+                                } catch {}
+
+/app/client/src/lib/KeyEventHandler.ts:508:41
+Error: Property 'aliasPickerStore' does not exist on type '{}'.
+                                        : null;
+                                    (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
+                                }
+
+/app/client/src/lib/KeyEventHandler.ts:508:92
+Error: Property 'id' does not exist on type '{}'.
+                                        : null;
+                                    (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
+                                }
+
+/app/client/src/lib/KeyEventHandler.ts:512:57
+Error: Property 'id' does not exist on type '{}'.
+                                store.clearCursorAndSelection(userId);
+                                cursor.itemId = newItem.id;
+                                cursor.offset = 0;
+
+/app/client/src/lib/KeyEventHandler.ts:514:61
+Error: Property 'id' does not exist on type '{}'.
+                                cursor.offset = 0;
+                                store.setActiveItem(newItem.id);
+                                cursor.applyToStore();
+
+/app/client/src/lib/KeyEventHandler.ts:569:23
+Error: Type 'unknown' is not assignable to type 'HTMLTextAreaElement | undefined'.
+                    : null;
+                const ta: HTMLTextAreaElement | undefined = gs?.textareaRef as unknown;
+                const taValue: string | null = ta?.value ?? null;
+
+/app/client/src/lib/KeyEventHandler.ts:569:65
+Error: Property 'textareaRef' does not exist on type '{}'.
+                    : null;
+                const ta: HTMLTextAreaElement | undefined = gs?.textareaRef as unknown;
+                const taValue: string | null = ta?.value ?? null;
+
+/app/client/src/lib/KeyEventHandler.ts:595:48
+Error: Property 'currentPage' does not exist on type '{}'.
+                    // Add new item to end
+                    const items: unknown = gs?.currentPage?.items;
+                    if (items && typeof items.addNode === "function") {
+
+/app/client/src/lib/KeyEventHandler.ts:596:47
+Error: Property 'addNode' does not exist on type '{}'.
+                    const items: unknown = gs?.currentPage?.items;
+                    if (items && typeof items.addNode === "function") {
+                        const userId = cursor.userId || "local";
+
+/app/client/src/lib/KeyEventHandler.ts:600:45
+Error: Property 'addNode' does not exist on type '{}'.
+                        try {
+                            newItem = items.addNode(userId);
+                        } catch {
+
+/app/client/src/lib/KeyEventHandler.ts:603:62
+Error: Property 'length' does not exist on type '{}'.
+                            try {
+                                const prevLen = typeof items.length === "number" ? items.length : 0;
+                                newItem = items.addNode(userId, prevLen);
+
+/app/client/src/lib/KeyEventHandler.ts:603:90
+Error: Property 'length' does not exist on type '{}'.
+                            try {
+                                const prevLen = typeof items.length === "number" ? items.length : 0;
+                                newItem = items.addNode(userId, prevLen);
+
+/app/client/src/lib/KeyEventHandler.ts:604:49
+Error: Property 'addNode' does not exist on type '{}'.
+                                const prevLen = typeof items.length === "number" ? items.length : 0;
+                                newItem = items.addNode(userId, prevLen);
+                            } catch {}
+
+/app/client/src/lib/KeyEventHandler.ts:610:54
+Error: Property 'length' does not exist on type '{}'.
+                        if (!newItem) {
+                            const lastIndex = (items.length ?? 0) - 1;
+                            newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+
+/app/client/src/lib/KeyEventHandler.ts:611:45
+Error: Property 'at' does not exist on type '{}'.
+                            const lastIndex = (items.length ?? 0) - 1;
+                            newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+                        }
+
+/app/client/src/lib/KeyEventHandler.ts:611:56
+Error: Property 'at' does not exist on type '{}'.
+                            const lastIndex = (items.length ?? 0) - 1;
+                            newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+                        }
+
+/app/client/src/lib/KeyEventHandler.ts:611:72
+Error: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type '{}'.
+  No index signature with a parameter of type 'number' was found on type '{}'.
+                            const lastIndex = (items.length ?? 0) - 1;
+                            newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+                        }
+
+/app/client/src/lib/KeyEventHandler.ts:615:37
+Error: Property 'text' does not exist on type '{}'.
+                        if (newItem) {
+                            newItem.text = "";
+                            (newItem as unknown).aliasTargetId = undefined;
+
+/app/client/src/lib/KeyEventHandler.ts:616:29
+Error: Object is of type 'unknown'.
+                            newItem.text = "";
+                            (newItem as unknown).aliasTargetId = undefined;
+                            try {
+
+/app/client/src/lib/KeyEventHandler.ts:618:97
+Error: Property 'id' does not exist on type '{}'.
+                            try {
+                                console.log("KeyEventHandler: showing AliasPicker for", newItem.id);
+                            } catch {}
+
+/app/client/src/lib/KeyEventHandler.ts:624:37
+Error: Property 'aliasPickerStore' does not exist on type '{}'.
+                                    : null;
+                                (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
+                            }
+
+/app/client/src/lib/KeyEventHandler.ts:624:88
+Error: Property 'id' does not exist on type '{}'.
+                                    : null;
+                                (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
+                            }
+
+/app/client/src/lib/KeyEventHandler.ts:628:53
+Error: Property 'id' does not exist on type '{}'.
+                            store.clearCursorAndSelection(userId);
+                            cursor.itemId = newItem.id;
+                            cursor.offset = 0;
+
+/app/client/src/lib/KeyEventHandler.ts:630:57
+Error: Property 'id' does not exist on type '{}'.
+                            cursor.offset = 0;
+                            store.setActiveItem(newItem.id);
+                            cursor.applyToStore();
+
+/app/client/src/lib/KeyEventHandler.ts:684:45
+Error: Property 'aliasPickerStore' does not exist on type '{}'.
+                                    if (activeId) {
+                                        (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
+                                        try {
+
+/app/client/src/lib/KeyEventHandler.ts:762:45
+Error: Property 'aliasPickerStore' does not exist on type '{}'.
+                                    if (activeId) {
+                                        (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
+                                        try {
+
+/app/client/src/lib/KeyEventHandler.ts:833:36
+Error: Property 'generalStore' does not exist on type '{}'.
+                : null;
+            const gs: unknown = w?.generalStore ?? {};
+            const ch: string = typeof inputEvent.data === "string" ? inputEvent.data : "";
+
+/app/client/src/lib/KeyEventHandler.ts:835:13
+Error: 'gs' is of type 'unknown'.
+            const ch: string = typeof inputEvent.data === "string" ? inputEvent.data : "";
+            gs.__lastInputStream = (gs.__lastInputStream || "") + ch;
+            if (gs.__lastInputStream.length > 256) {
+
+/app/client/src/lib/KeyEventHandler.ts:835:37
+Error: 'gs' is of type 'unknown'.
+            const ch: string = typeof inputEvent.data === "string" ? inputEvent.data : "";
+            gs.__lastInputStream = (gs.__lastInputStream || "") + ch;
+            if (gs.__lastInputStream.length > 256) {
+
+/app/client/src/lib/KeyEventHandler.ts:836:17
+Error: 'gs' is of type 'unknown'.
+            gs.__lastInputStream = (gs.__lastInputStream || "") + ch;
+            if (gs.__lastInputStream.length > 256) {
+                gs.__lastInputStream = gs.__lastInputStream.slice(-256);
+
+/app/client/src/lib/KeyEventHandler.ts:837:17
+Error: 'gs' is of type 'unknown'.
+            if (gs.__lastInputStream.length > 256) {
+                gs.__lastInputStream = gs.__lastInputStream.slice(-256);
+            }
+
+/app/client/src/lib/KeyEventHandler.ts:837:40
+Error: 'gs' is of type 'unknown'.
+            if (gs.__lastInputStream.length > 256) {
+                gs.__lastInputStream = gs.__lastInputStream.slice(-256);
+            }
+
+/app/client/src/lib/KeyEventHandler.ts:1160:24
+Error: This condition will always return true since this function is always defined. Did you mean to call it instead?
+                        .clipboard
+                    && (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
+                        .clipboard.writeText
+                ) {
+
+/app/client/src/lib/KeyEventHandler.ts:1912:17
+Error: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+            ) {
+                text = (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText;
+                console.log(`Using text from global variable: "${text}"`);
+
+/app/client/src/lib/KeyEventHandler.ts:1973:64
+Error: Property 'multicursorText' does not exist on type '{}'.
+            if (
+                vscodeMetadata && Array.isArray(vscodeMetadata.multicursorText)
+                && vscodeMetadata.multicursorText.length > 0
+
+/app/client/src/lib/KeyEventHandler.ts:1974:35
+Error: Property 'multicursorText' does not exist on type '{}'.
+                vscodeMetadata && Array.isArray(vscodeMetadata.multicursorText)
+                && vscodeMetadata.multicursorText.length > 0
+            ) {
+
+/app/client/src/lib/KeyEventHandler.ts:1981:86
+Error: Property 'multicursorText' does not exist on type '{}'.
+                ) {
+                    console.log(`VS Code multicursor text detected:`, vscodeMetadata.multicursorText);
+                }
+
+/app/client/src/lib/KeyEventHandler.ts:1984:56
+Error: Property 'multicursorText' does not exist on type '{}'.
+
+                const multicursorText = vscodeMetadata.multicursorText;
+                const cursorInstances = store.getCursorInstances();
+
+/app/client/src/lib/KeyEventHandler.ts:1986:50
+Error: Property 'pasteMode' does not exist on type '{}'.
+                const cursorInstances = store.getCursorInstances();
+                const pasteMode = vscodeMetadata.pasteMode || "spread"; // Default is spread
+
+/app/client/src/lib/KeyEventHandler.ts:2157:50
+Error: Property 'isFromEmptySelection' does not exist on type '{}'.
+            if (
+                vscodeMetadata && vscodeMetadata.isFromEmptySelection === false
+                && vscodeMetadata.mode === "plaintext" && text.includes("\n")
+
+/app/client/src/lib/KeyEventHandler.ts:2158:35
+Error: Property 'mode' does not exist on type '{}'.
+                vscodeMetadata && vscodeMetadata.isFromEmptySelection === false
+                && vscodeMetadata.mode === "plaintext" && text.includes("\n")
+            ) {
+
+/app/client/src/lib/KeyEventHandler.ts:2336:24
+Error: This condition will always return true since this function is always defined. Did you mean to call it instead?
+                        .clipboard
+                    && (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
+                        .clipboard.writeText
+                ) {
+
+/app/client/src/components/GlobalTextArea.svelte:218:56
+Error: Property 'deriveQueryFromDoc' is private and only accessible within class 'CommandPaletteStore'. (ts)
+                    const sel = list?.[cps.selectedIndex ?? 0];
+                    const q = String(cps.query || (cps.deriveQueryFromDoc?.() || "")).toLowerCase();
+                    const isAliasOnly = Array.isArray(list) && list.length === 1 && (list[0]?.type === "alias");
+
+/app/client/src/utils/graphUtils.ts:55:33
+Error: Argument of type '(p: { id: string; }) => { id: string; name: string; lowerName: string; }' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => { id: string; name: string; lowerName: string; }'.
+  Types of parameters 'p' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type '{ id: string; }'.
+    // repeated toLowerCase() calls in the nested loop.
+    const pageNodes = pages.map((p: { id: string; }) => {
+        const name = getText(p);
+
+/app/client/src/utils/graphUtils.ts:74:17
+Error: 'src' is of type 'unknown'.
+        for (const dst of pageNodes) {
+            if (src.id === dst.id) continue;
+            const target = dst.lowerName;
+
+/app/client/src/utils/graphUtils.ts:80:38
+Error: 'src' is of type 'unknown'.
+            if (texts.some(t => containsLink(t, target, normalizedProjectTitle))) {
+                links.push({ source: src.id, target: dst.id });
+            }
+
+/app/client/src/components/GraphView.svelte:72:27
+Error: Property 'id' does not exist on type 'string | number | Date | GraphNodeItemOption | OptionDataValue[]'.
+  Property 'id' does not exist on type 'string'. (ts)
+        return data.filter((node): node is GraphNodeWithLayout =>
+            Boolean(node?.id),
+        );
+
+/app/client/src/components/GraphView.svelte:119:37
+Error: A type predicate's type must be assignable to its parameter's type.
+  Type '{ id: string; x: number; y: number; fixed?: boolean | undefined; }' is not assignable to type '{ id: string; x: number | undefined; y: number | undefined; fixed: boolean; }'.
+    Types of property 'fixed' are incompatible.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'. (ts)
+                .filter(
+                    (node): node is GraphLayout["nodes"][number] =>
+                        typeof node.x === "number" &&
+
+/app/client/src/components/GraphView.svelte:129:25
+Error: No overload matches this call.
+  Overload 1 of 2, '(...items: ConcatArray<{ id: string; x: number; y: number; fixed?: boolean | undefined; }>[]): { id: string; x: number; y: number; fixed?: boolean | undefined; }[]', gave the following error.
+    Argument of type '{ id: string; x: number | undefined; y: number | undefined; fixed: boolean; }[]' is not assignable to parameter of type 'ConcatArray<{ id: string; x: number; y: number; fixed?: boolean | undefined; }>'.
+      The types returned by 'slice(...)' are incompatible between these types.
+        Type '{ id: string; x: number | undefined; y: number | undefined; fixed: boolean; }[]' is not assignable to type '{ id: string; x: number; y: number; fixed?: boolean | undefined; }[]'.
+          Type '{ id: string; x: number | undefined; y: number | undefined; fixed: boolean; }' is not assignable to type '{ id: string; x: number; y: number; fixed?: boolean | undefined; }'.
+            Types of property 'x' are incompatible.
+              Type 'number | undefined' is not assignable to type 'number'.
+                Type 'undefined' is not assignable to type 'number'.
+  Overload 2 of 2, '(...items: ({ id: string; x: number; y: number; fixed?: boolean | undefined; } | ConcatArray<{ id: string; x: number; y: number; fixed?: boolean | undefined; }>)[]): { id: string; x: number; y: number; fixed?: boolean | undefined; }[]', gave the following error.
+    Argument of type '{ id: string; x: number | undefined; y: number | undefined; fixed: boolean; }[]' is not assignable to parameter of type '{ id: string; x: number; y: number; fixed?: boolean | undefined; } | ConcatArray<{ id: string; x: number; y: number; fixed?: boolean | undefined; }>'.
+      Type '{ id: string; x: number | undefined; y: number | undefined; fixed: boolean; }[]' is not assignable to type 'ConcatArray<{ id: string; x: number; y: number; fixed?: boolean | undefined; }>'.
+        The types returned by 'slice(...)' are incompatible between these types.
+          Type '{ id: string; x: number | undefined; y: number | undefined; fixed: boolean; }[]' is not assignable to type '{ id: string; x: number; y: number; fixed?: boolean | undefined; }[]'.
+            Type '{ id: string; x: number | undefined; y: number | undefined; fixed: boolean; }' is not assignable to type '{ id: string; x: number; y: number; fixed?: boolean | undefined; }'.
+              Types of property 'x' are incompatible.
+                Type 'number | undefined' is not assignable to type 'number'.
+                  Type 'undefined' is not assignable to type 'number'. (ts)
+                .filter((n) => !currentNodesMap.has(n.id))
+                .concat(currentNodes);
+
+/app/client/src/components/GraphView.svelte:288:25
+Error: Cannot invoke an object which is possibly 'undefined'. (ts)
+                    try {
+                        ymap.unobserveDeep(handler);
+                    } catch {}
+
+/app/client/src/components/LinkPreview.svelte:128:24
+Error: 'store.pages.current' is possibly 'undefined'. (ts)
+    // Search for page with matching name
+    for (const page of store.pages.current) {
+        if (page.text.toLowerCase() === name.toLowerCase()) {
+
+/app/client/src/stores/OutlinerViewModel.ts:15:25
+Error: Property 'id' does not exist on type '{}'.
+    try {
+        const id = obj?.id;
+        const txt = obj?.text;
+
+/app/client/src/stores/OutlinerViewModel.ts:16:26
+Error: Property 'text' does not exist on type '{}'.
+        const id = obj?.id;
+        const txt = obj?.text;
+        return typeof id === "string" && id.length > 0
+
+/app/client/src/stores/OutlinerViewModel.ts:181:17
+Error: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+                votes: [...((item as unknown as { votes?: string[]; }).votes || [])],
+                author: (item as unknown as { author?: string; }).author,
+                created: (item as unknown as { created?: number; }).created,
+
+/app/client/src/stores/OutlinerViewModel.ts:182:17
+Error: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+                author: (item as unknown as { author?: string; }).author,
+                created: (item as unknown as { created?: number; }).created,
+                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged,
+
+/app/client/src/stores/OutlinerViewModel.ts:183:17
+Error: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+                created: (item as unknown as { created?: number; }).created,
+                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged,
+                commentCount: (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0,
+
+/app/client/src/components/OutlinerItemAlias.svelte:32:47
+Error: Property 'get' does not exist on type '{ observe?: ((cb: unknown) => void) | undefined; unobserve?: ((cb: unknown) => void) | undefined; }'. (ts)
+                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
+                        const newValue = ymap.get?.('aliasTargetId');
+                        if (newValue !== aliasTargetId) {
+
+/app/client/src/components/OutlinerItemAlias.svelte:35:98
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "OutlinerItemAlias: aliasTargetId updated via observe", msg?: undefined): void', gave the following error.
+    Argument of type '{ itemId: string; newValue: any; }' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "OutlinerItemAlias: aliasTargetId updated via observe", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type '{ itemId: string; newValue: any; }' is not assignable to parameter of type 'undefined'. (ts)
+                            aliasTargetId = newValue;
+                            logger.debug("OutlinerItemAlias: aliasTargetId updated via observe", { itemId: modelId, newValue });
+                        }
+
+/app/client/src/components/OutlinerItemAlias.svelte:42:37
+Error: Cannot invoke an object which is possibly 'undefined'. (ts)
+            obs(); // Initial reflection
+            onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
+        }
+
+/app/client/src/components/OutlinerItemAlias.svelte:54:28
+Error: Property 'lastConfirmedItemId' does not exist on type '{ confirmById?: ((id: string) => void) | undefined; show?: ((id: string) => void) | undefined; }'. (ts)
+            const ap = (typeof window !== "undefined") ? (window as Window & typeof globalThis & { aliasPickerStore?: { confirmById?: (id: string) => void, show?: (id: string) => void } }).aliasPickerStore : null;
+            const li = ap?.lastConfirmedItemId;
+            const lt = ap?.lastConfirmedTargetId;
+
+/app/client/src/components/OutlinerItemAlias.svelte:55:28
+Error: Property 'lastConfirmedTargetId' does not exist on type '{ confirmById?: ((id: string) => void) | undefined; show?: ((id: string) => void) | undefined; }'. (ts)
+            const li = ap?.lastConfirmedItemId;
+            const lt = ap?.lastConfirmedTargetId;
+            const la = ap?.lastConfirmedAt as number | null;
+
+/app/client/src/components/OutlinerItemAlias.svelte:56:28
+Error: Property 'lastConfirmedAt' does not exist on type '{ confirmById?: ((id: string) => void) | undefined; show?: ((id: string) => void) | undefined; }'. (ts)
+            const lt = ap?.lastConfirmedTargetId;
+            const la = ap?.lastConfirmedAt as number | null;
+            if (li && lt && la && (Date.now() - la < 6000) && li === modelId) {
+
+/app/client/src/components/OutlinerItemAttachments.svelte:28:87
+Error: Argument of type 'number' is not assignable to parameter of type 'undefined'. (ts)
+                attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
+                logger.debug('[OutlinerItemAttachments][Yjs] attachments observe ->', attachmentsMirror.length, 'id=', modelId);
+            } catch {}
+
+/app/client/src/components/OutlinerItemAttachments.svelte:35:37
+Error: Cannot invoke an object which is possibly 'undefined'. (ts)
+            yArr.observe(yHandler);
+            onDestroy(() => { try { yArr.unobserve(yHandler); } catch {} });
+        } else {
+
+/app/client/src/components/OutlinerItemAttachments.svelte:48:100
+Error: Argument of type 'string' is not assignable to parameter of type 'undefined'. (ts)
+            const eid = String((_e && (_e as CustomEvent).detail && (_e as CustomEvent).detail.id) ?? "");
+            logger.debug('[OutlinerItemAttachments][TEST] item-attachments-changed received eid=', eid, 'selfId=', modelId);
+            if (eid && String(modelId) !== eid) return;
+
+/app/client/src/components/OutlinerItemAttachments.svelte:55:79
+Error: Argument of type 'number' is not assignable to parameter of type 'undefined'. (ts)
+            }
+            logger.debug('[OutlinerItemAttachments][TEST] mirror updated ->', attachmentsMirror.length, 'id=', modelId);
+        } catch {}
+
+/app/client/src/components/OutlinerItem.svelte:128:28
+Error: Property 'currentPage' does not exist on type '{ openCommentItemId?: string | undefined; openCommentItemIndex?: number | undefined; }'. (ts)
+        if (isCandidate) {
+            const cp = gs?.currentPage;
+            const items = cp?.items as unknown as { iterateUnordered?: () => Iterable<unknown> };
+
+/app/client/src/components/OutlinerItem.svelte:136:34
+Error: Object is of type 'unknown'. (ts)
+                const iter = items.iterateUnordered ? items.iterateUnordered() : items as unknown as Iterable<unknown>;
+                for (const it of iter as unknown) {
+                    if (it?.id === targetId) { exists = true; break; }
+
+/app/client/src/components/OutlinerItem.svelte:293:28
+Error: Property 'length' does not exist on type '{}'. (ts)
+function normalizeCommentCount(arr: unknown ): number {
+    if (!arr || typeof arr.length !== "number") return 0;
+    return Number(arr.length);
+
+/app/client/src/components/OutlinerItem.svelte:294:23
+Error: Property 'length' does not exist on type '{}'. (ts)
+    if (!arr || typeof arr.length !== "number") return 0;
+    return Number(arr.length);
+}
+
+/app/client/src/components/OutlinerItem.svelte:303:18
+Error: Type 'unknown' is not assignable to type 'unknown[]'. (ts)
+        const it = item as unknown;
+        if (!it) return null as unknown;
+        let arr: unknown[] = it.comments;
+
+/app/client/src/components/OutlinerItem.svelte:304:33
+Error: Property 'comments' does not exist on type '{}'. (ts)
+        if (!it) return null as unknown;
+        let arr: unknown[] = it.comments;
+        if (!arr) {
+
+/app/client/src/components/OutlinerItem.svelte:307:27
+Error: Property 'setComments' does not exist on type '{}'. (ts)
+            // Initialize if comments property does not exist
+            if (typeof it.setComments === "function") {
+                it.setComments([]);
+
+/app/client/src/components/OutlinerItem.svelte:308:20
+Error: Property 'setComments' does not exist on type '{}'. (ts)
+            if (typeof it.setComments === "function") {
+                it.setComments([]);
+                arr = it.comments;
+
+/app/client/src/components/OutlinerItem.svelte:309:26
+Error: Property 'comments' does not exist on type '{}'. (ts)
+                it.setComments([]);
+                arr = it.comments;
+            }
+
+/app/client/src/components/OutlinerItem.svelte:314:9
+Error: Type 'unknown' is not assignable to type 'unknown[]'. (ts)
+    } catch {
+        return null as unknown;
+    }
+
+/app/client/src/components/OutlinerItem.svelte:363:31
+Error: Property 'observe' does not exist on type 'unknown[]'. (ts)
+        const arr: unknown[] = ensureCommentsArray();
+        if (arr && typeof arr.observe === "function") {
+            const observer = () => applyCommentCount(arr);
+
+/app/client/src/components/OutlinerItem.svelte:365:17
+Error: Property 'observe' does not exist on type 'unknown[]'. (ts)
+            const observer = () => applyCommentCount(arr);
+            arr.observe(observer);
+            return () => arr.unobserve(observer);
+
+/app/client/src/components/OutlinerItem.svelte:366:30
+Error: Property 'unobserve' does not exist on type 'unknown[]'. (ts)
+            arr.observe(observer);
+            return () => arr.unobserve(observer);
+        }
+
+/app/client/src/components/OutlinerItem.svelte:369:5
+Error: Type 'unknown' is not assignable to type '(() => void) | null'. (ts)
+    } catch {}
+    return null as unknown;
+    }
+
+/app/client/src/components/OutlinerItem.svelte:390:37
+Error: Property 'id' does not exist on type '{}'. (ts)
+            if (!detail) return;
+            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
+            if (targetId == null) return;
+
+/app/client/src/components/OutlinerItem.svelte:390:50
+Error: Property 'itemId' does not exist on type '{}'. (ts)
+            if (!detail) return;
+            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
+            if (targetId == null) return;
+
+/app/client/src/components/OutlinerItem.svelte:390:67
+Error: Property 'nodeId' does not exist on type '{}'. (ts)
+            if (!detail) return;
+            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
+            if (targetId == null) return;
+
+/app/client/src/components/OutlinerItem.svelte:390:84
+Error: Property 'targetId' does not exist on type '{}'. (ts)
+            if (!detail) return;
+            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
+            if (targetId == null) return;
+
+/app/client/src/components/OutlinerItem.svelte:393:42
+Error: Property 'count' does not exist on type '{}'. (ts)
+            if (String(targetId) !== String(model?.id)) return;
+            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
+            applyCommentCount(possibleCount);
+
+/app/client/src/components/OutlinerItem.svelte:393:58
+Error: Property 'value' does not exist on type '{}'. (ts)
+            if (String(targetId) !== String(model?.id)) return;
+            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
+            applyCommentCount(possibleCount);
+
+/app/client/src/components/OutlinerItem.svelte:393:74
+Error: Property 'len' does not exist on type '{}'. (ts)
+            if (String(targetId) !== String(model?.id)) return;
+            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
+            applyCommentCount(possibleCount);
+
+/app/client/src/components/OutlinerItem.svelte:393:88
+Error: Property 'length' does not exist on type '{}'. (ts)
+            if (String(targetId) !== String(model?.id)) return;
+            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
+            applyCommentCount(possibleCount);
+
+/app/client/src/components/OutlinerItem.svelte:441:33
+Error: Property 'observe' does not exist on type '{}'. (ts)
+        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as unknown;
+        if (ymap && typeof ymap.observe === 'function') {
+            const obs = (e?: unknown ) => {
+
+/app/client/src/components/OutlinerItem.svelte:444:34
+Error: Property 'keysChanged' does not exist on type '{}'. (ts)
+                try {
+                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
+                        aliasTargetId = ymap.get?.('aliasTargetId');
+
+/app/client/src/components/OutlinerItem.svelte:444:51
+Error: Property 'keysChanged' does not exist on type '{}'. (ts)
+                try {
+                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
+                        aliasTargetId = ymap.get?.('aliasTargetId');
+
+/app/client/src/components/OutlinerItem.svelte:444:72
+Error: Property 'keysChanged' does not exist on type '{}'. (ts)
+                try {
+                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
+                        aliasTargetId = ymap.get?.('aliasTargetId');
+
+/app/client/src/components/OutlinerItem.svelte:445:46
+Error: Property 'get' does not exist on type '{}'. (ts)
+                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
+                        aliasTargetId = ymap.get?.('aliasTargetId');
+                    }
+
+/app/client/src/components/OutlinerItem.svelte:449:18
+Error: Property 'observe' does not exist on type '{}'. (ts)
+            };
+            ymap.observe(obs);
+            // Initial reflection
+
+/app/client/src/components/OutlinerItem.svelte:452:42
+Error: Property 'unobserve' does not exist on type '{}'. (ts)
+            obs();
+            onDestroy(() => { try { ymap.unobserve(obs); } catch {} });
+        }
+
+/app/client/src/components/OutlinerItem.svelte:474:17
+Error: Property 'itemId' does not exist on type '{}'. (ts)
+    if (aliasLastConfirmedPulse && itemRef) {
+        const { itemId, targetId } = aliasLastConfirmedPulse;
+        try {
+
+/app/client/src/components/OutlinerItem.svelte:474:25
+Error: Property 'targetId' does not exist on type '{}'. (ts)
+    if (aliasLastConfirmedPulse && itemRef) {
+        const { itemId, targetId } = aliasLastConfirmedPulse;
+        try {
+
+/app/client/src/components/OutlinerItem.svelte:539:74
+Error: Property 'at' does not exist on type '{}'. (ts)
+    // Check pulse for recent confirmations
+    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
+        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
+
+/app/client/src/components/OutlinerItem.svelte:540:37
+Error: Property 'itemId' does not exist on type '{}'. (ts)
+    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
+        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
+    }
+
+/app/client/src/components/OutlinerItem.svelte:540:89
+Error: Property 'targetId' does not exist on type '{}'. (ts)
+    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
+        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
+    }
+
+/app/client/src/components/OutlinerItem.svelte:618:30
+Error: Property 'tree' does not exist on type '{}'. (ts)
+        try {
+            const tree = it?.tree;
+            const nodeKey = it?.key;
+
+/app/client/src/components/OutlinerItem.svelte:619:33
+Error: Property 'key' does not exist on type '{}'. (ts)
+            const tree = it?.tree;
+            const nodeKey = it?.key;
+            const m = tree?.getNodeValueFromKey?.(nodeKey);
+
+/app/client/src/components/OutlinerItem.svelte:1002:9
+Error: Type 'null' is not assignable to type 'string | undefined'. (ts)
+    if (gs.openCommentItemId === model.id) {
+        gs.openCommentItemId = null;
+        gs.openCommentItemIndex = null;
+
+/app/client/src/components/OutlinerItem.svelte:1003:9
+Error: Type 'null' is not assignable to type 'number | undefined'. (ts)
+        gs.openCommentItemId = null;
+        gs.openCommentItemIndex = null;
+        try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
+
+/app/client/src/components/OutlinerItem.svelte:1669:61
+Error: Argument of type 'unknown' is not assignable to parameter of type 'DragEvent | null'. (ts)
+                        if (!dropTargetPosition || dropTargetPosition === "middle") {
+                            addAttachmentToDomTargetOrModel(event as unknown, url);
+                            // Reflect to Doc after connection
+
+/app/client/src/components/OutlinerItem.svelte:1721:57
+Error: Argument of type 'unknown' is not assignable to parameter of type 'DragEvent | null'. (ts)
+                        const localUrl = URL.createObjectURL(blob);
+                        addAttachmentToDomTargetOrModel(event as unknown, localUrl);
+                        try { mirrorAttachment(localUrl); } catch {}
+
+/app/client/src/components/OutlinerItem.svelte:1863:165
+Error: 'prev' is of type 'unknown'. (ts)
+                const prev: unknown   = (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__;
+                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
+            }
+
+/app/client/src/components/OutlinerItem.svelte:1892:141
+Error: 'prevAdd' is of type 'unknown'. (ts)
+                const prevAdd: unknown   = (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__;
+                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
+            }
+
+/app/client/src/components/OutlinerItem.svelte:2013:68
+Error: Property 'itemId' does not exist on type '{}'. (ts)
+                && (aliasPickerStore as unknown as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId)
+            || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
+            || "") ][1]
+
+/app/client/src/components/OutlinerItem.svelte:2013:115
+Error: Property 'targetId' does not exist on type '{}'. (ts)
+                && (aliasPickerStore as unknown as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId)
+            || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
+            || "") ][1]
+
+/app/client/src/components/OutlinerTree.svelte:142:37
+Error: 'e' is of type 'unknown'. (ts)
+                                    " [Yjs Event]",
+                                    e.path,
+                                    e.keysChanged,
+
+/app/client/src/components/OutlinerTree.svelte:143:37
+Error: 'e' is of type 'unknown'. (ts)
+                                    e.path,
+                                    e.keysChanged,
+                                );
+
+/app/client/src/components/OutlinerTree.svelte:338:25
+Error: Property 'getNodeParentFromKey' does not exist on type '{}'. (ts)
+            !key ||
+            typeof tree.getNodeParentFromKey !== "function"
+        ) {
+
+/app/client/src/components/OutlinerTree.svelte:346:32
+Error: Property 'getNodeParentFromKey' does not exist on type '{}'. (ts)
+
+        const parentKey = tree.getNodeParentFromKey(key);
+        if (!parentKey) return;
+
+/app/client/src/components/OutlinerTree.svelte:349:44
+Error: Property 'sortChildrenByOrder' does not exist on type '{}'. (ts)
+
+        const siblingKeys: string[] = tree.sortChildrenByOrder(
+            tree.getNodeChildrenFromKey(parentKey),
+
+/app/client/src/components/OutlinerTree.svelte:350:18
+Error: Property 'getNodeChildrenFromKey' does not exist on type '{}'. (ts)
+        const siblingKeys: string[] = tree.sortChildrenByOrder(
+            tree.getNodeChildrenFromKey(parentKey),
+            parentKey,
+
+/app/client/src/components/OutlinerTree.svelte:381:22
+Error: Property 'moveChildToParent' does not exist on type '{}'. (ts)
+            try {
+                tree.moveChildToParent(key, targetParentKey);
+                tree.setNodeOrderToEnd(key);
+
+/app/client/src/components/OutlinerTree.svelte:382:22
+Error: Property 'setNodeOrderToEnd' does not exist on type '{}'. (ts)
+                tree.moveChildToParent(key, targetParentKey);
+                tree.setNodeOrderToEnd(key);
+            } catch (error) {
+
+/app/client/src/components/OutlinerTree.svelte:394:24
+Error: Property 'transact' does not exist on type '{}'. (ts)
+
+        if (typeof doc.transact === "function") {
+            doc.transact(run, "mobile-indent");
+
+/app/client/src/components/OutlinerTree.svelte:395:17
+Error: Property 'transact' does not exist on type '{}'. (ts)
+        if (typeof doc.transact === "function") {
+            doc.transact(run, "mobile-indent");
+        } else {
+
+/app/client/src/components/OutlinerTree.svelte:405:37
+Error: Property 'getNodeParentFromKey' does not exist on type '{}'. (ts)
+                    itemId,
+                    newParent: tree.getNodeParentFromKey(key),
+                }),
+
+/app/client/src/components/OutlinerTree.svelte:433:25
+Error: Property 'getNodeParentFromKey' does not exist on type '{}'. (ts)
+            !key ||
+            typeof tree.getNodeParentFromKey !== "function"
+        ) {
+
+/app/client/src/components/OutlinerTree.svelte:444:32
+Error: Property 'getNodeParentFromKey' does not exist on type '{}'. (ts)
+
+        const parentKey = tree.getNodeParentFromKey(key);
+        if (!parentKey || parentKey === "root") return;
+
+/app/client/src/components/OutlinerTree.svelte:447:37
+Error: Property 'getNodeParentFromKey' does not exist on type '{}'. (ts)
+
+        const grandParentKey = tree.getNodeParentFromKey(parentKey);
+        if (!grandParentKey) return;
+
+/app/client/src/components/OutlinerTree.svelte:451:18
+Error: Property 'moveChildToParent' does not exist on type '{}'. (ts)
+        const run = () => {
+            tree.moveChildToParent(key, grandParentKey);
+            if (typeof tree.recomputeParentsAndChildren === "function") {
+
+/app/client/src/components/OutlinerTree.svelte:452:29
+Error: Property 'recomputeParentsAndChildren' does not exist on type '{}'. (ts)
+            tree.moveChildToParent(key, grandParentKey);
+            if (typeof tree.recomputeParentsAndChildren === "function") {
+                tree.recomputeParentsAndChildren();
+
+/app/client/src/components/OutlinerTree.svelte:453:22
+Error: Property 'recomputeParentsAndChildren' does not exist on type '{}'. (ts)
+            if (typeof tree.recomputeParentsAndChildren === "function") {
+                tree.recomputeParentsAndChildren();
+            }
+
+/app/client/src/components/OutlinerTree.svelte:455:18
+Error: Property 'setNodeAfter' does not exist on type '{}'. (ts)
+            }
+            tree.setNodeAfter(key, parentKey);
+        };
+
+/app/client/src/components/OutlinerTree.svelte:458:24
+Error: Property 'transact' does not exist on type '{}'. (ts)
+
+        if (typeof doc.transact === "function") {
+            doc.transact(run, "mobile-unindent");
+
+/app/client/src/components/OutlinerTree.svelte:459:17
+Error: Property 'transact' does not exist on type '{}'. (ts)
+        if (typeof doc.transact === "function") {
+            doc.transact(run, "mobile-unindent");
+        } else {
+
+/app/client/src/components/OutlinerTree.svelte:897:59
+Error: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'Items'.
+  No index signature with a parameter of type 'number' was found on type 'Items'. (ts)
+            if (!newItem) {
+                newItem = items.at ? items.at(newIndex) : items[newIndex];
+            }
+
+/app/client/src/components/OutlinerTree.svelte:938:38
+Error: Property 'isReversed' does not exist on type '{ startItemId: string; endItemId: string; startOffset?: number | undefined; endOffset?: number | undefined; }'. (ts)
+        // Consider selection direction
+        const isReversed = selection.isReversed || false;
+        const actualStartIndex = Math.min(startIndex, endIndex);
+
+/app/client/src/components/OutlinerTree.svelte:988:59
+Error: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'Items'.
+  No index signature with a parameter of type 'number' was found on type 'Items'. (ts)
+            if (!newItem) {
+                newItem = items.at ? items.at(newIndex) : items[newIndex];
+            }
+
+/app/client/src/components/OutlinerTree.svelte:1110:63
+Error: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'Items'.
+  No index signature with a parameter of type 'number' was found on type 'Items'. (ts)
+                if (!newItem) {
+                    newItem = items.at ? items.at(newIndex) : items[newIndex];
+                }
+
+/app/client/src/components/OutlinerTree.svelte:1576:70
+Error: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'Items'.
+  No index signature with a parameter of type 'number' was found on type 'Items'. (ts)
+                if (!newItem) {
+                    newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
+                }
+
+/app/client/src/components/OutlinerTree.svelte:1700:82
+Error: Namespace '"/app/client/src/schema/app-schema"' has no exported member 'YTree'. (ts)
+        try {
+            const tree = items.tree as unknown as import("../schema/app-schema").YTree & { getNodeParentFromKey?: (k: string) => string };
+            const doc = pageItem?.ydoc;
+
+/app/client/src/components/OutlinerTree.svelte:1860:70
+Error: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'Items'.
+  No index signature with a parameter of type 'number' was found on type 'Items'. (ts)
+                if (!newItem) {
+                    newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
+                }
+
+/app/client/src/components/OutlinerTree.svelte:1873:72
+Error: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'Items'.
+  No index signature with a parameter of type 'number' was found on type 'Items'. (ts)
+                items.addNode(currentUser, targetIndex + i);
+                const newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
+                if (newItem) {
+
+/app/client/src/components/OutlinerTree.svelte:1889:72
+Error: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'Items'.
+  No index signature with a parameter of type 'number' was found on type 'Items'. (ts)
+                items.addNode(currentUser, targetIndex + i);
+                const newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
+                if (newItem) {
+
+/app/client/src/components/OutlinerTree.svelte:2228:53
+Error: Property 'getCursorForItem' does not exist on type 'EditorOverlayStore'. Did you mean 'clearCursorForItem'? (ts)
+            // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
+            const activeCursor = editorOverlayStore.getCursorForItem(activeItemId);
+            if (activeCursor) {
+
+/app/client/src/components/OutlinerBase.svelte:157:49
+Error: Argument of type '{}' is not assignable to parameter of type 'YArray<YMap<CommentValueType>>'.
+  Type '{}' is missing the following properties from type 'YArray<YMap<CommentValueType>>': _prelimContent, _searchMarker, _integrate, _copy, and 28 more. (ts)
+                            }
+                            return new Comments(arr);
+                        },
+
+/app/client/src/components/OutlinerBase.svelte:164:38
+Error: Property 'length' does not exist on type '{}'. (ts)
+                    const arr = ensureCommentsArrayOn(ctx);
+                    const len = arr?.length ?? 0;
+                    W.commentCountsByItemId =
+
+/app/client/src/components/OutlinerBase.svelte:168:65
+Error: Property 'id' does not exist on type '{}'. (ts)
+                    try {
+                        W.commentCountsByItemId.set(String(ctx?.id), len);
+                    } catch {}
+
+/app/client/src/components/OutlinerBase.svelte:171:30
+Error: Property 'value' does not exist on type '{}'. (ts)
+                    try {
+                        ctx?.value?.set?.("commentCountCache", len);
+                    } catch {}
+
+/app/client/src/components/OutlinerBase.svelte:174:30
+Error: Property 'value' does not exist on type '{}'. (ts)
+                    try {
+                        ctx?.value?.set?.("lastChanged", Date.now());
+                    } catch {}
+
+/app/client/src/components/OutlinerBase.svelte:179:59
+Error: Property 'id' does not exist on type '{}'. (ts)
+                            new CustomEvent("item-comment-count", {
+                                detail: { id: String(ctx?.id), count: len },
+                            }),
+
+/app/client/src/components/OutlinerBase.svelte:199:65
+Error: Argument of type '{}' is not assignable to parameter of type 'YArray<YMap<CommentValueType>>'.
+  Type '{}' is missing the following properties from type 'YArray<YMap<CommentValueType>>': _prelimContent, _searchMarker, _integrate, _copy, and 28 more. (ts)
+                        const wrapper = ensureCommentsArrayOn(this);
+                        const comments = wrapper ? new Comments(wrapper) : null;
+                        result = comments?.addComment?.(author, text);
+
+/app/client/src/components/OutlinerBase.svelte:216:65
+Error: Argument of type '{}' is not assignable to parameter of type 'YArray<YMap<CommentValueType>>'.
+  Type '{}' is missing the following properties from type 'YArray<YMap<CommentValueType>>': _prelimContent, _searchMarker, _integrate, _copy, and 28 more. (ts)
+                        const wrapper = ensureCommentsArrayOn(this);
+                        const comments = wrapper ? new Comments(wrapper) : null;
+                        comments?.deleteComment?.(commentId);
+
+/app/client/src/components/OutlinerBase.svelte:260:65
+Error: Argument of type '{}' is not assignable to parameter of type 'YArray<YMap<CommentValueType>>'.
+  Type '{}' is missing the following properties from type 'YArray<YMap<CommentValueType>>': _prelimContent, _searchMarker, _integrate, _copy, and 28 more. (ts)
+                                            }
+                                            return new Comments(arr);
+                                        },
+
+/app/client/src/components/OutlinerBase.svelte:285:60
+Error: Argument of type '{}' is not assignable to parameter of type 'YArray<YMap<CommentValueType>>'.
+  Type '{}' is missing the following properties from type 'YArray<YMap<CommentValueType>>': _prelimContent, _searchMarker, _integrate, _copy, and 28 more. (ts)
+                                        const comments = wrapper
+                                            ? new Comments(wrapper)
+                                            : null;
+
+/app/client/src/components/OutlinerBase.svelte:314:60
+Error: Argument of type '{}' is not assignable to parameter of type 'YArray<YMap<CommentValueType>>'.
+  Type '{}' is missing the following properties from type 'YArray<YMap<CommentValueType>>': _prelimContent, _searchMarker, _integrate, _copy, and 28 more. (ts)
+                                        const comments = wrapper
+                                            ? new Comments(wrapper)
+                                            : null;
+
+/app/client/src/components/SearchBox.svelte:131:33
+Error: Conversion of type 'Items' to type '{ [key: number]: ItemLike; at?: ((i: number) => ItemLike) | undefined; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'number' is missing in type 'Items'. (ts)
+                            const v = (
+                                items as {
+                                    at?: (i: number) => Item;
+                                    [key: number]: Item;
+                                }
+                            ).at
+
+/app/client/src/components/SearchBox.svelte:137:36
+Error: Conversion of type 'Items' to type '{ [key: number]: ItemLike; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'number' is missing in type 'Items'. (ts)
+                                ? (items as { at: (i: number) => Item }).at(i)
+                                : (items as { [key: number]: Item })[i];
+                            if (typeof v !== "undefined" && v !== null)
+
+/app/client/src/components/SearchBox.svelte:150:29
+Error: Conversion of type 'Items' to type '{ toArray: () => ItemLike[]; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'toArray' is missing in type 'Items' but required in type '{ toArray: () => ItemLike[]; }'. (ts)
+                        const arr = (
+                            items as { toArray: () => Item[] }
+                        ).toArray();
+
+/app/client/src/lib/Cursor.selection.test.ts:8:66
+Error: Namespace '"/app/client/src/stores/EditorOverlayStore.svelte"' has no exported member 'SelectionState'.
+// Helper to manage mock selection state
+let mockSelection: import("../stores/EditorOverlayStore.svelte").SelectionState | undefined = undefined;
+
+/app/client/src/lib/Cursor.selection.test.ts:165:76
+Error: Namespace '"/app/client/src/stores/EditorOverlayStore.svelte"' has no exported member 'SelectionState'.
+                userId: "test-user",
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            cursor.offset = 1;
+
+/app/client/src/lib/Cursor.selection.test.ts:191:76
+Error: Namespace '"/app/client/src/stores/EditorOverlayStore.svelte"' has no exported member 'SelectionState'.
+                userId: "test-user",
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            cursor.offset = 1;
+
+/app/client/src/lib/Cursor.selection.test.ts:258:76
+Error: Namespace '"/app/client/src/stores/EditorOverlayStore.svelte"' has no exported member 'SelectionState'.
+                userId: "test-user",
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            cursor.offset = 4;
+
+/app/client/src/lib/Cursor.selection.test.ts:284:76
+Error: Namespace '"/app/client/src/stores/EditorOverlayStore.svelte"' has no exported member 'SelectionState'.
+                userId: "test-user",
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            cursor.offset = 1;
+
+/app/client/src/lib/Cursor.selection.test.ts:333:76
+Error: Namespace '"/app/client/src/stores/EditorOverlayStore.svelte"' has no exported member 'SelectionState'.
+                userId: "test-user",
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            cursor.offset = 1;
+
+/app/client/src/lib/Cursor.selection.test.ts:360:76
+Error: Namespace '"/app/client/src/stores/EditorOverlayStore.svelte"' has no exported member 'SelectionState'.
+                userId: "test-user",
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
+            cursor.offset = 1;
+
+/app/client/src/lib/KeyEventHandler.test.ts:59:16
+Error: The operand of a 'delete' operator must be optional.
+    afterEach(() => {
+        delete (navigator as Navigator & { clipboard?: unknown; }).clipboard;
+    });
+
+/app/client/src/lib/KeyEventHandler.test.ts:120:9
+Error: 'mockInsertText' is of type 'unknown'.
+        const event = createEvent("oops");
+        mockInsertText.mockImplementationOnce(() => {
+            throw new Error("boom");
+
+/app/client/src/lib/debug.ts:75:21
+Error: Conversion of type 'YjsClient' to type '{ getAllData: () => Record<string, unknown>; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  The types returned by 'getAllData()' are incompatible between these types.
+    Type 'Record<string, unknown>[]' is not comparable to type 'Record<string, unknown>'.
+      Index signature for type 'string' is missing in type 'Record<string, unknown>[]'.
+            }
+            return (yjsStore.yjsClient as { getAllData: () => Record<string, unknown>; }).getAllData();
+        };
+
+/app/client/src/lib/debug.ts:104:44
+Error: Cannot find module '../schema/YTree' or its corresponding type declarations.
+                    project.ydoc as import("yjs").Doc,
+                    project.tree as import("../schema/YTree").YTree,
+                    item.key,
+
+/app/client/src/lib/linkPreviewHandler.ts:91:30
+Error: Cannot assign to 'length' because it is a read-only property.
+    Object.entries(PREVIEW_STYLES).forEach(([key, value]) => {
+        previewElement.style[key as keyof CSSStyleDeclaration] = value;
+    });
+
+/app/client/src/lib/linkPreviewHandler.ts:91:30
+Error: Cannot assign to 'parentRule' because it is a read-only property.
+    Object.entries(PREVIEW_STYLES).forEach(([key, value]) => {
+        previewElement.style[key as keyof CSSStyleDeclaration] = value;
+    });
+
+/app/client/src/lib/cursor/CursorFormatting.ts:116:27
+Error: Cannot find module '../stores/EditorOverlayStore.svelte' or its corresponding type declarations.
+    private applyScrapboxFormattingToMultipleItems(
+        selection: import("../stores/EditorOverlayStore.svelte").SelectionState,
+        formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
+
+/app/client/src/lib/cursor/CursorFormatting.ts:157:38
+Error: Property 'searchItem' does not exist on type 'Cursor'.
+            const itemId = current.getAttribute("data-item-id")!;
+            const item = this.cursor.searchItem(generalStore.currentPage!, itemId);
+
+/app/client/src/lib/cursor/CursorSelection.ts:525:46
+Error: Property 'getCurrentLineIndex' does not exist on type 'Cursor'.
+        const text = target.text || "";
+        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
+
+/app/client/src/lib/cursor/CursorSelection.ts:528:42
+Error: Property 'getLineStartOffset' does not exist on type 'Cursor'.
+        // Move to start position of current line
+        this.cursor.offset = this.cursor.getLineStartOffset(text, currentLineIndex);
+        this.cursor.applyToStore();
+
+/app/client/src/lib/cursor/CursorSelection.ts:543:46
+Error: Property 'getCurrentLineIndex' does not exist on type 'Cursor'.
+        const text = target.text || "";
+        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
+
+/app/client/src/lib/cursor/CursorSelection.ts:546:42
+Error: Property 'getLineEndOffset' does not exist on type 'Cursor'.
+        // Move to end position of current line
+        this.cursor.offset = this.cursor.getLineEndOffset(text, currentLineIndex);
+        this.cursor.applyToStore();
+
+/app/client/src/lib/cursor/CursorSelection.ts:575:46
+Error: Property 'getCurrentLineIndex' does not exist on type 'Cursor'.
+        const text = target.text || "";
+        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
+        const lineStartOffset = this.cursor.getLineStartOffset(text, currentLineIndex);
+
+/app/client/src/lib/cursor/CursorSelection.ts:576:45
+Error: Property 'getLineStartOffset' does not exist on type 'Cursor'.
+        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
+        const lineStartOffset = this.cursor.getLineStartOffset(text, currentLineIndex);
+
+/app/client/src/lib/cursor/CursorSelection.ts:681:46
+Error: Property 'getCurrentLineIndex' does not exist on type 'Cursor'.
+        const text = target.text || "";
+        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
+        const lineEndOffset = this.cursor.getLineEndOffset(text, currentLineIndex);
+
+/app/client/src/lib/cursor/CursorSelection.ts:682:43
+Error: Property 'getLineEndOffset' does not exist on type 'Cursor'.
+        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
+        const lineEndOffset = this.cursor.getLineEndOffset(text, currentLineIndex);
+
+/app/client/src/lib/yjs/service.test.ts:34:16
+Error: 'presence' is possibly 'undefined'.
+        const presence = yjsService.getPresence(awareness);
+        expect(presence.cursor.itemId).toBe("i1");
+    });
+
+/app/client/src/lib/yjs/service.test.ts:34:16
+Error: 'presence.cursor' is possibly 'undefined'.
+        const presence = yjsService.getPresence(awareness);
+        expect(presence.cursor.itemId).toBe("i1");
+    });
+
+/app/client/src/lib/yjs/service.test.ts:96:19
+Error: Property 'emit' does not exist on type 'Awareness'.
+        });
+        awareness.emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
+
+/app/client/src/lib/yjs/service.test.ts:101:19
+Error: Property 'emit' does not exist on type 'Awareness'.
+
+        awareness.emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
+        unbind();
+
+/app/client/src/lib/yjs/testHelpers.ts:316:17
+Error: Property 'on' does not exist on type '{}'.
+
+            doc.on("update", () => {
+                (window as Window & typeof globalThis & Record<string, unknown>)[counterVar]++;
+
+/app/client/src/lib/yjs/testHelpers.ts:317:17
+Error: Object is of type 'unknown'.
+            doc.on("update", () => {
+                (window as Window & typeof globalThis & Record<string, unknown>)[counterVar]++;
+            });
+
+/app/client/src/lib/yjs/testHelpers.ts:320:17
+Error: Property 'on' does not exist on type '{}'.
+
+            doc.on("updateV2", () => {
+                (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var]++;
+
+/app/client/src/lib/yjs/testHelpers.ts:321:17
+Error: Object is of type 'unknown'.
+            doc.on("updateV2", () => {
+                (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var]++;
+            });
+
+/app/client/src/lib/yjs/testHelpers.ts:484:57
+Error: Property 'seedProjectAndNavigate' does not exist on type '{ expectEmptyOutliner: (page: Page) => Promise<void>; }'.
+    // Prepare test environment for page1
+    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(
+        page1,
+
+/app/client/src/lib/yjs/testHelpers.ts:498:38
+Error: Property 'yjsClient' does not exist on type '{}'.
+            const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
+            const client = yjsStore?.yjsClient;
+            if (!client) {
+
+/app/client/src/lib/yjs/testHelpers.ts:569:38
+Error: Property 'yjsClient' does not exist on type '{}'.
+            const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
+            const client = yjsStore?.yjsClient;
+            if (!client) {
+
+/app/client/src/routes/+layout.svelte:195:40
+Error: Property 'getCurrentUser' does not exist on type '{ addEventListener: (f: (e: unknown) => void) => void; }'. (ts)
+        // Check authentication status
+        isAuthenticated = userManager?.getCurrentUser() !== null;
+
+/app/client/src/routes/+layout.svelte:244:546
+Error: Argument of type '(fn: (context: unknown, ev: Event) => void) => void' is not assignable to parameter of type '(value: (this: unknown, e: Event) => void, index: number, array: ((this: unknown, e: Event) => void)[]) => void'.
+  Types of parameters 'fn' and 'value' are incompatible.
+    Type '(this: unknown, e: Event) => void' is not assignable to type '(context: unknown, ev: Event) => void'.
+      Types of parameters 'e' and 'context' are incompatible.
+        Type 'unknown' is not assignable to type 'Event'. (ts)
+                                try { Object.defineProperty(de, 'dataTransfer', { value: (event as unknown as { dataTransfer: DataTransfer }).dataTransfer, configurable: true }); } catch {}
+                                try { (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_LAYOUT_MOUNTED__?: boolean, __E2E_DROP_PATCHED__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, __E2E_DROP_HANDLERS__?: ((this: unknown, e: Event) => void)[], __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown }).__E2E_DROP_HANDLERS__?.forEach((fn: (context: unknown, ev: Event) => void) => { try { fn(this, de); } catch {} }); } catch {}
+                                return orig.call(this, de);
+
+/app/client/src/routes/+layout.svelte:245:33
+Error: Type 'unknown' is not assignable to type 'boolean'. (ts)
+                                try { (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_LAYOUT_MOUNTED__?: boolean, __E2E_DROP_PATCHED__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, __E2E_DROP_HANDLERS__?: ((this: unknown, e: Event) => void)[], __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown }).__E2E_DROP_HANDLERS__?.forEach((fn: (context: unknown, ev: Event) => void) => { try { fn(this, de); } catch {} }); } catch {}
+                                return orig.call(this, de);
+                            }
+
+/app/client/src/routes/+layout.svelte:248:576
+Error: Argument of type '(fn: (context: unknown, ev: Event) => void) => void' is not assignable to parameter of type '(value: (this: unknown, e: Event) => void, index: number, array: ((this: unknown, e: Event) => void)[]) => void'.
+  Types of parameters 'fn' and 'value' are incompatible.
+    Type '(this: unknown, e: Event) => void' is not assignable to type '(context: unknown, ev: Event) => void'.
+      Types of parameters 'e' and 'context' are incompatible.
+        Type 'unknown' is not assignable to type 'Event'. (ts)
+                        } catch {}
+                        try { if (event && event.type === 'drop') { (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_LAYOUT_MOUNTED__?: boolean, __E2E_DROP_PATCHED__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, __E2E_DROP_HANDLERS__?: ((this: unknown, e: Event) => void)[], __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown }).__E2E_DROP_HANDLERS__?.forEach((fn: (context: unknown, ev: Event) => void) => { try { fn(this, event); } catch {} }); } } catch {}
+                        return orig.call(this, event);
+
+/app/client/src/routes/+layout.svelte:249:25
+Error: Type 'unknown' is not assignable to type 'boolean'. (ts)
+                        try { if (event && event.type === 'drop') { (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_LAYOUT_MOUNTED__?: boolean, __E2E_DROP_PATCHED__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, __E2E_DROP_HANDLERS__?: ((this: unknown, e: Event) => void)[], __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown }).__E2E_DROP_HANDLERS__?.forEach((fn: (context: unknown, ev: Event) => void) => { try { fn(this, event); } catch {} }); } } catch {}
+                        return orig.call(this, event);
+                    };
+
+/app/client/src/routes/+layout.svelte:255:112
+Error: Argument of type '(event: Event) => boolean' is not assignable to parameter of type '(...args: unknown[]) => unknown'.
+  Types of parameters 'event' and 'args' are incompatible.
+    Type 'unknown' is not assignable to type 'Event'. (ts)
+                    EventTarget.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchEventTarget, event); };
+                    Element.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchElement, event); };
+
+/app/client/src/routes/+layout.svelte:260:144
+Error: Property 'dataTransfer' does not exist on type 'Event'. (ts)
+                        window.addEventListener('drop', (e: Event) => {
+                            try { console.log('[E2E] window drop listener:', { type: e?.type, isDragEvent: e instanceof DragEvent, hasDT: !!e?.dataTransfer, dtTypes: e?.dataTransfer?.types }); } catch {}
+                        }, true);
+
+/app/client/src/routes/+layout.svelte:260:170
+Error: Property 'dataTransfer' does not exist on type 'Event'. (ts)
+                        window.addEventListener('drop', (e: Event) => {
+                            try { console.log('[E2E] window drop listener:', { type: e?.type, isDragEvent: e instanceof DragEvent, hasDT: !!e?.dataTransfer, dtTypes: e?.dataTransfer?.types }); } catch {}
+                        }, true);
+
+/app/client/src/routes/+layout.svelte:275:41
+Error: 'anyWin.__E2E_LAST_FILES__' is possibly 'undefined'. (ts)
+                                    if (data instanceof File) {
+                                        anyWin.__E2E_LAST_FILES__.push(data);
+                                        try { console.log('[E2E] DataTransfer.items.add(File): recorded', { name: data.name, type: data.type, size: data.size }); } catch {}
+
+/app/client/src/routes/+layout.svelte:297:85
+Error: 'anyWin.__E2E_LAST_FILES__' is possibly 'undefined'. (ts)
+                                                list.add = function(data: unknown, _type?: string) {
+                                                    try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
+                                                    return orig.apply(this, [data, _type]);
+
+/app/client/src/routes/+layout.svelte:298:71
+Error: 'this' implicitly has type 'any' because it does not have a type annotation. (ts)
+                                                    try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
+                                                    return orig.apply(this, [data, _type]);
+                                                } as (...args: unknown[]) => void;
+
+/app/client/src/routes/+layout.svelte:316:37
+Error: Type '(target: new (...args: unknown[]) => unknown, args: unknown[]) => unknown' is not assignable to type '(target: { new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag | undefined): File; prototype: File; }, argArray: any[], newTarget: Function) => object'.
+  Types of parameters 'target' and 'target' are incompatible.
+    Type '{ new (fileBits: BlobPart[], fileName: string, options?: FilePropertyBag | undefined): File; prototype: File; }' is not assignable to type 'new (...args: unknown[]) => unknown'.
+      Types of parameters 'fileBits' and 'args' are incompatible.
+        Type 'unknown' is not assignable to type 'BlobPart[]'. (ts)
+                                const Wrapped = new Proxy(OrigFile, {
+                                    construct(target: new (...args: unknown[]) => unknown, args: unknown[]) {
+                                        const f = new target(...args);
+
+/app/client/src/routes/+layout.svelte:318:47
+Error: 'anyWin.__E2E_LAST_FILES__' is possibly 'undefined'. (ts)
+                                        const f = new target(...args);
+                                        try { anyWin.__E2E_LAST_FILES__.push(f); } catch {}
+                                        try { console.log('[E2E] File constructed:', { name: f.name, type: f.type, size: f.size }); } catch {}
+
+/app/client/src/routes/+layout.svelte:318:78
+Error: Argument of type 'unknown' is not assignable to parameter of type 'File'. (ts)
+                                        const f = new target(...args);
+                                        try { anyWin.__E2E_LAST_FILES__.push(f); } catch {}
+                                        try { console.log('[E2E] File constructed:', { name: f.name, type: f.type, size: f.size }); } catch {}
+
+/app/client/src/routes/+layout.svelte:319:94
+Error: 'f' is of type 'unknown'. (ts)
+                                        try { anyWin.__E2E_LAST_FILES__.push(f); } catch {}
+                                        try { console.log('[E2E] File constructed:', { name: f.name, type: f.type, size: f.size }); } catch {}
+                                        return f;
+
+/app/client/src/routes/+layout.svelte:319:108
+Error: 'f' is of type 'unknown'. (ts)
+                                        try { anyWin.__E2E_LAST_FILES__.push(f); } catch {}
+                                        try { console.log('[E2E] File constructed:', { name: f.name, type: f.type, size: f.size }); } catch {}
+                                        return f;
+
+/app/client/src/routes/+layout.svelte:319:122
+Error: 'f' is of type 'unknown'. (ts)
+                                        try { anyWin.__E2E_LAST_FILES__.push(f); } catch {}
+                                        try { console.log('[E2E] File constructed:', { name: f.name, type: f.type, size: f.size }); } catch {}
+                                        return f;
+
+/app/client/src/routes/+layout.svelte:323:33
+Error: Unused '@ts-expect-error' directive. (ts)
+                                });
+                                // @ts-expect-error - Need to replace window.File for E2E attachment testing
+                                (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_LAYOUT_MOUNTED__?: boolean, __E2E_DROP_PATCHED__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, __E2E_DROP_HANDLERS__?: ((this: unknown, e: Event) => void)[], __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown }).File = Wrapped;
+
+/app/client/src/routes/+layout.svelte:334:37
+Error: Type '(target: new (...args: unknown[]) => unknown, args: unknown[]) => unknown' is not assignable to type '(target: new (...args: unknown[]) => unknown, argArray: any[], newTarget: Function) => object'.
+  Type 'unknown' is not assignable to type 'object'. (ts)
+                                const WrappedDT = new Proxy(OrigDT, {
+                                    construct(target: new (...args: unknown[]) => unknown, args: unknown[]) {
+                                        const dt = new target(...args);
+
+/app/client/src/routes/+layout.svelte:341:85
+Error: 'anyWin.__E2E_LAST_FILES__' is possibly 'undefined'. (ts)
+                                                list.add = function(data: unknown, _type?: string) {
+                                                    try { if (data instanceof File) anyWin.__E2E_LAST_FILES__.push(data); } catch {}
+                                                    try { console.log('[E2E] DT(instance).items.add called'); } catch {}
+
+/app/client/src/routes/+layout.svelte:343:74
+Error: 'this' implicitly has type 'any' because it does not have a type annotation. (ts)
+                                                    try { console.log('[E2E] DT(instance).items.add called'); } catch {}
+                                                    return origAdd.apply(this, [data, _type]);
+                                                } as (...args: unknown[]) => void;
+
+/app/client/src/routes/[project]/+page.svelte:150:21
+Error: Type 'Items | undefined' is not assignable to type 'Items'.
+  Type 'undefined' is not assignable to type 'Items'. (ts)
+                    project={store.project!}
+                    rootItems={pages}
+                    onPageSelected={handlePageSelected}
+
+/app/client/src/routes/debug/+page.svelte:33:44
+Error: No overload matches this call.
+  Overload 1 of 3, '(obj: "Authentication success:", msg?: undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "Authentication success:", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'. (ts)
+async function handleAuthSuccess(authResult: unknown) {
+    logger.info("Authentication success:", authResult);
+    isAuthenticated = true;
+
+/app/client/src/schema/app-schema.iterable.test.ts:75:64
+Error: Namespace '"/app/client/src/stores/EditorOverlayStore.svelte"' has no exported member 'SelectionState'.
+                userId: "u1",
+            } as import("../stores/EditorOverlayStore.svelte").SelectionState,
+        );
+
+/app/client/src/stores/CommandPaletteStore.test.ts:5:26
+Error: Cannot find module './editorOverlayStore.svelte.ts' or its corresponding type declarations.
+// Provide a local mock instead of importing .svelte.ts in tests
+const mockCursor: import("./editorOverlayStore.svelte.ts").CursorModel = {
+    itemId: "test-item",
+
+/app/client/src/stores/CommandPaletteStore.test.ts:122:51
+Error: Property 'mockClear' does not exist on type '() => Cursor[]'.
+        // reset spies/state on our local mocks
+        mockEditorOverlayStore.getCursorInstances.mockClear?.();
+        mockCursor.findTarget.mockClear();
+
+/app/client/src/tests/importExport.test.ts:71:20
+Error: Element implicitly has an 'any' type because expression of type '0' can't be used to index type 'Items'.
+  Property '0' does not exist on type 'Items'.
+            expect(page.items.at(1)!.items.length).toBe(1);
+            expect(page.items.at(1)!.items[0].text).toBe("Child2");
+        });
+
+/app/client/src/tests/logger.test.ts:19:9
+Error: Spread types may only be created from object types.
+    return {
+        ...actual,
+        getLogger: (componentName = "TestComponent") => {
+
+/app/client/src/tests/logger.test.ts:99:1
+Error: Type 'Window' is not assignable to type 'Window & typeof globalThis'.
+  Type 'Window' is missing the following properties from type 'typeof globalThis': globalThis, eval, parseInt, parseFloat, and 829 more.
+// Set global mock for window object (required when testing without jsdom)
+global.window = {
+    console: console,
+
+/app/client/src/tests/syncWorker.test.ts:17:8
+Error: Property 'run' does not exist on type 'Database'.
+    db = new SQL.Database();
+    db.run("CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER)");
+    db.run("INSERT INTO tbl VALUES('a',1)");
+
+/app/client/src/tests/syncWorker.test.ts:18:8
+Error: Property 'run' does not exist on type 'Database'.
+    db.run("CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER)");
+    db.run("INSERT INTO tbl VALUES('a',1)");
+});
+
+/app/client/src/tests/syncWorker.test.ts:23:39
+Error: Argument of type 'Database' is not assignable to parameter of type 'SqlJsDatabase'.
+  Property 'prepare' is missing in type 'Database' but required in type 'SqlJsDatabase'.
+    it("applies op to sqlite", () => {
+        const worker = new SyncWorker(db);
+        worker.applyOp({ table: "tbl", pk: "a", column: "val", value: 2 });
+
+/app/client/src/tests/fixtures/UserContainerDisplay.svelte:22:38
+Error: Property 'accessibleProjectIds' does not exist on type '{}'. (ts)
+            const u = (storeRef as { userProject?: unknown })?.userProject;
+            idsLocal = Array.from(u?.accessibleProjectIds ?? []);
+            defaultIdLocal = u?.defaultProjectId;
+
+/app/client/src/tests/fixtures/UserContainerDisplay.svelte:23:33
+Error: Property 'defaultProjectId' does not exist on type '{}'. (ts)
+            idsLocal = Array.from(u?.accessibleProjectIds ?? []);
+            defaultIdLocal = u?.defaultProjectId;
+        } catch {}
+
+/app/client/src/tests/integration/yjs-service-operations-bd6b971b.integration.spec.ts:39:16
+Error: Object is possibly 'undefined'.
+        yjsService.setPresence(awareness, { cursor: { itemId: second.key, offset: 1 } });
+        expect(yjsService.getPresence(awareness)?.cursor.itemId).toBe(second.key);
+    });
+
+/app/client/src/tests/unit/yjs/YjsClient.spec.ts:51:9
+Error: Type 'Project' is missing the following properties from type '{ metadata: unknown; rootFolder: unknown; items: unknown; dispose: unknown; }': metadata, rootFolder, dispose
+        // Create a simple mock for Project since we don't need its full logic for this test
+        project = {
+            title: "Test Project",
+
+/app/client/src/tests/unit/yjs/YjsClient.spec.ts:59:13
+Error: Type '{ metadata: unknown; rootFolder: unknown; items: unknown; dispose: unknown; }' is missing the following properties from type 'Project': ydoc, tree, title, findPage, addPage
+            projectId,
+            project,
+            doc,
+
+/app/client/src/utils/textUtils.test.ts:19:5
+Error: Type 'Window' is not assignable to type 'Window & typeof globalThis'.
+  Type 'Window' is missing the following properties from type 'typeof globalThis': globalThis, eval, parseInt, parseFloat, and 829 more.
+    };
+    globalAny.window = dom.window as unknown as Window;
+    globalAny.document = dom.window.document;
+
+====================================
+svelte-check found 422 errors and 0 warnings in 49 files
