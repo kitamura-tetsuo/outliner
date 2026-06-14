@@ -28,7 +28,14 @@ describe("firebase-init Secret Manager loading bypass", () => {
         initializeAppStub = sinon.stub(admin, "initializeApp");
         certStub = sinon.stub(admin.credential, "cert").returns({} as any);
         deleteAppStub = sinon.stub().resolves();
-        sinon.stub(admin, "app").returns({ delete: deleteAppStub } as any);
+        sinon.stub(admin, "app").returns({
+            delete: deleteAppStub,
+            auth: () => ({
+                getUserByEmail: sinon.stub().rejects({ code: "auth/user-not-found" }),
+                createUser: sinon.stub().resolves({ uid: "test-uid", email: "test@example.com" }),
+                setCustomUserClaims: sinon.stub().resolves(),
+            }),
+        } as any);
         sinon.stub(admin, "apps").get(() => []);
 
         // By default, make it look like non-emulator environment to trigger Secret Manager load checks
