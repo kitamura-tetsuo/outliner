@@ -76,13 +76,12 @@ test.describe("CLM-6f0bdbc3: Move up at the top line", () => {
         // Wait until the cursor moves to the 1st item after pressing
         await page.waitForFunction(
             firstItemId => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 if (!store) return false;
                 if (store.activeItemId !== firstItemId) return false;
                 const cursors = Object.values(store.cursors || {});
                 if (cursors.length === 0) return false;
                 const activeCursor = cursors.find((c: any) => c.isActive) || cursors[0];
-
                 return (activeCursor as any)?.itemId === firstItemId;
             },
             firstItemId,

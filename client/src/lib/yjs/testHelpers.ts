@@ -1,70 +1,233 @@
-import type { HocuspocusProvider } from "@hocuspocus/provider";
-import { type TestInfo } from "@playwright/test";
+/**
+ * Yjs Test Helpers
+ *
+ * Test-specific utilities for Yjs synchronization testing.
+ * These helpers are designed for E2E tests where immediate data verification is required.
+ *
+ * ⚠️ WARNING: These utilities are for TEST ENVIRONMENTS ONLY.
+ * Do NOT use these patterns in production code.
+ *
+ * Production code should rely on Y.Doc observe events and reactive UI updates
+ * instead of polling for data availability.
+ */
+
+import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
-import { waitForSyncedAndDataForTest } from "./browserTestHelpers";
 
-export { waitForSyncedAndDataForTest };
+/**
+ * Wait for both provider.isSynced and actual data availability in Y.Doc.
+ *
+ * This function addresses a race condition where provider.isSynced
+ * can become true before the actual data is available in Y.Doc.
+ *
+ * ⚠️ TEST ENVIRONMENT ONLY
+ * This is a test-specific utility for scenarios where you need to immediately verify
+ * data after synchronization. In production code, use Y.Doc observe events instead.
+ *
+ * @param provider - The HocuspocusProvider instance to monitor
+ * @param checkDataAvailable - Function that returns true when the expected data is available
+ * @param options - Configuration options
+ * @param options.timeoutMs - Maximum time to wait in milliseconds (default: 30000)
+ * @param options.pollIntervalMs - Polling interval in milliseconds (default: 100)
+ * @param options.label - Label for debug logging (default: "yjs-sync")
+ * @returns Promise that resolves to true if data is available, false if timeout
+ */
+export async function waitForSyncedAndDataForTest(
+    provider: HocuspocusProvider,
+    checkDataAvailable: () => boolean,
+    options: {
+        timeoutMs?: number;
+        pollIntervalMs?: number;
+        label?: string;
+    } = {},
+): Promise<boolean> {
+    const {
+        timeoutMs = 30000,
+        pollIntervalMs = 100,
+        label = "yjs-sync",
+    } = options;
 
+    const maxIterations = Math.floor(timeoutMs / pollIntervalMs);
+    const debugEnabled = isConnDebugEnabled();
+
+    // Step 1: Wait for provider.isSynced
+    for (let i = 0; i < maxIterations; i++) {
+        if (provider.isSynced === true) {
+            if (debugEnabled) {
+                console.log(`[${label}] provider.isSynced=true after ${i * pollIntervalMs}ms`);
+            }
+            break;
+        }
+        await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
+
+    // Step 2: Wait for actual data to be available
+    for (let i = 0; i < maxIterations; i++) {
+        if (checkDataAvailable()) {
+            if (debugEnabled) {
+                console.log(`[${label}] data available after ${i * pollIntervalMs}ms from synced`);
+            }
+            return true;
+        }
+        await new Promise((r) => setTimeout(r, pollIntervalMs));
+    }
+
+    if (debugEnabled) {
+        console.log(
+            `[${label}] timeout after ${timeoutMs}ms, isSynced=${provider.isSynced}, dataAvailable=${checkDataAvailable()}`,
+        );
+    }
+    return false;
+}
+
+/**
+ * Check if connection debugging is enabled.
+ * This is used to control verbose logging in test environments.
+ */
+function isConnDebugEnabled(): boolean {
+    if (typeof window !== "undefined") {
+        return localStorage.getItem("VITE_YJS_CONN_DEBUG") === "true";
+    }
+    return false;
+}
+
+/**
+ * Configuration options for browser page initialization.
+ */
+export interface BrowserPageOptions {
+    /** Enable authentication requirement */
+    requireAuth?: boolean;
+    /** Disable IndexedDB persistence */
+    disableIndexedDB?: boolean;
+    /** Console log prefix for debugging */
+    consolePrefix?: string;
+}
+
+/**
+ * Initialize a browser page with common test settings.
+ *
+ * ⚠️ TEST ENVIRONMENT ONLY
+ * This helper sets up localStorage flags and authentication for Yjs testing.
+ *
+ * @param browser - Playwright Browser instance
+ * @param options - Configuration options
+ * @returns Object containing context and page
+ */
 export async function initializeBrowserPage(
     browser: Browser,
-    options: { requireAuth?: boolean; disableIndexedDB?: boolean; consolePrefix?: string; } = {},
+    options: BrowserPageOptions = {},
 ): Promise<{ context: BrowserContext; page: Page; }> {
-    const { requireAuth = true, disableIndexedDB = true, consolePrefix = "page" } = options;
+    const {
+        requireAuth = true,
+        disableIndexedDB = true,
+        consolePrefix = "page",
+    } = options;
+
     const context = await browser.newContext();
     const page = await context.newPage();
 
     // Set up console logging
     page.on("console", (m) => console.log(`[${consolePrefix} console]`, m.text().slice(0, 100)));
 
-    await page.addInitScript(({ requireAuth, disableIDB }) => {
-        localStorage.setItem("VITE_IS_TEST", "true");
-        if (disableIDB) localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
-        if (requireAuth) localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
-    }, { requireAuth, disableIDB: disableIndexedDB });
-    await page.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
+    // Set up localStorage flags
+    await page.addInitScript(
+        ({ requireAuth, disableIDB }) => {
+            localStorage.setItem("VITE_IS_TEST", "true");
+            localStorage.setItem("VITE_E2E_TEST", "true"); // Additional flag for robust detection
+            localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+            // Force-enable WS in tests even if env disables it
+            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+            if (disableIDB) {
+                localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
+            }
+            if (requireAuth) {
+                localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
+            }
+        },
+        {
+            requireAuth,
+            disableIDB: disableIndexedDB,
+        },
+    );
+
+    // Navigate to the app
+    await page.goto("http://127.0.0.1:7090/", {
+        waitUntil: "domcontentloaded",
+    });
+
+    await page.waitForFunction(
+        () => !!(window as Window & typeof globalThis & Record<string, unknown>).__USER_MANAGER__,
+        null,
+        { timeout: 60000 },
+    );
 
     // Authenticate if required
     if (requireAuth) {
         await page.evaluate(async () => {
-            const win = window as unknown as Record<
-                string,
-                { loginWithEmailPassword?: (e: string, p: string) => Promise<void>; }
-            >;
-            const mgr = win.__USER_MANAGER__;
-            if (mgr?.loginWithEmailPassword) {
-                await mgr.loginWithEmailPassword("test@example.com", "password");
-            }
+            const mgr = (window as Window & typeof globalThis & Record<string, unknown>).__USER_MANAGER__;
+            await mgr?.loginWithEmailPassword?.(
+                "test@example.com",
+                "password",
+            );
         });
 
         // Wait for authentication to complete
         await page.waitForFunction(
-            () => {
-                const win = window as unknown as Record<string, { getCurrentUser?: () => unknown; }>;
-                const mgr = win.__USER_MANAGER__;
-                return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
-            },
+            () =>
+                !!(window as Window & typeof globalThis & Record<string, unknown>).__USER_MANAGER__?.getCurrentUser?.(),
             null,
-            { timeout: 10000 },
+            { timeout: 60000 },
         );
     }
 
     return { context, page };
 }
 
+/**
+ * Reconnect a Yjs WebSocket provider to ensure it uses a fresh auth token.
+ * This is needed when the provider was created before the user was logged in.
+ *
+ * @param page - Playwright Page instance
+ * @param providerVar - Name of the global variable holding the provider
+ */
 export async function reconnectProvider(page: Page, providerVar: string = "__PROVIDER__"): Promise<void> {
     await page.evaluate(async ({ pv }) => {
-        const win = window as unknown as Record<string, unknown>;
-        const provider = win[pv] as { disconnect: () => void; connect: () => Promise<void>; };
+        const win = window as Window & typeof globalThis & Record<string, unknown>;
+        const provider = win[pv] as HocuspocusProvider;
         if (!provider) return;
 
         try {
+            // HocuspocusProvider handles token refresh via its token option (function)
+            // But we can force a reconnect/token send if needed.
             provider.disconnect();
             await new Promise(r => setTimeout(r, 100));
             await provider.connect();
-        } catch {}
+
+            // Wait for reconnection
+            let attempts = 0;
+            while (!provider.isSynced && attempts < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+            console.log(`[${pv}] reconnected, isSynced=${provider.isSynced}`);
+        } catch (e) {
+            console.error(`[${pv}] reconnect failed:`, e);
+        }
     }, { pv: providerVar });
 }
 
+/**
+ * Create a minimal Yjs connection for testing.
+ *
+ * ⚠️ TEST ENVIRONMENT ONLY
+ * This helper creates a minimal Y.Doc and WebSocket provider connection
+ * for low-level Yjs synchronization testing.
+ *
+ * @param page - Playwright Page instance
+ * @param projectId - Project/container ID
+ * @param options - Configuration options
+ * @returns True if connection was successful
+ */
 export async function createMinimalYjsConnection(
     page: Page,
     projectId: string,
@@ -80,6 +243,7 @@ export async function createMinimalYjsConnection(
         enableLogging = true,
     } = options;
 
+    // Use string concatenation to avoid TypeScript checking the import path
     const importPath = "/src/lib/yjs/" + "connection.ts";
     return await page.evaluate(
         async ({ pid, docVar, providerVar, enableLogging, importPath }) => {
@@ -87,16 +251,25 @@ export async function createMinimalYjsConnection(
                 importPath as string
             );
             const conn = await createMinimalProjectConnection(pid);
-            const win = window as unknown as Record<string, unknown>;
-            win[docVar] = conn.doc;
+            (window as Window & typeof globalThis & Record<string, unknown>)[docVar] = conn.doc;
             const provider = conn.provider as HocuspocusProvider;
-            win[providerVar] = provider;
+            (window as Window & typeof globalThis & Record<string, unknown>)[providerVar] = provider;
 
             if (enableLogging) {
                 provider.on("status", (e: { status: string; }) => console.log(`[${providerVar}] status`, e.status));
-                provider.on("sync", (isSynced: boolean) => console.log(`[${providerVar}] sync`, isSynced));
+                provider.on(
+                    "synced",
+                    (data: { state: boolean; }) => console.log(`[${providerVar}] synced`, data.state),
+                );
+                console.log(
+                    `[${providerVar}] init isSynced=`,
+                    provider.isSynced,
+                    "url=",
+                    (provider as unknown as { configuration?: { url: string; }; }).configuration?.url,
+                );
             }
             try {
+                // HocuspocusProvider connects automatically, but we can call connect if needed
                 await provider.connect();
             } catch {}
 
@@ -106,27 +279,55 @@ export async function createMinimalYjsConnection(
     );
 }
 
+/**
+ * Set up update event tracking on a Y.Doc.
+ *
+ * ⚠️ TEST ENVIRONMENT ONLY
+ * This helper sets up counters for Y.Doc update events for debugging.
+ *
+ * @param page - Playwright Page instance
+ * @param options - Configuration options
+ */
 export async function setupUpdateTracking(
     page: Page,
-    options: { docVar?: string; counterVar?: string; counterV2Var?: string; } = {},
+    options: {
+        docVar?: string;
+        counterVar?: string;
+        counterV2Var?: string;
+    } = {},
 ): Promise<void> {
-    const { docVar = "__DOC__", counterVar = "__UPDATES__", counterV2Var = "__UPDATES_V2__" } = options;
-    await page.evaluate(({ docVar, counterVar, counterV2Var }) => {
-        const win = window as unknown as Record<string, unknown>;
-        const doc = win[docVar] as { on: (name: string, cb: () => void) => void; } | undefined;
-        if (!doc) return;
-        const counters = win as unknown as Record<string, number>;
-        counters[counterVar] = 0;
-        counters[counterV2Var] = 0;
-        doc.on("update", () => {
-            counters[counterVar]++;
-        });
-        doc.on("updateV2", () => {
-            counters[counterV2Var]++;
-        });
-    }, { docVar, counterVar, counterV2Var });
+    const {
+        docVar = "__DOC__",
+        counterVar = "__UPDATES__",
+        counterV2Var = "__UPDATES_V2__",
+    } = options;
+
+    await page.evaluate(
+        ({ docVar, counterVar, counterV2Var }) => {
+            const doc = (window as Window & typeof globalThis & Record<string, unknown>)[docVar];
+            if (!doc) {
+                console.error(`setupUpdateTracking: ${docVar} not found`);
+                return;
+            }
+
+            (window as Window & typeof globalThis & Record<string, unknown>)[counterVar] = 0;
+            (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var] = 0;
+
+            doc.on("update", () => {
+                (window as Window & typeof globalThis & Record<string, unknown>)[counterVar]++;
+            });
+
+            doc.on("updateV2", () => {
+                (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var]++;
+            });
+        },
+        { docVar, counterVar, counterV2Var },
+    );
 }
 
+/**
+ * Result type for prepareTwoBrowserPages function.
+ */
 export interface TwoBrowserPagesResult {
     context1: BrowserContext;
     page1: Page;
@@ -135,6 +336,17 @@ export interface TwoBrowserPagesResult {
     projectId: string;
 }
 
+/**
+ * Prepare two browser pages for Yjs synchronization testing.
+ *
+ * ⚠️ TEST ENVIRONMENT ONLY
+ * This helper creates two browser contexts with minimal Yjs connections
+ * for testing synchronization between multiple clients.
+ *
+ * @param browser - Playwright Browser instance
+ * @param options - Configuration options
+ * @returns Object containing both contexts, pages, and project ID
+ */
 export async function prepareTwoBrowserPages(
     browser: Browser,
     options: {
@@ -157,6 +369,7 @@ export async function prepareTwoBrowserPages(
         page2ProviderVar = "__PROVIDER2__",
     } = options;
 
+    // Initialize first page
     const { context: context1, page: page1 } = await initializeBrowserPage(
         browser,
         {
@@ -165,6 +378,7 @@ export async function prepareTwoBrowserPages(
         },
     );
 
+    // Create minimal Yjs connection for page1
     const page1Connected = await createMinimalYjsConnection(
         page1,
         projectId,
@@ -178,8 +392,10 @@ export async function prepareTwoBrowserPages(
         throw new Error(`${page1Prefix} failed to connect`);
     }
 
+    // Reconnect to ensure fresh token after login
     await reconnectProvider(page1, page1ProviderVar);
 
+    // Initialize second page
     const { context: context2, page: page2 } = await initializeBrowserPage(
         browser,
         {
@@ -188,6 +404,7 @@ export async function prepareTwoBrowserPages(
         },
     );
 
+    // Create minimal Yjs connection for page2
     const page2Connected = await createMinimalYjsConnection(
         page2,
         projectId,
@@ -201,6 +418,9 @@ export async function prepareTwoBrowserPages(
         throw new Error(`${page2Prefix} failed to connect`);
     }
 
+    // Reconnect to ensure fresh token after login
+    await reconnectProvider(page2, page2ProviderVar);
+
     return {
         context1,
         page1,
@@ -210,47 +430,171 @@ export async function prepareTwoBrowserPages(
     };
 }
 
-export async function prepareTwoFullBrowserPages(
-    browser: Browser,
-    testInfo: TestInfo,
-    initialItems: string[],
-    TestHelpers: {
-        seedProjectAndNavigate: (
-            page: Page,
-            testInfo?: { workerIndex?: number; } | null,
-            lines?: string[],
-            _browser?: Browser,
-            options?: {
-                projectName?: string;
-                pageName?: string;
-                skipSeed?: boolean;
-                doNotSeed?: boolean;
-                doNotNavigate?: boolean;
-                ws?: string;
-                skipAppReady?: boolean;
-            },
-        ) => Promise<{ projectName: string; pageName: string; }>;
-    },
-): Promise<{
+/**
+ * Result type for prepareTwoFullBrowserPages function.
+ */
+export interface TwoFullBrowserPagesResult {
     context1: BrowserContext;
     page1: Page;
     context2: BrowserContext;
     page2: Page;
     projectName: string;
     pageName: string;
-}> {
+}
+
+/**
+ * Prepare two browser pages with full test environment (project, page, items).
+ *
+ * ⚠️ TEST ENVIRONMENT ONLY
+ * This helper creates two browser contexts with full test environment setup
+ * using TestHelpers.seedProjectAndNavigate for testing collaboration features.
+ *
+ * Note: This function requires TestHelpers from e2e/utils/testHelpers.ts.
+ * It should only be used in E2E test files, not in this library file directly.
+ *
+ * @param browser - Playwright Browser instance
+ * @param testInfo - Playwright TestInfo object
+ * @param initialItems - Initial items to create
+ * @param TestHelpers - TestHelpers class from e2e/utils/testHelpers.ts
+ * @returns Object containing both contexts, pages, and test environment info
+ */
+export async function prepareTwoFullBrowserPages(
+    browser: Browser,
+    testInfo: { title: string; },
+    initialItems: string[],
+    TestHelpers: { expectEmptyOutliner: (page: Page) => Promise<void>; },
+): Promise<TwoFullBrowserPagesResult> {
+    // Create first browser context
     const context1 = await browser.newContext();
     const page1 = await context1.newPage();
-    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page1, testInfo, initialItems);
 
-    const context2 = await browser.newContext();
-    const page2 = await context2.newPage();
-    // Use seedProjectAndNavigate for page2 too, but skip seeding since it's already done
-    await TestHelpers.seedProjectAndNavigate(page2, testInfo, [], undefined, {
-        projectName,
-        pageName,
-        skipSeed: true,
+    // Set up console logging for page1
+    page1.on("console", (msg) => {
+        console.log(`[page1 console.${msg.type()}]`, msg.text().slice(0, 100));
     });
 
-    return { context1, page1, context2, page2, projectName, pageName };
+    // Ensure WS is forced for Yjs E2E on page1 (TestHelpers defaults to WS disabled)
+    await page1.addInitScript(() => {
+        try {
+            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+        } catch {}
+    });
+
+    // Prepare test environment for page1
+    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(
+        page1,
+        testInfo,
+        initialItems,
+    );
+
+    // Get the page URL from page1
+    const pageUrl = page1.url();
+    console.log(`Page1 URL: ${pageUrl}`);
+
+    // Wait for page1 to initialize Yjs client and project
+    await page1.waitForFunction(
+        () => {
+            const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
+            const client = yjsStore?.yjsClient;
+            if (!client) {
+                console.log("page1: yjsClient not found");
+                return false;
+            }
+            const project = client.getProject?.();
+            if (!project) {
+                console.log("page1: project not found");
+                return false;
+            }
+            const items = project.items as unknown as { length: number; };
+            const pageCount = items?.length ?? 0;
+            console.log(`page1: Yjs client initialized, pageCount=${pageCount}`);
+            return !!(project && items);
+        },
+        { timeout: 15000 },
+    );
+
+    console.log("Page1 Yjs client initialized");
+
+    // Create second browser context
+    const context2 = await browser.newContext();
+    const page2 = await context2.newPage();
+
+    // Set up console logging for page2
+    page2.on("console", (msg) => {
+        console.log(`[page2 console.${msg.type()}]`, msg.text().slice(0, 100));
+    });
+
+    // Enable WebSocket and test flags for page2
+    await page2.addInitScript(() => {
+        localStorage.setItem("VITE_IS_TEST", "true");
+        localStorage.setItem("VITE_E2E_TEST", "true"); // Additional flag for robust detection
+        localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
+        localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
+        localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
+        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
+        (window as Window & typeof globalThis & Record<string, unknown>).__E2E__ = true;
+    });
+
+    // Navigate page2 to the same URL as page1
+    await page2.goto(pageUrl, { waitUntil: "domcontentloaded" });
+
+    // Authenticate page2
+    await page2.waitForFunction(
+        () => {
+            return !!(window as Window & typeof globalThis & Record<string, unknown>).__USER_MANAGER__;
+        },
+        { timeout: 60000 },
+    );
+
+    await page2.evaluate(async () => {
+        const mgr = (window as Window & typeof globalThis & Record<string, unknown>).__USER_MANAGER__;
+        if (mgr?.loginWithEmailPassword) {
+            await mgr.loginWithEmailPassword("test@example.com", "password");
+        }
+    });
+
+    // Wait for page2 authentication to complete
+    await page2.waitForFunction(
+        () => {
+            const mgr = (window as Window & typeof globalThis & Record<string, unknown>).__USER_MANAGER__;
+            return !!(mgr && mgr.getCurrentUser && mgr.getCurrentUser());
+        },
+        { timeout: 60000 },
+    );
+
+    // Wait for page2 to initialize Yjs client and appStore
+    await page2.waitForFunction(
+        () => {
+            const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
+            const client = yjsStore?.yjsClient;
+            if (!client) {
+                console.log("page2: yjsClient not found");
+                return false;
+            }
+            const project = client.getProject?.();
+            if (!project || !project.items) {
+                console.log("page2: project or items not found");
+                return false;
+            }
+            const appStore = (window as Window & typeof globalThis & Record<string, unknown>).appStore;
+            if (!appStore) {
+                console.log("page2: appStore not found");
+                return false;
+            }
+            console.log("page2: Yjs client and appStore initialized");
+            return true;
+        },
+        { timeout: 15000 },
+    );
+
+    console.log("Page2 Yjs client and appStore initialized");
+
+    return {
+        context1,
+        page1,
+        context2,
+        page2,
+        projectName,
+        pageName,
+    };
 }

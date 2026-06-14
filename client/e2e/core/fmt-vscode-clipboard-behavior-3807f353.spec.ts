@@ -35,14 +35,12 @@ test.describe("VS Code clipboard behavior", () => {
             };
             data.setData("application/vscode-editor", JSON.stringify(metadata));
             const evt = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
-
-            const handler = (window as any).__KEY_EVENT_HANDLER__;
+            const handler = (globalThis as any).__KEY_EVENT_HANDLER__;
             await handler.handlePaste(evt);
         });
 
         await page.waitForTimeout(300);
-
-        const last = await page.evaluate(() => (window as any).lastPastedText);
+        const last = await page.evaluate(() => (globalThis as any).lastPastedText);
         expect(last).toBe("AAA\nBBB");
     });
 
@@ -58,14 +56,12 @@ test.describe("VS Code clipboard behavior", () => {
             const metadata = { version: 1, isFromEmptySelection: false, mode: "plaintext" };
             data.setData("application/vscode-editor", JSON.stringify(metadata));
             const evt = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
-
-            const handler = (window as any).__KEY_EVENT_HANDLER__;
+            const handler = (globalThis as any).__KEY_EVENT_HANDLER__;
             await handler.handlePaste(evt);
         });
 
         await page.waitForTimeout(300);
-
-        const last = await page.evaluate(() => (window as any).lastPastedText);
+        const last = await page.evaluate(() => (globalThis as any).lastPastedText);
         expect(last).toBe("111\n222");
     });
 });

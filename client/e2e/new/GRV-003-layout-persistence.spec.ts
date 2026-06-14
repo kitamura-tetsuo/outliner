@@ -69,14 +69,13 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Wait until the chart is initialized first
         await page.waitForFunction(() => {
-            return typeof (window as any).__GRAPH_CHART__ !== "undefined";
+            return typeof (globalThis as any).__GRAPH_CHART__ !== "undefined";
         }, { timeout: 30000 });
 
         // Wait for data initialization once the chart is available
         const chartInitResult = await page.evaluate(() => {
-            const chart = (window as any).__GRAPH_CHART__;
-
-            const store = (window as any).appStore || (window as any).generalStore;
+            const chart = (globalThis as any).__GRAPH_CHART__;
+            const store = (globalThis as any).appStore || (globalThis as any).generalStore;
 
             return {
                 chartExists: !!chart,
@@ -89,7 +88,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Force mock data setting because the graph might not update even if store has page data
         const mockDataResult = await page.evaluate(() => {
-            const chart = (window as any).__GRAPH_CHART__;
+            const chart = (globalThis as any).__GRAPH_CHART__;
             if (chart) {
                 // Initialize graph with mock data
                 const mockNodes = [
@@ -119,7 +118,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Wait until data is set in the graph
         await page.waitForFunction(() => {
-            const chart = (window as any).__GRAPH_CHART__;
+            const chart = (globalThis as any).__GRAPH_CHART__;
             if (!chart) return false;
             try {
                 const option = chart.getOption();
@@ -133,7 +132,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         // Manually set graph node positions (test layout persistence)
         const layoutSetResult = await page.evaluate(() => {
             try {
-                const chart = (window as any).__GRAPH_CHART__;
+                const chart = (globalThis as any).__GRAPH_CHART__;
                 if (!chart) return { success: false, error: "Chart not found" };
 
                 // Get current options
@@ -203,7 +202,6 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         console.log("Layout set result:", layoutSetResult);
 
         expect((layoutSetResult as any).success).toBe(true);
-
         expect((layoutSetResult as any).firstNodePosition).toEqual({ x: 200, y: 200 });
 
         // Reload page (stay on graph page)
@@ -211,7 +209,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Wait for Yjs connection after reload to ensure stores are hydrated
         await page.waitForFunction(() => {
-            const y = (window as any).__YJS_STORE__;
+            const y = (globalThis as any).__YJS_STORE__;
             return y && y.isConnected && y.yjsClient;
         }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait after reload failed"));
 
@@ -220,12 +218,12 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Wait until chart is re-initialized
         await page.waitForFunction(() => {
-            return typeof (window as any).__GRAPH_CHART__ !== "undefined";
+            return typeof (globalThis as any).__GRAPH_CHART__ !== "undefined";
         }, { timeout: 30000 });
 
         // Set mock data and apply saved layout even after reload
         await page.evaluate(() => {
-            const chart = (window as any).__GRAPH_CHART__;
+            const chart = (globalThis as any).__GRAPH_CHART__;
             if (chart) {
                 const mockNodes: any[] = [
                     { id: "page1", name: "Root node with [child] link" },
@@ -278,7 +276,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
 
         // Wait until data is set in the graph
         await page.waitForFunction(() => {
-            const chart = (window as any).__GRAPH_CHART__;
+            const chart = (globalThis as any).__GRAPH_CHART__;
             if (!chart) return false;
             try {
                 const option = chart.getOption();
@@ -306,8 +304,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                     }
 
                     const layoutData = JSON.parse(savedLayout);
-
-                    const chart = (window as any).__GRAPH_CHART__;
+                    const chart = (globalThis as any).__GRAPH_CHART__;
                     if (!chart) {
                         console.log(`Retry ${i}: Chart not found`);
                         await wait(500);
@@ -366,9 +363,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
         console.log("Layout restore result:", layoutRestoreResult);
 
         expect(layoutRestoreResult.success).toBe(true);
-
         expect((layoutRestoreResult as any).restoredPosition).toEqual({ x: 200, y: 200 });
-
         expect((layoutRestoreResult as any).layoutRestored).toBe(true);
     });
 });

@@ -28,7 +28,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
         }
 
         await page.waitForFunction(() => {
-            const gs = (window as any).generalStore || (window as any).appStore;
+            const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             return !!(gs?.currentPage?.items);
         }, { timeout });
 
@@ -42,11 +42,11 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         // Double check store availability just in case
         await page.waitForFunction(() => {
-            const gs = (window as any).generalStore || (window as any).appStore;
+            const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             return !!(gs?.currentPage?.items);
         }, { timeout: 30000 });
         await page.evaluate(() => {
-            const gs = (window as any).generalStore || (window as any).appStore;
+            const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const items = gs?.currentPage?.items;
             if (items && typeof items.addNode === "function") {
                 const newItem = items.addNode("tester");
@@ -57,7 +57,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
         });
         await page.waitForTimeout(200);
         const itemId = await page.evaluate(() => {
-            const gs = (window as any).generalStore || (window as any).appStore;
+            const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const items = gs?.currentPage?.items;
             if (!items) return null;
             const length = typeof items.length === "number" ? items.length : 0;
@@ -75,7 +75,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
     const setItemText = async (page: Page, itemId: string, text: string): Promise<void> => {
         await page.evaluate(({ itemId, text }) => {
-            const gs = (window as any).generalStore || (window as any).appStore;
+            const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const items = gs?.currentPage?.items;
             if (!items) return;
             const length = typeof items.length === "number" ? items.length : items?.getLength?.();
@@ -133,7 +133,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
         await page.waitForTimeout(500);
         await page.waitForFunction(
             (itemId) => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return store && store.getActiveItem && store.getActiveItem() !== itemId;
             },
             firstItemId,
@@ -177,7 +177,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
         await page.waitForTimeout(500);
         await page.waitForFunction(
             (itemId) => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return store && store.getActiveItem && store.getActiveItem() !== itemId;
             },
             firstItemId,
@@ -224,7 +224,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         await page.waitForFunction(
             (itemId) => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return store && store.getActiveItem && store.getActiveItem() !== itemId;
             },
             firstItemId,
@@ -258,7 +258,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (globalThis as any).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
@@ -273,7 +273,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
         // Create cursor instance if it does not exist
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
-                const editorStore = (window as any).editorOverlayStore;
+                const editorStore = (globalThis as any).editorOverlayStore;
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
                     if (activeItemId) {
@@ -290,7 +290,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         // Insert standard internal link using cursor.insertText()
         await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (globalThis as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
@@ -309,7 +309,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         // Insert newline to create a new item
         await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (globalThis as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
@@ -321,7 +321,7 @@ test.describe("FMT-0007: Internal Link Functionality", () => {
 
         // Insert project internal link
         await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (globalThis as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {

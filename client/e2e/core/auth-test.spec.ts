@@ -14,14 +14,14 @@ test.describe("Authentication Test", () => {
 
         // Wait for UserManager to initialize
         await page.waitForFunction(
-            () => (window as { __USER_MANAGER__?: any; }).__USER_MANAGER__ !== undefined,
+            () => (globalThis as { __USER_MANAGER__?: any; }).__USER_MANAGER__ !== undefined,
             { timeout: 30000 },
         );
         console.log("Debug: UserManager found");
 
         // Check pre-authentication state
         const beforeAuth = await page.evaluate(() => {
-            const win = window as { __USER_MANAGER__?: { currentUser?: any; }; __SVELTE_GOTO__?: any; };
+            const win = globalThis as { __USER_MANAGER__?: { currentUser?: any; }; __SVELTE_GOTO__?: any; };
             return {
                 userManager: typeof win.__USER_MANAGER__,
                 svelteGoto: typeof win.__SVELTE_GOTO__,
@@ -36,7 +36,7 @@ test.describe("Authentication Test", () => {
             user?: any;
             error?: unknown;
         }>(async () => {
-            const win = window as {
+            const win = globalThis as {
                 __USER_MANAGER__?: {
                     addEventListener: (callback: (result: { user?: any; }) => void) => () => void;
                     loginWithEmailPassword: (email: string, password: string) => Promise<void>;
@@ -88,7 +88,7 @@ test.describe("Authentication Test", () => {
         await page.waitForTimeout(500); // Wait for authentication to complete (no cursor usage)
 
         const afterAuth = await page.evaluate(() => {
-            const win = window as { __USER_MANAGER__?: { currentUser?: any; }; __SVELTE_GOTO__?: any; };
+            const win = globalThis as { __USER_MANAGER__?: { currentUser?: any; }; __SVELTE_GOTO__?: any; };
             return {
                 userManager: typeof win.__USER_MANAGER__,
                 svelteGoto: typeof win.__SVELTE_GOTO__,

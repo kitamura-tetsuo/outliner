@@ -21,13 +21,13 @@ test.describe("CHT-001: Chart auto-refresh", () => {
       <body>
         <div id="chart" style="width:400px;height:300px;"></div>
         <script>
-          window.chartData = [120, 200, 150];
+          globalThis.chartData = [120, 200, 150];
           const chart = echarts.init(document.getElementById('chart'));
-          const option = { xAxis: {}, yAxis: {}, series: [{ type:'bar', data: window.chartData }] };
+          const option = { xAxis: {}, yAxis: {}, series: [{ type:'bar', data: globalThis.chartData }] };
           chart.setOption(option);
           setTimeout(() => {
-            window.chartData = [220, 300, 250];
-            option.series[0].data = window.chartData;
+            globalThis.chartData = [220, 300, 250];
+            option.series[0].data = globalThis.chartData;
             chart.setOption(option);
           }, 1000);
         </script>
@@ -38,11 +38,11 @@ test.describe("CHT-001: Chart auto-refresh", () => {
         const chart = page.locator("#chart");
         await expect(chart).toBeVisible();
 
-        const initial = await page.evaluate(() => (window as unknown as ChartWindow).chartData);
+        const initial = await page.evaluate(() => (globalThis as unknown as ChartWindow).chartData);
         expect(initial).toEqual([120, 200, 150]);
 
-        await page.waitForFunction(() => (window as unknown as ChartWindow).chartData[0] === 220);
-        const updated = await page.evaluate(() => (window as unknown as ChartWindow).chartData);
+        await page.waitForFunction(() => (globalThis as unknown as ChartWindow).chartData[0] === 220);
+        const updated = await page.evaluate(() => (globalThis as unknown as ChartWindow).chartData);
         expect(updated).toEqual([220, 300, 250]);
     });
 

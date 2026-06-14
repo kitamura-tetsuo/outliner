@@ -34,7 +34,7 @@ export class TestHelpersNoAuth {
             // Wait for UserManager initialization (optional)
             try {
                 await page.waitForFunction(
-                    () => (window as any).__USER_MANAGER__ !== undefined,
+                    () => (globalThis as any).__USER_MANAGER__ !== undefined,
                     { timeout: 10000 },
                 );
                 console.log("TestHelper: UserManager found");

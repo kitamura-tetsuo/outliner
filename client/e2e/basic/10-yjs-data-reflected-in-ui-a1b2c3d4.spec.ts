@@ -27,14 +27,14 @@ test.describe("Yjs data is reflected in UI", () => {
     test("lines are displayed in correct order", async ({ page }) => {
         // Wait for currentPage to be set
         await page.waitForFunction(() => {
-            const gs = (window as { generalStore?: { currentPage?: Record<string, unknown>; }; }).generalStore;
+            const gs = (globalThis as { generalStore?: { currentPage?: Record<string, unknown>; }; }).generalStore;
             return !!(gs && gs.currentPage);
         }, { timeout: 15000 });
 
         // Just in case: align currentPage children with lines (generate missing ones, overwrite existing ones)
         await page.evaluate((lines) => {
-            const gs =
-                (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; }).generalStore;
+            const gs = (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
+                .generalStore;
             const p = gs?.currentPage;
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
@@ -43,13 +43,11 @@ test.describe("Yjs data is reflected in UI", () => {
             // Overwrite existing items
             for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
                 const it = (items as any).at ? (items as any).at(i) : (items as any)[i];
-
                 (it as any)?.updateText?.(lines[i]);
             }
             // Add missing items
             for (let i = existing as number; i < lines.length; i++) {
                 const node = (items as any).addNode?.("tester");
-
                 (node as any)?.updateText?.(lines[i]);
             }
         }, lines);
@@ -81,8 +79,9 @@ test.describe("Yjs data is reflected in UI", () => {
             // Wait until the model count matches the expected count
             await page.waitForFunction(
                 (expectedLen) => {
-                    const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
-                        .generalStore;
+                    const gs =
+                        (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
+                            .generalStore;
                     const items = gs?.currentPage?.items;
                     return !!items && typeof items.length === "number" && items.length >= expectedLen;
                 },
@@ -92,14 +91,12 @@ test.describe("Yjs data is reflected in UI", () => {
 
             // Set text for each item via model
             await page.evaluate((lines) => {
-                const gs = (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
+                const gs = (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
                     .generalStore;
-
                 const items = gs?.currentPage?.items as any;
                 if (!items) return;
                 for (let i = 0; i < lines.length; i++) {
                     const it = items.at ? items.at(i) : items[i];
-
                     (it as any)?.updateText?.(lines[i]);
                 }
             }, lines);

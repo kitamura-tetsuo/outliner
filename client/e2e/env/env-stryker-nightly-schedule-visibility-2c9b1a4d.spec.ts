@@ -13,7 +13,7 @@ registerCoverageHooks();
 test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
     test.beforeEach(async ({ page }) => {
         await page.addInitScript(() => {
-            window.localStorage.setItem("firebase:authUser:*:idToken", "e2e-stryker-token");
+            globalThis.localStorage.setItem("firebase:authUser:*:idToken", "e2e-stryker-token");
         });
     });
 

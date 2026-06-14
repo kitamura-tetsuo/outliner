@@ -91,7 +91,7 @@ test.describe("IND: Yjs Tab/Shift+Tab indent/outdent", () => {
 
         // Set up a multi-selection between the second and third items
         await page.evaluate(({ startId, endId }) => {
-            const store: any = (window as any).editorOverlayStore;
+            const store: any = (globalThis as any).editorOverlayStore;
             store.setSelection({
                 startItemId: startId,
                 startOffset: 0,

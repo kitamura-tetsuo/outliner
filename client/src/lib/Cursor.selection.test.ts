@@ -1,50 +1,93 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Item } from "../schema/app-schema";
+import type { Item } from "../schema/app-schema";
+import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { Cursor } from "./Cursor";
 
-// Store module mock setup - prefer local type from PR branch to avoid .svelte imports
+// Helper to manage mock selection state
+let mockSelection: import("../stores/EditorOverlayStore.svelte").SelectionState | undefined = undefined;
 
-const { mockSelections, mockSetSelection } = vi.hoisted(() => ({
-    mockSelections: {} as Record<string, unknown>,
-    mockSetSelection: vi.fn(),
-}));
-
+// Mocks for stores
 vi.mock("../stores/EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
-        setSelection: (sel: unknown) => {
-            mockSetSelection(sel);
-            const s = sel as { userId?: string; };
-            if (s && s.userId) {
-                mockSelections[s.userId] = s;
-            } else {
-                mockSelections["test-user"] = s;
-            }
-        },
-        clearSelectionForUser: (userId: string) => {
-            delete mockSelections[userId];
-        },
-        get selections() {
-            return mockSelections;
-        },
-        startCursorBlink: vi.fn(),
+        subscribe: vi.fn(),
+        update: vi.fn(),
+        set: vi.fn(),
         updateCursor: vi.fn(),
-        setCursor: vi.fn(() => "new-cursor-id"),
+        setCursor: vi.fn((opts: { itemId: string; }) => `cursor-${opts.itemId}-${Math.random()}`),
         setActiveItem: vi.fn(),
-        getTextareaRef: vi.fn(() => document.createElement("textarea")),
+        getTextareaRef: vi.fn(() => ({
+            focus: vi.fn(),
+            value: "",
+            selectionStart: 0,
+            selectionEnd: 0,
+            setSelectionRange: vi.fn(),
+        })),
+        startCursorBlink: vi.fn(),
+        triggerOnEdit: vi.fn(),
         clearCursorForItem: vi.fn(),
-        cursorInstances: {
-            get: vi.fn(),
-        },
+        clearCursorAndSelection: vi.fn(),
+        clearSelectionForUser: vi.fn(),
+        setSelection: vi.fn((sel) => {
+            // Update the mock selection when setSelection is called
+            mockSelection = { ...sel };
+            return "selection-id";
+        }),
+        selections: {},
+        cursorInstances: new Map(),
+        cursors: {},
+        forceUpdate: vi.fn(),
     },
 }));
 
-describe("Cursor Selection Navigation", () => {
+vi.mock("../stores/store.svelte", () => ({
+    store: {
+        currentPage: undefined,
+        subscribe: vi.fn(),
+        update: vi.fn(),
+        set: vi.fn(),
+    },
+}));
+
+// Mock cursor utility functions
+vi.mock("./cursor", async (importOriginal) => {
+    const actual = await importOriginal() as Record<string, unknown>;
+    return {
+        ...actual,
+        findNextItem: (itemId: string) => {
+            if (itemId === "item1") return { id: "item2", text: "World" };
+            if (itemId === "item2") return { id: "item3", text: "Test" };
+            return null;
+        },
+        findPreviousItem: (itemId: string) => {
+            if (itemId === "item3") return { id: "item2", text: "World" };
+            if (itemId === "item2") return { id: "item1", text: "Hello" };
+            return null;
+        },
+        getSelectionForUser: () => mockSelection,
+        hasSelection: () => !!mockSelection,
+        searchItem: (root: unknown, itemId: string) => {
+            if (itemId === "item1") return { id: "item1", text: "Hello" };
+            if (itemId === "item2") return { id: "item2", text: "World" };
+            if (itemId === "item3") return { id: "item3", text: "Test" };
+            return null;
+        },
+        getCurrentColumn: (text: string, offset: number) => offset,
+        // Mock other functions used by Cursor if necessary
+        getVisualLineInfo: () => null, // Force fallback to logical lines
+        getLineStartOffset: (_text: string, _lineIndex: number) => 0, // Simplified
+        getLineEndOffset: (text: string, _lineIndex: number) => text.length, // Simplified
+        getCurrentLineIndex: () => 0, // Simplified
+    };
+});
+
+describe("Cursor Selection Reproduction", () => {
     let cursor: Cursor;
     let mockItems: Item[];
 
     beforeEach(async () => {
         vi.clearAllMocks();
-        for (const key in mockSelections) delete mockSelections[key];
+        mockSelection = undefined;
 
         // Setup mock items
         mockItems = [
@@ -55,7 +98,7 @@ describe("Cursor Selection Navigation", () => {
 
         // Setup store
         const { store: generalStore } = await import("../stores/store.svelte");
-        (generalStore as unknown as { currentPage: unknown; }).currentPage = {
+        generalStore.currentPage = {
             id: "page1",
             items: mockItems,
         } as unknown as Item;
@@ -88,17 +131,17 @@ describe("Cursor Selection Navigation", () => {
     });
 
     afterEach(() => {
-        for (const key in mockSelections) delete mockSelections[key];
+        mockSelection = undefined;
     });
 
     describe("Shift+Right Selection", () => {
         it("should create new selection to the right within same item", async () => {
-            await import("../stores/EditorOverlayStore.svelte");
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
 
             cursor.offset = 0;
             cursor.extendSelectionRight();
 
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item1",
                 startOffset: 0,
                 endItemId: "item1",
@@ -109,20 +152,22 @@ describe("Cursor Selection Navigation", () => {
         });
 
         it("should extend existing selection to the right within same item", async () => {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
             // Initial selection: 0->1
-            mockSelections["test-user"] = {
+            mockSelection = ({
                 startItemId: "item1",
                 startOffset: 0,
                 endItemId: "item1",
                 endOffset: 1,
                 isReversed: false,
                 userId: "test-user",
-            };
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
             cursor.offset = 1;
 
             cursor.extendSelectionRight();
 
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item1",
                 startOffset: 0,
                 endItemId: "item1",
@@ -133,34 +178,44 @@ describe("Cursor Selection Navigation", () => {
         });
 
         it("should shrink reversed selection when moving right", async () => {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
             // Initial selection: 2->1 (reversed)
-            mockSelections["test-user"] = {
+            mockSelection = ({
                 startItemId: "item1",
                 startOffset: 2,
                 endItemId: "item1",
                 endOffset: 1,
                 isReversed: true,
                 userId: "test-user",
-            };
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
             cursor.offset = 1;
 
             cursor.extendSelectionRight();
 
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item1",
                 startOffset: 2, // Anchor stays
                 endItemId: "item1",
                 endOffset: 2, // Cursor moves right
                 isReversed: false, // Collapsed selection is not reversed
             }));
+            // The logic:
+            // reversed -> modify start (which is logically the left side, but visually the "end" of reversed selection?)
+            // Wait, in reversed selection (start > end), start is anchor, end is focus.
+            // If we move right, we increase endOffset.
+            // 1 -> 2. So start=2, end=2.
+
             expect(cursor.offset).toBe(2);
         });
 
         it("should extend selection to next item", async () => {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
             cursor.offset = 5; // End of "Hello"
             cursor.extendSelectionRight();
 
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item1",
                 startOffset: 5,
                 endItemId: "item2",
@@ -174,10 +229,12 @@ describe("Cursor Selection Navigation", () => {
 
     describe("Shift+Left Selection", () => {
         it("should create new selection to the left within same item", async () => {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
             cursor.offset = 5; // End of "Hello"
             cursor.extendSelectionLeft();
 
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item1",
                 startOffset: 5,
                 endItemId: "item1",
@@ -188,20 +245,22 @@ describe("Cursor Selection Navigation", () => {
         });
 
         it("should extend existing reversed selection to the left", async () => {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
             // Initial selection: 5->4 (reversed)
-            mockSelections["test-user"] = {
+            mockSelection = ({
                 startItemId: "item1",
                 startOffset: 5,
                 endItemId: "item1",
                 endOffset: 4,
                 isReversed: true,
                 userId: "test-user",
-            };
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
             cursor.offset = 4;
 
             cursor.extendSelectionLeft();
 
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item1",
                 startOffset: 5, // Anchor
                 endItemId: "item1",
@@ -212,20 +271,22 @@ describe("Cursor Selection Navigation", () => {
         });
 
         it("should shrink normal selection when moving left", async () => {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
             // Initial selection: 0->1 (normal)
-            mockSelections["test-user"] = {
+            mockSelection = ({
                 startItemId: "item1",
                 startOffset: 0,
                 endItemId: "item1",
                 endOffset: 1,
                 isReversed: false,
                 userId: "test-user",
-            };
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
             cursor.offset = 1;
 
             cursor.extendSelectionLeft();
 
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item1",
                 startOffset: 0,
                 endItemId: "item1",
@@ -236,11 +297,13 @@ describe("Cursor Selection Navigation", () => {
         });
 
         it("should extend selection to previous item", async () => {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
             cursor.itemId = "item2";
             cursor.offset = 0; // Start of "World"
             cursor.extendSelectionLeft();
 
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item2",
                 startOffset: 0,
                 endItemId: "item1",
@@ -254,22 +317,27 @@ describe("Cursor Selection Navigation", () => {
 
     describe("Direction Reversal", () => {
         it("should flip from normal to reversed when moving left past anchor", async () => {
-            // Initial selection: 1->1
-            mockSelections["test-user"] = {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
+            // Initial selection: 1->1 (collapsed/empty but exists as selection context)
+            // Or assume we had 0->1 and shrank to 0->0.
+
+            // Let's start with 0->1
+            mockSelection = ({
                 startItemId: "item1",
                 startOffset: 1, // Anchor at 1
                 endItemId: "item1",
-                endOffset: 1, // Focus at 1
+                endOffset: 1, // Focus at 1 (shrunk)
                 isReversed: false,
                 userId: "test-user",
-            };
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
             cursor.offset = 1;
 
             // Move left past anchor (1)
             cursor.extendSelectionLeft();
 
             // Should become 1->0, reversed
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item1",
                 startOffset: 1, // Anchor stays at 1
                 endItemId: "item1",
@@ -279,22 +347,24 @@ describe("Cursor Selection Navigation", () => {
         });
 
         it("should flip from reversed to normal when moving right past anchor", async () => {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
             // Initial selection: 1->1 (was reversed)
-            mockSelections["test-user"] = {
+            mockSelection = ({
                 startItemId: "item1",
                 startOffset: 1,
                 endItemId: "item1",
                 endOffset: 1,
                 isReversed: true,
                 userId: "test-user",
-            };
+            } as unknown) as import("../stores/EditorOverlayStore.svelte").SelectionState;
             cursor.offset = 1;
 
             // Move right past anchor
             cursor.extendSelectionRight();
 
             // Should become 1->2, normal
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item1",
                 startOffset: 1,
                 endItemId: "item1",
@@ -306,19 +376,32 @@ describe("Cursor Selection Navigation", () => {
 
     describe("Cross-Item Reversal with DOM fallback failure", () => {
         it("should calculate isReversed correctly using tree fallback when DOM is missing", async () => {
+            const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
+
             // Clear DOM to force fallback
             document.body.innerHTML = "";
 
+            // Setup scenario: Selection from item2 -> item1 (Reversed)
+            // Cursor at item2 (Anchor) initially? No, start new selection.
+
+            // Or extend selection:
+            // Cursor at Item 2 (Start).
             cursor.itemId = "item2";
             cursor.offset = 0;
 
             // Move Left to Item 1 (End).
             cursor.extendSelectionLeft();
 
-            expect(mockSetSelection).toHaveBeenCalledWith(expect.objectContaining({
+            // Should be Reversed (Anchor=item2, Focus=item1)
+            // item1 comes BEFORE item2 in tree.
+            // Anchor > Focus (visually in document order? No, if item1 < item2)
+            // isReversed means Anchor is AFTER Focus?
+            // Yes. Anchor (item2) is after Focus (item1). So isReversed = true.
+
+            expect(editorOverlayStore.setSelection).toHaveBeenCalledWith(expect.objectContaining({
                 startItemId: "item2",
                 endItemId: "item1",
-                isReversed: true,
+                isReversed: true, // This should be true!
             }));
         });
     });

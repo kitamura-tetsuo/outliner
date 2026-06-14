@@ -16,11 +16,10 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
     test("Firebase config values come from environment variables", async ({ page }) => {
         await page.goto("/min");
         // Wait until the page is fully loaded
-
-        await page.waitForFunction(() => (window as any).testEnvVars !== undefined);
+        await page.waitForFunction(() => (globalThis as any).testEnvVars !== undefined);
 
         const config = await page.evaluate(() => {
-            const envVars = (window as any).testEnvVars;
+            const envVars = (globalThis as any).testEnvVars;
             return {
                 apiKey: envVars.VITE_FIREBASE_API_KEY,
                 projectId: envVars.VITE_FIREBASE_PROJECT_ID,
@@ -33,11 +32,10 @@ test.describe("FTR-0013: Use environment variables in min page", () => {
     test("Token verification URL uses VITE_TOKEN_VERIFY_URL", async ({ page }) => {
         await page.goto("/min");
         // Wait until the page is fully loaded
-
-        await page.waitForFunction(() => (window as any).testEnvVars !== undefined);
+        await page.waitForFunction(() => (globalThis as any).testEnvVars !== undefined);
 
         const url = await page.evaluate(() => {
-            const envVars = (window as any).testEnvVars;
+            const envVars = (globalThis as any).testEnvVars;
             return envVars.VITE_TOKEN_VERIFY_URL;
         });
         expect(url).toBeTruthy();

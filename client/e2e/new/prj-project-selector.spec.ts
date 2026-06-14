@@ -24,7 +24,7 @@ test.describe.serial("Prj: Project Selector", () => {
 
         // Wait for store update
         await page.waitForFunction(() => {
-            const ps = (window as any).__PROJECT_STORE__;
+            const ps = (globalThis as any).__PROJECT_STORE__;
             return ps && ps.projects && ps.projects.length >= 2;
         }, { timeout: 15000 }).catch(() => console.log("Timeout waiting for PROJECT_STORE update"));
 
@@ -54,7 +54,7 @@ test.describe.serial("Prj: Project Selector", () => {
 
         // 4. Wait for store to reflect
         await page.waitForFunction(() => {
-            const ps = (window as any).__PROJECT_STORE__;
+            const ps = (globalThis as any).__PROJECT_STORE__;
             return ps && ps.projects && ps.projects.length >= 2;
         }, { timeout: 10000 });
 
@@ -79,7 +79,7 @@ test.describe.serial("Prj: Project Selector", () => {
 
         // 2. Wait for selector
         await page.waitForFunction(() => {
-            const ps = (window as any).__PROJECT_STORE__;
+            const ps = (globalThis as any).__PROJECT_STORE__;
             return ps && ps.projects && ps.projects.length >= 2;
         }, { timeout: 10000 });
 

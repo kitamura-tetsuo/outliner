@@ -33,21 +33,6 @@ interface ServerOverrides {
     verifyIdTokenCached?: typeof defaultVerifyToken;
 }
 
-// Normalize a `ws` message payload into the Uint8Array expected by
-// Hocuspocus ClientConnection.handleMessage(). `ws` delivers binary frames as a
-// Node Buffer by default, but may yield an ArrayBuffer or an array of Buffers
-// depending on its configuration; cover all three.
-function toUint8Array(data: ArrayBuffer | Buffer | Buffer[]): Uint8Array {
-    if (data instanceof ArrayBuffer) {
-        return new Uint8Array(data);
-    }
-    if (Array.isArray(data)) {
-        const merged = Buffer.concat(data);
-        return new Uint8Array(merged.buffer, merged.byteOffset, merged.byteLength);
-    }
-    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-}
-
 export async function startServer(
     config: Config,
     logger = defaultLogger,
@@ -423,25 +408,6 @@ export async function startServer(
             roomCounts.set(documentName, (roomCounts.get(documentName) ?? 0) + 1);
             logger.info({ event: "ws_connection_accepted", room: documentName });
 
-            // 7. Hand over to Hocuspocus with minimal initial context (ip only).
-            //    Async auth (token verification + access check) is done in onAuthenticate hook.
-            //    Since @hocuspocus/server 4.x, handleConnection no longer attaches its own
-            //    'message'/'close' listeners to the socket; it returns a ClientConnection and we
-            //    must forward raw frames via handleMessage()/handleClose() from this integration.
-            //    The Node IncomingMessage is passed through to hooks untouched (the library only
-            //    reads request.url and request.headers), so we keep using it directly.
-            let clientConnection:
-                | { handleMessage(data: Uint8Array): void; handleClose(event?: any): void; }
-                | undefined;
-            try {
-                console.log(`[server] Handover to Hocuspocus: room=${documentName}, ip=${ip}`);
-                clientConnection = hocuspocus.handleConnection(ws, request as any, { ip });
-            } catch (e) {
-                /* eslint-disable-next-line no-console */ console.error("Error handling Hocuspocus connection:", e);
-                ws.close(1011);
-                return;
-            }
-
             ws.on("message", (data: any) => {
                 recordMessage();
                 const len = data.byteLength || data.length || 0;
@@ -453,13 +419,10 @@ export async function startServer(
                         documentName,
                     });
                     ws.close(4005, "MESSAGE_TOO_LARGE");
-                    return;
                 }
-                clientConnection!.handleMessage(toUint8Array(data));
             });
 
-            ws.on("close", (code: number, reason: Buffer) => {
-                clientConnection?.handleClose({ code, reason: reason?.toString() });
+            ws.on("close", () => {
                 totalSockets--;
                 if (totalSockets < 0) totalSockets = 0;
                 if (ip) {
@@ -473,6 +436,16 @@ export async function startServer(
                     else roomCounts.set(documentName, count);
                 }
             });
+
+            // 7. Immediately hand over to Hocuspocus with minimal initial context (ip only).
+            //    Async auth (token verification + access check) is done in onAuthenticate hook.
+            try {
+                console.log(`[server] Handover to Hocuspocus: room=${documentName}, ip=${ip}`);
+                hocuspocus.handleConnection(ws, request, { ip });
+            } catch (e) {
+                /* eslint-disable-next-line no-console */ console.error("Error handling Hocuspocus connection:", e);
+                ws.close(1011);
+            }
         });
     });
 

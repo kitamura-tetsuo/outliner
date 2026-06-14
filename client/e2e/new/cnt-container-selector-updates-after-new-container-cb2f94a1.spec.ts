@@ -33,7 +33,7 @@ test.describe("CNT-12ee98aa: Shared Container Store", () => {
 
         // Programmatically add a new container to the store
         await page.evaluate(() => {
-            const fs: any = (window as any).__FIRESTORE_STORE__;
+            const fs: any = (globalThis as any).__FIRESTORE_STORE__;
             if (fs?.userProject) {
                 fs.userProject.accessibleProjectIds.push("test-container-3");
             }

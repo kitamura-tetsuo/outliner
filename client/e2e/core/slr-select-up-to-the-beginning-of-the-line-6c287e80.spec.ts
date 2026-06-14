@@ -70,7 +70,7 @@ test.describe("SLR-0002: Select up to the beginning of the line", () => {
 
         // Get the selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -137,7 +137,7 @@ test.describe("SLR-0002: Select up to the beginning of the line", () => {
 
         // Get the selection text (from the application's selection management system)
         const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });

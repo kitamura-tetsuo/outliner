@@ -147,7 +147,7 @@
                     currentUser={userManager.getCurrentUser()?.id ||
                         "anonymous"}
                     project={store.project!}
-                    rootItems={pages!}
+                    rootItems={pages}
                     onPageSelected={handlePageSelected}
                 />
             </div>

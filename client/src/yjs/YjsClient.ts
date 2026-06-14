@@ -4,7 +4,7 @@ import * as Y from "yjs";
 
 import { createProjectConnection } from "../lib/yjs/connection";
 import { yjsService } from "../lib/yjs/service";
-import { Items, Project } from "../schema/app-schema";
+import { Items, Project } from "../schema/yjs-schema";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
 export interface YjsClientParams {
@@ -87,13 +87,12 @@ export class YjsClient {
 
     public updatePresence(
         state: {
-            cursor?: { itemId: string; offset: number; cursorId?: string; isActive?: boolean; };
+            cursor?: { itemId: string; offset: number; };
             selection?: import("../stores/EditorOverlayStore.svelte").SelectionRange;
         } | null,
     ) {
         if (!this._awareness) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        yjsService.setPresence(this._awareness, state as any);
+        yjsService.setPresence(this._awareness, state);
     }
 
     public getAwareness(): Awareness | undefined | null {
@@ -109,10 +108,8 @@ export class YjsClient {
             const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
             // HocuspocusProvider doesn't have .status directly, check websocketProvider
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return p.isSynced || (p as any).status === "connected"
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                || (p as any).websocketProvider?.status
+            return p.isSynced || (p as unknown as { status?: string; }).status === "connected"
+                || (p as unknown as { websocketProvider?: { status?: string; }; }).websocketProvider?.status
                     === "connected";
         } catch {
             return true;
@@ -130,8 +127,7 @@ export class YjsClient {
     // Debug helpers similar to FluidClient
     getAllData() {
         const items = this.project.items as Items;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const collect = (it: unknown): any => {
+        const collect = (it: unknown): Record<string, unknown>[] => {
             const arr: Record<string, unknown>[] = [];
             const len = (it as { length?: number; }).length ?? 0;
             for (let i = 0; i < len; i++) {
@@ -140,16 +136,16 @@ export class YjsClient {
                     : (it as Record<number, unknown>)[i];
                 if (!item) continue;
                 const node: Record<string, unknown> = {
-                    id: (item as unknown as { id: string; }).id,
-                    text: (item as unknown as { text?: { toString?: () => string; }; }).text?.toString?.() ?? "",
+                    id: item.id,
+                    text: item.text?.toString?.() ?? "",
                     author: (item as { author?: string; }).author,
                     votes: [...((item as { votes?: string[]; }).votes ?? [])],
                     created: (item as { created?: number; }).created,
                     lastChanged: (item as { lastChanged?: number; }).lastChanged,
                 };
-                const children = (item as unknown as { items?: Items; }).items as Items;
+                const children = item.items as Items;
                 if (children && ((children as { length?: number; }).length ?? 0) > 0) {
-                    node.items = collect(children).items;
+                    node.items = collect(children);
                 }
                 arr.push(node);
             }
@@ -162,8 +158,7 @@ export class YjsClient {
         const treeData = this.getAllData();
         if (!path) return treeData;
         const parts = path.split(".");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let result: any = treeData;
+        let result: unknown = treeData;
         for (const part of parts) {
             if (result === undefined || result === null) return null;
             result = result[part];
@@ -173,17 +168,19 @@ export class YjsClient {
 
     public async createPage(pageName: string, lines: string[]): Promise<void> {
         const pageItem = (this.project.items as Items).addNode("user");
-        pageItem.ytext.insert(0, pageName);
+        (pageItem.text as import("yjs").Text).insert?.(0, pageName);
         const pageChildren = pageItem.items as Items;
         for (const line of lines) {
             const item = pageChildren.addNode("user");
-            item.ytext.insert(0, line);
+            (item.text as import("yjs").Text).insert?.(0, line);
         }
     }
 
     public getDebugInfo() {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const provider = this._provider as any;
+        const provider = this._provider as unknown as {
+            disconnect?: () => void;
+            configuration?: { token: string | (() => string | Promise<string>); };
+        };
         const config = provider?.configuration;
         const wsProvider = config?.websocketProvider;
 

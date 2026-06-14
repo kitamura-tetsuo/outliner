@@ -55,7 +55,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -70,7 +70,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const newSelectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -116,7 +116,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -131,7 +131,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const newSelectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -165,7 +165,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });
@@ -205,7 +205,7 @@ test.describe("SLR-0001: Shift + Up/Down/Left/Right", () => {
 
         // Get selection text (from application selection management system)
         const selectionText = await page.evaluate(() => {
-            const store = (window as any).editorOverlayStore;
+            const store = (globalThis as any).editorOverlayStore;
             if (!store) return "";
             return store.getSelectedText();
         });

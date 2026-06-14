@@ -66,8 +66,8 @@ export async function pathValidationExample(page: Page): Promise<void> {
 
     // Verify non-existent path (Yjs debug function)
     const nonExistentPath = await page.evaluate(() => {
-        if (typeof window.getYjsTreePathData === "function") {
-            return window.getYjsTreePathData("items.0.nonexistent");
+        if (typeof globalThis.getYjsTreePathData === "function") {
+            return globalThis.getYjsTreePathData("items.0.nonexistent");
         }
         return undefined;
     });

@@ -74,7 +74,7 @@ test.describe("Cursor manipulation within format strings", () => {
         // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
             const editorStore =
-                (window as { editorOverlayStore?: { getActiveItem: () => any; getCursorInstances: () => any[]; }; })
+                (globalThis as { editorOverlayStore?: { getActiveItem: () => any; getCursorInstances: () => any[]; }; })
                     .editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
@@ -90,7 +90,7 @@ test.describe("Cursor manipulation within format strings", () => {
         // Create cursor instance if it doesn't exist
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
-                const editorStore = (window as {
+                const editorStore = (globalThis as {
                     editorOverlayStore?: {
                         getActiveItem: () => string | null;
                         setCursor: (
@@ -114,7 +114,7 @@ test.describe("Cursor manipulation within format strings", () => {
 
         // Insert text using cursor.insertText()
         await page.evaluate(() => {
-            const editorStore = (window as {
+            const editorStore = (globalThis as {
                 editorOverlayStore?: {
                     getCursorInstances: () => {
                         findTarget: () => { updateText: (text: string) => void; } | null;
@@ -201,7 +201,7 @@ test.describe("Cursor manipulation within format strings", () => {
 
         // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (globalThis as any).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
@@ -216,7 +216,7 @@ test.describe("Cursor manipulation within format strings", () => {
         // Create cursor instance if it doesn't exist
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
-                const editorStore = (window as {
+                const editorStore = (globalThis as {
                     editorOverlayStore?: {
                         getActiveItem: () => string | null;
                         setCursor: (
@@ -240,7 +240,7 @@ test.describe("Cursor manipulation within format strings", () => {
 
         // Insert text using cursor.insertText()
         await page.evaluate(() => {
-            const editorStore = (window as {
+            const editorStore = (globalThis as {
                 editorOverlayStore?: {
                     getCursorInstances: () => {
                         findTarget: () => { updateText: (text: string) => void; } | null;

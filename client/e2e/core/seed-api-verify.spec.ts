@@ -34,8 +34,7 @@ test.describe("Server-side Seeding Verification", () => {
         // 3. Navigate to the page
         const yjsPort = process.env.VITE_YJS_PORT || "7093";
         await page.addInitScript((port) => {
-            // eslint-disable-next-line no-restricted-globals
-            window.localStorage.setItem("VITE_YJS_PORT", port);
+            globalThis.localStorage.setItem("VITE_YJS_PORT", port);
         }, yjsPort);
         const encodedProject = encodeURIComponent(projectName);
         const encodedPage = encodeURIComponent(pageName);

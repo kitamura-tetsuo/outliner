@@ -32,12 +32,8 @@ interface Props {
     item?: ItemLike; // Outliner Item (for late-binding comments getter)
 }
 
-interface ItemWithComments extends ItemLike {
-    comments: Comments;
-}
-
 let props: Props = $props(); // eslint-disable-line svelte/no-unused-props
-let comments = $derived.by(() => props.comments ?? (props.item as unknown as ItemWithComments)?.comments);
+let comments = $derived.by(() => props.comments ?? props.item?.comments);
 let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");
 let editingId = $state<string | null>(null);
@@ -71,8 +67,7 @@ onMount(() => {
     let unobserve: (() => void) | undefined;
     try {
         // 1) Get internal yArray if Comments wrapper exists (private but accessible in JS)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let yarr: Y.Array<Y.Map<any>> | undefined = (comments as any)?.yArray;
+        let yarr: Y.Array<Y.Map<unknown>> | undefined = (comments as Comments | undefined)?.yArray;
         // 2) If not, ensure "comments" via item Y.Map
         if (!yarr && props.item) {
             const item = props.item as ItemLike;
@@ -80,11 +75,9 @@ onMount(() => {
             const key = item?.key;
             const value = tree?.getNodeValueFromKey?.(key) as Y.Map<unknown> | undefined;
             if (value) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                yarr = value.get?.("comments") as Y.Array<Y.Map<any>> | undefined;
+                yarr = value.get?.("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!yarr) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    yarr = new Y.Array<Y.Map<any>>();
+                    yarr = new Y.Array<Y.Map<unknown>>();
                     value.set?.("comments", yarr);
                 }
             }
@@ -94,8 +87,7 @@ onMount(() => {
             const handler = () => {
                 try {
                     // Convert the Y.Array directly to plain objects
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const plainComments = yarr!.toArray().map((yMap: Y.Map<any>) => ({
+                    const plainComments = yarr.toArray().map((yMap: Y.Map<unknown>) => ({
                         id: yMap.get("id") as string,
                         author: yMap.get("author") as string,
                         text: yMap.get("text") as string,
@@ -119,7 +111,7 @@ onMount(() => {
                 }
             };
             yarr.observeDeep(handler);
-            unobserve = () => { try { yarr!.unobserveDeep(handler); } catch {} };
+            unobserve = () => { try { yarr.unobserveDeep(handler); } catch {} };
             // Initial reflection
             handler();
         }
@@ -145,7 +137,7 @@ onMount(() => {
 // Count notification is delegated to the parent (OutlinerItem) Yjs-derived subscription.
 // Do not perform direct DOM manipulation or side effects here ($effect removed).
 
-    // try { logger.debug({ hasComments: !!props?.comments, hasDoc: !!props?.doc }, '[CommentThread] mount props'); } catch {}
+    // try { logger.debug('[CommentThread] mount props', { hasComments: !!props?.comments, hasDoc: !!props?.doc }); } catch {}
 
 // Fallback removal: Remove onMount click delegation/auto-add/global delegation
 
@@ -226,7 +218,7 @@ function add() {
         } catch {}
     }
     if (!text) return;
-    let commentsObj: Comments | undefined = props.comments ?? (props.item as unknown as ItemWithComments)?.comments;
+    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
     if (!commentsObj && props.item) {
         try {
             const item = props.item as ItemLike;
@@ -235,25 +227,22 @@ function add() {
             const key = item?.key;
             if (tree && key) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                let arr = value.get("comments") as Y.Array<Y.Map<any>> | undefined;
+                let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!arr) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    arr = new Y.Array<Y.Map<any>>();
+                    arr = new Y.Array<Y.Map<unknown>>();
                     value.set("comments", arr);
                 }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                commentsObj = new Comments(arr as any);
+                commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] initialized comments via tree/key fallback');
             }
         } catch (e) {
-            logger.warn(e, '[CommentThread] failed to ensure comments via fallback');
+            logger.warn('[CommentThread] failed to ensure comments via fallback', e);
         }
     }
     const user = props.currentUser;
 
-    logger.debug({ newText }, '[CommentThread] add comment');
-    logger.debug({ commentsObj, hasItem: !!props.item, hasItemComments: !!(props.item as unknown as ItemWithComments)?.comments }, '[CommentThread] comments object');
+    logger.debug('[CommentThread] add comment, newText=', newText);
+    logger.debug('[CommentThread] comments object:', commentsObj, 'props.item?', !!props.item, 'item?.comments?', !!props.item?.comments);
 
     // Proceed with UI even if comments object is invalid (ensure reflection via DOM/events)
     const time = Date.now();
@@ -261,7 +250,7 @@ function add() {
     if (commentsObj && typeof commentsObj.addComment === 'function') {
         const res = commentsObj.addComment(user, newText);
         id = res?.id || `local-${time}-${Math.random().toString(36).slice(2)}`;
-        logger.debug({ id }, '[CommentThread] comment added to Yjs');
+        logger.debug('[CommentThread] comment added to Yjs, id=', id);
     } else {
         logger.error({ error: new Error("invalid or missing addComment") }, '[CommentThread] comments object is invalid or missing addComment; falling back to local DOM only');
         id = `local-${time}-${Math.random().toString(36).slice(2)}`;
@@ -299,8 +288,8 @@ function add() {
         } else {
             // Fallback: try to get the length from the item's comments
             try {
-                if (props.item && typeof (props.item as unknown as ItemWithComments).comments !== 'undefined') {
-                    const itemComments = (props.item as unknown as ItemWithComments).comments;
+                if (props.item && typeof props.item.comments !== 'undefined') {
+                    const itemComments = props.item.comments;
                     if (typeof itemComments.length === 'number') {
                         countNow = itemComments.length;
                     }
@@ -343,7 +332,7 @@ function add() {
     newText = '';
 }
 function remove(id: string) {
-    let commentsObj: Comments | undefined = props.comments ?? (props.item as unknown as ItemWithComments)?.comments;
+    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
     if (!commentsObj && props.item) {
         try {
             const item = props.item as ItemLike;
@@ -351,16 +340,13 @@ function remove(id: string) {
             const key = item?.key;
             if (tree && key) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                let arr = value.get("comments") as Y.Array<Y.Map<any>> | undefined;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (!arr) { arr = new Y.Array<Y.Map<any>>(); value.set("comments", arr); }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                commentsObj = new Comments(arr as any);
+                let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
+                if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
+                commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] ensured comments for remove via tree/key');
             }
         } catch (e) {
-            logger.warn(e, '[CommentThread] failed to ensure comments for remove');
+            logger.warn('[CommentThread] failed to ensure comments for remove', e);
         }
     }
     try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error({ error: e as Error }, '[CommentThread] deleteComment error'); }
@@ -390,7 +376,7 @@ function startEdit(c: Comment) {
 
 function saveEdit(id: string) {
     // Removed to fix state_referenced_locally
-    let commentsObj: Comments | undefined = props.comments ?? (props.item as unknown as ItemWithComments)?.comments;
+    let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
     if (!commentsObj && props.item) {
         try {
             const item = props.item as ItemLike;
@@ -398,16 +384,13 @@ function saveEdit(id: string) {
             const key = item?.key;
             if (tree && key) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                let arr = value.get("comments") as Y.Array<Y.Map<any>> | undefined;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (!arr) { arr = new Y.Array<Y.Map<any>>(); value.set("comments", arr); }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                commentsObj = new Comments(arr as any);
+                let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
+                if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
+                commentsObj = new Comments(arr);
                 logger.debug('[CommentThread] ensured comments for saveEdit via tree/key');
             }
         } catch (e) {
-            logger.warn(e, '[CommentThread] failed to ensure comments for saveEdit');
+            logger.warn('[CommentThread] failed to ensure comments for saveEdit', e);
         }
     }
 

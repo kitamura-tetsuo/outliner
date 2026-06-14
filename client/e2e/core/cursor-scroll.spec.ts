@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
@@ -35,14 +34,14 @@ test.describe("Cursor scrolling behavior", () => {
         // Wait for stability
         await page.waitForTimeout(500);
 
-        // Get initial scroll position from the window
+        // Get initial scroll position from the globalThis
         const getScrollY = async () => {
-            return await page.evaluate(() => window.scrollY);
+            return await page.evaluate(() => globalThis.scrollY);
         };
 
         const initialScrollY = await getScrollY();
 
-        // Move cursor down 60 times (should scroll the window down to follow the cursor)
+        // Move cursor down 60 times (should scroll the globalThis down to follow the cursor)
         for (let i = 0; i < 60; i++) {
             await page.keyboard.press("ArrowDown");
             // Give it a tiny bit of time for each to ensure we don't batch it all together
@@ -55,7 +54,7 @@ test.describe("Cursor scrolling behavior", () => {
         // Get final scroll position
         const finalScrollY = await getScrollY();
 
-        // Expect the window to have scrolled down significantly
+        // Expect the globalThis to have scrolled down significantly
         expect(finalScrollY).toBeGreaterThan(initialScrollY);
 
         const viewportHeight = page.viewportSize()?.height || 800;

@@ -17,7 +17,7 @@ type CursorAction = "insertText";
 
 async function performCursorAction(page: Page, itemId: string, action: CursorAction, value: string) {
     await page.evaluate(({ itemId, userId, value }) => {
-        const overlayStore = (window as {
+        const overlayStore = (globalThis as {
             editorOverlayStore?: {
                 getCursorInstances: () => {
                     itemId: string;
@@ -38,7 +38,7 @@ async function performCursorAction(page: Page, itemId: string, action: CursorAct
 
 async function setSelectionRange(page: Page, itemId: string, startOffset: number, endOffset: number) {
     await page.evaluate(({ itemId, startOffset, endOffset, userId }) => {
-        const overlayStore = (window as {
+        const overlayStore = (globalThis as {
             editorOverlayStore?: {
                 clearSelectionForUser: (userId: string) => void;
                 setSelection: (
@@ -68,7 +68,7 @@ async function setSelectionRange(page: Page, itemId: string, startOffset: number
 
 async function callFormatting(page: Page, itemId: string, method: FormattingMethod) {
     await page.evaluate(({ itemId, method, userId }) => {
-        const overlayStore = (window as {
+        const overlayStore = (globalThis as {
             editorOverlayStore?: {
                 getCursorInstances: () => { itemId: string; userId: string; [key: string]: any; }[];
             };
@@ -94,7 +94,7 @@ test.describe("CLM-5d2a7b4c: Cursor formatting delegates to CursorEditor", () =>
     test("applies Scrapbox formatting via CursorEditor", async ({ page }) => {
         // Create a new empty item to work with, separate from the page item which contains the page title
         await page.evaluate(() => {
-            const gs = (window as {
+            const gs = (globalThis as {
                 generalStore?: {
                     currentPage?: {
                         items?: { addNode: (text: string) => { updateText: (text: string) => void; }; };
@@ -117,7 +117,7 @@ test.describe("CLM-5d2a7b4c: Cursor formatting delegates to CursorEditor", () =>
 
         // Get the ID of the newly created item (likely the last item)
         const itemId = await page.evaluate(() => {
-            const gs = (window as {
+            const gs = (globalThis as {
                 generalStore?: {
                     currentPage?: {
                         items?: {

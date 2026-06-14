@@ -171,11 +171,11 @@ You can also retrieve Yjs tree data from the browser console.
 
 ```javascript
 // Get tree data from console
-const treeData = window.getYjsTreeDebugData?.() ?? window.getFluidTreeDebugData?.();
+const treeData = globalThis.getYjsTreeDebugData?.() ?? globalThis.getFluidTreeDebugData?.();
 console.log(treeData);
 
 // Get data at a specific path
-const firstItemText = window.getYjsTreePathData?.("items.0.text")
-    ?? window.getFluidTreePathData?.("items.0.text");
+const firstItemText = globalThis.getYjsTreePathData?.("items.0.text")
+    ?? globalThis.getFluidTreePathData?.("items.0.text");
 console.log(firstItemText);
 ```

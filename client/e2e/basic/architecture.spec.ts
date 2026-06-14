@@ -13,7 +13,7 @@ test.describe("Tailwind CSS validation", () => {
         await expect(h1).toBeVisible();
 
         // Check if font-size is approx 30px (1.875rem)
-        const fontSize = await h1.evaluate((el) => window.getComputedStyle(el).fontSize);
+        const fontSize = await h1.evaluate((el) => globalThis.getComputedStyle(el).fontSize);
         console.log(`H1 Font Size: ${fontSize}`);
 
         // In Tailwind v4, text-3xl is 30px
@@ -23,7 +23,7 @@ test.describe("Tailwind CSS validation", () => {
         expect(sizeValue).toBeLessThan(35);
 
         // Check font-weight (font-bold should be 700)
-        const fontWeight = await h1.evaluate((el) => window.getComputedStyle(el).fontWeight);
+        const fontWeight = await h1.evaluate((el) => globalThis.getComputedStyle(el).fontWeight);
         console.log(`H1 Font Weight: ${fontWeight}`);
         expect(parseInt(fontWeight)).toBeGreaterThanOrEqual(600);
     });
@@ -35,7 +35,7 @@ test.describe("Tailwind CSS validation", () => {
         const skipLink = page.locator(".skip-link");
         await expect(skipLink).toBeAttached();
 
-        const fontSize = await skipLink.evaluate((el) => window.getComputedStyle(el).fontSize);
+        const fontSize = await skipLink.evaluate((el) => globalThis.getComputedStyle(el).fontSize);
         console.log(`Skip Link Font Size: ${fontSize}`);
 
         // Since we have multiple classes, the last one (text-3xl) might win if they conflict,

@@ -22,7 +22,7 @@ test.describe("Multi-Page Schedule Management", () => {
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                (window as Window & Record<string, any>).__E2E__ = true;
+                (globalThis as Window & Record<string, any>).__E2E__ = true;
             } catch {}
         });
 
@@ -49,7 +49,7 @@ test.describe("Multi-Page Schedule Management", () => {
         try {
             await page.evaluate(() => {
                 try {
-                    const win: any = window as any;
+                    const win: any = globalThis as any;
                     // Clear any schedule-related global variables
                     if (win.__SCHEDULE_STATE__) {
                         win.__SCHEDULE_STATE__ = {};
@@ -121,7 +121,7 @@ test.describe("Multi-Page Schedule Management", () => {
             // Clear any global state that might interfere with other tests
             await page.evaluate(() => {
                 try {
-                    const win: any = window as any;
+                    const win: any = globalThis as any;
                     // Clear any schedule-related global variables
                     if (win.__SCHEDULE_STATE__) {
                         win.__SCHEDULE_STATE__ = {};
@@ -168,14 +168,14 @@ test.describe("Multi-Page Schedule Management", () => {
         const ensureConnectedPage = async () => {
             // First wait for the basic page structure to be ready
             await page.waitForFunction(() => {
-                const win = window as any;
+                const win = globalThis as any;
                 // Check for basic page readiness
                 return win.generalStore?.project !== undefined;
             }, { timeout: 30000 });
 
             // Then wait for YJS client to be connected (might take additional time for WebSocket)
             await page.waitForFunction(() => {
-                const win = window as any;
+                const win = globalThis as any;
                 const client = win.__YJS_STORE__?.yjsClient;
                 const gs = win.generalStore;
                 // Full check: client, project, and currentPage all need to be ready
@@ -197,7 +197,7 @@ test.describe("Multi-Page Schedule Management", () => {
 
         // Open schedule for first page
         const firstPageId = await page.evaluate(() => {
-            return window.generalStore?.currentPage?.id;
+            return globalThis.generalStore?.currentPage?.id;
         });
         console.log("First page ID:", firstPageId);
 
@@ -237,7 +237,7 @@ test.describe("Multi-Page Schedule Management", () => {
         await ensureConnectedPage();
 
         const currentPageId = await page.evaluate(() => {
-            return window.generalStore?.currentPage?.id;
+            return globalThis.generalStore?.currentPage?.id;
         });
         console.log("Current page ID for other-page:", currentPageId);
 

@@ -139,7 +139,6 @@ export class GeneralStore {
     }
     // Explicit signal for pages updates to ensure Svelte 5 reactivity
     pagesVersion = $state(0);
-    resetEpoch = $state(0);
 
     // Cache of page names (normalized to lowercase) for O(1) lookup
     private _pageNamesCache = new SvelteSet<string>();
@@ -211,8 +210,6 @@ export class GeneralStore {
         if (!v) {
             this._project = undefined;
             this._pageNamesCache.clear();
-            this._pagesData.items = undefined;
-            this.pagesVersion++;
             return;
         }
 
@@ -226,8 +223,6 @@ export class GeneralStore {
         // Monitor the root tree with Yjs observeDeep and bridge to Svelte subscription
         const project = v;
         const ymap = project?.ydoc?.getMap?.("orderedTree");
-
-        this.pagesVersion++; // Trigger signal for new project assignment
 
         // Setup observer immediately on the project itself
         const handler = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -286,13 +281,6 @@ export class GeneralStore {
         // Monitor both the orderedTree (content) and items (page list) for changes
         try {
             ymap?.observeDeep?.(handler);
-            const metadataMap = project?.ydoc?.getMap?.("metadata");
-            metadataMap?.observe?.((event: Y.YMapEvent<unknown>) => {
-                if (event.keysChanged.has("lastReset")) {
-                    this.resetEpoch = metadataMap.get("lastReset") as number || 0;
-                    this._currentPage = undefined;
-                }
-            });
             if (project?.items && "observeDeep" in project.items) {
                 (project.items as {
                     observeDeep?: (

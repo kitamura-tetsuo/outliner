@@ -37,7 +37,6 @@
     let isLoading = $state(true);
     let isAuthenticated = $state(false);
     let pageNotFound = $state(false);
-    let activePageId = $state<string | undefined>(undefined);
 
     let isSearchPanelVisible = $state(false); // Search panel visibility state
 
@@ -148,25 +147,15 @@
 
             // Helper to find page by name
             const findPage = () => {
-                if (activePageId && project) {
-                    const item = project.findPage(activePageId);
-                    if (item) return item as unknown as import("../../../schema/app-schema").Item;
-                }
                 const items = project?.items;
                 if (items) {
                     const len = items.length ?? 0;
                     const titles: string[] = [];
-
-                    let decodedName = pageName;
-                    try {
-                        decodedName = decodeURIComponent(pageName);
-                    } catch {}
-
                     for (let i = 0; i < len; i++) {
                         const p = items.at(i);
                         const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                         titles.push(t);
-                        if (String(t).toLowerCase() === String(decodedName).toLowerCase()) {
+                        if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
                             return p as unknown as import("../../../schema/app-schema").Item;
                         }
                     }
@@ -218,7 +207,6 @@
             // 5. Set current page and hydration
             if (targetPage) {
                 store.currentPage = targetPage;
-            activePageId = targetPage.id;
 
                 // Wait for page list store update (optional)
                 if (!store.pages) {
@@ -294,19 +282,9 @@
         } catch {}
 
         // Monitor route parameter changes
-        let lastRoutePj: string | undefined;
-        let lastRoutePg: string | undefined;
         const unsub = page.subscribe(($p) => {
             const pj = $p.params?.project ?? projectName;
             const pg = $p.params?.page ?? pageName;
-
-            // if route changed, reset activePageId
-            if (lastRoutePj !== undefined && (lastRoutePj !== pj || lastRoutePg !== pg)) {
-                activePageId = undefined; // reset active id on route change
-            }
-            lastRoutePj = pj;
-            lastRoutePg = pg;
-
             scheduleLoadIfNeeded({ project: pj, page: pg });
         });
         onDestroy(unsub);
@@ -402,24 +380,7 @@
         );
     }
 
-let resetEpochCache = $state(0);
-    $effect(() => {
-        if (store.resetEpoch !== resetEpochCache) {
-            resetEpochCache = store.resetEpoch;
-            // nullify immediately to disconnect old tree node references
-            store.currentPage = undefined;
-            activePageId = undefined;
-            // The tree was rebuilt, we must force a remount and reload page logic
-            if (projectName && pageName && !isLoading) {
-                setTimeout(() => {
-                    loadProjectAndPage();
-                }, 100);
-            }
-        }
-    });
-
     onMount(async () => {
-
         // Check UserManager auth state (async support)
         logger.info(
             `onMount: Starting for project="${projectName}", page="${pageName}"`,
@@ -612,9 +573,8 @@ let resetEpochCache = $state(0);
         />
     </div>
 
-<!-- Always mount OutlinerBase, switch display internally based on pageItem presence -->
+    <!-- Always mount OutlinerBase, switch display internally based on pageItem presence -->
     {#if !error}
-        {#key `${store.project?.ydoc?.guid || projectName || "project"}-${store.resetEpoch}`}
         <OutlinerBase
             pageItem={store.currentPage}
             projectName={projectName || ""}
@@ -625,7 +585,6 @@ let resetEpochCache = $state(0);
                 : false}
             onEdit={undefined}
         />
-        {/key}
     {/if}
 
     <!-- Backlink Panel (Hidden when temporary page) -->

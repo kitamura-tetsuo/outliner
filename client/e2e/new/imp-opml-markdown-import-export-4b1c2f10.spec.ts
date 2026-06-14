@@ -30,7 +30,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         await page.goto(`/${encoded}/settings`);
         await expect(page.getByText("Import / Export")).toBeVisible();
 
-        // Setup debugger functions on the new page (since navigation clears window context)
+        // Setup debugger functions on the new page (since navigation clears globalThis context)
         await TestHelpers.setupTreeDebugger(page);
 
         await TestHelpers.setupTreeDebugger(page);
@@ -38,7 +38,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         // Wait for Yjs connection and data sync to be ready before export
         // We wait specifically for "Child item" to appear in the Yjs project tree
         await page.waitForFunction(() => {
-            const y = (window as any).__YJS_STORE__;
+            const y = (globalThis as any).__YJS_STORE__;
             if (!y || !y.isConnected) return false;
             const project = y.yjsClient?.getProject();
             if (!project) return false;
@@ -76,7 +76,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
 
         // Wait for Yjs connection before import
         await page.waitForFunction(() => {
-            const y = (window as any).__YJS_STORE__;
+            const y = (globalThis as any).__YJS_STORE__;
             return y && y.isConnected && y.yjsClient;
         }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait on settings failed"));
 
@@ -110,7 +110,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         // This is necessary because page navigation and Yjs sync may take time
         await page.waitForFunction(
             () => {
-                const yjsStore = (window as any).__YJS_STORE__;
+                const yjsStore = (globalThis as any).__YJS_STORE__;
                 const isConnected = yjsStore?.getIsConnected?.() === true;
                 if (!isConnected) return false;
 
@@ -185,7 +185,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
 
         // Wait for Yjs connection before import
         await page.waitForFunction(() => {
-            const y = (window as any).__YJS_STORE__;
+            const y = (globalThis as any).__YJS_STORE__;
             return y && y.isConnected && y.yjsClient;
         }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait on settings failed"));
 
@@ -219,7 +219,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         // Wait for Yjs to be connected on the new page
         await page.waitForFunction(
             () => {
-                const yjsStore = (window as any).__YJS_STORE__;
+                const yjsStore = (globalThis as any).__YJS_STORE__;
                 return yjsStore?.getIsConnected?.() === true;
             },
             { timeout: 30000 },
@@ -259,7 +259,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
 
         // Wait for Yjs connection before import
         await page.waitForFunction(() => {
-            const y = (window as any).__YJS_STORE__;
+            const y = (globalThis as any).__YJS_STORE__;
             return y && y.isConnected && y.yjsClient;
         }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait on settings failed"));
 
@@ -291,7 +291,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         // Ensure Yjs connection and page items are loaded
         await page.waitForFunction(
             () => {
-                const yjsStore = (window as any).__YJS_STORE__;
+                const yjsStore = (globalThis as any).__YJS_STORE__;
                 const isConnected = yjsStore?.getIsConnected?.() === true;
                 if (!isConnected) return false;
 
@@ -308,7 +308,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         // Wait for Yjs connection and page items to be loaded
         await page.waitForFunction(
             () => {
-                const yjsStore = (window as any).__YJS_STORE__;
+                const yjsStore = (globalThis as any).__YJS_STORE__;
                 const isConnected = yjsStore?.getIsConnected?.() === true;
                 if (!isConnected) return false;
 

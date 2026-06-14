@@ -212,10 +212,10 @@ You can also retrieve cursor information from the browser console.
 
 ```javascript
 // Retrieve cursor information from console
-const cursorData = window.getCursorDebugData();
+const cursorData = globalThis.getCursorDebugData();
 console.log(cursorData);
 
 // Retrieve data for a specific path
-const activeItemId = window.getCursorPathData("activeItemId");
+const activeItemId = globalThis.getCursorPathData("activeItemId");
 console.log(activeItemId);
 ```

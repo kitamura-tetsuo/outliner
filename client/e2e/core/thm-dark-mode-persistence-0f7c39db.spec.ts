@@ -37,13 +37,13 @@ test.describe("THM-0002: Dark mode preference persists", () => {
         // wait for page to load completely and UserManager to be initialized
         await page.waitForLoadState("domcontentloaded");
         await page.waitForFunction(
-            () => (window as any).__USER_MANAGER__ !== undefined,
+            () => (globalThis as any).__USER_MANAGER__ !== undefined,
             { timeout: 30000 },
         );
 
         // wait for UserPreferencesStore to be initialized with correct theme
         await page.waitForFunction(() => {
-            const store = (window as any).userPreferencesStore;
+            const store = (globalThis as any).userPreferencesStore;
             return store && store.theme === "dark";
         }, { timeout: 10000 });
 

@@ -27,21 +27,21 @@ test.describe("Yjs client attach and DOM reflect", () => {
     test("attaches Yjs project and renders seeded lines", async ({ page }) => {
         // Verify project is backed by a Y.Doc (guid present)
         await page.waitForFunction(() => {
-            const gs = (window as { generalStore?: { project?: { ydoc?: { guid?: string; }; }; }; }).generalStore;
+            const gs = (globalThis as { generalStore?: { project?: { ydoc?: { guid?: string; }; }; }; }).generalStore;
             const guid = gs?.project?.ydoc?.guid ?? null;
             return typeof guid === "string" && guid.length > 0;
         }, { timeout: 30000 });
 
         // Wait for currentPage to be set
         await page.waitForFunction(() => {
-            const gs = (window as { generalStore?: { currentPage?: Record<string, unknown>; }; }).generalStore;
+            const gs = (globalThis as { generalStore?: { currentPage?: Record<string, unknown>; }; }).generalStore;
             return !!(gs && gs.currentPage);
         }, { timeout: 15000 });
 
         // Ensure items are seeded in model (fallback for race conditions)
         await page.evaluate((lines) => {
-            const gs =
-                (window as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; }).generalStore;
+            const gs = (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
+                .generalStore;
             const p = gs?.currentPage;
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
@@ -50,13 +50,11 @@ test.describe("Yjs client attach and DOM reflect", () => {
             // Overwrite existing items
             for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
                 const it = (items as any).at ? (items as any).at(i) : (items as any)[i];
-
                 (it as any)?.updateText?.(lines[i]);
             }
             // Add missing items
             for (let i = existing as number; i < lines.length; i++) {
                 const node = (items as any).addNode?.("tester");
-
                 (node as any)?.updateText?.(lines[i]);
             }
         }, lines);

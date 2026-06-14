@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
@@ -34,7 +33,7 @@ test.describe("PRS-0001: presence indicators", () => {
 
         // Debug presence store state
         const presenceDebug = await page.evaluate(() => {
-            const store = (window as any).presenceStore;
+            const store = (globalThis as any).presenceStore;
             return {
                 presenceStoreExists: !!store,
                 users: store ? store.getUsers() : [],
@@ -48,7 +47,7 @@ test.describe("PRS-0001: presence indicators", () => {
 
         // Manually add a second user for testing
         await page.evaluate(() => {
-            const store = (window as any).presenceStore;
+            const store = (globalThis as any).presenceStore;
             if (store) {
                 store.setUser({
                     userId: "test-user-2",
@@ -69,7 +68,7 @@ test.describe("PRS-0001: presence indicators", () => {
 
         // Verify avatar count decreases after removing user
         await page.evaluate(() => {
-            const store = (window as any).presenceStore;
+            const store = (globalThis as any).presenceStore;
             if (store) {
                 store.removeUser("test-user-2");
             }

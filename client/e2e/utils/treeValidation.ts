@@ -11,10 +11,9 @@ export class TreeValidator {
     static async getTreeData(page: Page): Promise<any> {
         return page.evaluate(() => {
             // Check for debug function existence (Yjs)
-            if (typeof window.getYjsTreeDebugData !== "function") {
+            if (typeof globalThis.getYjsTreeDebugData !== "function") {
                 // Fallback: Get basic data from appStore
-
-                const appStore = (window as any).appStore;
+                const appStore = (globalThis as any).appStore;
                 if (appStore && appStore.pages && appStore.pages.current) {
                     return {
                         itemCount: appStore.pages.current.length,
@@ -27,7 +26,7 @@ export class TreeValidator {
                 throw new Error("getYjsTreeDebugData function is not available and no fallback data found");
             }
 
-            return window.getYjsTreeDebugData();
+            return globalThis.getYjsTreeDebugData();
         });
     }
 
@@ -37,7 +36,7 @@ export class TreeValidator {
     static async waitForProjectReady(page: Page, timeout: number = 5000): Promise<void> {
         try {
             await page.waitForFunction(() => {
-                const gs = (window as any).generalStore || (window as any).appStore;
+                const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
                 return !!(gs && gs.project);
             }, { timeout });
         } catch (error) {
@@ -49,11 +48,11 @@ export class TreeValidator {
     static async getTreePathData(page: Page, path?: string): Promise<any> {
         return page.evaluate(async path => {
             // Check for debug function existence (Yjs)
-            if (typeof window.getYjsTreePathData !== "function") {
+            if (typeof globalThis.getYjsTreePathData !== "function") {
                 // Fallback: Implement basic path resolution
                 if (!path) return undefined;
 
-                const appStore = (window as any).appStore;
+                const appStore = (globalThis as any).appStore;
                 if (appStore && appStore.pages && appStore.pages.current) {
                     const data = {
                         itemCount: appStore.pages.current.length,
@@ -78,7 +77,7 @@ export class TreeValidator {
                 return undefined;
             }
 
-            return window.getYjsTreePathData(path);
+            return globalThis.getYjsTreePathData(path);
         }, path);
     }
 
@@ -315,7 +314,7 @@ export class TreeValidator {
     }
 }
 
-// Extend global type definition (Add functionality to window object for testing)
+// Extend global type definition (Add functionality to globalThis object for testing)
 declare global {
     interface Window {
         mockUser?: { id: string; name: string; email?: string; };

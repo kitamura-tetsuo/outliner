@@ -25,8 +25,7 @@ test.describe("CMT-0001: comment threads", () => {
             await page.evaluate(() => {
                 try {
                     // Clear comment data from the current page items if possible
-
-                    const gs: any = (window as any).generalStore;
+                    const gs: any = (globalThis as any).generalStore;
                     if (gs?.currentPage?.items) {
                         const items = gs.currentPage.items;
                         const len = items?.length ?? 0;
@@ -52,7 +51,7 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Also clear any existing Yjs comment data
                     try {
-                        const yjsStore: any = (window as any).__YJS_STORE__;
+                        const yjsStore: any = (globalThis as any).__YJS_STORE__;
                         if (yjsStore?.yjsClient) {
                             const client = yjsStore.yjsClient;
                             // Clear any pending comment operations
@@ -66,7 +65,7 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Clear any global state that might interfere with this test
                     try {
-                        const win: any = window as any;
+                        const win: any = globalThis as any;
                         // Clear any comment-related global variables
                         if (win.__COMMENT_THREAD_STATE__) {
                             win.__COMMENT_THREAD_STATE__ = {};
@@ -183,14 +182,48 @@ test.describe("CMT-0001: comment threads", () => {
         await editInput.focus();
 
         // Clear the edit input field and enter new text
-        // Use evaluate to robustly set the value and trigger Svelte's bind:value
-        await editInput.evaluate((el) => {
-            (el as HTMLInputElement).value = "edited";
-            el.dispatchEvent(new Event("input", { bubbles: true }));
-        });
+        // Simply filling might be flaky if there are event handlers resetting it or if focus is lost
+        // Use keyboard selection to clear the field completely
+        // Use keyboard selection to clear the field completely
+        await editInput.click(); // Ensure focus
+
+        // Robust clearing loop: Use fill("") first as it's most reliable, then keyboard shortcuts if needed
+        // This handles cases where framework reactivity or auto-save might restore the value
+        const clearDeadline = Date.now() + 10000;
+        await editInput.focus();
+        while (Date.now() < clearDeadline) {
+            // Primary method: direct fill
+            await editInput.fill("");
+
+            // Wait a bit for the value to update and potential framework reactivity
+            await page.waitForTimeout(100);
+
+            const val = await editInput.inputValue();
+            if (val === "") {
+                // Double check to ensure it stays empty
+                await page.waitForTimeout(100);
+                if (await editInput.inputValue() === "") break;
+            }
+
+            // Secondary method: keyboard shortcuts (Control+A, Backspace)
+            await editInput.press("Control+A");
+            await editInput.press("Backspace");
+            await page.waitForTimeout(100);
+
+            if (await editInput.inputValue() === "") break;
+
+            // Tertiary method: Meta+A (Mac) just in case
+            await editInput.press("Meta+A");
+            await editInput.press("Backspace");
+            await page.waitForTimeout(100);
+        }
+        // Verify it is empty and allow for potential framework reactivity to settle
+        await expect(editInput).toHaveValue("", { timeout: 10000 });
+
+        await editInput.fill("edited");
 
         // Confirm input value is set correctly before saving
-        await expect(editInput).toHaveValue("edited", { timeout: 10000 });
+        await expect(editInput).toHaveValue("edited");
 
         // Click the save button
         await page.click(`[data-testid="save-edit-${commentId}"]`);
@@ -230,8 +263,7 @@ test.describe("CMT-0001: comment threads", () => {
             await page.evaluate(() => {
                 try {
                     // Clear comment data from the current page items if possible
-
-                    const gs: any = (window as any).generalStore;
+                    const gs: any = (globalThis as any).generalStore;
                     if (gs?.currentPage?.items) {
                         const items = gs.currentPage.items;
                         const len = items?.length ?? 0;
@@ -257,7 +289,7 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Also clear any existing Yjs comment data
                     try {
-                        const yjsStore: any = (window as any).__YJS_STORE__;
+                        const yjsStore: any = (globalThis as any).__YJS_STORE__;
                         if (yjsStore?.yjsClient) {
                             const client = yjsStore.yjsClient;
                             // Clear any pending comment operations
@@ -271,7 +303,7 @@ test.describe("CMT-0001: comment threads", () => {
 
                     // Clear any global state that might interfere with this test
                     try {
-                        const win: any = window as any;
+                        const win: any = globalThis as any;
                         // Clear any comment-related global variables
                         if (win.__COMMENT_THREAD_STATE__) {
                             win.__COMMENT_THREAD_STATE__ = {};

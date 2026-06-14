@@ -23,18 +23,15 @@ test.describe("YJS token refresh reconnect", () => {
             // @ts-expect-error - resolved by Vite in browser
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
-
-            (window as any).__CONN__ = conn;
+            (globalThis as any).__CONN__ = conn;
 
             // Listen for status changes to detect disconnect
             const provider = conn.provider;
             let disconnectResolve: () => void;
-
-            (window as any).__DISCONNECT_PROMISE__ = new Promise<void>(resolve => {
+            (globalThis as any).__DISCONNECT_PROMISE__ = new Promise<void>(resolve => {
                 disconnectResolve = resolve;
             });
-
-            (window as any).__WS_STATUS__ = "unknown";
+            (globalThis as any).__WS_STATUS__ = "unknown";
 
             provider.on("disconnect", () => {
                 console.log("Provider emitted disconnect event");
@@ -42,53 +39,47 @@ test.describe("YJS token refresh reconnect", () => {
             });
             provider.on("status", (event: { status: string; }) => {
                 console.log("Status changed to:", event.status);
-
-                (window as any).__WS_STATUS__ = event.status;
+                (globalThis as any).__WS_STATUS__ = event.status;
             });
         }, projectId);
 
         await page.waitForFunction(
             () => {
-                const wsStatus = (window as any).__WS_STATUS__;
-
-                const p = (window as any).__CONN__?.provider;
+                const wsStatus = (globalThis as any).__WS_STATUS__;
+                const p = (globalThis as any).__CONN__?.provider;
                 return p?.isSynced === true || wsStatus === "connected";
             },
             undefined,
             { timeout: 20000 },
         );
         await page.evaluate(() => {
-            (window as any).__CONN__.provider.disconnect();
+            (globalThis as any).__CONN__.provider.disconnect();
         });
         // Wait for disconnect event with timeout
-
-        await page.waitForFunction(() => (window as any).__DISCONNECT_PROMISE__, undefined, { timeout: 30000 });
+        await page.waitForFunction(() => (globalThis as any).__DISCONNECT_PROMISE__, undefined, { timeout: 30000 });
         // After disconnect, verify status
         const status = await page.evaluate(() => {
-            return (window as any).__WS_STATUS__;
+            return (globalThis as any).__WS_STATUS__;
         });
         expect(status).toBe("disconnected");
-
-        await page.waitForFunction(() => !!(window as any).__USER_MANAGER__);
+        await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__);
         await page.waitForTimeout(2000);
         await page.evaluate(async () => {
-            await (window as any).__USER_MANAGER__.refreshToken();
+            await (globalThis as any).__USER_MANAGER__.refreshToken();
             // In e2e test, we force connect because refreshToken might not always trigger it if token is the same
-
-            (window as any).__CONN__.provider.connect();
+            (globalThis as any).__CONN__.provider.connect();
         });
         await page.waitForFunction(
             () => {
-                const wsStatus = (window as any).__WS_STATUS__;
-
-                const p = (window as any).__CONN__.provider;
+                const wsStatus = (globalThis as any).__WS_STATUS__;
+                const p = (globalThis as any).__CONN__.provider;
                 return p.isSynced === true || wsStatus === "connected";
             },
             undefined,
             { timeout: 20000 },
         );
         // HocuspocusProvider stores status in configuration.websocketProvider.status
-        const isConnected = await page.evaluate(() => (window as any).__WS_STATUS__ === "connected");
+        const isConnected = await page.evaluate(() => (globalThis as any).__WS_STATUS__ === "connected");
         expect(isConnected).toBeTruthy();
     });
 
@@ -98,40 +89,37 @@ test.describe("YJS token refresh reconnect", () => {
             // @ts-expect-error - resolved by Vite in browser
             const { createProjectConnection } = await import("/src/lib/yjs/connection.ts");
             const conn = await createProjectConnection(pid);
-
-            (window as any).__CONN__ = conn;
-
-            (window as any).__WS_STATUS__ = "unknown";
+            (globalThis as any).__CONN__ = conn;
+            (globalThis as any).__WS_STATUS__ = "unknown";
             conn.provider.on("status", (event: { status: string; }) => {
-                (window as any).__WS_STATUS__ = event.status;
+                (globalThis as any).__WS_STATUS__ = event.status;
             });
 
             // Spy on sendToken to verify it's called
             const originalSendToken = conn.provider.sendToken.bind(conn.provider);
             conn.provider.sendToken = async () => {
-                (window as any).__SEND_TOKEN_CALLED__ = true;
+                (globalThis as any).__SEND_TOKEN_CALLED__ = true;
                 return originalSendToken();
             };
         }, projectId);
 
         await page.waitForFunction(() => {
-            const p = (window as any).__CONN__?.provider;
-
-            const wsStatus = (window as any).__WS_STATUS__;
+            const p = (globalThis as any).__CONN__?.provider;
+            const wsStatus = (globalThis as any).__WS_STATUS__;
             return p?.isSynced === true || wsStatus === "connected";
         });
 
-        await page.waitForFunction(() => !!(window as any).__USER_MANAGER__);
+        await page.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__);
         await page.waitForTimeout(2000);
         await page.evaluate(async () => {
-            await (window as any).__USER_MANAGER__.refreshToken();
-
-            (window as any).__CONN__.provider.sendToken();
+            await (globalThis as any).__USER_MANAGER__.refreshToken();
+            (globalThis as any).__CONN__.provider.sendToken();
         });
 
-        await page.waitForFunction(() => (window as any).__SEND_TOKEN_CALLED__ === true, undefined, { timeout: 60000 });
-
-        const tokenRefreshed = await page.evaluate(() => (window as any).__SEND_TOKEN_CALLED__);
+        await page.waitForFunction(() => (globalThis as any).__SEND_TOKEN_CALLED__ === true, undefined, {
+            timeout: 60000,
+        });
+        const tokenRefreshed = await page.evaluate(() => (globalThis as any).__SEND_TOKEN_CALLED__);
         expect(tokenRefreshed).toBe(true);
     });
 });

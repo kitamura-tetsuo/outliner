@@ -13,7 +13,7 @@ test.describe("SLR-0010: Change selection format", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         // Enable debug mode
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            (globalThis as any).DEBUG_MODE = true;
         });
 
         // Seed with data
@@ -57,13 +57,13 @@ test.describe("SLR-0010: Change selection format", () => {
         // Wait for the application's selection state to sync with the DOM
         await page.waitForFunction(
             () => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
             null,
             { timeout: 3000 },
         ).catch(async () => {
-            const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
+            const actual = await page.evaluate(() => (globalThis as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
 
@@ -71,8 +71,7 @@ test.describe("SLR-0010: Change selection format", () => {
 
         // Debug: Log the selection text
         const selectionText = await page.evaluate(() => {
-            // eslint-disable-next-line no-restricted-globals
-            return window.getSelection()?.toString();
+            return globalThis.getSelection()?.toString();
         });
         console.log(`[DEBUG] Selected text: "${selectionText}"`);
 
@@ -106,13 +105,13 @@ test.describe("SLR-0010: Change selection format", () => {
         // Wait for the application's selection state to sync with the DOM
         await page.waitForFunction(
             () => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
             null,
             { timeout: 3000 },
         ).catch(async () => {
-            const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
+            const actual = await page.evaluate(() => (globalThis as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
 
@@ -144,13 +143,13 @@ test.describe("SLR-0010: Change selection format", () => {
         // Wait for the application's selection state to sync with the DOM
         await page.waitForFunction(
             () => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
             null,
             { timeout: 3000 },
         ).catch(async () => {
-            const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
+            const actual = await page.evaluate(() => (globalThis as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
 
@@ -188,13 +187,13 @@ test.describe("SLR-0010: Change selection format", () => {
         // Wait for the application's selection state to sync with the DOM
         await page.waitForFunction(
             () => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
             null,
             { timeout: 3000 },
         ).catch(async () => {
-            const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
+            const actual = await page.evaluate(() => (globalThis as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
 
@@ -227,13 +226,13 @@ test.describe("SLR-0010: Change selection format", () => {
         // Wait for the application's selection state to sync with the DOM
         await page.waitForFunction(
             () => {
-                const store = (window as any).editorOverlayStore;
+                const store = (globalThis as any).editorOverlayStore;
                 return store && store.getSelectedText().includes("This");
             },
             null,
             { timeout: 3000 },
         ).catch(async () => {
-            const actual = await page.evaluate(() => (window as any).editorOverlayStore?.getSelectedText());
+            const actual = await page.evaluate(() => (globalThis as any).editorOverlayStore?.getSelectedText());
             console.log(`Timed out waiting for editorOverlayStore. Actual: "${actual}"`);
         });
 

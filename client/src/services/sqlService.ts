@@ -37,29 +37,24 @@ if (typeof window !== "undefined") {
 export async function initDb() {
     if (db) return;
 
-    // Detect if we are in a Node.js environment (for Vitest/unit tests)
-    const isNode = typeof process !== "undefined" && process.versions && !!process.versions.node;
-    const isTest = isNode
-        && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production");
-    const isViteTest = isNode && import.meta.env && import.meta.env.MODE === "test";
-
     // Load WASM from appropriate path in test or production environment
-    if (isTest || isViteTest) {
+    if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
         const fs = await import("fs");
         const path = await import("path");
         // Try multiple possible paths for the WASM file
         const possiblePaths = [
             path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm"),
-            path.resolve(process.cwd(), "client/node_modules/sql.js/dist/sql-wasm.wasm"),
             path.resolve(__dirname, "../../node_modules/sql.js/dist/sql-wasm.wasm"),
             path.resolve(__dirname, "../node_modules/sql.js/dist/sql-wasm.wasm"),
         ];
 
         let wasmBinary: Uint8Array | null = null;
+        let wasmPath = "";
         for (const possiblePath of possiblePaths) {
             try {
                 const buffer = fs.readFileSync(possiblePath);
                 wasmBinary = new Uint8Array(buffer);
+                wasmPath = possiblePath;
                 break;
             } catch {
                 // Continue to next path
@@ -67,13 +62,17 @@ export async function initDb() {
         }
 
         if (!wasmBinary) {
-            throw new Error(
-                `Could not find sql-wasm.wasm file in any expected location. Tried: ${possiblePaths.join(", ")}`,
-            );
+            throw new Error("Could not find sql-wasm.wasm file in any expected location");
         }
 
         SQL = await initSqlJs({
             wasmBinary: wasmBinary,
+            locateFile: (file: string) => {
+                if (file.endsWith(".wasm")) {
+                    return wasmPath;
+                }
+                return file;
+            },
         });
     } else {
         // Load WASM from Vite's public directory in development environment

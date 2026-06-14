@@ -114,7 +114,7 @@ test.describe("Consistency of format display when moving cursors", () => {
 
         // Check title CSS style
         const titleFontWeight = await pageTitle.locator(".item-text").evaluate(el => {
-            return window.getComputedStyle(el).fontWeight;
+            return globalThis.getComputedStyle(el).fontWeight;
         });
         console.log("Title font weight:", titleFontWeight);
         // Confirm title font weight is set (check actual value in log)
@@ -227,7 +227,7 @@ test.describe("Consistency of format display when moving cursors", () => {
 
         // Check cursor state and create if necessary
         const cursorState = await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (globalThis as any).editorOverlayStore;
             if (!editorStore) return { error: "editorOverlayStore not found" };
 
             const activeItem = editorStore.getActiveItem();
@@ -242,7 +242,7 @@ test.describe("Consistency of format display when moving cursors", () => {
         // Create cursor instance if it does not exist
         if (cursorState.cursorInstancesCount === 0) {
             await page.evaluate(() => {
-                const editorStore = (window as any).editorOverlayStore;
+                const editorStore = (globalThis as any).editorOverlayStore;
                 if (editorStore) {
                     const activeItemId = editorStore.getActiveItem();
                     if (activeItemId) {
@@ -259,7 +259,7 @@ test.describe("Consistency of format display when moving cursors", () => {
 
         // Insert text using cursor.insertText()
         await page.evaluate(() => {
-            const editorStore = (window as any).editorOverlayStore;
+            const editorStore = (globalThis as any).editorOverlayStore;
             if (editorStore) {
                 const cursorInstances = editorStore.getCursorInstances();
                 if (cursorInstances.length > 0) {
@@ -309,9 +309,8 @@ test.afterEach(async ({ page }) => {
     // Reset editor state to prevent test interference
     await page.evaluate(() => {
         // Clear any remaining editor state
-
-        if ((window as any).editorOverlayStore) {
-            const editorStore = (window as any).editorOverlayStore;
+        if ((globalThis as any).editorOverlayStore) {
+            const editorStore = (globalThis as any).editorOverlayStore;
             if (editorStore.reset) {
                 editorStore.reset();
             } else {
@@ -330,9 +329,8 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear any other potential shared state
-
-        if ((window as any).aliasPickerStore) {
-            const aliasPickerStore = (window as any).aliasPickerStore;
+        if ((globalThis as any).aliasPickerStore) {
+            const aliasPickerStore = (globalThis as any).aliasPickerStore;
             if (aliasPickerStore.reset) {
                 aliasPickerStore.reset();
             } else {
@@ -344,9 +342,8 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear command palette state if it exists
-
-        if ((window as any).commandPaletteStore) {
-            const commandPaletteStore = (window as any).commandPaletteStore;
+        if ((globalThis as any).commandPaletteStore) {
+            const commandPaletteStore = (globalThis as any).commandPaletteStore;
             if (commandPaletteStore.reset) {
                 commandPaletteStore.reset();
             } else {
@@ -357,9 +354,8 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear any potential global state that could affect other tests
-
-        if ((window as any).userPreferencesStore) {
-            const userPreferencesStore = (window as any).userPreferencesStore;
+        if ((globalThis as any).userPreferencesStore) {
+            const userPreferencesStore = (globalThis as any).userPreferencesStore;
             if (userPreferencesStore.reset) {
                 userPreferencesStore.reset();
             } else {
@@ -371,9 +367,8 @@ test.afterEach(async ({ page }) => {
         }
 
         // Clear any potential shared tree state
-
-        if ((window as any).generalStore) {
-            const generalStore = (window as any).generalStore;
+        if ((globalThis as any).generalStore) {
+            const generalStore = (globalThis as any).generalStore;
             // Reset cursor-related state in general store if it exists
             if (generalStore.setCursor) {
                 try {

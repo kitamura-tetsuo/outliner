@@ -33,7 +33,7 @@ test.describe("CLM-0004: Move Up", () => {
     test("Move cursor up one line", async ({ page }) => {
         // Enable debug mode
         await page.evaluate(() => {
-            (window as any).DEBUG_MODE = true;
+            (globalThis as any).DEBUG_MODE = true;
         });
 
         // Get cursor data and verify
@@ -46,7 +46,7 @@ test.describe("CLM-0004: Move Up", () => {
             ".item-content",
         ).evaluate(el => {
             const rect = el.getBoundingClientRect();
-            const computedStyle = window.getComputedStyle(el);
+            const computedStyle = globalThis.getComputedStyle(el);
             const lineHeight = parseInt(computedStyle.lineHeight) || 20;
             const estimatedLines = Math.round(rect.height / lineHeight);
             return { height: rect.height, lineHeight, estimatedLines };

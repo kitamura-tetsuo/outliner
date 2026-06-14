@@ -49,7 +49,7 @@ test.describe("Bug Fix Verification: Project title persistence", () => {
 
         // Debug: Check if store was updated
         await page.waitForFunction(() => {
-            const ps = (window as any).__PROJECT_STORE__;
+            const ps = (globalThis as any).__PROJECT_STORE__;
             return ps && ps.projects && ps.projects.length > 0;
         }, { timeout: 10000 }).catch(() => console.log("Timeout waiting for PROJECT_STORE update"));
 

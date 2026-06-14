@@ -22,7 +22,7 @@ test.describe("TOO-0001: Toolbar SearchBox Display Feature", () => {
 
         // Verify that the toolbar is in a fixed position
         const toolbarStyles = await toolbar.evaluate((el) => {
-            const styles = window.getComputedStyle(el);
+            const styles = globalThis.getComputedStyle(el);
             return {
                 position: styles.position,
                 top: styles.top,
@@ -57,7 +57,7 @@ test.describe("TOO-0001: Toolbar SearchBox Display Feature", () => {
 
         // Verify that padding is applied to the main content
         const mainContentStyles = await mainContent.evaluate((el) => {
-            const styles = window.getComputedStyle(el);
+            const styles = globalThis.getComputedStyle(el);
             return {
                 paddingTop: styles.paddingTop,
             };

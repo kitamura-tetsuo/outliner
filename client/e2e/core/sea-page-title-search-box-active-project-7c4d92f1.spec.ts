@@ -37,7 +37,7 @@ test.describe("SEA-0001: page title search box prefers active project", () => {
         // This ensures the SearchBox has data to search against
 
         await page.waitForFunction(() => {
-            const gs = (window as any).generalStore || (window as any).appStore;
+            const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const items = gs?.project?.items;
             return items && items.length >= 2; // Should have at least current page + Page2
         }, { timeout: 30000 }).catch(() =>

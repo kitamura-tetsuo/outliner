@@ -75,14 +75,13 @@ test.describe("Chromium Debug Test", () => {
                     localStorage.setItem("VITE_IS_TEST", "true");
                     localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                     localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
-
-                    (window as any).__E2E__ = true;
+                    (globalThis as any).__E2E__ = true;
                 } catch {}
             });
 
             // Wait for the application to initialize
             await page.waitForFunction(() => {
-                return (window as any).generalStore || (window as any).appStore;
+                return (globalThis as any).generalStore || (globalThis as any).appStore;
             }, { timeout: 10000 });
 
             // Check the title (expect any non-empty title rather than just truthy)

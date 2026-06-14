@@ -49,7 +49,7 @@ test.describe("SLR-356b853a: Long text selection range", () => {
 
         // Reliable copy via page.evaluate
         const textToCopy = await page.evaluate(() => {
-            const editorOverlayStore = (window as any).editorOverlayStore;
+            const editorOverlayStore = (globalThis as any).editorOverlayStore;
             if (editorOverlayStore) {
                 const selections = Object.values(editorOverlayStore.selections);
                 if (selections.length > 0) {
@@ -74,7 +74,7 @@ test.describe("SLR-356b853a: Long text selection range", () => {
         await page.waitForTimeout(100);
 
         await page.evaluate((textToPaste) => {
-            const editorOverlayStore = (window as any).editorOverlayStore;
+            const editorOverlayStore = (globalThis as any).editorOverlayStore;
             if (editorOverlayStore && textToPaste) {
                 const cursorInstances = editorOverlayStore.getCursorInstances();
                 cursorInstances.forEach((cursor: any) => cursor.insertText(textToPaste));

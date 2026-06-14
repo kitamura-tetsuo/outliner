@@ -4,6 +4,12 @@ import { onMount } from "svelte";
 
 type Option = { id: string; path: string; };
 
+interface AliasPickerVisibilityEvent {
+    detail?: {
+        visible: boolean;
+    };
+}
+
 let selectedIndex = $state(0);
 let pickerElement = $state<HTMLDivElement>();
 let inputElement = $state<HTMLInputElement>();
@@ -17,18 +23,9 @@ let visible = $derived(!!aliasPickerStore.isVisible);
 let activeDescendantId = $derived(visible && selectedIndex >= 0 ? `alias-option-${selectedIndex}` : undefined);
 
 onMount(() => {
-    const onVis = (e: Event) => {
-        try {
-            const detail = (e as CustomEvent).detail;
-            visible = !!(detail?.visible);
-        } catch {
-            // ignore
-        }
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    window.addEventListener("aliaspicker-visibility" as any, onVis);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return () => window.removeEventListener("aliaspicker-visibility" as any, onVis);
+    const onVis = (e: AliasPickerVisibilityEvent) => { try { visible = !!(e?.detail?.visible); } catch {} };
+    window.addEventListener("aliaspicker-visibility", onVis);
+    return () => window.removeEventListener("aliaspicker-visibility", onVis);
 });
 
 function getFilteredOptions(): Option[] {

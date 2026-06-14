@@ -51,15 +51,13 @@ test.describe("ALS-8a1f2c30: alias fallback shows path within 2s", () => {
 
         // Set aliasPickerStore's last confirmed information (within 2 seconds)
         await page.evaluate(([itemId, targetId]) => {
-            const ap: any = (window as any).aliasPickerStore;
+            const ap: any = (globalThis as any).aliasPickerStore;
             if (!ap) throw new Error("aliasPickerStore not found");
             ap.lastConfirmedItemId = itemId;
             ap.lastConfirmedTargetId = targetId;
             ap.lastConfirmedAt = Date.now();
             // Slightly modify target item text to trigger re-render and ensure dependency recalculation
-
-            const gs: any = (window as any).generalStore;
-
+            const gs: any = (globalThis as any).generalStore;
             const items = gs?.currentPage?.items as any;
             const len = items?.length ?? 0;
             for (let i = 0; i < len; i++) {

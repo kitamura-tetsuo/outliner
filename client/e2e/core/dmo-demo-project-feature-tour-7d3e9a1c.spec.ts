@@ -17,6 +17,7 @@ test.describe("Demo project feature tour", () => {
                 "Demo",
                 "Formatting",
                 "Outliner Basics",
+                "Checkboxes and Tasks",
                 "Internal Links",
                 "Search and Commands",
                 "Selection and Clipboard",

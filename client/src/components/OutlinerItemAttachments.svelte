@@ -25,15 +25,14 @@ onMount(() => {
             try {
                 const arr = (yArr?.toArray?.() ?? []);
                 attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
-                logger.debug(`[OutlinerItemAttachments][Yjs] attachments observe -> ${attachmentsMirror.length} id=${modelId}`);
+                logger.debug('[OutlinerItemAttachments][Yjs] attachments observe ->', attachmentsMirror.length, 'id=', modelId);
             } catch {}
         };
         if (yArr && typeof yArr.observe === 'function' && typeof yArr.unobserve === 'function') {
             read(); // Initial reflection
             const yHandler = () => { read(); };
             yArr.observe(yHandler);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            onDestroy(() => { try { (yArr as any).unobserve(yHandler); } catch {} });
+            onDestroy(() => { try { yArr.unobserve(yHandler); } catch {} });
         } else {
             // Fallback: Reflect once even if observe is unavailable
             attachmentsMirror = (((item as unknown as { attachments?: { toArray?: () => unknown[] } })?.attachments?.toArray?.() ?? []) as unknown[]).map((u: unknown) => Array.isArray(u) ? u[0] : u);
@@ -46,14 +45,14 @@ onMount(() => {
     const onAtt = (_e: Event | CustomEvent) => {
         try {
             const eid = String((_e && (_e as CustomEvent).detail && (_e as CustomEvent).detail.id) ?? "");
-            logger.debug(`[OutlinerItemAttachments][TEST] item-attachments-changed received eid=${eid} selfId=${modelId}`);
+            logger.debug('[OutlinerItemAttachments][TEST] item-attachments-changed received eid=', eid, 'selfId=', modelId);
             if (eid && String(modelId) !== eid) return;
             const yArr = (item as unknown as { attachments?: { toArray?: () => unknown[], observe?: (obs: unknown) => void, unobserve?: (obs: unknown) => void } })?.attachments;
             const arr = (yArr?.toArray?.() ?? []);
             if (arr.length > 0) {
                 attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
             }
-            logger.debug(`[OutlinerItemAttachments][TEST] mirror updated -> ${attachmentsMirror.length} id=${modelId}`);
+            logger.debug('[OutlinerItemAttachments][TEST] mirror updated ->', attachmentsMirror.length, 'id=', modelId);
         } catch {}
     };
     try {

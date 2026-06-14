@@ -33,7 +33,7 @@ test.describe("Box Selection Test via Mouse", () => {
         // Enable debug mode
         try {
             await page.evaluate(() => {
-                (window as any).DEBUG_MODE = true;
+                (globalThis as any).DEBUG_MODE = true;
             });
         } catch (error) {
             console.log(`Error occurred while setting debug mode: ${error}`);
@@ -89,12 +89,11 @@ test.describe("Box Selection Test via Mouse", () => {
 
         // Verify that box selection is created
         const boxSelectionCount = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
+            if (!(globalThis as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
-
-            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const selections = Object.values((globalThis as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
             return boxSelections.length;
         });
@@ -111,7 +110,7 @@ test.describe("Box Selection Test via Mouse", () => {
 
         // Get copied text (directly from global variable)
         const copiedText = await page.evaluate(() => {
-            return (window as any).lastCopiedText || "";
+            return (globalThis as any).lastCopiedText || "";
         });
         console.log(`Copied text: "${copiedText}"`);
 
@@ -160,19 +159,18 @@ test.describe("Box Selection Test via Mouse", () => {
         // Explicitly call cancelBoxSelection
         await page.evaluate(() => {
             if (
-                (window as any).KeyEventHandler
-                && typeof (window as any).KeyEventHandler.cancelBoxSelection === "function"
+                (globalThis as any).KeyEventHandler
+                && typeof (globalThis as any).KeyEventHandler.cancelBoxSelection === "function"
             ) {
-                (window as any).KeyEventHandler.cancelBoxSelection();
+                (globalThis as any).KeyEventHandler.cancelBoxSelection();
                 console.log("Explicitly called KeyEventHandler.cancelBoxSelection()");
             } else {
                 console.log("KeyEventHandler.cancelBoxSelection not available");
             }
 
             // Force clear selection range
-
-            if ((window as any).editorOverlayStore) {
-                (window as any).editorOverlayStore.clearSelections();
+            if ((globalThis as any).editorOverlayStore) {
+                (globalThis as any).editorOverlayStore.clearSelections();
                 console.log("Explicitly called editorOverlayStore.clearSelections()");
             }
         });
@@ -182,12 +180,11 @@ test.describe("Box Selection Test via Mouse", () => {
 
         // Verify that box selection is cancelled
         const boxSelectionCount2 = await page.evaluate(() => {
-            if (!(window as any).editorOverlayStore) {
+            if (!(globalThis as any).editorOverlayStore) {
                 console.log("editorOverlayStore not found");
                 return 0;
             }
-
-            const selections = Object.values((window as any).editorOverlayStore.selections);
+            const selections = Object.values((globalThis as any).editorOverlayStore.selections);
             const boxSelections = selections.filter((s: any) => s.isBoxSelection);
             console.log("Current selections after cancel:", selections);
             console.log("Box selections after cancel:", boxSelections);

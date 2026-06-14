@@ -24,8 +24,9 @@ test.describe("MCE-0002: multi-cursor commands", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // Verify state before adding cursor
-
-        const countBefore = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
+        const countBefore = await page.evaluate(() =>
+            Object.keys((globalThis as any).editorOverlayStore.cursors).length
+        );
         expect(countBefore).toBe(1);
 
         // Add cursor using keyboard shortcut
@@ -33,14 +34,14 @@ test.describe("MCE-0002: multi-cursor commands", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // Verify state after adding cursor
-
-        const countAfter = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
+        const countAfter = await page.evaluate(() =>
+            Object.keys((globalThis as any).editorOverlayStore.cursors).length
+        );
         expect(countAfter).toBe(2);
 
         // Remove cursor using Undo
         await page.keyboard.press("Control+Shift+z");
-
-        const countUndo = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.cursors).length);
+        const countUndo = await page.evaluate(() => Object.keys((globalThis as any).editorOverlayStore.cursors).length);
         expect(countUndo).toBe(1);
     });
 });

@@ -12,9 +12,9 @@ export class CursorValidator {
         // First, set up the debug function
         await page.evaluate(() => {
             // Add the debug function to the global object
-            window.getCursorDebugData = function() {
+            globalThis.getCursorDebugData = function() {
                 // Get the EditorOverlayStore instance
-                const editorOverlayStore = window.editorOverlayStore;
+                const editorOverlayStore = globalThis.editorOverlayStore;
                 if (!editorOverlayStore) {
                     console.error("EditorOverlayStore instance not found");
                     return { error: "EditorOverlayStore instance not found" };
@@ -58,7 +58,7 @@ export class CursorValidator {
 
         // Retrieve cursor information
         return page.evaluate(() => {
-            return window.getCursorDebugData!();
+            return globalThis.getCursorDebugData!();
         });
     }
 
@@ -284,7 +284,7 @@ export class CursorValidator {
         // Get initial opacity
         const initialOpacity = await page.evaluate(() => {
             const cursor = document.querySelector(".editor-overlay .cursor.active");
-            return cursor ? window.getComputedStyle(cursor).opacity : null;
+            return cursor ? globalThis.getComputedStyle(cursor).opacity : null;
         });
         expect(initialOpacity).not.toBeNull();
 
@@ -294,7 +294,7 @@ export class CursorValidator {
         // Get opacity after change
         const nextOpacity = await page.evaluate(() => {
             const cursor = document.querySelector(".editor-overlay .cursor.active");
-            return cursor ? window.getComputedStyle(cursor).opacity : null;
+            return cursor ? globalThis.getComputedStyle(cursor).opacity : null;
         });
         expect(nextOpacity).not.toBeNull();
 
@@ -303,7 +303,7 @@ export class CursorValidator {
     }
 }
 
-// Extend global type definition (add functionality to window object for testing)
+// Extend global type definition (add functionality to globalThis object for testing)
 declare global {
     interface Window {
         getCursorDebugData?: () => any;

@@ -14,6 +14,5 @@ declare module "yjs-orderedtree" {
         setNodeOrderToEnd(key: string): void;
         setNodeBefore(key: string, target: string): void;
         setNodeAfter(key: string, target: string): void;
-        moveChildToParent(key: string, newParent: string): void;
     }
 }

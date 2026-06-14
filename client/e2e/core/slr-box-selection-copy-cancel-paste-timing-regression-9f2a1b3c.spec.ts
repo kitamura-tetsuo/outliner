@@ -33,7 +33,6 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
                 if ((navigator as any).clipboard.readText) {
                     (navigator as any).clipboard.readText.__original = (navigator as any).clipboard.readText;
                 }
-
                 if ((navigator as any).clipboard.writeText) {
                     (navigator as any).clipboard.writeText.__original = (navigator as any).clipboard.writeText;
                 }
@@ -46,37 +45,28 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         try {
             await page.evaluate(() => {
                 // Reset global debug mode
-
-                (window as any).DEBUG_MODE = false;
+                (globalThis as any).DEBUG_MODE = false;
 
                 // Clear clipboard-related global variables
-
-                (window as any).lastCopiedText = undefined;
-
-                (window as any).lastPastedText = undefined;
-
-                (window as any).lastCopiedIsBoxSelection = undefined;
-
-                (window as any).lastVSCodeMetadata = undefined;
-
-                (window as any).lastBoxSelectionPaste = undefined;
+                (globalThis as any).lastCopiedText = undefined;
+                (globalThis as any).lastPastedText = undefined;
+                (globalThis as any).lastCopiedIsBoxSelection = undefined;
+                (globalThis as any).lastVSCodeMetadata = undefined;
+                (globalThis as any).lastBoxSelectionPaste = undefined;
 
                 // Reset clipboard API mocks
-
                 if ((navigator as any).clipboard) {
                     if ((navigator as any).clipboard.readText.__original) {
                         (navigator as any).clipboard.readText = (navigator as any).clipboard.readText.__original;
                     }
-
                     if ((navigator as any).clipboard.writeText.__original) {
                         (navigator as any).clipboard.writeText = (navigator as any).clipboard.writeText.__original;
                     }
                 }
 
                 // Reset KeyEventHandler box selection state
-
-                if ((window as any).__KEY_EVENT_HANDLER__) {
-                    const handler = (window as any).__KEY_EVENT_HANDLER__;
+                if ((globalThis as any).__KEY_EVENT_HANDLER__) {
+                    const handler = (globalThis as any).__KEY_EVENT_HANDLER__;
                     if (handler.boxSelectionState) {
                         handler.boxSelectionState = {
                             active: false,
@@ -90,9 +80,8 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
                 }
 
                 // Clear editor overlay store selections
-
-                if ((window as any).editorOverlayStore) {
-                    (window as any).editorOverlayStore.clearSelections();
+                if ((globalThis as any).editorOverlayStore) {
+                    (globalThis as any).editorOverlayStore.clearSelections();
                 }
             });
         } catch (error) {
@@ -104,18 +93,16 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Enable debug mode and set clipboard mocks
         try {
             await page.evaluate(() => {
-                (window as any).DEBUG_MODE = true;
+                (globalThis as any).DEBUG_MODE = true;
 
                 // Mock: readText returns lastCopiedText
-
                 (navigator as any).clipboard.readText = async () => {
-                    return (window as any).lastCopiedText || "";
+                    return (globalThis as any).lastCopiedText || "";
                 };
 
                 // Mock: writeText updates lastCopiedText
-
                 (navigator as any).clipboard.writeText = async (text: string) => {
-                    (window as any).lastCopiedText = text;
+                    (globalThis as any).lastCopiedText = text;
                     console.log(`[Mock] writeText: ${text}`);
                     return Promise.resolve();
                 };
@@ -163,9 +150,8 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Verify that rectangular selection has been created (using waitForFunction)
         await page.waitForFunction(
             () => {
-                if (!(window as any).editorOverlayStore) return false;
-
-                const selections = Object.values((window as any).editorOverlayStore.selections);
+                if (!(globalThis as any).editorOverlayStore) return false;
+                const selections = Object.values((globalThis as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 1;
             },
             undefined,
@@ -178,14 +164,14 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Verify copied text (using waitForFunction)
         await page.waitForFunction(
             () => {
-                const text = (window as any).lastCopiedText;
+                const text = (globalThis as any).lastCopiedText;
                 return text && text.length > 0;
             },
             undefined,
             { timeout: 5000 },
         );
 
-        const copiedText = await page.evaluate(() => (window as any).lastCopiedText);
+        const copiedText = await page.evaluate(() => (globalThis as any).lastCopiedText);
         console.log(`Copied text: "${copiedText}"`);
 
         // 4. Cancel with Esc key (without pasting)
@@ -194,25 +180,23 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Explicitly call cancelBoxSelection
         await page.evaluate(() => {
             if (
-                (window as any).KeyEventHandler
-                && typeof (window as any).KeyEventHandler.cancelBoxSelection === "function"
+                (globalThis as any).KeyEventHandler
+                && typeof (globalThis as any).KeyEventHandler.cancelBoxSelection === "function"
             ) {
-                (window as any).KeyEventHandler.cancelBoxSelection();
+                (globalThis as any).KeyEventHandler.cancelBoxSelection();
             }
 
             // Forcibly clear the selection range
-
-            if ((window as any).editorOverlayStore) {
-                (window as any).editorOverlayStore.clearSelections();
+            if ((globalThis as any).editorOverlayStore) {
+                (globalThis as any).editorOverlayStore.clearSelections();
             }
         });
 
         // Verify that rectangular selection has been canceled (using waitForFunction)
         await page.waitForFunction(
             () => {
-                if (!(window as any).editorOverlayStore) return true; // Treat as no selection if store is missing
-
-                const selections = Object.values((window as any).editorOverlayStore.selections);
+                if (!(globalThis as any).editorOverlayStore) return true; // Treat as no selection if store is missing
+                const selections = Object.values((globalThis as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 0;
             },
             undefined,
@@ -234,9 +218,8 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Verify that rectangular selection has been created again (using waitForFunction)
         await page.waitForFunction(
             () => {
-                if (!(window as any).editorOverlayStore) return false;
-
-                const selections = Object.values((window as any).editorOverlayStore.selections);
+                if (!(globalThis as any).editorOverlayStore) return false;
+                const selections = Object.values((globalThis as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 1;
             },
             undefined,
@@ -250,14 +233,14 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Verify that paste succeeded (using waitForFunction)
         await page.waitForFunction(
             () => {
-                const pasted = (window as any).lastPastedText || "";
+                const pasted = (globalThis as any).lastPastedText || "";
                 return pasted.includes("First line") && pasted.length > 0;
             },
             copiedText,
             { timeout: 10000 },
         );
 
-        const pastedText = await page.evaluate(() => (window as any).lastPastedText || "");
+        const pastedText = await page.evaluate(() => (globalThis as any).lastPastedText || "");
         console.log(`Pasted text: "${pastedText}"`);
         expect(pastedText).toContain("First line");
 
@@ -265,9 +248,8 @@ test.describe("Box selection (rectangular selection) copy, cancel, and paste tim
         // Selection range should be cleared after pasting (using waitForFunction)
         await page.waitForFunction(
             () => {
-                if (!(window as any).editorOverlayStore) return true;
-
-                const selections = Object.values((window as any).editorOverlayStore.selections);
+                if (!(globalThis as any).editorOverlayStore) return true;
+                const selections = Object.values((globalThis as any).editorOverlayStore.selections);
                 return selections.filter((s: any) => s.isBoxSelection).length === 0;
             },
             undefined,

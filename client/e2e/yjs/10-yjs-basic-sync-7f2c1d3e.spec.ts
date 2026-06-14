@@ -24,41 +24,35 @@ test("basic map value sync via hocuspocus", async ({ browser }) => {
         counterV2Var: "__UPDATES2_V2__",
     });
 
-    const url1 = await p1.evaluate(() => (window as any).__PROVIDER__?.url ?? "");
-
-    const p1synced = await p1.evaluate(() => (window as any).__PROVIDER__?.isSynced ?? false);
-
-    const p2synced = await p2.evaluate(() => (window as any).__PROVIDER2__?.isSynced ?? false);
+    const url1 = await p1.evaluate(() => (globalThis as any).__PROVIDER__?.url ?? "");
+    const p1synced = await p1.evaluate(() => (globalThis as any).__PROVIDER__?.isSynced ?? false);
+    const p2synced = await p2.evaluate(() => (globalThis as any).__PROVIDER2__?.isSynced ?? false);
     console.log("[yjs-basic] p1 synced:", p1synced, "p2 synced:", p2synced);
 
-    const url2 = await p2.evaluate(() => (window as any).__PROVIDER2__?.url ?? "");
+    const url2 = await p2.evaluate(() => (globalThis as any).__PROVIDER2__?.url ?? "");
     console.log("[yjs-basic] p1 url:", (url1 as string).slice(0, 100));
     console.log("[yjs-basic] p2 url:", (url2 as string).slice(0, 100));
 
     // wait up to ~8s for initial sync to complete on both sides
-
-    await p1.waitForFunction(() => (window as any).__PROVIDER__?.isSynced === true, null, { timeout: 8000 }).catch(() =>
-        undefined
+    await p1.waitForFunction(() => (globalThis as any).__PROVIDER__?.isSynced === true, null, { timeout: 8000 }).catch(
+        () => undefined,
     );
-
-    await p2.waitForFunction(() => (window as any).__PROVIDER2__?.isSynced === true, null, { timeout: 8000 }).catch(
+    await p2.waitForFunction(() => (globalThis as any).__PROVIDER2__?.isSynced === true, null, { timeout: 8000 }).catch(
         () => undefined,
     );
 
-    await p1.waitForFunction(() => !!(window as any).__DOC__, null, { timeout: 10000 });
-
-    await p2.waitForFunction(() => !!(window as any).__DOC2__, null, { timeout: 10000 });
+    await p1.waitForFunction(() => !!(globalThis as any).__DOC__, null, { timeout: 10000 });
+    await p2.waitForFunction(() => !!(globalThis as any).__DOC2__, null, { timeout: 10000 });
 
     await p1.evaluate(() => {
-        const d = (window as any).__DOC__;
+        const d = (globalThis as any).__DOC__;
         d.getMap("m").set("k", "v1");
     });
-
-    const localValue = await p1.evaluate(() => (window as any).__DOC__.getMap("m").get("k"));
+    const localValue = await p1.evaluate(() => (globalThis as any).__DOC__.getMap("m").get("k"));
     console.log("[yjs-basic] p1 local value:", localValue);
 
     const value = await p2.evaluate(async () => {
-        const m = (window as any).__DOC2__.getMap("m");
+        const m = (globalThis as any).__DOC2__.getMap("m");
         for (let i = 0; i < 80; i++) { // ~8s
             const v = m.get("k");
             if (v !== undefined) return v;
@@ -67,9 +61,8 @@ test("basic map value sync via hocuspocus", async ({ browser }) => {
         return m.get("k");
     });
 
-    const updates2 = await p2.evaluate(() => (window as any).__UPDATES2__);
-
-    const updates2v2 = await p2.evaluate(() => (window as any).__UPDATES2_V2__ ?? 0);
+    const updates2 = await p2.evaluate(() => (globalThis as any).__UPDATES2__);
+    const updates2v2 = await p2.evaluate(() => (globalThis as any).__UPDATES2_V2__ ?? 0);
     console.log("[yjs-basic] p2 update events:", updates2, "updateV2:", updates2v2);
 
     expect(value).toBe("v1");

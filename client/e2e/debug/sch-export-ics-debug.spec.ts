@@ -14,7 +14,7 @@ test("debug: create and list schedules before UI", async ({ page }, testInfo) =>
     expect(pageId).not.toEqual("");
 
     const idToken = await page.evaluate(async () => {
-        const userManager = (window as any).__USER_MANAGER__;
+        const userManager = (globalThis as any).__USER_MANAGER__;
         return await userManager?.auth?.currentUser?.getIdToken();
     });
     expect(idToken).toBeTruthy();
