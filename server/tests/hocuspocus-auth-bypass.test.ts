@@ -1,13 +1,21 @@
-import { HocuspocusProvider } from "@hocuspocus/provider";
 import { expect } from "chai";
+import fs from "fs-extra";
+import os from "os";
+import path from "path";
 import sinon from "sinon";
 import WebSocket from "ws";
 import * as Y from "yjs";
 import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
 
+const OriginalWebSocket = WebSocket;
 // @ts-ignore
-global.WebSocket = WebSocket;
+global.WebSocket = class extends OriginalWebSocket {
+    constructor(url: any, protocols: any) {
+        super(url, protocols);
+        this.on('error', () => {});
+    }
+};
 
 describe("Hocuspocus Auth Bypass Reproduction", () => {
     let httpServer: any;
@@ -15,8 +23,10 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
     let checkAccessStub: sinon.SinonStub;
     let verifyTokenStub: sinon.SinonStub;
     let shutdown: () => Promise<void>;
+    let createdSockets: WebSocket[] = [];
 
     beforeEach(async () => {
+        createdSockets = [];
         checkAccessStub = sinon.stub();
         verifyTokenStub = sinon.stub();
 
@@ -38,86 +48,50 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
     });
 
     afterEach(async () => {
+        for (const ws of createdSockets) {
+            try { ws.close(); } catch(e) {}
+        }
         if (shutdown) await shutdown();
         sinon.restore();
         delete process.env.DISABLE_Y_LEVELDB;
     });
 
-    // Helper to extract code from disconnect event
-    const getCode = (data: any) => {
-        // HocuspocusProvider disconnect event structure might vary.
-        // It's usually { event: CloseEvent }
-        if (data && data.event && data.event.code) return data.event.code;
-        if (data && data.code) return data.code;
-        return undefined;
-    };
-
     it("should BLOCK connection to non-project path without auth (FIXED)", async () => {
-        const provider = new HocuspocusProvider({
-            url: `ws://127.0.0.1:${port}/bypassed-document`,
-            name: "bypassed-document",
-            document: new Y.Doc(),
-        });
-
         await new Promise<void>((resolve, reject) => {
-            provider.on("synced", () => {
-                reject(new Error("Should NOT have synced! Vulnerability exists if this passes."));
-            });
+            const ws = new WebSocket(`ws://127.0.0.1:${port}/bypassed-document`);
+            createdSockets.push(ws);
 
-            provider.on("disconnect", (data) => {
-                // Expected disconnect.
-                // The server closes with 4001 (Unauthorized) or similar.
-                // Or 4003 Forbidden or 1002 Protocol Error if path invalid.
-                // In our fix: "Authentication failed: Invalid room format" -> 4001 Unauthorized (because token missing first)
-                // Wait, logic:
-                // 1. extractAuthToken -> throws "No token provided"
-                // 2. catch(e) -> ws.close(4001, "Authentication failed: No token provided")
-                const code = getCode(data);
-                // 4001 or 1006 (abnormal closure) is acceptable
+            ws.on("open", () => reject(new Error("Should not have opened connection!")));
+            ws.on("close", (code) => {
+                expect(code).to.not.equal(1000); // 1000 is normal closure
                 resolve();
             });
         });
-
-        provider.destroy();
     });
 
     it("should BLOCK connection to project-like path if obscured (e.g. //projects) (FIXED)", async () => {
-        const provider = new HocuspocusProvider({
-            url: `ws://127.0.0.1:${port}//projects/123`,
-            name: "projects/123",
-            document: new Y.Doc(),
-        });
-
         await new Promise<void>((resolve, reject) => {
-            provider.on("synced", () => {
-                reject(new Error("Should NOT have synced! Vulnerability exists if this passes."));
-            });
+            const ws = new WebSocket(`ws://127.0.0.1:${port}//projects/123`);
+            createdSockets.push(ws);
 
-            provider.on("disconnect", (data) => {
+            ws.on("open", () => reject(new Error("Should not have opened connection!")));
+            ws.on("close", (code) => {
+                expect(code).to.not.equal(1000);
                 resolve();
             });
         });
-
-        provider.destroy();
     });
 
     it("should BLOCK connection to normal /projects path without auth", async () => {
-        const provider = new HocuspocusProvider({
-            url: `ws://127.0.0.1:${port}/projects/123`,
-            name: "projects/123",
-            document: new Y.Doc(),
-        });
-
         await new Promise<void>((resolve, reject) => {
-            provider.on("disconnect", (data) => {
+            const ws = new WebSocket(`ws://127.0.0.1:${port}/projects/123`);
+            createdSockets.push(ws);
+
+            ws.on("open", () => reject(new Error("Should not have opened connection!")));
+            ws.on("close", (code) => {
+                expect(code).to.not.equal(1000);
                 resolve();
             });
-
-            provider.on("synced", () => {
-                reject(new Error("Should not have synced!"));
-            });
         });
-
-        provider.destroy();
     });
 });
