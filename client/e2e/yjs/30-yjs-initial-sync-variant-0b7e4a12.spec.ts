@@ -19,13 +19,15 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
-    await p1.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
+    await p1.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
     await p1.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__, null, { timeout: 60000 });
     await p1.evaluate(async () => {
         const mgr = (globalThis as any).__USER_MANAGER__;
         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
     });
-    await p1.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 60000 });
+    await p1.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.getCurrentUser?.(), null, {
+        timeout: 60000,
+    });
 
     const p1Connected = await p1.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite
@@ -41,6 +43,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
             }
             await new Promise(r => setTimeout(r, 100));
         }
+
         return conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected";
     }, projectId);
     expect(p1Connected).toBeTruthy();
@@ -64,13 +67,15 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
         localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
     });
-    await p2.goto("http://127.0.0.1:7090/", { waitUntil: "domcontentloaded" });
+    await p2.goto("http://localhost:7090/", { waitUntil: "domcontentloaded" });
     await p2.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__, null, { timeout: 60000 });
     await p2.evaluate(async () => {
         const mgr = (globalThis as any).__USER_MANAGER__;
         await mgr?.loginWithEmailPassword?.("test@example.com", "password");
     });
-    await p2.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.getCurrentUser?.(), null, { timeout: 60000 });
+    await p2.waitForFunction(() => !!(globalThis as any).__USER_MANAGER__?.getCurrentUser?.(), null, {
+        timeout: 60000,
+    });
 
     const p2Connected = await p2.evaluate(async (pid) => {
         // @ts-expect-error - Browser context import resolved by Vite
@@ -101,6 +106,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
             }
             await new Promise(r => setTimeout(r, 100));
         }
+
         return conn.provider.isSynced === true || (conn.provider as any).websocketProvider?.status === "connected";
     }, projectId);
     expect(p2Connected).toBeTruthy();
@@ -108,7 +114,7 @@ test("initial sync on late join (p1 connect -> update -> p2 connect)", async ({ 
     // Wait for both provider.synced and actual data to be available using the test utility function
     const v = await p2.evaluate(async () => {
         // @ts-expect-error - Browser context import resolved by Vite
-        const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/testHelpers.ts");
+        const { waitForSyncedAndDataForTest } = await import("/src/lib/yjs/browserTestHelpers.ts");
         const prov = (globalThis as any).__PROVIDER2__;
         const m = (globalThis as any).__DOC2__.getMap("m");
 

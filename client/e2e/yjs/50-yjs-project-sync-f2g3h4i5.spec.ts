@@ -41,6 +41,7 @@ test.describe("YJS-f2g3h4i5: Yjs project data sync", () => {
             const yjsStore = (globalThis as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
+
             return (provider as any)?.websocketProvider?.status === "connected" || provider?.isSynced === true;
         }, { timeout: 15000 });
 
@@ -67,6 +68,7 @@ test.describe("YJS-f2g3h4i5: Yjs project data sync", () => {
             const yjsStore = (globalThis as any).__YJS_STORE__;
             const client = yjsStore?.yjsClient;
             const provider = client?.wsProvider;
+
             return (provider as any)?.websocketProvider?.status === "connected" || provider?.isSynced === true;
         }, { timeout: 15000 });
 

@@ -38,6 +38,10 @@ export class Comments {
         return { id: c.get("id") as string };
     }
 
+    removeComment(commentId: string) {
+        return this.deleteComment(commentId);
+    }
+
     deleteComment(commentId: string) {
         let idx = 0;
         for (const m of this.yArray) {
@@ -141,7 +145,7 @@ export class Item {
         this.key = key;
     }
 
-    private get value(): Y.Map<ItemValueType> {
+    get value(): Y.Map<ItemValueType> {
         return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
     }
 
@@ -167,6 +171,10 @@ export class Item {
     get text(): string {
         const t = this.value.get("text") as Y.Text;
         return t ? t.toString() : "";
+    }
+
+    get ytext(): Y.Text {
+        return this.value.get("text") as Y.Text;
     }
 
     set text(v: string) {
@@ -363,6 +371,10 @@ export class Item {
         return res;
     }
 
+    removeComment(commentId: string) {
+        return this.deleteComment(commentId);
+    }
+
     deleteComment(commentId: string) {
         const res = this.comments.deleteComment(commentId);
         try {
@@ -423,7 +435,7 @@ export class Items implements Iterable<Item> {
         this.parentKey = parentKey;
     }
 
-    private childrenKeys(): string[] {
+    childrenKeys(): string[] {
         const children = this.tree.getNodeChildrenFromKey(this.parentKey);
         return this.tree.sortChildrenByOrder(children, this.parentKey);
     }
@@ -541,7 +553,60 @@ export class Project {
 
     static fromDoc(doc: Y.Doc): Project {
         const ymap = doc.getMap("orderedTree");
+
         const tree = new YTree(ymap);
+
+        // Monkey-patch YTree methods to safely handle reset operations
+        const originalGetNodeValue = tree.getNodeValueFromKey;
+        tree.getNodeValueFromKey = function(key) {
+            try {
+                const val = originalGetNodeValue.call(this, key);
+                return val || { get: () => null, set: () => {}, observeDeep: () => {} };
+            } catch (e) {
+                if (e instanceof Error && e.message.includes("does not exist")) {
+                    return { get: () => null, set: () => {}, observeDeep: () => {} };
+                }
+                throw e;
+            }
+        };
+
+        const originalGetNodeChildren = tree.getNodeChildrenFromKey;
+        tree.getNodeChildrenFromKey = function(key) {
+            try {
+                return originalGetNodeChildren.call(this, key) || [];
+            } catch (e) {
+                if (e instanceof Error && e.message.includes("does not exist")) {
+                    return [];
+                }
+                throw e;
+            }
+        };
+
+        const originalGetNodeParent = tree.getNodeParentFromKey;
+        tree.getNodeParentFromKey = function(key) {
+            try {
+                return originalGetNodeParent.call(this, key);
+            } catch (e) {
+                if (e instanceof Error && e.message.includes("does not exist")) {
+                    return undefined;
+                }
+                throw e;
+            }
+        };
+
+        // Suppress recompute errors
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const treeAny = tree as any;
+        const originalRecompute = treeAny.recomputeParentsAndChildren;
+        treeAny.recomputeParentsAndChildren = function() {
+            try {
+                return originalRecompute.call(this);
+            } catch (e) {
+                console.warn("[ytree] Suppressed error during recompute:", e);
+                this.computedMap.clear();
+            }
+        };
+
         return new Project(doc, tree);
     }
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
-import { Project } from "../../../schema/yjs-schema";
+import { Project } from "../../../schema/app-schema";
 import { YjsClient } from "../../../yjs/YjsClient";
 
 // Mock HocuspocusProvider
@@ -28,7 +28,7 @@ describe("YjsClient", () => {
 
     let provider: import("@hocuspocus/provider").HocuspocusProvider;
 
-    let project: { metadata: unknown; rootFolder: unknown; items: unknown; dispose: unknown; };
+    let project: Project;
 
     beforeEach(async () => {
         // Reset mocks
@@ -49,8 +49,17 @@ describe("YjsClient", () => {
 
         // Create a simple mock for Project since we don't need its full logic for this test
         project = {
-            title: "Test Project",
+            title: "Test Project", // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            metadata: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            rootFolder: {} as any,
+            dispose: () => {},
+
             items: { length: 0 },
+            ydoc: doc,
+            tree: {},
+            findPage: vi.fn(),
+            addPage: vi.fn(),
         } as unknown as Project;
 
         client = new YjsClient({

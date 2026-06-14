@@ -178,8 +178,10 @@ test.describe("ITM-yjs-keyboard-reorder-boundary-b2c4d8e1: keyboard reorder boun
         const state = await page.evaluate(() => {
             const s: any = (globalThis as any).editorOverlayStore;
             const cursors = s.cursors as Record<string, any>;
+
             const active = Object.values(cursors).find((c: any) => c.isActive) as any | undefined;
             const lastHistory = s.cursorHistory?.[s.cursorHistory.length - 1];
+
             const activeId = active ? (active as any).cursorId : undefined;
             return { activeId, lastHistory } as { activeId?: string; lastHistory?: string; };
         });

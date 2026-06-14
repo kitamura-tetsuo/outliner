@@ -1,0 +1,15 @@
+id: FMT-3ad6e710
+title: Plain URL auto-link
+title-ja: 裸URLの自動リンク
+description: Bare http/https URLs written in item text are automatically rendered as clickable external links without requiring brackets.
+category: text-formatting
+status: implemented
+acceptance:
+- A bare URL like https://example.com in item text renders as a link that opens in a new tab.
+- Bare URLs inside bold or italic ranges are still linked.
+- The raw URL text remains editable as plain text when the item is active.
+- Trailing sentence punctuation (.,;:!?) is not included in the linked URL.
+- URLs inside bracketed links [URL label] and code spans are not double-processed.
+tests:
+- client/e2e/core/fmt-plain-url-autolink-3ad6e710.spec.ts
+- client/src/utils/ScrapboxFormatter.test.ts

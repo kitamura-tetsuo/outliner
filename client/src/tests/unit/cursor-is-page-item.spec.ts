@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isPageItem } from "../../lib/cursor/CursorNavigationUtils";
-import { Project } from "../../schema/yjs-schema";
+import { Project } from "../../schema/app-schema";
 
 describe("isPageItem", () => {
     it("detects root level items as pages", () => {

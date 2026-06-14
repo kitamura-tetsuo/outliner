@@ -23,6 +23,7 @@
         try {
             isLoading = true;
             error = undefined;
+            resetDone = false;
 
             // Seed demo project via API (no-op when already seeded)
             await seedDemo();
@@ -58,6 +59,14 @@
             store.project = undefined;
             await initializeDemo();
             resetDone = error === undefined;
+            if (resetDone) {
+                setTimeout(() => {
+                    resetDone = false;
+                }, 3000);
+            }
+        } catch (err) {
+            console.error("Failed to reset demo:", err);
+            error = err instanceof Error ? err.message : "An error occurred while resetting the demo.";
         } finally {
             isResetting = false;
         }
@@ -67,7 +76,7 @@
     function handlePageSelected(event: CustomEvent<{ pageId: string; pageName: string; }>) {
         const pageName = event.detail.pageName;
         if (pageName) {
-            goto(resolvePath(`/demo/${pageName}`));
+            goto(resolvePath(`/demo/${encodeURIComponent(pageName)}`));
         }
     }
 

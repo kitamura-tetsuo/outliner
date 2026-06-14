@@ -184,7 +184,7 @@ function updateTextareaPosition() {
             lastScrolledOffset = lastCursor.offset;
 
             const viewportTop = treeContainerRect.top + pos.top;
-            const cursorHeight = itemInfo.lineHeight ? parseInt(itemInfo.lineHeight) : 20;
+            const cursorHeight = itemInfo.lineHeight || 20;
             const viewportBottom = viewportTop + cursorHeight;
 
             const stickyHeaderHeight = 80;
@@ -685,7 +685,7 @@ onMount(() => {
                 if (!txt) {
                     const sels = Object.values(store.selections || {}) as SelectionRange[];
                     const boxSel = sels.find(s => s.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length);
-                    if (boxSel) {
+                    if (boxSel && boxSel.boxSelectionRanges) {
                         const lines: string[] = [];
                         for (const r of boxSel.boxSelectionRanges) {
                             const full = getTextByItemId(r.itemId);
@@ -829,7 +829,7 @@ function getTextByItemId(itemId: string): string {
     const items = page?.items;
     const len = items?.length ?? 0;
     for (let i = 0; i < len; i++) {
-      const it = items.at ? items.at(i) : items[i];
+      const it = (typeof items?.at === "function" ? items.at(i) : (items as unknown as Record<number, { id: string; text?: string }>)?.[i]);
       if (it?.id === itemId) {
         return String(it?.text ?? "");
       }
@@ -864,7 +864,7 @@ function handleCopy(event: ClipboardEvent) {
 
   // Process rectangular selection (box selection) existence first
   const boxSel = selections.find((s) => s.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length > 0);
-  if (!selectedText && boxSel) {
+  if (!selectedText && boxSel && boxSel.boxSelectionRanges) {
     const lines: string[] = [];
     for (const r of boxSel.boxSelectionRanges) {
       const full = getTextByItemId(r.itemId);
@@ -879,8 +879,10 @@ function handleCopy(event: ClipboardEvent) {
         event.preventDefault();
         event.clipboardData.setData('text/plain', rectText);
       }
-      if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
-        (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(rectText).catch(() => {});
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (navigator as any).clipboard.writeText(rectText).catch(() => {});
       }
       if (typeof window !== 'undefined') {
         (window as typeof window & { lastCopiedText?: string }).lastCopiedText = rectText;
@@ -1035,8 +1037,10 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', selectedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
-      (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch(() => {});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (navigator as any).clipboard.writeText(selectedText).catch(() => {});
     }
 
     // Always update hidden textarea to maintain test focus
@@ -1166,8 +1170,8 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', combinedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
-      (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch(() => {});
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(combinedText).catch(() => {});
     }
     // Save to global variable (for E2E test environment only)
     // Not used in production, but needed to verify copy content in E2E tests

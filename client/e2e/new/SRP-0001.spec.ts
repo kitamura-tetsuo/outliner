@@ -43,6 +43,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
             const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const pages = gs?.pages?.current;
             // Handle both Array and Yjs Items
+
             const count = pages ? (pages.length !== undefined ? pages.length : (pages as any).size) : 0;
             // Debug if count is staying at 1
             // if (count === 1) console.log("Still waiting for second page...");
@@ -65,6 +66,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                 try {
                     if (Array.isArray(p)) return p;
                     if (typeof p[Symbol.iterator] === "function") return Array.from(p);
+
                     const len = (p as any).length;
                     if (typeof len === "number" && len >= 0) {
                         const r: any[] = [];
@@ -129,11 +131,12 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
         await page.evaluate(() => (globalThis as any).__OPEN_SEARCH__?.());
 
         // Confirm opened
-        await page.waitForFunction(() => (globalThis as any).__SEARCH_PANEL_VISIBLE__ === true, { timeout: 4000 }).catch(
-            () => {
-                console.log("__SEARCH_PANEL_VISIBLE__ was not set to true within timeout");
-            },
-        );
+        await page.waitForFunction(() => (globalThis as any).__SEARCH_PANEL_VISIBLE__ === true, { timeout: 4000 })
+            .catch(
+                () => {
+                    console.log("__SEARCH_PANEL_VISIBLE__ was not set to true within timeout");
+                },
+            );
 
         // Wait for appearance in DOM (existence)
         await page.waitForFunction(() => !!document.querySelector('[data-testid="search-panel"]'), { timeout: 7000 });
@@ -166,6 +169,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                 try {
                     if (Array.isArray(p)) return p;
                     if (typeof p[Symbol.iterator] === "function") return Array.from(p);
+
                     const len = (p as any).length;
                     if (typeof len === "number" && len >= 0) {
                         const r: any[] = [];

@@ -67,6 +67,7 @@ test.describe("SLR-0005: Selection spanning multiple items", () => {
         const initialCursorInfo = await page.evaluate(() => {
             const store = (globalThis as any).editorOverlayStore;
             if (!store) return null;
+
             const cursor = Object.values(store.cursors)[0] as any;
             return cursor ? { itemId: cursor.itemId, offset: cursor.offset } : null;
         });

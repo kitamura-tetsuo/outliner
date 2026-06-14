@@ -9,7 +9,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 5;
+export const DEMO_TEMPLATE_VERSION = 9;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -34,7 +34,6 @@ export const demoPages: DemoPageTemplate[] = [
             "Feature tour:",
             "  [Formatting]: bold, italic, strike-through, code, and links.",
             "  [Outliner Basics]: items, indentation, and keyboard navigation.",
-            "  [Checkboxes and Tasks]: interactive checklists with completion status.",
             "  [Internal Links]: linking between pages, backlinks, and the graph view.",
             "  [Search and Commands]: full-text search and the inline command palette.",
             "  [Selection and Clipboard]: multi-item selection, box selection, copy and paste.",
@@ -52,11 +51,14 @@ export const demoPages: DemoPageTemplate[] = [
             "Click an item to see its raw text with the control characters visible.",
             "Examples:",
             "  You can make text [[bold]] using double brackets.",
-            "  You can make text [/italic] using a slash bracket.",
+            "  You can make text [/ italic] using a slash bracket with a space after the slash.",
             "  You can [-strike through] text using a dash bracket.",
             "  Inline `code` uses backticks.",
-            "  Formats can be combined, like [[bold with [/italic]]] inside.",
-            "URLs become clickable links: https://github.com/yjs/yjs",
+            "  Formats can be combined, like [[bold with [/ italic] inside]].",
+            "Bare URLs become clickable links automatically: https://github.com/yjs/yjs",
+            "Bracketed URLs are links too: [https://github.com/yjs/yjs]",
+            "Add a label after the URL to show friendly text: [https://github.com/yjs/yjs Yjs on GitHub]",
+            "The label can also come first: [Yjs on GitHub https://github.com/yjs/yjs]",
             "Try editing any line above to see the syntax behind it.",
         ],
     },
@@ -75,20 +77,6 @@ export const demoPages: DemoPageTemplate[] = [
             "      Grandchild item",
             "    Another child",
             "Try reorganizing the tree above with Tab and Shift+Tab.",
-        ],
-    },
-    {
-        title: "Checkboxes and Tasks",
-        lines: [
-            "Type [ ] at the start of an item to turn it into a checkbox.",
-            "Click a checkbox to toggle it. Parent items reflect the completion status of their children.",
-            "Shopping list:",
-            "  [x] Milk",
-            "  [x] Bread",
-            "  [ ] Eggs",
-            "  [ ] Coffee",
-            "Your turn:",
-            "  [ ] Try checking this box",
         ],
     },
     {

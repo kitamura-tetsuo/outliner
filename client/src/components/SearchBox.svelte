@@ -127,14 +127,7 @@
                     ) {
                         const len = (items as { length: number }).length;
                         for (let i = 0; i < len; i++) {
-                            const v = (
-                                items as {
-                                    at?: (i: number) => Item;
-                                    [key: number]: Item;
-                                }
-                            ).at
-                                ? (items as { at: (i: number) => Item }).at(i)
-                                : (items as { [key: number]: Item })[i];
+                            const v = typeof items.at === "function" ? items.at(i) : (items as unknown as { [key: number]: Item })[i];
                             if (typeof v !== "undefined" && v !== null)
                                 arr.push(v);
                         }
@@ -146,9 +139,7 @@
                         typeof (items as { toArray?: () => Item[] }).toArray ===
                         "function"
                     ) {
-                        const arr = (
-                            items as { toArray: () => Item[] }
-                        ).toArray();
+                        const arr = (items as unknown as { toArray: () => Item[] }).toArray();
                         if (arr && arr.length) return arr;
                     }
                 } catch {

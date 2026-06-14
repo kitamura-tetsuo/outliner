@@ -1,4 +1,5 @@
-// import type { Item } from "../../schema/yjs-schema"; // Not used
+import { searchItem } from "./CursorNavigationUtils";
+// import type { Item } from "../../schema/app-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
@@ -72,7 +73,7 @@ export class CursorFormatting {
         const text = target.text || "";
         const startOffset = Math.min(selection.startOffset, selection.endOffset);
         const endOffset = Math.max(selection.startOffset, selection.endOffset);
-        const selectedText = text.substring(startOffset, endOffset);
+        const selectedText = String(text).substring(startOffset, endOffset);
 
         // Create formatted text
         let formattedText = "";
@@ -95,7 +96,7 @@ export class CursorFormatting {
         }
 
         // Update text
-        const newText = text.substring(0, startOffset) + formattedText + text.substring(endOffset);
+        const newText = String(text).substring(0, startOffset) + formattedText + String(text).substring(endOffset);
         target.updateText(newText);
 
         // Update cursor position (set to end of selection)
@@ -113,7 +114,8 @@ export class CursorFormatting {
      * Apply Scrapbox syntax formatting to selection spanning multiple items
      */
     private applyScrapboxFormattingToMultipleItems(
-        selection: import("../stores/EditorOverlayStore.svelte").SelectionState,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        selection: any,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
         // Get start and end item IDs
@@ -154,7 +156,10 @@ export class CursorFormatting {
         while (walker.currentNode) {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
-            const item = this.cursor.searchItem(generalStore.currentPage!, itemId);
+            const item = searchItem(
+                generalStore.currentPage! as unknown as import("../../schema/app-schema").Item,
+                itemId,
+            );
 
             if (!item) {
                 if (current === lastEl) break;
@@ -169,7 +174,7 @@ export class CursorFormatting {
                 // Selection within a single item
                 const start = isReversed ? endOffset : startOffset;
                 const end = isReversed ? startOffset : endOffset;
-                const selectedText = text.substring(start, end);
+                const selectedText = String(text).substring(start, end);
 
                 // Create formatted text
                 let formattedText = "";
@@ -191,7 +196,7 @@ export class CursorFormatting {
                         break;
                 }
 
-                const newText = text.substring(0, start) + formattedText + text.substring(end);
+                const newText = String(text).substring(0, start) + formattedText + String(text).substring(end);
                 item.updateText(newText);
             } else {
                 // If selection spans multiple items, process each item individually.

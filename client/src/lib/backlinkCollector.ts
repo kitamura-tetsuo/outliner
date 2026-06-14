@@ -4,7 +4,7 @@
  * This module provides functionality to collect backlinks (links from other pages) to a page.
  */
 
-import type { Item } from "../schema/yjs-schema";
+import type { Item } from "../schema/app-schema";
 import { store } from "../stores/store.svelte";
 import { getLogger } from "./logger";
 

@@ -40,15 +40,16 @@ test.describe("SEA-0001: page title search box", () => {
             const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const items = gs?.project?.items;
             // Handle Proxy/AppSchema items - verify using iterator or Array.from
+
             const itemsArray = Array.from(items as any);
 
             // Check specifically for the second page
             const hasSecondPage = itemsArray.some((item: any) => item.text && item.text.includes("second-page"));
 
-            if (!hasSecondPage) {
-                // Return false to keep waiting
-                return false;
+            if (hasSecondPage) {
+                return true;
             }
+            return false;
         }, { timeout: 30000 }).catch(async () => {
             console.log(
                 "[Test] Warning: Timeout waiting for 'second-page' in live sync. Attempting reload to verify persistence...",
@@ -60,6 +61,7 @@ test.describe("SEA-0001: page title search box", () => {
                     const gs = (globalThis as any).generalStore;
                     const items = gs?.project?.items;
                     // Items is a Proxy, need to convert
+
                     const itemsArr = items ? Array.from(items as any) : [];
                     return {
                         hasGs: !!gs,
@@ -93,6 +95,7 @@ test.describe("SEA-0001: page title search box", () => {
                     const items = gs?.project?.items;
                     // Handle Proxy for array
                     if (!items) return false;
+
                     const arr = Array.from(items as any);
                     return arr.some((item: any) => {
                         const t = item?.text?.toString ? item.text.toString() : String(item?.text || "");

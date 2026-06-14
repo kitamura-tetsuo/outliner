@@ -40,8 +40,8 @@ test.describe("Yjs client attach and DOM reflect", () => {
 
         // Ensure items are seeded in model (fallback for race conditions)
         await page.evaluate((lines) => {
-            const gs =
-                (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; }).generalStore;
+            const gs = (globalThis as { generalStore?: { currentPage?: { items?: Record<string, unknown>; }; }; })
+                .generalStore;
             const p = gs?.currentPage;
             const items = p?.items;
             if (!items || !Array.isArray(lines) || lines.length === 0) return;
@@ -50,11 +50,13 @@ test.describe("Yjs client attach and DOM reflect", () => {
             // Overwrite existing items
             for (let i = 0; i < Math.min(existing as number, lines.length); i++) {
                 const it = (items as any).at ? (items as any).at(i) : (items as any)[i];
+
                 (it as any)?.updateText?.(lines[i]);
             }
             // Add missing items
             for (let i = existing as number; i < lines.length; i++) {
                 const node = (items as any).addNode?.("tester");
+
                 (node as any)?.updateText?.(lines[i]);
             }
         }, lines);

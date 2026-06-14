@@ -73,6 +73,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
                     return item?.dataset.itemId ?? null;
                 }
             }
+
             return null as any;
         });
         if (!itemId) throw new Error("item id not found");

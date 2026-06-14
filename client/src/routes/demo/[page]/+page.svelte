@@ -6,7 +6,7 @@
     import SearchPanel from "../../../components/SearchPanel.svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
     import { getLogger } from "../../../lib/logger";
-    import { getYjsClientByProjectTitle } from "../../../services";
+    import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../services";
     import type { Item } from "../../../schema/app-schema";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
@@ -20,18 +20,59 @@
     let error: string | undefined = $state(undefined);
     let pageNotFound = $state(false);
     let isSearchPanelVisible = $state(false);
+    let isResetting = $state(false);
+    let resetDone = $state(false);
+    let activePageId = $state<string | undefined>(undefined);
 
     function findPage(name: string): Item | undefined {
+        if (activePageId && store.project) {
+            const item = store.project.findPage(activePageId);
+            if (item) return item as unknown as Item;
+        }
         const items = store.project?.items;
         if (!items) return undefined;
         const len = items.length || 0;
+
+        let decodedName = name;
+        try {
+            decodedName = decodeURIComponent(name);
+        } catch {}
+
         for (let i = 0; i < len; i++) {
             const item = items.at?.(i);
             const text = item?.text?.toString?.() ?? String(item?.text ?? "");
-            if (String(text).toLowerCase() === String(name).toLowerCase()) {
+
+            // Check direct match
+            if (String(text).toLowerCase() === String(decodedName).toLowerCase()) {
+                return item as unknown as Item;
+            }
+
+            // Fallback for demo pages: The first line of the item text in PageList
+            const title = String(text).split('\n')[0].trim().toLowerCase();
+            const targetTitle = String(decodedName).split('\n')[0].trim().toLowerCase();
+            if (title === targetTitle) {
                 return item as unknown as Item;
             }
         }
+
+        // Also look through children of the first level items because the demo project creates the actual pages as top-level children
+        for (let i = 0; i < len; i++) {
+            const item = items.at?.(i);
+            const childItems = item?.items;
+            if (childItems) {
+                 const childLen = childItems.length || 0;
+                 for (let j = 0; j < childLen; j++) {
+                     const childItem = childItems.at?.(j);
+                     const childText = childItem?.text?.toString?.() ?? String(childItem?.text ?? "");
+                     const childTitle = String(childText).split('\n')[0].trim().toLowerCase();
+                     const targetTitle = String(decodedName).split('\n')[0].trim().toLowerCase();
+                     if (childTitle === targetTitle) {
+                         return childItem as unknown as Item;
+                     }
+                 }
+            }
+        }
+
         return undefined;
     }
 
@@ -40,9 +81,10 @@
             isLoading = true;
             error = undefined;
             pageNotFound = false;
+            resetDone = false;
 
             // Connect once; page switches within /demo reuse the same client
-            if (!yjsStore.yjsClient || !store.project) {
+            if (!yjsStore.yjsClient || !store.project || store.project.title !== DEMO_PROJECT_NAME) {
                 // Seed demo project via API (no-op when already seeded)
                 await seedDemo();
 
@@ -54,10 +96,10 @@
                 store.project = client.getProject() as unknown as import("../../../schema/app-schema").Project;
             }
 
-            // Wait for sync until the page is found (5 seconds max)
+            // Wait for sync until the page is found (15 seconds max, aligns with regular project page loader)
             let targetPage = findPage(name);
             let retries = 0;
-            while (!targetPage && retries < 50) {
+            while (!targetPage && retries < 150) {
                 await new Promise(r => setTimeout(r, 100));
                 targetPage = findPage(name);
                 retries++;
@@ -70,6 +112,7 @@
             }
 
             store.currentPage = targetPage;
+            activePageId = targetPage.id;
         } catch (err) {
             console.error("Failed to load demo page:", err);
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
@@ -78,16 +121,61 @@
         }
     }
 
+
+    async function resetDemo() {
+        if (isResetting) return;
+        try {
+            isResetting = true;
+            resetDone = false;
+            await seedDemo({ force: true });
+            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
+            yjsStore.yjsClient = undefined;
+            store.project = undefined;
+            await loadDemoPage(pageName);
+            resetDone = error === undefined;
+            if (resetDone) {
+                setTimeout(() => {
+                    resetDone = false;
+                }, 3000);
+            }
+        } catch (err) {
+            console.error("Failed to reset demo:", err);
+            error = err instanceof Error ? err.message : "An error occurred while resetting the demo.";
+        } finally {
+            isResetting = false;
+        }
+    }
+
     function toggleSearchPanel() {
         isSearchPanelVisible = !isSearchPanelVisible;
     }
 
+let resetEpochCache = $state(0);
+    $effect(() => {
+        if (store.resetEpoch !== resetEpochCache) {
+            resetEpochCache = store.resetEpoch;
+            // nullify immediately to disconnect old tree node references
+            store.currentPage = undefined;
+            activePageId = undefined;
+            // The tree was rebuilt, we must force a remount and reload page logic
+            if (pageName && !isLoading) {
+                setTimeout(() => {
+                    loadDemoPage(pageName);
+                }, 100);
+            }
+        }
+    });
+
     onMount(() => {
+
         // Follow route parameter changes (e.g. internal links between demo pages)
         let lastLoaded: string | undefined;
         const unsub = page.subscribe(($p) => {
-            const name = $p.params?.page ?? "";
+            const name = $p.params?.page ?? pageName;
             if (!name || name === lastLoaded) return;
+            if (lastLoaded !== undefined && lastLoaded !== name) {
+                activePageId = undefined; // reset active id on route change
+            }
             lastLoaded = name;
             loadDemoPage(name);
         });
@@ -100,6 +188,7 @@
             yjsStore.yjsClient = undefined;
             store.project = undefined;
             store.currentPage = undefined;
+            activePageId = undefined;
         } catch {}
     });
 </script>
@@ -133,8 +222,16 @@
             </h1>
             <div class="flex items-center space-x-2" data-testid="demo-page-toolbar">
                 <button
+                    onclick={resetDemo}
+                    disabled={isResetting || isLoading}
+                    data-testid="demo-reset-button"
+                    class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    {isResetting ? "Resetting..." : "Reset demo content"}
+                </button>
+                <button
                     onclick={toggleSearchPanel}
-                    class="search-btn rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    class="search-btn rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     data-testid="search-toggle-button"
                 >
                     Search
@@ -144,6 +241,11 @@
         <p class="mt-1 text-sm text-gray-500">
             This is a public, collaborative demo space. Content resets every 24 hours.
         </p>
+        {#if resetDone}
+            <p class="mt-1 text-sm text-green-600" data-testid="demo-reset-done">
+                Demo content has been reset.
+            </p>
+        {/if}
     </div>
 
     {#if isLoading}
@@ -186,7 +288,8 @@
                 </div>
             </div>
         </div>
-    {:else}
+{:else}
+        {#key `${store.project?.ydoc?.guid || "demo"}-${store.resetEpoch}`}
         <OutlinerBase
             pageItem={store.currentPage}
             projectName={DEMO_PROJECT_NAME}
@@ -196,8 +299,12 @@
             onEdit={undefined}
         />
 
+        {/key}
+
         <!-- Backlink Panel -->
-        <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
+        {#if store.currentPage}
+            <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
+        {/if}
     {/if}
 
     <!-- Search Panel -->

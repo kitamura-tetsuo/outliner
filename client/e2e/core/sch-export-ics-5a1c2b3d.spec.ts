@@ -56,7 +56,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         const nextRunAt = Date.now() + 10 * 60 * 1000;
 
         // First, navigate to the schedule page to get the actual pageId used
-        const scheduleUrl = `http://127.0.0.1:7090/${encodeURIComponent(projectName)}/${
+        const scheduleUrl = `http://localhost:7090/${encodeURIComponent(projectName)}/${
             encodeURIComponent(pageName)
         }/schedule`;
         await page.goto(scheduleUrl, { waitUntil: "domcontentloaded" });

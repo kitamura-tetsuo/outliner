@@ -79,9 +79,7 @@ test.describe("YJS token refresh reconnect", () => {
             { timeout: 20000 },
         );
         // HocuspocusProvider stores status in configuration.websocketProvider.status
-        const isConnected = await page.evaluate(() =>
-            (globalThis as any).__WS_STATUS__ === "connected"
-        );
+        const isConnected = await page.evaluate(() => (globalThis as any).__WS_STATUS__ === "connected");
         expect(isConnected).toBeTruthy();
     });
 
@@ -118,7 +116,9 @@ test.describe("YJS token refresh reconnect", () => {
             (globalThis as any).__CONN__.provider.sendToken();
         });
 
-        await page.waitForFunction(() => (globalThis as any).__SEND_TOKEN_CALLED__ === true, undefined, { timeout: 60000 });
+        await page.waitForFunction(() => (globalThis as any).__SEND_TOKEN_CALLED__ === true, undefined, {
+            timeout: 60000,
+        });
         const tokenRefreshed = await page.evaluate(() => (globalThis as any).__SEND_TOKEN_CALLED__);
         expect(tokenRefreshed).toBe(true);
     });
