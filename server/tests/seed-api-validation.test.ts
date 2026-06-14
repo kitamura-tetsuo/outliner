@@ -14,7 +14,11 @@ describe("Seed API Validation", () => {
     let docStub: sinon.SinonStub;
     let getStub: sinon.SinonStub;
 
+    let consoleWarnStub: sinon.SinonStub;
+
     beforeEach(() => {
+        consoleWarnStub = sinon.stub(console, "warn");
+
         app = express();
         app.use(express.json());
 
@@ -67,6 +71,7 @@ describe("Seed API Validation", () => {
     });
 
     afterEach(() => {
+        consoleWarnStub.restore();
         sinon.restore();
     });
 
