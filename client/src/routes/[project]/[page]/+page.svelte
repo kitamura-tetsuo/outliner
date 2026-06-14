@@ -37,6 +37,19 @@
     let isLoading = $state(true);
     let isAuthenticated = $state(false);
     let pageNotFound = $state(false);
+    let lastReset = $state(0);
+
+    $effect(() => {
+        if (store.project) {
+            const meta = store.project.ydoc.getMap("metadata");
+            const updateReset = () => {
+                lastReset = (meta.get("lastReset") as number) ?? 0;
+            };
+            updateReset();
+            meta.observe(updateReset);
+            return () => meta.unobserve(updateReset);
+        }
+    });
 
     let isSearchPanelVisible = $state(false); // Search panel visibility state
 
@@ -575,21 +588,25 @@
 
     <!-- Always mount OutlinerBase, switch display internally based on pageItem presence -->
     {#if !error}
-        <OutlinerBase
-            pageItem={store.currentPage}
-            projectName={projectName || ""}
-            pageName={pageName || ""}
-            isReadOnly={false}
-            isTemporary={store.currentPage
-                ? store.currentPage.id.startsWith("temp-")
-                : false}
-            onEdit={undefined}
-        />
+        {#key lastReset}
+            <OutlinerBase
+                pageItem={store.currentPage}
+                projectName={projectName || ""}
+                pageName={pageName || ""}
+                isReadOnly={false}
+                isTemporary={store.currentPage
+                    ? store.currentPage.id.startsWith("temp-")
+                    : false}
+                onEdit={undefined}
+            />
+        {/key}
     {/if}
 
     <!-- Backlink Panel (Hidden when temporary page) -->
     {#if store.currentPage && !store.currentPage.id.startsWith("temp-")}
-        <BacklinkPanel {pageName} {projectName} />
+        {#key lastReset}
+            <BacklinkPanel {pageName} {projectName} />
+        {/key}
     {/if}
 
     <!-- Search Panel -->
