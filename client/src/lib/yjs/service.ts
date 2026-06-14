@@ -145,7 +145,10 @@ export const yjsService = {
     setPresence(
         awareness: Awareness,
         state: {
-            cursor?: import("../../stores/EditorOverlayStore.svelte").CursorPosition;
+            cursor?: Omit<import("../../stores/EditorOverlayStore.svelte").CursorPosition, "cursorId" | "isActive"> & {
+                cursorId?: string;
+                isActive?: boolean;
+            };
             selection?: import("../../stores/EditorOverlayStore.svelte").SelectionRange;
         } | null,
     ) {
@@ -154,7 +157,10 @@ export const yjsService = {
 
     getPresence(awareness: Awareness) {
         return awareness.getLocalState()?.presence as {
-            cursor?: import("../../stores/EditorOverlayStore.svelte").CursorPosition;
+            cursor?: Omit<import("../../stores/EditorOverlayStore.svelte").CursorPosition, "cursorId" | "isActive"> & {
+                cursorId?: string;
+                isActive?: boolean;
+            };
             selection?: import("../../stores/EditorOverlayStore.svelte").SelectionRange;
         } | undefined;
     },
