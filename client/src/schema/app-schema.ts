@@ -330,6 +330,10 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    removeComment(commentId: string) {
+        this.comments.deleteComment(commentId);
+    }
+
     get comments(): Comments {
         let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
