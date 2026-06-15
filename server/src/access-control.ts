@@ -1,4 +1,4 @@
-import { Firestore, getFirestore } from "firebase-admin/firestore";
+import { getFirestore, Firestore } from "firebase-admin/firestore";
 import { getServiceAccount } from "./firebase-init.js";
 import { logger } from "./logger.js";
 

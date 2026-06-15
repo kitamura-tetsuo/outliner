@@ -27,7 +27,7 @@ describe("firebase-init Secret Manager loading bypass", () => {
         loadSecretsStub = sinon.stub(secretManager, "loadSecrets").resolves();
 
         // Mock Firebase Admin
-        // Mock Firebase Admin
+                // Mock Firebase Admin
         // Instead of stubbing ES modules directly (which fails), we stub a wrapper or rely on the fact that admin wrapper might not be fully working as a default import for stubs anymore. Let's mock it at the helper or inject layer if possible. For now let's stub the default export properties if they exist, or test doubles.
         // Actually, firebase-admin v14 does not support the old default export methods like admin.initializeApp. It's better to use testdouble or proxyquire, or simply stub the new module using proxyquire/testdouble if possible. Since we can't stub ESM modules with Sinon easily without loaders, and we are in typescript, let's see if we can just mock the import.
 
@@ -51,9 +51,7 @@ describe("firebase-init Secret Manager loading bypass", () => {
     it("should load secrets when FIREBASE_ADMIN_SDK_PATH is not set", async () => {
         delete process.env.FIREBASE_ADMIN_SDK_PATH;
 
-        try {
-            await initializeFirebase();
-        } catch (e) {}
+        try { await initializeFirebase(); } catch (e) {}
 
         expect(loadSecretsStub.calledOnce).to.be.true;
     });
@@ -83,9 +81,7 @@ describe("firebase-init Secret Manager loading bypass", () => {
 
         process.env.FIREBASE_ADMIN_SDK_PATH = dummySdkPath;
 
-        try {
-            await initializeFirebase();
-        } catch (e) {}
+        try { await initializeFirebase(); } catch (e) {}
 
         expect(loadSecretsStub.called).to.be.false;
     });
