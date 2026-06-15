@@ -52,7 +52,7 @@ test.describe("PRS-0001: presence indicators", () => {
                 store.setUser({
                     userId: "test-user-2",
                     userName: "Test User 2",
-                    color: "hsl(200, 70%, 50%)", // Different color to avoid collision
+                    color: "hsl(100, 70%, 50%)", // Different color to avoid collision
                 });
             }
         });
