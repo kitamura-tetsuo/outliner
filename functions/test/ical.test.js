@@ -1,4 +1,3 @@
-
 "use strict";
 
 const { generateSchedulesIcs, formatDateTime } = require("../ical");
