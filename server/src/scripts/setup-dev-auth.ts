@@ -1,15 +1,15 @@
 // Development environment authentication setup script
 import "dotenv/config";
-import admin from "firebase-admin";
-import { UserRecord } from "firebase-admin/auth";
+import { getApps, cert, ServiceAccount, initializeApp } from "firebase-admin/app";
+import { UserRecord, getAuth } from "firebase-admin/auth";
 import { fileURLToPath } from "url";
 import { serverLogger as logger } from "../utils/log-manager.js";
 
 // Initialize Firebase Admin SDK
-export async function initializeFirebase() {
+export async function initializeFirebase(): Promise<any> {
     try {
         // Check if already initialized
-        if (admin.apps.length === 0) {
+        if (getApps().length === 0) {
             const serviceAccount = {
                 projectId: process.env.FIREBASE_PROJECT_ID,
                 privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
@@ -17,10 +17,10 @@ export async function initializeFirebase() {
                 clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
                 clientId: process.env.FIREBASE_CLIENT_ID,
                 clientX509CertUrl: process.env.FIREBASE_CLIENT_CERT_URL,
-            } as admin.ServiceAccount;
+            } as ServiceAccount;
 
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount),
+            initializeApp({
+                credential: cert(serviceAccount),
             });
 
             logger.info(`Firebase Admin SDK initialized with project: ${serviceAccount.projectId}`);
@@ -28,7 +28,7 @@ export async function initializeFirebase() {
             logger.info("Firebase Admin SDK already initialized");
         }
 
-        return admin;
+        return { auth: getAuth };
     } catch (error) {
         logger.error({ error: error }, "Firebase initialization error");
         throw error;
@@ -39,7 +39,7 @@ export async function initializeFirebase() {
 export async function setupTestUser(): Promise<UserRecord> {
     try {
         const adminInstance = await initializeFirebase();
-        const auth = adminInstance.auth();
+        const auth = getAuth();
 
         const testEmail = "test@example.com";
         const testPassword = "password";

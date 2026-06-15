@@ -1,5 +1,7 @@
 import { expect } from "chai";
-import admin from "firebase-admin";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { getApps, initializeApp, getApp } from "firebase-admin/app";
 import sinon from "sinon";
 import { clearTokenCache, extractAuthToken, getTokenCacheSize, verifyIdTokenCached } from "../src/websocket-auth.js";
 
@@ -14,9 +16,9 @@ describe("websocket auth helpers", () => {
         process.env.GCLOUD_PROJECT = "test-project";
 
         // Ensure admin app is initialized (if not already)
-        if (!admin.apps.length) {
+        if (!getApps().length) {
             // Mock app if needed
-            // admin.initializeApp();
+            // initializeApp();
         }
 
         // Create the stub
@@ -26,7 +28,7 @@ describe("websocket auth helpers", () => {
         const authStub = {
             verifyIdToken: verifyIdTokenStub,
         };
-        sinon.stub(admin, "auth").returns(authStub as any);
+        sinon.stub(getAuth(), "verifyIdToken").callsFake(authStub.verifyIdToken);
     });
 
     afterEach(() => {

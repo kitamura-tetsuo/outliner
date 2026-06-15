@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import express, { NextFunction, Request, Response } from "express";
-import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import { requireAuth } from "./auth-middleware.js";
 import { logger } from "./logger.js";
 
@@ -26,7 +26,7 @@ router.post("/api-keys", requireAuth, async (req: Request, res: Response): Promi
         const rawKey = crypto.randomBytes(32).toString("hex");
         const keyHash = hashApiKey(rawKey);
 
-        const db = admin.firestore();
+        const db = getFirestore();
         const docRef = db.collection("apiKeys").doc();
 
         const apiKeyData: ApiKeyDocument = {
@@ -55,7 +55,7 @@ router.post("/api-keys", requireAuth, async (req: Request, res: Response): Promi
 router.get("/api-keys", requireAuth, async (req: Request, res: Response): Promise<void> => {
     try {
         const { uid } = (req as any).user;
-        const db = admin.firestore();
+        const db = getFirestore();
         const snapshot = await db.collection("apiKeys").where("userId", "==", uid).get();
 
         const keys = snapshot.docs.map((doc) => ({
@@ -77,7 +77,7 @@ router.delete("/api-keys/:id", requireAuth, async (req: Request, res: Response):
         const { uid } = (req as any).user;
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
-        const db = admin.firestore();
+        const db = getFirestore();
         const docRef = db.collection("apiKeys").doc(id);
         const doc = await docRef.get();
 
@@ -120,7 +120,7 @@ export async function validateApiKey(req: Request, res: Response, next: NextFunc
         }
 
         const keyHash = hashApiKey(apiKey);
-        const db = admin.firestore();
+        const db = getFirestore();
         const snapshot = await db.collection("apiKeys").where("keyHash", "==", keyHash).limit(1).get();
 
         if (snapshot.empty) {

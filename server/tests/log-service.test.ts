@@ -44,7 +44,7 @@ if (typeof (global as any).jest === "undefined") {
     };
 }
 
-import { admin, app, setAdmin } from "./log-service-test-helper.js";
+import { app, setAdmin } from "./log-service-test-helper.js";
 
 const sandbox = sinon.createSandbox();
 
@@ -70,8 +70,8 @@ describe("Auth Service Tests", () => {
         setAdmin(mockAdmin);
 
         // Also stub the original admin just in case other parts use it
-        sandbox.stub(admin, "auth").returns(authStub as any);
-        sandbox.stub(admin, "firestore").returns(firestoreStub as any);
+        setAdmin({ auth: () => authStub, firestore: () => firestoreStub });
+        // handled by setAdmin
 
         // Configure authStub behavior
         authStub.verifyIdToken.callsFake(async (idToken: string) => {

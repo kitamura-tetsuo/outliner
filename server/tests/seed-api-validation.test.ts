@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import express from "express";
-import admin from "firebase-admin";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { getApps, initializeApp, getApp } from "firebase-admin/app";
 import sinon from "sinon";
 import request from "supertest";
 import { createSeedRouter } from "../src/seed-api.js";
@@ -26,18 +28,20 @@ describe("Seed API Validation", () => {
         clearTokenCache();
 
         // Mock Auth
-        // admin.auth() returns the Auth service. verifyIdToken is a method on it.
-        // We need to stub the method on the instance returned by admin.auth()
-        // But admin.auth() is a factory/getter.
-        // Typically: sinon.stub(admin.auth(), 'verifyIdToken') works if admin.auth() returns the same instance.
-        // Or stub admin.auth.
+        // getAuth() returns the Auth service. verifyIdToken is a method on it.
+        // We need to stub the method on the instance returned by getAuth()
+        // But getAuth() is a factory/getter.
+        // Typically: sinon.stub(getAuth(), 'verifyIdToken') works if getAuth() returns the same instance.
+        // Or stub getAuth.
 
-        // In metrics-endpoint.test.ts: sinon.stub(admin.auth(), "verifyIdToken")
+        // In metrics-endpoint.test.ts: sinon.stub(getAuth(), "verifyIdToken")
         // So we do the same.
-        if ((admin.auth() as any).verifyIdToken.restore) {
-            (admin.auth() as any).verifyIdToken.restore();
+        if ((getAuth() as any).verifyIdToken.restore) {
+            (getAuth() as any).verifyIdToken.restore();
         }
-        verifyIdTokenStub = sinon.stub(admin.auth(), "verifyIdToken").resolves({ uid: "test-user" } as any);
+        if (!getApps().length) initializeApp({projectId: "test"});
+        if (!getApps().length) initializeApp({projectId: "test"});
+        verifyIdTokenStub = sinon.stub(getAuth(), "verifyIdToken").resolves({ uid: "test-user" } as any);
 
         // Mock Firestore
         getStub = sinon.stub();
@@ -47,10 +51,10 @@ describe("Seed API Validation", () => {
         docStub = sinon.stub().returns({ get: getStub });
         collectionStub = sinon.stub().returns({ doc: docStub });
 
-        if ((admin.firestore as any).restore) {
-            (admin.firestore as any).restore();
+        if ((getFirestore() as any).collection && (getFirestore().collection as any).restore) {
+            (getFirestore().collection as any).restore();
         }
-        firestoreStub = sinon.stub(admin, "firestore").returns({
+        sinon.stub(getFirestore(), "collection").returns({
             collection: collectionStub,
         } as any);
 

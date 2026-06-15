@@ -1,5 +1,7 @@
 import { expect } from "chai";
-import admin from "firebase-admin";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { getApps, initializeApp, getApp } from "firebase-admin/app";
 import { afterEach, beforeEach, describe, it } from "mocha";
 import sinon from "sinon";
 import request from "supertest";
@@ -22,7 +24,9 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
 
     beforeEach(function() {
         // Mock Firebase Auth
-        verifyStub = sinon.stub(admin.auth(), "verifyIdToken");
+        if (!getApps().length) initializeApp({projectId: "test"});
+        if (!getApps().length) initializeApp({projectId: "test"});
+        verifyStub = sinon.stub(getAuth(), "verifyIdToken");
 
         // Mock Firestore
         // Mock existing Firestore instance
@@ -56,7 +60,8 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
         });
 
         // Mock admin.firestore
-        firestoreStub = sinon.stub(admin, "firestore").returns(mockFirestore);
+        sinon.stub(getFirestore(), "collection").callsFake(mockFirestore.collection);
+        sinon.stub(getFirestore(), "doc").callsFake(mockFirestore.doc);
     });
 
     afterEach(function() {
