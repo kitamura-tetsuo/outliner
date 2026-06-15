@@ -14,6 +14,6 @@ module.exports = {
   // Environment variables for Firebase Functions tests
   setupFiles: ["<rootDir>/test/env.js"],
   moduleNameMapper: {
-    "^jose$": "<rootDir>/test/__mocks__/jose.js"
+    "^jose$": "<rootDir>/test/__mocks__/jose.js",
   },
 };
