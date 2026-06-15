@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { getApps, initializeApp, getApp } from "firebase-admin/app";
 import sinon from "sinon";
 import { clearTokenCache, verifyIdTokenCached } from "../src/websocket-auth.js";
 
@@ -20,7 +20,7 @@ describe("websocket auth security (regression)", () => {
         }
 
         verifyIdTokenStub = sinon.stub().rejects(new Error("Invalid token signature"));
-        if (!getApps().length) initializeApp({ projectId: "test" });
+        if (!getApps().length) initializeApp({projectId:"test"});
         sinon.stub(getAuth(), "verifyIdToken").rejects(new Error("Invalid token signature"));
     });
 

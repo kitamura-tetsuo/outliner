@@ -2,9 +2,9 @@ process.env.FIREBASE_PROJECT_ID = "test-project";
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080"; // Dummy port
 
 import { expect } from "chai";
-import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { getApps, initializeApp, getApp } from "firebase-admin/app";
 import sinon from "sinon";
 import { checkContainerAccess } from "../src/access-control.js";
 
