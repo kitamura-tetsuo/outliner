@@ -4,22 +4,6 @@ import os from "os";
 import path from "path";
 import sinon from "sinon";
 import WebSocket from "ws";
-const OriginalWebSocket = WebSocket as any;
-const MockWebSocketFn = function(...args: any[]) {
-    const ws = new OriginalWebSocket(...args);
-    const origClose = ws.close.bind(ws);
-    ws.close = function(code?: number, data?: string) {
-        if (ws.readyState === 0) {
-            ws.onclose = () => {};
-            ws.onerror = () => {};
-            return;
-        }
-        try { origClose(code, data); } catch (e) {}
-    };
-    return ws;
-};
-// @ts-ignore
-global.WebSocket = MockWebSocketFn;
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 import "ts-node/register";
@@ -68,32 +52,27 @@ describe("idle timeout", () => {
             DATABASE_PATH: dir,
             IDLE_TIMEOUT_MS: "100",
         });
-        const { server, shutdown } = await startServer(cfg);
+        const { server } = await startServer(cfg);
         await waitListening(server);
 
         const doc1 = new Y.Doc();
         const provider1 = new WebsocketProvider(`ws://localhost:${port}`, "projects/testproj", doc1, {
             params: { auth: "token" },
-            WebSocketPolyfill: MockWebSocketFn as any,
+            WebSocketPolyfill: WebSocket as any,
         });
         await waitConnected(provider1);
         const closed = new Promise<void>(resolve => {
-            const timeoutId = setTimeout(() => resolve(), 2000);
             if (provider1.ws) {
-                (provider1.ws as any).on("close", (event: any) => {
-                    clearTimeout(timeoutId);
+                (provider1.ws as any).on("close", (code: any) => {
+                    expect(code).to.equal(4004);
+                    provider1.destroy();
                     resolve();
                 });
-            } else {
-                clearTimeout(timeoutId);
-                resolve();
             }
         });
         const synced1 = new Promise<void>(resolve => {
-            const timeoutId = setTimeout(() => resolve(), 1000);
             const handler = (state: any) => {
                 if (state) {
-                    clearTimeout(timeoutId);
                     provider1.off("sync", handler);
                     resolve();
                 }
@@ -103,21 +82,18 @@ describe("idle timeout", () => {
         doc1.getText("t").insert(0, "hello");
         await synced1;
         await closed;
-        try { provider1.destroy(); } catch(e) {}
         doc1.destroy();
 
         const doc2 = new Y.Doc();
         const provider2 = new WebsocketProvider(`ws://localhost:${port}`, "projects/testproj", doc2, {
             params: { auth: "token" },
-            WebSocketPolyfill: MockWebSocketFn as any,
+            WebSocketPolyfill: WebSocket as any,
         });
         await waitConnected(provider2);
         if (!provider2.synced) {
             await new Promise<void>(resolve => {
-                const timeoutId = setTimeout(() => resolve(), 1000);
                 const handler = (state: any) => {
                     if (state) {
-                        clearTimeout(timeoutId);
                         provider2.off("sync", handler);
                         resolve();
                     }
@@ -125,10 +101,10 @@ describe("idle timeout", () => {
                 provider2.on("sync", handler);
             });
         }
-        /* bypassed strict assert */
-        try { provider2.destroy(); } catch(e) {}
+        expect(doc2.getText("t").toString()).to.equal("hello");
+        provider2.destroy();
         doc2.destroy();
-        await shutdown();
+        server.close();
         await fs.remove(dir);
     });
 });
