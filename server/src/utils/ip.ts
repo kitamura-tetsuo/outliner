@@ -5,8 +5,18 @@ import { IncomingMessage } from "http";
  * Prioritizes headers from trusted platforms (Cloudflare, Fly.io, etc.)
  * which are harder to spoof than standard X-Forwarded-For.
  */
-export function getClientIp(req: IncomingMessage): string {
-    const headers = req.headers;
+export function getClientIp(req: IncomingMessage | Request): string {
+    const getHeader = (name: string): string | string[] | null | undefined => {
+        if ("headers" in req && typeof (req.headers as any).get === "function") {
+            return (req.headers as Headers).get(name);
+        }
+        return (req as IncomingMessage).headers[name.toLowerCase()];
+    };
+
+    const first = (val: string | string[]): string => {
+        if (Array.isArray(val)) return val[0];
+        return val.split(",")[0].trim();
+    };
 
     // Trusted Platform Headers
     // These headers are typically stripped by the platform edge and re-added,
@@ -19,9 +29,9 @@ export function getClientIp(req: IncomingMessage): string {
     ];
 
     for (const header of platformHeaders) {
-        const val = headers[header];
+        const val = getHeader(header);
         if (val) {
-            return Array.isArray(val) ? val[0] : val.split(",")[0].trim();
+            return first(val);
         }
     }
 
@@ -29,10 +39,10 @@ export function getClientIp(req: IncomingMessage): string {
     // Takes the first IP (left-most), which is the original client IP.
     // WARNING: This is spoofable if the server is directly exposed or the proxy doesn't overwrite it.
     // However, it's the standard behavior for getting the "original" client IP.
-    const xff = headers["x-forwarded-for"];
+    const xff = getHeader("x-forwarded-for");
     if (xff) {
-        return Array.isArray(xff) ? xff[0] : xff.split(",")[0].trim();
+        return first(xff);
     }
 
-    return req.socket?.remoteAddress || "";
+    return (req as any).socket?.remoteAddress || "";
 }

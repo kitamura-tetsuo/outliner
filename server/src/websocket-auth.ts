@@ -39,12 +39,13 @@ function pruneExpiredTokens(now: number) {
     }
 }
 
-export function extractAuthToken(req: IncomingMessage): string | undefined {
+export function extractAuthToken(req: IncomingMessage | Request): string | undefined {
     try {
-        const url = new URL(req.url ?? "", "http://localhost");
+        const urlString = "url" in req ? (req as any).url : (req as IncomingMessage).url;
+        const url = new URL(urlString ?? "", "http://localhost");
         // Check for 'token' parameter (used by y-websocket when token option is provided)
         const token = url.searchParams.get("token") || url.searchParams.get("auth");
-        console.log(`[Auth] req.url=${sanitizeUrl(req.url)}, token=${token ? "FOUND" : "MISSING"}`);
+        console.log(`[Auth] req.url=${sanitizeUrl(urlString)}, token=${token ? "FOUND" : "MISSING"}`);
         return token || undefined;
     } catch {
         /* eslint-disable-next-line no-console */ console.error("[Auth] URL parse error");
