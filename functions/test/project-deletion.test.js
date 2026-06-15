@@ -1,8 +1,16 @@
+/* eslint-disable no-unused-vars */
 const { describe, it, expect, afterAll, beforeEach } = require("@jest/globals");
+const { getApps, getApp, initializeApp, deleteApp } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
+const adminAuth = require("firebase-admin/auth");
+const adminFirestore = require("firebase-admin/firestore");
+const adminStorage = require("firebase-admin/storage");
 const functions = require("firebase-functions-test")();
 
 describe("deleteProject Logic Tests", () => {
-  let admin;
+
   let myFunctions;
   let transactionUpdateSpy;
   let transactionDeleteSpy;
@@ -13,9 +21,7 @@ describe("deleteProject Logic Tests", () => {
 
   beforeEach(() => {
     jest.resetModules();
-    admin = require("firebase-admin");
-
-    // Reset Mock Data
+        // Reset Mock Data
     mockUserProjects = {
       user1: {
         accessibleProjectIds: ["projectP"],
@@ -30,8 +36,12 @@ describe("deleteProject Logic Tests", () => {
       projectP: { accessibleUserIds: ["user1", "user2"] },
     };
 
+    // Require first to ensure same module instance
+    const _adminAuth = require("firebase-admin/auth");
+    const _adminFirestore = require("firebase-admin/firestore");
+
     // Mock admin.auth
-    jest.spyOn(admin, "auth").mockReturnValue({
+    jest.spyOn(_adminAuth, "getAuth").mockReturnValue({
       verifyIdToken: jest.fn().mockImplementation(async token => {
         if (token === "token-user1") { return { uid: "user1" }; }
         if (token === "token-user2") { return { uid: "user2" }; }
@@ -56,7 +66,7 @@ describe("deleteProject Logic Tests", () => {
       }),
     };
 
-    jest.spyOn(admin, "firestore").mockReturnValue(mockDb);
+    jest.spyOn(_adminFirestore, "getFirestore").mockReturnValue(mockDb);
 
     // Mock Collection References
     mockDb.collection.mockImplementation(name => {
