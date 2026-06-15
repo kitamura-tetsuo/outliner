@@ -1206,7 +1206,7 @@ export class Cursor implements CursorEditingContext {
         if (!root) return;
         let item: Item = root;
         while (item.items && (item.items as { length: number; at: (i: number) => Item; }).length > 0) {
-            item = (item.items as { length: number; at: (i: number) => Item; }).at(0);
+            item = (item.items as { length: number; at: (i: number) => Item; }).at(0)!;
         }
         this.itemId = item.id;
         this.offset = 0;
@@ -1222,7 +1222,7 @@ export class Cursor implements CursorEditingContext {
         while (item.items && (item.items as { length: number; at: (i: number) => Item; }).length > 0) {
             item = (item.items as { length: number; at: (i: number) => Item; }).at(
                 (item.items as { length: number; at: (i: number) => Item; }).length - 1,
-            );
+            )!;
         }
         this.itemId = item.id;
         this.offset = (item.text || "").length;
