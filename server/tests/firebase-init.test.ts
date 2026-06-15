@@ -1,7 +1,7 @@
 import { expect } from "chai";
-import * as adminAuth from "firebase-admin/auth";
 import * as adminApp from "firebase-admin/app";
-import { initializeFirebase, _testDeps } from "../src/firebase-init.js";
+import * as adminAuth from "firebase-admin/auth";
+import { _testDeps, initializeFirebase } from "../src/firebase-init.js";
 import { secretManager } from "../src/secret-manager.js";
 
 import fs from "fs";

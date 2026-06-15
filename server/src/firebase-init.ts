@@ -1,8 +1,8 @@
-import { initializeApp, getApps, cert, getApp } from "firebase-admin/app";
+import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import fs from "fs";
-import { secretManager } from "./secret-manager.js";
 import { setupTestUser } from "./scripts/setup-dev-auth.js";
+import { secretManager } from "./secret-manager.js";
 
 function getServiceAccount() {
     // 1. Try path provided via environment variable
@@ -46,7 +46,7 @@ export const _testDeps = {
     getApps,
     cert,
     getApp,
-    getAuth
+    getAuth,
 };
 
 export async function initializeFirebase() {
@@ -74,7 +74,8 @@ export async function initializeFirebase() {
             }
         }
 
-        const projectId = serviceAccount?.project_id || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "demo-project";
+        const projectId = serviceAccount?.project_id || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT
+            || "demo-project";
         const isDemoProject = projectId === "demo-project";
 
         // Check if an app is already initialized
@@ -84,7 +85,11 @@ export async function initializeFirebase() {
         }
 
         if (isEmulator || isDemoProject) {
-            console.log(`Initializing Firebase Admin SDK in ${isEmulator ? 'Emulator' : 'Demo'} mode (Project ID: ${projectId})`);
+            console.log(
+                `Initializing Firebase Admin SDK in ${
+                    isEmulator ? "Emulator" : "Demo"
+                } mode (Project ID: ${projectId})`,
+            );
             _testDeps.initializeApp({
                 projectId,
             });
@@ -95,7 +100,9 @@ export async function initializeFirebase() {
                 projectId,
             });
         } else {
-            console.log(`Initializing Firebase Admin SDK with default Google Application Credentials (Project ID: ${projectId})`);
+            console.log(
+                `Initializing Firebase Admin SDK with default Google Application Credentials (Project ID: ${projectId})`,
+            );
             // Without passing credential, it uses GOOGLE_APPLICATION_CREDENTIALS
             _testDeps.initializeApp({
                 projectId,
@@ -121,7 +128,9 @@ export async function initializeFirebase() {
                     // Simple check if Auth emulator is responding by listing users
                     const listUsersResult = await _testDeps.getAuth().listUsers(1);
                     connected = true;
-                    console.log(`Firebase emulator connection successful. Found users: ${listUsersResult.users.length}`);
+                    console.log(
+                        `Firebase emulator connection successful. Found users: ${listUsersResult.users.length}`,
+                    );
 
                     // Create test user if none exists (for UI test automation)
                     if (listUsersResult.users.length > 0) {

@@ -2,8 +2,8 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import * as adminApp from "firebase-admin/app";
-import * as adminFirestore from "firebase-admin/firestore";
 import * as adminAuth from "firebase-admin/auth";
+import * as adminFirestore from "firebase-admin/firestore";
 import jwt from "jsonwebtoken";
 
 // Firebase initialization (minimal configuration for testing)
@@ -93,7 +93,7 @@ app.get("/health", (req, res) => {
 
 let adminInstance = {
     auth: () => adminAuth.getAuth(),
-    firestore: Object.assign(() => adminFirestore.getFirestore(), { FieldValue: adminFirestore.FieldValue })
+    firestore: Object.assign(() => adminFirestore.getFirestore(), { FieldValue: adminFirestore.FieldValue }),
 };
 export const setAdmin = (mock: any) => {
     adminInstance = mock;
