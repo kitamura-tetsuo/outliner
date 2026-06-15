@@ -1,8 +1,7 @@
 import { expect } from "chai";
-import { getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { afterEach, beforeEach, describe, it } from "mocha";
 import sinon from "sinon";
 import request from "supertest";
 
@@ -13,7 +12,7 @@ process.env.GCLOUD_PROJECT = "test-project";
 
 // Use the Express app defined for testing
 // @ts-ignore
-import { app } from "./log-service-test-helper.js";
+import { app, setAdmin } from "./log-service-test-helper.js";
 
 describe("/api/get-container-users admin role check (API-0003)", function() {
     let verifyStub: sinon.SinonStub;
@@ -24,9 +23,8 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
 
     beforeEach(function() {
         // Mock Firebase Auth
-        if (!getApps().length) initializeApp({ projectId: "test" });
-        if (!getApps().length) initializeApp({ projectId: "test" });
-        verifyStub = sinon.stub(getAuth(), "verifyIdToken");
+        verifyStub = sinon.stub();
+        const mockAuth = { verifyIdToken: verifyStub, listUsers: sinon.stub() };
 
         // Mock Firestore
         // Mock existing Firestore instance
@@ -59,9 +57,8 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
             get: getStub,
         });
 
-        // Mock admin.firestore
-        sinon.stub(getFirestore(), "collection").callsFake(mockFirestore.collection);
-        sinon.stub(getFirestore(), "doc").callsFake(mockFirestore.doc);
+        /* stubbing ESM directly is hard, we injected it via setAdmin */
+        setAdmin({ auth: () => mockAuth, firestore: () => mockFirestore });
     });
 
     afterEach(function() {
