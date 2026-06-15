@@ -1,15 +1,14 @@
-
 import { expect } from "chai";
+import crypto from "crypto";
+import * as firebaseAdminApp from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import * as firebaseAdminApp from "firebase-admin/app";
 import fs from "fs";
 import path from "path";
 import sinon from "sinon";
 import { fileURLToPath } from "url";
 import * as firebaseInit from "../src/firebase-init.js";
 import { secretManager } from "../src/secret-manager.js";
-import crypto from "crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +22,11 @@ describe("firebase-init Secret Manager loading bypass", () => {
     beforeEach(() => {
         originalEnv = { ...process.env };
 
-        validKey = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } }).privateKey;
+        validKey = crypto.generateKeyPairSync("rsa", {
+            modulusLength: 2048,
+            publicKeyEncoding: { type: "spki", format: "pem" },
+            privateKeyEncoding: { type: "pkcs8", format: "pem" },
+        }).privateKey;
 
         // Provide dummy env vars so getServiceAccount() and cert() do not fail
         process.env.FIREBASE_PROJECT_ID = "test-project-id";
@@ -75,7 +78,7 @@ describe("firebase-init Secret Manager loading bypass", () => {
             type: "service_account",
             project_id: "test-project-id",
             private_key: validKey,
-            client_email: "test@example.com"
+            client_email: "test@example.com",
         };
         fs.writeFileSync(dummySdkPath, JSON.stringify(dummySdkContent), "utf-8");
 
