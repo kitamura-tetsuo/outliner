@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import express from "express";
+import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { getApps, initializeApp, getApp } from "firebase-admin/app";
 import sinon from "sinon";
 import request from "supertest";
 import { createSeedRouter } from "../src/seed-api.js";
@@ -39,8 +39,8 @@ describe("Seed API Validation", () => {
         if ((getAuth() as any).verifyIdToken.restore) {
             (getAuth() as any).verifyIdToken.restore();
         }
-        if (!getApps().length) initializeApp({projectId: "test"});
-        if (!getApps().length) initializeApp({projectId: "test"});
+        if (!getApps().length) initializeApp({ projectId: "test" });
+        if (!getApps().length) initializeApp({ projectId: "test" });
         verifyIdTokenStub = sinon.stub(getAuth(), "verifyIdToken").resolves({ uid: "test-user" } as any);
 
         // Mock Firestore

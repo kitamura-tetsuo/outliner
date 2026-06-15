@@ -1,5 +1,5 @@
-import { getAuth, DecodedIdToken } from "firebase-admin/auth";
 import { getApps, initializeApp } from "firebase-admin/app";
+import { DecodedIdToken, getAuth } from "firebase-admin/auth";
 import type { IncomingMessage } from "http";
 import { getServiceAccount } from "./firebase-init.js";
 import { sanitizeUrl } from "./utils/sanitize.js";

@@ -1,5 +1,5 @@
+import { cert, deleteApp, getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getApps, getApp, cert, initializeApp, deleteApp } from "firebase-admin/app";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
