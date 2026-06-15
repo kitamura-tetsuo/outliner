@@ -1,14 +1,19 @@
+/**
+ * Helper file to make log-service.js testable.
+ * This file does not start the server directly but exports the Express middleware.
+ */
+
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
-import { getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { getFirestore } from "firebase-admin/firestore";
+import { getApps, initializeApp, getApp } from "firebase-admin/app";
 import jwt from "jsonwebtoken";
 
 // Firebase initialization (minimal configuration for testing)
 if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
-    process.env.FIREBASE_PROJECT_ID = "test-project";
+    process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
     process.env.GCLOUD_PROJECT = "test-project";
 }
 
@@ -26,42 +31,81 @@ if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
     });
 }
 
-// Log service app matching structure
-const app = express();
-app.use(express.json());
-app.use(cors());
+function getSafeOrigins(): string[] {
+    const defaultOrigins = ["http://localhost:7070"];
 
-let adminInstance = {
-    auth: () => getAuth(),
-    firestore: Object.assign(() => getFirestore(), { FieldValue: FieldValue }),
-};
+    if (!process.env.CORS_ORIGIN) {
+        return defaultOrigins;
+    }
+
+    try {
+        const origins = process.env.CORS_ORIGIN.split(",").map(origin => origin.trim());
+        const safeOrigins = origins.filter(origin => {
+            try {
+                new URL(origin);
+                if (origin.includes("pathToRegexpError") || origin.includes("git.new")) {
+                    console.warn(`Filtering out invalid origin: ${origin}`);
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                console.warn(`Invalid origin URL format: ${origin}`);
+                return false;
+            }
+        });
+
+        if (safeOrigins.length === 0) {
+            return defaultOrigins;
+        }
+
+        return safeOrigins;
+    } catch (error: any) {
+        console.error(`Error parsing CORS_ORIGIN: ${error.message}, using defaults`);
+        return defaultOrigins;
+    }
+}
+
+const app = express();
+app.use(cors({
+    origin: getSafeOrigins(),
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+}));
+app.use(express.json());
+
+app.get("/health", (req, res) => {
+    return res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
+});
+
+let adminInstance = { auth: getAuth, firestore: getFirestore };
 export const setAdmin = (mock: any) => {
     adminInstance = mock;
 };
-export const getAdmin = () => adminInstance;
+// Helper to get the current admin instance (real or mock)
+const getAdmin = () => adminInstance;
 
-// Middleware definitions inside app to make testing self-contained
-app.post("/api/save-container-id", async (req, res) => {
+app.post("/api/save-container", async (req, res) => {
     try {
         const { idToken, containerId } = req.body;
 
-        if (!idToken || !containerId) {
-            return res.status(400).json({ error: "Missing required fields" });
+        if (!containerId) {
+            return res.status(400).json({ error: "Container ID is required" });
         }
 
         const currentAdmin = getAdmin();
         const decodedToken = await currentAdmin.auth().verifyIdToken(idToken);
         const userId = decodedToken.uid;
 
+        // Use currentAdmin to allow mocking
         const firestore = typeof currentAdmin.firestore === "function"
             ? currentAdmin.firestore()
             : currentAdmin.firestore;
-        const containerUsersCollection = firestore.collection("containerUsers");
+        const userContainersCollection = firestore.collection("userContainers");
+        const userDocRef = userContainersCollection.doc(userId);
+        const docSnapshot = await userDocRef.get();
 
-        const userDocRef = containerUsersCollection.doc(userId);
-        const userDoc = await userDocRef.get();
-
-        if (userDoc.exists) {
+        if (docSnapshot.exists) {
             await userDocRef.update({
                 defaultContainerId: containerId,
                 updatedAt: currentAdmin.firestore.FieldValue.serverTimestamp(),
@@ -94,10 +138,6 @@ app.post("/api/save-container-id", async (req, res) => {
             return res.status(500).json({ error: "Failed to save container ID", details: error.message });
         }
     }
-});
-
-app.get("/health", (req, res) => {
-    return res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
 app.post("/api/get-container-users", async (req, res) => {

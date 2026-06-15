@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import { once } from "events";
-import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { getApps, initializeApp, getApp } from "firebase-admin/app";
 import fs from "fs-extra";
 import http from "http";
 import os from "os";

@@ -27,8 +27,11 @@ test.describe("WebSocket connection limits", () => {
         let loadConfig: any;
         let startServer: any;
         try {
+
             WebSocket = require("../../../server/node_modules/ws/index.js");
-            admin = require("../../../server/node_modules/firebase-admin");
+            const adminAuth = require("../../../server/node_modules/firebase-admin/auth");
+            const adminApp = require("../../../server/node_modules/firebase-admin/app");
+            admin = { ...adminAuth, ...adminApp };
             sinon = require("../../../server/node_modules/sinon");
             ({ loadConfig } = require("../../../server/src/config"));
             ({ startServer } = require("../../../server/src/server"));
@@ -40,7 +43,8 @@ test.describe("WebSocket connection limits", () => {
         process.env.DISABLE_Y_LEVELDB = "true";
 
         const port = 16000 + Math.floor(Math.random() * 1000);
-        sinon.stub(admin.auth(), "verifyIdToken").resolves({ uid: "user", exp: Math.floor(Date.now() / 1000) + 60 });
+        if (!admin.getApps().length) admin.initializeApp({projectId: "test"});
+        sinon.stub(admin.getAuth(), "verifyIdToken").resolves({ uid: "user", exp: Math.floor(Date.now() / 1000) + 60 });
         const fs = require("node:fs");
         const os = require("node:os");
         const path = require("node:path");

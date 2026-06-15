@@ -1,7 +1,7 @@
 // Development environment authentication setup script
 import "dotenv/config";
-import { cert, getApps, initializeApp, ServiceAccount } from "firebase-admin/app";
-import { getAuth, UserRecord } from "firebase-admin/auth";
+import { getApps, cert, ServiceAccount, initializeApp } from "firebase-admin/app";
+import { UserRecord, getAuth } from "firebase-admin/auth";
 import { fileURLToPath } from "url";
 import { serverLogger as logger } from "../utils/log-manager.js";
 
