@@ -1,10 +1,15 @@
 import type { Awareness } from "y-protocols/awareness";
+import { YTree } from "yjs-orderedtree";
 import { Item, Items, Project } from "../../schema/yjs-schema";
 import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
 
-function childrenKeys(tree: import("../../schema/YTree").YTree, parentKey: string): string[] {
+interface YTreeWithMove extends YTree {
+    moveChildToParent(childKey: string, parentKey: string): void;
+}
+
+function childrenKeys(tree: YTree, parentKey: string): string[] {
     const children = tree.getNodeChildrenFromKey(parentKey);
     return tree.sortChildrenByOrder(children, parentKey);
 }
@@ -88,7 +93,7 @@ export const yjsService = {
     },
 
     moveItem(project: Project, itemKey: string, newParentKey: string, index?: number) {
-        const tree = project.tree;
+        const tree = project.tree as unknown as YTreeWithMove;
         tree.moveChildToParent(itemKey, newParentKey);
         if (index !== undefined) {
             const siblings = childrenKeys(tree, newParentKey).filter((k: string) => k !== itemKey);
@@ -104,7 +109,7 @@ export const yjsService = {
     },
 
     indentItem(project: Project, itemKey: string) {
-        const tree = project.tree;
+        const tree = project.tree as unknown as YTreeWithMove;
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
         const siblings = childrenKeys(tree, parent);
@@ -117,7 +122,7 @@ export const yjsService = {
     },
 
     outdentItem(project: Project, itemKey: string) {
-        const tree = project.tree;
+        const tree = project.tree as unknown as YTreeWithMove;
         const parent = tree.getNodeParentFromKey(itemKey);
         if (!parent) return;
         const grand = tree.getNodeParentFromKey(parent);
@@ -171,7 +176,7 @@ export const yjsService = {
             const target = resolvePresenceStore();
             if (!target) return;
             const states = awareness.getStates();
-            const clientId = awareness.clientID;
+            const clientId = (awareness as Awareness & { clientID: number; }).clientID;
             const overlay = resolveOverlayStore();
 
             [...added, ...updated].forEach((id: number) => {
@@ -208,7 +213,7 @@ export const yjsService = {
             const overlay = resolveOverlayStore();
             if (!overlay) return; // no-op when overlay store not present
             const states = awareness.getStates();
-            const clientId = awareness.clientID;
+            const clientId = (awareness as Awareness & { clientID: number; }).clientID;
 
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);

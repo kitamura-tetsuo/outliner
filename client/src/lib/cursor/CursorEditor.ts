@@ -204,11 +204,11 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as import("../../schema/app-schema").Items;
+            const parent = target.parent as unknown as unknown as import("../../schema/app-schema").Items;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : parent?.items;
+                    : (parent as unknown as { items: import("../../schema/app-schema").Items; })?.items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -216,7 +216,9 @@ export class CursorEditor {
                     : undefined;
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
-                    const currentIndex = itemsCollection.indexOf(target);
+                    const currentIndex = itemsCollection.indexOf(
+                        target as unknown as import("../../schema/app-schema").Item,
+                    );
                     target.updateText(beforeText);
                     const newItem = addNode(cursor.userId, currentIndex + 1);
                     if (!newItem) return;
@@ -290,11 +292,11 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as import("../../schema/app-schema").Items;
+            const parent = target.parent as unknown as unknown as import("../../schema/app-schema").Items;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : parent?.items;
+                    : (parent as unknown as { items: import("../../schema/app-schema").Items; })?.items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -302,7 +304,9 @@ export class CursorEditor {
                     : undefined;
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
-                    const currentIndex = itemsCollection.indexOf(target);
+                    const currentIndex = itemsCollection.indexOf(
+                        target as unknown as import("../../schema/app-schema").Item,
+                    );
                     // Add below without updating current text
                     const newItem = addNode(cursor.userId, currentIndex + 1);
                     if (!newItem) return;
@@ -446,17 +450,20 @@ export class CursorEditor {
         const prevItem = findPreviousItem(cursor.itemId);
         if (!prevItem) return;
 
-        const prevText = this.getPlainText(prevItem);
-        const currentText = this.getPlainText(currentItem);
+        const prevText = this.getPlainText(prevItem as unknown as import("../../schema/app-schema").Item);
+        const currentText = this.getPlainText(currentItem as unknown as import("../../schema/app-schema").Item);
         const combinedText = `${prevText}${currentText}`;
 
         const oldItemId = cursor.itemId;
-        const prevId = (prevItem as import("../../schema/app-schema").Item)?.id ?? cursor.itemId;
+        const prevId = (prevItem as unknown as import("../../schema/app-schema").Item)?.id ?? cursor.itemId;
         const newOffset = prevText.length;
 
-        this.runInTransaction([prevItem, currentItem], () => {
-            this.updateItemText(prevItem, combinedText);
-            this.deleteItemNode(currentItem);
+        this.runInTransaction([
+            prevItem as unknown as import("../../schema/app-schema").Item,
+            currentItem as unknown as import("../../schema/app-schema").Item,
+        ], () => {
+            this.updateItemText(prevItem as unknown as import("../../schema/app-schema").Item, combinedText);
+            this.deleteItemNode(currentItem as unknown as import("../../schema/app-schema").Item);
         });
 
         cursor.itemId = prevId;
@@ -470,16 +477,16 @@ export class CursorEditor {
 
     private getPlainText(item: import("../../schema/app-schema").Item): string {
         if (!item) return "";
-        const textValue = (item as import("../../schema/app-schema").Item).text;
+        const textValue = (item as unknown as import("../../schema/app-schema").Item).text;
         if (typeof textValue === "string") return textValue;
-        if (textValue && typeof textValue.toString === "function") {
+        if (textValue && typeof (textValue as { toString(): string; }).toString === "function") {
             try {
-                return textValue.toString();
+                return (textValue as { toString(): string; }).toString();
             } catch {}
         }
-        if (typeof (item as import("../../schema/app-schema").Item).getText === "function") {
+        if (typeof (item as unknown as { getText(): string; }).getText === "function") {
             try {
-                const result = (item as import("../../schema/app-schema").Item).getText();
+                const result = (item as unknown as { getText(): string; }).getText();
                 if (typeof result === "string") return result;
             } catch {}
         }
@@ -493,22 +500,30 @@ export class CursorEditor {
             return;
         }
 
-        const tree = (item as import("../../schema/app-schema").Item)?.tree;
-        const key = (item as import("../../schema/app-schema").Item)?.key
-            ?? (item as import("../../schema/app-schema").Item)?.id;
+        const tree = (item as unknown as import("../../schema/app-schema").Item)?.tree;
+        const key = (item as unknown as import("../../schema/app-schema").Item)?.key
+            ?? (item as unknown as import("../../schema/app-schema").Item)?.id;
         if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
 
         const value = tree.getNodeValueFromKey(key);
-        const yText = value?.get?.("text");
+        const yText = (value as { get?: (k: string) => unknown; })?.get?.("text");
         try {
-            if (yText && typeof yText.delete === "function" && typeof yText.insert === "function") {
-                yText.delete(0, yText.length);
-                if (text) yText.insert(0, text);
-            } else if (value && typeof value.set === "function") {
-                value.set("text", text);
+            if (
+                yText && typeof (yText as { delete: (i: number, l: number) => void; }).delete === "function"
+                && typeof (yText as { insert: (i: number, s: string) => void; }).insert === "function"
+            ) {
+                const yt = yText as {
+                    delete(i: number, l: number): void;
+                    insert(i: number, s: string): void;
+                    length: number;
+                };
+                yt.delete(0, yt.length);
+                if (text) yt.insert(0, text);
+            } else if (value && typeof (value as { set: (k: string, v: unknown) => void; }).set === "function") {
+                (value as { set(k: string, v: unknown): void; }).set("text", text);
             }
-            if (value && typeof value.set === "function") {
-                value.set("lastChanged", Date.now());
+            if (value && typeof (value as { set: (k: string, v: unknown) => void; }).set === "function") {
+                (value as { set(k: string, v: unknown): void; }).set("lastChanged", Date.now());
             }
         } catch {}
     }
@@ -520,20 +535,24 @@ export class CursorEditor {
             return;
         }
 
-        const key = (item as import("../../schema/app-schema").Item)?.key
-            ?? (item as import("../../schema/app-schema").Item)?.id;
+        const key = (item as unknown as import("../../schema/app-schema").Item)?.key
+            ?? (item as unknown as import("../../schema/app-schema").Item)?.id;
         if (!key) return;
 
         const treeCandidates = [
-            (item as import("../../schema/app-schema").Item)?.tree,
-            (item as import("../../schema/app-schema").Item)?.parent?.tree,
+            (item as unknown as import("../../schema/app-schema").Item)?.tree,
+            (item as unknown as import("../../schema/app-schema").Item)?.parent?.tree,
             (generalStore as { project?: { tree?: unknown; }; })?.project?.tree,
         ];
 
         for (const tree of treeCandidates) {
-            if (tree && typeof tree.deleteNodeAndDescendants === "function") {
+            if (
+                tree
+                && typeof (tree as { deleteNodeAndDescendants?: (k: string) => void; }).deleteNodeAndDescendants
+                    === "function"
+            ) {
                 try {
-                    tree.deleteNodeAndDescendants(key);
+                    (tree as { deleteNodeAndDescendants: (k: string) => void; }).deleteNodeAndDescendants(key);
                     return;
                 } catch {}
             }
@@ -542,7 +561,7 @@ export class CursorEditor {
 
     private runInTransaction(participants: import("../../schema/app-schema").Item[], action: () => void) {
         const doc = participants
-            .map(item => (item as import("../../schema/app-schema").Item)?.ydoc)
+            .map(item => (item as unknown as import("../../schema/app-schema").Item)?.ydoc)
             .find(candidate => candidate && typeof candidate.transact === "function");
 
         if (doc) {
@@ -563,11 +582,11 @@ export class CursorEditor {
         const nextItem = findNextItem(cursor.itemId);
         if (!nextItem) return;
 
-        const currentText = (currentItem as import("../../schema/app-schema").Item).text || "";
-        const nextText = (nextItem as import("../../schema/app-schema").Item).text || "";
-        (currentItem as import("../../schema/app-schema").Item).updateText(currentText + nextText);
+        const currentText = (currentItem as unknown as import("../../schema/app-schema").Item).text || "";
+        const nextText = (nextItem as unknown as import("../../schema/app-schema").Item).text || "";
+        (currentItem as unknown as import("../../schema/app-schema").Item).updateText(currentText + nextText);
 
-        (nextItem as import("../../schema/app-schema").Item).delete();
+        (nextItem as unknown as import("../../schema/app-schema").Item).delete();
     }
 
     private deleteEmptyItem() {
@@ -596,7 +615,7 @@ export class CursorEditor {
         }
 
         store.clearCursorForItem(cursor.itemId);
-        (currentItem as import("../../schema/app-schema").Item).delete();
+        (currentItem as unknown as import("../../schema/app-schema").Item).delete();
 
         cursor.itemId = targetItemId;
         cursor.offset = targetOffset;
@@ -624,8 +643,8 @@ export class CursorEditor {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        const startItem = searchItem(root as import("../../schema/app-schema").Item, selection.startItemId);
-        const endItem = searchItem(root as import("../../schema/app-schema").Item, selection.endItemId);
+        const startItem = searchItem(root as unknown as import("../../schema/yjs-schema").Item, selection.startItemId);
+        const endItem = searchItem(root as unknown as import("../../schema/yjs-schema").Item, selection.endItemId);
         if (!startItem || !endItem) return;
 
         const isReversed = !!selection.isReversed;
@@ -634,8 +653,8 @@ export class CursorEditor {
         const firstOffset = isReversed ? selection.endOffset : selection.startOffset;
         const lastOffset = isReversed ? selection.startOffset : selection.endOffset;
 
-        const parent = (firstItem as import("../../schema/app-schema").Item).parent;
-        if (!parent || parent !== (lastItem as import("../../schema/app-schema").Item).parent) return;
+        const parent = (firstItem as unknown as import("../../schema/app-schema").Item).parent;
+        if (!parent || parent !== (lastItem as unknown as import("../../schema/app-schema").Item).parent) return;
 
         const items = parent as unknown as Items;
         const firstIndex = items.indexOf(firstItem);
@@ -643,9 +662,9 @@ export class CursorEditor {
         if (firstIndex === -1 || lastIndex === -1) return;
 
         try {
-            const firstText = (firstItem as import("../../schema/app-schema").Item).text || "";
+            const firstText = (firstItem as unknown as import("../../schema/app-schema").Item).text || "";
             const newFirstText = firstText.substring(0, firstOffset);
-            const lastText = (lastItem as import("../../schema/app-schema").Item).text || "";
+            const lastText = (lastItem as unknown as import("../../schema/app-schema").Item).text || "";
             const newLastText = lastText.substring(lastOffset);
 
             const itemsToRemove: string[] = [];
@@ -658,13 +677,13 @@ export class CursorEditor {
                 store.clearCursorForItem(itemId);
             }
 
-            (firstItem as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
+            (firstItem as unknown as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
 
             for (let i = lastIndex; i > firstIndex; i--) {
-                (items as import("../../schema/app-schema").Items).removeAt(i);
+                (items as unknown as unknown as import("../../schema/app-schema").Items).removeAt(i);
             }
 
-            cursor.itemId = (firstItem as import("../../schema/app-schema").Item).id;
+            cursor.itemId = (firstItem as unknown as import("../../schema/app-schema").Item).id;
             cursor.offset = firstOffset;
             cursor.applyToStore();
 
@@ -779,10 +798,13 @@ export class CursorEditor {
         while (walker.currentNode) {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
-            const item = searchItem(generalStore.currentPage as import("../../schema/app-schema").Page, itemId);
+            const item = searchItem(
+                generalStore.currentPage as unknown as import("../../schema/yjs-schema").Item,
+                itemId,
+            );
             if (!item) continue;
 
-            const text = (item as import("../../schema/app-schema").Item).text || "";
+            const text = (item as unknown as import("../../schema/app-schema").Item).text || "";
 
             if (current === firstEl && current === lastEl) {
                 const start = isReversed ? endOffset : startOffset;
@@ -809,7 +831,7 @@ export class CursorEditor {
                 }
 
                 const newText = text.substring(0, start) + formattedText + text.substring(end);
-                (item as import("../../schema/app-schema").Item).updateText(newText);
+                (item as unknown as import("../../schema/app-schema").Item).updateText(newText);
             } else {
                 // Detailed formatting for selection ranges spanning multiple items is not supported
             }
