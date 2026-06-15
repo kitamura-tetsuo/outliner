@@ -1,7 +1,7 @@
 import { expect } from "chai";
+import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { getApps, initializeApp, getApp } from "firebase-admin/app";
 import { afterEach, beforeEach, describe, it } from "mocha";
 import sinon from "sinon";
 import request from "supertest";
@@ -24,8 +24,8 @@ describe("/api/get-container-users admin role check (API-0003)", function() {
 
     beforeEach(function() {
         // Mock Firebase Auth
-        if (!getApps().length) initializeApp({projectId: "test"});
-        if (!getApps().length) initializeApp({projectId: "test"});
+        if (!getApps().length) initializeApp({ projectId: "test" });
+        if (!getApps().length) initializeApp({ projectId: "test" });
         verifyStub = sinon.stub(getAuth(), "verifyIdToken");
 
         // Mock Firestore

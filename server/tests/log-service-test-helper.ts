@@ -6,9 +6,9 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
+import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { getApps, initializeApp, getApp } from "firebase-admin/app";
 import jwt from "jsonwebtoken";
 
 // Firebase initialization (minimal configuration for testing)
