@@ -63,12 +63,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 if (shouldReset) {
                     logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
 
-                    // Initialize the Project wrapper outside the transaction.
-                    // If the document is completely empty, this safely initializes the
-                    // YTree "root" marker in its own transaction, allowing yjs-orderedtree
-                    // to compute its internal state before we perform bulk operations.
-                    const project = Project.fromDoc(doc as unknown as Y.Doc);
-
                     await directConnection.transact((document: any) => {
                         const ydoc = document as unknown as Y.Doc;
 
@@ -88,6 +82,9 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                     });
+
+                    // Initialize Project *after* the clear transaction so it has a clean slate.
+                    const project = Project.fromDoc(doc as unknown as Y.Doc);
 
                     // Rebuild the template directly in the live document.
                     // This is done sequentially outside the transaction because
