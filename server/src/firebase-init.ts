@@ -1,4 +1,5 @@
-import admin from "firebase-admin";
+import { initializeApp, getApps, getApp, deleteApp, cert } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -150,7 +151,7 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
     while (retryCount < maxRetries) {
         try {
             logger.info(`Firebase connection attempt ${retryCount + 1}/${maxRetries}...`);
-            const listUsersResult = await admin.auth().listUsers(1);
+            const listUsersResult = await getAuth().listUsers(1);
             logger.info(`Firebase emulator connection successful. Found users: ${listUsersResult.users.length}`);
             if (listUsersResult.users.length > 0) {
                 logger.info(
@@ -271,10 +272,10 @@ export async function initializeFirebase() {
         }
 
         try {
-            const apps = admin.apps;
+            const apps = getApps();
             if (apps.length) {
                 logger.info("Firebase Admin SDK instance already exists, deleting...");
-                await admin.app().delete();
+                await deleteApp(getApp());
                 logger.info("Previous Firebase Admin SDK instance deleted");
             }
         } catch (deleteError: any) {
@@ -297,9 +298,9 @@ export async function initializeFirebase() {
             getIsEmulatorEnvironment()
             && (!serviceAccount.private_key || serviceAccount.private_key.includes("Your Private Key Here"))
         ) {
-            admin.initializeApp({ projectId: serviceAccount.project_id });
+            initializeApp({ projectId: serviceAccount.project_id });
         } else {
-            admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+            initializeApp({ credential: cert(serviceAccount) });
         }
         logger.info(`Firebase Admin SDK initialized successfully. Project ID: ${serviceAccount.project_id}`);
         if (isDevelopment) {
