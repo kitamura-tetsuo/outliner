@@ -56,8 +56,7 @@
     // Optional variable for pending imports - defined to avoid ESLint no-undef errors
     // This is used in conditional checks and may be set by external code
     let pendingImport: unknown[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let project: any; // eslint-disable-line @typescript-eslint/no-unused-vars
+    let project: import("../../../schema/app-schema").Project | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
 
     // Monitor and update URL parameters and auth state
     // Key to avoid multiple executions under the same conditions and prevent Svelte update depth exceeded
@@ -148,8 +147,7 @@
             if (!project) {
                 throw new Error("Project data not found in client");
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            store.project = project as any;
+            store.project = project as unknown as import("../../../schema/app-schema").Project;
             logger.info(
                 `loadProjectAndPage: Project loaded: "${project.title}"`,
             );
