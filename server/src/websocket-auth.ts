@@ -1,21 +1,22 @@
-import admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import type { IncomingMessage } from "http";
 import { getServiceAccount } from "./firebase-init.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 
-if (!admin.apps.length) {
+if (!getApps().length) {
     const serviceAccount = getServiceAccount();
     const projectId = serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
     if (projectId) {
         console.log(`[Auth] Initializing Firebase Admin with projectId=${projectId}`);
-        admin.initializeApp({ projectId });
+        initializeApp({ projectId });
     } else {
         console.warn("[Auth] No project ID found, skipping auto-initialization");
     }
 }
 
 interface CacheEntry {
-    decoded: admin.auth.DecodedIdToken;
+    decoded: import("firebase-admin/auth").DecodedIdToken;
     exp: number;
 }
 
@@ -52,7 +53,7 @@ export function extractAuthToken(req: IncomingMessage): string | undefined {
     }
 }
 
-export async function verifyIdTokenCached(token: string): Promise<admin.auth.DecodedIdToken> {
+export async function verifyIdTokenCached(token: string): Promise<import("firebase-admin/auth").DecodedIdToken> {
     const now = Date.now();
     pruneExpiredTokens(now);
     const cached = tokenCache.get(token);
@@ -82,7 +83,7 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
             if (parts.length < 2) throw new Error("Invalid token format");
             const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
             // Mock decoded token structure
-            const decoded: admin.auth.DecodedIdToken = {
+            const decoded: import("firebase-admin/auth").DecodedIdToken = {
                 ...payload,
                 uid: payload.user_id || payload.sub || "test-user",
                 aud: payload.aud || "test-project",
@@ -106,7 +107,7 @@ export async function verifyIdTokenCached(token: string): Promise<admin.auth.Dec
     }
 
     try {
-        const decoded = await admin.auth().verifyIdToken(token);
+        const decoded = await getAuth().verifyIdToken(token);
         console.log(`[Auth] Verified token for uid=${decoded.uid}`);
         const exp = Math.min(decoded.exp ? decoded.exp * 1000 : now + CACHE_TTL_MS, now + CACHE_TTL_MS);
         tokenCache.set(token, { decoded, exp });

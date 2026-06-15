@@ -1,4 +1,4 @@
-import admin from "firebase-admin";
+import { Firestore, getFirestore } from "firebase-admin/firestore";
 import { getServiceAccount } from "./firebase-init.js";
 import { logger } from "./logger.js";
 
@@ -13,7 +13,7 @@ export async function checkContainerAccess(
     userId: string,
     containerId: string,
     // Allow dependency injection for testing
-    firestoreInstance?: admin.firestore.Firestore,
+    firestoreInstance?: Firestore,
 ): Promise<boolean> {
     logger.info(`[AccessControl] Checking container access for user: ${userId}, container: ${containerId}`);
     // In test/dev environment, allow access if explicitly allowed or strictly in test mode
@@ -31,7 +31,7 @@ export async function checkContainerAccess(
     }
 
     try {
-        const db = firestoreInstance || admin.firestore();
+        const db = firestoreInstance || getFirestore();
 
         // 1. Check projectUsers collection (project -> users)
         // This is the primary secure method (Source of Truth)

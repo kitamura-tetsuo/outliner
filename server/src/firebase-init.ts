@@ -1,350 +1,178 @@
-import admin from "firebase-admin";
+import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import { setupTestUser } from "./scripts/setup-dev-auth.js";
 import { secretManager } from "./secret-manager.js";
-import { serverLogger as logger } from "./utils/log-manager.js";
 
-// Define __dirname for ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+function getServiceAccount() {
+    // 1. Try path provided via environment variable
+    const possiblePaths = [];
 
-// Normalize emulator env hosts to expected ports when provided by parent process
-// This avoids accidental drift (e.g., external 9100) breaking local setup
-try {
-    const expectedAuthPort = process.env.FIREBASE_AUTH_PORT;
-    const expectedFsPort = process.env.FIREBASE_FIRESTORE_PORT;
-    const expectedFnPort = process.env.FIREBASE_FUNCTIONS_PORT;
-    if (expectedAuthPort) {
-        const expected = `127.0.0.1:${expectedAuthPort}`;
-        if (process.env.FIREBASE_AUTH_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST !== expected) {
-            logger.warn(
-                `Overriding FIREBASE_AUTH_EMULATOR_HOST ${process.env.FIREBASE_AUTH_EMULATOR_HOST} -> ${expected}`,
-            );
-        }
-        process.env.FIREBASE_AUTH_EMULATOR_HOST = expected;
-        process.env.AUTH_EMULATOR_HOST = expected; // legacy
-    }
-    if (expectedFsPort) {
-        const expected = `127.0.0.1:${expectedFsPort}`;
-        if (process.env.FIRESTORE_EMULATOR_HOST && process.env.FIRESTORE_EMULATOR_HOST !== expected) {
-            logger.warn(`Overriding FIRESTORE_EMULATOR_HOST ${process.env.FIRESTORE_EMULATOR_HOST} -> ${expected}`);
-        }
-        process.env.FIRESTORE_EMULATOR_HOST = expected;
-    }
-    if (expectedFnPort) {
-        const expected = `127.0.0.1:${expectedFnPort}`;
-        if (process.env.FIREBASE_EMULATOR_HOST && process.env.FIREBASE_EMULATOR_HOST !== expected) {
-            logger.warn(`Overriding FIREBASE_EMULATOR_HOST ${process.env.FIREBASE_EMULATOR_HOST} -> ${expected}`);
-        }
-        process.env.FIREBASE_EMULATOR_HOST = expected;
-    }
-} catch (e) {
-    // Non-fatal; continue with existing env
-}
-
-// Development auth helper
-const isDevelopment = process.env.NODE_ENV !== "production";
-let devAuthHelper: any;
-if (isDevelopment) {
-    try {
-        // @ts-ignore - dynamic import of script outside src
-        devAuthHelper = await import("./scripts/setup-dev-auth.js");
-        logger.info("Development auth helper loaded");
-    } catch (error: any) {
-        logger.warn(`Development auth helper not available: ${error.message}`);
-    }
-}
-
-// Firebase service account configuration
-export function getServiceAccount() {
-    // If Firebase Admin SDK file is specified, use it
     if (process.env.FIREBASE_ADMIN_SDK_PATH) {
-        // Try multiple paths:
-        // 1. As absolute path or relative to CWD
-        // 2. Relative to __dirname (dist/)
-        // 3. Relative to project root (parent of dist/)
-        const candidates = [
-            path.resolve(process.env.FIREBASE_ADMIN_SDK_PATH),
-            path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH),
-            path.resolve(__dirname, "..", process.env.FIREBASE_ADMIN_SDK_PATH),
-        ];
-
-        let sdkPath = "";
-        for (const candidate of candidates) {
-            if (fs.existsSync(candidate)) {
-                sdkPath = candidate;
-                break;
-            }
-        }
-
-        if (sdkPath) {
-            logger.info(`Using Firebase Admin SDK file: ${sdkPath}`);
-            const sdkFile = fs.readFileSync(sdkPath, "utf-8");
-            return JSON.parse(sdkFile);
-        } else {
-            logger.warn(`Firebase Admin SDK file not found in candidates: ${candidates.join(", ")}`);
-        }
+        possiblePaths.push(process.env.FIREBASE_ADMIN_SDK_PATH);
     }
 
-    // Read configuration from environment variables (traditional method)
-    // Prioritize loading from Secret Manager
-    const privateKey = secretManager.getSecret("FIREBASE_PRIVATE_KEY") || process.env.FIREBASE_PRIVATE_KEY || "";
+    // 2. Add common fallback paths based on likely runtime environments
+    possiblePaths.push("/app/server/outliner-d57b0-firebase-adminsdk-dummy.json"); // Example production container path
+    possiblePaths.push("/app/server/src/outliner-d57b0-firebase-adminsdk-dummy.json"); // Example local/test container path
+    possiblePaths.push("./outliner-d57b0-firebase-adminsdk-dummy.json"); // Local fallback
 
-    return {
-        type: "service_account",
-        project_id: process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "outliner-d57b0",
-        private_key_id: secretManager.getSecret("FIREBASE_PRIVATE_KEY_ID") || process.env.FIREBASE_PRIVATE_KEY_ID,
-        private_key: (() => {
-            let key = typeof privateKey === "string" ? privateKey : "";
-
-            // Remove surrounding quotes if present (double or single)
-            if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
-                key = key.slice(1, -1);
-            }
-
-            // Handle escaped newlines (e.g. from .env or JSON string)
-            key = key.replace(/\\n/g, "\n");
-
-            // Validate simple PEM format check
-            if (key && !key.includes("-----BEGIN PRIVATE KEY-----")) {
-                logger.warn("Private key does not contain standard PEM header. It might be malformed.");
-                logger.warn(`Key start: ${key.substring(0, 20)}... Key length: ${key.length}`);
-            }
-            return key;
-        })(),
-        client_email: secretManager.getSecret("FIREBASE_CLIENT_EMAIL") || process.env.FIREBASE_CLIENT_EMAIL,
-        client_id: secretManager.getSecret("FIREBASE_CLIENT_ID") || process.env.FIREBASE_CLIENT_ID,
-        auth_uri: "https://accounts.google.com/o/oauth2/auth",
-        token_uri: "https://oauth2.googleapis.com/token",
-        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-        client_x509_cert_url: secretManager.getSecret("FIREBASE_CLIENT_CERT_URL")
-            || process.env.FIREBASE_CLIENT_CERT_URL,
-    };
-}
-
-function getIsEmulatorEnvironment() {
-    return process.env.USE_FIREBASE_EMULATOR === "true"
-        || !!process.env.FIREBASE_AUTH_EMULATOR_HOST
-        || !!process.env.FIRESTORE_EMULATOR_HOST
-        || !!process.env.FIREBASE_EMULATOR_HOST;
-}
-
-async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
-    const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST
-        || process.env.FIRESTORE_EMULATOR_HOST
-        || process.env.FIREBASE_EMULATOR_HOST;
-    if (!isEmulator) {
-        logger.info("Firebase emulator not configured, skipping connection wait");
-        return;
-    }
-    logger.info(`Firebase emulator detected, waiting for connection... (max retries: ${maxRetries})`);
-    logger.info(
-        `Emulator hosts: AUTH=${process.env.FIREBASE_AUTH_EMULATOR_HOST || "(unset)"}, `
-            + `FIRESTORE=${process.env.FIRESTORE_EMULATOR_HOST || "(unset)"}, FUNCTIONS=${
-                process.env.FIREBASE_EMULATOR_HOST || "(unset)"
-            }`,
-    );
-    let retryCount = 0;
-    let delay = initialDelay;
-    while (retryCount < maxRetries) {
+    // Filter paths to only those that exist
+    const validPaths = possiblePaths.filter((p) => {
         try {
-            logger.info(`Firebase connection attempt ${retryCount + 1}/${maxRetries}...`);
-            const listUsersResult = await admin.auth().listUsers(1);
-            logger.info(`Firebase emulator connection successful. Found users: ${listUsersResult.users.length}`);
-            if (listUsersResult.users.length > 0) {
-                logger.info(
-                    `First user: ${
-                        JSON.stringify({
-                            uid: listUsersResult.users[0].uid,
-                            email: listUsersResult.users[0].email,
-                            displayName: listUsersResult.users[0].displayName,
-                        })
-                    }`,
-                );
-            }
-            return;
-        } catch (error: any) {
-            retryCount++;
-            if (error.code === "ECONNREFUSED" || error.message.includes("ECONNREFUSED")) {
-                logger.warn(`Firebase emulator not ready yet (attempt ${retryCount}/${maxRetries}): ${error.message}`);
-                if (retryCount < maxRetries) {
-                    logger.info(`Waiting ${delay}ms before next retry...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay = Math.min(delay * 1.5, maxDelay);
-                }
-            } else {
-                logger.error({
-                    error: new Error(`Firebase emulator connection failed with non-connection error: ${error.message}`),
-                }, `Firebase emulator connection failed with non-connection error: ${error.message}`);
-                throw error;
-            }
-        }
-    }
-    throw new Error(`Firebase emulator connection failed after ${maxRetries} attempts`);
-}
-
-async function clearFirestoreEmulatorData() {
-    const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
-    if (!isEmulator) {
-        logger.warn("Skipping data clearing because Firestore emulator was not detected");
-        return false;
-    }
-
-    // Execute data clearing only in Test environment
-    if (process.env.NODE_ENV !== "test" && process.env.NODE_ENV !== "development") {
-        logger.info("Skipping Firestore emulator data clearing in Production environment");
-        return false;
-    }
-
-    try {
-        logger.info("Clearing Firestore emulator data...");
-
-        // Clear data using Firebase Admin REST API (more efficient)
-        const projectId = process.env.FIREBASE_PROJECT_ID || "test-project-id";
-        const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:58080";
-
-        // Clear the entire database via REST API
-        const clearUrl = `http://${emulatorHost}/emulator/v1/projects/${projectId}/databases/(default)/documents`;
-
-        const response = await fetch(clearUrl, {
-            method: "DELETE",
-            headers: {
-                "Authorization": "Bearer owner",
-            },
-        });
-
-        if (response.ok) {
-            logger.info("All Firestore emulator data has been cleared");
-            return true;
-        } else {
-            logger.warn(`Firestore data clearing response: ${response.status} ${response.statusText}`);
+            return fs.existsSync(p);
+        } catch (e) {
             return false;
         }
-    } catch (error: any) {
-        logger.error(
-            { error: new Error(`An error occurred while clearing Firestore emulator data: ${error.message}`) },
-            `An error occurred while clearing Firestore emulator data: ${error.message}`,
-        );
-        // Continue process even if an error occurs
-        return false;
-    }
-}
+    });
 
-function hasAdminSdkFile(): boolean {
-    if (process.env.FIREBASE_ADMIN_SDK_PATH) {
-        const candidates = [
-            path.resolve(process.env.FIREBASE_ADMIN_SDK_PATH),
-            path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH),
-            path.resolve(__dirname, "..", process.env.FIREBASE_ADMIN_SDK_PATH),
-        ];
-
-        for (const candidate of candidates) {
-            if (fs.existsSync(candidate)) {
-                return true;
-            }
+    if (validPaths.length > 0) {
+        const selectedPath = validPaths[0];
+        console.log(`[Firebase] Loading credentials from valid path: ${selectedPath}`);
+        try {
+            return JSON.parse(fs.readFileSync(selectedPath, "utf8"));
+        } catch (e) {
+            console.warn(`[Firebase] Failed to read or parse file at ${selectedPath}:`, e);
         }
     }
-    return false;
+
+    console.warn(`[Firebase] No valid service account file found in candidates: ${possiblePaths.join(", ")}`);
+    return {};
 }
+
+// Ensure the helper is exported so tests can stub/mock it.
+export const _testDeps = {
+    initializeApp,
+    getApps,
+    cert,
+    getApp,
+    getAuth,
+};
 
 export async function initializeFirebase() {
     try {
-        // Load secrets from GCP Secret Manager if not in emulator environment and SDK file doesn't exist
-        if (!getIsEmulatorEnvironment() && !hasAdminSdkFile()) {
-            await secretManager.loadSecrets([
-                "FIREBASE_PRIVATE_KEY",
-                "FIREBASE_PRIVATE_KEY_ID",
-                "FIREBASE_CLIENT_EMAIL",
-                "FIREBASE_CLIENT_ID",
-                "FIREBASE_CLIENT_CERT_URL",
-            ]);
+        const isEmulator = process.env.USE_FIREBASE_EMULATOR === "true" || !!process.env.FIREBASE_AUTH_EMULATOR_HOST;
+        let serviceAccount: any = undefined;
+
+        // Try getting service account first from file
+        serviceAccount = getServiceAccount();
+
+        // Skip Secret Manager check entirely in emulator/test environment
+        // Also skip if we successfully loaded a valid service account with a private key
+        if (!isEmulator && !(serviceAccount && Object.keys(serviceAccount).length > 0 && serviceAccount.private_key)) {
+            // First try loading from Secret Manager in production environment
+            const loadSecretsResult = await secretManager.loadSecrets();
+
+            // If FIREBASE_PRIVATE_KEY exists in env, we prioritize that (e.g. injected via Secret Manager or process.env)
+            if (process.env.FIREBASE_PRIVATE_KEY) {
+                // If the private key is injected via Secret Manager (as env var), we construct the service account
+                serviceAccount = {
+                    project_id: process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT,
+                    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+                    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+                };
+            }
         }
 
-        const serviceAccount = getServiceAccount();
+        const projectId = serviceAccount?.project_id || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT
+            || "demo-project";
+        const isDemoProject = projectId === "demo-project";
 
-        if (!serviceAccount.project_id && !getIsEmulatorEnvironment()) {
-            logger.error(
-                "Firebase service account environment variables are not properly configured.",
+        // Check if an app is already initialized
+        if (_testDeps.getApps().length > 0) {
+            console.log("Firebase Admin SDK instance already exists, preserving...");
+            return;
+        }
+
+        if (isEmulator || isDemoProject) {
+            console.log(
+                `Initializing Firebase Admin SDK in ${
+                    isEmulator ? "Emulator" : "Demo"
+                } mode (Project ID: ${projectId})`,
             );
-            process.exit(1);
+            _testDeps.initializeApp({
+                projectId,
+            });
+        } else if (serviceAccount && Object.keys(serviceAccount).length > 0 && serviceAccount.private_key) {
+            console.log(`Initializing Firebase Admin SDK with Service Account (Project ID: ${projectId})`);
+            _testDeps.initializeApp({
+                credential: _testDeps.cert(serviceAccount),
+                projectId,
+            });
+        } else {
+            console.log(
+                `Initializing Firebase Admin SDK with default Google Application Credentials (Project ID: ${projectId})`,
+            );
+            // Without passing credential, it uses GOOGLE_APPLICATION_CREDENTIALS
+            _testDeps.initializeApp({
+                projectId,
+            });
         }
 
-        try {
-            const apps = admin.apps;
-            if (apps.length) {
-                logger.info("Firebase Admin SDK instance already exists, deleting...");
-                await admin.app().delete();
-                logger.info("Previous Firebase Admin SDK instance deleted");
-            }
-        } catch (deleteError: any) {
-            logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);
-        }
-        const emulatorVariables = {
-            FIREBASE_EMULATOR_HOST: process.env.FIREBASE_EMULATOR_HOST,
-            FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST,
-            FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST,
-        };
-        const configuredEmulators = Object.entries(emulatorVariables)
-            .filter(([_, value]) => value)
-            .map(([name, value]) => `${name}=${value}`);
-        if (configuredEmulators.length > 0) {
-            logger.warn("⚠️ Firebase Emulator environment variables are set. This may be an issue in production!");
-            logger.warn(`Configured Emulator environment variables: ${configuredEmulators.join(", ")}`);
-            logger.warn("These environment variables should be set in .env.test and should not be set in production.");
-        }
-        if (
-            getIsEmulatorEnvironment()
-            && (!serviceAccount.private_key || serviceAccount.private_key.includes("Your Private Key Here"))
-        ) {
-            admin.initializeApp({ projectId: serviceAccount.project_id });
-        } else {
-            admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-        }
-        logger.info(`Firebase Admin SDK initialized successfully. Project ID: ${serviceAccount.project_id}`);
-        if (isDevelopment) {
-            try {
-                await waitForFirebaseEmulator();
-                logger.info("Firebase emulator connection established successfully");
-            } catch (error: any) {
-                logger.error({
-                    error: new Error(`Firebase emulator connection failed after retries: ${error.message}`),
-                }, `Firebase emulator connection failed after retries: ${error.message}`);
-            }
-        }
-        if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
-            logger.warn(`Firebase Auth Emulator is configured: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
-        }
-        if (isDevelopment && devAuthHelper) {
-            try {
-                const user = await devAuthHelper.setupTestUser();
-                logger.info(`Setup development test user: ${user.email} (${user.uid})`);
-                const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
-                if (isEmulator) {
+        // Wait for Firebase emulator if running in emulator mode
+        if (isEmulator) {
+            console.log("Firebase emulator detected, waiting for connection... (max retries: 30)");
+            console.log(
+                `Emulator hosts: AUTH=${process.env.FIREBASE_AUTH_EMULATOR_HOST}, FIRESTORE=${process.env.FIRESTORE_EMULATOR_HOST}, FUNCTIONS=${process.env.FIREBASE_EMULATOR_HOST}`,
+            );
+
+            let connected = false;
+            let retries = 0;
+            const maxRetries = 30;
+            let delay = 1000; // start with 1 second delay
+
+            while (!connected && retries < maxRetries) {
+                try {
+                    retries++;
+                    console.log(`Firebase connection attempt ${retries}/${maxRetries}...`);
+                    // Simple check if Auth emulator is responding by listing users
+                    const listUsersResult = await _testDeps.getAuth().listUsers(1);
+                    connected = true;
+                    console.log(
+                        `Firebase emulator connection successful. Found users: ${listUsersResult.users.length}`,
+                    );
+
+                    // Create test user if none exists (for UI test automation)
+                    if (listUsersResult.users.length > 0) {
+                        console.log(`First user: ${JSON.stringify(listUsersResult.users[0])}`);
+                    }
+                    console.log("Firebase emulator connection established successfully");
+
+                    // Always run test user setup when in emulator mode
+                    // This handles creating the user if needed, or silently succeeding if they exist
                     try {
-                        // Execute Firestore data clearing (improved version)
-                        const cleared = await clearFirestoreEmulatorData();
-                        if (cleared) {
-                            logger.info("Cleared development Firestore emulator data");
-                        }
-                    } catch (error: any) {
-                        logger.error(
-                            { error: new Error(`Failed to clear Firestore emulator data: ${error.message}`) },
-                            `Failed to clear Firestore emulator data: ${error.message}`,
+                        await setupTestUser();
+                    } catch (setupError) {
+                        console.error("Failed to setup development test user:", setupError);
+                    }
+
+                    break;
+                } catch (error: any) {
+                    if (error.code === "ECONNREFUSED" || error.code === "auth/emulator-connection-failed") {
+                        // Keep waiting for emulator to start
+                        console.log(
+                            `Emulator not ready yet (attempt ${retries}), retrying in ${delay / 1000} seconds...`,
                         );
-                        // Continue process even if an error occurs
-                        logger.info("Firestore data clearing failed, but continuing process");
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        // Exponential backoff with 10s max
+                        delay = Math.min(delay * 1.5, 10000);
+                    } else {
+                        // Unrelated error, log it but assume connected to avoid blocking startup indefinitely
+                        console.error("Unexpected error checking Firebase connection:", error.message || error);
+                        connected = true;
                     }
                 }
-            } catch (error: any) {
-                logger.warn(`Failed to setup test user: ${error.message}`);
+            }
+
+            if (!connected) {
+                console.error("Failed to connect to Firebase emulator after maximum retries");
+                console.error("The server will continue, but Firebase integration may fail.");
+            } else {
+                console.log("Firebase emulator initialization completed");
             }
         }
-    } catch (error: any) {
-        logger.error(
-            { error: new Error(`Firebase initialization error: ${error.message}`) },
-            `Firebase initialization error: ${error.message}`,
-        );
-        throw error;
+    } catch (error) {
+        console.error("Firebase initialization error:", error);
     }
 }
+export { getServiceAccount };
