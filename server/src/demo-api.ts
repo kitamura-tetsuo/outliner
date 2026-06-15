@@ -1,8 +1,8 @@
-import { Hocuspocus } from "@hocuspocus/server";
 import express from "express";
 import * as Y from "yjs";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
+import { Hocuspocus } from "@hocuspocus/server";
 import { Project } from "./schema/app-schema.js";
 
 type HocuspocusInstance = Hocuspocus;
