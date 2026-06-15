@@ -1,6 +1,8 @@
 /* eslint-disable no-unused-vars */
 const { describe, it, expect, afterAll, beforeEach } = require("@jest/globals");
-const { getApps, getApp, initializeApp, deleteApp } = require("firebase-admin/app");
+const { getApps, getApp, initializeApp, deleteApp } = require(
+  "firebase-admin/app",
+);
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
@@ -10,7 +12,6 @@ const adminStorage = require("firebase-admin/storage");
 const functions = require("firebase-functions-test")();
 
 describe("deleteProject Logic Tests", () => {
-
   let myFunctions;
   let transactionUpdateSpy;
   let transactionDeleteSpy;
@@ -21,7 +22,7 @@ describe("deleteProject Logic Tests", () => {
 
   beforeEach(() => {
     jest.resetModules();
-        // Reset Mock Data
+    // Reset Mock Data
     mockUserProjects = {
       user1: {
         accessibleProjectIds: ["projectP"],
