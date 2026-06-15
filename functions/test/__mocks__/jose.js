@@ -1,3 +1,4 @@
+
 /* eslint-disable no-undef */
 module.exports = {
   jwtVerify: jest.fn(),
@@ -6,5 +7,5 @@ module.exports = {
   importJWK: jest.fn(),
   createRemoteJWKSet: jest.fn(),
   decodeJwt: jest.fn(),
-  decodeProtectedHeader: jest.fn(),
+  decodeProtectedHeader: jest.fn()
 };
