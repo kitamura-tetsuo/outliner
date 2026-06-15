@@ -1,7 +1,5 @@
 /* eslint-disable no-unused-vars */
-const { getApps, getApp, initializeApp, deleteApp } = require(
-  "firebase-admin/app",
-);
+const { getApps, getApp, initializeApp, deleteApp } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
