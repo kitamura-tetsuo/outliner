@@ -22,8 +22,7 @@
     } from "../../../lib/projectSnapshot";
     import type { Project } from "../../../schema/app-schema";
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let project: any = undefined;
+    let project: Project | undefined = undefined;
     let exportText = $state("");
     let importText = $state("");
     let importFormat = $state("opml");
@@ -64,8 +63,7 @@
                     yjsStore.yjsClient = createSnapshotClient(
                         projectName,
                         hydrated,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    ) as any;
+                    ) as unknown as import("../../../yjs/YjsClient").YjsClient;
                 } catch {}
             }
             project = hydrated;
@@ -88,8 +86,7 @@
                 const client = await getYjsClientByProjectTitle(projectName);
                 if (client) {
                     yjsStore.yjsClient = client as unknown as import("../../../yjs/YjsClient").YjsClient;
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    project = client.getProject() as any;
+                    project = client.getProject() as unknown as Project;
                 }
             } catch (err) {
                 console.warn("SettingsPage: Failed to connect to Yjs", err);
@@ -119,8 +116,7 @@
 
         if (
             (!projectForExport ||
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                projectLooksLikePlaceholder(projectForExport as any)) &&
+                projectLooksLikePlaceholder(projectForExport as unknown as Project)) &&
             projectName
         ) {
             const snapshot = loadProjectSnapshot(projectName);
@@ -139,10 +135,8 @@
         if (projectForExport) {
             exportContent =
                 format === "opml"
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    ? exportProjectToOpml(projectForExport as any)
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    : exportProjectToMarkdown(projectForExport as any);
+                    ? exportProjectToOpml(projectForExport as unknown as Project)
+                    : exportProjectToMarkdown(projectForExport as unknown as Project);
             console.log("doExport: Export content:", exportContent);
         }
 
@@ -190,12 +184,10 @@
 
         if (importFormat === "opml") {
             console.log("doImport: Calling importOpmlIntoProject");
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            importOpmlIntoProject(importText, currentProject as any);
+            importOpmlIntoProject(importText, currentProject as unknown as Project);
         } else {
             console.log("doImport: Calling importMarkdownIntoProject");
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            importMarkdownIntoProject(importText, currentProject as any);
+            importMarkdownIntoProject(importText, currentProject as unknown as Project);
         }
 
         console.log(
@@ -203,8 +195,7 @@
             currentProject.items?.length || 0,
         );
         if (currentProject.items && currentProject.items.length > 0) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const items = currentProject.items as any;
+            const items = currentProject.items as unknown as { at?: (i: number) => import("../../../schema/app-schema").Item, [key: number]: import("../../../schema/app-schema").Item };
             const firstPage = items.at ? items.at(0) : items[0];
             const text = firstPage
                 ? typeof firstPage.text === "function"
@@ -225,8 +216,7 @@
         } else {
             // If no Yjs project was available, update as before
             console.log("doImport: No Yjs project, using fallback");
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            store.project = currentProject as any;
+            store.project = currentProject as unknown as Project;
         }
 
         // Clear import text after successful import
@@ -246,8 +236,7 @@
 
         // Navigate to the first imported page instead of reloading
         if (currentProject.items && currentProject.items.length > 0) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const items = currentProject.items as any;
+            const items = currentProject.items as unknown as { at?: (i: number) => import("../../../schema/app-schema").Item, [key: number]: import("../../../schema/app-schema").Item };
             const firstPage = items.at ? items.at(0) : items[0];
 
             if (firstPage) {

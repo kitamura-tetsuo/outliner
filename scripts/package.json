@@ -17,14 +17,14 @@
     "author": "",
     "license": "ISC",
     "devDependencies": {
-        "@types/node": "^25.9.2",
+        "@types/node": "^25.9.3",
         "@types/uuid": "^11.0.0",
         "@types/ws": "^8.18.1",
         "ts-node": "^10.9.2",
-        "vitest": "^4.1.8"
+        "vitest": "^4.1.9"
     },
     "dependencies": {
-        "firebase-admin": "^13.10.0",
+        "firebase-admin": "^14.0.0",
         "uuid": "^14.0.0",
         "ws": "^8.21.0",
         "y-websocket": "^3.0.0",
