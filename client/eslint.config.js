@@ -213,4 +213,10 @@ export default ts.config(
             "no-restricted-globals": "off", // Allow internal store access in helpers
         },
     },
+    {
+        files: ["e2e/new/CMD-0001.spec.ts"],
+        rules: {
+            "no-restricted-globals": "off",
+        },
+    },
 );
