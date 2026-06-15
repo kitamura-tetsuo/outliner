@@ -208,7 +208,7 @@ export class CursorEditor {
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : (parent as any)?.items;
+                    : (parent as unknown as { items: import("../../schema/app-schema").Items; })?.items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -216,7 +216,9 @@ export class CursorEditor {
                     : undefined;
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
-                    const currentIndex = itemsCollection.indexOf(target);
+                    const currentIndex = itemsCollection.indexOf(
+                        target as unknown as import("../../schema/app-schema").Item,
+                    );
                     target.updateText(beforeText);
                     const newItem = addNode(cursor.userId, currentIndex + 1);
                     if (!newItem) return;
@@ -294,7 +296,7 @@ export class CursorEditor {
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : (parent as any)?.items;
+                    : (parent as unknown as { items: import("../../schema/app-schema").Items; })?.items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -302,7 +304,9 @@ export class CursorEditor {
                     : undefined;
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
-                    const currentIndex = itemsCollection.indexOf(target);
+                    const currentIndex = itemsCollection.indexOf(
+                        target as unknown as import("../../schema/app-schema").Item,
+                    );
                     // Add below without updating current text
                     const newItem = addNode(cursor.userId, currentIndex + 1);
                     if (!newItem) return;
@@ -475,14 +479,14 @@ export class CursorEditor {
         if (!item) return "";
         const textValue = (item as unknown as import("../../schema/app-schema").Item).text;
         if (typeof textValue === "string") return textValue;
-        if (textValue && typeof (textValue as any).toString === "function") {
+        if (textValue && typeof (textValue as { toString(): string; }).toString === "function") {
             try {
-                return (textValue as any).toString();
+                return (textValue as { toString(): string; }).toString();
             } catch {}
         }
-        if (typeof ((item as unknown as import("../../schema/app-schema").Item) as any).getText === "function") {
+        if (typeof (item as unknown as { getText(): string; }).getText === "function") {
             try {
-                const result = ((item as unknown as import("../../schema/app-schema").Item) as any).getText();
+                const result = (item as unknown as { getText(): string; }).getText();
                 if (typeof result === "string") return result;
             } catch {}
         }
@@ -502,16 +506,24 @@ export class CursorEditor {
         if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
 
         const value = tree.getNodeValueFromKey(key);
-        const yText = ((value as any)?.get)?.("text");
+        const yText = (value as { get?: (k: string) => unknown; })?.get?.("text");
         try {
-            if (yText && typeof yText.delete === "function" && typeof yText.insert === "function") {
-                yText.delete(0, yText.length);
-                if (text) yText.insert(0, text);
-            } else if (value && typeof ((value as any).set) === "function") {
-                ((value as any).set)("text", text);
+            if (
+                yText && typeof (yText as { delete: (i: number, l: number) => void; }).delete === "function"
+                && typeof (yText as { insert: (i: number, s: string) => void; }).insert === "function"
+            ) {
+                const yt = yText as {
+                    delete(i: number, l: number): void;
+                    insert(i: number, s: string): void;
+                    length: number;
+                };
+                yt.delete(0, yt.length);
+                if (text) yt.insert(0, text);
+            } else if (value && typeof (value as { set: (k: string, v: unknown) => void; }).set === "function") {
+                (value as { set(k: string, v: unknown): void; }).set("text", text);
             }
-            if (value && typeof ((value as any).set) === "function") {
-                ((value as any).set)("lastChanged", Date.now());
+            if (value && typeof (value as { set: (k: string, v: unknown) => void; }).set === "function") {
+                (value as { set(k: string, v: unknown): void; }).set("lastChanged", Date.now());
             }
         } catch {}
     }
@@ -534,9 +546,13 @@ export class CursorEditor {
         ];
 
         for (const tree of treeCandidates) {
-            if (tree && typeof (tree as any).deleteNodeAndDescendants === "function") {
+            if (
+                tree
+                && typeof (tree as { deleteNodeAndDescendants?: (k: string) => void; }).deleteNodeAndDescendants
+                    === "function"
+            ) {
                 try {
-                    (tree as any).deleteNodeAndDescendants(key);
+                    (tree as { deleteNodeAndDescendants: (k: string) => void; }).deleteNodeAndDescendants(key);
                     return;
                 } catch {}
             }
