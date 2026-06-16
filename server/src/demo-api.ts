@@ -84,14 +84,19 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                     });
 
-                    // Initialize Project *after* the clear transaction so it has a clean slate.
-                    const project = Project.fromDoc(doc as unknown as Y.Doc);
+                    // Create a properly structured Project with maps initialized
+                    const project = Project.createInstance("Demo Project");
+                    // Merge this initialized state into the live Y.Doc
+                    Y.applyUpdate(doc as unknown as Y.Doc, Y.encodeStateAsUpdate(project.ydoc));
+
+                    // Now safe to use fromDoc to manipulate the live document
+                    const docProject = Project.fromDoc(doc as unknown as Y.Doc);
 
                     // Rebuild the template directly in the live document.
                     // This is done sequentially outside the transaction because
                     // yjs-orderedtree relies on synchronous observeDeep callbacks
                     // which are suspended during a transaction.
-                    populateDemoProject(project, "seed-server");
+                    populateDemoProject(docProject, "seed-server");
                 } else {
                     logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });
                 }
