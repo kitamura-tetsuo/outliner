@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import admin from "firebase-admin";
+import { getStorage } from "firebase-admin/storage";
 import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
@@ -60,7 +60,7 @@ export function createImageUploadRouter(hocuspocus: HocuspocusInstance) {
                 // 1. Upload to Firebase Storage
                 const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST || process.env.NODE_ENV === "development";
                 const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
-                const bucket = admin.storage().bucket(bucketName);
+                const bucket = getStorage().bucket(bucketName);
 
                 const fileName = `${uuidv4()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
                 const filePath = `attachments/${projectId}/api-upload/${fileName}`;

@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import { once } from "events";
-import admin from "firebase-admin";
+import { getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs-extra";
 import { Server } from "http";
 import { afterEach, describe, it } from "mocha";
@@ -37,7 +39,7 @@ describe("connection limits", () => {
     });
 
     it("closes connection when message exceeds size", async () => {
-        sinon.stub(admin.auth(), "verifyIdToken").resolves(
+        sinon.stub(getAuth(), "verifyIdToken").resolves(
             { uid: "user", exp: Math.floor(Date.now() / 1000) + 60 } as any,
         );
         cleanupDir = fs.mkdtempSync(path.join(os.tmpdir(), "ydb-"));
@@ -69,7 +71,7 @@ describe("connection limits", () => {
 
     it("enforces per-room socket limit", async () => {
         sinon
-            .stub(admin.auth(), "verifyIdToken")
+            .stub(getAuth(), "verifyIdToken")
             .callsFake((token: string) =>
                 Promise.resolve({ uid: token, exp: Math.floor(Date.now() / 1000) + 60 } as any)
             );
@@ -106,7 +108,7 @@ describe("connection limits", () => {
 
     it("enforces per-ip socket limit", async () => {
         sinon
-            .stub(admin.auth(), "verifyIdToken")
+            .stub(getAuth(), "verifyIdToken")
             .callsFake((token: string) =>
                 Promise.resolve({ uid: token, exp: Math.floor(Date.now() / 1000) + 60 } as any)
             );

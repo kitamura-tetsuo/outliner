@@ -1,5 +1,7 @@
 import { expect } from "chai";
-import admin from "firebase-admin";
+import { getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 import sinon from "sinon";
 import { clearTokenCache, verifyIdTokenCached } from "../src/websocket-auth.js";
 
@@ -12,17 +14,14 @@ describe("websocket auth security (regression)", () => {
         process.env.NODE_ENV = "test";
         process.env.GCLOUD_PROJECT = "test-project";
 
-        // Mock admin.auth() verifyIdToken
-        if (!admin.apps.length) {
-            // admin.initializeApp();
+        // Mock getAuth() verifyIdToken
+        if (!getApps().length) {
+            // initializeApp();
         }
 
         verifyIdTokenStub = sinon.stub().rejects(new Error("Invalid token signature"));
-        sinon.stub(admin, "auth").returns({
-            verifyIdToken: verifyIdTokenStub,
-        } as any);
-
-        clearTokenCache();
+        if (!getApps().length) initializeApp({ projectId: "test" });
+        sinon.stub(getAuth(), "verifyIdToken").rejects(new Error("Invalid token signature"));
     });
 
     afterEach(() => {
@@ -70,7 +69,7 @@ describe("websocket auth security (regression)", () => {
             // If !isTestEnv, it throws "alg:none tokens are not allowed...".
             // If it threw that, I should catch it.
 
-            // But the previous error suggests it called admin.auth().verifyIdToken() (or rather the real SDK logic which checks 'kid' before calling our stub?)?
+            // But the previous error suggests it called getAuth().verifyIdToken() (or rather the real SDK logic which checks 'kid' before calling our stub?)?
             // Wait, verifyIdTokenCached implementation:
             /*
             try {
@@ -82,10 +81,10 @@ describe("websocket auth security (regression)", () => {
                 }
             } catch (e) { ... }
 
-            const decoded = await admin.auth().verifyIdToken(token);
+            const decoded = await getAuth().verifyIdToken(token);
             */
 
-            // If the `try` block fails (e.g. JSON parse error), it swallows the error (console.warn) and falls through to `admin.auth().verifyIdToken(token)`.
+            // If the `try` block fails (e.g. JSON parse error), it swallows the error (console.warn) and falls through to `getAuth().verifyIdToken(token)`.
             // In the previous test failure, `e.message` was `Firebase ID token has no "kid" claim...`.
             // This means it FELL THROUGH.
             // Why did the `try` block fail?
