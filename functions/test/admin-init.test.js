@@ -15,7 +15,7 @@ describe("admin.initializeApp try-catch tests", () => {
 
   it("should catch error when initializing more than once", () => {
     // Force first initialization if it doesn't exist
-    if (!admin.apps.length) {
+    if (admin.apps === undefined && typeof admin.getApps === "function" ? admin.getApps().length === 0 : admin.apps && admin.apps.length === 0) {
       admin.initializeApp({ projectId: "first-init" });
     }
 

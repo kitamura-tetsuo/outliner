@@ -137,7 +137,7 @@ function setCorsHeaders(req, res) {
 }
 
 // Initialize Firebase Admin SDK
-if (!admin.apps.length) {
+if (admin.apps.length === 0) {
   // Explicitly set project ID (required in emulator environment)
   const projectId = process.env.GCLOUD_PROJECT || "outliner-d57b0";
 
@@ -207,7 +207,7 @@ if (!admin.apps.length) {
   }
 }
 
-logger.info(`Firebase project ID: ${admin.app().options.projectId}`);
+logger.info(`Firebase project ID: ${(admin.app ? admin.app().options.projectId : admin.getApps()[0].options.projectId)}`);
 
 // Storage Emulator settings
 if (process.env.NODE_ENV === "development" || process.env.FUNCTIONS_EMULATOR) {
