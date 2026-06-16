@@ -122,19 +122,14 @@
 
                     // Try array-like access
                     if (
-                        typeof (items as { length?: number }).length ===
+                        typeof (items as any).length ===
                         "number"
                     ) {
-                        const len = (items as { length: number }).length;
+                        const len = (items as any).length;
                         for (let i = 0; i < len; i++) {
-                            const v = (
-                                items as {
-                                    at?: (i: number) => Item;
-                                    [key: number]: Item;
-                                }
-                            ).at
-                                ? (items as { at: (i: number) => Item }).at(i)
-                                : (items as { [key: number]: Item })[i];
+                            const v = (items as any).at
+                                ? (items as any).at(i)
+                                : (items as any)[i];
                             if (typeof v !== "undefined" && v !== null)
                                 arr.push(v);
                         }
@@ -143,12 +138,10 @@
 
                     // Try toArray method if available
                     if (
-                        typeof (items as { toArray?: () => Item[] }).toArray ===
+                        typeof (items as any).toArray ===
                         "function"
                     ) {
-                        const arr = (
-                            items as { toArray: () => Item[] }
-                        ).toArray();
+                        const arr = (items as any).toArray();
                         if (arr && arr.length) return arr;
                     }
                 } catch {

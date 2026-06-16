@@ -67,7 +67,7 @@ onMount(() => {
     let unobserve: (() => void) | undefined;
     try {
         // 1) Get internal yArray if Comments wrapper exists (private but accessible in JS)
-        let yarr: Y.Array<Y.Map<unknown>> | undefined = (comments as Comments | undefined)?.yArray;
+        let yarr: Y.Array<Y.Map<unknown>> | undefined = (comments as any)?.yArray;
         // 2) If not, ensure "comments" via item Y.Map
         if (!yarr && props.item) {
             const item = props.item as ItemLike;
@@ -232,17 +232,17 @@ function add() {
                     arr = new Y.Array<Y.Map<unknown>>();
                     value.set("comments", arr);
                 }
-                commentsObj = new Comments(arr);
-                logger.debug('[CommentThread] initialized comments via tree/key fallback');
+                commentsObj = new Comments(arr as any);
+                logger.debug({}, '[CommentThread] initialized comments via tree/key fallback');
             }
         } catch (e) {
-            logger.warn('[CommentThread] failed to ensure comments via fallback', e);
+            logger.warn({ error: e }, '[CommentThread] failed to ensure comments via fallback');
         }
     }
     const user = props.currentUser;
 
-    logger.debug('[CommentThread] add comment, newText=', newText);
-    logger.debug('[CommentThread] comments object:', commentsObj, 'props.item?', !!props.item, 'item?.comments?', !!props.item?.comments);
+    logger.debug({ newText }, '[CommentThread] add comment, newText=');
+    logger.debug({ commentsObj, hasItem: !!props.item, hasComments: !!props.item?.comments }, '[CommentThread] comments object:');
 
     // Proceed with UI even if comments object is invalid (ensure reflection via DOM/events)
     const time = Date.now();
@@ -250,7 +250,7 @@ function add() {
     if (commentsObj && typeof commentsObj.addComment === 'function') {
         const res = commentsObj.addComment(user, newText);
         id = res?.id || `local-${time}-${Math.random().toString(36).slice(2)}`;
-        logger.debug('[CommentThread] comment added to Yjs, id=', id);
+        logger.debug({ id }, '[CommentThread] comment added to Yjs, id=');
     } else {
         logger.error({ error: new Error("invalid or missing addComment") }, '[CommentThread] comments object is invalid or missing addComment; falling back to local DOM only');
         id = `local-${time}-${Math.random().toString(36).slice(2)}`;
@@ -342,11 +342,11 @@ function remove(id: string) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
                 let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
-                commentsObj = new Comments(arr);
-                logger.debug('[CommentThread] ensured comments for remove via tree/key');
+                commentsObj = new Comments(arr as any);
+                logger.debug({}, '[CommentThread] ensured comments for remove via tree/key');
             }
         } catch (e) {
-            logger.warn('[CommentThread] failed to ensure comments for remove', e);
+            logger.warn({ error: e }, '[CommentThread] failed to ensure comments for remove');
         }
     }
     try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error({ error: e as Error }, '[CommentThread] deleteComment error'); }
@@ -386,23 +386,23 @@ function saveEdit(id: string) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
                 let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
-                commentsObj = new Comments(arr);
-                logger.debug('[CommentThread] ensured comments for saveEdit via tree/key');
+                commentsObj = new Comments(arr as any);
+                logger.debug({}, '[CommentThread] ensured comments for saveEdit via tree/key');
             }
         } catch (e) {
-            logger.warn('[CommentThread] failed to ensure comments for saveEdit', e);
+            logger.warn({ error: e }, '[CommentThread] failed to ensure comments for saveEdit');
         }
     }
 
     // Update the Yjs document
     try {
         commentsObj?.updateComment?.(id, editText);
-        logger.debug('[CommentThread] updateComment called');
+        logger.debug({}, '[CommentThread] updateComment called');
     } catch (e) {
         logger.error({ error: e as Error }, '[CommentThread] updateComment error');
     }
 
-    try { /* Yjs derived updates; no direct assignment to commentsList */ logger.debug('[CommentThread] updateComment applied'); } catch (e) { logger.error({ error: e as Error }, '[CommentThread] toPlain after update error'); }
+    try { /* Yjs derived updates; no direct assignment to commentsList */ logger.debug({}, '[CommentThread] updateComment applied'); } catch (e) { logger.error({ error: e as Error }, '[CommentThread] toPlain after update error'); }
 
     // Update local state to immediately reflect the change while we wait for Yjs observer
     localComments = localComments.map(c => c.id === id ? { ...c, text: editText, lastChanged: Date.now() } : c);

@@ -313,12 +313,12 @@ export async function setupUpdateTracking(
             (window as Window & typeof globalThis & Record<string, unknown>)[counterVar] = 0;
             (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var] = 0;
 
-            doc.on("update", () => {
-                (window as Window & typeof globalThis & Record<string, unknown>)[counterVar]++;
+            (doc as any).on("update", () => {
+                (window as any)[counterVar]++;
             });
 
-            doc.on("updateV2", () => {
-                (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var]++;
+            (doc as any).on("updateV2", () => {
+                (window as any)[counterV2Var]++;
             });
         },
         { docVar, counterVar, counterV2Var },
@@ -481,7 +481,7 @@ export async function prepareTwoFullBrowserPages(
     });
 
     // Prepare test environment for page1
-    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(
+    const { projectName, pageName } = await (TestHelpers as any).seedProjectAndNavigate(
         page1,
         testInfo,
         initialItems,
@@ -495,7 +495,7 @@ export async function prepareTwoFullBrowserPages(
     await page1.waitForFunction(
         () => {
             const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
-            const client = yjsStore?.yjsClient;
+            const client = (yjsStore as any)?.yjsClient;
             if (!client) {
                 console.log("page1: yjsClient not found");
                 return false;
@@ -566,7 +566,7 @@ export async function prepareTwoFullBrowserPages(
     await page2.waitForFunction(
         () => {
             const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
-            const client = yjsStore?.yjsClient;
+            const client = (yjsStore as any)?.yjsClient;
             if (!client) {
                 console.log("page2: yjsClient not found");
                 return false;

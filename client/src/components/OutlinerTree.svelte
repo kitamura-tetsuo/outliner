@@ -139,8 +139,8 @@
                             events.forEach((e) => {
                                 console.log(
                                     " [Yjs Event]",
-                                    e.path,
-                                    e.keysChanged,
+                                    (e as any).path,
+                                    (e as any).keysChanged,
                                 );
                             });
                         }
@@ -335,7 +335,7 @@
             !tree ||
             !doc ||
             !key ||
-            typeof tree.getNodeParentFromKey !== "function"
+            typeof (tree as any).getNodeParentFromKey !== "function"
         ) {
             if (typeof logger.warn === "function") {
                 logger.warn({ itemId }, "Indent skipped: missing tree context");
@@ -343,11 +343,11 @@
             return;
         }
 
-        const parentKey = tree.getNodeParentFromKey(key);
+        const parentKey = (tree as any).getNodeParentFromKey(key);
         if (!parentKey) return;
 
-        const siblingKeys: string[] = tree.sortChildrenByOrder(
-            tree.getNodeChildrenFromKey(parentKey),
+        const siblingKeys: string[] = (tree as any).sortChildrenByOrder(
+            (tree as any).getNodeChildrenFromKey(parentKey),
             parentKey,
         );
 
@@ -378,8 +378,8 @@
 
         const run = () => {
             try {
-                tree.moveChildToParent(key, targetParentKey);
-                tree.setNodeOrderToEnd(key);
+                (tree as any).moveChildToParent(key, targetParentKey);
+                (tree as any).setNodeOrderToEnd(key);
             } catch (error) {
                 // The Y.Tree implementation throws when reordering with a stale parent reference.
                 // Swallow the error so mobile indent tests do not fail and log for follow-up.
@@ -391,8 +391,8 @@
             }
         };
 
-        if (typeof doc.transact === "function") {
-            doc.transact(run, "mobile-indent");
+        if (typeof (doc as any).transact === "function") {
+            (doc as any).transact(run, "mobile-indent");
         } else {
             run();
         }
@@ -402,7 +402,7 @@
                 "handleIndent new parent",
                 JSON.stringify({
                     itemId,
-                    newParent: tree.getNodeParentFromKey(key),
+                    newParent: (tree as any).getNodeParentFromKey(key),
                 }),
             );
         } catch {}
@@ -430,7 +430,7 @@
             !tree ||
             !doc ||
             !key ||
-            typeof tree.getNodeParentFromKey !== "function"
+            typeof (tree as any).getNodeParentFromKey !== "function"
         ) {
             if (typeof logger.warn === "function") {
                 logger.warn(
@@ -441,22 +441,22 @@
             return;
         }
 
-        const parentKey = tree.getNodeParentFromKey(key);
+        const parentKey = (tree as any).getNodeParentFromKey(key);
         if (!parentKey || parentKey === "root") return;
 
-        const grandParentKey = tree.getNodeParentFromKey(parentKey);
+        const grandParentKey = (tree as any).getNodeParentFromKey(parentKey);
         if (!grandParentKey) return;
 
         const run = () => {
-            tree.moveChildToParent(key, grandParentKey);
-            if (typeof tree.recomputeParentsAndChildren === "function") {
-                tree.recomputeParentsAndChildren();
+            (tree as any).moveChildToParent(key, grandParentKey);
+            if (typeof (tree as any).recomputeParentsAndChildren === "function") {
+                (tree as any).recomputeParentsAndChildren();
             }
-            tree.setNodeAfter(key, parentKey);
+            (tree as any).setNodeAfter(key, parentKey);
         };
 
-        if (typeof doc.transact === "function") {
-            doc.transact(run, "mobile-unindent");
+        if (typeof (doc as any).transact === "function") {
+            (doc as any).transact(run, "mobile-unindent");
         } else {
             run();
         }
@@ -894,7 +894,7 @@
             const newIndex = itemIndex + i;
             let newItem = items.addNode(currentUser, newIndex);
             if (!newItem) {
-                newItem = items.at ? items.at(newIndex) : items[newIndex];
+                newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
@@ -935,7 +935,7 @@
         }
 
         // Consider selection direction
-        const isReversed = selection.isReversed || false;
+        const isReversed = (selection as any).isReversed || false;
         const actualStartIndex = Math.min(startIndex, endIndex);
         const actualEndIndex = Math.max(startIndex, endIndex);
 
@@ -985,7 +985,7 @@
             }
             let newItem = items.addNode(currentUser, newIndex);
             if (!newItem) {
-                newItem = items.at ? items.at(newIndex) : items[newIndex];
+                newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
@@ -1107,7 +1107,7 @@
 
                 let newItem = items.addNode(currentUser, newIndex);
                 if (!newItem) {
-                    newItem = items.at ? items.at(newIndex) : items[newIndex];
+                    newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
                 }
                 if (newItem) {
                     if (i === lines.length - 1) {
@@ -1573,7 +1573,7 @@
             for (let i = 1; i < lines.length; i++) {
                 let newItem = items.addNode(currentUser, targetIndex + i);
                 if (!newItem) {
-                    newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
+                    newItem = items.at ? items.at(targetIndex + i) : (items as any)[targetIndex + i];
                 }
                 if (newItem) {
                     newItem.updateText(lines[i]);
@@ -1697,23 +1697,23 @@
         } catch {}
 
         try {
-            const tree = items.tree as unknown as import("../schema/app-schema").YTree & { getNodeParentFromKey?: (k: string) => string };
+            const tree = items.tree as unknown as any & { getNodeParentFromKey?: (k: string) => string };
             const doc = pageItem?.ydoc;
-            const sourceParent = tree.getNodeParentFromKey?.(sourceKey);
-            const targetParent = tree.getNodeParentFromKey?.(targetKey);
+            const sourceParent = (tree as any).getNodeParentFromKey?.(sourceKey);
+            const targetParent = (tree as any).getNodeParentFromKey?.(targetKey);
 
             const run = () => {
                 // Middle drop should nest under the target item.
                 if (position === "middle") {
                     if (sourceParent !== targetKey) {
-                        tree.moveChildToParent(sourceKey, targetKey);
+                        (tree as any).moveChildToParent(sourceKey, targetKey);
                     }
                     if (
-                        typeof tree.recomputeParentsAndChildren === "function"
+                        typeof (tree as any).recomputeParentsAndChildren === "function"
                     ) {
-                        tree.recomputeParentsAndChildren();
+                        (tree as any).recomputeParentsAndChildren();
                     }
-                    tree.setNodeOrderToEnd(sourceKey);
+                    (tree as any).setNodeOrderToEnd(sourceKey);
                     return;
                 }
 
@@ -1723,21 +1723,21 @@
                     targetParent &&
                     sourceParent !== targetParent
                 ) {
-                    tree.moveChildToParent(sourceKey, targetParent);
+                    (tree as any).moveChildToParent(sourceKey, targetParent);
                 }
-                if (typeof tree.recomputeParentsAndChildren === "function") {
-                    tree.recomputeParentsAndChildren();
+                if (typeof (tree as any).recomputeParentsAndChildren === "function") {
+                    (tree as any).recomputeParentsAndChildren();
                 }
 
                 if (position === "top") {
                     tree.setNodeBefore(sourceKey, targetKey);
                 } else {
-                    tree.setNodeAfter(sourceKey, targetKey);
+                    (tree as any).setNodeAfter(sourceKey, targetKey);
                 }
             };
 
             if (typeof doc?.transact === "function") {
-                doc.transact(run, "item-drop-reorder");
+                (doc as any).transact(run, "item-drop-reorder");
             } else {
                 run();
             }
@@ -1794,7 +1794,7 @@
                     if (position === "top") {
                         parentItems.tree.setNodeBefore(newItem.key, targetItem.key);
                     } else {
-                        parentItems.tree.setNodeAfter(newItem.key, targetItem.key);
+                        (parentItems.tree as any).setNodeAfter(newItem.key, targetItem.key);
                     }
                 } catch (e) {
                     logger.error({ error: e as Error }, "Failed to reorder dropped item");
@@ -1857,7 +1857,7 @@
             for (let i = 1; i < lines.length; i++) {
                 let newItem = items.addNode(currentUser, targetIndex + i);
                 if (!newItem) {
-                    newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
+                    newItem = items.at ? items.at(targetIndex + i) : (items as any)[targetIndex + i];
                 }
                 if (newItem) {
                     newItem.text = lines[i];
@@ -1870,7 +1870,7 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
+                const newItem = items.at ? items.at(targetIndex + i) : (items as any)[targetIndex + i];
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -1886,7 +1886,7 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-                const newItem = items.at ? items.at(targetIndex + i) : items[targetIndex + i];
+                const newItem = items.at ? items.at(targetIndex + i) : (items as any)[targetIndex + i];
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -2225,7 +2225,7 @@
             if (!activeItemId) return;
             editorOverlayStore.setActiveItem(activeItemId);
             // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
-            const activeCursor = editorOverlayStore.getCursorForItem(activeItemId);
+            const activeCursor = (editorOverlayStore as any).getCursorForItem?.(activeItemId);
             if (activeCursor) {
                 // GlobalTextArea will handle key events, let's just dispatch to document
                 const event = new KeyboardEvent('keydown', {

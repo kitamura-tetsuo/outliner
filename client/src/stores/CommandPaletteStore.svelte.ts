@@ -193,7 +193,7 @@ class CommandPaletteStore {
         if (!node) return;
 
         // Extract command part from current text
-        const text = node.text || "";
+        const text = String(node.text || "");
         const beforeSlash = text.slice(0, this.commandStartOffset);
         const afterCursor = text.slice(cursor.offset);
 
@@ -244,7 +244,7 @@ class CommandPaletteStore {
 
         // If query is empty, delete slash as well and hide command palette
         if (this.query.length === 0) {
-            const text = node.text || "";
+            const text = String(node.text || "");
             const beforeSlash = text.slice(0, this.commandStartOffset);
             const afterCursor = text.slice(cursor.offset);
 
@@ -261,7 +261,7 @@ class CommandPaletteStore {
         }
 
         // Delete command part from current text
-        const text = node.text || "";
+        const text = String(node.text || "");
         const beforeSlash = text.slice(0, this.commandStartOffset);
         const afterCursor = text.slice(cursor.offset);
 

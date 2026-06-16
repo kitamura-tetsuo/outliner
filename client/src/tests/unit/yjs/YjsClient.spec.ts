@@ -28,7 +28,7 @@ describe("YjsClient", () => {
 
     let provider: import("@hocuspocus/provider").HocuspocusProvider;
 
-    let project: { metadata: unknown; rootFolder: unknown; items: unknown; dispose: unknown; };
+    let project: any;
 
     beforeEach(async () => {
         // Reset mocks
@@ -48,7 +48,7 @@ describe("YjsClient", () => {
         );
 
         // Create a simple mock for Project since we don't need its full logic for this test
-        project = {
+        project = { dispose: () => {}, metadata: {}, rootFolder: {}, ydoc: {}, tree: {}, findPage: () => {}, addPage: () => {},
             title: "Test Project",
             items: { length: 0 },
         } as unknown as Project;
@@ -56,7 +56,7 @@ describe("YjsClient", () => {
         client = new YjsClient({
             clientId,
             projectId,
-            project,
+            project: project as any,
             doc,
             provider,
             awareness: null,

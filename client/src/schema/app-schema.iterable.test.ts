@@ -72,13 +72,13 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
                 offset: 0,
                 isActive: true,
                 userId: "u1",
-            } as import("../stores/EditorOverlayStore.svelte").SelectionState,
+            } as any,
         );
 
         // Ensure no exception is thrown and the target is found
         let found: Item | null | undefined;
         expect(() => {
-            found = cursor.findTarget();
+            found = cursor.findTarget() as any;
         }).not.toThrow();
         expect(found?.id).toBe(c2.id);
     });

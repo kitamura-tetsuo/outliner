@@ -369,7 +369,7 @@ export class Cursor implements CursorEditingContext {
             if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                 // Create the parent Item from the parentKey
                 parentItemInstance = new (currentTarget!.constructor as unknown as {
-                    new(...args: unknown[]): import("../schema/yjs-schema").Item;
+                    new(...args: unknown[]): any;
                 })(
                     currentTarget!.ydoc,
                     currentTarget!.tree,
@@ -1733,7 +1733,7 @@ export class Cursor implements CursorEditingContext {
                 // Get the parent Item by creating it from parentKey (skip "root" as it's the project level)
                 if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                     prevItem = new (currentTarget!.constructor as unknown as {
-                        new(...args: unknown[]): import("../schema/yjs-schema").Item;
+                        new(...args: unknown[]): any;
                     })(
                         currentTarget!.ydoc,
                         currentTarget!.tree,

@@ -24,8 +24,8 @@ let activeDescendantId = $derived(visible && selectedIndex >= 0 ? `alias-option-
 
 onMount(() => {
     const onVis = (e: AliasPickerVisibilityEvent) => { try { visible = !!(e?.detail?.visible); } catch {} };
-    window.addEventListener("aliaspicker-visibility", onVis);
-    return () => window.removeEventListener("aliaspicker-visibility", onVis);
+    window.addEventListener("aliaspicker-visibility", onVis as EventListener);
+    return () => window.removeEventListener("aliaspicker-visibility", onVis as EventListener);
 });
 
 function getFilteredOptions(): Option[] {

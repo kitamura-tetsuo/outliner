@@ -188,9 +188,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -216,9 +216,9 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
@@ -258,9 +258,9 @@ export class EditorOverlayStore {
                                 generalStore?: {
                                     currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
                                 };
-                                itemsStore?: unknown;
+                                itemsStore?: { allItems?: any[] };
                                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                                appStore?: { currentPage?: unknown; };
+                                appStore?: { currentPage?: { id?: string; }; };
                                 editorOverlayStore?: unknown;
                             }).DEBUG_MODE
                         ) {
@@ -279,9 +279,9 @@ export class EditorOverlayStore {
                     && (window as Window & typeof globalThis & {
                         DEBUG_MODE?: boolean;
                         generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                        itemsStore?: unknown;
+                        itemsStore?: { allItems?: any[] };
                         editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                        appStore?: { currentPage?: unknown; };
+                        appStore?: { currentPage?: { id?: string; }; };
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
@@ -333,9 +333,9 @@ export class EditorOverlayStore {
                             generalStore?: {
                                 currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
                             };
-                            itemsStore?: unknown;
+                            itemsStore?: { allItems?: any[] };
                             editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                            appStore?: { currentPage?: unknown; };
+                            appStore?: { currentPage?: { id?: string; }; };
                             editorOverlayStore?: unknown;
                         }).DEBUG_MODE
                     ) {
@@ -354,9 +354,9 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
@@ -373,9 +373,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -461,9 +461,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -484,9 +484,9 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
@@ -519,9 +519,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -548,9 +548,9 @@ export class EditorOverlayStore {
                     && (window as Window & typeof globalThis & {
                         DEBUG_MODE?: boolean;
                         generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                        itemsStore?: unknown;
+                        itemsStore?: { allItems?: any[] };
                         editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                        appStore?: { currentPage?: unknown; };
+                        appStore?: { currentPage?: { id?: string; }; };
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
@@ -584,9 +584,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -611,9 +611,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -696,9 +696,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -733,9 +733,9 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
@@ -818,9 +818,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -879,9 +879,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -934,9 +934,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -976,9 +976,9 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
@@ -1035,9 +1035,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -1251,20 +1251,20 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).generalStore
             ) {
                 const currentPage = (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
-                }).generalStore.currentPage;
+                }).generalStore?.currentPage;
                 if (currentPage && currentPage.items) {
                     // Try to find the item by ID in the current page's items
                     // Use iterator to avoid O(N^2) complexity with indexed access on Items
@@ -1273,11 +1273,11 @@ export class EditorOverlayStore {
                         const iter = (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
                                 .iterateUnordered
                             ? (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
-                                .iterateUnordered()
+                                .iterateUnordered!()
                             : currentPage.items;
-                        for (const item of iter) {
+                        for (const item of iter as any) {
                             if (item && item.id === itemId) {
-                                return item.text || "";
+                                return String(item.text || "");
                             }
                         }
                     }
@@ -1289,9 +1289,9 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
@@ -1306,18 +1306,18 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).itemsStore
             ) {
                 const itemsStore = (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).itemsStore;
                 if (itemsStore && itemsStore.allItems) {
@@ -1325,7 +1325,7 @@ export class EditorOverlayStore {
                     for (let i = 0; i < itemsStore.allItems.length; i++) {
                         const item = itemsStore.allItems[i];
                         if (item && item.id === itemId) {
-                            return item.text || "";
+                            return String(item.text || "");
                         }
                     }
                 }
@@ -1336,9 +1336,9 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
@@ -1353,18 +1353,18 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).editorStore
             ) {
                 const editorStore = (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).editorStore;
                 if (editorStore && editorStore.currentItems) {
@@ -1373,7 +1373,7 @@ export class EditorOverlayStore {
                         it.id === itemId
                     );
                     if (item) {
-                        return item.text || "";
+                        return String(item.text || "");
                     }
                 }
             }
@@ -1383,9 +1383,9 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
@@ -1426,9 +1426,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -1453,9 +1453,9 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
@@ -1486,9 +1486,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -1508,9 +1508,9 @@ export class EditorOverlayStore {
                     && (window as Window & typeof globalThis & {
                         DEBUG_MODE?: boolean;
                         generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                        itemsStore?: unknown;
+                        itemsStore?: { allItems?: any[] };
                         editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                        appStore?: { currentPage?: unknown; };
+                        appStore?: { currentPage?: { id?: string; }; };
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
@@ -1531,9 +1531,9 @@ export class EditorOverlayStore {
                     && (window as Window & typeof globalThis & {
                         DEBUG_MODE?: boolean;
                         generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                        itemsStore?: unknown;
+                        itemsStore?: { allItems?: any[] };
                         editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                        appStore?: { currentPage?: unknown; };
+                        appStore?: { currentPage?: { id?: string; }; };
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
@@ -1550,9 +1550,9 @@ export class EditorOverlayStore {
                     && (window as Window & typeof globalThis & {
                         DEBUG_MODE?: boolean;
                         generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                        itemsStore?: unknown;
+                        itemsStore?: { allItems?: any[] };
                         editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                        appStore?: { currentPage?: unknown; };
+                        appStore?: { currentPage?: { id?: string; }; };
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
@@ -1591,9 +1591,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -1607,9 +1607,9 @@ export class EditorOverlayStore {
                 && (window as Window & typeof globalThis & {
                     DEBUG_MODE?: boolean;
                     generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                    itemsStore?: unknown;
+                    itemsStore?: { allItems?: any[] };
                     editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: unknown; };
+                    appStore?: { currentPage?: { id?: string; }; };
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
@@ -1627,9 +1627,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -1644,9 +1644,9 @@ export class EditorOverlayStore {
             && (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
@@ -1668,9 +1668,9 @@ export class EditorOverlayStore {
                     && (window as Window & typeof globalThis & {
                         DEBUG_MODE?: boolean;
                         generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                        itemsStore?: unknown;
+                        itemsStore?: { allItems?: any[] };
                         editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                        appStore?: { currentPage?: unknown; };
+                        appStore?: { currentPage?: { id?: string; }; };
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
@@ -1811,9 +1811,9 @@ export class EditorOverlayStore {
             const currentPage = (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-                itemsStore?: unknown;
+                itemsStore?: { allItems?: any[] };
                 editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: unknown; };
+                appStore?: { currentPage?: { id?: string; }; };
                 editorOverlayStore?: unknown;
             }).appStore?.currentPage;
             const pageId = currentPage?.id;
@@ -1822,7 +1822,7 @@ export class EditorOverlayStore {
                 return;
             }
 
-            const pageAwareness = client.getPageAwareness?.(pageId);
+            const pageAwareness = (client as any).getPageAwareness?.(pageId);
             if (!pageAwareness) {
                 console.log("[pushPresenceState] No pageAwareness", {
                     pageId,
@@ -1876,9 +1876,9 @@ if (typeof window !== "undefined") {
     (window as Window & typeof globalThis & {
         DEBUG_MODE?: boolean;
         generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-        itemsStore?: unknown;
+        itemsStore?: { allItems?: any[] };
         editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-        appStore?: { currentPage?: unknown; };
+        appStore?: { currentPage?: { id?: string; }; };
         editorOverlayStore?: unknown;
     }).editorOverlayStore = editorOverlayStore;
 }

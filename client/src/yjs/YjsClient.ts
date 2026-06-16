@@ -131,9 +131,9 @@ export class YjsClient {
             const arr: Record<string, unknown>[] = [];
             const len = (it as { length?: number; }).length ?? 0;
             for (let i = 0; i < len; i++) {
-                const item = (it as { at?: (i: number) => unknown; }).at
+                const item = (it as { at?: (i: number) => any; }).at
                     ? (it as { at: (i: number) => unknown; }).at(i)
-                    : (it as Record<number, unknown>)[i];
+                    : (it as Record<number, any>)[i];
                 if (!item) continue;
                 const node: Record<string, unknown> = {
                     id: item.id,
@@ -149,7 +149,7 @@ export class YjsClient {
                 }
                 arr.push(node);
             }
-            return { itemCount: arr.length, items: arr };
+            return arr as any;
         };
         return collect(items);
     }
@@ -161,7 +161,7 @@ export class YjsClient {
         let result: unknown = treeData;
         for (const part of parts) {
             if (result === undefined || result === null) return null;
-            result = result[part];
+            result = (result as Record<string, unknown>)[part];
         }
         return result;
     }
@@ -178,8 +178,8 @@ export class YjsClient {
 
     public getDebugInfo() {
         const provider = this._provider as unknown as {
-            disconnect?: () => void;
-            configuration?: { token: string | (() => string | Promise<string>); };
+            disconnect?: () => void; url?: string; name?: string; connected?: boolean;
+            configuration?: { token: string | (() => string | Promise<string>); websocketProvider?: any; url?: string; name?: string; };
         };
         const config = provider?.configuration;
         const wsProvider = config?.websocketProvider;

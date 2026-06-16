@@ -522,10 +522,10 @@ export class CursorSelection {
         if (!target) return;
 
         const text = target.text || "";
-        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
+        const currentLineIndex = (this.cursor as any).getCurrentLineIndex(text, this.cursor.offset);
 
         // Move to start position of current line
-        this.cursor.offset = this.cursor.getLineStartOffset(text, currentLineIndex);
+        this.cursor.offset = (this.cursor as any).getLineStartOffset(text, currentLineIndex);
         this.cursor.applyToStore();
 
         // Confirm cursor is correctly updated
@@ -540,10 +540,10 @@ export class CursorSelection {
         if (!target) return;
 
         const text = target.text || "";
-        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
+        const currentLineIndex = (this.cursor as any).getCurrentLineIndex(text, this.cursor.offset);
 
         // Move to end position of current line
-        this.cursor.offset = this.cursor.getLineEndOffset(text, currentLineIndex);
+        this.cursor.offset = (this.cursor as any).getLineEndOffset(text, currentLineIndex);
         this.cursor.applyToStore();
 
         // Confirm cursor is correctly updated
@@ -572,8 +572,8 @@ export class CursorSelection {
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
-        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
-        const lineStartOffset = this.cursor.getLineStartOffset(text, currentLineIndex);
+        const currentLineIndex = (this.cursor as any).getCurrentLineIndex(text, this.cursor.offset);
+        const lineStartOffset = (this.cursor as any).getLineStartOffset(text, currentLineIndex);
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
@@ -678,8 +678,8 @@ export class CursorSelection {
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
-        const currentLineIndex = this.cursor.getCurrentLineIndex(text, this.cursor.offset);
-        const lineEndOffset = this.cursor.getLineEndOffset(text, currentLineIndex);
+        const currentLineIndex = (this.cursor as any).getCurrentLineIndex(text, this.cursor.offset);
+        const lineEndOffset = (this.cursor as any).getLineEndOffset(text, currentLineIndex);
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {

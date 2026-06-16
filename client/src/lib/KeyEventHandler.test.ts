@@ -56,7 +56,7 @@ describe("KeyEventHandler.handlePaste", () => {
     });
 
     afterEach(() => {
-        delete (navigator as Navigator & { clipboard?: unknown; }).clipboard;
+        delete (navigator as any).clipboard;
     });
 
     const createEvent = (text: string): ClipboardEvent => {
@@ -117,7 +117,7 @@ describe("KeyEventHandler.handlePaste", () => {
 
     it("dispatches read error when cursor insertion throws", async () => {
         const event = createEvent("oops");
-        mockInsertText.mockImplementationOnce(() => {
+        (mockInsertText as any).mockImplementationOnce(() => {
             throw new Error("boom");
         });
         const listener = vi.fn();

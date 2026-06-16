@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock module
 // Provide a local mock instead of importing .svelte.ts in tests
-const mockCursor: import("./editorOverlayStore.svelte.ts").CursorModel = {
+const mockCursor: any = {
     itemId: "test-item",
     offset: 5,
     findTarget: vi.fn(() => ({ text: "hello/", updateText: vi.fn() })),
@@ -71,7 +71,7 @@ const commandPaletteStore = (() => {
             const cur = mockEditorOverlayStore.getCursorInstances()[0];
             const node = cur.findTarget();
             if (!node) return;
-            const text = node.text || "";
+            const text = String(node.text || "");
             const beforeSlash = text.slice(0, state._cmdStart);
             const afterCursor = text.slice(cur.offset);
             const newCommandText = state.query + ch;
@@ -88,7 +88,7 @@ const commandPaletteStore = (() => {
             const cur = mockEditorOverlayStore.getCursorInstances()[0];
             const node = cur.findTarget();
             if (!node) return;
-            const text = node.text || "";
+            const text = String(node.text || "");
             const beforeSlash = text.slice(0, state._cmdStart);
             const afterCursor = text.slice(cur.offset);
             if (state.query.length === 0) {
@@ -119,7 +119,7 @@ describe("CommandPaletteStore", () => {
         vi.clearAllMocks();
 
         // reset spies/state on our local mocks
-        mockEditorOverlayStore.getCursorInstances.mockClear?.();
+        (mockEditorOverlayStore.getCursorInstances as any).mockClear?.();
         mockCursor.findTarget.mockClear();
         mockCursor.applyToStore.mockClear();
     });

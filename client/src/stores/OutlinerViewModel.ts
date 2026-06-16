@@ -12,8 +12,8 @@ const debugLog = (...args: unknown[]) => {
 
 const isItemLike = (obj: unknown): boolean => {
     try {
-        const id = obj?.id;
-        const txt = obj?.text;
+        const id = (obj as any)?.id;
+        const txt = (obj as any)?.text;
         return typeof id === "string" && id.length > 0
             && (typeof txt === "string" || typeof txt?.toString === "function");
     } catch {
@@ -177,10 +177,10 @@ export class OutlinerViewModel {
                 id: item.id,
                 original: item,
                 text: item.text.toString(),
-                votes: [...((item as unknown as { votes?: string[]; }).votes || [])],
-                author: (item as unknown as { author?: string; }).author,
-                created: (item as unknown as { created?: number; }).created,
-                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged,
+                votes: ((((item as any).votes || []) as string[]).filter(v => v !== undefined) as string[]).map(String) as string[], // force string[]
+                author: ((item as unknown as { author?: string; }).author || "") as string,
+                created: (item as unknown as { created?: number; }).created as number,
+                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged as number,
                 commentCount: (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0,
             });
             debugLog(

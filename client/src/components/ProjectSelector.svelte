@@ -37,10 +37,10 @@
         return projectsFromUserProject(firestoreStore.userProject);
     });
     $effect(() => {
-        logger.info("ProjectSelector - projects len", {
+        logger.info({
             len: projects.length,
             ucv: firestoreStore.ucVersion,
-        });
+        }, "ProjectSelector - projects len");
     });
 
     // Display current loading project ID
@@ -112,7 +112,7 @@
                             "ProjectSelector - User authenticated, projects should be available",
                         );
                     } else {
-                        logger.info("ProjectSelector - User signed out");
+                        logger.info({}, "ProjectSelector - User signed out");
                     }
                 },
             );
@@ -129,7 +129,7 @@
                 try {
                     clean();
                 } catch (err) {
-                    logger.warn("ProjectSelector cleanup failed", err);
+                    logger.warn({ error: err }, "ProjectSelector cleanup failed");
                 }
             }
         };
@@ -142,24 +142,24 @@
             window as typeof window & { __USER_MANAGER__?: UserManager }
         ).__USER_MANAGER__;
         if (!userManagerInstance) {
-            logger.warn("ProjectSelector - UserManager not available");
+            logger.warn({}, "ProjectSelector - UserManager not available");
             return;
         }
 
         const currentUser = userManagerInstance.getCurrentUser();
         const authUser = userManagerInstance.auth?.currentUser;
 
-        logger.info("ProjectSelector - Current user:", currentUser);
-        logger.info("ProjectSelector - Auth user:", authUser);
+        logger.info({ data: currentUser }, "ProjectSelector - Current user:");
+        logger.info({ data: authUser }, "ProjectSelector - Auth user:");
 
         if (!currentUser && !authUser) {
-            logger.info("ProjectSelector - No user found, attempting login...");
+            logger.info({}, "ProjectSelector - No user found, attempting login...");
             try {
                 await userManagerInstance.loginWithEmailPassword(
                     "test@example.com",
                     "password",
                 );
-                logger.info("ProjectSelector - Login successful");
+                logger.info({}, "ProjectSelector - Login successful");
 
                 // After successful login, wait a bit and check Firestore sync
                 setTimeout(() => {
@@ -172,7 +172,7 @@
                     );
                 }, 1000);
             } catch (err) {
-                logger.error("ProjectSelector - Login failed:", err);
+                logger.error({ error: err }, "ProjectSelector - Login failed:");
             }
         }
     }
@@ -196,7 +196,7 @@
             // Emit event with selected project ID and name
             onProjectSelected(selectedProjectId, selectedProject.name);
         } catch (err) {
-            logger.error("Project selection error:", err);
+            logger.error({ error: err }, "Project selection error:");
             error =
                 err instanceof Error
                     ? err.message

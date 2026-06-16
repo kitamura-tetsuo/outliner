@@ -43,7 +43,9 @@ export interface TreeNode {
 /**
  * Type for item-like objects that have tree and key properties
  */
+import { Comments } from "../schema/app-schema";
 export interface ItemLike extends TreeNode {
+    comments?: Comments;
     ydoc: Y.Doc;
     id: string;
     text: string;

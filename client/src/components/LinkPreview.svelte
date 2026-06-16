@@ -125,7 +125,7 @@ function findPageByName(name: string): Item | null {
     if (!store.pages) return null;
 
     // Search for page with matching name
-    for (const page of store.pages.current) {
+    for (const page of store.pages!.current!) {
         if (page.text.toLowerCase() === name.toLowerCase()) {
             return page;
         }
