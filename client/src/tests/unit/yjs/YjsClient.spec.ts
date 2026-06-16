@@ -28,7 +28,8 @@ describe("YjsClient", () => {
 
     let provider: import("@hocuspocus/provider").HocuspocusProvider;
 
-    let project: { metadata: unknown; rootFolder: unknown; items: unknown; dispose: unknown; };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let project: any;
 
     beforeEach(async () => {
         // Reset mocks
@@ -49,14 +50,23 @@ describe("YjsClient", () => {
 
         // Create a simple mock for Project since we don't need its full logic for this test
         project = {
+            dispose: () => {},
+            metadata: {},
+            rootFolder: {},
+            ydoc: {},
+            tree: {},
+            findPage: () => {},
+            addPage: () => {},
             title: "Test Project",
             items: { length: 0 },
-        } as unknown as Project;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any as Project;
 
         client = new YjsClient({
             clientId,
             projectId,
-            project,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            project: project as any,
             doc,
             provider,
             awareness: null,

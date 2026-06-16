@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock module
 // Provide a local mock instead of importing .svelte.ts in tests
-const mockCursor: import("./editorOverlayStore.svelte.ts").CursorModel = {
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockCursor: any = {
     itemId: "test-item",
     offset: 5,
     findTarget: vi.fn(() => ({ text: "hello/", updateText: vi.fn() })),
@@ -10,7 +12,8 @@ const mockCursor: import("./editorOverlayStore.svelte.ts").CursorModel = {
 };
 const mockEditorOverlayStore = {
     getCursorInstances: vi.fn(() => [mockCursor]),
-} as unknown as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
 vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 
 // Access global store if available; otherwise provide a local minimal implementation
@@ -32,7 +35,8 @@ const commandPaletteStore = (() => {
     // Minimal replica sufficient for this test
     const state = {
         isVisible: false,
-        position: { top: 0, left: 0 } as unknown,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        position: { top: 0, left: 0 } as any,
         query: "",
         selectedIndex: 0,
         _cmdItemId: null as string | null,
@@ -71,7 +75,7 @@ const commandPaletteStore = (() => {
             const cur = mockEditorOverlayStore.getCursorInstances()[0];
             const node = cur.findTarget();
             if (!node) return;
-            const text = node.text || "";
+            const text = String(node.text || "");
             const beforeSlash = text.slice(0, state._cmdStart);
             const afterCursor = text.slice(cur.offset);
             const newCommandText = state.query + ch;
@@ -88,7 +92,7 @@ const commandPaletteStore = (() => {
             const cur = mockEditorOverlayStore.getCursorInstances()[0];
             const node = cur.findTarget();
             if (!node) return;
-            const text = node.text || "";
+            const text = String(node.text || "");
             const beforeSlash = text.slice(0, state._cmdStart);
             const afterCursor = text.slice(cur.offset);
             if (state.query.length === 0) {
@@ -119,7 +123,8 @@ describe("CommandPaletteStore", () => {
         vi.clearAllMocks();
 
         // reset spies/state on our local mocks
-        mockEditorOverlayStore.getCursorInstances.mockClear?.();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mockEditorOverlayStore.getCursorInstances as any).mockClear?.();
         mockCursor.findTarget.mockClear();
         mockCursor.applyToStore.mockClear();
     });

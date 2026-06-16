@@ -122,19 +122,19 @@
 
                     // Try array-like access
                     if (
-                        typeof (items as { length?: number }).length ===
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        typeof (items as any).length ===
                         "number"
                     ) {
-                        const len = (items as { length: number }).length;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const len = (items as any).length;
                         for (let i = 0; i < len; i++) {
-                            const v = (
-                                items as {
-                                    at?: (i: number) => Item;
-                                    [key: number]: Item;
-                                }
-                            ).at
-                                ? (items as { at: (i: number) => Item }).at(i)
-                                : (items as { [key: number]: Item })[i];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const v = (items as any).at
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                ? (items as any).at(i)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                : (items as any)[i];
                             if (typeof v !== "undefined" && v !== null)
                                 arr.push(v);
                         }
@@ -143,12 +143,12 @@
 
                     // Try toArray method if available
                     if (
-                        typeof (items as { toArray?: () => Item[] }).toArray ===
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        typeof (items as any).toArray ===
                         "function"
                     ) {
-                        const arr = (
-                            items as { toArray: () => Item[] }
-                        ).toArray();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const arr = (items as any).toArray();
                         if (arr && arr.length) return arr;
                     }
                 } catch {
@@ -316,10 +316,12 @@
                     opacity: cs.opacity,
                     transform: cs.transform,
                     clipPath:
-                        (cs as unknown as { [key: string]: unknown })[
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (cs as any as { [key: string]: unknown })[
                             "clipPath"
                         ] ??
-                        (cs as unknown as { [key: string]: unknown })[
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (cs as any as { [key: string]: unknown })[
                             "clip-path"
                         ],
                     pointerEvents: cs.pointerEvents,

@@ -88,7 +88,8 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
 
     // Apply styles
     Object.entries(PREVIEW_STYLES).forEach(([key, value]) => {
-        previewElement.style[key as keyof CSSStyleDeclaration] = value;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (previewElement.style as any)[key] = value;
     });
 
     // Handle internal project links

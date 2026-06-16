@@ -108,8 +108,10 @@ export class YjsClient {
             const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
             // HocuspocusProvider doesn't have .status directly, check websocketProvider
-            return p.isSynced || (p as unknown as { status?: string; }).status === "connected"
-                || (p as unknown as { websocketProvider?: { status?: string; }; }).websocketProvider?.status
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return p.isSynced || (p as any as { status?: string; }).status === "connected"
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                || (p as any as { websocketProvider?: { status?: string; }; }).websocketProvider?.status
                     === "connected";
         } catch {
             return true;
@@ -131,9 +133,11 @@ export class YjsClient {
             const arr: Record<string, unknown>[] = [];
             const len = (it as { length?: number; }).length ?? 0;
             for (let i = 0; i < len; i++) {
-                const item = (it as { at?: (i: number) => unknown; }).at
+                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                const item = (it as { at?: (i: number) => any; }).at
                     ? (it as { at: (i: number) => unknown; }).at(i)
-                    : (it as Record<number, unknown>)[i];
+                    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                    : (it as Record<number, any>)[i];
                 if (!item) continue;
                 const node: Record<string, unknown> = {
                     id: item.id,
@@ -149,7 +153,8 @@ export class YjsClient {
                 }
                 arr.push(node);
             }
-            return { itemCount: arr.length, items: arr };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return arr as any;
         };
         return collect(items);
     }
@@ -161,7 +166,7 @@ export class YjsClient {
         let result: unknown = treeData;
         for (const part of parts) {
             if (result === undefined || result === null) return null;
-            result = result[part];
+            result = (result as Record<string, unknown>)[part];
         }
         return result;
     }
@@ -177,9 +182,20 @@ export class YjsClient {
     }
 
     public getDebugInfo() {
-        const provider = this._provider as unknown as {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const provider = this._provider as any as {
             disconnect?: () => void;
-            configuration?: { token: string | (() => string | Promise<string>); };
+            url?: string;
+            name?: string;
+            connected?: boolean;
+            configuration?: {
+                token: string | (() => string | Promise<string>);
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                websocketProvider?: any;
+                url?: string;
+                name?: string;
+            };
         };
         const config = provider?.configuration;
         const wsProvider = config?.websocketProvider;
@@ -208,10 +224,12 @@ export class YjsClient {
 
     public dispose() {
         try {
-            (this._provider as unknown as { destroy?: () => void; })?.destroy?.();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (this._provider as any as { destroy?: () => void; })?.destroy?.();
         } catch {}
         try {
-            (this._doc as unknown as { destroy?: () => void; })?.destroy?.();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (this._doc as any as { destroy?: () => void; })?.destroy?.();
         } catch {}
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));

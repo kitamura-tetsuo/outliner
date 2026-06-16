@@ -157,13 +157,17 @@ export class KeyEventHandler {
                     try {
                         // Confirm directly from the store's selected index first (independent of DOM)
                         try {
-                            const w: unknown = window as unknown;
-                            const ap: unknown = w?.aliasPickerStore ?? aliasPickerStore;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const w: any = window as any;
+
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const ap: any = w?.aliasPickerStore ?? aliasPickerStore;
                             const opts: unknown[] = Array.isArray(ap?.options) ? ap.options : [];
                             let si: number = typeof ap?.selectedIndex === "number" ? ap.selectedIndex : 0;
                             if (opts.length > 0) {
                                 si = Math.max(0, Math.min(si, opts.length - 1));
-                                const tid = opts[si]?.id;
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                const tid = (opts[si] as any)?.id;
                                 if (tid) {
                                     try {
                                         console.log("KeyEventHandler(Enter@Picker): confirmById via store", {
@@ -202,21 +206,33 @@ export class KeyEventHandler {
                         // Fallback if unable to confirm via click path:
                         // Set the first content line (= test's secondId) as target
                         try {
-                            const w: unknown = window as unknown;
-                            const gs: unknown = w.generalStore || w.appStore;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const w: any = window as any;
+
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const gs: any = w.generalStore || w.appStore;
                             const root = gs?.currentPage;
-                            const picker = (w.aliasPickerStore ?? aliasPickerStore) as unknown;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const picker = (w.aliasPickerStore ?? aliasPickerStore) as any;
                             const aliasId: string | null = picker?.itemId ?? null;
-                            const firstContent: unknown = root?.items && (root.items as unknown).length > 0
-                                ? ((root.items as unknown).at
-                                    ? (root.items as unknown).at(0)
-                                    : (root.items as unknown)[0])
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const firstContent: unknown = root?.items && (root.items as any).length > 0
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                ? ((root.items as any).at
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    ? (root.items as any).at(0)
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    : (root.items as any)[0])
                                 : null;
-                            if (root && aliasId && firstContent?.id) {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            if (root && aliasId && (firstContent as any)?.id) {
                                 const find = (node: unknown, id: string): unknown => {
                                     if (!node) return null;
-                                    if (node.id === id) return node;
-                                    const ch: unknown = node.items;
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    if ((node as any).id === id) return node;
+
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    const ch: any = (node as any).items;
                                     if (ch && typeof ch[Symbol.iterator] === "function") {
                                         for (const c of ch) {
                                             const r = find(c, id);
@@ -233,16 +249,19 @@ export class KeyEventHandler {
                                     return null;
                                 };
                                 const aliasItem = find(root, aliasId);
-                                if (aliasItem && !aliasItem.aliasTargetId) {
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                if (aliasItem && !(aliasItem as any).aliasTargetId) {
                                     try {
                                         console.log(
                                             "KeyEventHandler: fallback setting aliasTargetId on",
                                             aliasId,
                                             "to",
-                                            firstContent.id,
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            (firstContent as any).id,
                                         );
                                     } catch {}
-                                    aliasItem.aliasTargetId = firstContent.id;
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    (aliasItem as any).aliasTargetId = (firstContent as any).id;
                                 }
                                 try {
                                     const aliasEl = document.querySelector(
@@ -255,7 +274,11 @@ export class KeyEventHandler {
                                                 aliasId,
                                             );
                                         } catch {}
-                                        aliasEl.setAttribute("data-alias-target-id", String(firstContent.id));
+                                        aliasEl.setAttribute(
+                                            "data-alias-target-id",
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            String((firstContent as any).id),
+                                        );
                                     }
                                     const outlinerRoot = document.querySelector(".outliner") || document.body;
                                     const walker = document.createTreeWalker(
@@ -284,22 +307,26 @@ export class KeyEventHandler {
                                                 lastId,
                                             );
                                         } catch {}
-                                        last.setAttribute("data-alias-target-id", String(firstContent.id));
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        last.setAttribute("data-alias-target-id", String((firstContent as any).id));
                                     }
 
                                     // Fallback setting on model side for the last item as well
                                     if (lastId && lastId !== aliasId) {
                                         const aliasItem2 = find(root, lastId);
-                                        if (aliasItem2 && !aliasItem2.aliasTargetId) {
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        if (aliasItem2 && !(aliasItem2 as any).aliasTargetId) {
                                             try {
                                                 console.log(
                                                     "KeyEventHandler: fallback setting aliasTargetId on lastId",
                                                     lastId,
                                                     "to",
-                                                    firstContent.id,
+                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                    (firstContent as any).id,
                                                 );
                                             } catch {}
-                                            aliasItem2.aliasTargetId = firstContent.id;
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            (aliasItem2 as any).aliasTargetId = (firstContent as any).id;
                                         }
                                     }
                                 } catch {}
@@ -320,12 +347,17 @@ export class KeyEventHandler {
         console.log(
             `KeyEventHandler.handleKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}, altKey=${event.altKey}`,
         );
-        const tgt = (event.target as unknown)?.tagName || typeof (event.target as unknown)?.nodeName === "string"
-            ? (event.target as unknown).nodeName
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tgt = (event.target as any)?.tagName || typeof (event.target as any)?.nodeName === "string"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ? (event.target as any).nodeName
             : typeof event.target;
-        const ae = (document.activeElement as unknown)?.tagName
-                || typeof (document.activeElement as unknown)?.nodeName === "string"
-            ? (document.activeElement as unknown).nodeName
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ae = (document.activeElement as any)?.tagName
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                || typeof (document.activeElement as any)?.nodeName === "string"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ? (document.activeElement as any).nodeName
             : typeof document.activeElement;
         console.log(`KeyEventHandler.handleKeyDown: target=${tgt}, active=${ae}`);
         console.log(`Current cursor instances: ${cursorInstances.length}`);
@@ -336,7 +368,9 @@ export class KeyEventHandler {
         if (event.key === "Enter" && cursorInstances.length > 0) {
             const cursor = cursorInstances[0];
             const node = cursor.findTarget();
-            const rawText: unknown = (node as unknown)?.text;
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const rawText: any = (node as any)?.text;
             const text: string = typeof rawText === "string" ? rawText : (rawText?.toString?.() ?? "");
             const before = text.slice(0, cursor.offset);
             earlyBeforeForLog = before;
@@ -346,7 +380,8 @@ export class KeyEventHandler {
             const gsAny: unknown = typeof window !== "undefined"
                 ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
                 : null;
-            const ta: HTMLTextAreaElement | undefined = gsAny?.textareaRef as unknown;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const ta: HTMLTextAreaElement | undefined = (gsAny as any)?.textareaRef as any;
             const taValue: string | null = ta?.value ?? null;
             const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
             const source = typeof taValue === "string" ? taValue : text;
@@ -392,7 +427,7 @@ export class KeyEventHandler {
                 if (cursorInstances.length > 0) {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    const text = String(node?.text || "");
                     const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
 
                     // Do not show palette immediately after internal link start ([/) or within [ ... ]
@@ -436,8 +471,10 @@ export class KeyEventHandler {
             } else if (event.key === "Enter") {
                 // Palette Visible: Always prioritize Alias if filter includes Alias
                 try {
-                    const filtered: unknown[] = (commandPaletteStore as unknown).filtered ?? [];
-                    const hasAlias = filtered.some(c => c?.type === "alias");
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const filtered: any[] = (commandPaletteStore as any).filtered ?? [];
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const hasAlias = filtered.some(c => (c as any)?.type === "alias");
                     if (hasAlias) {
                         try {
                             console.log(
@@ -455,7 +492,7 @@ export class KeyEventHandler {
                 try {
                     const cursor = cursorInstances[0];
                     const node = cursor.findTarget();
-                    const text = node?.text || "";
+                    const text = String(node?.text || "");
                     const before = text.slice(0, cursor.offset);
                     const lastSlash = before.lastIndexOf("/");
                     const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
@@ -466,7 +503,7 @@ export class KeyEventHandler {
                         commandPaletteStore.hide();
                         // Remove command string
                         const newText = text.slice(0, lastSlash) + text.slice(cursor.offset);
-                        node.updateText(newText);
+                        node?.updateText(newText);
                         cursor.offset = lastSlash;
                         cursor.applyToStore();
 
@@ -474,8 +511,11 @@ export class KeyEventHandler {
                         const gs: unknown = typeof window !== "undefined"
                             ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
                             : null;
-                        const items: unknown = gs?.currentPage?.items;
-                        if (items && typeof items.addNode === "function") {
+
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const items: any = (gs as any)?.currentPage?.items;
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        if (items && typeof (items as any).addNode === "function") {
                             const userId = cursor.userId || "local";
                             let newItem: unknown = null;
                             try {
@@ -496,22 +536,34 @@ export class KeyEventHandler {
                             }
 
                             if (newItem) {
-                                newItem.text = "";
-                                (newItem as unknown).aliasTargetId = undefined;
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (newItem as any).text = "";
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (newItem as any).aliasTargetId = undefined;
                                 try {
-                                    console.log("KeyEventHandler(Palette): showing AliasPicker for", newItem.id);
+                                    console.log(
+                                        "KeyEventHandler(Palette): showing AliasPicker for",
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        (newItem as any).id,
+                                    );
                                 } catch {}
                                 {
                                     const w: unknown = typeof window !== "undefined"
                                         ? (window as Window & typeof globalThis & { [key: string]: unknown; })
                                         : null;
-                                    (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    ((w as any)?.aliasPickerStore ?? aliasPickerStore).show(
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        (newItem as any).id,
+                                    );
                                 }
                                 // Move cursor
                                 store.clearCursorAndSelection(userId);
-                                cursor.itemId = newItem.id;
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                cursor.itemId = (newItem as any).id;
                                 cursor.offset = 0;
-                                store.setActiveItem(newItem.id);
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                store.setActiveItem((newItem as any).id);
                                 cursor.applyToStore();
                                 store.startCursorBlink();
 
@@ -557,7 +609,7 @@ export class KeyEventHandler {
             try {
                 const cursor = cursorInstances[0];
                 const node = cursor.findTarget();
-                const text = node?.text || "";
+                const text = String(node?.text || "");
                 const before = text.slice(0, cursor.offset);
                 const lastSlash = before.lastIndexOf("/");
                 const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
@@ -566,7 +618,8 @@ export class KeyEventHandler {
                 const gs: unknown = typeof window !== "undefined"
                     ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
                     : null;
-                const ta: HTMLTextAreaElement | undefined = gs?.textareaRef as unknown;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const ta: HTMLTextAreaElement | undefined = (gs as any)?.textareaRef as any;
                 const taValue: string | null = ta?.value ?? null;
                 const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
                 const source = typeof taValue === "string" ? taValue : text;
@@ -592,8 +645,11 @@ export class KeyEventHandler {
                     // NOTE: Skipping '/alias' text removal as it is not mandatory (E2E verifies picker display)
 
                     // Add new item to end
-                    const items: unknown = gs?.currentPage?.items;
-                    if (items && typeof items.addNode === "function") {
+
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const items: any = (gs as any)?.currentPage?.items;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    if (items && typeof (items as any).addNode === "function") {
                         const userId = cursor.userId || "local";
                         let newItem: unknown = null;
                         try {
@@ -612,22 +668,28 @@ export class KeyEventHandler {
                         }
 
                         if (newItem) {
-                            newItem.text = "";
-                            (newItem as unknown).aliasTargetId = undefined;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            (newItem as any).text = "";
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            (newItem as any).aliasTargetId = undefined;
                             try {
-                                console.log("KeyEventHandler: showing AliasPicker for", newItem.id);
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                console.log("KeyEventHandler: showing AliasPicker for", (newItem as any).id);
                             } catch {}
                             {
                                 const w: unknown = typeof window !== "undefined"
                                     ? (window as Window & typeof globalThis & { [key: string]: unknown; })
                                     : null;
-                                (w?.aliasPickerStore ?? aliasPickerStore).show(newItem.id);
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                ((w as any)?.aliasPickerStore ?? aliasPickerStore).show((newItem as any).id);
                             }
                             // Move cursor
                             store.clearCursorAndSelection(userId);
-                            cursor.itemId = newItem.id;
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            cursor.itemId = (newItem as any).id;
                             cursor.offset = 0;
-                            store.setActiveItem(newItem.id);
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            store.setActiveItem((newItem as any).id);
                             cursor.applyToStore();
                             store.startCursorBlink();
 
@@ -681,7 +743,8 @@ export class KeyEventHandler {
                                 try {
                                     const activeId = store.getActiveItem?.();
                                     if (activeId) {
-                                        (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        ((w as any)?.aliasPickerStore ?? aliasPickerStore).show(activeId);
                                         try {
                                             console.log(
                                                 "KeyEventHandler(Post): showing AliasPicker for activeId",
@@ -759,7 +822,8 @@ export class KeyEventHandler {
                                 try {
                                     const activeId = store.getActiveItem?.();
                                     if (activeId) {
-                                        (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        ((w as any)?.aliasPickerStore ?? aliasPickerStore).show(activeId);
                                         try {
                                             console.log(
                                                 "KeyEventHandler(Post2): showing AliasPicker for activeId",
@@ -830,7 +894,9 @@ export class KeyEventHandler {
             const w: unknown = typeof window !== "undefined"
                 ? (window as Window & typeof globalThis & { [key: string]: unknown; })
                 : null;
-            const gs: unknown = w?.generalStore ?? {};
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const gs: any = (w as any)?.generalStore ?? {};
             const ch: string = typeof inputEvent.data === "string" ? inputEvent.data : "";
             gs.__lastInputStream = (gs.__lastInputStream || "") + ch;
             if (gs.__lastInputStream.length > 256) {
@@ -1155,23 +1221,21 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
-                    && (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
-                        .clipboard
-                    && (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
-                        .clipboard.writeText
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    && (navigator as any)?.clipboard?.writeText
                 ) {
-                    (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
-                        .clipboard.writeText(selectedText).catch((err: unknown) => {
-                            if (
-                                typeof window !== "undefined"
-                                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
-                            ) {
-                                console.error(
-                                    `navigator.clipboard.writeText failed in handleCopy:`,
-                                    err,
-                                );
-                            }
-                        });
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (navigator as any).clipboard.writeText(selectedText).catch((err: unknown) => {
+                        if (
+                            typeof window !== "undefined"
+                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        ) {
+                            console.error(
+                                `navigator.clipboard.writeText failed in handleCopy:`,
+                                err,
+                            );
+                        }
+                    });
                 }
 
                 // Fallback: Copy using execCommand
@@ -1909,7 +1973,9 @@ export class KeyEventHandler {
                 !text && typeof window !== "undefined"
                 && (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText
             ) {
-                text = (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText;
+                text = String(
+                    (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText || "",
+                );
                 console.log(`Using text from global variable: "${text}"`);
             }
 
@@ -1970,20 +2036,25 @@ export class KeyEventHandler {
 
             // If VS Code multi-cursor text is included
             if (
-                vscodeMetadata && Array.isArray(vscodeMetadata.multicursorText)
-                && vscodeMetadata.multicursorText.length > 0
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                vscodeMetadata && Array.isArray((vscodeMetadata as any).multicursorText)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                && (vscodeMetadata as any).multicursorText.length > 0
             ) {
                 // Debug info
                 if (
                     typeof window !== "undefined"
                     && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
                 ) {
-                    console.log(`VS Code multicursor text detected:`, vscodeMetadata.multicursorText);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    console.log(`VS Code multicursor text detected:`, (vscodeMetadata as any).multicursorText);
                 }
 
-                const multicursorText = vscodeMetadata.multicursorText;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const multicursorText = (vscodeMetadata as any).multicursorText;
                 const cursorInstances = store.getCursorInstances();
-                const pasteMode = vscodeMetadata.pasteMode || "spread"; // Default is spread
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const pasteMode = (vscodeMetadata as any).pasteMode || "spread"; // Default is spread
 
                 // pasteMode: 'spread' - Insert different text for each cursor
                 // pasteMode: 'full' - Insert same text for each cursor
@@ -2154,8 +2225,10 @@ export class KeyEventHandler {
             // If pasting from box selection
             // In VS Code, copy from box selection contains special metadata
             if (
-                vscodeMetadata && vscodeMetadata.isFromEmptySelection === false
-                && vscodeMetadata.mode === "plaintext" && text.includes("\n")
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                vscodeMetadata && (vscodeMetadata as any).isFromEmptySelection === false
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                && (vscodeMetadata as any).mode === "plaintext" && text.includes("\n")
             ) {
                 // Process as paste from box selection
                 const lines = text.split(/\r?\n/);
@@ -2331,23 +2404,21 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
-                    && (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
-                        .clipboard
-                    && (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
-                        .clipboard.writeText
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    && (navigator as any)?.clipboard?.writeText
                 ) {
-                    (navigator as Navigator & { clipboard?: { writeText: (text: string) => Promise<void>; }; })
-                        .clipboard.writeText(selectedText).catch((err: unknown) => {
-                            if (
-                                typeof window !== "undefined"
-                                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
-                            ) {
-                                console.error(
-                                    `navigator.clipboard.writeText failed in handleCut:`,
-                                    err,
-                                );
-                            }
-                        });
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (navigator as any).clipboard.writeText(selectedText).catch((err: unknown) => {
+                        if (
+                            typeof window !== "undefined"
+                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        ) {
+                            console.error(
+                                `navigator.clipboard.writeText failed in handleCut:`,
+                                err,
+                            );
+                        }
+                    });
                 }
 
                 // Fallback: Copy using execCommand

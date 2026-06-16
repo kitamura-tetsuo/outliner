@@ -1,11 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from "fs";
 import { createRequire } from "module";
 import initSqlJs from "sql.js";
 import { beforeAll, describe, expect, it } from "vitest";
 import { SyncWorker } from "../services/syncWorker";
 
-import type { Database } from "sql.js";
-let db: Database;
+let db: any;
 
 const require = createRequire(import.meta.url);
 

@@ -265,7 +265,8 @@ export async function createMinimalYjsConnection(
                     `[${providerVar}] init isSynced=`,
                     provider.isSynced,
                     "url=",
-                    (provider as unknown as { configuration?: { url: string; }; }).configuration?.url,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (provider as any as { configuration?: { url: string; }; }).configuration?.url,
                 );
             }
             try {
@@ -313,12 +314,16 @@ export async function setupUpdateTracking(
             (window as Window & typeof globalThis & Record<string, unknown>)[counterVar] = 0;
             (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var] = 0;
 
-            doc.on("update", () => {
-                (window as Window & typeof globalThis & Record<string, unknown>)[counterVar]++;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (doc as any).on("update", () => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (window as any)[counterVar]++;
             });
 
-            doc.on("updateV2", () => {
-                (window as Window & typeof globalThis & Record<string, unknown>)[counterV2Var]++;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (doc as any).on("updateV2", () => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (window as any)[counterV2Var]++;
             });
         },
         { docVar, counterVar, counterV2Var },
@@ -481,7 +486,8 @@ export async function prepareTwoFullBrowserPages(
     });
 
     // Prepare test environment for page1
-    const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { projectName, pageName } = await (TestHelpers as any).seedProjectAndNavigate(
         page1,
         testInfo,
         initialItems,
@@ -495,7 +501,8 @@ export async function prepareTwoFullBrowserPages(
     await page1.waitForFunction(
         () => {
             const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
-            const client = yjsStore?.yjsClient;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const client = (yjsStore as any)?.yjsClient;
             if (!client) {
                 console.log("page1: yjsClient not found");
                 return false;
@@ -505,7 +512,8 @@ export async function prepareTwoFullBrowserPages(
                 console.log("page1: project not found");
                 return false;
             }
-            const items = project.items as unknown as { length: number; };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const items = project.items as any as { length: number; };
             const pageCount = items?.length ?? 0;
             console.log(`page1: Yjs client initialized, pageCount=${pageCount}`);
             return !!(project && items);
@@ -566,7 +574,8 @@ export async function prepareTwoFullBrowserPages(
     await page2.waitForFunction(
         () => {
             const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
-            const client = yjsStore?.yjsClient;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const client = (yjsStore as any)?.yjsClient;
             if (!client) {
                 console.log("page2: yjsClient not found");
                 return false;

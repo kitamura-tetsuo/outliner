@@ -1,4 +1,5 @@
 <script lang="ts">
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     // moved to onMount to avoid initial-value capture warnings
 
     import { Comments, Item } from "../schema/app-schema";
@@ -154,29 +155,29 @@
                                 // Do not write to map in getter to avoid infinite loops in Observers
                                 return new Comments(fallback);
                             }
-                            return new Comments(arr);
+                            return new Comments(arr as any);
                         },
                     });
                 }
 
                 const broadcastCommentCount = (ctx: unknown) => {
-                    const arr = ensureCommentsArrayOn(ctx);
-                    const len = arr?.length ?? 0;
+                    const arr = ensureCommentsArrayOn(ctx as any);
+                    const len = (arr as any)?.length ?? 0;
                     W.commentCountsByItemId =
                         W.commentCountsByItemId || new Map();
                     try {
-                        W.commentCountsByItemId.set(String(ctx?.id), len);
+                        W.commentCountsByItemId.set(String((ctx as any)?.id), len);
                     } catch {}
                     try {
-                        ctx?.value?.set?.("commentCountCache", len);
+                        (ctx as any)?.value?.set?.("commentCountCache", len);
                     } catch {}
                     try {
-                        ctx?.value?.set?.("lastChanged", Date.now());
+                        (ctx as any)?.value?.set?.("lastChanged", Date.now());
                     } catch {}
                     try {
                         window.dispatchEvent(
                             new CustomEvent("item-comment-count", {
-                                detail: { id: String(ctx?.id), count: len },
+                                detail: { id: String((ctx as any)?.id), count: len },
                             }),
                         );
                     } catch {}
@@ -195,8 +196,8 @@
                     if (origAdd) {
                         result = origAdd.call(this, author, text);
                     } else {
-                        const wrapper = ensureCommentsArrayOn(this);
-                        const comments = wrapper ? new Comments(wrapper) : null;
+                        const wrapper = ensureCommentsArrayOn(this as any);
+                        const comments = wrapper ? new Comments(wrapper as any) : null;
                         result = comments?.addComment?.(author, text);
                     }
                     broadcastCommentCount(this);
@@ -212,8 +213,8 @@
                     if (origDel) {
                         result = origDel.call(this, commentId);
                     } else {
-                        const wrapper = ensureCommentsArrayOn(this);
-                        const comments = wrapper ? new Comments(wrapper) : null;
+                        const wrapper = ensureCommentsArrayOn(this as any);
+                        const comments = wrapper ? new Comments(wrapper as any) : null;
                         comments?.deleteComment?.(commentId);
                         result = undefined;
                     }
@@ -248,7 +249,7 @@
                                     Object.defineProperty(proto, "comments", {
                                         get() {
                                             const arr =
-                                                ensureCommentsArrayOn(this);
+                                                ensureCommentsArrayOn(this as any);
                                             if (!arr) {
                                                 const fallbackArr =
                                                     new Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>>();
@@ -257,7 +258,7 @@
                                                     fallbackArr,
                                                 );
                                             }
-                                            return new Comments(arr);
+                                            return new Comments(arr as any);
                                         },
                                     });
                                 }
@@ -280,9 +281,9 @@
                                             return r;
                                         }
                                         const wrapper =
-                                            ensureCommentsArrayOn(this);
+                                            ensureCommentsArrayOn(this as any);
                                         const comments = wrapper
-                                            ? new Comments(wrapper)
+                                            ? new Comments(wrapper as any)
                                             : null;
                                         const res = comments?.addComment?.(
                                             author,
@@ -309,9 +310,9 @@
                                             return r;
                                         }
                                         const wrapper =
-                                            ensureCommentsArrayOn(this);
+                                            ensureCommentsArrayOn(this as any);
                                         const comments = wrapper
-                                            ? new Comments(wrapper)
+                                            ? new Comments(wrapper as any)
                                             : null;
                                         comments?.deleteComment?.(commentId);
                                         broadcastCommentCount(this);

@@ -184,7 +184,7 @@ function updateTextareaPosition() {
             lastScrolledOffset = lastCursor.offset;
 
             const viewportTop = treeContainerRect.top + pos.top;
-            const cursorHeight = itemInfo.lineHeight ? parseInt(itemInfo.lineHeight) : 20;
+            const cursorHeight = itemInfo.lineHeight ? parseInt(String(itemInfo.lineHeight)) : 20;
             const viewportBottom = viewportTop + cursorHeight;
 
             const stickyHeaderHeight = 80;
@@ -271,7 +271,8 @@ onMount(() => {
                 } else {
                     localCursorVisible = store.cursorVisible;
                 }
-            }, 16) as unknown as number; // Update at ~60fps interval
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            }, 16) as any as number; // Update at ~60fps interval
         });
     } catch (error) {
         console.warn('Failed to subscribe to store changes:', error);
@@ -661,7 +662,8 @@ function debouncedUpdatePositionMap() {
     clearTimeout(updatePositionMapTimer);
     updatePositionMapTimer = setTimeout(() => {
         if (!aliasPickerStore.isVisible) updatePositionMap();
-    }, 100) as unknown as number;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }, 100) as any as number;
 }
 
 // Data reflection from store is guaranteed by MutationObserver and onMount initialization
@@ -687,7 +689,7 @@ onMount(() => {
                     const boxSel = sels.find(s => s.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length);
                     if (boxSel) {
                         const lines: string[] = [];
-                        for (const r of boxSel.boxSelectionRanges) {
+                        for (const r of boxSel.boxSelectionRanges!) {
                             const full = getTextByItemId(r.itemId);
                             const s = Math.max(0, Math.min(full.length, Math.min(r.startOffset, r.endOffset)));
                             const ee = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
@@ -769,10 +771,12 @@ onMount(() => {
             // Intentionally empty - catch potential errors without further handling
         }
     };
-    try { window.addEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    try { window.addEventListener('aliaspicker-visibility', handler as any as EventListener); } catch {
         // Intentionally empty - catch potential errors without further handling
     }
-    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as any as EventListener); } catch {
         // Intentionally empty - catch potential errors without further handling
     } };
 });
@@ -829,7 +833,8 @@ function getTextByItemId(itemId: string): string {
     const items = page?.items;
     const len = items?.length ?? 0;
     for (let i = 0; i < len; i++) {
-      const it = items.at ? items.at(i) : items[i];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const it = (items as any)!.at ? items!.at(i) : (items as any)![i];
       if (it?.id === itemId) {
         return String(it?.text ?? "");
       }
@@ -866,7 +871,7 @@ function handleCopy(event: ClipboardEvent) {
   const boxSel = selections.find((s) => s.isBoxSelection && s.boxSelectionRanges && s.boxSelectionRanges.length > 0);
   if (!selectedText && boxSel) {
     const lines: string[] = [];
-    for (const r of boxSel.boxSelectionRanges) {
+    for (const r of boxSel.boxSelectionRanges!) {
       const full = getTextByItemId(r.itemId);
       const s = Math.max(0, Math.min(full.length, Math.min(r.startOffset, r.endOffset)));
       const e = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
@@ -879,7 +884,8 @@ function handleCopy(event: ClipboardEvent) {
         event.preventDefault();
         event.clipboardData.setData('text/plain', rectText);
       }
-      if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
         (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(rectText).catch(() => {});
       }
       if (typeof window !== 'undefined') {
@@ -1035,7 +1041,8 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', selectedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
       (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch(() => {});
     }
 
@@ -1166,7 +1173,8 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', combinedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } })?.clipboard?.writeText) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
       (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch(() => {});
     }
     // Save to global variable (for E2E test environment only)
