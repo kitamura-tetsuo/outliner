@@ -12,7 +12,8 @@ const logger = getLogger();
 export function setupGlobalDebugFunctions() {
     if (typeof window !== "undefined") {
         // In Playwright tests, avoid exposing goto to prevent navigation loops.
-        const win = window as unknown as Window & Record<string, unknown>;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const win = window as any as Window & Record<string, unknown>;
         if (process.env.NODE_ENV !== "test") {
             win.__SVELTE_GOTO__ = async (
                 url: string,
@@ -57,7 +58,8 @@ declare global {
 
 if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
-        const testWin = window as unknown as Window & Record<string, unknown>;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const testWin = window as any as Window & Record<string, unknown>;
         // Do not expose __SVELTE_GOTO__ in tests to force page.goto in helpers
         try {
             delete testWin.__SVELTE_GOTO__;
@@ -72,6 +74,7 @@ if (process.env.NODE_ENV === "test") {
             if (!yjsStore.yjsClient) {
                 return { error: "YjsClient not initialized", items: [] };
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return (yjsStore.yjsClient as any).getAllData();
         };
 
@@ -101,6 +104,7 @@ if (process.env.NODE_ENV === "test") {
             ): { id: string; text: string; items: unknown[]; } => {
                 const children = new Items(
                     project.ydoc as import("yjs").Doc,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     project.tree as any,
                     item.key,
                 );

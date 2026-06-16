@@ -48,7 +48,8 @@ describe("yjsService", () => {
                 this.users = updatedUsers;
             },
         };
-        (globalThis as unknown as { presenceStore: unknown; }).presenceStore = presenceStore;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (globalThis as any as { presenceStore: unknown; }).presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
         expect((presenceStore.users["u1"] as { userName?: string; }).userName).toBe("Alice");
@@ -80,7 +81,8 @@ describe("yjsService", () => {
                 this.selections = updatedSelections;
             },
         };
-        (globalThis as unknown as { editorOverlayStore: unknown; }).editorOverlayStore = editorOverlayStore;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (globalThis as any as { editorOverlayStore: unknown; }).editorOverlayStore = editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
 
         // seed local state (ignored by overlay sync)
@@ -93,12 +95,20 @@ describe("yjsService", () => {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } },
         });
-        (awareness as any).emit("change", [{ added: new Set([42]), updated: new Set(), removed: new Set() }, "test"]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (awareness as any).emit("change", [
+            { added: new Set([42]), updated: new Set(), removed: new Set() },
+            "test",
+        ]);
 
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
-        (awareness as any).emit("change", [{ added: new Set(), updated: new Set(), removed: new Set([42]) }, "test"]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (awareness as any).emit("change", [
+            { added: new Set(), updated: new Set(), removed: new Set([42]) },
+            "test",
+        ]);
         unbind();
     });
 });

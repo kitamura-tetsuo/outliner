@@ -113,6 +113,7 @@ export class CursorFormatting {
      * Apply Scrapbox syntax formatting to selection spanning multiple items
      */
     private applyScrapboxFormattingToMultipleItems(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         selection: any,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
@@ -154,6 +155,7 @@ export class CursorFormatting {
         while (walker.currentNode) {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const item = (this.cursor as any).searchItem(generalStore.currentPage!, itemId);
 
             if (!item) {

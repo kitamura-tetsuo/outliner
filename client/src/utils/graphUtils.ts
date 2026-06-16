@@ -27,7 +27,8 @@ function toArray(p: unknown): unknown[] {
             return r;
         }
     } catch {}
-    return [] as unknown[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return [] as any[];
 }
 
 function getText(v: unknown): string {
@@ -52,6 +53,8 @@ export function buildGraph(pagesMaybe: unknown, projectTitle: string): GraphData
 
     // Pre-calculate node names and their lowercase versions to avoid
     // repeated toLowerCase() calls in the nested loop.
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pageNodes = pages.map((p: any) => {
         const name = getText(p);
         return {
@@ -71,12 +74,14 @@ export function buildGraph(pagesMaybe: unknown, projectTitle: string): GraphData
         const texts = [srcText, ...childTexts];
 
         for (const dst of pageNodes) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((src as any).id === (dst as any).id) continue;
             const target = dst.lowerName;
 
             // Check if any text block in src contains a link to dst
             // Using the optimized string inclusion check
             if (texts.some(t => containsLink(t, target, normalizedProjectTitle))) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 links.push({ source: (src as any).id, target: (dst as any).id });
             }
         }

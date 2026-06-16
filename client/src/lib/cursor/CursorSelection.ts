@@ -522,9 +522,11 @@ export class CursorSelection {
         if (!target) return;
 
         const text = target.text || "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentLineIndex = (this.cursor as any).getCurrentLineIndex(text, this.cursor.offset);
 
         // Move to start position of current line
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.cursor.offset = (this.cursor as any).getLineStartOffset(text, currentLineIndex);
         this.cursor.applyToStore();
 
@@ -540,9 +542,11 @@ export class CursorSelection {
         if (!target) return;
 
         const text = target.text || "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentLineIndex = (this.cursor as any).getCurrentLineIndex(text, this.cursor.offset);
 
         // Move to end position of current line
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.cursor.offset = (this.cursor as any).getLineEndOffset(text, currentLineIndex);
         this.cursor.applyToStore();
 
@@ -572,7 +576,9 @@ export class CursorSelection {
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentLineIndex = (this.cursor as any).getCurrentLineIndex(text, this.cursor.offset);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lineStartOffset = (this.cursor as any).getLineStartOffset(text, currentLineIndex);
 
         // Debug info
@@ -678,7 +684,9 @@ export class CursorSelection {
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentLineIndex = (this.cursor as any).getCurrentLineIndex(text, this.cursor.offset);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lineEndOffset = (this.cursor as any).getLineEndOffset(text, currentLineIndex);
 
         // Debug info

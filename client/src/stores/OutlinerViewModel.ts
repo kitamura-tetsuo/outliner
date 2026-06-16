@@ -12,7 +12,9 @@ const debugLog = (...args: unknown[]) => {
 
 const isItemLike = (obj: unknown): boolean => {
     try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const id = (obj as any)?.id;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const txt = (obj as any)?.text;
         return typeof id === "string" && id.length > 0
             && (typeof txt === "string" || typeof txt?.toString === "function");
@@ -84,7 +86,8 @@ export class OutlinerViewModel {
             );
             debugLog(
                 "OutlinerViewModel: pageItem.items length:",
-                (pageItem.items as unknown as { length?: number; })?.length || 0,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (pageItem.items as any as { length?: number; })?.length || 0,
             );
 
             // Update or add existing view models
@@ -158,8 +161,10 @@ export class OutlinerViewModel {
                 let votesArray: string[] = [];
                 if (item.votes && typeof item.votes.toArray === "function") {
                     votesArray = item.votes.toArray();
-                } else if ("votes" in item && Array.isArray((item as unknown as { votes: string[]; }).votes)) {
-                    votesArray = (item as unknown as { votes: string[]; }).votes;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                } else if ("votes" in item && Array.isArray((item as any as { votes: string[]; }).votes)) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    votesArray = (item as any as { votes: string[]; }).votes;
                 }
                 existingViewModel.votes = [...votesArray];
 
@@ -177,11 +182,16 @@ export class OutlinerViewModel {
                 id: item.id,
                 original: item,
                 text: item.text.toString(),
-                votes: [...(((item as unknown as { votes?: string[]; }).votes || []) as string[])],
-                author: ((item as unknown as { author?: string; }).author || "") as string,
-                created: (item as unknown as { created?: number; }).created as number,
-                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged as number,
-                commentCount: (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                votes: [...(((item as any as { votes?: string[]; }).votes || []) as string[])],
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                author: ((item as any as { author?: string; }).author || "") as string,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                created: (item as any as { created?: number; }).created as number,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                lastChanged: (item as any as { lastChanged?: number; }).lastChanged as number,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                commentCount: (item as any as { comments?: { length?: number; }; }).comments?.length ?? 0,
             });
             debugLog(
                 `OutlinerViewModel: Created new view model for "${item.text}"`,
@@ -196,7 +206,8 @@ export class OutlinerViewModel {
             ((
                 it: unknown,
             ) => (it && typeof (it as { length?: number; }).length === "number"
-                && typeof (it as { at?: unknown; }).at === "function"))((item as unknown as { items?: unknown; }).items)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                && typeof (it as { at?: unknown; }).at === "function"))((item as any as { items?: unknown; }).items)
         ) {
             const children = item.items;
             debugLog(
@@ -252,12 +263,14 @@ export class OutlinerViewModel {
         this.depthMap.set(item.id, depth);
         const vm = this.viewModels.get(item.id);
         if (vm) {
-            vm.commentCount = (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            vm.commentCount = (item as any as { comments?: { length?: number; }; }).comments?.length ?? 0;
         }
 
         // Process child items (only if not collapsed)
         const isCollapsed = this.collapsedMap.get(item.id);
-        const ch = (item as unknown as { items?: unknown; }).items as {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ch = (item as any as { items?: unknown; }).items as {
             length?: number;
             at: (i: number) => import("../schema/app-schema").Item | undefined;
         };
@@ -301,7 +314,8 @@ export class OutlinerViewModel {
                 it: unknown,
             ) => (it && typeof (it as { length?: number; }).length === "number"
                 && typeof (it as { at?: unknown; }).at === "function"))(
-                    (rootItem as unknown as { items?: unknown; })?.items,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (rootItem as any as { items?: unknown; })?.items,
                 )
         ) {
             this.recalculateOrderAndDepth(rootItem.items);
@@ -363,7 +377,8 @@ export class OutlinerViewModel {
     hasChildren(itemId: string): boolean {
         const model = this.viewModels.get(itemId);
         if (!model || !model.original || !model.original.items) return false;
-        const ch = (model.original as unknown as { items?: unknown; }).items as {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ch = (model.original as any as { items?: unknown; }).items as {
             length?: number;
             at: (i: number) => import("../schema/app-schema").Item | undefined;
         };

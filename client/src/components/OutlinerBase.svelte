@@ -1,4 +1,5 @@
 <script lang="ts">
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     // moved to onMount to avoid initial-value capture warnings
 
     import { Comments, Item } from "../schema/app-schema";

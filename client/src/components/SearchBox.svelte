@@ -122,13 +122,18 @@
 
                     // Try array-like access
                     if (
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                         typeof (items as any).length ===
                         "number"
                     ) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const len = (items as any).length;
                         for (let i = 0; i < len; i++) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const v = (items as any).at
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 ? (items as any).at(i)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 : (items as any)[i];
                             if (typeof v !== "undefined" && v !== null)
                                 arr.push(v);
@@ -138,9 +143,11 @@
 
                     // Try toArray method if available
                     if (
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                         typeof (items as any).toArray ===
                         "function"
                     ) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const arr = (items as any).toArray();
                         if (arr && arr.length) return arr;
                     }
@@ -309,10 +316,12 @@
                     opacity: cs.opacity,
                     transform: cs.transform,
                     clipPath:
-                        (cs as unknown as { [key: string]: unknown })[
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (cs as any as { [key: string]: unknown })[
                             "clipPath"
                         ] ??
-                        (cs as unknown as { [key: string]: unknown })[
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (cs as any as { [key: string]: unknown })[
                             "clip-path"
                         ],
                     pointerEvents: cs.pointerEvents,

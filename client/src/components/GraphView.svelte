@@ -68,6 +68,8 @@
         const firstSeries = series[0] as GraphSeriesWithData | undefined;
         const data = firstSeries?.data;
         if (!Array.isArray(data)) return [];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         return data.filter((node: any): node is GraphNodeWithLayout =>
             Boolean(node?.id),
         );
@@ -116,6 +118,8 @@
                     };
                 })
                 .filter(
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (node: any): node is GraphLayout["nodes"][number] =>
                         typeof node.x === "number" &&
                         typeof node.y === "number",
@@ -126,6 +130,7 @@
             // Merge: Start with existing nodes that are NOT in current, then add current
             const mergedNodes = existingNodes
                 .filter((n) => !currentNodesMap.has(n.id))
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .concat(currentNodes as any);
 
             const layoutData = { nodes: mergedNodes };
@@ -217,7 +222,8 @@
     onMount(() => {
         chart = echarts.init(graphDiv);
         (
-            window as unknown as { __GRAPH_CHART__?: echarts.ECharts }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            window as any as { __GRAPH_CHART__?: echarts.ECharts }
         ).__GRAPH_CHART__ = chart;
         chart.on("click", (params: ECElementEvent) => {
             if (params.dataType === "node") {

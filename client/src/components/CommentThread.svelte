@@ -47,7 +47,8 @@ function e2eLog(entry: E2ELogEntry) {
         interface WindowWithE2E extends Window {
             E2E_LOGS?: E2ELogEntry[];
         }
-        const w = window as unknown as WindowWithE2E;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const w = window as any as WindowWithE2E;
         w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
         w.E2E_LOGS.push({ t: Date.now(), comp: 'CommentThread', ...entry });
     } catch {}
@@ -67,6 +68,7 @@ onMount(() => {
     let unobserve: (() => void) | undefined;
     try {
         // 1) Get internal yArray if Comments wrapper exists (private but accessible in JS)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         let yarr: Y.Array<Y.Map<unknown>> | undefined = (comments as any)?.yArray;
         // 2) If not, ensure "comments" via item Y.Map
         if (!yarr && props.item) {
@@ -123,6 +125,7 @@ onMount(() => {
 // Yjs automatic synchronization is temporarily paused (limited to immediate notification on add/remove for CMT-0001 stabilization)
 // $effect(() => {
 //     try {
+
 //         const list = (commentsSubscriber.current as any) ?? [];
 //         commentsList = list as Comment[];
 //         recompute();
@@ -232,6 +235,7 @@ function add() {
                     arr = new Y.Array<Y.Map<unknown>>();
                     value.set("comments", arr);
                 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                 commentsObj = new Comments(arr as any);
                 logger.debug({}, '[CommentThread] initialized comments via tree/key fallback');
             }
@@ -342,6 +346,7 @@ function remove(id: string) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
                 let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                 commentsObj = new Comments(arr as any);
                 logger.debug({}, '[CommentThread] ensured comments for remove via tree/key');
             }
@@ -386,6 +391,7 @@ function saveEdit(id: string) {
                 const value = tree.getNodeValueFromKey(key) as Y.Map<unknown>;
                 let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                 commentsObj = new Comments(arr as any);
                 logger.debug({}, '[CommentThread] ensured comments for saveEdit via tree/key');
             }

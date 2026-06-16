@@ -72,12 +72,14 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
                 offset: 0,
                 isActive: true,
                 userId: "u1",
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any,
         );
 
         // Ensure no exception is thrown and the target is found
         let found: Item | null | undefined;
         expect(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             found = cursor.findTarget() as any;
         }).not.toThrow();
         expect(found?.id).toBe(c2.id);

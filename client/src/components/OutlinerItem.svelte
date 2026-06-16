@@ -6,7 +6,8 @@
     // Measurement span singleton (lazy initialized)
     let _measurementSpan: HTMLSpanElement | null = null;
     function getMeasurementSpan(): HTMLSpanElement {
-        if (typeof document === 'undefined') return null as unknown as HTMLSpanElement;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (typeof document === 'undefined') return null as any as HTMLSpanElement;
         if (!_measurementSpan) {
             _measurementSpan = document.createElement("span");
             _measurementSpan.id = "outliner-measurement-span";
@@ -39,8 +40,10 @@ const DEBUG_LOG: boolean = (typeof window !== 'undefined') && (((window as Windo
 const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && ((window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E__ === true));
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
-    const __origDebug = (logger as unknown as { debug: (...args: unknown[]) => void })?.debug?.bind?.(logger);
-    (logger as unknown as { debug: (...args: unknown[]) => void }).debug = (...args: unknown[]) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const __origDebug = (logger as any as { debug: (...args: unknown[]) => void })?.debug?.bind?.(logger);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (logger as any as { debug: (...args: unknown[]) => void }).debug = (...args: unknown[]) => {
         if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch {} }
     };
 } catch {}
@@ -52,7 +55,8 @@ import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 
 onMount(() => {
     try {
-        logger.debug(undefined, "[OutlinerItem] compTypeValue on mount: " + (compTypeValue as unknown as { current: unknown })?.current + " id=" + model?.id);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        logger.debug(undefined, "[OutlinerItem] compTypeValue on mount: " + (compTypeValue as any as { current: unknown })?.current + " id=" + model?.id);
     } catch {}
 });
 onMount(() => {
@@ -65,7 +69,8 @@ onMount(() => {
                 document.querySelector = ((sel: string) => {
                     try {
                         if (/^\[data-item-id="/.test(sel)) {
-                            const ap = (W as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as unknown as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const ap = (W as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as any as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
                             const li = ap?.lastConfirmedItemId;
                             if (li) {
                                 const el = origQS(`[data-item-id="${li}"]`);
@@ -90,7 +95,8 @@ onMount(() => {
                 Element.prototype.getAttribute = function(this: HTMLElement, name: string): string | null {
                     try {
                         if (name === 'data-alias-target-id') {
-                            const ap = (window as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as unknown as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const ap = (window as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as any as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
                             const itemId = (this as HTMLElement).getAttribute('data-item-id');
                             if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
                                 return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
@@ -98,7 +104,8 @@ onMount(() => {
                         }
                     } catch {}
                     return origGetAttr.call(this, name) as string | null;
-                } as unknown as (qualifiedName: string) => string | null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                } as any as (qualifiedName: string) => string | null;
                 W.__E2E_GETATTR_PATCHED = true;
             }
         }
@@ -108,7 +115,8 @@ onMount(() => {
 
 onMount(() => {
     try {
-        const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const gs = generalStore as any as { openCommentItemId?: string, openCommentItemIndex?: number };
         if (!isPageTitle && index === 0 && (gs.openCommentItemId == null)) {
             gs.openCommentItemId = model.id;
             logger.debug(undefined, '[OutlinerItem] auto-open comment thread for id=' + model.id);
@@ -119,20 +127,25 @@ onMount(() => {
     // If openCommentItemId does not exist in the current page due to Yjs connection switching, etc.
         // Automatically reopen comment thread prioritizing index (E2E stabilization)
     try {
-        const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const gs = generalStore as any as { openCommentItemId?: string, openCommentItemIndex?: number };
         // Optimization: Only perform the expensive existence check if this item is a candidate for auto-reopen
         // This avoids O(N^2) complexity where every item iterates the full list on mount
         const isCandidate = !isPageTitle && (index === 1 || gs.openCommentItemIndex === index);
 
         if (isCandidate) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             const cp = (gs as any)?.currentPage;
-            const items = cp?.items as unknown as { iterateUnordered?: () => Iterable<unknown> };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const items = cp?.items as any as { iterateUnordered?: () => Iterable<unknown> };
             const targetId = gs?.openCommentItemId;
             let exists = false;
             if (items) {
                 // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
                 // Use iterateUnordered if available for O(N) instead of O(N log N)
-                const iter = items.iterateUnordered ? items.iterateUnordered() : items as unknown as Iterable<unknown>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const iter = items.iterateUnordered ? items.iterateUnordered() : items as any as Iterable<unknown>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                 for (const it of iter as any) {
                     if (it?.id === targetId) { exists = true; break; }
                 }
@@ -271,8 +284,10 @@ let ensuredComments = $derived.by(() => item.comments);
 // Comment count subscription (follow Yjs directly)
 
 // Comment thread open/close state (explicitly subscribe with Svelte 5 $derived)
-let openCommentItemId = $derived.by(() => (generalStore as unknown as { openCommentItemId: string | null }).openCommentItemId);
-let openCommentItemIndex = $derived.by(() => (generalStore as unknown as { openCommentItemIndex: number | null }).openCommentItemIndex);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let openCommentItemId = $derived.by(() => (generalStore as any as { openCommentItemId: string | null }).openCommentItemId);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let openCommentItemIndex = $derived.by(() => (generalStore as any as { openCommentItemIndex: number | null }).openCommentItemIndex);
 
 let isCommentsVisible = $derived(
     !isPageTitle && (
@@ -290,7 +305,9 @@ let commentCountLocal = $state(0);
  * Get normalized comment count from Yjs comments array
  */
 function normalizeCommentCount(arr: unknown ): number {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (!arr || typeof (arr as any).length !== "number") return 0;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
     return Number((arr as any).length);
 }
 
@@ -299,18 +316,25 @@ function normalizeCommentCount(arr: unknown ): number {
  */
 function ensureCommentsArray(): unknown[] {
     try {
-        const it = item as unknown;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const it = item as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (!it) return null as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         let arr: unknown[] = (it as any).comments;
         if (!arr) {
             // Initialize if comments property does not exist
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (typeof (it as any).setComments === "function") {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (it as any).setComments([]);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                 arr = (it as any).comments;
             }
         }
         return arr;
     } catch {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         return null as any;
     }
 }
@@ -360,12 +384,16 @@ function applyCommentCount(arrOrCount: unknown) {
 function attachCommentObserver(): (() => void) | null {
     try {
         const arr: unknown[] = ensureCommentsArray();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (arr && typeof (arr as any).observe === "function") {
             const observer = () => applyCommentCount(arr);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             (arr as any).observe(observer);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             return () => (arr as any)?.unobserve?.(observer);
         }
     } catch {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
     return null as any;
     }
 
@@ -386,10 +414,14 @@ onMount(() => {
     const handleWindowEvent = (event: Event) => {
         try {
             const detail: unknown  = (event as CustomEvent<unknown>)?.detail;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!(detail as any)) return;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             const targetId = (detail as any).id ?? (detail as any).itemId ?? (detail as any).nodeId ?? (detail as any).targetId;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((targetId as any) == null) return;
             if (String(targetId) !== String(model?.id)) return;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             const possibleCount = (detail as any).count ?? (detail as any).value ?? (detail as any).len ?? (detail as any).length;
             applyCommentCount(possibleCount);
         } catch {}
@@ -436,11 +468,14 @@ let aliasTargetId = $state<string | undefined>();
 onMount(() => {
     aliasTargetId = item.aliasTargetId;
     try {
-        const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyItem = item as any as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ymap = (anyItem as any)?.tree?.getNodeValueFromKey?.(anyItem.key) as any;
         if (ymap && typeof ymap.observe === 'function') {
             const obs = (e?: unknown ) => {
                 try {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if (!e || ((e as any).keysChanged && (e as any).keysChanged.has && (e as any).keysChanged.has('aliasTargetId'))) {
                         aliasTargetId = ymap.get?.('aliasTargetId');
                     }
@@ -449,6 +484,7 @@ onMount(() => {
             ymap.observe(obs);
             // Initial reflection
             obs();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             return () => { try { (ymap as any)?.unobserve?.(obs); } catch {} };
 
         }
@@ -458,7 +494,8 @@ onMount(() => {
 // This replaces the polling approach with proper Svelte 5 reactivity
 let aliasLastConfirmedPulse = $derived.by(() => {
     // Subscribe to aliasPickerStore changes
-    const ap = aliasPickerStore as unknown as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ap = aliasPickerStore as any as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
     const li = ap?.lastConfirmedItemId;
     const lt = ap?.lastConfirmedTargetId;
     const la = ap?.lastConfirmedAt as number | null;
@@ -466,11 +503,13 @@ let aliasLastConfirmedPulse = $derived.by(() => {
     if (li && lt && la && (Date.now() - la < 6000) && li === model.id) {
         return { itemId: li, targetId: lt, at: la };
     }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
     return null as any;
     });
 
 // Update DOM attributes when aliasLastConfirmedPulse changes
 $effect(() => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((aliasLastConfirmedPulse as any) && itemRef) {
         const { itemId, targetId } = aliasLastConfirmedPulse;
         try {
@@ -523,13 +562,17 @@ $effect(() => {
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
-    void (aliasPickerStore as unknown as { tick?: unknown })?.tick;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    void (aliasPickerStore as any as { tick?: unknown })?.tick;
     void aliasLastConfirmedPulse; // Make sure to react to pulse changes
     const base = aliasTargetId;
     if (base) return base;
-    const lastItemId = (aliasPickerStore as unknown as { lastConfirmedItemId?: string })?.lastConfirmedItemId;
-    const lastTargetId = (aliasPickerStore as unknown as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId;
-    const lastAt = (aliasPickerStore as unknown as { lastConfirmedAt?: number | null })?.lastConfirmedAt;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lastItemId = (aliasPickerStore as any as { lastConfirmedItemId?: string })?.lastConfirmedItemId;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lastTargetId = (aliasPickerStore as any as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lastAt = (aliasPickerStore as any as { lastConfirmedAt?: number | null })?.lastConfirmedAt;
     const isE2E = typeof window !== 'undefined' && window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
     const isEmpty = (textString ?? '').toString().trim().length === 0;
     if (lastTargetId && lastAt && Date.now() - lastAt < 2000) {
@@ -537,7 +580,9 @@ const aliasTargetIdEffective = $derived.by(() => {
         if (isE2E && isEmpty) return lastTargetId;
     }
     // Check pulse for recent confirmations
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((aliasLastConfirmedPulse as any) && (Date.now() - (aliasLastConfirmedPulse as any).at < 2000)) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((aliasLastConfirmedPulse as any).itemId === model.id) return (aliasLastConfirmedPulse as any).targetId;
     }
     return undefined;
@@ -560,7 +605,8 @@ const aliasTargetIdEffective = $derived.by(() => {
                 model.original.addAttachment(url);
             } catch {
                 // Fallback for cases where addAttachment is not available
-                try { (model.original as unknown as { attachments: string[][] }).attachments.push([url]); } catch {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                try { (model.original as any as { attachments: string[][] }).attachments.push([url]); } catch {}
             }
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
@@ -573,7 +619,8 @@ const aliasTargetIdEffective = $derived.by(() => {
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                         const cand = curPage.items.at?.(i) as { id?: string, addAttachment: (u: string) => void } | undefined;
                         if (cand && String(cand?.id) === String(mappedId)) {
-                            try { cand.addAttachment(url); } catch { try { (cand as unknown as { attachments: string[][] }).attachments.push([url]); } catch {} }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            try { cand.addAttachment(url); } catch { try { (cand as any as { attachments: string[][] }).attachments.push([url]); } catch {} }
                             try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {}
                             break;
                         }
@@ -585,7 +632,8 @@ const aliasTargetIdEffective = $derived.by(() => {
             try {
                 model.original.addAttachment(url);
             } catch {
-                try { (model.original as unknown as { attachments: string[][] }).attachments.push([url]); } catch {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                try { (model.original as any as { attachments: string[][] }).attachments.push([url]); } catch {}
             }
         }
 
@@ -616,7 +664,9 @@ function handleComponentTypeChange(newType: string) {
 
     const setMapField = (it: unknown , key: string, value: unknown) => {
         try {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             const tree = (it as any)?.tree;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             const nodeKey = (it as any)?.key;
             const m = tree?.getNodeValueFromKey?.(nodeKey);
             if (m && typeof m.set === "function") {
@@ -631,10 +681,12 @@ function handleComponentTypeChange(newType: string) {
     const value = newType === "none" ? undefined : newType;
     // Use setter preferentially if app-schema
     if (item && typeof item === "object" && "componentType" in item) {
-        try { (item as unknown as { componentType: string | undefined }).componentType = value; } catch {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        try { (item as any as { componentType: string | undefined }).componentType = value; } catch {}
     }
     // yjs-schema / fallback
-    setMapField(item as unknown as { tree?: unknown, key?: unknown }, "componentType", value);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setMapField(item as any as { tree?: unknown, key?: unknown }, "componentType", value);
     // Optimistically update local state so UI reflects the change without waiting for Yjs propagation
     componentType = value;
 }
@@ -646,7 +698,8 @@ let compTypeValue = $state<string | undefined>(undefined);
 onMount(() => {
     let unsubs: Array<() => void> = [];
     try {
-        const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyItem = item as any as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
         const tree = anyItem?.tree; const key = anyItem?.key;
         const m = tree?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
         const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
@@ -668,7 +721,8 @@ onMount(() => {
             h2();
         } else {
             // Fallback: direct acquisition
-            try { compTypeValue = (anyItem as unknown as { componentType?: string }).componentType; } catch {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            try { compTypeValue = (anyItem as any as { componentType?: string }).componentType; } catch {}
         }
     } catch {}
     return () => { for (const fn of unsubs) { try { fn(); } catch {} } };
@@ -998,9 +1052,12 @@ function toggleVote() {
 }
 
 function toggleComments() {
-    const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const gs = generalStore as any as { openCommentItemId?: string, openCommentItemIndex?: number };
     if (gs.openCommentItemId === model.id) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         (gs as any).openCommentItemId = undefined;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         (gs as any).openCommentItemIndex = undefined;
         try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
     } else {
@@ -1626,7 +1683,8 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
 
     // Get drop data (provide fallback for missing event.dataTransfer in Playwright isolated world)
-    const dt = (event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dt = (event as any as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null;
 
     // File drop (Support both DataTransfer.files and DataTransfer.items(kind=file), or E2E fallback)
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
@@ -1667,6 +1725,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         const url = await uploadAttachment(containerId, model.id, file);
                         
                         if (!dropTargetPosition || dropTargetPosition === "middle") {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                             addAttachmentToDomTargetOrModel((event as any) as DragEvent, url);
                             // Reflect to Doc after connection
                             try { mirrorAttachment(url); } catch {}
@@ -1684,7 +1743,8 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         try {
                             const localUrl = URL.createObjectURL(file);
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as unknown as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as any as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} }
                                 try { mirrorAttachment(localUrl); } catch {}
                                 // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
                                 try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
@@ -1704,7 +1764,8 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                 if (mappedId && curPage?.items) {
                                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                                         const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
-                                        if (cand && String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as unknown as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        if (cand && String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as any as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                                     }
                                 }
                             } catch {}
@@ -1719,6 +1780,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                         addAttachmentToDomTargetOrModel((event as any) as DragEvent, localUrl);
                         try { mirrorAttachment(localUrl); } catch {}
 
@@ -1745,9 +1807,12 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
     // Non-file drop (text or in-app data)
     try {
-        const plainText = ((event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
-        const selectionData = ((event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
-        const itemId = ((event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const plainText = ((event as any as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const selectionData = ((event as any as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const itemId = ((event as any as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
 
         // Fire drop event
         dispatch("drop", {
@@ -1802,17 +1867,25 @@ onMount(() => {
 
         if (displayRef) {
             displayForward = maybeForward;
-            displayRef.addEventListener('synthetic-drop', displayForward as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef.addEventListener('synthetic-drop', displayForward as any as EventListener, { capture: true } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef.addEventListener('drop', handleDrop as any as EventListener, { capture: true } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef.addEventListener('drop', handleDrop as any as EventListener, { capture: false } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef.addEventListener('dragover', handleDragOver as any as EventListener, { capture: true } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef.addEventListener('dragover', handleDragOver as any as EventListener, { capture: false } as AddEventListenerOptions);
         }
         if (itemRef) {
             itemForward = maybeForward;
-            itemRef.addEventListener('synthetic-drop', itemForward as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            itemRef.addEventListener('synthetic-drop', itemForward as any as EventListener, { capture: true } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            itemRef.addEventListener('drop', handleDrop as any as EventListener, { capture: true } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            itemRef.addEventListener('drop', handleDrop as any as EventListener, { capture: false } as AddEventListenerOptions);
         }
     } catch {}
     return () => {
@@ -1820,15 +1893,21 @@ onMount(() => {
             if (displayForward) {
                 displayRef?.removeEventListener?.('synthetic-drop', displayForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef?.removeEventListener?.('drop', handleDrop as any as EventListener, { capture: true } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef?.removeEventListener?.('drop', handleDrop as any as EventListener, { capture: false } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef?.removeEventListener?.('dragover', handleDragOver as any as EventListener, { capture: true } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef?.removeEventListener?.('dragover', handleDragOver as any as EventListener, { capture: false } as EventListenerOptions);
             if (itemForward) {
                 itemRef?.removeEventListener?.('synthetic-drop', itemForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            itemRef?.removeEventListener?.('drop', handleDrop as any as EventListener, { capture: true } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            itemRef?.removeEventListener?.('drop', handleDrop as any as EventListener, { capture: false } as EventListenerOptions);
         } catch {}
     };
 });
@@ -1857,11 +1936,16 @@ onMount(() => {
                     }
                 } catch {}
             };
-            if (!(anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__) {
-                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (!(anyWin as any as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (anyWin as any as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
             } else {
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const prev: any = (anyWin as any).__E2E_FORCE_HANDLE_DROP__;
-                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (anyWin as any as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
             }
 
             // E2E: Test-only helper to add attachment directly (deterministically reproduce final result of DnD)
@@ -1876,7 +1960,8 @@ onMount(() => {
                         try {
                             // Test environment immediate mirror update - attachmentsMirror is handled in OutlinerItemAttachments component
                             // if (IS_TEST) {
-                            //     const arr: unknown[][] = ((model?.original as unknown)?.attachments?.toArray?.() ?? []);
+
+                            //     const arr: unknown[][] = ((model?.original as any)?.attachments?.toArray?.() ?? []);
                             //     if (arr.length > 0) {
                             //         attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
                             //     }
@@ -1886,11 +1971,16 @@ onMount(() => {
                     }
                 } catch {}
             };
-            if (!(anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__) {
-                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (!(anyWin as any as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (anyWin as any as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
             } else {
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const prevAdd: any = (anyWin as any).__E2E_ADD_ATTACHMENT__;
-                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (anyWin as any as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
             }
         }
 
@@ -1909,12 +1999,18 @@ onMount(() => {
 
 onMount(() => {
     try {
-        displayRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-        displayRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-        displayRef?.addEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-        displayRef?.addEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-        itemRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-        itemRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        displayRef?.addEventListener?.('drop', handleDrop as any as EventListener, { capture: true } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        displayRef?.addEventListener?.('drop', handleDrop as any as EventListener, { capture: false } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        displayRef?.addEventListener?.('dragover', handleDragOver as any as EventListener, { capture: true } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        displayRef?.addEventListener?.('dragover', handleDragOver as any as EventListener, { capture: false } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        itemRef?.addEventListener?.('drop', handleDrop as any as EventListener, { capture: true } as AddEventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        itemRef?.addEventListener?.('drop', handleDrop as any as EventListener, { capture: false } as AddEventListenerOptions);
     } catch {}
 
     // E2E file drop support removed - use proper Playwright file drop API instead
@@ -1924,12 +2020,18 @@ onMount(() => {
 
     return () => {
         try {
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef?.removeEventListener?.('drop', handleDrop as any as EventListener, { capture: true } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef?.removeEventListener?.('drop', handleDrop as any as EventListener, { capture: false } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef?.removeEventListener?.('dragover', handleDragOver as any as EventListener, { capture: true } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            displayRef?.removeEventListener?.('dragover', handleDragOver as any as EventListener, { capture: false } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            itemRef?.removeEventListener?.('drop', handleDrop as any as EventListener, { capture: true } as EventListenerOptions);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            itemRef?.removeEventListener?.('drop', handleDrop as any as EventListener, { capture: false } as EventListenerOptions);
         } catch {}
         try { if (e2eTimer) clearInterval(e2eTimer); } catch {}
     };
@@ -2007,11 +2109,15 @@ export function setSelectionPosition(start: number, end: number = start) {
     data-item-id={model.id}
     data-active={isItemActive}
     data-alias-target-id={
-        [ (aliasPickerStore as unknown as { tick?: unknown })?.tick,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [ (aliasPickerStore as any as { tick?: unknown })?.tick,
           (aliasTargetIdEffective
-            || (((aliasPickerStore as unknown as { lastConfirmedItemId?: string })?.lastConfirmedItemId === model.id)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            || (((aliasPickerStore as any as { lastConfirmedItemId?: string })?.lastConfirmedItemId === model.id)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                 && (aliasPickerStore as any)?.lastConfirmedTargetId)
             || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             || "") ][1] as any
     }
 >
@@ -2077,8 +2183,10 @@ export function setSelectionPosition(start: number, end: number = start) {
                     class="item-text"
                     class:title-text={isPageTitle}
                     class:formatted={hasFormatting}
-                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as { updateText?: (t: string) => void })?.updateText?.(t); } catch {} }}
-                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as { updateText?: (t: string) => void })?.updateText?.(t); } catch {} }}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any as { updateText?: (t: string) => void })?.updateText?.(t); } catch {} }}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as any as { updateText?: (t: string) => void })?.updateText?.(t); } catch {} }}
                 >
                     <!-- XSS-safe: formattedHtml is derived from ScrapboxFormatter methods which escape HTML -->
                     <!-- eslint-disable-next-line svelte/no-at-html-tags -->

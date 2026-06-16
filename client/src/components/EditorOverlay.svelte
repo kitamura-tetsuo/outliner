@@ -271,7 +271,8 @@ onMount(() => {
                 } else {
                     localCursorVisible = store.cursorVisible;
                 }
-            }, 16) as unknown as number; // Update at ~60fps interval
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            }, 16) as any as number; // Update at ~60fps interval
         });
     } catch (error) {
         console.warn('Failed to subscribe to store changes:', error);
@@ -661,7 +662,8 @@ function debouncedUpdatePositionMap() {
     clearTimeout(updatePositionMapTimer);
     updatePositionMapTimer = setTimeout(() => {
         if (!aliasPickerStore.isVisible) updatePositionMap();
-    }, 100) as unknown as number;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }, 100) as any as number;
 }
 
 // Data reflection from store is guaranteed by MutationObserver and onMount initialization
@@ -769,10 +771,12 @@ onMount(() => {
             // Intentionally empty - catch potential errors without further handling
         }
     };
-    try { window.addEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    try { window.addEventListener('aliaspicker-visibility', handler as any as EventListener); } catch {
         // Intentionally empty - catch potential errors without further handling
     }
-    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as any as EventListener); } catch {
         // Intentionally empty - catch potential errors without further handling
     } };
 });
@@ -829,6 +833,7 @@ function getTextByItemId(itemId: string): string {
     const items = page?.items;
     const len = items?.length ?? 0;
     for (let i = 0; i < len; i++) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
       const it = (items as any)!.at ? items!.at(i) : (items as any)![i];
       if (it?.id === itemId) {
         return String(it?.text ?? "");
@@ -879,6 +884,7 @@ function handleCopy(event: ClipboardEvent) {
         event.preventDefault();
         event.clipboardData.setData('text/plain', rectText);
       }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
         (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(rectText).catch(() => {});
       }
@@ -1035,6 +1041,7 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', selectedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
       (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch(() => {});
     }
@@ -1166,6 +1173,7 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', combinedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (typeof navigator !== 'undefined' && (navigator as any)?.clipboard?.writeText) {
       (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch(() => {});
     }

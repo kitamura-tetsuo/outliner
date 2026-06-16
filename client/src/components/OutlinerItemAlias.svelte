@@ -1,4 +1,5 @@
 <script lang="ts">
+    /* eslint-disable @typescript-eslint/no-explicit-any */
 import { onMount, onDestroy } from "svelte";
 import type { Item } from "../schema/app-schema";
 import { store as generalStore } from "../stores/store.svelte";

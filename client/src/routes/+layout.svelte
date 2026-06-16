@@ -192,6 +192,7 @@ onMount(async () => {
         }
 
         // Check authentication status
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
         isAuthenticated = (userManager as any)?.getCurrentUser() !== null;
 
         if (isAuthenticated) {
@@ -240,22 +241,35 @@ onMount(async () => {
                                     bubbles: true,
                                     cancelable: true,
                                 } as DragEventInit);
-                                try { Object.defineProperty(de, 'dataTransfer', { value: (event as unknown as { dataTransfer: DataTransfer }).dataTransfer, configurable: true }); } catch {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                try { Object.defineProperty(de, 'dataTransfer', { value: (event as any as { dataTransfer: DataTransfer }).dataTransfer, configurable: true }); } catch {}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 try { (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_LAYOUT_MOUNTED__?: boolean, __E2E_DROP_PATCHED__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, __E2E_DROP_HANDLERS__?: ((this: unknown, e: Event) => void)[], __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown }).__E2E_DROP_HANDLERS__?.forEach((fn: any) => { try { fn(this, de); } catch {} }); } catch {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 return orig.call(this, de as any) as boolean;
                             }
                         } catch {}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                         try { if (event && event.type === 'drop') { (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_LAYOUT_MOUNTED__?: boolean, __E2E_DROP_PATCHED__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, __E2E_DROP_HANDLERS__?: ((this: unknown, e: Event) => void)[], __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown }).__E2E_DROP_HANDLERS__?.forEach((fn: any) => { try { fn(this, event); } catch {} }); } } catch {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                         return orig.call(this, event as any) as boolean;
                     };
 
                     // Patch both EventTarget and Element to maximize coverage
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                                         EventTarget.prototype.dispatchEvent = function(event: Event): boolean { return wrap.call(this, origDispatchEventTarget as any, event); };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                     Element.prototype.dispatchEvent = function(event: any): boolean { return wrap.call(this, origDispatchElement as any, event); };
 
                     console.log('[E2E] Patched EventTarget.prototype.dispatchEvent and Element.prototype.dispatchEvent for drop events');
                     try {
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                         window.addEventListener('drop', (e: any) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                             try { console.log('[E2E] window drop listener:', { type: e?.type, isDragEvent: e instanceof DragEvent, hasDT: !!(e as any)?.dataTransfer, dtTypes: (e as any)?.dataTransfer?.types }); } catch {}
                         }, true);
                     } catch {}
@@ -264,7 +278,8 @@ onMount(async () => {
                     try {
                         const anyWin = window as Window & typeof globalThis & { __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown };
                         anyWin.__E2E_LAST_FILES__ = [] as File[];
-                        const itemsProto = (typeof DataTransferItemList !== "undefined" ? DataTransferItemList as unknown as { prototype: { add?: (data: unknown, type?: string) => void } } : undefined)?.prototype;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const itemsProto = (typeof DataTransferItemList !== "undefined" ? DataTransferItemList as any as { prototype: { add?: (data: unknown, type?: string) => void } } : undefined)?.prototype;
                         if (itemsProto && !anyWin.__E2E_DT_ADD_PATCHED__) {
                             anyWin.__E2E_DT_ADD_PATCHED__ = true;
                             const origAdd = itemsProto.add;
@@ -281,10 +296,12 @@ onMount(async () => {
 
                         // Getter hook: Wrap DataTransfer.prototype.items getter to proxy add
                         try {
-                            const desc = Object.getOwnPropertyDescriptor(DataTransfer.prototype as unknown as { items: unknown }, "items");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const desc = Object.getOwnPropertyDescriptor(DataTransfer.prototype as any as { items: unknown }, "items");
                             if (desc && typeof desc.get === 'function' && !anyWin.__E2E_DT_ITEMS_GETTER_PATCHED__) {
                                 anyWin.__E2E_DT_ITEMS_GETTER_PATCHED__ = true;
-                                Object.defineProperty(DataTransfer.prototype as unknown as { items: unknown }, "items", {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                Object.defineProperty(DataTransfer.prototype as any as { items: unknown }, "items", {
                                     configurable: true,
                                     enumerable: true,
                                     get: function() {
@@ -292,11 +309,14 @@ onMount(async () => {
                                         try {
                                             if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
                                                 const orig = list.add;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 list.add = function(this: any, data: unknown, _type?: string) {
                                                     try { if (data instanceof File) anyWin.__E2E_LAST_FILES__?.push(data); } catch {}
                                                     return orig.apply(this, [data, _type]);
                                                 } as (...args: unknown[]) => void;
-                                                (list as unknown as { __e2eAddPatched: boolean }).__e2eAddPatched = true;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                (list as any as { __e2eAddPatched: boolean }).__e2eAddPatched = true;
                                                 try { console.log('[E2E] Patched DT.items.add via getter'); } catch {}
                                             }
                                         } catch {}
@@ -312,6 +332,8 @@ onMount(async () => {
                             const OrigFile = (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_LAYOUT_MOUNTED__?: boolean, __E2E_DROP_PATCHED__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, __E2E_DROP_HANDLERS__?: ((this: unknown, e: Event) => void)[], __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown }).File;
                             if (OrigFile) {
                                 const Wrapped = new Proxy(OrigFile, {
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     construct(target: any, args: unknown[]) {
                                         const f = new target(...args);
                                         try { anyWin.__E2E_LAST_FILES__?.push(f); } catch {}
@@ -330,18 +352,24 @@ onMount(async () => {
                             const OrigDT = (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_LAYOUT_MOUNTED__?: boolean, __E2E_DROP_PATCHED__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, __E2E_DROP_HANDLERS__?: ((this: unknown, e: Event) => void)[], __E2E_LAST_FILES__?: File[], __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, File?: unknown, DataTransfer?: unknown, DataTransferItemList?: unknown }).DataTransfer;
                             if (OrigDT) {
                                 const WrappedDT = new Proxy(OrigDT, {
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     construct(target: any, args: unknown[]) {
                                         const dt = new target(...args);
                                         try {
-                                            const list = (dt as unknown as { items: { add?: (d: unknown, t?: string) => void, __e2eAddPatched?: boolean } }).items;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            const list = (dt as any as { items: { add?: (d: unknown, t?: string) => void, __e2eAddPatched?: boolean } }).items;
                                             if (list && typeof list.add === 'function' && !list.__e2eAddPatched) {
                                                 const origAdd = list.add;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 list.add = function(this: any, data: unknown, _type?: string) {
                                                     try { if (data instanceof File) anyWin.__E2E_LAST_FILES__?.push(data); } catch {}
                                                     try { console.log('[E2E] DT(instance).items.add called'); } catch {}
                                                     return origAdd.apply(this, [data, _type]);
                                                 } as (...args: unknown[]) => void;
-                                                (list as unknown as { __e2eAddPatched: boolean }).__e2eAddPatched = true;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                (list as any as { __e2eAddPatched: boolean }).__e2eAddPatched = true;
                                             }
                                         } catch {}
                                         return dt;
