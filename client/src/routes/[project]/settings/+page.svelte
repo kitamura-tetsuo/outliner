@@ -98,7 +98,7 @@
 
         // Try to get project from yjsStore first, then from store if Yjs fails
         if (!project) {
-            project = (yjsStore.yjsClient?.getProject() ||
+            project = (yjsStore.yjsClient?.getProject() as unknown as Project ||
                 store.project);
         }
         hydrateFromSnapshotIfNeeded();
@@ -208,7 +208,7 @@
             const firstPage = items.at ? items.at(0) : items[0];
             const text = firstPage
                 ? typeof firstPage.text === "function"
-                    ? firstPage.text()
+                    ? (firstPage.text as unknown as () => string)()
                     : (firstPage.text?.toString?.() ??
                       String(firstPage.text ?? ""))
                 : "";
@@ -261,7 +261,7 @@
                 try {
                     pageName =
                         typeof firstPage.text === "function"
-                            ? firstPage.text()
+                            ? (firstPage.text as unknown as () => string)()
                             : (firstPage.text?.toString?.() ??
                               String(firstPage.text ?? ""));
                 } catch {
