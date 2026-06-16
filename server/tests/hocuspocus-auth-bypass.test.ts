@@ -93,9 +93,20 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
                 reject(new Error("Should NOT have synced! Vulnerability exists if this passes."));
             });
 
-            provider.on("disconnect", (data) => {
-                resolve();
+            provider.on("status", (data: any) => {
+                if (data.status === "disconnected") {
+                    resolve();
+                }
             });
+
+            // Handle the unhandled exception thrown in tests by the mocked WebSocket
+            // when it closes during CONNECTING phase (readyState 0).
+            const ws = (provider as any).configuration.websocketProvider?.webSocket;
+            if (ws) {
+                ws.addEventListener("error", (e: any) => {
+                    resolve();
+                });
+            }
         });
 
         provider.destroy();
@@ -109,13 +120,22 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
         });
 
         await new Promise<void>((resolve, reject) => {
-            provider.on("disconnect", (data) => {
-                resolve();
+            provider.on("status", (data: any) => {
+                if (data.status === "disconnected") {
+                    resolve();
+                }
             });
 
             provider.on("synced", () => {
                 reject(new Error("Should not have synced!"));
             });
+
+            const ws = (provider as any).configuration.websocketProvider?.webSocket;
+            if (ws) {
+                ws.addEventListener("error", (e: any) => {
+                    resolve();
+                });
+            }
         });
 
         provider.destroy();
