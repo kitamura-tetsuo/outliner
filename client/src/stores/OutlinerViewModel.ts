@@ -177,7 +177,9 @@ export class OutlinerViewModel {
                 id: item.id,
                 original: item,
                 text: item.text.toString(),
-                votes: ((((item as any).votes || []) as string[]).filter(v => v !== undefined) as string[]).map(String) as string[], // force string[]
+                votes: ((((item as any).votes || []) as string[]).filter(v => v !== undefined) as string[]).map(
+                    String,
+                ) as string[], // force string[]
                 author: ((item as unknown as { author?: string; }).author || "") as string,
                 created: (item as unknown as { created?: number; }).created as number,
                 lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged as number,
