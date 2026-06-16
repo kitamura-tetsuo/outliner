@@ -178,8 +178,16 @@ export class YjsClient {
 
     public getDebugInfo() {
         const provider = this._provider as unknown as {
-            disconnect?: () => void; url?: string; name?: string; connected?: boolean;
-            configuration?: { token: string | (() => string | Promise<string>); websocketProvider?: any; url?: string; name?: string; };
+            disconnect?: () => void;
+            url?: string;
+            name?: string;
+            connected?: boolean;
+            configuration?: {
+                token: string | (() => string | Promise<string>);
+                websocketProvider?: any;
+                url?: string;
+                name?: string;
+            };
         };
         const config = provider?.configuration;
         const wsProvider = config?.websocketProvider;
