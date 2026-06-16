@@ -1,5 +1,5 @@
 import { getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+import { DecodedIdToken, getAuth } from "firebase-admin/auth";
 import type { IncomingMessage } from "http";
 import { getServiceAccount } from "./firebase-init.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
@@ -16,7 +16,7 @@ if (!getApps().length) {
 }
 
 interface CacheEntry {
-    decoded: import("firebase-admin/auth").DecodedIdToken;
+    decoded: DecodedIdToken;
     exp: number;
 }
 
@@ -53,7 +53,7 @@ export function extractAuthToken(req: IncomingMessage): string | undefined {
     }
 }
 
-export async function verifyIdTokenCached(token: string): Promise<import("firebase-admin/auth").DecodedIdToken> {
+export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken> {
     const now = Date.now();
     pruneExpiredTokens(now);
     const cached = tokenCache.get(token);
@@ -83,7 +83,7 @@ export async function verifyIdTokenCached(token: string): Promise<import("fireba
             if (parts.length < 2) throw new Error("Invalid token format");
             const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
             // Mock decoded token structure
-            const decoded: import("firebase-admin/auth").DecodedIdToken = {
+            const decoded: DecodedIdToken = {
                 ...payload,
                 uid: payload.user_id || payload.sub || "test-user",
                 aud: payload.aud || "test-project",

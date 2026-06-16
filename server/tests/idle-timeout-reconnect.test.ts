@@ -7,7 +7,9 @@ import WebSocket from "ws";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 import "ts-node/register";
-import admin from "firebase-admin";
+import { getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 import { Server } from "http";
 import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
@@ -36,7 +38,7 @@ describe("idle timeout", () => {
     it("disconnects idle clients and preserves state on reconnect", async () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ydb-"));
         const port = 15000 + Math.floor(Math.random() * 1000);
-        sinon.stub(admin.auth(), "verifyIdToken").resolves({
+        sinon.stub(getAuth(), "verifyIdToken").resolves({
             uid: "user",
             exp: Math.floor(Date.now() / 1000) + 60,
             aud: "your-firebase-project-id",

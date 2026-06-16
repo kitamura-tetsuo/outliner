@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import { once } from "events";
-import admin from "firebase-admin";
+import { getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs-extra";
 import http from "http";
 import os from "os";
@@ -44,7 +46,7 @@ describe("metrics endpoint", () => {
 
     it("reports message count", async () => {
         dbDir = fs.mkdtempSync(path.join(os.tmpdir(), "metrics-test-"));
-        sinon.stub(admin.auth(), "verifyIdToken").resolves(
+        sinon.stub(getAuth(), "verifyIdToken").resolves(
             { uid: "user", exp: Math.floor(Date.now() / 1000) + 60 } as any,
         );
         const cfg = loadConfig({ PORT: "12348", LOG_LEVEL: "silent", DATABASE_PATH: dbDir });

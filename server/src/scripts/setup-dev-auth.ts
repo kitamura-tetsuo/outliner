@@ -1,13 +1,12 @@
 // Development environment authentication setup script
 import "dotenv/config";
 import { cert, getApps, initializeApp, ServiceAccount } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { UserRecord } from "firebase-admin/auth";
+import { getAuth, UserRecord } from "firebase-admin/auth";
 import { fileURLToPath } from "url";
 import { serverLogger as logger } from "../utils/log-manager.js";
 
 // Initialize Firebase Admin SDK
-export async function initializeFirebase() {
+export async function initializeFirebase(): Promise<any> {
     try {
         // Check if already initialized
         if (getApps().length === 0) {
@@ -29,7 +28,7 @@ export async function initializeFirebase() {
             logger.info("Firebase Admin SDK already initialized");
         }
 
-        return true;
+        return { auth: getAuth };
     } catch (error) {
         logger.error({ error: error }, "Firebase initialization error");
         throw error;
@@ -39,7 +38,7 @@ export async function initializeFirebase() {
 // Create or retrieve test user
 export async function setupTestUser(): Promise<UserRecord> {
     try {
-        await initializeFirebase();
+        const adminInstance = await initializeFirebase();
         const auth = getAuth();
 
         const testEmail = "test@example.com";
