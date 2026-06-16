@@ -323,9 +323,10 @@ export class KeyEventHandler {
         const tgt = (event.target as any)?.tagName || typeof (event.target as any)?.nodeName === "string"
             ? (event.target as any).nodeName
             : typeof event.target;
-        const ae = (document.activeElement as any)?.tagName || typeof (document.activeElement as any)?.nodeName === "string"
-            ? (document.activeElement as any).nodeName
-            : typeof document.activeElement;
+        const ae =
+            (document.activeElement as any)?.tagName || typeof (document.activeElement as any)?.nodeName === "string"
+                ? (document.activeElement as any).nodeName
+                : typeof document.activeElement;
         console.log(`KeyEventHandler.handleKeyDown: target=${tgt}, active=${ae}`);
         console.log(`Current cursor instances: ${cursorInstances.length}`);
 
@@ -498,7 +499,10 @@ export class KeyEventHandler {
                                 (newItem as any).text = "";
                                 (newItem as any).aliasTargetId = undefined;
                                 try {
-                                    console.log("KeyEventHandler(Palette): showing AliasPicker for", (newItem as any).id);
+                                    console.log(
+                                        "KeyEventHandler(Palette): showing AliasPicker for",
+                                        (newItem as any).id,
+                                    );
                                 } catch {}
                                 {
                                     const w: unknown = typeof window !== "undefined"
@@ -1157,16 +1161,16 @@ export class KeyEventHandler {
                     && (navigator as any)?.clipboard?.writeText
                 ) {
                     (navigator as any).clipboard.writeText(selectedText).catch((err: unknown) => {
-                            if (
-                                typeof window !== "undefined"
-                                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
-                            ) {
-                                console.error(
-                                    `navigator.clipboard.writeText failed in handleCopy:`,
-                                    err,
-                                );
-                            }
-                        });
+                        if (
+                            typeof window !== "undefined"
+                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        ) {
+                            console.error(
+                                `navigator.clipboard.writeText failed in handleCopy:`,
+                                err,
+                            );
+                        }
+                    });
                 }
 
                 // Fallback: Copy using execCommand
@@ -1904,7 +1908,9 @@ export class KeyEventHandler {
                 !text && typeof window !== "undefined"
                 && (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText
             ) {
-                text = String((window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText || "");
+                text = String(
+                    (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText || "",
+                );
                 console.log(`Using text from global variable: "${text}"`);
             }
 
@@ -2329,16 +2335,16 @@ export class KeyEventHandler {
                     && (navigator as any)?.clipboard?.writeText
                 ) {
                     (navigator as any).clipboard.writeText(selectedText).catch((err: unknown) => {
-                            if (
-                                typeof window !== "undefined"
-                                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
-                            ) {
-                                console.error(
-                                    `navigator.clipboard.writeText failed in handleCut:`,
-                                    err,
-                                );
-                            }
-                        });
+                        if (
+                            typeof window !== "undefined"
+                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        ) {
+                            console.error(
+                                `navigator.clipboard.writeText failed in handleCut:`,
+                                err,
+                            );
+                        }
+                    });
                 }
 
                 // Fallback: Copy using execCommand
