@@ -1205,7 +1205,7 @@ export class Cursor implements CursorEditingContext {
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;
-        while (item.items && (item.items as Items).length > 0) {
+        if (item.items && (item.items as Items).length > 0) {
             item = (item.items as Items).at(0)!;
         }
         this.itemId = item.id;
