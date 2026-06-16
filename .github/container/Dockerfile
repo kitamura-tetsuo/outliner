@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.60.0-jammy
+FROM mcr.microsoft.com/playwright:v1.61.0-jammy
 
 # Install Java and OS utilities
 RUN apt-get update && \

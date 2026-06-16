@@ -151,7 +151,8 @@ onMount(async () => {
                 hasProject,
                 hasCurrentPage,
                 projectHasItems,
-                currentPageTitle: (gs?.currentPage as unknown as import("../../../../schema/app-schema").Item)?.text?.toString?.() ?? "",
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                currentPageTitle: (gs?.currentPage as any)?.text?.toString?.() ?? "",
             });
             break;
         }
@@ -204,16 +205,18 @@ onMount(async () => {
 
         // First check store.project.items (more reliable after reload)
         try {
-            const projAny = store.project as unknown as import("../../../../schema/app-schema").Project;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const projAny = store.project as any;
             if (projAny?.items) {
-                const projItems = projAny.items as unknown as { length?: number; at?: (i: number) => import("../../../../schema/app-schema").Item; [key: number]: import("../../../../schema/app-schema").Item } | undefined;
+                const projItems = projAny.items;
                 const projLen = projItems?.length ?? 0;
                 console.log("Schedule page: Checking session pageId in store.project.items", {
                     sessionPageId: sessionPinnedPageId,
                     projectItemsCount: projLen
                 });
                 for (let i = 0; i < projLen; i++) {
-                    const p = projItems?.at ? projItems.at(i) : projItems?.[i];
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const p = (projItems as any)?.at ? (projItems as any).at(i) : (projItems as any)[i];
                     if (!p) continue;
                     const pId = String(p.id);
                     const match = pId === String(sessionPinnedPageId);
@@ -310,7 +313,8 @@ onMount(async () => {
                 if (!p) continue;
                 const title = p.text?.toString?.() ?? "";
                 if (title.toLowerCase() === pageTitle.toLowerCase()) {
-                    foundPageRef = p as unknown as import("../../../../schema/app-schema").Item;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    foundPageRef = p as any;
                     break;
                 }
             }
@@ -319,13 +323,15 @@ onMount(async () => {
         // Also check store.project.items directly
         if (!foundPageRef) {
             try {
-                const projAny = store.project as unknown as import("../../../../schema/app-schema").Project;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const projAny = store.project as any;
                 if (projAny && typeof projAny.findPage === "function") {
                     // Try to find page by iterating through project items
-                    const projItems = projAny.items as unknown as { length?: number; at?: (i: number) => import("../../../../schema/app-schema").Item; [key: number]: import("../../../../schema/app-schema").Item } | undefined;
+                    const projItems = projAny.items;
                     const projLen = projItems?.length ?? 0;
                     for (let i = 0; i < projLen; i++) {
-                        const p = projItems?.at ? projItems.at(i) : projItems?.[i];
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const p = (projItems as any)?.at ? (projItems as any).at(i) : (projItems as any)[i];
                         if (!p) continue;
                         const title = p.text?.toString?.() ?? "";
                         if (title.toLowerCase() === pageTitle.toLowerCase()) {

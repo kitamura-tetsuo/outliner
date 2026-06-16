@@ -1,11 +1,11 @@
+import { Hocuspocus } from "@hocuspocus/server";
 import express from "express";
 import * as Y from "yjs";
-import { YTree } from "yjs-orderedtree";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 
-type HocuspocusInstance = any;
+type HocuspocusInstance = Hocuspocus;
 
 const DEMO_PROJECT_ID = "demo";
 const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -83,13 +83,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                     });
-
-                    // If the orderedTree was completely empty (e.g. new document), it lacks the 'root' key
-                    // which fromDoc/YTree requires. Initialize it sequentially.
-                    const ydocForInit = doc as unknown as Y.Doc;
-                    if (!ydocForInit.getMap("orderedTree").has("root")) {
-                        new YTree(ydocForInit.getMap("orderedTree"));
-                    }
 
                     // Initialize Project *after* the clear transaction so it has a clean slate.
                     const project = Project.fromDoc(doc as unknown as Y.Doc);
