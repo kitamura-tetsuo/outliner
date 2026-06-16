@@ -148,44 +148,44 @@ export function createSeedRouter(
                     if (!metadata.get("title")) {
                         metadata.set("title", projectName);
                     }
-
-                    // Create Project wrapper for YTree access
-                    const project = Project.fromDoc(ydoc);
-                    const items = project.items; // Items wrapper for YTree
-
-                    // Create pages and add content
-                    for (const pageData of pages) {
-                        logger.info({ event: "seed_page", pageName: pageData.name });
-
-                        // Create page node directly in the YTree
-                        const page = project.addPage(pageData.name, "seed-server");
-
-                        // Add content items (lines) as children of the page
-                        if (pageData.lines && pageData.lines.length > 0) {
-                            const pageItems = page.items;
-
-                            for (const line of pageData.lines) {
-                                const item = pageItems.addNode("seed-server");
-                                item.text = line;
-                            }
-
-                            logger.info({
-                                event: "seed_items_added",
-                                pageName: pageData.name,
-                                itemCount: pageData.lines.length,
-                            });
-                        }
-                    }
                 });
+
+                // Create Project wrapper for YTree access outside the transaction
+                // because yjs-orderedtree relies on synchronous observeDeep callbacks
+                // which are suspended during a transaction.
+                const project = Project.fromDoc(doc as unknown as Y.Doc);
+
+                // Create pages and add content
+                for (const pageData of pages) {
+                    logger.info({ event: "seed_page", pageName: pageData.name });
+
+                    // Create page node directly in the YTree
+                    const page = project.addPage(pageData.name, "seed-server");
+
+                    // Add content items (lines) as children of the page
+                    if (pageData.lines && pageData.lines.length > 0) {
+                        const pageItems = page.items;
+
+                        for (const line of pageData.lines) {
+                            const item = pageItems.addNode("seed-server");
+                            item.text = line;
+                        }
+
+                        logger.info({
+                            event: "seed_items_added",
+                            pageName: pageData.name,
+                            itemCount: pageData.lines.length,
+                        });
+                    }
+                }
 
                 logger.info({ event: "seed_complete", projectName, pageCount: pages.length });
                 res.json({ success: true, projectName, pageCount: pages.length });
 
-                // Keep the connection open to allow clients to connect and sync
-                // The document will be properly managed by Hocuspocus
-                // We don't disconnect immediately to ensure the document stays in memory
-                // for when the client connects
-                logger.info({ event: "seed_connection_kept_open", projectRoom });
+                // Disconnect to trigger Hocuspocus persistence correctly
+                // With @hocuspocus/server 4.2.0, disconnect() takes { unloadImmediately: false }
+                // but since the typings are 'any', we can just await it.
+                await directConnection.disconnect();
             } catch (transactError: any) {
                 // If transaction fails, disconnect the connection
                 await directConnection.disconnect();

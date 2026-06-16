@@ -1,5 +1,4 @@
 import { Logger } from "@hocuspocus/extension-logger";
-console.log("DEBUG: LOADING server/src/server.ts");
 import { Hocuspocus, Server } from "@hocuspocus/server";
 import cors from "cors";
 import express from "express";
@@ -207,7 +206,9 @@ export async function startServer(
         extensions: extensions as any[],
         debounce: 500,
         async onConnect(data: any) {
-            console.log(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${data.request.socket.remoteAddress}`);
+            const ip = data.context?.ip || data.requestHeaders.get("x-forwarded-for")
+                || data.request.socket?.remoteAddress || "unknown";
+            console.log(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
         },
         async onAuthenticate(data: any) {
             // Perform async auth (token verification + access check) HERE inside the Hocuspocus hook.
@@ -215,6 +216,7 @@ export async function startServer(
             // after the WS handshake, and if we await async operations first the message would be lost
             // (no listener registered yet), causing a 30-second timeout.
             const request = data.request;
+            const requestHeaders = data.requestHeaders;
             const token = data.token || extractAuthToken(request);
             console.log(
                 `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${
@@ -402,46 +404,56 @@ export async function startServer(
                 return rejectSync(4006, "MAX_SOCKETS_PER_ROOM");
             }
 
-            // 6. Update counters and register WS event listeners
+            // 6. Update counters
             totalSockets++;
             ipCounts.set(ip, (ipCounts.get(ip) ?? 0) + 1);
             roomCounts.set(documentName, (roomCounts.get(documentName) ?? 0) + 1);
             logger.info({ event: "ws_connection_accepted", room: documentName });
 
-            ws.on("message", (data: any) => {
-                recordMessage();
-                const len = data.byteLength || data.length || 0;
-                if (len > config.MAX_MESSAGE_SIZE_BYTES) {
-                    logger.warn({
-                        event: "ws_connection_closed",
-                        reason: "message_too_large",
-                        size: len,
-                        documentName,
-                    });
-                    ws.close(4005, "MESSAGE_TOO_LARGE");
-                }
-            });
-
-            ws.on("close", () => {
-                totalSockets--;
-                if (totalSockets < 0) totalSockets = 0;
-                if (ip) {
-                    const count = (ipCounts.get(ip) ?? 1) - 1;
-                    if (count <= 0) ipCounts.delete(ip);
-                    else ipCounts.set(ip, count);
-                }
-                if (documentName) {
-                    const count = (roomCounts.get(documentName) ?? 1) - 1;
-                    if (count <= 0) roomCounts.delete(documentName);
-                    else roomCounts.set(documentName, count);
-                }
-            });
-
             // 7. Immediately hand over to Hocuspocus with minimal initial context (ip only).
             //    Async auth (token verification + access check) is done in onAuthenticate hook.
             try {
-                console.log(`[server] Handover to Hocuspocus: room=${documentName}, ip=${ip}`);
-                hocuspocus.handleConnection(ws, request, { ip });
+                // Convert Node IncomingMessage to web-standard Request for Hocuspocus 4
+                const protocol = request.headers["x-forwarded-proto"] || "http";
+                const host = request.headers.host || "localhost";
+                const webRequest = new Request(new URL(request.url || "/", `${protocol}://${host}`).toString(), {
+                    headers: request.headers as any,
+                    method: request.method,
+                });
+
+                const clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip });
+
+                ws.on("message", (data: any) => {
+                    recordMessage();
+                    const len = data.byteLength || data.length || 0;
+                    if (len > config.MAX_MESSAGE_SIZE_BYTES) {
+                        logger.warn({
+                            event: "ws_connection_closed",
+                            reason: "message_too_large",
+                            size: len,
+                            documentName,
+                        });
+                        ws.close(4005, "MESSAGE_TOO_LARGE");
+                        return;
+                    }
+                    clientConnection.handleMessage(data);
+                });
+
+                ws.on("close", (code: number, reason: Buffer) => {
+                    totalSockets--;
+                    if (totalSockets < 0) totalSockets = 0;
+                    if (ip) {
+                        const count = (ipCounts.get(ip) ?? 1) - 1;
+                        if (count <= 0) ipCounts.delete(ip);
+                        else ipCounts.set(ip, count);
+                    }
+                    if (documentName) {
+                        const count = (roomCounts.get(documentName) ?? 1) - 1;
+                        if (count <= 0) roomCounts.delete(documentName);
+                        else roomCounts.set(documentName, count);
+                    }
+                    clientConnection.handleClose({ code, reason: reason.toString() });
+                });
             } catch (e) {
                 /* eslint-disable-next-line no-console */ console.error("Error handling Hocuspocus connection:", e);
                 ws.close(1011);
