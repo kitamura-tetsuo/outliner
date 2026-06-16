@@ -199,7 +199,7 @@
             const firstPage = items.at ? items.at(0) : items[0];
             const text = firstPage
                 ? typeof firstPage.text === "function"
-                    ? (firstPage.text as unknown as Function)()
+                    ? (firstPage.text as unknown as () => string)()
                     : (firstPage.text?.toString?.() ??
                       String(firstPage.text ?? ""))
                 : "";
@@ -250,7 +250,7 @@
                 try {
                     pageName =
                         typeof firstPage.text === "function"
-                            ? (firstPage.text as unknown as Function)()
+                            ? (firstPage.text as unknown as () => string)()
                             : (firstPage.text?.toString?.() ??
                               String(firstPage.text ?? ""));
                 } catch {
