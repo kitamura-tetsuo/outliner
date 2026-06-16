@@ -1,5 +1,14 @@
+/* eslint-disable no-unused-vars */
 const { describe, it, expect, afterAll, beforeEach } = require("@jest/globals");
-const admin = require("firebase-admin");
+const { getApps, getApp, initializeApp, deleteApp } = require(
+  "firebase-admin/app",
+);
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
+const adminAuth = require("firebase-admin/auth");
+const adminFirestore = require("firebase-admin/firestore");
+const adminStorage = require("firebase-admin/storage");
 const functions = require("firebase-functions-test")();
 
 // Mock dependencies
@@ -17,7 +26,7 @@ mockBucket.file.mockReturnValue(mockFile);
 mockFile.save.mockResolvedValue();
 
 // Mock admin.storage
-jest.spyOn(admin, "storage").mockReturnValue({
+jest.spyOn(adminStorage, "getStorage").mockReturnValue({
   bucket: jest.fn().mockReturnValue(mockBucket),
 });
 
@@ -26,7 +35,7 @@ const mockAuth = {
   verifyIdToken: jest.fn().mockResolvedValue({ uid: "test-user" }),
   getUser: jest.fn(),
 };
-jest.spyOn(admin, "auth").mockReturnValue(mockAuth);
+jest.spyOn(adminAuth, "getAuth").mockReturnValue(mockAuth);
 
 // Set NODE_ENV to test to bypass container access checks
 process.env.NODE_ENV = "test";
