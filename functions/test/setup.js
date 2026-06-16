@@ -1,10 +1,18 @@
+/* eslint-disable no-unused-vars */
 // Jest test setup file
 /* global jest, afterAll */
-const admin = require("firebase-admin");
-
+const { getApps, getApp, initializeApp, deleteApp } = require(
+  "firebase-admin/app",
+);
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
+const adminAuth = require("firebase-admin/auth");
+const adminFirestore = require("firebase-admin/firestore");
+const adminStorage = require("firebase-admin/storage");
 // Initialize Firebase Admin SDK for testing
-if (!admin.apps.length) {
-  admin.initializeApp({
+if (!getApps().length) {
+  initializeApp({
     projectId: "test-project-id",
   });
 }
@@ -19,5 +27,5 @@ jest.setTimeout(30000);
 // Cleanup after tests
 afterAll(async () => {
   // Cleanup Firebase Admin SDK
-  await admin.app().delete();
+  await deleteApp(getApp());
 });
