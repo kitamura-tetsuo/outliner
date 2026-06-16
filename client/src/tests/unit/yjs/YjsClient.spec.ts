@@ -48,14 +48,7 @@ describe("YjsClient", () => {
         );
 
         // Create a simple mock for Project since we don't need its full logic for this test
-        project = {
-            dispose: () => {},
-            metadata: {},
-            rootFolder: {},
-            ydoc: {},
-            tree: {},
-            findPage: () => {},
-            addPage: () => {},
+        project = { dispose: () => {}, metadata: {}, rootFolder: {}, ydoc: {}, tree: {}, findPage: () => {}, addPage: () => {},
             title: "Test Project",
             items: { length: 0 },
         } as unknown as Project;

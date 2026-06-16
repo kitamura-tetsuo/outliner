@@ -231,10 +231,7 @@ export class UserManager {
 
         // Use Firebase email/password auth for E2E tests
         if (isTestEnv && !isProduction && useEmulator) {
-            logger.info(
-                {},
-                "[UserManager] E2E test environment detected, using Firebase auth emulator with test account",
-            );
+            logger.info({}, "[UserManager] E2E test environment detected, using Firebase auth emulator with test account");
             logger.info({}, "[UserManager] Attempting E2E test login with test@example.com");
 
             // Login with test user
