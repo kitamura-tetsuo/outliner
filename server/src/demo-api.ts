@@ -84,11 +84,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                     });
 
-                    // Create a properly structured Project with maps initialized
-                    const project = Project.createInstance("Demo Project");
-                    // Merge this initialized state into the live Y.Doc
-                    Y.applyUpdate(doc as unknown as Y.Doc, Y.encodeStateAsUpdate(project.ydoc));
-
                     // Now safe to use fromDoc to manipulate the live document
                     const docProject = Project.fromDoc(doc as unknown as Y.Doc);
 
