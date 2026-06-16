@@ -1,4 +1,4 @@
-import type { Item } from "../schema/app-schema";
+import type { Item, Items } from "../schema/app-schema";
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
@@ -1205,8 +1205,8 @@ export class Cursor implements CursorEditingContext {
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;
-        while (item.items && (item.items as { length: number; at: (i: number) => Item; }).length > 0) {
-            item = (item.items as { length: number; at: (i: number) => Item; }).at(0)!;
+        if (item.items && (item.items as Items).length > 0) {
+            item = (item.items as Items).at(0)!;
         }
         this.itemId = item.id;
         this.offset = 0;
@@ -1219,10 +1219,9 @@ export class Cursor implements CursorEditingContext {
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;
-        while (item.items && (item.items as { length: number; at: (i: number) => Item; }).length > 0) {
-            item = (item.items as { length: number; at: (i: number) => Item; }).at(
-                (item.items as { length: number; at: (i: number) => Item; }).length - 1,
-            )!;
+        while (item.items && (item.items as Items).length > 0) {
+            const items = item.items as Items;
+            item = items.at(items.length - 1)!;
         }
         this.itemId = item.id;
         this.offset = (item.text || "").length;

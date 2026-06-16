@@ -2,7 +2,7 @@ import "@dotenvx/dotenvx";
 import bodyParser from "body-parser";
 import cors from "cors";
 import express from "express";
-import admin from "firebase-admin";
+import { getAuth } from "firebase-admin/auth";
 import fs from "fs";
 import jwt from "jsonwebtoken";
 import path from "path";
@@ -153,14 +153,14 @@ function startLogService() {
 
             if (isDevelopment) {
                 try {
-                    const userRecord = await admin.auth().getUserByEmail(email);
+                    const userRecord = await getAuth().getUserByEmail(email);
                     const testUserPassword = process.env.TEST_USER_PASSWORD;
 
                     if (
                         testUserPassword && email === "test@example.com"
                         && password === testUserPassword
                     ) {
-                        const customToken = await admin.auth().createCustomToken(userRecord.uid, {
+                        const customToken = await getAuth().createCustomToken(userRecord.uid, {
                             devUser: true,
                             role: "admin",
                         });
@@ -387,7 +387,7 @@ function startLogService() {
         }
 
         try {
-            const auth = admin.auth();
+            const auth = getAuth();
 
             try {
                 const existingUser = await auth.getUserByEmail(email);

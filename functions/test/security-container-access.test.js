@@ -1,18 +1,29 @@
+/* eslint-disable no-unused-vars */
 const { describe, it, expect, afterAll, beforeEach } = require("@jest/globals");
+const { getApps, getApp, initializeApp, deleteApp } = require(
+  "firebase-admin/app",
+);
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
+const adminAuth = require("firebase-admin/auth");
+const adminFirestore = require("firebase-admin/firestore");
+const adminStorage = require("firebase-admin/storage");
 const functions = require("firebase-functions-test")();
 
 // Mock dependencies before requiring index
 describe("Vulnerability Reproduction: Insecure Direct Object Reference in saveContainer", () => {
-  let admin;
   let myFunctions;
   let transactionUpdateSpy;
 
   beforeEach(() => {
     jest.resetModules();
-    admin = require("firebase-admin");
+    // Require first
+    const _adminAuth = require("firebase-admin/auth");
+    const _adminFirestore = require("firebase-admin/firestore");
 
     // Mock admin.auth
-    jest.spyOn(admin, "auth").mockReturnValue({
+    jest.spyOn(_adminAuth, "getAuth").mockReturnValue({
       verifyIdToken: jest.fn().mockResolvedValue({ uid: "attacker-user" }),
     });
 
@@ -31,7 +42,7 @@ describe("Vulnerability Reproduction: Insecure Direct Object Reference in saveCo
       }),
     };
 
-    jest.spyOn(admin, "firestore").mockReturnValue(mockDb);
+    jest.spyOn(_adminFirestore, "getFirestore").mockReturnValue(mockDb);
 
     // Setup mocks for collections and docs
     const mockUserContainersDoc = {

@@ -6,7 +6,9 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
-import admin from "firebase-admin";
+import { getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 import jwt from "jsonwebtoken";
 
 // Firebase initialization (minimal configuration for testing)
@@ -15,13 +17,13 @@ if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
     process.env.GCLOUD_PROJECT = "test-project";
 }
 
-if (!admin.apps.length) {
-    admin.initializeApp({
+if (!getApps().length) {
+    initializeApp({
         projectId: "test-project",
     });
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 if (process.env.NODE_ENV === "test" || process.env.FIRESTORE_EMULATOR_HOST) {
     db.settings({
         host: "localhost:58080",
@@ -76,7 +78,7 @@ app.get("/health", (req, res) => {
     return res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-let adminInstance = admin;
+let adminInstance = { auth: getAuth, firestore: getFirestore };
 export const setAdmin = (mock: any) => {
     adminInstance = mock;
 };
@@ -254,4 +256,4 @@ app.post("/api/rotate-logs", async (req, res) => {
     }
 });
 
-export { admin, app };
+export { app };

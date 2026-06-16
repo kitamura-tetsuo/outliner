@@ -1,5 +1,5 @@
 import express from "express";
-import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import * as Y from "yjs";
 import { z } from "zod";
 import { checkContainerAccess } from "./access-control.js";
@@ -101,7 +101,7 @@ export function createSeedRouter(
             // If project exists in Firestore, user MUST be a member to seed (overwrite) it.
             // If project does not exist, we allow seeding (creation).
             try {
-                const db = admin.firestore();
+                const db = getFirestore();
                 const projectRef = db.collection("projectUsers").doc(projectId);
                 const projectDoc = await projectRef.get();
 
