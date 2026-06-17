@@ -1096,6 +1096,11 @@ function handleClick(event: MouseEvent) {
         return;
     }
 
+    // Component selector clicks should not trigger item editing (focusing textarea)
+    if ((event.target as HTMLElement).closest(".component-selector") || (event.target as HTMLElement).tagName.toLowerCase() === 'select') {
+        return;
+    }
+
     // Alt+Click: Add new cursor
     if (event.altKey) {
         // Ensure event propagation is stopped
