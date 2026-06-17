@@ -1,6 +1,7 @@
 import { Hocuspocus } from "@hocuspocus/server";
 import express from "express";
 import * as Y from "yjs";
+import { YTree } from "yjs-orderedtree";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
@@ -83,6 +84,11 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                     });
+
+                    // Ensure tree structure is instantiated sequentially if the document was previously empty
+                    if (isEmpty) {
+                        new YTree(doc.getMap("orderedTree"));
+                    }
 
                     // Now safe to use fromDoc to manipulate the live document
                     const docProject = Project.fromDoc(doc as unknown as Y.Doc);
