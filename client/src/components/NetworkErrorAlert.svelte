@@ -23,9 +23,9 @@ function dismiss() {
             <p>{error}</p>
             <div class="error-actions">
                 {#if retryCallback}
-                    <button class="retry-btn" onclick={retryCallback}>Retry</button>
+                    <button class="retry-btn" onclick={retryCallback} aria-label="Retry network request">Retry</button>
                 {/if}
-                <button class="dismiss-btn" onclick={dismiss}>Close</button>
+                <button class="dismiss-btn" onclick={dismiss} aria-label="Dismiss error message">Close</button>
             </div>
         </div>
     </div>

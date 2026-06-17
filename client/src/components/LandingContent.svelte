@@ -22,10 +22,10 @@
     </section>
 
     <section class="cta-section">
-        <button class="cta-button primary" onclick={login}>
+        <button class="cta-button primary" onclick={login} aria-label="Sign in with Google account">
             Sign in with Google
         </button>
-        <button class="cta-button secondary" onclick={login}>
+        <button class="cta-button secondary" onclick={login} aria-label="Get started by signing in">
             Get Started
         </button>
     </section>
