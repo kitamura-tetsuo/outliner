@@ -25,5 +25,5 @@ async function run() {
         placeholder="Please enter an SQL query"
         aria-label="SQL Query"
     ></textarea>
-    <button onclick={run} class="mt-2 px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">Run</button>
+    <button onclick={run} class="mt-2 px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600" aria-label="Run SQL query">Run</button>
 </div>

@@ -154,7 +154,7 @@ function toggleDevLogin() {
     {:else if error}
         <div class="error">
             <p>{error}</p>
-            <button onclick={() => (error = "")} class="try-again">Retry</button>
+            <button onclick={() => (error = "")} class="try-again" aria-label="Retry login">Retry</button>
         </div>
     {:else if currentUser}
         <div class="user-info">
@@ -169,7 +169,7 @@ function toggleDevLogin() {
                 <p class="user-name">{currentUser.name}</p>
                 <p class="user-email">{currentUser.email || ""}</p>
             </div>
-            <button onclick={handleLogout} class="logout-btn">Logout</button>
+            <button onclick={handleLogout} class="logout-btn" aria-label="Log out of your account">Logout</button>
         </div>
     {:else}
         <!-- Google Auth Button -->
@@ -208,7 +208,7 @@ function toggleDevLogin() {
 
         {#if isDevelopment}
             <!-- Development environment login toggle button -->
-            <button onclick={toggleDevLogin} class="dev-toggle">
+            <button onclick={toggleDevLogin} class="dev-toggle" aria-label="Toggle developer login form">
                 {showDevLogin ? "Hide Developer Login" : "Developer Login"}
             </button>
 
