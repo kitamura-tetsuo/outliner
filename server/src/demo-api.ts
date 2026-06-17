@@ -69,8 +69,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
 
                         // Clear orderedTree completely, except for the 'root' key
                         const orderedTree = ydoc.getMap("orderedTree");
+                        let hasRoot = false;
                         Array.from(orderedTree.keys()).forEach(key => {
-                            if (key !== "root") orderedTree.delete(key);
+                            if (key !== "root") {
+                                orderedTree.delete(key);
+                            } else {
+                                hasRoot = true;
+                            }
                         });
 
                         // Clear items map completely
@@ -82,7 +87,21 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("title", DEMO_PROJECT_TITLE);
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+
+                        // If the document was completely empty (no 'root' key existed),
+                        // we must inject it here. yjs-orderedtree requires the 'root' key
+                        // to be present before the wrapper (Project.fromDoc -> YTree) is
+                        // instantiated, otherwise it will hang connecting clients.
+                        if (!hasRoot) {
+                            orderedTree.set("root", new Y.Map());
+                        }
                     });
+
+                    // Note: yjs-orderedtree expects the 'root' key to be present in orderedTree.
+                    // We do not delete 'root' inside the transact block above.
+                    // Therefore, we can safely initialize Project.fromDoc() below without
+                    // needing to merge state from a newly created Y.Doc, preventing
+                    // concurrent write conflicts.
 
                     // Now safe to use fromDoc to manipulate the live document
                     const docProject = Project.fromDoc(doc as unknown as Y.Doc);
