@@ -1,7 +1,6 @@
 import { Hocuspocus } from "@hocuspocus/server";
 import express from "express";
 import * as Y from "yjs";
-import { YTree } from "yjs-orderedtree";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
@@ -68,10 +67,15 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                     await directConnection.transact((document: any) => {
                         const ydoc = document as unknown as Y.Doc;
 
-                        // Clear orderedTree completely
+                        // Clear orderedTree completely, except for the 'root' key
                         const orderedTree = ydoc.getMap("orderedTree");
+                        let hasRoot = false;
                         Array.from(orderedTree.keys()).forEach(key => {
-                            orderedTree.delete(key);
+                            if (key !== "root") {
+                                orderedTree.delete(key);
+                            } else {
+                                hasRoot = true;
+                            }
                         });
 
                         // Clear items map completely
@@ -84,14 +88,17 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
-                        // Properly initialize the yjs-orderedtree structure.
-                        // Creating a YTree instance on an empty map automatically
-                        // injects the required 'root' node with its internal metadata.
-                        new YTree(orderedTree);
+                        // If the document was completely empty (no 'root' key existed),
+                        // we must inject it here. yjs-orderedtree requires the 'root' key
+                        // to be present before the wrapper (Project.fromDoc -> YTree) is
+                        // instantiated, otherwise it will hang connecting clients.
+                        if (!hasRoot) {
+                            orderedTree.set("root", new Y.Map());
+                        }
                     });
 
                     // Note: yjs-orderedtree expects the 'root' key to be present in orderedTree.
-                    // We ensure it is present (and fresh) at the end of the transact block above.
+                    // We do not delete 'root' inside the transact block above.
                     // Therefore, we can safely initialize Project.fromDoc() below without
                     // needing to merge state from a newly created Y.Doc, preventing
                     // concurrent write conflicts.
