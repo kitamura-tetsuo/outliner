@@ -17,8 +17,13 @@ describe("Demo API", () => {
         metadata.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
         const orderedTree = mockDoc.getMap("orderedTree");
-        orderedTree.set("root", { id: "root" });
-        orderedTree.set("item1", { id: "item1" }); // Make it not empty
+        const rootNode = new Y.Map();
+        rootNode.set("_parentHistory", new Y.Map());
+        orderedTree.set("root", rootNode);
+
+        const item1 = new Y.Map();
+        item1.set("_parentHistory", new Y.Map());
+        orderedTree.set("item1", item1); // Make it not empty
 
         mockDirectConnection = {
             document: mockDoc,

@@ -84,10 +84,10 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
-                        // Inject a fresh 'root' key. yjs-orderedtree requires the 'root' key
-                        // to be present before the wrapper (Project.fromDoc -> YTree) is
-                        // instantiated, otherwise it will hang connecting clients.
-                        orderedTree.set("root", new Y.Map());
+                        // Properly initialize the yjs-orderedtree structure.
+                        // Creating a YTree instance on an empty map automatically
+                        // injects the required 'root' node with its internal metadata.
+                        new YTree(orderedTree);
                     });
 
                     // Note: yjs-orderedtree expects the 'root' key to be present in orderedTree.
