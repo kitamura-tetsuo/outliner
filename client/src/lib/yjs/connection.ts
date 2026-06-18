@@ -428,9 +428,7 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         } else {
             initialToken = "1"; // Send dummy token in URL to satisfy strict routing on older servers
         }
-    } catch (e) {
-        console.error("[createMinimalProjectConnection] getFreshIdToken FAILED:", e);
-    }
+    } catch {}
 
     // Send a dummy `token` for the same reason as in createProjectConnection
     const provider = new HocuspocusProvider({

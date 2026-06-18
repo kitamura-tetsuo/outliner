@@ -1,7 +1,6 @@
 import { Hocuspocus } from "@hocuspocus/server";
 import express from "express";
 import * as Y from "yjs";
-import { YTree } from "yjs-orderedtree";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
@@ -65,14 +64,19 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 if (shouldReset) {
                     logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
 
+                    // Initialize YTree wrapper FIRST so we can use its API safely.
+                    // Bypassing YTree to manually delete map keys causes active observers
+                    // to crash when they process the Yjs update.
+                    const docProject = Project.fromDoc(doc as unknown as Y.Doc);
+
                     await directConnection.transact((document: any) => {
                         const ydoc = document as unknown as Y.Doc;
 
-                        // Clear orderedTree completely, except for the 'root' key
-                        const orderedTree = ydoc.getMap("orderedTree");
-                        Array.from(orderedTree.keys()).forEach(key => {
-                            if (key !== "root") orderedTree.delete(key);
-                        });
+                        // Safely delete all pages via YTree API
+                        const children = Array.from(docProject.items);
+                        for (const child of children) {
+                            child.delete();
+                        }
 
                         // Clear items map completely
                         const itemsMap = ydoc.getMap("items");
@@ -84,12 +88,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                     });
-
-                    // Ensure tree structure is instantiated sequentially after the deletion transaction
-                    new YTree(doc.getMap("orderedTree"));
-
-                    // Now safe to use fromDoc to manipulate the live document
-                    const docProject = Project.fromDoc(doc as unknown as Y.Doc);
 
                     // Rebuild the template directly in the live document.
                     // This is done sequentially outside the transaction because
