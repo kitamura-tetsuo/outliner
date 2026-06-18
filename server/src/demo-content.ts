@@ -15,7 +15,7 @@ export const DEMO_TEMPLATE_VERSION = 6;
 // rendered from `project.title` resolve to /demo/<page> URLs.
 export const DEMO_PROJECT_TITLE = "demo";
 
-export const DEMO_LANDING_PAGE_TITLE = "Demo";
+export const DEMO_LANDING_PAGE_TITLE = "Welcome";
 
 // A structured demo item, used for pages that need to seed more than plain
 // text: live components (table/chart), aliases, votes, comments, attachments.
