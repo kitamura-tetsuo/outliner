@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { parseCreateTable } from "../services/tableSchema";
 import { initDb } from "../services/sqlService";
+import { parseCreateTable } from "../services/tableSchema";
 
 describe("parseCreateTable", () => {
     beforeAll(async () => {
