@@ -1,0 +1,12 @@
+id: FTR-7c4f9a21
+title: Editable SQL table grid
+title-ja: 編集可能なSQLテーブルグリッド
+description: 'Define a table with a SQL CREATE TABLE statement and edit its contents in a GUI grid embedded directly inside an outliner item. The grid is selected via the item''s component type dropdown ("SQL Table"). The CREATE TABLE statement is validated with sql.js, and the derived columns plus all row data are persisted per item in Yjs (cell-level Y.Array<Y.Map>) so the grid is collaborative and survives reloads.
+
+  '
+category: client
+status: implemented
+tests:
+- client/src/components/SqlTableGrid.test.ts
+- client/src/schema/app-schema.table.test.ts
+- client/src/tests/tableSchema.test.ts

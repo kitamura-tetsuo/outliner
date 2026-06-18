@@ -34,6 +34,68 @@ if (typeof window !== "undefined") {
     window.queryStore = queryStore;
 }
 
+// Ensure the sql.js engine (SQL static) is initialized and return it.
+// Extracted so that callers needing an isolated Database (e.g. schema parsing)
+// can reuse the same WASM-loading logic without touching the shared `db`.
+export async function getSqlStatic(): Promise<SqlJsStatic> {
+    if (SQL) return SQL;
+
+    // Load WASM from appropriate path in test or production environment
+    if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
+        const fs = await import("fs");
+        const path = await import("path");
+        // Try multiple possible paths for the WASM file
+        const possiblePaths = [
+            path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm"),
+            path.resolve(__dirname, "../../node_modules/sql.js/dist/sql-wasm.wasm"),
+            path.resolve(__dirname, "../node_modules/sql.js/dist/sql-wasm.wasm"),
+        ];
+
+        let wasmBinary: Uint8Array | null = null;
+        let wasmPath = "";
+        for (const possiblePath of possiblePaths) {
+            try {
+                const buffer = fs.readFileSync(possiblePath);
+                wasmBinary = new Uint8Array(buffer);
+                wasmPath = possiblePath;
+                break;
+            } catch {
+                // Continue to next path
+            }
+        }
+
+        if (!wasmBinary) {
+            throw new Error("Could not find sql-wasm.wasm file in any expected location");
+        }
+
+        SQL = await initSqlJs({
+            wasmBinary: wasmBinary,
+            locateFile: (file: string) => {
+                if (file.endsWith(".wasm")) {
+                    return wasmPath;
+                }
+                return file;
+            },
+        });
+    } else {
+        // Load WASM from Vite's public directory in development environment
+        SQL = await initSqlJs({
+            locateFile: (file: string) => {
+                if (file.endsWith(".wasm")) {
+                    // Use WASM file in public directory in development environment
+                    return `/node_modules/sql.js/dist/sql-wasm.wasm`;
+                }
+                return file;
+            },
+        });
+    }
+
+    if (!SQL) {
+        throw new Error("Failed to initialize SQL.js");
+    }
+    return SQL;
+}
+
 export async function initDb() {
     if (db) return;
 

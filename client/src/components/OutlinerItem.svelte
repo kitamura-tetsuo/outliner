@@ -174,6 +174,7 @@ import InlineJoinTable from "./InlineJoinTable.svelte";
 
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
+import SqlTableGrid from "./SqlTableGrid.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
@@ -2241,6 +2242,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                         >
                             <option value="none">Text</option>
                             <option value="table">Table</option>
+                            <option value="sqltable">SQL Table</option>
                             <option value="chart">Chart</option>
                         </select>
                     </div>
@@ -2249,6 +2251,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                 <!-- Component display (text is hidden) -->
                 {#if (componentType ?? compTypeValue) === "table"}
                     <InlineJoinTable />
+                {:else if (componentType ?? compTypeValue) === "sqltable"}
+                    <SqlTableGrid item={model.original} />
                 {:else if (componentType ?? compTypeValue) === "chart"}
                     <ChartQueryEditor item={model.original} />
                     <ChartPanel item={model.original} />
